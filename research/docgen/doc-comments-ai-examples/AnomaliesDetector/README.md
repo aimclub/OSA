@@ -4,7 +4,7 @@
 - For the same reasons the 'yaspin' module (generates a loading animation) errors are thrown highly in numbers to the terminal which makes it litterated and hard to read. Nevertheless it doesn't affect vital features of the tool and in result it lists modules the comments were generated for
 - In data.py and several other modules the utility leaves the 'bad batch' comments before the corresponding methods and functions uncleared
 - A wide span problem with Python methods' indentations - the utility breaks the correct implementation of Python's indentaions at the OOP methodes
-- At the 531 line of the "ocean_with_mlp" method a closing ']' has vanished
+- At the 531 line (ice_model.py) of the "ocean_with_mlp" method a closing ']' has vanished
 - Clears out '#' comments in the code
 
 ## Overall experience
