@@ -1,4 +1,5 @@
 Для запуска использовать файл `main.py`
+Проблемы:
 
 1. Остаются комментарии от LLM, которые необходимо убрать
 2. Не внятные Core Features
@@ -13,6 +14,6 @@ TODO:
 3. Работает в одном потоке (возможно перейдем в многопоточный режим)
 4. Поработать с prompts и templates
 
-Ссылка на иследуемый репозиторий лежит `readmegen/config/settings/config.toml`
+Ссылка на иследуемый репозиторий лежит в `readmegen/config/settings/config.toml`
 
 Почти весь код совпадает с [readmeai](https://github.com/eli64s/readme-ai)
