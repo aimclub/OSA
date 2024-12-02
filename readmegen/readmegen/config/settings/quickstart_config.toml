@@ -1,0 +1,64 @@
+[templates]
+main = """---
+
+$installation_section
+
+---
+
+## Examples
+
+Describe examples how it should work and should be used. Images, GIFs and code cells are welcome.
+
+---
+
+## Getting started
+
+$usage_section
+
+$testing_section
+"""
+
+prerequisites = """
+### Prerequisites
+
+Before getting started with $repo_name, ensure your runtime environment meets the following requirements:
+
+$system_requirements
+"""
+
+installation = """
+
+## Installation
+
+Install $repo_name using one of the following methods:
+
+**Build from source:**
+
+$install_steps
+"""
+
+usage = """###\n Usage\n$usage_instructions"""
+
+testing = """###\n Testing\n$test_instructions"""
+
+[install_steps]
+template = """
+1. Clone the $repo_name repository:
+```sh
+❯ git clone $repo_url
+```
+
+2. Navigate to the project directory:
+```sh
+❯ cd $repo_name
+```
+
+3. Install the project dependencies:
+
+$install_commands
+"""
+
+[formatting]
+system_requirements_prefix = "- **$key:** "
+package_managers_label = "Package Manager"
+containers_label = "Container Runtime"
