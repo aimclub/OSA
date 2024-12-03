@@ -1,0 +1,94 @@
+The provided path: 'test_dir/'
+File: api.py
+  - Class: Api, line 16
+
+File: api_tables.py
+
+File: c.py
+  - Class: MyClass, line 1
+      - Method: method_one, Args: ['self', 'x'], Return: str, line 2
+      - Method: method_two, Args: ['self', 'y'], Return: None, line 5
+  - Function: standalone_function, Args: ['a', 'b'], Return: int, line 8
+
+File: control.py
+  - Class: Control, line 4
+      - Method: __init__, Args: ['self'], Return: None, line 5
+      - Method: control, Args: ['self'], Return: None, line 10
+
+File: d.py
+  - Function: foo, Args: [], Return: None, line 1
+  - Function: bar, Args: ['x'], Return: None, line 4
+
+File: data_models.py
+
+File: endpoint.py
+  - Class: Endpoint, line 14
+      - Method: __init__, Args: ['self', 'url', 'param_names'], Return: None, line 15
+      - Method: _check_params, Args: ['self', 'params'], Return: None, line 22
+      - Method: _parse_url_params, Args: ['self', 'params'], Return: None, line 45
+      - Method: __call__, Args: ['self', 'json_data'], Return: Any, line 52
+      - Method: _execute_request, Args: ['url', 'params'], Return: requests.Request, line 64
+  - Class: GetEndpoint, line 68
+      - Method: _execute_request, Args: ['self', 'url', 'params', 'json'], Return: requests.Response, line 69
+  - Class: PostEndpoint, line 83
+      - Method: _execute_request, Args: ['self', 'url', 'params', 'json_data'], Return: requests.Response, line 84
+
+File: filter_and_impact_requests.py
+  - Function: parks_by_budget, Args: ['budget', 'territory_name'], Return: DataByBudget | NoContentMessage, line 7
+  - Function: territory_by_budget, Args: ['budget', 'service_type', 'territory_name'], Return: DataByBudget | NoContentMessage, line 26
+  - Function: impact_by_construction, Args: ['block_id', 'service_type', 'object_type', 'capacity'], Return: ImpactEvaluation, line 56
+
+File: food.py
+  - Class: Food, line 4
+      - Method: __init__, Args: ['self'], Return: None, line 5
+      - Method: get_food_position, Args: ['self', 'gui'], Return: None, line 9
+      - Method: draw_food, Args: ['self', 'window'], Return: None, line 13
+
+File: gui.py
+  - Class: Gui, line 3
+      - Method: __init__, Args: ['self'], Return: None, line 4
+      - Method: create_image, Args: ['self'], Return: None, line 61
+      - Method: draw_level, Args: ['self', 'window'], Return: None, line 75
+      - Method: init_field, Args: ['self'], Return: None, line 79
+      - Method: get_new_indicator, Args: ['self'], Return: None, line 93
+      - Method: draw_indicator, Args: ['self', 'window'], Return: None, line 98
+      - Method: draw_win, Args: ['self', 'window'], Return: None, line 103
+      - Method: draw_lose, Args: ['self', 'window'], Return: None, line 107
+      - Method: check_win_lose, Args: ['self'], Return: None, line 111
+      - Method: render, Args: ['self', 'snake', 'window'], Return: None, line 117
+
+File: indicators_requests.py
+  - Function: get_indicators, Args: ['indicators', 'name_id', 'territory_type', 'coordinates'], Return: SummaryIndicators, line 11
+
+File: music.py
+  - Class: Music, line 2
+      - Method: __init__, Args: ['self'], Return: None, line 3
+      - Method: ambient, Args: ['self'], Return: None, line 5
+
+File: osa_treesitter.py
+  - Class: OSA_TreeSitter, line 8
+      - Method: __init__, Args: ['self', 'scripts_path'], Return: None, line 10
+      - Method: files_list, Args: ['path'], Return: str, line 15
+      - Method: open_file, Args: ['path', 'file'], Return: bytes, line 19
+      - Method: _parser_build, Args: ['self', 'filename'], Return: Parser, line 25
+      - Method: _parse_source_code, Args: ['self', 'filename'], Return: None, line 30
+      - Method: extract_methods, Args: ['self', 'filename'], Return: None, line 35
+      - Method: _traverse_block, Args: ['self', 'block_node', 'source_code'], Return: None, line 64
+      - Method: _extract_function_details, Args: ['self', 'function_node', 'source_code'], Return: None, line 72
+      - Method: analyze_directory, Args: ['self', 'path'], Return: None, line 93
+      - Method: show_results, Args: ['self', 'results'], Return: None, line 101
+
+File: snake.py
+  - Class: Snake, line 2
+      - Method: __init__, Args: ['self'], Return: None, line 3
+      - Method: moove, Args: ['self', 'control'], Return: None, line 7
+      - Method: animation, Args: ['self'], Return: None, line 17
+      - Method: draw_snake, Args: ['self', 'window'], Return: None, line 22
+      - Method: check_end_window, Args: ['self'], Return: None, line 26
+      - Method: eat, Args: ['self', 'food', 'gui'], Return: None, line 38
+      - Method: check_barrier, Args: ['self', 'gui'], Return: None, line 45
+      - Method: count_score, Args: ['self', 'food', 'gui'], Return: None, line 58
+
+File: summary_tables_requests.py
+  - Function: get_summary_table, Args: ['table', 'name_id', 'territory_type', 'coordinates'], Return: SummaryTable, line 8
+
