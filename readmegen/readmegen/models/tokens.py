@@ -4,8 +4,11 @@ import structlog
 from tiktoken import Encoding, get_encoding
 
 from readmegen.config.settings import Settings
+from readmegen.logger import get_logger
 
 _encoding_cache = {}
+
+_logger = get_logger(__name__)
 
 
 def _set_encoding_cache(encoding_name: str) -> Encoding:
@@ -33,7 +36,9 @@ def token_handler(
     )
 
     if token_count > max_count:
-        """TODO: deleted logger"""
+        _logger.debug(
+            f"Truncating '{index}' prompt: {token_count} > {max_count} tokens!",
+        )
         prompt = truncate_tokens(encoder, prompt, tokens)
 
     return prompt
@@ -46,8 +51,9 @@ def count_tokens(text: str, encoder: str) -> int:
         token_count = len(encoding.encode(text, disallowed_special=()))
 
     except (UnicodeEncodeError, ValueError) as exc:
-        """TODO: deleted logger"""
-        print(f"Error counting tokens for '{text}' with {encoder}: {exc}")
+        _logger.error(
+            f"Error counting tokens for '{text}' with {encoder}: {exc}",
+        )
         token_count = 0
 
     return token_count
@@ -68,8 +74,7 @@ def truncate_tokens(encoding: str, text: str, max_count: int) -> str:
         return text[:truncated_total]
 
     except Exception as exc:
-        """TODO: deleted logger"""
-        print(f"Error truncating tokens for '{text}': {exc}")
+        _logger.error(f"Error truncating tokens for '{text}': {exc}")
         return text
 
 

@@ -8,7 +8,6 @@ import aiohttp
 
 from readmegen.config.settings import ConfigLoader
 from readmegen.ingestion.models import RepositoryContext
-
 from readmegen.models.prompts import (
     get_prompt_context,
     set_additional_contexts,

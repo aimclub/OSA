@@ -6,7 +6,6 @@ from readmegen.ingestion.models import RepositoryContext
 from readmegen.readers.git.providers import GitHost
 from readmegen.templates.header import HeaderTemplate
 from readmegen.templates.quickstart import QuickStartBuilder
-from readmegen.templates.table_of_contents import TocTemplate
 
 
 class MarkdownBuilder:
@@ -33,7 +32,7 @@ class MarkdownBuilder:
             else f"../{self.git.name}"
         )
         self.header_template = HeaderTemplate(self.md.header_style)
-        self.toc_template = TocTemplate(self.md.toc_style)
+        self.table_of_contents = self.md.table_of_contents
 
     @property
     def header_and_badges(self) -> str:
@@ -64,24 +63,6 @@ class MarkdownBuilder:
             "badges_tech_stack_text": self.md.badges_tech_stack_text,
         }
         return self.header_template.render(header_data)
-
-    @property
-    def table_of_contents(self) -> str:
-        """Generates the README Table of Contents section."""
-        headings = {
-            "sections": [
-                {"title": "Core features"},
-                {"title": "Installation"},
-                {"title": "Examples"},
-                {"title": "Getting started"},
-                {"title": "Documentation"},
-                {"title": "License"},
-                {"title": "Acknowledgements"},
-                {"title": "Contacts"},
-                {"title": "Citation"},
-            ],
-        }
-        return self.toc_template.render(headings)
 
     @property
     def quickstart_guide(self) -> str:

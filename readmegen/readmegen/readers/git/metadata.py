@@ -7,7 +7,10 @@ from typing import Any
 
 import aiohttp
 
+from readmegen.logger import get_logger
 from readmegen.readers.git.providers import GitURL
+
+_logger = get_logger(__name__)
 
 
 @dataclass
@@ -129,7 +132,8 @@ async def fetch_git_repository_metadata(
     try:
         metadata = await _load_data_metadata(session, api_url)
         return _parse_repository_metadata(metadata) if metadata else None
-    except aiohttp.ClientError:
-        """TODO: deleted logger"""
-
+    except aiohttp.ClientError as exc:
+        _logger.error(
+            f"Client error while fetching repository metadata: {exc}",
+        )
         return None

@@ -5,11 +5,13 @@ from pathlib import Path
 
 import git
 from readmegen.errors import GitCloneError
-
+from readmegen.logger import get_logger
 from readmegen.preprocessor.directory_cleaner import (
     remove_directory,
     remove_hidden_contents,
 )
+
+_logger = get_logger(__name__)
 
 
 def clone_repository(
@@ -68,6 +70,9 @@ def load_data(repository: Path | str, temp_dir: str) -> str:
 
         return str(temp_dir_path)
     except Exception as e:
+        _logger.error(
+            f"Unexpected error while cloning repository {repository}: {e}",
+        )
         raise GitCloneError(
             f"Unexpected error while cloning repository {repository}",
         ) from e

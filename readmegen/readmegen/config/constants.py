@@ -31,14 +31,6 @@ class ImageOptions(str, enum.Enum):
     ITMO_LOGO = ""
 
 
-class TocStyleOptions(str, enum.Enum):
-    """
-        Enum of supported 'Table of Contents' templates for the README file.
-        """
-
-    BULLET = "bullet"
-
-
 class LLMService(str, enum.Enum):
     """
         LLM API service providers.

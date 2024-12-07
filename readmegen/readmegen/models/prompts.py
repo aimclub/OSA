@@ -2,13 +2,16 @@
 
 from readmegen.config.settings import Settings
 from readmegen.ingestion.models import RepositoryContext
+from readmegen.logger import get_logger
+
+_logger = get_logger(__name__)
 
 
 def get_prompt_context(prompts: dict, prompt_type: str, context: dict) -> str:
     """Generates a prompt for the LLM API."""
     prompt_template = get_prompt_template(prompts, prompt_type)
     if not prompt_template:
-        """TODO: deleted logger"""
+        _logger.error(f"Prompt type '{prompt_type}' not found.")
         return ""
 
     return inject_prompt_context(prompt_template, context)
@@ -28,8 +31,7 @@ def inject_prompt_context(template: str, context: dict) -> str:
     try:
         return template.format(*[context[key] for key in context])
     except KeyError as exc:
-        """TODO: deleted logger"""
-        print(f"Missing context for prompt key: {exc}")
+        _logger.error(f"Missing context for prompt key: {exc}")
         return ""
 
 

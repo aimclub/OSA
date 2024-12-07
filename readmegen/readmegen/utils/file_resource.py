@@ -2,6 +2,9 @@ from importlib import resources
 from pathlib import Path
 
 from readmegen.errors import FileReadError
+from readmegen.logger import get_logger
+
+_logger = get_logger(__name__)
 
 
 def get_resource_path(
@@ -17,8 +20,9 @@ def get_resource_path(
         return resources.files(module).joinpath(submodule, file_path)
 
     except (TypeError, FileNotFoundError) as exc:
-        """TODO: deleted logger"""
-        print(f"Error loading resource file via importlib.resources: {exc}")
+        _logger.error(
+            f"Error loading resource file via importlib.resources: {exc}"
+        )
 
     try:
         import pkg_resources

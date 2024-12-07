@@ -3,6 +3,9 @@ from typing import Optional
 
 from readmegen.config.settings import ConfigLoader
 from readmegen.ingestion.models import QuickStart
+from readmegen.logger import get_logger
+
+_logger = get_logger(__name__)
 
 
 @dataclass
@@ -45,8 +48,9 @@ class QuickStartGenerator:
             return quickstart
 
         except Exception as e:
-            """TODO: deleted logger"""
-            print(f"Error generating QuickStart setup: {e}")
+            _logger.error(
+                f"Error generating QuickStart setup: {e}", exc_info=True
+            )
             return QuickStart()
 
     def _get_primary_language(self, counts: dict[str, int]) -> Optional[str]:
@@ -71,8 +75,7 @@ class QuickStartGenerator:
                 primary_lang, self.language_names.get("default")
             )
         except Exception as e:
-            """TODO: deleted logger"""
-            print(f"Error determining primary language: {e}")
+            _logger.error(f"Error determining primary language: {e}")
             return None
 
     def _generate_commands(
@@ -155,6 +158,5 @@ class QuickStartGenerator:
 ```
 """
         except Exception as e:
-            """TODO: deleted logger"""
-            print(f"Error formatting command for {tool_name}: {e}")
+            _logger.error(f"Error formatting command for {tool_name}: {e}")
             return None

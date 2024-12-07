@@ -28,11 +28,11 @@ Cheers!
 file_summary = """Deliver a succinct summary that highlights the main purpose and \
 use of the code file provided in regards to the entire codebase architecture. Focus \
 on what the code achieves, steering clear of technical implementation details. \
-While generating the summary, reference additional data about the project below: \n
+While generating the summary, reference the project structure represented by a list of the paths of all project files: \n
 
 CONTEXT DETAILS:
 ------------------------
-LIST FILES: {0}
+PROJECT STRUCTURE: {0}
 ------------------------
 
 ADDITIONAL INSTRUCTIONS:
@@ -40,7 +40,7 @@ ADDITIONAL INSTRUCTIONS:
 1. Avoid using words like 'This file', 'The file', 'This code', etc.
   1a. Summary should start with a verb or noun to make it more clear and concise.
 2. Do not include quotes, code snippets, bullets, or lists in your response.
-3. RESPONSE LENGTH: 70-100 words.
+3. RESPONSE LENGTH: 100-120 words.
 ------------------------
 
 Thank you for your hard work!

@@ -17,13 +17,14 @@
 
 ## Overview
 
-Here is a 30-50 word overview of the FEDOT project:
+Here is a rewritten version of the overview in 30-50 words:
 
-"FEDOT is an open-source framework for automated machine learning (AutoML) and model optimization. It solves the problem of manual model selection and hyperparameter tuning, providing a simple and efficient way to build and deploy high-quality models for various applications and industries."
+"FEDOT is an open-source framework that simplifies the creation of AI models by automating the selection and tuning of algorithms. It empowers data scientists and analysts to build accurate predictive models quickly, without extensive coding knowledge. Ideal for industries with complex data analysis needs."
 
 ---
 
-## Table of Contents
+
+## Table of contents
 
 - [Core features](#core-features)
 - [Installation](#installation)
@@ -31,21 +32,20 @@ Here is a 30-50 word overview of the FEDOT project:
 - [Getting started](#getting-started)
 - [Documentation](#documentation)
 - [License](#license)
-- [Acknowledgements](#acknowledgements)
+- [Acknowledgments](#acknowledgments)
 - [Contacts](#contacts)
 - [Citation](#citation)
 
----
 
 ## Core features
 
-Here is the list of key technical capabilities and characteristics of the project FEDOT:
+Here are the key technical capabilities and characteristics of the project FEDOT:
 
-1. **Automated Machine Learning**: FEDOT uses `<Hyperopt>` and `<scikit-optimize>` for automated model selection and hyperparameter tuning.
-2. **Distributed Computing**: FEDOT supports distributed computing using `<Docker>` and `<joblib>` for parallel processing of tasks.
-3. **Model Interpretability**: FEDOT provides model interpretability using `<SHAP>` and `<LIME>` for explaining model predictions.
-4. **Time Series Analysis**: FEDOT includes tools for time series analysis using `<statsmodels>` and `<sktime>` for forecasting and anomaly detection.
-5. **Model Optimization**: FEDOT uses `<lightgbm>`, `<xgboost>`, and `<catboost>` for model optimization and ensemble methods.
+1. **Automated Machine Learning**: FEDOT uses `<Hyperopt>` and `<scikit-optimize>` for automated hyperparameter tuning.
+2. **Model Composition**: FEDOT allows composing models using `<scikit-learn>` and `<xgboost>` primitives.
+3. **Distributed Computing**: FEDOT supports distributed computing using `<Dask>` and `<joblib>` for parallel processing.
+4. **Visualization**: FEDOT uses `<matplotlib>` and `<seaborn>` for data visualization.
+5. **Model Interpretability**: FEDOT uses `<SALib>` for sensitivity analysis and model interpretability.
 
 ---
 

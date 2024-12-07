@@ -22,9 +22,9 @@ from readmegen.config.constants import (
     BadgeStyleOptions,
     HeaderStyleOptions,
     ImageOptions,
-    TocStyleOptions,
 )
 from readmegen.errors import GitValidationError
+from readmegen.logger import get_logger
 from readmegen.readers.git.providers import GitURL, parse_git_url
 from readmegen.utils.file_handler import FileHandler
 from readmegen.utils.file_resource import get_resource_path
@@ -33,6 +33,8 @@ try:
     from typing import Self
 except ImportError:
     from typing_extensions import Self
+
+_logger = get_logger(__name__)
 
 
 class APISettings(BaseModel):
@@ -133,7 +135,7 @@ class MarkdownSettings(BaseModel):
     quickstart: str
     shieldsio_icons: str
     skill_icons: str
-    toc_style: str = Field(default=TocStyleOptions.BULLET)
+    table_of_contents: str
 
     model_config = ConfigDict(
         use_enum_values=True,
@@ -146,7 +148,7 @@ class MarkdownSettings(BaseModel):
         try:
             return Color(value).as_hex(format="long").lstrip("#")
         except ValueError:
-            """TODO: deleted logger"""
+            _logger.error(f"Invalid color provided: {value}", exc_info=True)
             return cls.model_fields["badge_color"].default
 
 
@@ -202,8 +204,10 @@ class ConfigLoader:
 
     file_handler: FileHandler = FileHandler()
     config_file: str = "config.toml"
+    template_file: str = "ITMO_template.toml"
     module: str = "config"
     submodule: str = "settings"
+    submodule_template: str = "templates"
 
     def __init__(self) -> None:
         """Initialize ConfigLoader with the base configuration file."""
@@ -212,11 +216,20 @@ class ConfigLoader:
 
     def _load_config(self) -> Settings:
         """Loads the base configuration file."""
-        file_path = get_resource_path(
+        file_path_config = get_resource_path(
             file_path=self.config_file,
             submodule=self.submodule
         )
-        config_dict = self.file_handler.read(file_path)
+
+        file_path_template = get_resource_path(
+            file_path=self.template_file,
+            submodule=self.submodule_template
+        )
+
+        config_dict = self.file_handler.read(file_path_config)
+        template_dict = self.file_handler.read(file_path_template)
+        config_dict.update(template_dict)
+
         self.config = Settings.model_validate(config_dict)
         return self.config
 
@@ -230,7 +243,6 @@ class ConfigLoader:
                 config_dict = self.file_handler.read(file_path)
                 settings[key] = config_dict
                 setattr(self, key, config_dict)
-                """TODO: deleted logger"""
-                print(f"Configuration file loaded: {file_path}")
+                _logger.info(f"Configuration file loaded: {file_path}")
 
         return settings

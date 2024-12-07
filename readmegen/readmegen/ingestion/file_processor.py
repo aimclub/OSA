@@ -3,10 +3,13 @@ from pathlib import Path
 
 from readmegen.config.settings import ConfigLoader
 from readmegen.ingestion.models import FileContext
-
+from readmegen.logger import get_logger
 from readmegen.parsers.factory import ParserFactory
 from readmegen.preprocessor.document_cleaner import DocumentCleaner
 from readmegen.preprocessor.file_filter import is_excluded
+
+_logger = get_logger(__name__)
+
 
 class FileProcessor:
     """
@@ -68,6 +71,7 @@ class FileProcessor:
             try:
                 return parser.parse(content) or []
             except Exception as e:
-                """TODO: deleted logger"""
-                print(f"Error parsing dependency file {file_path}: {e}")
+                _logger.error(
+                    f"Error parsing dependency file {file_path}: {e}"
+                )
         return []
