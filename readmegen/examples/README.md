@@ -19,7 +19,7 @@
 
 Here is a rewritten version of the overview in 30-50 words:
 
-"FEDOT is an open-source framework that simplifies the creation of AI models by automating the selection and tuning of algorithms. It empowers data scientists and analysts to build accurate predictive models quickly, without extensive coding knowledge. Ideal for industries with complex data analysis needs."
+"FEDOT is an open-source framework that simplifies machine learning model development and deployment. It automates the creation of predictive models, allowing users to focus on high-level decisions. Ideal for data scientists, analysts, and business users, FEDOT streamlines the ML workflow, reducing time and effort."
 
 ---
 
@@ -36,18 +36,17 @@ Here is a rewritten version of the overview in 30-50 words:
 - [Contacts](#contacts)
 - [Citation](#citation)
 
+---
 
 ## Core features
 
-Here are the key technical capabilities and characteristics of the project FEDOT:
+Here is the key technical capabilities and characteristics of the project FEDOT:
 
-1. **Automated Machine Learning**: FEDOT uses `<Hyperopt>` and `<scikit-optimize>` for automated hyperparameter tuning.
-2. **Model Composition**: FEDOT allows composing models using `<scikit-learn>` and `<xgboost>` primitives.
-3. **Distributed Computing**: FEDOT supports distributed computing using `<Dask>` and `<joblib>` for parallel processing.
-4. **Visualization**: FEDOT uses `<matplotlib>` and `<seaborn>` for data visualization.
-5. **Model Interpretability**: FEDOT uses `<SALib>` for sensitivity analysis and model interpretability.
-
----
+1. **Automated Machine Learning**: FEDOT uses `<Hyperopt>` and `<scikit-optimize>` for automated model selection and hyperparameter tuning.
+2. **Model Composition**: FEDOT allows composing models using `<anytree>` and `<ete3>` libraries for tree-like model representation.
+3. **Model Evaluation**: FEDOT uses `<scikit-learn>` and `<statsmodels>` for model evaluation and `<SALib>` for sensitivity analysis.
+4. **Model Interpretability**: FEDOT uses `<matplotlib>` and `<seaborn>` for data visualization and `<pyvis>` for model visualization.
+5. **Distributed Computing**: FEDOT supports distributed computing using `<joblib>` and `<Docker>` for containerization.
 
 ---
 

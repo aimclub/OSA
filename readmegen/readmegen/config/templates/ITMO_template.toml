@@ -42,19 +42,16 @@ table_of_contents = """
 - [Contacts](#contacts)
 - [Citation](#citation)
 
+---
 """
 
 core_features = """
 ## Core features
 
 {0}
-
----
 """
 
 quickstart = """
----
-
 ## Installation
 
 ##### Build from Source
