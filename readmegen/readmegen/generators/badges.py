@@ -2,7 +2,6 @@
 
 import colorsys
 
-from readmegen.config.constants import BadgeStyleOptions
 from readmegen.config.settings import Settings
 from readmegen.readers.git.providers import GitHost
 from readmegen.utils.file_handler import FileHandler
@@ -98,7 +97,6 @@ def shieldsio_icons(
         _submodule,
     )
     icons_dict = FileHandler().read(icons_path)
-
     default_icons = build_default_badges(conf, full_name, git_host)
 
     badges_tech_stack = build_badges_tech_stack(
@@ -111,49 +109,9 @@ def shieldsio_icons(
         badges_tech_stack=badges_tech_stack,
     )
 
-    if (
-        conf.md.badge_style == BadgeStyleOptions.DEFAULT.value
-        and git_host != GitHost.LOCAL.name
-    ):
-        conf.md.badges_tech_stack_text = _comment
-        return (
-            default_icons,
-            _comment,
-        )
-
     if git_host == GitHost.LOCAL.name:
         return (
             "<!-- local repository, no metadata badges. -->",
             badges_tech_stack,
         )
-
     return default_icons, badges_tech_stack
-
-
-def skill_icons(conf: Settings, dependencies: list) -> str:
-    """Generate 'skill-icons' badge set for the README header.
-    Source: https://github.com/tandpfun/skill-icons
-    """
-    dependencies.extend(["md"])
-
-    icons_path = get_resource_path(
-        conf.files.skill_icons,
-        _package,
-        _submodule,
-    )
-    icons_dict = FileHandler().read(icons_path)
-
-    icons = [
-        icon for icon in icons_dict["icons"]["names"] if icon in dependencies
-    ]
-    formatted_icons = icons_dict["url"]["base_url"] + ",".join(icons)
-
-    if conf.md.badge_style == "skills-light":
-        formatted_icons = f"{formatted_icons}&theme=light"
-
-    conf.md.skill_icons = conf.md.skill_icons.format(formatted_icons)
-
-    return conf.md.badges_tech_stack.format(
-        align=conf.md.align,
-        badges_tech_stack=conf.md.skill_icons,
-    )

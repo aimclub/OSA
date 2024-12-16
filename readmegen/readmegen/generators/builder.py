@@ -1,11 +1,12 @@
 from pathlib import Path
 
-from readmegen.config.settings import BadgeStyleOptions, ConfigLoader
+from readmegen.config.settings import ConfigLoader
 from readmegen.generators import badges
 from readmegen.ingestion.models import RepositoryContext
 from readmegen.readers.git.providers import GitHost
 from readmegen.templates.header import HeaderTemplate
 from readmegen.templates.quickstart import QuickStartBuilder
+from readmegen.readers.git.metadata import fetch_git_repository_metadata
 
 
 class MarkdownBuilder:
@@ -33,23 +34,18 @@ class MarkdownBuilder:
         )
         self.header_template = HeaderTemplate(self.md.header_style)
         self.table_of_contents = self.md.table_of_contents
+        self.metadata = fetch_git_repository_metadata(self.repo_url)
 
     @property
     def header_and_badges(self) -> str:
         """Generates the README header section."""
 
-        if BadgeStyleOptions.SKILLS.value not in self.md.badge_style:
-            md_shields, md_badges = badges.shieldsio_icons(
-                self.config,
-                self.deps,
-                str(self.git.full_name),
-                str(self.git.host),
-            )
-        else:
-            md_shields = (
-                "<!-- Shields.io badges disabled, using skill icons. -->"
-            )
-            md_badges = badges.skill_icons(self.config, self.deps)
+        md_shields, md_badges = badges.shieldsio_icons(
+            self.config,
+            self.deps,
+            str(self.git.full_name),
+            str(self.git.host),
+        )
 
         header_data = {
             "align": self.md.align,
@@ -70,15 +66,39 @@ class MarkdownBuilder:
         return QuickStartBuilder(self.config_loader, self.repo_context).build()
 
     @property
-    def contributing_guide(self) -> str:
+    def contributing(self) -> str:
         """Generates the README Contributing section."""
         return self.md.contribute.format(
-            host=self.git.host,
             host_domain=self.git.host_domain,
             full_name=self.git.full_name,
             repo_name=self.git.name,
-            repo_url=self.repo_url,
         )
+
+    @property
+    def license(self) -> str:
+        """Generates the README License section"""
+        return self.md.license.format(
+            license_name=self.metadata.license_name,
+            license_url=self.metadata.license_url,
+        )
+
+    @property
+    def documentation(self) -> str:
+        """Generates the README Documentation section"""
+        return self.md.documentation.format(
+            repo_name=self.git.name,
+            homepage_url=self.metadata.homepage_url
+        )
+
+    @property
+    def contacts(self) -> str:
+        """Generates the README Contacts section"""
+        return self.md.contacts
+
+    @property
+    def acknowledgments(self) -> str:
+        """Generates the README Contacts section"""
+        return self.md.acknowledgments
 
     def build(self) -> str:
         """Builds each section of the README.md file."""
@@ -88,7 +108,11 @@ class MarkdownBuilder:
             self.table_of_contents,
             self.md.core_features,
             self.quickstart_guide,
-            self.contributing_guide,
+            self.documentation,
+            self.contributing,
+            self.license,
+            self.acknowledgments,
+            self.contacts,
         ]
 
         return "\n".join(readme_md_contents)

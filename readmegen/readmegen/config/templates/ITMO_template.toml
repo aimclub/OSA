@@ -20,13 +20,19 @@ shieldsio_icons = """
 
 skill_icons = """<a href="https://skillicons.dev">\n\t\t<img src="{}">\n\t</a>"""
 
+# -- Overview Section ----------------------------------------------------------
+
 overview = """
+
+---
 ## Overview
 
 {0}
 
 ---
 """
+
+# -- ToC Section ---------------------------------------------------------------
 
 table_of_contents = """
 
@@ -37,13 +43,15 @@ table_of_contents = """
 - [Examples](#examples)
 - [Getting started](#getting-started)
 - [Documentation](#documentation)
+- [Contributing](#contributing)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 - [Contacts](#contacts)
-- [Citation](#citation)
 
 ---
 """
+
+# -- Core Features Section ------------------------------------------------------------
 
 core_features = """
 ## Core features
@@ -96,16 +104,20 @@ Execute the test suite using the following command:
 """
 
 
-# -- Contributing Section -----------------------------------------------------------
-
-
-contribute = """
+# -- Docs Section ---------------------------------------------------------------
+documentation = """
 ---
+
 ## Documentation
 
-A detailed {repo_name} description is available in ...
+A detailed {repo_name} description is available in [docs]({homepage_url}).
 
 ---
+"""
+
+# -- Contributing Section -------------------------------------------------------
+
+contribute = """
 
 ## Contributing
 
@@ -113,54 +125,35 @@ A detailed {repo_name} description is available in ...
 - **[Report Issues](https://{host_domain}/{full_name}/issues)**: Submit bugs found or log feature requests for the `{repo_name}` project.
 - **[Submit Pull Requests](https://{host_domain}/{full_name}/blob/main/CONTRIBUTING.md)**: Review open PRs, and submit your own PRs.
 
-<details closed>
-<summary>Contributing Guidelines</summary>
-
-1. **Fork the Repository**: start by forking the project repository to your {host} account.
-2. **Clone Locally**: clone the forked repository to your local machine using a git client.
-   ```sh
-   git clone {repo_url}
-   ```
-3. **Create a New Branch**: always work on a new branch, giving it a descriptive name.
-   ```sh
-   git checkout -b new-feature-x
-   ```
-4. **Make Your Changes**: develop and test your changes locally.
-5. **Commit Your Changes**: commit with a clear message describing your updates.
-   ```sh
-   git commit -m 'Implemented new feature x.'
-   ```
-6. **Push to {host}**: push the changes to your forked repository.
-   ```sh
-   git push origin new-feature-x
-   ```
-7. **Submit a Pull Request**: create a PR against the original project repository. Clearly describe the changes and their motivations.
-8. **Review**: once your PR is reviewed and approved, it will be merged into the main branch. Congratulations on your contribution!
-</details>
-
-<details closed>
-<summary>Contributor Graph</summary>
-<br>
-<p align="left">
-   <a href="https://{host_domain}{{/{full_name}/}}graphs/contributors">
-      <img src="https://contrib.rocks/image?repo={full_name}">
-   </a>
-</p>
-</details>
-
 ---
+"""
 
-## License
+# -- Acknowledgments Section ---------------------------------------------------
 
-This project is protected under the [SELECT-A-LICENSE](https://choosealicense.com/licenses) License. For more details, refer to the [LICENSE](https://choosealicense.com/licenses/) file.
-
----
+acknowledgments = """
 
 ## Acknowledgments
 
 - List any resources, contributors, inspiration, etc. here.
 
 ---
+
+"""
+
+# -- License Section -----------------------------------------------------------
+
+license = """
+
+## License
+
+This project is protected under the {license_name}. For more details, refer to the [LICENSE]({license_url}) file.
+
+---
+"""
+
+# -- Contact Section -----------------------------------------------------------
+
+contacts = """
 
 ## Contacts
 
@@ -172,78 +165,10 @@ Your contacts. For example:
 
 ---
 
-## Citation
-
-...
-
-"""
-
-contributing = """
-## Contributing
-
-- **[Join the Discussions](https://{host_domain}/{full_name}/discussions)**: Share your insights, provide feedback, or ask questions.
-- **[Report Issues](https://{host_domain}/{full_name}/issues)**: Submit bugs found or log feature requests for the `{repo_name}` project.
-- **[Submit Pull Requests](https://{host_domain}/{full_name}/blob/main/CONTRIBUTING.md)**: Review open PRs, and submit your own PRs.
-
----
-"""
-
-contributing_guidelines = """
-<details open><summary>Contributing Guidelines</summary><br>
-
-1. **Fork the Repository**: Start by forking the project repository to your {host} account.
-2. **Clone Locally**: Clone the forked repository to your local machine using a git client.
-   ```sh
-   git clone {repo_url}
-   ```
-3. **Create a New Branch**: Always work on a new branch, giving it a descriptive name.
-   ```sh
-   git checkout -b new-feature-x
-   ```
-4. **Make Changes**: Develop and test your changes locally.
-5. **Commit Changes**: Commit with a clear message describing your updates.
-   ```sh
-   git commit -m 'Implemented new feature x.'
-   ```
-6. **Push to {host}**: Push the changes to your forked repository.
-   ```sh
-   git push origin new-feature-x
-   ```
-7. **Submit a Pull Request**: Create a PR against the original project repository. Clearly describe the changes and their motivations.
-8. **Review**: Once your PR is reviewed and approved, it will be merged into the main branch. Congratulations on your contribution!
-
-</details>
-"""
-
-contributor_graph = """
-<p align="{align}">
-  <a href="https://{host_domain}{/{full_name}/}graphs/contributors">
-    <img src="https://contrib.rocks/image?repo={full_name}" />
-  </a>
-</p>
 """
 
 
-# -- Contact Section -----------------------------------------------------------
-
-
-contact = """
-<p align="center">
-  <sub>
-    For {name} issues and feature requests please visit the <a href="https://{host_domain}/{full_name}/issues">issues</a> page, or feel free to start a <a href="https://github.com/eli64s/readme-ai/discussions">discussion!</a>
-  </sub><br>
-</p>
-<div align="center">
-  <a href="https://github.com/eli64s"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-github.png" width="3%" alt="eli64s GitHub"></a>
-  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
-  <a href="https://www.linkedin.com/company/ultralytics/"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-linkedin.png" width="3%" alt="Ultralytics LinkedIn"></a>
-  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
-  <a href="https://twitter.com/ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-twitter.png" width="3%" alt="Ultralytics Twitter"></a>
-  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
-</div>
-"""
-
-# -- API Documentation Section -----------------------------------------------------------
+# -- API Documentation Section -------------------------------------------------
 
 
 api_docs = """

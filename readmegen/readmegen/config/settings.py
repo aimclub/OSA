@@ -129,13 +129,17 @@ class MarkdownSettings(BaseModel):
         default=ImageOptions.ITMO_LOGO,
         description="Project image URL or file path"
     )
-    image_width: str = Field(default="20%")
+    image_width: str = Field(default="100%")
     overview: str = Field(default="INSERT-PROJECT-OVERVIEW")
     placeholder: str = Field(default="<code>❯ REPLACE-ME</code>")
     quickstart: str
     shieldsio_icons: str
     skill_icons: str
     table_of_contents: str
+    license: str
+    documentation: str
+    contacts: str
+    acknowledgments: str
 
     model_config = ConfigDict(
         use_enum_values=True,
@@ -192,7 +196,7 @@ class Settings(BaseModel):
 
         if header_style == HeaderStyleOptions.CLASSIC.value:
             self.md.header_style = HeaderStyleOptions.CLASSIC
-            self.md.image_width = "30%"
+            self.md.image_width = "70%"
 
         return self
 

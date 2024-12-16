@@ -3,8 +3,8 @@
 [prompts]
 core_features = """Hello! Please analyze the key technical capabilities and characteristics of the project {0} and describe them in numbered list of a Markdown format. I only need 3-5 points, each of which will have a maximum of 2 sentences:
 
-- Feature 1
-- Feature 2
+- **Feature 1**: some text
+- **Feature 2**: some text
 - etc.
 
 While generating, please reference the following codebase details: \n
@@ -18,8 +18,9 @@ FILE CONTENTS: {3}
 
 ADDITIONAL INSTRUCTIONS:
 ------------------------
-1. Highlight the key tools and technologies using the " `<tool>` " where necessary.
+1. Highlight the key tools and technologies using the " `tool` " where necessary.
 2. The length of the response in each feature is no more than 20 words.
+3. Don't give additional messages like here is a list of the main features.
 ------------------------
 
 Cheers!
@@ -113,8 +114,11 @@ Focus on:
 - Its key features and benefits
 - The target audience or use cases
 
+
 Consider these file summaries for context:
 {1}
 
 Aim for a clear, engaging description that captures the essence of the project without technical jargon. The overview should flow naturally and give readers a quick understanding of the project's purpose and value.
+Don't give additional messages like here is your overview. I only need overview text.
+
 """

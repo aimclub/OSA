@@ -44,7 +44,7 @@ def readme_generator(config: ConfigLoader, output_file: str) -> None:
             response_cleaner.process_markdown(core_features)
         )
 
-        if config.config.md.image in [None, ""]:
+        if config.config.md.image in [None, "", ImageOptions.ITMO_LOGO.value]:
             config.config.md.image = ImageOptions.ITMO_LOGO.value
 
         readme_md_content = MarkdownBuilder(
@@ -68,7 +68,6 @@ def log_process_completion(output_file: str) -> None:
     """Logs the completion of the README generation process."""
     _logger.info("README.md file generated successfully.")
     _logger.info(f"Output file saved @ {output_file}")
-    _logger.info("Share with us @ github.com/eli64s/readme-ai/discussions")
 
 
 file_to_save = os.path.join(os.getcwd(), "examples", "README.md")

@@ -5,7 +5,7 @@ Retrieve metadata of a git repository via the host provider's API.
 from dataclasses import dataclass
 from typing import Any
 
-import aiohttp
+import requests
 
 from readmegen.logger import get_logger
 from readmegen.readers.git.providers import GitURL
@@ -101,38 +101,31 @@ def _parse_repository_metadata(repo_data: dict) -> RepositoryMetadata:
     )
 
 
-async def _load_data_metadata(
-        session: aiohttp.ClientSession,
+def _load_data_metadata(
         url: str,
         **kwargs,
 ) -> dict[str, Any]:
     """Fetches repository metadata from the git host provider."""
-
-    async with session.get(url, **kwargs) as response:
+    try:
+        response = requests.get(url, **kwargs)
         response.raise_for_status()
-        if response.status != 200:
-            raise aiohttp.ClientResponseError(
-                request_info=response.request_info,
-                history=response.history,
-                status=response.status,
-            )
-        return await response.json()
+        return response.json()
+    except requests.RequestException as exc:
+        _logger.error(f"Error while fetching repository metadata: {exc}")
+        raise
 
 
-async def fetch_git_repository_metadata(
-        session: aiohttp.ClientSession,
+def fetch_git_repository_metadata(
         repository: str,
 ) -> RepositoryMetadata | None:
     """Retrieves GitHub repository metadata and returns a dataclass."""
     api_url = GitURL.create(repository).get_api_url()
-
     if not api_url:
         return None
-
     try:
-        metadata = await _load_data_metadata(session, api_url)
+        metadata = _load_data_metadata(api_url)
         return _parse_repository_metadata(metadata) if metadata else None
-    except aiohttp.ClientError as exc:
+    except requests.RequestException as exc:
         _logger.error(
             f"Client error while fetching repository metadata: {exc}",
         )

@@ -98,7 +98,7 @@ class GitURL(BaseModel):
                 f"Unsupported Git host or local repository: {self.url}",
             )
         if self.full_name:
-            return f"{self.host.api_url}/{self.full_name}"
+            return f"{self.host.api_url}{self.full_name}"
         else:
             raise ValueError("Repository full name is required.")
 

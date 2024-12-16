@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="" align="center" width="30%">
+    <img src="https://itmo.ru/file/pages/213/logo_na_plashke_russkiy_belyy.png" align="center" width="70%">
 </p>
 <p align="center"><h1 align="center">FEDOT</h1></p>
 <p align="center">
@@ -8,18 +8,24 @@
 	<img src="https://img.shields.io/github/languages/top/aimclub/FEDOT?style=BadgeStyleOptions.DEFAULT&color=blue" alt="repo-top-language">
 	<img src="https://img.shields.io/github/languages/count/aimclub/FEDOT?style=BadgeStyleOptions.DEFAULT&color=blue" alt="repo-language-count">
 </p>
-<p align="center"><!-- default option, no dependency badges. -->
-</p>
+<p align="center">Built with the tools and technologies:</p>
 <p align="center">
-	<!-- default option, no dependency badges. -->
+	<img src="https://img.shields.io/badge/GNU%20Bash-4EAA25.svg?style=BadgeStyleOptions.DEFAULT&logo=GNU-Bash&logoColor=white" alt="GNU%20Bash">
+	<img src="https://img.shields.io/badge/NumPy-013243.svg?style=BadgeStyleOptions.DEFAULT&logo=NumPy&logoColor=white" alt="NumPy">
+	<img src="https://img.shields.io/badge/Pytest-0A9EDC.svg?style=BadgeStyleOptions.DEFAULT&logo=Pytest&logoColor=white" alt="Pytest">
+	<img src="https://img.shields.io/badge/Docker-2496ED.svg?style=BadgeStyleOptions.DEFAULT&logo=Docker&logoColor=white" alt="Docker">
+	<img src="https://img.shields.io/badge/Python-3776AB.svg?style=BadgeStyleOptions.DEFAULT&logo=Python&logoColor=white" alt="Python">
+	<img src="https://img.shields.io/badge/GitHub%20Actions-2088FF.svg?style=BadgeStyleOptions.DEFAULT&logo=GitHub-Actions&logoColor=white" alt="GitHub%20Actions">
+	<img src="https://img.shields.io/badge/SciPy-8CAAE6.svg?style=BadgeStyleOptions.DEFAULT&logo=SciPy&logoColor=white" alt="SciPy">
+	<img src="https://img.shields.io/badge/pandas-150458.svg?style=BadgeStyleOptions.DEFAULT&logo=pandas&logoColor=white" alt="pandas">
 </p>
 <br>
 
+
+---
 ## Overview
 
-Here is a rewritten version of the overview in 30-50 words:
-
-"FEDOT is an open-source framework that simplifies machine learning model development and deployment. It automates the creation of predictive models, allowing users to focus on high-level decisions. Ideal for data scientists, analysts, and business users, FEDOT streamlines the ML workflow, reducing time and effort."
+FEDOT is an open-source framework for automated machine learning (AutoML) that simplifies the process of building, training, and deploying AI models. By automating tedious tasks, FEDOT empowers data scientists and analysts to focus on high-level tasks, accelerating AI adoption in various industries. With its modular architecture and support for multiple data sources, FEDOT streamlines model development, reduces costs, and improves model accuracy. Ideal for data-driven organizations seeking to leverage AI for business growth.
 
 ---
 
@@ -31,22 +37,20 @@ Here is a rewritten version of the overview in 30-50 words:
 - [Examples](#examples)
 - [Getting started](#getting-started)
 - [Documentation](#documentation)
+- [Contributing](#contributing)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 - [Contacts](#contacts)
-- [Citation](#citation)
 
 ---
 
 ## Core features
 
-Here is the key technical capabilities and characteristics of the project FEDOT:
-
-1. **Automated Machine Learning**: FEDOT uses `<Hyperopt>` and `<scikit-optimize>` for automated model selection and hyperparameter tuning.
-2. **Model Composition**: FEDOT allows composing models using `<anytree>` and `<ete3>` libraries for tree-like model representation.
-3. **Model Evaluation**: FEDOT uses `<scikit-learn>` and `<statsmodels>` for model evaluation and `<SALib>` for sensitivity analysis.
-4. **Model Interpretability**: FEDOT uses `<matplotlib>` and `<seaborn>` for data visualization and `<pyvis>` for model visualization.
-5. **Distributed Computing**: FEDOT supports distributed computing using `<joblib>` and `<Docker>` for containerization.
+1. **Automated Machine Learning**: FEDOT uses `scikit-learn`, `xgboost`, `lightgbm`, and `catboost` for automated machine learning.
+2. **Hyperparameter Tuning**: FEDOT utilizes `hyperopt` and `scikit-optimize` for hyperparameter tuning of machine learning models.
+3. **Model Interpretability**: FEDOT uses `SALib` and `statsmodels` for model interpretability and sensitivity analysis.
+4. **Visualization**: FEDOT uses `matplotlib`, `seaborn`, and `pyvis` for data visualization.
+5. **Containerization**: FEDOT supports `docker` containerization for easy deployment and management.
 
 ---
 
@@ -124,11 +128,13 @@ Run the test suite using the following command:
 
 
 ---
+
 ## Documentation
 
-A detailed FEDOT description is available in ...
+A detailed FEDOT description is available in [docs](https://fedot.readthedocs.io).
 
 ---
+
 
 ## Contributing
 
@@ -136,54 +142,23 @@ A detailed FEDOT description is available in ...
 - **[Report Issues](https://github.com/aimclub/FEDOT/issues)**: Submit bugs found or log feature requests for the `FEDOT` project.
 - **[Submit Pull Requests](https://github.com/aimclub/FEDOT/blob/main/CONTRIBUTING.md)**: Review open PRs, and submit your own PRs.
 
-<details closed>
-<summary>Contributing Guidelines</summary>
-
-1. **Fork the Repository**: start by forking the project repository to your github account.
-2. **Clone Locally**: clone the forked repository to your local machine using a git client.
-   ```sh
-   git clone https://github.com/aimclub/FEDOT
-   ```
-3. **Create a New Branch**: always work on a new branch, giving it a descriptive name.
-   ```sh
-   git checkout -b new-feature-x
-   ```
-4. **Make Your Changes**: develop and test your changes locally.
-5. **Commit Your Changes**: commit with a clear message describing your updates.
-   ```sh
-   git commit -m 'Implemented new feature x.'
-   ```
-6. **Push to github**: push the changes to your forked repository.
-   ```sh
-   git push origin new-feature-x
-   ```
-7. **Submit a Pull Request**: create a PR against the original project repository. Clearly describe the changes and their motivations.
-8. **Review**: once your PR is reviewed and approved, it will be merged into the main branch. Congratulations on your contribution!
-</details>
-
-<details closed>
-<summary>Contributor Graph</summary>
-<br>
-<p align="left">
-   <a href="https://github.com{/aimclub/FEDOT/}graphs/contributors">
-      <img src="https://contrib.rocks/image?repo=aimclub/FEDOT">
-   </a>
-</p>
-</details>
-
 ---
+
 
 ## License
 
-This project is protected under the [SELECT-A-LICENSE](https://choosealicense.com/licenses) License. For more details, refer to the [LICENSE](https://choosealicense.com/licenses/) file.
+This project is protected under the BSD 3-Clause "New" or "Revised" License. For more details, refer to the [LICENSE](https://api.github.com/licenses/bsd-3-clause) file.
 
 ---
+
 
 ## Acknowledgments
 
 - List any resources, contributors, inspiration, etc. here.
 
 ---
+
+
 
 ## Contacts
 
@@ -194,8 +169,4 @@ Your contacts. For example:
 - etc.
 
 ---
-
-## Citation
-
-...
 
