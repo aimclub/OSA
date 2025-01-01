@@ -85,7 +85,7 @@ class QuickStartGenerator:
         if not primary_language:
             return
 
-        command_types = ["install", "usage", "test"]
+        command_types = ["install", "usage"]
         tool_types = ["package_managers", "containers"]
 
         for cmd_type in command_types:
@@ -140,7 +140,7 @@ class QuickStartGenerator:
                 cmd = cmd.replace(
                     "{image_name}", self.config.config.git.full_name or ""
                 )
-            elif cmd_type in {"install", "test"}:
+            elif cmd_type in {"install"}:
                 cmd = cmd.replace("{file}", file_path or "")
             elif cmd_type == "usage":
                 cmd = cmd.replace(

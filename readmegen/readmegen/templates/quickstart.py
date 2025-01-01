@@ -39,24 +39,27 @@ class QuickStartBuilder:
 
     def build(self) -> str:
         """Create the Installation, Usage, and Testing instructions."""
+        usage_guides = QuickStartGenerator(self.config_loader).generate(
+            self.repo_context.language_counts, self.repo_context.metadata
+        )
+        return usage_guides
+
+    def build_prerequisites_section(self):
+        """Create Prerequisites section"""
+        return self._format_prerequisites(self.build())
+
+    def build_installation_section(self):
+        """Create Installation section"""
         repo_url = (
             f"../{self.git.name}"
             if self.git.host_domain.lower() == "local"
             else self.git.repository
         )
-        usage_guides = QuickStartGenerator(self.config_loader).generate(
-            self.repo_context.language_counts, self.repo_context.metadata
-        )
+        return self._format_installation(self.build(), repo_url)
 
-        main_template = Template(self.quickstart_config["templates"]["main"])
-        return main_template.safe_substitute(
-            prerequisites_section=self._format_prerequisites(usage_guides),
-            installation_section=self._format_installation(
-                usage_guides, repo_url
-            ),
-            usage_section=self._format_usage(usage_guides),
-            testing_section=self._format_testing(usage_guides),
-        )
+    def build_usage_section(self):
+        """Create Usage section"""
+        return self._format_usage(self.build())
 
     def _format_prerequisites(self, usage_guides: QuickStart) -> str:
         template = Template(
@@ -129,16 +132,4 @@ class QuickStartBuilder:
         )
         return template.safe_substitute(
             usage_instructions=f"Run {self.git.name} using the following command:\n{usage_commands.lstrip()}"
-        )
-
-    def _format_testing(self, usage_guides: QuickStart) -> str:
-        template = Template(self.quickstart_config["templates"]["testing"])
-        test_commands = (
-            usage_guides.test_commands
-            or self.config_loader.tool_config.get("default", {}).get(
-                "test", ""
-            )
-        )
-        return template.safe_substitute(
-            test_instructions=f"Run the test suite using the following command:\n{test_commands.lstrip()}"
         )

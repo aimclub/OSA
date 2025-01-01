@@ -48,9 +48,10 @@ class APISettings(BaseModel):
 
 class FileSettings(BaseModel):
     """
-    File path resources for the readme-ai package.
+    File path resources for the readmegen package.
     """
 
+    docs_list: str = Field(description="List of files to use in README file")
     ignore_list: str = Field(description="List of files to ignore.")
     languages: str = Field(description="Extension to language mappings.")
     parsers: str = Field(description="Common dependency file names.")
@@ -132,7 +133,7 @@ class MarkdownSettings(BaseModel):
     image_width: str = Field(default="100%")
     overview: str = Field(default="INSERT-PROJECT-OVERVIEW")
     placeholder: str = Field(default="<code>❯ REPLACE-ME</code>")
-    quickstart: str
+    examples: str
     shieldsio_icons: str
     skill_icons: str
     table_of_contents: str

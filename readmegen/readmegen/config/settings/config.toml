@@ -5,6 +5,7 @@ system_message = "You're a brilliant Tech Lead and Staff Software Engineer with 
 
 # File Resources
 [files]
+docs_list = "docs_list.toml"
 ignore_list = "ignore_list.toml"
 languages = "languages.toml"
 parsers = "parsers.toml"

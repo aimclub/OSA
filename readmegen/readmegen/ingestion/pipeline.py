@@ -39,6 +39,8 @@ class RepositoryProcessor:
             + language_names
             + dependencies
         )
+        docs_paths = self.file_processor.find_docs_files(repo_path)
+
         return RepositoryContext(
             files=file_contexts,
             dependencies=dependencies_and_tools,
@@ -46,4 +48,5 @@ class RepositoryProcessor:
             language_counts=language_counts,
             metadata=metadata,
             quickstart=quickstart,
+            docs_paths=docs_paths
         )

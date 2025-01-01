@@ -14,7 +14,6 @@ class QuickStart(BaseModel):
     containers: dict[str, str] = Field(default_factory=dict)
     install_commands: str = ""
     usage_commands: str = ""
-    test_commands: str = ""
 
 
 class FileContext(BaseModel):
@@ -41,3 +40,4 @@ class RepositoryContext(BaseModel):
     language_counts: dict[str, int]
     metadata: dict[str, Any] = Field(default_factory=dict)
     quickstart: QuickStart = Field(default_factory=QuickStart)
+    docs_paths: list[str]

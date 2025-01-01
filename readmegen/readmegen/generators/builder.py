@@ -23,6 +23,7 @@ class MarkdownBuilder:
         self.config_loader = config_loader
         self.config = config_loader.config
         self.deps = repo_context.dependencies
+        self.docs = repo_context.docs_paths
         self.repo_context = repo_context
         self.temp_dir = Path(temp_dir)
         self.md = self.config.md
@@ -39,7 +40,6 @@ class MarkdownBuilder:
     @property
     def header_and_badges(self) -> str:
         """Generates the README header section."""
-
         md_shields, md_badges = badges.shieldsio_icons(
             self.config,
             self.deps,
@@ -61,9 +61,34 @@ class MarkdownBuilder:
         return self.header_template.render(header_data)
 
     @property
-    def quickstart_guide(self) -> str:
+    def installation_guide(self) -> str:
+        """Generates the README Installation section."""
+        return (QuickStartBuilder(self.config_loader, self.repo_context)
+                .build_installation_section())
+
+    @property
+    def getting_started_guide(self) -> str:
         """Generates the README Getting Started section."""
-        return QuickStartBuilder(self.config_loader, self.repo_context).build()
+        return (QuickStartBuilder(self.config_loader, self.repo_context)
+                .build_usage_section())
+
+    @property
+    def examples(self) -> str:
+        """Generates the README Examples section"""
+        examples_path = ""
+        examples_name = "examples"
+        if "examples" in self.docs:
+            examples_path = "examples"
+        else:
+            examples_name = "Not found any examples"
+
+        return self.md.examples.format(
+            examples=examples_name,
+            default_branch=self.metadata.default_branch,
+            host_domain=self.git.host_domain,
+            full_name=self.git.full_name,
+            examples_path=examples_path,
+        )
 
     @property
     def contributing(self) -> str:
@@ -71,23 +96,42 @@ class MarkdownBuilder:
         return self.md.contribute.format(
             host_domain=self.git.host_domain,
             full_name=self.git.full_name,
+            default_branch=self.metadata.default_branch,
             repo_name=self.git.name,
         )
 
     @property
     def license(self) -> str:
         """Generates the README License section"""
+        license_path = self.metadata.license_url
+        for path in self.docs:
+            if path.startswith("LICENSE"):
+                license_path = path
+                break
+
         return self.md.license.format(
             license_name=self.metadata.license_name,
-            license_url=self.metadata.license_url,
+            default_branch=self.metadata.default_branch,
+            host_domain=self.git.host_domain,
+            full_name=self.git.full_name,
+            license_path=license_path,
         )
 
     @property
     def documentation(self) -> str:
         """Generates the README Documentation section"""
+        homepage_url = self.metadata.homepage_url
+        docs = "docs"
+        if homepage_url is None:
+            if "docs" in self.docs:
+                homepage_url = "docs"
+            else:
+                docs = "Not found any docs"
+
         return self.md.documentation.format(
             repo_name=self.git.name,
-            homepage_url=self.metadata.homepage_url
+            docs=docs,
+            homepage_url=homepage_url
         )
 
     @property
@@ -107,8 +151,10 @@ class MarkdownBuilder:
             self.md.overview,
             self.table_of_contents,
             self.md.core_features,
-            self.quickstart_guide,
+            self.installation_guide,
+            self.examples,
             self.documentation,
+            self.getting_started_guide,
             self.contributing,
             self.license,
             self.acknowledgments,

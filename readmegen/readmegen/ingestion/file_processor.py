@@ -7,6 +7,7 @@ from readmegen.logger import get_logger
 from readmegen.parsers.factory import ParserFactory
 from readmegen.preprocessor.document_cleaner import DocumentCleaner
 from readmegen.preprocessor.file_filter import is_excluded
+from readmegen.preprocessor.file_filter import is_included
 
 _logger = get_logger(__name__)
 
@@ -20,6 +21,7 @@ class FileProcessor:
         self.config = config
         self.document_cleaner = DocumentCleaner()
         self.ignore_list = config.ignore_list.get("ignore_list", [])
+        self.docs_list = config.docs_list.get("docs_list", [])
         self.language_names = config.languages.get("language_names", {})
 
     def process_files(self, repo_path: Path) -> list[FileContext]:
@@ -29,6 +31,13 @@ class FileProcessor:
             for file_path in repo_path.rglob("*")
             if file_path.is_file()
             and not is_excluded(self.ignore_list, file_path, repo_path)
+        ]
+
+    def find_docs_files(self, repo_path: Path) -> list[str]:
+        """Find path to docs files"""
+        return [
+            str(path.relative_to(repo_path)) for path in repo_path.rglob("*")
+            if is_included(self.docs_list, path, repo_path)
         ]
 
     def count_languages(

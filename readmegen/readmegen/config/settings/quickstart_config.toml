@@ -1,23 +1,4 @@
 [templates]
-main = """---
-
-$installation_section
-
----
-
-## Examples
-
-Describe examples how it should work and should be used. Images, GIFs and code cells are welcome.
-
----
-
-## Getting started
-
-$usage_section
-
-$testing_section
-"""
-
 prerequisites = """
 ### Prerequisites
 
@@ -35,11 +16,21 @@ Install $repo_name using one of the following methods:
 **Build from source:**
 
 $install_steps
+
+---
 """
 
-usage = """###\n Usage\n$usage_instructions"""
+usage = """
 
-testing = """###\n Testing\n$test_instructions"""
+## Getting started
+
+### Usage
+
+$usage_instructions
+
+---
+"""
+
 
 [install_steps]
 template = """
