@@ -67,7 +67,7 @@ examples = """
 
 ## Examples
 
-Examples of how this should work and how it should be used are available in [{examples}](https://{host_domain}/{full_name}/tree/{default_branch}/{examples_path})
+Examples of how this should work and how it should be used are available in [{examples}](https://{host_domain}/{full_name}/tree/{default_branch}/{examples_path}).
 
 ---
 """

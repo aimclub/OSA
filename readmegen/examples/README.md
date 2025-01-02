@@ -25,7 +25,7 @@
 ---
 ## Overview
 
-FEDOT is an open-source framework for automated machine learning (AutoML) that simplifies the process of building, training, and deploying AI models. By automating tedious tasks, FEDOT empowers data scientists and analysts to focus on high-level tasks, accelerating AI adoption in various industries. With its modular architecture and support for multiple data sources, FEDOT streamlines model development, reduces costs, and improves model accuracy. Ideal for organizations seeking to leverage AI for decision-making, FEDOT is particularly suited for applications in finance, healthcare, and IoT.
+FEDOT is an open-source framework that automates machine learning workflows, empowering users to efficiently develop and deploy AI solutions for real-world applications. By composing and optimizing pipelines, FEDOT streamlines data preprocessing, model evaluation, and hyperparameter tuning, making it an ideal tool for data scientists and analysts.
 
 ---
 
@@ -46,11 +46,11 @@ FEDOT is an open-source framework for automated machine learning (AutoML) that s
 
 ## Core features
 
-1. **Automated Machine Learning (AutoML)**: FEDOT uses `scikit-learn`, `scikit-optimize`, and `hyperopt` for AutoML tasks.
-2. **Model Optimization**: FEDOT utilizes `xgboost`, `lightgbm`, and `catboost` for model optimization and hyperparameter tuning.
-3. **Data Analysis and Visualization**: FEDOT employs `pandas`, `numpy`, `matplotlib`, and `seaborn` for data analysis and visualization.
-4. **Containerization and Deployment**: FEDOT supports `docker` containerization and provides `docker-compose` for deployment.
-5. **Testing and Profiling**: FEDOT uses `pytest` and `psutil` for testing and profiling, ensuring efficient and reliable performance.
+1. **Modular Architecture**: FEDOT uses a modular architecture, allowing for flexible composition of machine learning pipelines.
+2. **Hyperparameter Tuning**: FEDOT supports hyperparameter tuning using `Hyperopt` and `scikit-optimize` libraries.
+3. **Model Evaluation**: FEDOT provides tools for model evaluation, including metrics and visualizations using `scikit-learn` and `matplotlib`.
+4. **Distributed Computing**: FEDOT supports distributed computing using `Docker` and `joblib` for parallel processing.
+5. **Automated Machine Learning**: FEDOT automates machine learning workflows, from data preprocessing to model deployment, using `scikit-learn` and `pandas`.
 
 ---
 
@@ -96,7 +96,7 @@ Install FEDOT using one of the following methods:
 
 ## Examples
 
-Examples of how this should work and how it should be used are available in [examples](https://github.com/aimclub/FEDOT/tree/master/examples)
+Examples of how this should work and how it should be used are available in [examples](https://github.com/aimclub/FEDOT/tree/master/examples).
 
 ---
 
@@ -138,7 +138,7 @@ Run FEDOT using the following command:
 
 - **[Report Issues](https://github.com/aimclub/FEDOT/issues )**: Submit bugs found or log feature requests for the FEDOT project.
 
-- **[Submit Pull Requests](https://github.com/aimclub/FEDOT/blob/master/.github/CONTRIBUTING.md )**: To learn more about making a contribution to $repo_name .
+- **[Submit Pull Requests](https://github.com/aimclub/FEDOT/blob/master/.github/CONTRIBUTING.md )**: To learn more about making a contribution to FEDOT.
 
 ---
 

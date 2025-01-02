@@ -18,7 +18,7 @@ issues_section = """
 """
 
 contributing_section = """
-- **[Submit Pull Requests]($contributing_url )**: To learn more about making a contribution to $repo_name .
+- **[Submit Pull Requests]($contributing_url )**: To learn more about making a contribution to $repo_name.
 """
 
 [files]
