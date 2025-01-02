@@ -15,9 +15,9 @@ def process_markdown(text):
     # This regex handles nested bold and italic formatting
     text = re.sub(
         r"\*{1,2}(?P<content>[^*\n]+(?:\*{1,2}[^*\n]+\*{1,2}[^*\n]+)*)\*{1,2}",
-        lambda m: m.group(0)
-        if m.group(0).count("*") % 2 == 0
-        else m.group(0)[1:-1],
+        lambda m: (
+            m.group(0) if m.group(0).count("*") % 2 == 0 else m.group(0)[1:-1]
+        ),
         text,
     )
 
@@ -29,13 +29,13 @@ def process_markdown(text):
 
 def process_text(text: str) -> str:
     """Format and clean generated text from the LLM."""
-    # Dynamically remove all text before and including the first colon if any exist
+    # Remove all text before and including the first colon if any exist
     text = re.sub(r"^[^:]*:\s*", "", text)
 
     # Remove any text before and including "**:"
     text = re.sub(r"\*\*:\s*", "", text, flags=re.DOTALL)
 
-    # Remove single and double quotes that are missing their closing counterpart
+    # Remove single and double quotes that are missing closing counterpart
     text = re.sub(r"['\"](.*?)$", r"\1", text)
     text = re.sub(r"^(.*?)['\"]", r"\1", text)
 

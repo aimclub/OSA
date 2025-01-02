@@ -48,5 +48,5 @@ class RepositoryProcessor:
             language_counts=language_counts,
             metadata=metadata,
             quickstart=quickstart,
-            docs_paths=docs_paths
+            docs_paths=docs_paths,
         )

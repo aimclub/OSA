@@ -39,8 +39,8 @@ _logger = get_logger(__name__)
 
 class APISettings(BaseModel):
     """
-        LLM API settings and parameters.
-        """
+    LLM API settings and parameters.
+    """
 
     rate_limit: PositiveInt = Field(gt=0, le=25, description="API rate limit.")
     system_message: str = Field(description="LLM system prompt content field.")
@@ -102,33 +102,33 @@ class GitSettings(BaseModel):
 
 class MarkdownSettings(BaseModel):
     """
-        Markdown code template blocks for building the README.md file.
+    Markdown code template blocks for building the README.md file.
     """
+
     align: Literal["left", "center", "right"] = Field(
         default="center", description="align for markdown content."
     )
     badge_color: Color = Field(
         default_factory=lambda: Color("blue"),
-        description="Badge color (https://www.w3.org/TR/SVG11/types.html#ColorKeywords)"
+        description="Badge color (https://www.w3.org/TR/SVG11/types."
+        "html#ColorKeywords)",
     )
     badge_style: BadgeStyleOptions = Field(
-        default=BadgeStyleOptions.DEFAULT,
-        description="Badge icon style type."
+        default=BadgeStyleOptions.DEFAULT, description="Badge icon style type."
     )
     badges_tech_stack: str
     badges_tech_stack_text: str
     contribute: str
     core_features: str = Field(
-        default="INSERT-PROJECT-FEATURES",
-        description="Project core features."
+        default="INSERT-PROJECT-FEATURES", description="Project core features."
     )
     header_style: str = Field(
         default=HeaderStyleOptions.CLASSIC,
-        description="Header style for the project README."
+        description="Header style for the project README.",
     )
     image: AnyHttpUrl | FilePath = Field(
         default=ImageOptions.ITMO_LOGO,
-        description="Project image URL or file path"
+        description="Project image URL or file path",
     )
     image_width: str = Field(default="100%")
     overview: str = Field(default="INSERT-PROJECT-OVERVIEW")
@@ -143,8 +143,7 @@ class MarkdownSettings(BaseModel):
     acknowledgments: str
 
     model_config = ConfigDict(
-        use_enum_values=True,
-        arbitrary_types_allowed=True
+        use_enum_values=True, arbitrary_types_allowed=True
     )
 
     @field_validator("badge_color")
@@ -159,8 +158,8 @@ class MarkdownSettings(BaseModel):
 
 class ModelSettings(BaseModel):
     """
-        LLM API model settings and parameters.
-        """
+    LLM API model settings and parameters.
+    """
 
     api: str
     url: str
@@ -222,13 +221,11 @@ class ConfigLoader:
     def _load_config(self) -> Settings:
         """Loads the base configuration file."""
         file_path_config = get_resource_path(
-            file_path=self.config_file,
-            submodule=self.submodule
+            file_path=self.config_file, submodule=self.submodule
         )
 
         file_path_template = get_resource_path(
-            file_path=self.template_file,
-            submodule=self.submodule_template
+            file_path=self.template_file, submodule=self.submodule_template
         )
 
         config_dict = self.file_handler.read(file_path_config)

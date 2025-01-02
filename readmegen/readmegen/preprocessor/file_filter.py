@@ -18,7 +18,7 @@ def is_excluded(ignore_list: dict, file_path: Path, repo_path: Path) -> bool:
 
 
 def is_included(docs_list: dict, file_path: Path, repo_path: Path) -> bool:
-    """Check if the directory or file should be included based on the docs list."""
+    """Check if the dir or file should be included based on the docs list."""
     relative_path = file_path.relative_to(repo_path)
 
     for included_dir in docs_list.get("directories", []):

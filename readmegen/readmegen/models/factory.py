@@ -19,10 +19,10 @@ class ModelFactory:
 
     @staticmethod
     def get_backend(
-            config: ConfigLoader, context: RepositoryContext
+        config: ConfigLoader, context: RepositoryContext
     ) -> BaseModelHandler:
         """
-            Returns the appropriate LLM API handler based on config.toml.
+        Returns the appropriate LLM API handler based on config.toml.
         """
         llm_service = ModelFactory._model_map.get(config.config.llm.api)
 

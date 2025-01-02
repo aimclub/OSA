@@ -51,9 +51,9 @@ class MarkdownBuilder:
             "align": self.md.align,
             "image": self.md.image,
             "image_width": self.md.image_width,
-            "repo_name": self.git.name.upper()
-            if self.git.name
-            else self.md.placeholder,
+            "repo_name": (
+                self.git.name.upper() if self.git.name else self.md.placeholder
+            ),
             "shields_icons": md_shields,
             "badges_tech_stack": md_badges,
             "badges_tech_stack_text": self.md.badges_tech_stack_text,
@@ -63,14 +63,16 @@ class MarkdownBuilder:
     @property
     def installation_guide(self) -> str:
         """Generates the README Installation section."""
-        return (QuickStartBuilder(self.config_loader, self.repo_context)
-                .build_installation_section())
+        return QuickStartBuilder(
+            self.config_loader, self.repo_context
+        ).build_installation_section()
 
     @property
     def getting_started_guide(self) -> str:
         """Generates the README Getting Started section."""
-        return (QuickStartBuilder(self.config_loader, self.repo_context)
-                .build_usage_section())
+        return QuickStartBuilder(
+            self.config_loader, self.repo_context
+        ).build_usage_section()
 
     @property
     def examples(self) -> str:
@@ -129,9 +131,7 @@ class MarkdownBuilder:
                 docs = "Not found any docs"
 
         return self.md.documentation.format(
-            repo_name=self.git.name,
-            docs=docs,
-            homepage_url=homepage_url
+            repo_name=self.git.name, docs=docs, homepage_url=homepage_url
         )
 
     @property

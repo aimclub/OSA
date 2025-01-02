@@ -21,7 +21,7 @@ def get_prompt_template(prompts: dict, prompt_type: str) -> str:
     """Retrieves the template for the given prompt type."""
     prompt_templates = {
         "core_features": prompts["prompts"]["core_features"],
-        "overview": prompts["prompts"]["overview"]
+        "overview": prompts["prompts"]["overview"],
     }
     return prompt_templates.get(prompt_type, "")
 
@@ -36,9 +36,9 @@ def inject_prompt_context(template: str, context: dict) -> str:
 
 
 def set_additional_contexts(
-        config: Settings,
-        repo_context: RepositoryContext,
-        file_summaries: list[tuple[str, str]]
+    config: Settings,
+    repo_context: RepositoryContext,
+    file_summaries: list[tuple[str, str]],
 ) -> list[dict]:
     """Generates additional prompts (features, overview) for LLM."""
     return [
@@ -58,15 +58,14 @@ def set_additional_contexts(
                 {
                     "name": config.git.name,
                     "file_summary": file_summaries,
-                }
-            )
+                },
+            ),
         ]
     ]
 
 
 def set_summary_context(
-        config: Settings,
-        repo_files: list[tuple[str, str]]
+    config: Settings, repo_files: list[tuple[str, str]]
 ) -> list[dict]:
     """Generates the summary prompts to be used by the LLM API."""
     return [
@@ -76,7 +75,7 @@ def set_summary_context(
                 "file_summary",
                 {
                     "repo_files": repo_files,
-                }
+                },
             )
         ]
     ]

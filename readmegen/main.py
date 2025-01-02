@@ -24,7 +24,9 @@ def readme_generator(config: ConfigLoader, output_file: str) -> None:
         repo_path = load_data(config.config.git.repository, temp_dir)
 
         processor: RepositoryProcessor = RepositoryProcessor(config=config)
-        context: RepositoryContext = processor.process_repository(repo_path=repo_path)
+        context: RepositoryContext = processor.process_repository(
+            repo_path=repo_path
+        )
 
         log_repository_context(context)
 
@@ -47,9 +49,7 @@ def readme_generator(config: ConfigLoader, output_file: str) -> None:
         if config.config.md.image in [None, "", ImageOptions.ITMO_LOGO.value]:
             config.config.md.image = ImageOptions.ITMO_LOGO.value
 
-        readme_md_content = MarkdownBuilder(
-            config, context, temp_dir
-        ).build()
+        readme_md_content = MarkdownBuilder(config, context, temp_dir).build()
 
         FileHandler().write(output_file, readme_md_content)
 

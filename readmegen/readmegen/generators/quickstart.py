@@ -151,7 +151,8 @@ class QuickStartGenerator:
             website_url = config.get("website", "")
 
             return f"""
-**Using `{tool_name}`** &nbsp; [<img align="center" src="{shield_url}" />]({website_url})
+**Using `{tool_name}`** &nbsp;
+[<img align="center" src="{shield_url}" />]({website_url})
 
 ```sh
 ❯ {cmd}

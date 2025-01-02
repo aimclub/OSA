@@ -14,11 +14,7 @@ from readmegen.preprocessor.directory_cleaner import (
 _logger = get_logger(__name__)
 
 
-def clone_repository(
-        repo_url: str,
-        target: Path,
-        depth: int = 1
-) -> None:
+def clone_repository(repo_url: str, target: Path, depth: int = 1) -> None:
     """
     Clone a Git repository to the specified target directory.
 
@@ -27,12 +23,7 @@ def clone_repository(
     :param depth: cloning depth (default 1).
     """
 
-    git.Repo.clone_from(
-        repo_url,
-        str(target),
-        depth=depth,
-        single_branch=True
-    )
+    git.Repo.clone_from(repo_url, str(target), depth=depth, single_branch=True)
 
 
 def copy_directory(source: Path, target: Path) -> None:

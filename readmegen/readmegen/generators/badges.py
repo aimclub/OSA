@@ -54,8 +54,9 @@ def format_badges(badges: list[str]) -> str:
     for i in range(0, total, badges_per_line):
         line = "\n\t".join(
             [
-                f'<img src="{badge}" alt="{badge.split("/badge/")[1].split("-")[0]}">'
-                for badge in badges[i: i + badges_per_line]
+                f'<img src="{badge}"'
+                f'alt="{badge.split("/badge/")[1].split("-")[0]}">'
+                for badge in badges[i : i + badges_per_line]
             ],
         )
         lines.append(
@@ -68,7 +69,7 @@ def format_badges(badges: list[str]) -> str:
 def hex_to_hls(hex_color: str) -> tuple[float, float, float]:
     """Converts a hex color to HLS."""
     hex_color = hex_color.lstrip("#")
-    rgb = tuple(int(hex_color[i: i + 2], 16) for i in (0, 2, 4))
+    rgb = tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
     return colorsys.rgb_to_hls(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255)
 
 
@@ -78,9 +79,9 @@ def sort_badges(badges: list[tuple[str, str]]) -> list[tuple[str, str]]:
     badges = list(set(badges))
     return sorted(
         badges,
-        key=lambda b: (*hex_to_hls(b[1]), b[0])
-        if b[1]
-        else (float("inf"), 0, 0, ""),
+        key=lambda b: (
+            (*hex_to_hls(b[1]), b[0]) if b[1] else (float("inf"), 0, 0, "")
+        ),
     )
 
 

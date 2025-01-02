@@ -130,7 +130,7 @@ def parse_git_url(url: str | Path) -> tuple[str, str, str, str]:
             raise GitURLError(url) from e
 
         assert (
-                parsed_url.host and parsed_url.path
+            parsed_url.host and parsed_url.path
         ), f"Invalid Git repository URL: {parsed_url}"
 
         path_parts = parsed_url.path.strip("/").split("/")

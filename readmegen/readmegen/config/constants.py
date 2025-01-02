@@ -27,11 +27,14 @@ class ImageOptions(str, enum.Enum):
     Default image options for the project logo.
     """
 
-    ITMO_LOGO = "https://itmo.ru/file/pages/213/logo_na_plashke_russkiy_belyy.png"
+    ITMO_LOGO = (
+        "https://itmo.ru/file/pages/213/logo_na_plashke_russkiy_belyy.png"
+    )
 
 
 class LLMService(str, enum.Enum):
     """
-        LLM API service providers.
+    LLM API service providers.
     """
+
     OLLAMA = "llama"

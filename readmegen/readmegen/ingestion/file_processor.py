@@ -36,7 +36,8 @@ class FileProcessor:
     def find_docs_files(self, repo_path: Path) -> list[str]:
         """Find path to docs files"""
         return [
-            str(path.relative_to(repo_path)) for path in repo_path.rglob("*")
+            str(path.relative_to(repo_path))
+            for path in repo_path.rglob("*")
             if is_included(self.docs_list, path, repo_path)
         ]
 

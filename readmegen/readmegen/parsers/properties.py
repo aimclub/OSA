@@ -204,12 +204,14 @@ class PropertiesParser(BaseFileParser):
     def _clean_word(self, word: str) -> str:
         word = word.lower()
         word = re.sub(
-            r"^(lib|org|com|net|io|api|sdk|cli|ui|app|service|utils?|helpers?|core|base|impl|test|dev|prod)\.?",
+            r"^(lib|org|com|net|io|api|sdk|cli|ui|app|service|utils?|"
+            r"helpers?|core|base|impl|test|dev|prod)\.?",
             "",
             word,
         )
         word = re.sub(
-            r"(version|tool|module|plugin|dependency|lib|framework|platform)s?$",
+            r"(version|tool|module|plugin|dependency|lib|"
+            r"framework|platform)s?$",
             "",
             word,
         )

@@ -56,7 +56,7 @@ class DockerComposeParser(BaseFileParser):
             return self.handle_parsing_error(e)
 
     def get_services(self) -> list[str]:
-        """Get a list of all service names from the docker-compose.yaml file."""
+        """Get a list of all service names from the docker-compose.yaml."""
         if self.compose_data is None:
             return []
         return list(self.compose_data.get("services", {}).keys())

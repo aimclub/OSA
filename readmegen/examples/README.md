@@ -10,14 +10,14 @@
 </p>
 <p align="center">Built with the tools and technologies:</p>
 <p align="center">
-	<img src="https://img.shields.io/badge/GNU%20Bash-4EAA25.svg?style=BadgeStyleOptions.DEFAULT&logo=GNU-Bash&logoColor=white" alt="GNU%20Bash">
-	<img src="https://img.shields.io/badge/NumPy-013243.svg?style=BadgeStyleOptions.DEFAULT&logo=NumPy&logoColor=white" alt="NumPy">
-	<img src="https://img.shields.io/badge/Pytest-0A9EDC.svg?style=BadgeStyleOptions.DEFAULT&logo=Pytest&logoColor=white" alt="Pytest">
-	<img src="https://img.shields.io/badge/Docker-2496ED.svg?style=BadgeStyleOptions.DEFAULT&logo=Docker&logoColor=white" alt="Docker">
-	<img src="https://img.shields.io/badge/Python-3776AB.svg?style=BadgeStyleOptions.DEFAULT&logo=Python&logoColor=white" alt="Python">
-	<img src="https://img.shields.io/badge/GitHub%20Actions-2088FF.svg?style=BadgeStyleOptions.DEFAULT&logo=GitHub-Actions&logoColor=white" alt="GitHub%20Actions">
-	<img src="https://img.shields.io/badge/SciPy-8CAAE6.svg?style=BadgeStyleOptions.DEFAULT&logo=SciPy&logoColor=white" alt="SciPy">
-	<img src="https://img.shields.io/badge/pandas-150458.svg?style=BadgeStyleOptions.DEFAULT&logo=pandas&logoColor=white" alt="pandas">
+	<img src="https://img.shields.io/badge/GNU%20Bash-4EAA25.svg?style=BadgeStyleOptions.DEFAULT&logo=GNU-Bash&logoColor=white"alt="GNU%20Bash">
+	<img src="https://img.shields.io/badge/NumPy-013243.svg?style=BadgeStyleOptions.DEFAULT&logo=NumPy&logoColor=white"alt="NumPy">
+	<img src="https://img.shields.io/badge/Pytest-0A9EDC.svg?style=BadgeStyleOptions.DEFAULT&logo=Pytest&logoColor=white"alt="Pytest">
+	<img src="https://img.shields.io/badge/Docker-2496ED.svg?style=BadgeStyleOptions.DEFAULT&logo=Docker&logoColor=white"alt="Docker">
+	<img src="https://img.shields.io/badge/Python-3776AB.svg?style=BadgeStyleOptions.DEFAULT&logo=Python&logoColor=white"alt="Python">
+	<img src="https://img.shields.io/badge/GitHub%20Actions-2088FF.svg?style=BadgeStyleOptions.DEFAULT&logo=GitHub-Actions&logoColor=white"alt="GitHub%20Actions">
+	<img src="https://img.shields.io/badge/SciPy-8CAAE6.svg?style=BadgeStyleOptions.DEFAULT&logo=SciPy&logoColor=white"alt="SciPy">
+	<img src="https://img.shields.io/badge/pandas-150458.svg?style=BadgeStyleOptions.DEFAULT&logo=pandas&logoColor=white"alt="pandas">
 </p>
 <br>
 
@@ -25,7 +25,7 @@
 ---
 ## Overview
 
-Automated Machine Learning for Everyone. Fedot is a framework that simplifies the creation, training, and deployment of machine learning models, empowering users to focus on solving complex problems without getting bogged down in implementation details. It provides a unified interface for defining problems, selecting data, and choosing algorithms, making machine learning more accessible and efficient. Fedot is ideal for data scientists, researchers, and developers who want to streamline their machine learning workflows and achieve faster results.
+Automate machine learning workflows with Fedot, a framework that simplifies the creation and optimization of pipelines for complex tasks. It streamlines data preprocessing, model evaluation, and hyperparameter tuning, making it easier for data scientists and analysts to build effective solutions for classification, regression, and time series forecasting.
 
 ---
 
@@ -46,11 +46,11 @@ Automated Machine Learning for Everyone. Fedot is a framework that simplifies th
 
 ## Core features
 
-1. **Automated Machine Learning**: FEDOT automates machine learning workflows using `scikit-learn`, `lightgbm`, and `catboost`.
-2. **Model Creation and Training**: Users can define problems, select data, and choose from various machine learning algorithms and techniques.
-3. **Custom Model Creation**: FEDOT allows for the creation of custom models and the integration of external libraries like `numpy` and `pandas`.
-4. **Unified Interface**: FEDOT provides a unified interface for creating, training, and deploying machine learning models using `docker` and `pip`.
-5. **Hyperparameter Tuning**: FEDOT supports hyperparameter tuning using `hyperopt` and `scikit-optimize` for optimal model performance.
+1. **Modular Architecture**: FEDOT uses a modular architecture, allowing for flexible composition of machine learning pipelines.
+2. **Automated Machine Learning**: FEDOT automates machine learning workflows, from data preprocessing to model evaluation, using `scikit-learn` and `hyperopt`.
+3. **Hyperparameter Tuning**: FEDOT supports hyperparameter tuning using `hyperopt` and `scikit-optimize`, enabling optimization of pipeline performance.
+4. **Multi-Task Support**: FEDOT supports various tasks, including classification, regression, and time series forecasting, using `scikit-learn` and `sktime`.
+5. **Docker Containerization**: FEDOT uses `docker` containerization for easy deployment and management of machine learning pipelines.
 
 ---
 
@@ -74,14 +74,16 @@ Install FEDOT using one of the following methods:
 3. Install the project dependencies:
 
 
-**Using `pip`** &nbsp; [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
+**Using `pip`** &nbsp;
+[<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
 
 ```sh
 ❯ pip install -r requirements.txt
 ```
 
 
-**Using `docker`** &nbsp; [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
+**Using `docker`** &nbsp;
+[<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
 ❯ docker build -t aimclub/FEDOT .
@@ -111,14 +113,16 @@ A detailed FEDOT description is available in [docs](https://fedot.readthedocs.io
 ### Usage
 
 Run FEDOT using the following command:
-**Using `pip`** &nbsp; [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
+**Using `pip`** &nbsp;
+[<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
 
 ```sh
 ❯ python {entrypoint}
 ```
 
 
-**Using `docker`** &nbsp; [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
+**Using `docker`** &nbsp;
+[<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
 ❯ docker run -it {image_name}

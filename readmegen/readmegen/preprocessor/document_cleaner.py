@@ -40,7 +40,7 @@ class DocumentCleaner:
             result = textwrap.dedent(result)
 
         if self.remove_extra_whitespaces:
-            # Only remove extra spaces within each line, preserving leading spaces
+            # Remove only extra spaces within each line, saving leading spaces
             lines = result.splitlines()
             lines = [
                 self._preserve_indent_remove_extra_spaces(line)

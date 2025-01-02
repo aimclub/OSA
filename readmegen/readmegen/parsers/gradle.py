@@ -19,7 +19,11 @@ class BuildGradleParser(BaseFileParser):
     def parse(self, content: str) -> list[str]:
         """Extracts package names from a build.gradle file."""
         try:
-            pattern = r"(implementation|classpath|api|testImplementation|androidTestImplementation|kapt)\s+['\"]([^'\"]+)['\"]"
+            pattern = (
+                r"(implementation|classpath|api|testImplementation|"
+                r"androidTestImplementation|kapt)"
+                r"\s+['\"]([^'\"]+)['\"]"
+            )
             matches = re.findall(pattern, content)
             package_names = set()
             for _, dependency in matches:

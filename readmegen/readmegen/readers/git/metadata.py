@@ -102,8 +102,8 @@ def _parse_repository_metadata(repo_data: dict) -> RepositoryMetadata:
 
 
 def _load_data_metadata(
-        url: str,
-        **kwargs,
+    url: str,
+    **kwargs,
 ) -> dict[str, Any]:
     """Fetches repository metadata from the git host provider."""
     try:
@@ -116,7 +116,7 @@ def _load_data_metadata(
 
 
 def fetch_git_repository_metadata(
-        repository: str,
+    repository: str,
 ) -> RepositoryMetadata | None:
     """Retrieves GitHub repository metadata and returns a dataclass."""
     api_url = GitURL.create(repository).get_api_url()

@@ -15,7 +15,7 @@ class MetadataExtractor:
     def extract_metadata(
         self, file_contexts: list[FileContext]
     ) -> dict[str, dict[str, str]]:
-        """Extract metadata from file contexts, ensuring valid string values."""
+        """Extract metadata from file contexts."""
         metadata_categories = {
             "cicd": "cicd",
             "containers": "containers",

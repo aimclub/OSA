@@ -22,9 +22,7 @@ class BaseModelHandler(ABC):
     """
 
     def __init__(
-            self,
-            config_loader: ConfigLoader,
-            context: RepositoryContext
+        self, config_loader: ConfigLoader, context: RepositoryContext
     ) -> None:
         self._session: aiohttp.ClientSession | None = None
         self.config = config_loader.config
@@ -49,43 +47,38 @@ class BaseModelHandler(ABC):
         ...
 
     @abstractmethod
-    def _build_payload(self, prompt: str, tokens: int, temperature: float) -> dict[str, Any]:
+    def _build_payload(
+        self, prompt: str, tokens: int, temperature: float
+    ) -> dict[str, Any]:
         """Builds the payload for the POST request to the LLM API."""
         ...
 
     @abstractmethod
     def _make_request(
-            self,
-            index: str | None,
-            prompt: str | None,
-            tokens: int | None,
-            temperature: float,
-            repo_files: list[tuple[str, str]] | None,
+        self,
+        index: str | None,
+        prompt: str | None,
+        tokens: int | None,
+        temperature: float,
+        repo_files: list[tuple[str, str]] | None,
     ) -> Any:
         """Handles LLM API response and returns the generated text."""
         ...
 
     def batch_request(self) -> list[tuple[str, str]]:
         """Generates a batch of prompts and processes the responses."""
-        summaries_prompts = set_summary_context(
-            self.config,
-            self.documents
-        )
+        summaries_prompts = set_summary_context(self.config, self.documents)
 
         summaries_responses = self._batch_prompts(summaries_prompts)
         additional_prompts = set_additional_contexts(
-            self.config,
-            self.repo_context,
-            summaries_responses
+            self.config, self.repo_context, summaries_responses
         )
         additional_responses = self._batch_prompts(additional_prompts)
 
         return summaries_responses + additional_responses
 
     def _batch_prompts(
-            self,
-            prompts: Any,
-            batch_size=10
+        self, prompts: Any, batch_size=10
     ) -> list[tuple[str, str]]:
         """Processes a batch of prompts and returns the generated text."""
         responses = []
@@ -99,13 +92,11 @@ class BaseModelHandler(ABC):
         return responses
 
     def _generate_batches(
-            self,
-            items: list[Any],
-            batch_size: int
+        self, items: list[Any], batch_size: int
     ) -> Generator[list[Any], None, None]:
         """Generates batches of items to be processed."""
         for i in range(0, len(items), batch_size):
-            yield items[i: i + batch_size]
+            yield items[i : i + batch_size]
 
     def _process_batch(self, prompt: dict[str, Any]) -> Any:
         """Processes a single prompt and returns the generated text."""
@@ -135,18 +126,15 @@ class BaseModelHandler(ABC):
             return summary
 
     def _make_request_code_summary(
-            self,
-            file_context: list[tuple[str, str]],
+        self,
+        file_context: list[tuple[str, str]],
     ) -> Any:
         """Generates code summaries for each file in the project."""
         files = [file[0] for file in file_context["repo_files"]]
         prompt = self.prompts["prompts"]["file_summary"].format(
             files,
         )
-        tokens = update_max_tokens(
-            self.config.llm.tokens,
-            prompt
-        )
+        tokens = update_max_tokens(self.config.llm.tokens, prompt)
         temperature = self.temperature
         _, summary_or_error = self._make_request(
             "list of files",

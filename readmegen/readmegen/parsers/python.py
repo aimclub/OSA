@@ -114,10 +114,10 @@ class TomlParser(BaseFileParser):
             return self.handle_parsing_error(exc)
 
     def extract_package_names(self, dependencies: list[str]) -> list[str]:
-        """Helper method to extract package names from a list of dependencies."""
+        """Helper method to extract package names
+        from a list of dependencies."""
         package_names = []
         for dep in dependencies:
-            # Handle cases where dependencies might be in the format 'package_name>=1.0.0'
             if isinstance(dep, str):
                 package_name = (
                     dep.split(">=")[0].split("<=")[0].split("==")[0].strip()
