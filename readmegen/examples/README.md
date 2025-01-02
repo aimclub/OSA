@@ -25,7 +25,7 @@
 ---
 ## Overview
 
-Automate machine learning workflows with Fedot, a framework that simplifies the creation and optimization of pipelines for complex tasks. It streamlines data preprocessing, model evaluation, and hyperparameter tuning, making it easier for data scientists and analysts to build effective solutions for classification, regression, and time series forecasting.
+FEDOT is an open-source framework for automated machine learning (AutoML) that simplifies the process of building, training, and deploying AI models. By automating tedious tasks, FEDOT empowers data scientists and analysts to focus on high-level tasks, accelerating AI adoption in various industries. With its modular architecture and support for multiple data sources, FEDOT streamlines model development, reduces costs, and improves model accuracy. Ideal for organizations seeking to leverage AI for decision-making, FEDOT is particularly suited for applications in finance, healthcare, and IoT.
 
 ---
 
@@ -46,11 +46,11 @@ Automate machine learning workflows with Fedot, a framework that simplifies the 
 
 ## Core features
 
-1. **Modular Architecture**: FEDOT uses a modular architecture, allowing for flexible composition of machine learning pipelines.
-2. **Automated Machine Learning**: FEDOT automates machine learning workflows, from data preprocessing to model evaluation, using `scikit-learn` and `hyperopt`.
-3. **Hyperparameter Tuning**: FEDOT supports hyperparameter tuning using `hyperopt` and `scikit-optimize`, enabling optimization of pipeline performance.
-4. **Multi-Task Support**: FEDOT supports various tasks, including classification, regression, and time series forecasting, using `scikit-learn` and `sktime`.
-5. **Docker Containerization**: FEDOT uses `docker` containerization for easy deployment and management of machine learning pipelines.
+1. **Automated Machine Learning (AutoML)**: FEDOT uses `scikit-learn`, `scikit-optimize`, and `hyperopt` for AutoML tasks.
+2. **Model Optimization**: FEDOT utilizes `xgboost`, `lightgbm`, and `catboost` for model optimization and hyperparameter tuning.
+3. **Data Analysis and Visualization**: FEDOT employs `pandas`, `numpy`, `matplotlib`, and `seaborn` for data analysis and visualization.
+4. **Containerization and Deployment**: FEDOT supports `docker` containerization and provides `docker-compose` for deployment.
+5. **Testing and Profiling**: FEDOT uses `pytest` and `psutil` for testing and profiling, ensuring efficient and reliable performance.
 
 ---
 
@@ -134,9 +134,11 @@ Run FEDOT using the following command:
 
 ## Contributing
 
-- **[Join the Discussions](https://github.com/aimclub/FEDOT/discussions)**: Share your insights, provide feedback, or ask questions.
-- **[Report Issues](https://github.com/aimclub/FEDOT/issues)**: Submit bugs found or log feature requests for the FEDOT project.
-- **[Submit Pull Requests](https://github.com/aimclub/FEDOT/blob/master/CONTRIBUTING.md)**: To learn more about making a contribution to FEDOT.
+- **[Join the Discussions](https://github.com/aimclub/FEDOT/discussions )**: Share your insights, provide feedback, or ask questions.
+
+- **[Report Issues](https://github.com/aimclub/FEDOT/issues )**: Submit bugs found or log feature requests for the FEDOT project.
+
+- **[Submit Pull Requests](https://github.com/aimclub/FEDOT/blob/master/.github/CONTRIBUTING.md )**: To learn more about making a contribution to $repo_name .
 
 ---
 

@@ -118,7 +118,6 @@ class MarkdownSettings(BaseModel):
     )
     badges_tech_stack: str
     badges_tech_stack_text: str
-    contribute: str
     core_features: str = Field(
         default="INSERT-PROJECT-FEATURES", description="Project core features."
     )

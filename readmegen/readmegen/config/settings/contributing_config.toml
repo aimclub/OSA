@@ -1,0 +1,28 @@
+[templates]
+main = """
+
+## Contributing
+
+$discussion_section
+$issues_section
+$contributing_section
+---
+"""
+
+discussion_section = """
+- **[Join the Discussions]($discussions_url )**: Share your insights, provide feedback, or ask questions.
+"""
+
+issues_section = """
+- **[Report Issues]($issues_url )**: Submit bugs found or log feature requests for the $repo_name project.
+"""
+
+contributing_section = """
+- **[Submit Pull Requests]($contributing_url )**: To learn more about making a contribution to $repo_name .
+"""
+
+[files]
+contributing_md = "CONTRIBUTING.md"
+contributing_rst = "CONTRIBUTING.rst"
+contribution_md = "CONTRIBUTION.md"
+contribution_rst = "CONTRIBUTION.rst"

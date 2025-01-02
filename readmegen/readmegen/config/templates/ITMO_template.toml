@@ -82,19 +82,6 @@ A detailed {repo_name} description is available in [{docs}]({homepage_url}).
 ---
 """
 
-# -- Contributing Section -------------------------------------------------------
-
-contribute = """
-
-## Contributing
-
-- **[Join the Discussions](https://{host_domain}/{full_name}/discussions)**: Share your insights, provide feedback, or ask questions.
-- **[Report Issues](https://{host_domain}/{full_name}/issues)**: Submit bugs found or log feature requests for the {repo_name} project.
-- **[Submit Pull Requests](https://{host_domain}/{full_name}/blob/{default_branch}/CONTRIBUTING.md)**: To learn more about making a contribution to {repo_name}.
-
----
-"""
-
 # -- Acknowledgments Section ---------------------------------------------------
 
 acknowledgments = """

@@ -6,6 +6,7 @@ from readmegen.ingestion.models import RepositoryContext
 from readmegen.readers.git.providers import GitHost
 from readmegen.templates.header import HeaderTemplate
 from readmegen.templates.quickstart import QuickStartBuilder
+from readmegen.templates.contributing import ContributingBuilder
 from readmegen.readers.git.metadata import fetch_git_repository_metadata
 
 
@@ -95,12 +96,9 @@ class MarkdownBuilder:
     @property
     def contributing(self) -> str:
         """Generates the README Contributing section."""
-        return self.md.contribute.format(
-            host_domain=self.git.host_domain,
-            full_name=self.git.full_name,
-            default_branch=self.metadata.default_branch,
-            repo_name=self.git.name,
-        )
+        return ContributingBuilder(
+            self.config_loader, self.repo_context
+        ).build()
 
     @property
     def license(self) -> str:
