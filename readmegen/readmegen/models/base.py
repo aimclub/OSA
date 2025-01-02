@@ -96,7 +96,7 @@ class BaseModelHandler(ABC):
     ) -> Generator[list[Any], None, None]:
         """Generates batches of items to be processed."""
         for i in range(0, len(items), batch_size):
-            yield items[i : i + batch_size]
+            yield items[i: i + batch_size]
 
     def _process_batch(self, prompt: dict[str, Any]) -> Any:
         """Processes a single prompt and returns the generated text."""

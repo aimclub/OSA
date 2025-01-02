@@ -48,7 +48,8 @@ class BuildGradleKtsParser(BaseFileParser):
     def parse(self, content: str) -> list[str]:
         """Extracts package names from a build.gradle.kts file."""
         try:
-            pattern = r"(\bimplementation|testImplementation)\s*\((['\"])([^'\"]+)\2\)"
+            pattern = (r"(\bimplementation|testImplementation)\s*"
+                       r"\((['\"])([^'\"]+)\2\)")
             matches = re.findall(pattern, content)
             package_names = set()
             for _, _, dependency in matches:
