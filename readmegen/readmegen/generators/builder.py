@@ -122,9 +122,11 @@ class MarkdownBuilder:
         """Generates the README Documentation section"""
         homepage_url = self.metadata.homepage_url
         docs = "docs"
-        if homepage_url is None:
+        if not homepage_url:
             if "docs" in self.docs:
-                homepage_url = "docs"
+                homepage_url = (f"https://{self.git.host_domain}/"
+                                f"{self.git.full_name}/tree/"
+                                f"{self.metadata.default_branch}/docs")
             else:
                 docs = "Not found any docs"
 
