@@ -6,7 +6,9 @@ setup(
     packages=find_packages(include=["readmegen", "readmegen.*"]),
     package_data={
         "readmegen": ["generators/svg/shieldsio_icons.json",
-                      "generators/svg/skill_icons.json",],
+                      "generators/svg/skill_icons.json",
+                      "config/settings/contributing_config.toml",
+                      "config/settings/quickstart_config.toml",],
     },
     install_requires=[
         "aiohttp==3.11.11",

@@ -1,5 +1,4 @@
 import tempfile
-import os
 
 from readmegen.config.constants import ImageOptions
 from readmegen.config.settings import ConfigLoader
@@ -68,8 +67,3 @@ def log_process_completion(output_file: str) -> None:
     """Logs the completion of the README generation process."""
     _logger.info("README.md file generated successfully.")
     _logger.info(f"Output file saved @ {output_file}")
-
-
-file_to_save = os.path.join(os.getcwd(), "../examples", "README.md")
-config_loader = ConfigLoader(config_dir="config")
-readme_generator(config_loader, file_to_save)
