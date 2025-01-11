@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name="readmegen",
     version="0.1.0",
-    packages=find_packages(),
+    packages=find_packages(include=["readmegen", "readmegen.*"]),
     package_data={
         "readmegen": ["generators/svg/shieldsio_icons.json",
                       "generators/svg/skill_icons.json",],
