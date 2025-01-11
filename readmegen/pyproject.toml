@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-packages = { find = { include = ["readmegen", "readmegen.*"] } }
+include = ["readmegen", "readmegen.*"]
 
 [tool.setuptools.package-data]
 "readmegen" = [
