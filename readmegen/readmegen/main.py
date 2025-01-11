@@ -71,4 +71,5 @@ def log_process_completion(output_file: str) -> None:
 
 
 file_to_save = os.path.join(os.getcwd(), "../examples", "README.md")
-readme_generator(ConfigLoader(), file_to_save)
+config_loader = ConfigLoader(config_dir="config")
+readme_generator(config_loader, file_to_save)

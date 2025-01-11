@@ -206,26 +206,19 @@ class ConfigLoader:
     """
 
     file_handler: FileHandler = FileHandler()
-    config_file: str = "config.toml"
-    template_file: str = "ITMO_template.toml"
-    module: str = "config"
-    submodule: str = "settings"
-    submodule_template: str = "templates"
+    config_file: str = "settings/config.toml"
+    template_file: str = "templates/ITMO_template.toml"
 
-    def __init__(self) -> None:
+    def __init__(self, config_dir: str) -> None:
         """Initialize ConfigLoader with the base configuration file."""
+        self.config_dir = Path(config_dir).resolve()
         self._load_config()
         self._load_settings()
 
     def _load_config(self) -> Settings:
         """Loads the base configuration file."""
-        file_path_config = get_resource_path(
-            file_path=self.config_file, submodule=self.submodule
-        )
-
-        file_path_template = get_resource_path(
-            file_path=self.template_file, submodule=self.submodule_template
-        )
+        file_path_config = self._get_config_path(self.config_file)
+        file_path_template = self._get_config_path(self.template_file)
 
         config_dict = self.file_handler.read(file_path_config)
         template_dict = self.file_handler.read(file_path_template)
@@ -240,10 +233,21 @@ class ConfigLoader:
 
         for key, file_path in settings["files"].items():
             if file_path.endswith(".toml"):
-                file_path = get_resource_path(file_path=file_path)
+                file_path = self._get_config_path("settings/" + file_path)
                 config_dict = self.file_handler.read(file_path)
                 settings[key] = config_dict
                 setattr(self, key, config_dict)
                 _logger.info(f"Configuration file loaded: {file_path}")
 
         return settings
+
+    def _get_config_path(self, file_path: str) -> str:
+        """
+        Helper method to get the correct resource path,
+        looking outside the package.
+        """
+        file_path = Path(self.config_dir) / file_path
+        if not file_path.exists():
+            raise FileNotFoundError(
+                f"Configuration file {file_path} not found.")
+        return str(file_path)

@@ -4,6 +4,10 @@ setup(
     name="readmegen",
     version="0.1.0",
     packages=find_packages(),
+    package_data={
+        "readmegen": ["generators/svg/shieldsio_icons.json",
+                      "generators/svg/skill_icons.json",],
+    },
     install_requires=[
         "aiohttp==3.11.11",
         "gitdb==4.0.11",
