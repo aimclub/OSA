@@ -25,7 +25,7 @@
 ---
 ## Overview
 
-FEDOT is an open-source framework that automates machine learning workflows, empowering users to efficiently develop and deploy AI solutions for real-world applications. By composing and optimizing pipelines, FEDOT streamlines data preprocessing, model evaluation, and hyperparameter tuning, making it an ideal tool for data scientists and analysts.
+FEDOT is an open-source framework for automated machine learning (AutoML) that simplifies the process of building, training, and deploying AI models. By automating tedious tasks, FEDOT empowers data scientists and analysts to focus on high-level tasks, accelerating AI adoption in various industries. With its modular architecture and support for multiple data sources, FEDOT streamlines the development of predictive models, enabling faster decision-making and improved business outcomes.
 
 ---
 
@@ -46,11 +46,11 @@ FEDOT is an open-source framework that automates machine learning workflows, emp
 
 ## Core features
 
-1. **Modular Architecture**: FEDOT uses a modular architecture, allowing for flexible composition of machine learning pipelines.
-2. **Hyperparameter Tuning**: FEDOT supports hyperparameter tuning using `Hyperopt` and `scikit-optimize` libraries.
-3. **Model Evaluation**: FEDOT provides tools for model evaluation, including metrics and visualizations using `scikit-learn` and `matplotlib`.
-4. **Distributed Computing**: FEDOT supports distributed computing using `Docker` and `joblib` for parallel processing.
-5. **Automated Machine Learning**: FEDOT automates machine learning workflows, from data preprocessing to model deployment, using `scikit-learn` and `pandas`.
+1. **Automated Machine Learning (AutoML)**: FEDOT uses `scikit-learn` and `lightgbm` for automated model selection and hyperparameter tuning.
+2. **Model Interpretability**: FEDOT provides model interpretability using `matplotlib` and `seaborn` for visualizing model performance and feature importance.
+3. **Distributed Computing**: FEDOT supports distributed computing using `docker` and `joblib` for parallel processing and scalability.
+4. **Model Optimization**: FEDOT uses `hyperopt` and `scipy` for model optimization and hyperparameter tuning.
+5. **Model Evaluation**: FEDOT uses `statsmodels` and `SALib` for model evaluation and sensitivity analysis.
 
 ---
 
