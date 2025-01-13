@@ -1,28 +1,80 @@
-import os
-from os import listdir
-from os.path import isfile, join
-import tree_sitter
-from tree_sitter import Parser, Language
-import tree_sitter_python as tspython
+The following is the structure of the Python files:
 
+File: docgen.py
+  - Class: DocGen, line 7
+      - Method: __init__, Args: ['self'], Return: None, line 8
+        Source:
+def __init__(self):
+        self.api_key = os.getenv('OPENAI_API_KEY')
+      - Method: generate_documentation_openai, Args: ['self', 'formatted_structure'], Return: None, line 11
+        Source:
+def generate_documentation_openai(self, formatted_structure, model='gpt-4'):
+        openai.api_key = self.api_key
 
-class OSA_TreeSitter(object):
-    """Class for the extraction of the source code's structure to be processed later by LLM.
+        prompt = f"""
+            I have extracted the structure and details of a Python script. Please generate professional, detailed, and markdown-formatted documentation for it. Use the provided structure to create the documentation.
+
+            {formatted_structure}
+
+            The documentation should include:
+            - A high-level description of the script.
+            - Documentation for each class, including its docstring and methods.
+            - Documentation for each function, including its arguments, return type, and docstring.
+            - Ensure proper formatting for headings, subheadings, code blocks, and lists.
+                """
+
+        response = openai.chat.completions.create(
+            model=model,
+            messages=[
+                {'role': 'system', 'content': 'You are a helpful assistant for generating documentation.'},
+                {'role': 'user', 'content': prompt},
+            ],
+            max_tokens=3000,
+            temperature=0.7,
+        )
+
+        return response['choices'][0]['message']['content']
+File: osa_treesitter.py
+  - Class: OSA_TreeSitter, line 9
+      Docstring: """Class for the extraction of the source code's structure to be processed later by LLM.
 
     Attributes:
         cwd: A current working directory with source code files.
     """
+      - Method: __init__, Args: ['self', 'scripts_path'], Return: None, line 16
+          Docstring:
+        """Initialization of the instance based on the provided path to the scripts.
 
-    def __init__(self, scripts_path: str):
+        Args:
+            scripts_path: provided by user path to the scripts.
+        """
+        Source:
+def __init__(self, scripts_path: str):
         """Initialization of the instance based on the provided path to the scripts.
 
         Args:
             scripts_path: provided by user path to the scripts.
         """
         self.cwd = scripts_path
+      - Method: files_list, Args: ['path'], Return: None, line 25
+          Docstring:
+        """Method provides a list of files occuring in the provided path.
 
-    @staticmethod
-    def files_list(path: str):
+        If user provided a path to a file with a particular extension
+        the method returns a corresponding status which will trigger
+        inner "_if_file_handler" method to cut the path's tail.
+
+        Args:
+            path: provided by user path to the scripts.
+
+        Returns:
+            A tuple containing a list of files in the provided directory
+            and status for a specific file usecase. Statuses:
+            0 - a directory was provided
+            1 - a path to the specific file was provided.
+        """
+        Source:
+def files_list(path: str):
         """Method provides a list of files occuring in the provided path.
 
         If user provided a path to a file with a particular extension
@@ -43,9 +95,18 @@ class OSA_TreeSitter(object):
         except NotADirectoryError:
             if path.endswith(".py"):
                 return ([os.path.basename(os.path.normpath(path))], 1)
+      - Method: _if_file_handler, Args: ['cls', 'path'], Return: None, line 48
+          Docstring:
+        """Inner method returns a path's head if status trigger occured.
 
-    @classmethod
-    def _if_file_handler(cls, path: str):
+        Args:
+            path: provided by user path to the scripts.
+
+        Returns:
+            Path's head.
+        """
+        Source:
+def _if_file_handler(cls, path: str):
         """Inner method returns a path's head if status trigger occured.
 
         Args:
@@ -55,9 +116,19 @@ class OSA_TreeSitter(object):
             Path's head.
         """
         return os.path.split(path)[0]
+      - Method: open_file, Args: ['path', 'file'], Return: str, line 60
+          Docstring:
+        """Method reads the content of the occured file.
 
-    @staticmethod
-    def open_file(path: str, file: str) -> str:
+        Args:
+            path: provided by user path to the scripts.
+            file: file occured in the provided directory.
+
+        Returns:
+            Read content.
+        """
+        Source:
+def open_file(path: str, file: str) -> str:
         """Method reads the content of the occured file.
 
         Args:
@@ -71,8 +142,18 @@ class OSA_TreeSitter(object):
         with open(os.path.join(path, file), encoding="utf-8", mode="r") as f:
             content = f.read()
         return content
+      - Method: _parser_build, Args: ['self', 'filename'], Return: Parser, line 75
+          Docstring:
+        """Inner method builds the corresponding parser based on file's extension.
 
-    def _parser_build(self, filename: str) -> Parser:
+        Args:
+            filename: name of the file occured in the provided directory.
+
+        Returns:
+            Compiled parser.
+        """
+        Source:
+def _parser_build(self, filename: str) -> Parser:
         """Inner method builds the corresponding parser based on file's extension.
 
         Args:
@@ -84,8 +165,18 @@ class OSA_TreeSitter(object):
         if filename.endswith(".py"):
             PY_LANGUAGE = Language(tspython.language())
             return Parser(PY_LANGUAGE)
+      - Method: _parse_source_code, Args: ['self', 'filename'], Return: None, line 88
+          Docstring:
+        """Inner method parses the provided file with the source code.
 
-    def _parse_source_code(self, filename: str):
+        Args:
+            filename: name of the file occured in the provided directory.
+
+        Returns:
+            Tuple containing tree structure of the code and source code.
+        """
+        Source:
+def _parse_source_code(self, filename: str):
         """Inner method parses the provided file with the source code.
 
         Args:
@@ -97,8 +188,18 @@ class OSA_TreeSitter(object):
         parser: Parser = self._parser_build(filename)
         source_code: str = self.open_file(self.cwd, filename)
         return (parser.parse(source_code.encode("utf-8")), source_code)
+      - Method: extract_structure, Args: ['self', 'filename'], Return: list, line 101
+          Docstring:
+        """Method extracts the structure of the occured file in the provided directory.
 
-    def extract_structure(self, filename: str) -> list:
+        Args:
+            filename: name of the file occured in the provided directory.
+
+        Returns:
+            List containing occuring in file functions, classes, their start lines and methods
+        """
+        Source:
+def extract_structure(self, filename: str) -> list:
         """Method extracts the structure of the occured file in the provided directory.
 
         Args:
@@ -154,8 +255,18 @@ class OSA_TreeSitter(object):
                 )
 
         return structure
+      - Method: _get_docstring, Args: ['self', 'block_node'], Return: str, line 158
+          Docstring:
+        """Inner method to retrieve class or method's docstring.
 
-    def _get_docstring(self, block_node: tree_sitter.Node) -> str:
+        Args:
+            block_node: an occured block node, containing class's methods.
+
+        Returns:
+            List of function/method's details.
+        """
+        Source:
+def _get_docstring(self, block_node: tree_sitter.Node) -> str:
         """Inner method to retrieve class or method's docstring.
 
         Args:
@@ -171,8 +282,19 @@ class OSA_TreeSitter(object):
                     if c_c.type == "string":
                         docstring = c_c.text.decode("utf-8")
         return docstring
+      - Method: _traverse_block, Args: ['self', 'block_node', 'source_code'], Return: list, line 175
+          Docstring:
+        """Inner method traverses occuring in file's tree structure "block" node.
 
-    def _traverse_block(self, block_node: tree_sitter.Node, source_code: bytes) -> list:
+        Args:
+            block_node: an occured block node, containing class's methods.
+            source_code: source code of the file in bytes.
+
+        Returns:
+            List of function/method's details.
+        """
+        Source:
+def _traverse_block(self, block_node: tree_sitter.Node, source_code: bytes) -> list:
         """Inner method traverses occuring in file's tree structure "block" node.
 
         Args:
@@ -196,8 +318,20 @@ class OSA_TreeSitter(object):
                 method_details = self._extract_function_details(child, source_code)
                 methods.append(method_details)
         return methods
+      - Method: _extract_function_details, Args: ['self', 'function_node', 'source_code'], Return: dict, line 200
+          Docstring:
+        """Inner method extracts the details of "function_definition" node in file's tree structure.
 
-    def _extract_function_details(
+        Args:
+            function_node: an occured block node, containing class's methods details.
+            source_code: source code of the file in bytes.
+
+        Returns:
+            Dictionary containing method's/function's name, args, return type, start line
+            and source code.
+        """
+        Source:
+def _extract_function_details(
         self, function_node: tree_sitter.Node, source_code: str
     ) -> dict:
         """Inner method extracts the details of "function_definition" node in file's tree structure.
@@ -250,8 +384,18 @@ class OSA_TreeSitter(object):
             "start_line": start_line,
             "source_code": source,
         }
+      - Method: analyze_directory, Args: ['self', 'path'], Return: dict, line 254
+          Docstring:
+        """Method analyzes provided directory.
 
-    def analyze_directory(self, path: str) -> dict:
+        Args:
+            path: provided by user path to the scripts.
+
+        Returns:
+            Dictionary containing a filename and its source code's structure.
+        """
+        Source:
+def analyze_directory(self, path: str) -> dict:
         """Method analyzes provided directory.
 
         Args:
@@ -269,8 +413,15 @@ class OSA_TreeSitter(object):
                 structure = self.extract_structure(filename)
                 results[filename] = structure
         return results
+      - Method: show_results, Args: ['self', 'results'], Return: None, line 273
+          Docstring:
+        """Method prints out the results of the directory analyze.
 
-    def show_results(self, results: dict):
+        Args:
+            results: dictionary containing a filename and its source code's structure.
+        """
+        Source:
+def show_results(self, results: dict):
         """Method prints out the results of the directory analyze.
 
         Args:
@@ -302,8 +453,15 @@ class OSA_TreeSitter(object):
                         print(f"          Docstring:\n    {details['docstring']}")
                     print(f"        Source:\n{details['source_code']}")
         print()
+      - Method: log_results, Args: ['self', 'results'], Return: None, line 306
+          Docstring:
+        """Method logs the results of the directory analyze into "examples/report.txt".
 
-    def log_results(self, results: dict):
+        Args:
+            results: dictionary containing a filename and its source code's structure.
+        """
+        Source:
+def log_results(self, results: dict):
         """Method logs the results of the directory analyze into "examples/report.txt".
 
         Args:
