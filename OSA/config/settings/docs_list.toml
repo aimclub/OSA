@@ -1,0 +1,24 @@
+# Directories, file extensions, and file names to be used in README.md.
+
+[docs_list]
+directories = [
+    "docs",
+    "examples",
+]
+
+extensions = [
+    "md",
+    "rst",
+]
+
+files = [
+    "CONTRIBUTING",
+    "contributing",
+    "CONTRIBUTION",
+    "contribution",
+    "LICENSE",
+    "LICENSE-APACHE",
+    "LICENSE_APACHE-2.0",
+    "LICENSE-MIT",
+]
+
