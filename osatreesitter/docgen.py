@@ -38,33 +38,71 @@ class DocGen(object):
         enc = tiktoken.encoding_for_model(model)
         tokens = enc.encode(prompt)
         return len(tokens)
-
-    def generate_documentation_openai(self, formatted_structure, model='gpt-3.5-turbo'):
+    
+    def generate_method_documentation(self, method_details: dict, model="gpt-4"):
+        """
+        Generate documentation for a single method using OpenAI GPT.
+        """
         openai.api_key = self.api_key
-
+        
         prompt = f"""
-            I have extracted the structure and details of a Python script. Please generate professional, detailed, and markdown-formatted documentation for it. Use the provided structure to create the documentation.
+        Generate detailed documentation for the following Python method. Include:
+        - Method name.
+        - Arguments and their purposes.
+        - Return type and its purpose.
+        - A high-level explanation of what the method does.
+        - Include the provided source code in the documentation.
 
-            {formatted_structure}
-
-            The documentation should include:
-            - A high-level description of the script.
-            - Documentation for each class, including its docstring and methods.
-            - Documentation for each function, including its arguments, return type, and docstring.
-            - Ensure proper formatting for headings, subheadings, code blocks, and lists.
-                """
-
-        prompt_size = self.count_tokens(prompt)
-        print(f"Prompt size: {prompt_size} tokens")
+        Method Details:
+        - Method Name: {method_details["method_name"]}
+        - Arguments: {method_details["arguments"]}
+        - Return Type: {method_details["return_type"]}
+        - Docstring: {method_details["docstring"]}
+        - Source Code:
+        ```
+        {method_details["source_code"]}
+        ```
+        """
 
         response = openai.chat.completions.create(
             model=model,
             messages=[
-                {'role': 'system', 'content': 'You are a helpful assistant for generating documentation.'},
-                {'role': 'user', 'content': prompt},
+                {"role": "system", "content": "You are a helpful assistant for generating documentation."},
+                {"role": "user", "content": prompt},
             ],
-            max_tokens = 4096,
+            max_tokens=1500,
             temperature=0.7,
         )
 
         return response.choices[0].message.content
+
+    def generate_documentation_openai(self, file_structure: dict, model="gpt-4"):
+        """
+        Generate comprehensive documentation for the given file structure.
+        """
+        final_documentation = ""
+
+        for filename, structure in file_structure.items():
+            final_documentation += f"# Documentation for {filename}\n\n"
+
+            for item in structure:
+                if item['type'] == 'class':
+                    final_documentation += f"## Class: {item['name']}\n\n{item['docstring'] or 'No docstring provided'}\n\n"
+
+                    for method in item['methods']:
+                        try:
+                            method_doc = self.generate_method_documentation(method_details=method, model=model)
+                            final_documentation += f"### Method: {method['method_name']}\n\n{method_doc}\n\n"
+                        except Exception as e:
+                            final_documentation += f"### Method: {method['method_name']}\n\nError generating documentation: {e}\n\n"
+
+                elif item['type'] == 'function':
+                    final_documentation += "## Standalone Functions\n\n"
+                    function_details = item['details']
+                    try:
+                        function_doc = self.generate_method_documentation(method_details=function_details, model=model)
+                        final_documentation += f"### Function: {function_details['method_name']}\n\n{function_doc}\n\n"
+                    except Exception as e:
+                        final_documentation += f"### Function: {function_details['method_name']}\n\nError generating documentation: {e}\n\n"
+
+        return final_documentation

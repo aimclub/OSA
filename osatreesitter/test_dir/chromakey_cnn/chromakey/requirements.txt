@@ -1,0 +1,12 @@
+Pillow
+torch
+torchvision
+scikit-learn
+opencv-python-headless
+pyyaml
+flask
+tqdm
+
+efficientnet-pytorch==0.7.1
+albumentations
+ultralytics
