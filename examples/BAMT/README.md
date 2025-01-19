@@ -24,7 +24,7 @@
 ---
 ## Overview
 
-Bayesian Model Averaging Toolbox (BAMT) is a Python library that simplifies the process of learning Bayesian networks from data. It provides a comprehensive framework for structure learning, parameter learning, and model selection, allowing users to easily compare and combine multiple models. BAMT is designed for data scientists and researchers who want to apply Bayesian methods to real-world problems, providing a flexible and efficient way to work with complex data sets. By automating the model selection process, BAMT enables users to focus on interpreting results and making informed decisions. With its modular design and extensive documentation, BAMT is an ideal tool for both beginners and experienced users in the field of Bayesian modeling.
+Bayesian Model Toolbox (BAMT) is a Python library that simplifies the process of building and analyzing Bayesian networks. It provides a comprehensive framework for creating, training, and evaluating Bayesian models, making it easier to work with complex probabilistic relationships. With BAMT, users can efficiently construct and optimize Bayesian networks, leveraging various algorithms and techniques to uncover hidden patterns and relationships in their data. The library is designed to be user-friendly, flexible, and extensible, catering to a wide range of applications and use cases, from data analysis and machine learning to decision-making and risk assessment. By streamlining the Bayesian modeling process, BAMT empowers users to gain deeper insights into their data and make more informed decisions.
 
 ---
 
@@ -45,11 +45,11 @@ Bayesian Model Averaging Toolbox (BAMT) is a Python library that simplifies the 
 
 ## Core features
 
-1. **Bayesian Network Modeling**: The project utilizes `Bayesian Networks` for modeling complex relationships between variables.
-2. **Machine Learning Integration**: The project integrates with popular `Machine Learning` libraries such as `scikit-learn` and `catboost`.
-3. **Graph-Based Data Structures**: The project employs graph-based data structures using `networkx` for efficient data representation and manipulation.
-4. **Python-Based Development**: The project is built using `Python` as the primary programming language, with a focus on readability and maintainability.
-5. **Extensive Use of External Libraries**: The project relies heavily on external libraries such as `pandas`, `numpy`, and `matplotlib` for data manipulation and visualization.
+1. **Bayesian Network Modeling**: Utilizes `Bayesian Networks` for probabilistic modeling and reasoning.
+2. **Machine Learning Integration**: Leverages `scikit-learn` and `xgboost` for machine learning tasks and model building.
+3. **Graph-Based Data Structures**: Employs `networkx` for graph-based data structures and algorithms.
+4. **Data Preprocessing**: Provides data preprocessing capabilities using `pandas` and `numpy`.
+5. **Genetic Algorithm Optimization**: Utilizes `deap` for genetic algorithm-based optimization and model selection.
 
 ---
 
@@ -87,7 +87,7 @@ Install BAMT using one of the following methods:
 
 ## Examples
 
-Examples of how this should work and how it should be used are available in [Not found any examples](https://github.com/aimclub/BAMT/tree/master/).
+Examples of how this should work and how it should be used are available in [examples](https://github.com/aimclub/BAMT/tree/master/docs/source/examples).
 
 ---
 
@@ -128,7 +128,7 @@ Run BAMT using the following command:
 
 ## License
 
-This project is protected under the BSD 3-Clause "New" or "Revised" License. For more details, refer to the [LICENSE](https://github.com/aimclub/BAMT/blob/master/https://api.github.com/licenses/bsd-3-clause) file.
+This project is protected under the BSD 3-Clause "New" or "Revised" License. For more details, refer to the [LICENSE](https://github.com/aimclub/BAMT/blob/master/LICENCE) file.
 
 ---
 
