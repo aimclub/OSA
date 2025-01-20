@@ -1,10 +1,12 @@
 # LLM prompts for various text generation tasks.
 
 [prompts]
-core_features = """Hello! Please analyze the key technical capabilities and characteristics of the project {0} and describe them in numbered list of a Markdown format. I only need 3-5 points, each of which will have a maximum of 2 sentences:
+core_features = """Hello! Please analyze the key technical capabilities and characteristics of the project {0} and describe them in numbered list of a Markdown format. I only need 3-5 points, each of which will have a maximum of 2 sentences and should start on new line:
 
 - **Feature 1**: some text
+
 - **Feature 2**: some text
+
 - etc.
 
 While generating, please reference the following codebase details: \n
@@ -20,7 +22,7 @@ ADDITIONAL INSTRUCTIONS:
 ------------------------
 1. Highlight the key tools and technologies using the " `tool` " where necessary.
 2. The length of the response in each feature is no more than 20 words.
-3. Don't give additional messages like here is a list of the main features.
+3. Don't give additional messages like here is a list of the main features, I just need a list.
 ------------------------
 
 Cheers!
