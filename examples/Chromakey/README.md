@@ -20,7 +20,9 @@
 ---
 ## Overview
 
-Chromakey is a cutting-edge video processing project that solves the problem of separating foreground objects from complex backgrounds in real-time. Its key features include a CNN-based chroma keying model, real-time video processing, and a user-friendly client application. Ideal for content creators, videographers, and filmmakers, Chromakey streamlines the post-production process, saving time and effort in achieving professional-grade visual effects. By leveraging AI-powered chroma keying, users can focus on creative storytelling, rather than tedious manual editing. With Chromakey, bring your visual ideas to life with ease and precision.
+<overview>
+Chromakey is a video processing system that enables real-time background removal for seamless integration with new backgrounds. It offers a robust solution for video production, live streaming, and virtual events, providing a scalable and efficient way to enhance visual content. Chromakey targets professionals and creators seeking to elevate their video productions.
+</overview>
 
 ---
 
@@ -41,11 +43,19 @@ Chromakey is a cutting-edge video processing project that solves the problem of 
 
 ## Core features
 
-1. **Video Processing**: Utilizes `OpenCV` for video capture and frame processing.
-2. **Chroma Keying Model**: Employs a `CNN-based` model for chroma keying, implemented in `Python`.
-3. **Configuration Management**: Uses `YAML` configuration files for model settings and video path.
-4. **Containerization**: Supports `Docker` containerization for easy deployment and management.
-5. **Preprocessing**: Applies frame preprocessing using `PIL` and `NumPy` libraries.
+<corefeatures>
+
+1. **Modular Architecture**: Utilizes separate components for client, server, and model.
+
+2. **CNN-based Method**: Employs a Convolutional Neural Network for real-time video background removal.
+
+3. **Docker Containers**: Uses `docker` for easy deployment and management.
+
+4. **Customizable Configuration**: Includes a `config.yaml` file for easy model and system settings customization.
+
+5. **Python-based**: Built primarily with `python` and utilizes `pip` for package management.
+
+</corefeatures>
 
 ---
 
@@ -98,7 +108,7 @@ Examples of how this should work and how it should be used are available in [Not
 
 ## Documentation
 
-A detailed Chromakey description is available in [Not found any docs](None).
+A detailed Chromakey description is available in [Not found any docs]().
 
 ---
 

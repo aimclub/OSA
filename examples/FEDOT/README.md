@@ -25,7 +25,9 @@
 ---
 ## Overview
 
-FEDOT is an open-source framework for automated machine learning (AutoML) that simplifies the process of building, training, and deploying AI models. By automating tedious tasks, FEDOT empowers data scientists and analysts to focus on high-level tasks, accelerating AI adoption in various industries. With its modular architecture and support for multiple data sources, FEDOT streamlines the development of accurate and reliable AI solutions.
+<overview>
+FEDOT is a machine learning platform that automates the creation and optimization of pipelines for tasks like classification, regression, and time series forecasting. It simplifies the process of building and deploying high-performance models, making it easier for data scientists and machine learning engineers to develop and deploy models efficiently.
+</overview>
 
 ---
 
@@ -46,15 +48,19 @@ FEDOT is an open-source framework for automated machine learning (AutoML) that s
 
 ## Core features
 
-1. **Automated Machine Learning (AutoML)**: FEDOT uses `scikit-learn`, `lightgbm`, `xgboost`, and `catboost` for AutoML tasks.
+<corefeatures>
 
-2. **Model Optimization**: FEDOT utilizes `hyperopt` and `scikit-optimize` for hyperparameter tuning and model optimization.
+1. **Automated ML Pipelines**: `Python` framework for automating machine learning pipeline creation.
 
-3. **Data Analysis and Visualization**: FEDOT employs `pandas`, `numpy`, `matplotlib`, and `seaborn` for data analysis and visualization.
+2. **Modular Architecture**: Organized into modules for data preprocessing, model selection, and hyperparameter tuning.
 
-4. **Containerization and Deployment**: FEDOT supports `docker` containerization and provides `docker-compose` for deployment.
+3. **Pipeline Composer**: Uses meta-rules and random search to optimize pipeline structures.
 
-5. **Testing and Profiling**: FEDOT uses `pytest` for unit testing and `psutil` for system profiling.
+4. **Extensive Library**: Includes data operations, models, and tools for evaluating and visualizing pipeline performance.
+
+5. **Multi-Tool Support**: Supports `pip`, `docker`, and `docker-compose` for installation and deployment.
+
+</corefeatures>
 
 ---
 
