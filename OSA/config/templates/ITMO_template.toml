@@ -154,3 +154,13 @@ The project supports the following command-line interface options:
 
 ---
 """
+
+# -- Citation Section ----------------------------------------------------------
+
+citation = """
+## Citation
+
+{0}
+
+---
+"""
