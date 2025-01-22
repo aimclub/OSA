@@ -121,40 +121,6 @@ Your contacts. For example:
 
 """
 
-
-# -- API Documentation Section -------------------------------------------------
-
-
-api_docs = """
-### API Documentation
-
-The project API documentation is available at: [API Documentation]({api_url}).
-
----
-"""
-
-env_variables = """
-### Environment Variables
-
-To run this project, you will need to add the following environment variables to your environment:
-
-{env_variables}
-
----
-"""
-
-cli_docs = """
-### Command-Line Interface
-
-The project supports the following command-line interface options:
-
-```sh
-❯ {cli_command}
-```
-
----
-"""
-
 # -- Citation Section ----------------------------------------------------------
 
 citation = """
