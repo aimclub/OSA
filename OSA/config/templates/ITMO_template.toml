@@ -47,6 +47,7 @@ table_of_contents = """
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 - [Contacts](#contacts)
+- [Citation](#citation)
 
 ---
 """
@@ -126,7 +127,39 @@ Your contacts. For example:
 citation = """
 ## Citation
 
-{0}
+"""
+
+citation_v1 = """
+If you use this software, please cite it as it is written in the [CITATION](https://{host_domain}/{full_name}/blob/{default_branch}/{citation_path}) file.
+
+---
+"""
+
+citation_v2 = """
+If you use this software, please cite it as below.
+
+### APA format:
+
+    {owner} ({year}). {repo_name} repository (Version ...) [Computer software]. {repository_url}
+
+### BibTeX format:
+
+    @software{{{owner}_{repo_name}_repository_{year},
+
+        author = {{{owner}}},
+
+        doi = {{}},
+
+        month = {{{month}}},
+
+        title = {{{repo_name} repository}},
+
+        url = {{{repository_url}}},
+
+        version = {{}},
+
+        year = {{{year}}}
+    }}
 
 ---
 """
