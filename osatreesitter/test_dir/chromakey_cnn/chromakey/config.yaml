@@ -1,9 +1,0 @@
-chromakey_threshold: 70
-#ckpt_path: '../../EfficientNetB0Transfer_pretrained_Chromakey_08072023_epoch=3_best_metric_model.pth'
-#ckpt_path: 'EfficientNetB0Transfer_pretrained_Triplet_Chromakey_12072023_epoch=3_best_metric_model.pth'
-ckpt_path: 'EfficientNetB0Transfer_pretrained_NonTriplet_Chromakey_14072023_3_epoch=17_best_metric_model.pth'
-#ckpt_path: 'EfficientNetB0Transfer_pretrained_Triplet_Chromakey_final_version.pth'
-#ckpt_path: 'EfficientNetB0Transfer_pretrained_Triplet_Chromakey_23072023_1_epoch=50_best_metric_model.pth'
-window_size: 5
-use_deepfake_predictors: false
-batch_size: 16
