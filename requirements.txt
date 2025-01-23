@@ -9,4 +9,4 @@ structlog==24.4.0
 tiktoken==0.8.0
 tomli==2.2.1
 
-git+https://github.com/fl1pcoin/readmeai.git@5adb5b673f23fbd5706e6acea53a985bce99b7cf
+git+https://github.com/fl1pcoin/readmeai.git@40ddc69e877d868f5052cf821e202665503254d9
