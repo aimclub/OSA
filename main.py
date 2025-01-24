@@ -3,7 +3,7 @@ import argparse
 import logging
 from readmeai.config.settings import ConfigLoader, GitSettings
 from readmeai.main import readme_generator
-
+from OSA.github_agent.github_agent import GithubAgent
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
 
@@ -14,6 +14,11 @@ logging.basicConfig(
 
 
 def main():
+    """
+    Main function to generate a README.md file for a GitHub repository.
+    Handles command-line arguments, clones the repository, creates and checks out a branch,
+    generates the README.md file, and commits and pushes the changes.
+    """
     # Create a command line argument parser
     parser = argparse.ArgumentParser(
         description="Generate README.md for a GitHub repository"
@@ -26,10 +31,24 @@ def main():
     args = parser.parse_args()
     repo_url = args.repo_url
 
-    readme_agent(repo_url)
+    try:
+        github_agent = GithubAgent(repo_url)
+        github_agent.clone_repository()
+        github_agent.create_and_checkout_branch()
+        readme_agent(repo_url)
+        github_agent.commit_and_push_changes()
+        github_agent.create_pull_request()
+        logging.info("All operations completed successfully.")
+    except Exception as e:
+        logging.error("Error: %s", e, exc_info=True)
 
 
 def readme_agent(repo_url: str) -> None:
+    """
+    Generates a README.md file for the specified GitHub repository.
+
+    :param repo_url: URL of the GitHub repository.
+    """
     logging.info("Started generating README.md. "
                  "Processing the repository: %s", repo_url)
 
@@ -40,8 +59,7 @@ def readme_agent(repo_url: str) -> None:
 
         # Path to save README.md
         output_dir = os.path.join(os.getcwd(),
-                                  "examples",
-                                  config_loader.config.git.name,
+                                  repo_url.rstrip('/').split('/')[-1],
                                   )
         os.makedirs(output_dir, exist_ok=True)
         file_to_save = os.path.join(output_dir, "README.md")
