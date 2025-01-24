@@ -26,7 +26,7 @@
 ## Overview
 
 <overview>
-FEDOT is a machine learning platform that automates the creation and optimization of pipelines for tasks like classification, regression, and time series forecasting. It simplifies the process of building and deploying high-performance models, making it easier for data scientists and machine learning engineers to develop and deploy models efficiently.
+FEDOT is an automated machine learning framework that simplifies the process of building, training, and deploying machine learning models. It offers a flexible and efficient solution for data scientists and developers to streamline their machine learning workflows, supporting various tasks and applications. FEDOT's modular design enables users to easily integrate new algorithms and models.
 </overview>
 
 ---
@@ -43,6 +43,7 @@ FEDOT is a machine learning platform that automates the creation and optimizatio
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 - [Contacts](#contacts)
+- [Citation](#citation)
 
 ---
 
@@ -50,15 +51,15 @@ FEDOT is a machine learning platform that automates the creation and optimizatio
 
 <corefeatures>
 
-1. **Automated ML Pipelines**: `Python` framework for automating machine learning pipeline creation.
+1. **Modular Architecture**: Built using `Python` with a modular and extensible design.
 
-2. **Modular Architecture**: Organized into modules for data preprocessing, model selection, and hyperparameter tuning.
+2. **Automated Machine Learning**: Supports tasks like classification, regression, clustering, and time series forecasting.
 
-3. **Pipeline Composer**: Uses meta-rules and random search to optimize pipeline structures.
+3. **Pipeline Builder**: Allows users to construct machine learning pipelines with various operations.
 
-4. **Extensive Library**: Includes data operations, models, and tools for evaluating and visualizing pipeline performance.
+4. **Hyperparameter Optimization**: Uses `scikit-optimize` and `hyperopt` for optimal performance.
 
-5. **Multi-Tool Support**: Supports `pip`, `docker`, and `docker-compose` for installation and deployment.
+5. **Visualization Tools**: Includes `matplotlib`, `seaborn`, and `pyvis` for model interpretation.
 
 </corefeatures>
 
@@ -178,3 +179,32 @@ Your contacts. For example:
 
 ---
 
+
+## Citation
+
+If you use this software, please cite it as below.
+
+### APA format:
+
+    aimclub (2025). FEDOT repository (Version ...) [Computer software]. https://github.com/aimclub/FEDOT
+
+### BibTeX format:
+
+    @software{aimclub_FEDOT_repository_2025,
+
+        author = {aimclub},
+
+        doi = {},
+
+        month = {01},
+
+        title = {FEDOT repository},
+
+        url = {https://github.com/aimclub/FEDOT},
+
+        version = {},
+
+        year = {2025}
+    }
+
+---

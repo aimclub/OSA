@@ -25,7 +25,7 @@
 ## Overview
 
 <overview>
-BAMT is a software toolkit that enables researchers and practitioners to create, analyze, and evaluate Bayesian networks. It offers a flexible framework for modeling complex systems, streamlining tasks such as data preprocessing, model construction, and inference. By providing a robust platform, BAMT supports high-level tasks and decision-making in various fields, including data analysis and machine learning.
+BAMT is a machine learning framework that enables the creation of complex probabilistic models. It offers a flexible architecture for building, training, and evaluating Bayesian Model Trees, providing a valuable resource for researchers and practitioners in machine learning and artificial intelligence.
 </overview>
 
 ---
@@ -42,6 +42,7 @@ BAMT is a software toolkit that enables researchers and practitioners to create,
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 - [Contacts](#contacts)
+- [Citation](#citation)
 
 ---
 
@@ -49,15 +50,15 @@ BAMT is a software toolkit that enables researchers and practitioners to create,
 
 <corefeatures>
 
-1. **Bayesian Network Modeling**: Comprehensive software package for Bayesian network creation and analysis.
+1. **Bayesian Model Trees**: Framework for complex probabilistic models.
 
-2. **Data Preprocessing**: Offers data discretization, graph manipulation, and model evaluation using scoring functions.
+2. **Modular Architecture**: Organized into preprocess, networks, nodes, and builders modules.
 
-3. **Model Evaluation**: Includes tools for model selection, parameter learning, and structure learning.
+3. **External Libraries**: Utilizes `pyBN`, `pyitlib`, `scikit-learn`, and `numpy` for added functionality.
 
-4. **Utility Functions**: Provides data preprocessing, model serialization, and visualization using `matplotlib` and `pyvis`.
+4. **Model Evaluation**: Includes tools for model evaluation, visualization, and logging.
 
-5. **External Libraries**: Utilizes `PyBN` and `PyITLib` for additional Bayesian network modeling functionality.
+5. **Python-based**: Primary language is `Python` with `pip` package manager.
 
 </corefeatures>
 
@@ -161,3 +162,32 @@ Your contacts. For example:
 
 ---
 
+
+## Citation
+
+If you use this software, please cite it as below.
+
+### APA format:
+
+    aimclub (2025). BAMT repository (Version ...) [Computer software]. https://github.com/aimclub/BAMT
+
+### BibTeX format:
+
+    @software{aimclub_BAMT_repository_2025,
+
+        author = {aimclub},
+
+        doi = {},
+
+        month = {01},
+
+        title = {BAMT repository},
+
+        url = {https://github.com/aimclub/BAMT},
+
+        version = {},
+
+        year = {2025}
+    }
+
+---

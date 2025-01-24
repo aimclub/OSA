@@ -26,7 +26,7 @@
 ## Overview
 
 <overview>
-nas-fedot is a platform that automates the design and optimization of neural networks for various tasks, such as image classification and seismic inversion. It offers a modular framework for users to define and optimize neural network architectures, accelerating innovation in fields like computer vision and scientific computing.
+nas-fedot is a neural architecture search system that enables the design, evaluation, and optimization of neural networks. It provides a flexible framework for creating and customizing neural architectures, offering a range of tools and utilities for developers and researchers in the field of artificial intelligence and machine learning.
 </overview>
 
 ---
@@ -43,6 +43,7 @@ nas-fedot is a platform that automates the design and optimization of neural net
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 - [Contacts](#contacts)
+- [Citation](#citation)
 
 ---
 
@@ -50,15 +51,15 @@ nas-fedot is a platform that automates the design and optimization of neural net
 
 <corefeatures>
 
-1. **Modular Framework**: Utilizes `Python` for Neural Architecture Search (NAS) development.
+1. **Modular Architecture**: Utilizes `Python` for a robust and modular codebase.
 
-2. **Customizable Components**: Includes graph builders, node factories, and optimization algorithms.
+2. **Graph-Based Representation**: Employs graph building, node creation, and optimization techniques.
 
-3. **Pre-built Examples**: Features CNN builders and seismic inversion cases for real-world applications.
+3. **Neural Network Composer**: Enables creation of custom neural networks with predefined layers and nodes.
 
-4. **Tools and Utilities**: Offers caching, verification, shape calculation, and metric evaluation tools.
+4. **Customizable**: Offers configuration options and parameters for specific use cases.
 
-5. **Containerization**: Supports `docker` for easy deployment and installation.
+5. **Extensive Libraries**: Leverages `TensorFlow`, `Keras`, `NumPy`, `OpenCV`, and `Scikit-learn` for development.
 
 </corefeatures>
 
@@ -176,3 +177,32 @@ Your contacts. For example:
 
 ---
 
+
+## Citation
+
+If you use this software, please cite it as below.
+
+### APA format:
+
+    ITMO-NSS-team (2024). nas-fedot repository (Version ...) [Computer software]. https://github.com/ITMO-NSS-team/nas-fedot
+
+### BibTeX format:
+
+    @software{ITMO-NSS-team_nas-fedot_repository_2024,
+
+        author = {ITMO-NSS-team},
+
+        doi = {},
+
+        month = {12},
+
+        title = {nas-fedot repository},
+
+        url = {https://github.com/ITMO-NSS-team/nas-fedot},
+
+        version = {},
+
+        year = {2024}
+    }
+
+---

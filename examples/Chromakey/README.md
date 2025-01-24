@@ -3,15 +3,13 @@
 </p>
 <p align="center"><h1 align="center">CHROMAKEY</h1></p>
 <p align="center">
-	<img src="https://img.shields.io/github/license/CTLab-ITMO/Chromakey?style=BadgeStyleOptions.DEFAULT&logo=opensourceinitiative&logoColor=white&color=blue" alt="license">
-	<img src="https://img.shields.io/github/last-commit/CTLab-ITMO/Chromakey?style=BadgeStyleOptions.DEFAULT&logo=git&logoColor=white&color=blue" alt="last-commit">
-	<img src="https://img.shields.io/github/languages/top/CTLab-ITMO/Chromakey?style=BadgeStyleOptions.DEFAULT&color=blue" alt="repo-top-language">
-	<img src="https://img.shields.io/github/languages/count/CTLab-ITMO/Chromakey?style=BadgeStyleOptions.DEFAULT&color=blue" alt="repo-language-count">
+	<img src="https://img.shields.io/github/license/eugeneteoh/chromakey?style=BadgeStyleOptions.DEFAULT&logo=opensourceinitiative&logoColor=white&color=blue" alt="license">
+	<img src="https://img.shields.io/github/last-commit/eugeneteoh/chromakey?style=BadgeStyleOptions.DEFAULT&logo=git&logoColor=white&color=blue" alt="last-commit">
+	<img src="https://img.shields.io/github/languages/top/eugeneteoh/chromakey?style=BadgeStyleOptions.DEFAULT&color=blue" alt="repo-top-language">
+	<img src="https://img.shields.io/github/languages/count/eugeneteoh/chromakey?style=BadgeStyleOptions.DEFAULT&color=blue" alt="repo-language-count">
 </p>
 <p align="center">Built with the tools and technologies:</p>
 <p align="center">
-	<img src="https://img.shields.io/badge/GNU%20Bash-4EAA25.svg?style=BadgeStyleOptions.DEFAULT&logo=GNU-Bash&logoColor=white"alt="GNU%20Bash">
-	<img src="https://img.shields.io/badge/Docker-2496ED.svg?style=BadgeStyleOptions.DEFAULT&logo=Docker&logoColor=white"alt="Docker">
 	<img src="https://img.shields.io/badge/Python-3776AB.svg?style=BadgeStyleOptions.DEFAULT&logo=Python&logoColor=white"alt="Python">
 </p>
 <br>
@@ -21,7 +19,7 @@
 ## Overview
 
 <overview>
-Chromakey is a video processing system that enables real-time background removal for seamless integration with new backgrounds. It offers a robust solution for video production, live streaming, and virtual events, providing a scalable and efficient way to enhance visual content. Chromakey targets professionals and creators seeking to elevate their video productions.
+Chromakey is a software solution that enables the removal of specific color ranges from images and videos, creating transparent backgrounds. It offers a flexible and efficient way to achieve chroma keying, a technique used in video production and post-processing. Chromakey is ideal for video producers, editors, and developers seeking to integrate this technique into their workflows.
 </overview>
 
 ---
@@ -38,6 +36,7 @@ Chromakey is a video processing system that enables real-time background removal
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 - [Contacts](#contacts)
+- [Citation](#citation)
 
 ---
 
@@ -45,15 +44,15 @@ Chromakey is a video processing system that enables real-time background removal
 
 <corefeatures>
 
-1. **Modular Architecture**: Utilizes separate components for client, server, and model.
+1. **Modular Architecture**: Designed for extensibility and easy modification.
 
-2. **CNN-based Method**: Employs a Convolutional Neural Network for real-time video background removal.
+2. **PyTorch Integration**: Utilizes `PyTorch` for GPU acceleration and faster processing.
 
-3. **Docker Containers**: Uses `docker` for easy deployment and management.
+3. **Python Implementation**: Primary functionality implemented in `Python`.
 
-4. **Customizable Configuration**: Includes a `config.yaml` file for easy model and system settings customization.
+4. **Flexible Chroma Keying**: Removes specific color ranges from images and videos.
 
-5. **Python-based**: Built primarily with `python` and utilizes `pip` for package management.
+5. **Example Scripts**: Demonstrates module usage in various scenarios.
 
 </corefeatures>
 
@@ -62,38 +61,23 @@ Chromakey is a video processing system that enables real-time background removal
 
 ## Installation
 
-Install Chromakey using one of the following methods:
+Install chromakey using one of the following methods:
 
 **Build from source:**
 
-1. Clone the Chromakey repository:
+1. Clone the chromakey repository:
 ```sh
-❯ git clone https://github.com/CTLab-ITMO/Chromakey
+❯ git clone https://github.com/eugeneteoh/chromakey
 ```
 
 2. Navigate to the project directory:
 ```sh
-❯ cd Chromakey
+❯ cd chromakey
 ```
 
 3. Install the project dependencies:
 
-
-**Using `pip`** &nbsp;
-[<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
-
-```sh
-❯ pip install -r CNN-based Method\chromakey\requirements.txt
-```
-
-
-**Using `docker`** &nbsp;
-[<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
-
-```sh
-❯ docker build -t CTLab-ITMO/Chromakey .
-```
-
+echo 'INSERT-INSTALL-COMMAND-HERE'
 
 
 ---
@@ -101,14 +85,14 @@ Install Chromakey using one of the following methods:
 
 ## Examples
 
-Examples of how this should work and how it should be used are available in [Not found any examples](https://github.com/CTLab-ITMO/Chromakey/tree/main/).
+Examples of how this should work and how it should be used are available in [examples](https://github.com/eugeneteoh/chromakey/tree/main/examples).
 
 ---
 
 
 ## Documentation
 
-A detailed Chromakey description is available in [Not found any docs]().
+A detailed chromakey description is available in [Not found any docs]().
 
 ---
 
@@ -117,22 +101,8 @@ A detailed Chromakey description is available in [Not found any docs]().
 
 ### Usage
 
-Run Chromakey using the following command:
-**Using `pip`** &nbsp;
-[<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
-
-```sh
-❯ python {entrypoint}
-```
-
-
-**Using `docker`** &nbsp;
-[<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
-
-```sh
-❯ docker run -it {image_name}
-```
-
+Run chromakey using the following command:
+echo 'INSERT-RUN-COMMAND-HERE'
 
 ---
 
@@ -140,7 +110,7 @@ Run Chromakey using the following command:
 ## Contributing
 
 
-- **[Report Issues](https://github.com/CTLab-ITMO/Chromakey/issues )**: Submit bugs found or log feature requests for the Chromakey project.
+- **[Report Issues](https://github.com/eugeneteoh/chromakey/issues )**: Submit bugs found or log feature requests for the chromakey project.
 
 
 ---
@@ -148,7 +118,7 @@ Run Chromakey using the following command:
 
 ## License
 
-This project is protected under the Not found any License. For more details, refer to the [LICENSE](https://github.com/CTLab-ITMO/Chromakey/blob/main/) file.
+This project is protected under the MIT License. For more details, refer to the [LICENSE](https://github.com/eugeneteoh/chromakey/blob/main/LICENSE) file.
 
 ---
 
@@ -171,3 +141,32 @@ Your contacts. For example:
 
 ---
 
+
+## Citation
+
+If you use this software, please cite it as below.
+
+### APA format:
+
+    eugeneteoh (2024). chromakey repository (Version ...) [Computer software]. https://github.com/eugeneteoh/chromakey
+
+### BibTeX format:
+
+    @software{eugeneteoh_chromakey_repository_2024,
+
+        author = {eugeneteoh},
+
+        doi = {},
+
+        month = {10},
+
+        title = {chromakey repository},
+
+        url = {https://github.com/eugeneteoh/chromakey},
+
+        version = {},
+
+        year = {2024}
+    }
+
+---
