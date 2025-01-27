@@ -10,7 +10,6 @@ from readmeai.models.prompts import (
     get_prompt_template,
     inject_prompt_context,
     set_additional_contexts,
-    set_summary_context,
 )
 
 logging.getLogger("readmeai.config.settings").setLevel(logging.CRITICAL)

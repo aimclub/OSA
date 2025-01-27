@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://itmo.ru/file/pages/213/logo_na_plashke_russkiy_belyy.png" align="center" width="70%">
+    <img src="https://raw.githubusercontent.com/aimclub/open-source-ops/7de1e1321389ec177f236d0a5f41f876811a912a/badges/ITMO_badge.svg" align="center" width="20%">
 </p>
 <p align="center"><h1 align="center">BAMT</h1></p>
 <p align="center">
@@ -25,7 +25,7 @@
 ## Overview
 
 <overview>
-BAMT is a machine learning framework that enables the creation of complex probabilistic models. It offers a flexible architecture for building, training, and evaluating Bayesian Model Trees, providing a valuable resource for researchers and practitioners in machine learning and artificial intelligence.
+BAMT is a software framework for building and analyzing Bayesian networks, enabling users to create and analyze complex probabilistic models. It offers a flexible and extensible architecture, supporting various applications, from data analysis and machine learning to decision support and risk analysis, catering to professionals and researchers in data-driven fields.
 </overview>
 
 ---
@@ -50,15 +50,15 @@ BAMT is a machine learning framework that enables the creation of complex probab
 
 <corefeatures>
 
-1. **Bayesian Model Trees**: Framework for complex probabilistic models.
+1. **Bayesian Network Framework**: Provides a comprehensive framework for building and analyzing Bayesian networks.
 
-2. **Modular Architecture**: Organized into preprocess, networks, nodes, and builders modules.
+2. **Modular Architecture**: Offers a modular architecture with separate modules for network construction, node definition, and data preprocessing.
 
-3. **External Libraries**: Utilizes `pyBN`, `pyitlib`, `scikit-learn`, and `numpy` for added functionality.
+3. **Extensive Library Support**: Utilizes `numpy`, `scikit-learn`, `scipy`, `networkx`, `xgboost`, and `catboost` for various tasks.
 
-4. **Model Evaluation**: Includes tools for model evaluation, visualization, and logging.
+4. **Data Preprocessing Tools**: Includes tools for data discretization, graph manipulation, and model evaluation.
 
-5. **Python-based**: Primary language is `Python` with `pip` package manager.
+5. **Visualization and Display**: Offers tools for visualizing and displaying network structures and results using `pyvis` and `matplotlib`.
 
 </corefeatures>
 
@@ -98,7 +98,7 @@ Install BAMT using one of the following methods:
 
 ## Examples
 
-Examples of how this should work and how it should be used are available in [examples](https://github.com/aimclub/BAMT/tree/master/docs/source/examples).
+Examples of how this should work and how it should be used are available in [examples](https://github.com/aimclub/BAMT/tree/master/docs\source\examples).
 
 ---
 

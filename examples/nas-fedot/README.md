@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://itmo.ru/file/pages/213/logo_na_plashke_russkiy_belyy.png" align="center" width="70%">
+    <img src="https://raw.githubusercontent.com/aimclub/open-source-ops/7de1e1321389ec177f236d0a5f41f876811a912a/badges/ITMO_badge.svg" align="center" width="20%">
 </p>
 <p align="center"><h1 align="center">NAS-FEDOT</h1></p>
 <p align="center">
@@ -26,7 +26,7 @@
 ## Overview
 
 <overview>
-nas-fedot is a neural architecture search system that enables the design, evaluation, and optimization of neural networks. It provides a flexible framework for creating and customizing neural architectures, offering a range of tools and utilities for developers and researchers in the field of artificial intelligence and machine learning.
+nas-fedot is a framework that automates the design and optimization of neural networks for various tasks, such as image classification and seismic inversion. It enables users to focus on high-level tasks, accelerating the development of high-performance neural networks. The framework targets developers and researchers seeking to improve neural network performance without manual architecture design.
 </overview>
 
 ---
@@ -51,15 +51,15 @@ nas-fedot is a neural architecture search system that enables the design, evalua
 
 <corefeatures>
 
-1. **Modular Architecture**: Utilizes `Python` for a robust and modular codebase.
+1. **Modular Framework**: Uses `Python` for Neural Architecture Search (NAS) development.
 
-2. **Graph-Based Representation**: Employs graph building, node creation, and optimization techniques.
+2. **Graph-Based Representation**: Defines and composes neural network components using graphs.
 
-3. **Neural Network Composer**: Enables creation of custom neural networks with predefined layers and nodes.
+3. **Optimization Tools**: Includes tools for evaluating and validating neural network performance.
 
-4. **Customizable**: Offers configuration options and parameters for specific use cases.
+4. **Containerization**: Utilizes `Docker` for containerization and `pip` for package management.
 
-5. **Extensive Libraries**: Leverages `TensorFlow`, `Keras`, `NumPy`, `OpenCV`, and `Scikit-learn` for development.
+5. **Extensive Libraries**: Leverages `TensorFlow`, `Keras`, `PyTorch`, and `scikit-learn` for neural networks.
 
 </corefeatures>
 

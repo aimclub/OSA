@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://itmo.ru/file/pages/213/logo_na_plashke_russkiy_belyy.png" align="center" width="70%">
+    <img src="https://raw.githubusercontent.com/aimclub/open-source-ops/7de1e1321389ec177f236d0a5f41f876811a912a/badges/ITMO_badge.svg" align="center" width="20%">
 </p>
 <p align="center"><h1 align="center">FEDOT</h1></p>
 <p align="center">
@@ -26,7 +26,7 @@
 ## Overview
 
 <overview>
-FEDOT is an automated machine learning framework that simplifies the process of building, training, and deploying machine learning models. It offers a flexible and efficient solution for data scientists and developers to streamline their machine learning workflows, supporting various tasks and applications. FEDOT's modular design enables users to easily integrate new algorithms and models.
+FEDOT is a machine learning framework that simplifies the development of AI pipelines. It offers a modular and extensible architecture, enabling users to build, optimize, and deploy models efficiently. FEDOT targets data scientists and machine learning engineers, providing a flexible solution for various applications, from data preprocessing to complex AI tasks.
 </overview>
 
 ---
@@ -51,15 +51,15 @@ FEDOT is an automated machine learning framework that simplifies the process of 
 
 <corefeatures>
 
-1. **Modular Architecture**: Built using `Python` with a modular and extensible design.
+1. **Modular Framework**: Uses `Python` for machine learning pipeline development.
 
-2. **Automated Machine Learning**: Supports tasks like classification, regression, clustering, and time series forecasting.
+2. **Extensive Library**: Includes `scikit-learn`, `xgboost`, `lightgbm`, and `catboost` for modeling.
 
-3. **Pipeline Builder**: Allows users to construct machine learning pipelines with various operations.
+3. **Hyperparameter Tuning**: Utilizes `hyperopt` and `scikit-optimize` for optimization.
 
-4. **Hyperparameter Optimization**: Uses `scikit-optimize` and `hyperopt` for optimal performance.
+4. **Pipeline Optimization**: Employs `joblib` and `psutil` for performance tuning.
 
-5. **Visualization Tools**: Includes `matplotlib`, `seaborn`, and `pyvis` for model interpretation.
+5. **Docker Support**: Allows for containerization using `docker` and `docker-compose`.
 
 </corefeatures>
 
