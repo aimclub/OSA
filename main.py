@@ -51,7 +51,7 @@ def readme_agent(repo_url: str) -> None:
     """Generates a README.md file for the specified GitHub repository.
 
     Args:
-        repo_url (str): URL of the GitHub repository.
+        repo_url: URL of the GitHub repository.
 
     Raises:
         Exception: If an error occurs during README.md generation.

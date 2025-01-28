@@ -20,12 +20,12 @@ class GithubAgent:
     commit and push changes, and create pull requests.
 
     Attributes:
-        AGENT_SIGNATURE (str): A signature string appended to pull request descriptions.
-        repo_url (str): The URL of the GitHub repository.
-        clone_dir (str): The directory where the repository will be cloned.
-        branch_name (str): The name of the branch to be created or checked out.
-        repo (Repo): The GitPython Repo object representing the repository.
-        token (str): The GitHub token for authentication.
+        AGENT_SIGNATURE: A signature string appended to pull request descriptions.
+        repo_url: The URL of the GitHub repository.
+        clone_dir: The directory where the repository will be cloned.
+        branch_name: The name of the branch to be created or checked out.
+        repo: The GitPython Repo object representing the repository.
+        token: The GitHub token for authentication.
     """
 
     AGENT_SIGNATURE = (
@@ -37,8 +37,8 @@ class GithubAgent:
         """Initializes the GithubAgent with the repository URL and branch name.
 
         Args:
-            repo_url (str): The URL of the GitHub repository.
-            branch_name (str, optional): The name of the branch to be created. Defaults to "OSA".
+            repo_url: The URL of the GitHub repository.
+            branch_name: The name of the branch to be created. Defaults to "OSA".
         """
         load_dotenv()
         self.repo_url = repo_url
@@ -96,7 +96,7 @@ class GithubAgent:
         """Commits and pushes changes to the remote branch.
 
         Args:
-            commit_message (str, optional): The commit message. Defaults to "OSA recommendations".
+            commit_message: The commit message. Defaults to "OSA recommendations".
         """
         logging.info("Committing changes...")
         self.repo.git.add('.')
@@ -111,9 +111,9 @@ class GithubAgent:
         """Creates a pull request from the current branch to the specified base branch.
 
         Args:
-            base_branch (str, optional): The branch into which the PR should be merged. Defaults to "main".
-            title (str, optional): The title of the PR. If None, the commit message will be used.
-            body (str, optional): The body/description of the PR. If None, the commit message with agent signature will be used.
+            base_branch: The branch into which the PR should be merged.
+            title: The title of the PR. If None, the commit message will be used.
+            body: The body/description of the PR. If None, the commit message with agent signature will be used.
 
         Raises:
             ValueError: If the GitHub token is not set or the API request fails.
