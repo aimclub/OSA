@@ -8,5 +8,7 @@ requests==2.32.3
 structlog==24.4.0
 tiktoken==0.8.0
 tomli==2.2.1
+python-dotenv==1.0.1
+pytest==8.3.4
 
 git+https://github.com/fl1pcoin/readmeai.git@c3242a72e7dc54b32d60ead20babfa4145cd9e2d
