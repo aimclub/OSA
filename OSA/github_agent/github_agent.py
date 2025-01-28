@@ -3,6 +3,7 @@ import os
 import logging
 import requests
 from dotenv import load_dotenv
+from OSA.utils import parse_folder_name
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
 
@@ -13,30 +14,51 @@ logging.basicConfig(
 
 
 class GithubAgent:
-    def __init__(self, repo_url: str, branch_name: str = "OSA"):
-        """
-        Initializes GithubAgent.
+    """A class to interact with GitHub repositories.
 
-        :param repo_url: URL of the repository.
-        :param branch_name: Name of the branch to be created.
+    This class provides functionality to clone repositories, create and checkout branches,
+    commit and push changes, and create pull requests.
+
+    Attributes:
+        AGENT_SIGNATURE (str): A signature string appended to pull request descriptions.
+        repo_url (str): The URL of the GitHub repository.
+        clone_dir (str): The directory where the repository will be cloned.
+        branch_name (str): The name of the branch to be created or checked out.
+        repo (Repo): The GitPython Repo object representing the repository.
+        token (str): The GitHub token for authentication.
+    """
+
+    AGENT_SIGNATURE = (
+        "\n\n---\n*This PR was created by [OSA](https://github.com/ITMO-NSS-team/Open-Source-Advisor).*"
+        "\n_OSA just makes your open source project better!_"
+    )
+
+    def __init__(self, repo_url: str, branch_name: str = "OSA"):
+        """Initializes the GithubAgent with the repository URL and branch name.
+
+        Args:
+            repo_url (str): The URL of the GitHub repository.
+            branch_name (str, optional): The name of the branch to be created. Defaults to "OSA".
         """
         load_dotenv()
         self.repo_url = repo_url
-        self.clone_dir = repo_url.rstrip('/').split('/')[-1]
+        self.clone_dir = parse_folder_name(repo_url)
         self.branch_name = branch_name
         self.repo = None
         self.token = os.getenv("GIT_TOKEN")
 
     def clone_repository(self) -> None:
-        """
-        Clones the repository into the specified directory if it doesn't exist locally.
-        If the repository already exists locally, initializes it.
+        """Clones the repository into the specified directory.
 
-        :raises InvalidGitRepositoryError: If the local directory exists but is not a valid Git repository.
-        :raises GitCommandError: If cloning the repository fails.
+        If the repository already exists locally, it initializes the repository.
+        If the directory exists but is not a valid Git repository, an error is raised.
+
+        Raises:
+            InvalidGitRepositoryError: If the local directory is not a valid Git repository.
+            GitCommandError: If cloning the repository fails.
         """
         if self.repo:
-            logging.warning("Repository already initialized")
+            logging.warning(f"Repository is already initialized ({self.repo_url})")
             return
 
         if os.path.exists(self.clone_dir):
@@ -53,11 +75,14 @@ class GithubAgent:
                 self.repo = Repo.clone_from(self._get_auth_url(), self.clone_dir)
                 logging.info("Cloning completed")
             except GitCommandError as e:
-                logging.error(f"Cloning failed: {str(e)}")
+                logging.error(f"Cloning failed: {repr(e)}")
                 raise
 
     def create_and_checkout_branch(self) -> None:
-        """Creates and switches to a new branch."""
+        """Creates and checks out a new branch.
+
+        If the branch already exists, it simply checks out the branch.
+        """
         if self.branch_name in self.repo.heads:
             logging.info(f"Branch {self.branch_name} already exists. Switching to it...")
             self.repo.git.checkout(self.branch_name)
@@ -68,7 +93,11 @@ class GithubAgent:
             logging.info(f"Switched to branch {self.branch_name}.")
 
     def commit_and_push_changes(self, commit_message: str = "OSA recommendations") -> None:
-        """Commits and pushes changes to the remote branch."""
+        """Commits and pushes changes to the remote branch.
+
+        Args:
+            commit_message (str, optional): The commit message. Defaults to "OSA recommendations".
+        """
         logging.info("Committing changes...")
         self.repo.git.add('.')
         self.repo.git.commit('-m', commit_message)
@@ -79,13 +108,15 @@ class GithubAgent:
         logging.info("Push completed.")
 
     def create_pull_request(self, base_branch: str = "main", title: str = None, body: str = None) -> None:
-        """
-        Creates a pull request from the current branch to the specified base branch.
+        """Creates a pull request from the current branch to the specified base branch.
 
-        :param base_branch: The branch into which the PR should be merged (default is 'main').
-        :param title: The title of the PR. If None, the commit message will be used.
-        :param body: The body/description of the PR. If None, the commit message will be used.
-        :raises ValueError: If the GitHub token is not set or the API request fails.
+        Args:
+            base_branch (str, optional): The branch into which the PR should be merged. Defaults to "main".
+            title (str, optional): The title of the PR. If None, the commit message will be used.
+            body (str, optional): The body/description of the PR. If None, the commit message with agent signature will be used.
+
+        Raises:
+            ValueError: If the GitHub token is not set or the API request fails.
         """
         if not self.token:
             raise ValueError("GitHub token is required to create a pull request.")
@@ -94,8 +125,8 @@ class GithubAgent:
         last_commit = self.repo.head.commit
         pr_title = title if title else last_commit.message
         pr_body = body if body else last_commit.message
+        pr_body += self.AGENT_SIGNATURE
 
-        # Формируем данные для создания PR
         pr_data = {
             "title": pr_title,
             "head": self.branch_name,
@@ -103,7 +134,6 @@ class GithubAgent:
             "body": pr_body
         }
 
-        # Отправляем запрос к GitHub API
         headers = {
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json"
@@ -118,9 +148,13 @@ class GithubAgent:
             raise ValueError("Failed to create pull request.")
 
     def _get_auth_url(self) -> str:
-        """
-        Converts the repository URL by adding a token for authentication.
-        :return: Repository URL with the token.
+        """Converts the repository URL by adding a token for authentication.
+
+        Returns:
+            str: The repository URL with the token.
+
+        Raises:
+            ValueError: If the token is not found or the repository URL format is unsupported.
         """
         if not self.token:
             raise ValueError("Token not found in environment variables.")
