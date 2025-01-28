@@ -1,7 +1,7 @@
 # LLM prompts for various text generation tasks.
 
 [prompts]
-core_features = """Hello! Analyze the codebase for the project {0} and generate a numberes markdown list summarizing its key techincal features.
+core_features = """Hello! Analyze the codebase for the project {0} and generate a numbered markdown list summarizing its key techincal features.
 
 You will be provided with four pieces of information:
 1. PROJECT NAME: {0}
@@ -11,12 +11,12 @@ You will be provided with four pieces of information:
 
 
 To complete this task, follow these steps:
-1. Carefully review all project information to understand the key features of the project.
+1. Carefully review all the information about the project to understand the key features of the project.
 2. Craft a numbered list with a brief description of the project's features.
 
 Your response should adhere to the following guidelines:
-- The list should consist of 2-5 lines.
-- Limit your response for each line of the list is 15 words.
+- The list should contain up to 5 items.
+- Limit your response for each line of the list to 15 words.
 - Start each feature description on a new line.
 - Highlight the key tools and technologies using the " `tool` " where necessary.
 
@@ -38,7 +38,7 @@ Present your final list of core_features within <core_features> tags. Here's an 
 </core_features>
 </example>
 
-Now, please analyze the provided project information and generate a concise numbered list following the guidelines above.
+Now, please, analyze the provided project information and generate a concise numbered list following the guidelines above.
 """
 
 file_summary = """Deliver a succinct summary that highlights the main purpose and \
@@ -87,6 +87,6 @@ README-AI is a developer tool that automatically generates comprehensive README 
 </overview>
 </example>
 
-Now, please analyze the provided project information and generate a concise overview following the guidelines above.
+Now, please, analyze the provided project information and generate a concise overview following the guidelines above.
 """
 
