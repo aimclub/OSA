@@ -47,6 +47,42 @@ class GithubAgent:
         self.repo = None
         self.token = os.getenv("GIT_TOKEN")
 
+    def star_repository(self) -> None:
+        """Stars the GitHub repository if it is not already starred.
+
+        Raises:
+            ValueError: If the GitHub token is not set or the API request fails.
+        """
+        if not self.token:
+            raise ValueError("GitHub token is required to star the repository.")
+
+        base_repo = self.repo_url[len("https://github.com/"):].rstrip('/')
+        headers = {
+            "Authorization": f"token {self.token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+
+        # Check if the repository is already starred
+        url_check = f"https://api.github.com/user/starred/{base_repo}"
+        response_check = requests.get(url_check, headers=headers)
+
+        if response_check.status_code == 204:
+            logging.info(f"Repository {base_repo} is already starred.")
+            return
+        elif response_check.status_code != 404:
+            logging.error(f"Failed to check star status: {response_check.status_code} - {response_check.text}")
+            raise ValueError("Failed to check star status.")
+
+        # Star the repository
+        url_star = f"https://api.github.com/user/starred/{base_repo}"
+        response_star = requests.put(url_star, headers=headers)
+
+        if response_star.status_code == 204:
+            logging.info(f"Repository {base_repo} has been starred successfully.")
+        else:
+            logging.error(f"Failed to star repository: {response_star.status_code} - {response_star.text}")
+            raise ValueError("Failed to star repository.")
+
     def clone_repository(self) -> None:
         """Clones the repository into the specified directory.
 
@@ -151,7 +187,7 @@ class GithubAgent:
         """Converts the repository URL by adding a token for authentication.
 
         Returns:
-            str: The repository URL with the token.
+            The repository URL with the token.
 
         Raises:
             ValueError: If the token is not found or the repository URL format is unsupported.

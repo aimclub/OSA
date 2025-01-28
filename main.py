@@ -37,6 +37,7 @@ def main():
     try:
         # Initialize GitHub agent and perform operations
         github_agent = GithubAgent(repo_url)
+        github_agent.star_repository()
         github_agent.clone_repository()
         github_agent.create_and_checkout_branch()
         readme_agent(repo_url)
