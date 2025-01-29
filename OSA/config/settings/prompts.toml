@@ -1,0 +1,126 @@
+# LLM prompts for various text generation tasks.
+
+[prompts]
+core_features = """Hello! Please analyze the key technical capabilities and characteristics of the project {0} and describe them in numbered list of a Markdown format. I only need 3-5 points, each of which will have a maximum of 2 sentences and should start on new line:
+
+- **Feature 1**: some text
+
+- **Feature 2**: some text
+
+- etc.
+
+While generating, please reference the following codebase details: \n
+
+CONTEXT DETAILS:
+------------------------
+DEPENDENCIES: {1}
+DOCUMENTATION: {2}
+FILE CONTENTS: {3}
+------------------------
+
+ADDITIONAL INSTRUCTIONS:
+------------------------
+1. Highlight the key tools and technologies using the " `tool` " where necessary.
+2. The length of the response in each feature is no more than 20 words.
+3. Don't give additional messages like here is a list of the main features, I just need a list.
+------------------------
+
+Cheers!
+"""
+
+file_summary = """Deliver a succinct summary that highlights the main purpose and \
+use of the code file provided in regards to the entire codebase architecture. Focus \
+on what the code achieves, steering clear of technical implementation details. \
+While generating the summary, reference the project structure represented by a list of the paths of all project files: \n
+
+CONTEXT DETAILS:
+------------------------
+PROJECT STRUCTURE: {0}
+------------------------
+
+ADDITIONAL INSTRUCTIONS:
+------------------------
+1. Avoid using words like 'This file', 'The file', 'This code', etc.
+  1a. Summary should start with a verb or noun to make it more clear and concise.
+2. Do not include quotes, code snippets, bullets, or lists in your response.
+3. RESPONSE LENGTH: 100-120 words.
+------------------------
+
+Thank you for your hard work!
+"""
+
+logo = """
+Create a fun and vibrant app icon logo for a GitHub repository. The logo should be in the style of an Apple app icon - square with rounded corners. The icon should feature a singular, memorable character or object that represents the essence of the project, without any external background.
+
+<PROJECT DETAILS>
+PROJECT NAME: {project_name}
+PROJECT OVERVIEW: {project_overview}
+PROJECT SLOGAN: {project_slogan}
+</PROJECT DETAILS>
+
+Design Guidelines:
+1. Central Character: [Describe a relevant animal, mythical creature, tool, or object that relates to the project theme]. This character should be stylized and appealing, with a playful yet professional look.
+
+2. Color Scheme: Use colors that reflect the project's theme and complement the central character. The colors should be vibrant and eye-catching.
+
+3. Style: Modern, slightly cartoonish, and memorable. The design should be simple enough to be recognizable at small sizes, but with enough detail to be interesting when viewed larger.
+
+4. Layout: The central character or object should fill most of the square space, leaving some room for subtle elements or patterns that hint at the project's purpose or field.
+
+5. Text (Optional): If including text, limit it to a short acronym or simple logo type that integrates well with the visual elements.
+
+6. Background: The icon itself should have a solid or gradient background color that's part of the overall design. Do not include any external background beyond the rounded square of the icon.
+
+7. Originality: Ensure the design is original and doesn't infringe on any existing copyrights or trademarks.
+
+Please describe the icon design in detail, focusing on the central character, color scheme, and any additional elements within the icon itself. Do not describe any elements outside of the rounded square app icon shape.
+"""
+
+_overview = """
+Create a concise and compelling overview of the {0} project, followed by a list of key features. The response should be structured as follows:
+
+1. Short Introduction (50-60 words):
+   Provide a brief overview of {0}, focusing on:
+   - The core problem it solves
+   - Its primary purpose and benefits
+   - The target audience or use cases
+
+   Use the following context for reference:
+   {1}
+
+2. Quick Feature List (5-6 bullet points):
+   List the main features or capabilities of {0}, each starting with a relevant emoji. For example:
+
+   - **Feature 1**: Brief description (1 sentence max)
+   - **Feature 2**: Brief description (1 sentence max)
+   - **Feature 3**: Brief description (1 sentence max)
+   - **Feature 4**: Brief description (1 sentence max)
+   - **Feature 5**: Brief description (1 sentence max)
+
+   Ensure that the features highlight different aspects such as performance, scalability, flexibility, integration, automation, or any other significant benefits.
+
+Format the output in Markdown, structuring it as follows:
+
+**{0}** is ... [short introduction]
+
+With **{0}**, you can:
+
+- [Quick feature list]
+"""
+
+overview = """
+Craft a compelling overview of the {0} project in about 30-50 words.
+
+Focus on:
+- The core problem it solves
+- Its key features and benefits
+- The target audience or use cases
+
+
+Consider these file summaries for context:
+{1}
+
+Aim for a clear, engaging description that captures the essence of the project without technical jargon. The overview should flow naturally and give readers a quick understanding of the project's purpose and value.
+Don't give additional messages like here is your overview. I only need overview text.
+
+"""

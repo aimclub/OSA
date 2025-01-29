@@ -1,0 +1,156 @@
+# Markdown Configuration
+[md]
+badges_tech_stack_text = "Built with the tools and technologies:"
+badges_tech_stack = """{badges_tech_stack}"""
+github_stats = """
+![GitHub Forks](https://img.shields.io/github/forks/{full_name}?style={badge_style}&logo=github&logoColor=white&color={badge_color})
+![GitHub Stars](https://img.shields.io/github/stars/{full_name}?style={badge_style}&logo=github&logoColor=white&color={badge_color})
+![GitHub Watchers](https://img.shields.io/github/watchers/{full_name}?style={badge_style}&logo=github&logoColor=white&color={badge_color})
+![GitHub Issues](https://img.shields.io/github/issues/{full_name}?style={badge_style}&logo=github&logoColor=white&color={badge_color})
+![GitHub Pull Requests](https://img.shields.io/github/issues-pr/{full_name}?style={badge_style}&logo=github&logoColor=white&color={badge_color})
+![GitHub Release](https://img.shields.io/github/v/release/{full_name}?style={badge_style}&logo=github&logoColor=white&color={badge_color})
+"""
+
+shieldsio_icons = """
+<img src="https://img.shields.io/{host}/license/{full_name}?style={badge_style}&logo=opensourceinitiative&logoColor=white&color={badge_color}" alt="license">
+\t<img src="https://img.shields.io/{host}/last-commit/{full_name}?style={badge_style}&logo=git&logoColor=white&color={badge_color}" alt="last-commit">
+\t<img src="https://img.shields.io/{host}/languages/top/{full_name}?style={badge_style}&color={badge_color}" alt="repo-top-language">
+\t<img src="https://img.shields.io/{host}/languages/count/{full_name}?style={badge_style}&color={badge_color}" alt="repo-language-count">
+"""
+
+skill_icons = """<a href="https://skillicons.dev">\n\t\t<img src="{}">\n\t</a>"""
+
+# -- Overview Section ----------------------------------------------------------
+
+overview = """
+
+---
+## Overview
+
+{0}
+
+---
+"""
+
+# -- ToC Section ---------------------------------------------------------------
+
+table_of_contents = """
+
+## Table of contents
+
+- [Core features](#core-features)
+- [Installation](#installation)
+- [Examples](#examples)
+- [Documentation](#documentation)
+- [Getting started](#getting-started)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
+- [Contacts](#contacts)
+
+---
+"""
+
+# -- Core Features Section ------------------------------------------------------------
+
+core_features = """
+## Core features
+
+{0}
+
+---
+"""
+
+# -- Examples Section ---------------------------------------------------------------
+
+examples = """
+
+## Examples
+
+Examples of how this should work and how it should be used are available in [{examples}](https://{host_domain}/{full_name}/tree/{default_branch}/{examples_path}).
+
+---
+"""
+
+# -- Docs Section ---------------------------------------------------------------
+documentation = """
+
+## Documentation
+
+A detailed {repo_name} description is available in [{docs}]({homepage_url}).
+
+---
+"""
+
+# -- Acknowledgments Section ---------------------------------------------------
+
+acknowledgments = """
+
+## Acknowledgments
+
+- List any resources, contributors, inspiration, etc. here.
+
+---
+
+"""
+
+# -- License Section -----------------------------------------------------------
+
+license = """
+
+## License
+
+This project is protected under the {license_name}. For more details, refer to the [LICENSE](https://{host_domain}/{full_name}/blob/{default_branch}/{license_path}) file.
+
+---
+"""
+
+# -- Contact Section -----------------------------------------------------------
+
+contacts = """
+
+## Contacts
+
+Your contacts. For example:
+
+- [Telegram channel](https://t.me/) answering questions about your project
+- [VK group](<https://vk.com/>) your VK group
+- etc.
+
+---
+
+"""
+
+
+# -- API Documentation Section -------------------------------------------------
+
+
+api_docs = """
+### API Documentation
+
+The project API documentation is available at: [API Documentation]({api_url}).
+
+---
+"""
+
+env_variables = """
+### Environment Variables
+
+To run this project, you will need to add the following environment variables to your environment:
+
+{env_variables}
+
+---
+"""
+
+cli_docs = """
+### Command-Line Interface
+
+The project supports the following command-line interface options:
+
+```sh
+❯ {cli_command}
+```
+
+---
+"""
