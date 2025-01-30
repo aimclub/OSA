@@ -145,6 +145,7 @@ class DocGen(object):
         """
         openai.api_key = self.api_key
 
+        # Construct a structured prompt
         prompt = f"""
         Generate a Python docstring for the following class. The docstring should follow Google-style format and include:
         - A short summary of what the class does.
@@ -175,6 +176,7 @@ class DocGen(object):
         Generate documentation for a single method using OpenAI GPT.
         """
         openai.api_key = self.api_key
+        # print(type(method_details))
 
         prompt = f"""
         Generate a Python docstring for the following method. The docstring should follow Google-style format and include:
@@ -226,9 +228,11 @@ class DocGen(object):
             extracted_docstring = match.group(
                 2
             )  # Extract only the content inside the docstring
+            # cleaned_docstring = textwrap.dedent(extracted_docstring.strip())  # Remove extra indentation
             cleaned_content = re.sub(
                 r"^\s*def\s+\w+\(.*?\):\s*", "", extracted_docstring, flags=re.MULTILINE
-            )
+            )  # .strip()
+            # cleaned_docstring = textwrap.dedent(cleaned_content)
 
             return f"{triple_quotes}\n{cleaned_content}{triple_quotes}"
 
@@ -249,7 +253,10 @@ class DocGen(object):
         Returns:
             None
         """
+        # method_pattern = rf"(def\s+{method_details['method_name']}\s*\(.*?\)\s*(->\s*[a-zA-Z0-9_\[\], ]+)?\s*:\n)(\s*)(?!\s*\"\"\")"
         method_pattern = rf"(def\s+{method_details['method_name']}\s*\([^)]*\)\s*(->\s*[a-zA-Z0-9_\[\], ]+)?\s*:\n)(\s*)(?!\s*\"\"\")"
+
+        # docstring_with_format = f'{generated_docstring.strip()}\n'
         docstring_with_format = self.extract_pure_docstring(generated_docstring)
         updated_code = re.sub(
             method_pattern, rf"\1\3{docstring_with_format}\n\3", source_code, count=1
@@ -271,6 +278,8 @@ class DocGen(object):
         Returns:
             str: The updated source code with the class docstring inserted.
         """
+
+        # class_pattern = rf"(class\s+{class_name}\s*\([^)]*\)?:\n)(\s*)(?!\s*\"\"\")"
         class_pattern = (
             rf"(class\s+{class_name}\s*(\([^)]*\))?\s*:\n)(\s*)(?!\s*\"\"\")"
         )
@@ -284,9 +293,7 @@ class DocGen(object):
 
         return updated_code
 
-    def process_python_file(
-        self, parsed_structure: dict, file_path="test_dir/insert_test/osa_treesitter.py"
-    ):
+    def process_python_file(self, parsed_structure: dict):
         """
         Processes a Python file by generating and inserting missing docstrings.
 
@@ -305,16 +312,14 @@ class DocGen(object):
             None
         """
         for filename, structure in parsed_structure.items():
-            if os.path.isfile(file_path) == False:
-                file_path = os.path.join(file_path, filename)
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(filename, "r", encoding="utf-8") as f:
                 source_code = f.read()
             for item in structure:
                 if item["type"] == "class":
                     for method in item["methods"]:
                         if method["docstring"] == None:  # If docstring is missing
                             print(
-                                f"Generating docstring for method: {method['method_name']} in class {item['name']} at {file_path}"
+                                f"Generating docstring for method: {method['method_name']} in class {item['name']} at {filename}"
                             )
                             generated_docstring = self.generate_method_documentation(
                                 method
@@ -323,7 +328,7 @@ class DocGen(object):
                                 method["docstring"] = self.extract_pure_docstring(
                                     generated_docstring
                                 )
-                            print(generated_docstring)
+                            # print(generated_docstring)
                             source_code = self.insert_docstring_in_code(
                                 source_code, method, generated_docstring
                             )
@@ -340,19 +345,18 @@ class DocGen(object):
                             }
                         )
                     print(
-                        f"Generating docstring for class: {item['name']} in class at {file_path}"
+                        f"Generating docstring for class: {item['name']} in class at {filename}"
                     )
                     generated_cls_docstring = self.generate_class_documentation(
                         cls_structure
                     )
-                    print(generated_cls_docstring)
+                    # print(generated_cls_docstring)
                     source_code = self.insert_cls_docstring_in_code(
                         source_code, class_name, generated_cls_docstring
                     )
-            with open(file_path, "w", encoding="utf-8") as f:
+            with open(filename, "w", encoding="utf-8") as f:
                 f.write(source_code)
-            print(f"Updated file: {file_path}")
-            file_path = os.path.dirname(file_path)
+            print(f"Updated file: {filename}")
 
     def generate_documentation_openai(self, file_structure: dict, model="gpt-4"):
         """

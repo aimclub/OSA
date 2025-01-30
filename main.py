@@ -5,6 +5,8 @@ from readmeai.config.settings import ConfigLoader, GitSettings
 from readmeai.main import readme_generator
 from OSA.github_agent.github_agent import GithubAgent
 from OSA.utils import parse_folder_name
+from OSA.osatreesitter.osa_treesitter import OSA_TreeSitter
+from OSA.osatreesitter.docgen import DocGen
 
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
@@ -40,6 +42,10 @@ def main():
         github_agent.star_repository()
         github_agent.clone_repository()
         github_agent.create_and_checkout_branch()
+        ts = OSA_TreeSitter(os.path.basename(repo_url))
+        res = ts.analyze_directory(ts.cwd)
+        dg = DocGen()
+        dg.process_python_file(res)
         readme_agent(repo_url)
         github_agent.commit_and_push_changes()
         github_agent.create_pull_request()

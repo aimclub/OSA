@@ -38,11 +38,19 @@ class OSA_TreeSitter(object):
             0 - a directory was provided
             1 - a path to the specific file was provided.
         """
-        try:
-            return ([file for file in listdir(path) if isfile(join(path, file))], 0)
-        except NotADirectoryError:
-            if path.endswith(".py"):
-                return ([os.path.basename(os.path.normpath(path))], 1)
+        script_files = []
+
+        if os.path.isdir(path):
+            for root, _, files in os.walk(path):
+                for file in files:
+                    if file.endswith(".py"):
+                        script_files.append(os.path.join(root, file))
+            return script_files, 0
+
+        elif os.path.isfile(path) and path.endswith(".py"):
+            return ([os.path.abspath(path)], 1)
+
+        return ([], 0)
 
     @classmethod
     def _if_file_handler(cls, path: str):
@@ -57,18 +65,17 @@ class OSA_TreeSitter(object):
         return os.path.split(path)[0]
 
     @staticmethod
-    def open_file(path: str, file: str) -> str:
+    def open_file(file: str) -> str:
         """Method reads the content of the occured file.
 
         Args:
-            path: provided by user path to the scripts.
             file: file occured in the provided directory.
 
         Returns:
             Read content.
         """
         content = None
-        with open(os.path.join(path, file), encoding="utf-8", mode="r") as f:
+        with open(file, encoding="utf-8", mode="r") as f:
             content = f.read()
         return content
 
@@ -95,7 +102,7 @@ class OSA_TreeSitter(object):
             Tuple containing tree structure of the code and source code.
         """
         parser: Parser = self._parser_build(filename)
-        source_code: str = self.open_file(self.cwd, filename)
+        source_code: str = self.open_file(filename)
         return (parser.parse(source_code.encode("utf-8")), source_code)
 
     def extract_structure(self, filename: str) -> list:
@@ -310,7 +317,7 @@ class OSA_TreeSitter(object):
             results: dictionary containing a filename and its source code's structure.
         """
         os.makedirs("examples", exist_ok=True)
-        with open("examples/report.txt", "w") as f:
+        with open("examples/report.txt", "w", encoding="utf-8") as f:
             f.write(f"The provided path: '{self.cwd}'\n")
             for filename, structures in results.items():
                 f.write(f"File: {filename}\n")
