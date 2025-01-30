@@ -11,4 +11,4 @@ tomli==2.2.1
 python-dotenv==1.0.1
 pytest==8.3.4
 
-git+https://github.com/fl1pcoin/readmeai.git@1081e95dd423397248d1b62fa2f5076306278462
+git+https://github.com/fl1pcoin/readmeai.git@d9bea40bfc188fa8f020a10f6caa739ccb20c016
