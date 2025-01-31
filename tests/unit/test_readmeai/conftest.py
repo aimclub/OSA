@@ -1,7 +1,7 @@
 """Pytest fixtures for reuse across the test suite."""
 import pytest
 from OSA.utils import osa_project_root
-from readmeai.config.settings import ConfigLoader, Settings
+from readmeai.config.settings import ConfigLoader
 from readmeai.ingestion.models import (
     RepositoryContext,
     QuickStart,
@@ -12,38 +12,12 @@ from readmeai.ingestion.models import (
 
 
 @pytest.fixture(scope="session")
-def config_fixture() -> Settings:
-    config_dir = osa_project_root().joinpath('OSA/config')
-    return ConfigLoader(config_dir=config_dir).config
-
-
-@pytest.fixture(scope="session")
 def config_loader_fixture() -> ConfigLoader:
     config_dir = osa_project_root().joinpath('OSA/config')
-    return ConfigLoader(config_dir=config_dir)
+    return ConfigLoader(config_dir=str(config_dir))
 
 
 # -- readmeai.ingestion --------------
-
-
-@pytest.fixture(scope="session")
-def dependencies_fixture():
-    """
-    Project dependencies fixture.
-    """
-    return ["python", "pytest", "pytest-cov", "black", "flake8", "mypy"]
-
-
-@pytest.fixture(scope="session")
-def file_summaries_fixture() -> list[tuple[str, str]]:
-    """
-    LLM generated file summaries.
-    """
-    return [
-        ("/path/to/file1.py", "This is summary for file1.py"),
-        ("/path/to/file2.py", "This is summary for file2.py"),
-        (".github/workflows/ci.yml", "This is summary for ci.yml"),
-    ]
 
 
 @pytest.fixture(scope="session")
