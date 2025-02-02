@@ -21,7 +21,7 @@
 ## Overview
 
 <overview>
-Chromakey is a real-time video background removal system designed for applications like video conferencing, live streaming, and video editing. It offers a robust and efficient solution for seamless background integration, making it suitable for professionals and individuals seeking high-quality video production. By providing accurate and reliable background removal, Chromakey enhances video content creation.
+Chromakey is an innovative toolkit designed for advanced image processing, focusing on chroma keying and object segmentation. It empowers researchers and developers to easily experiment with and deploy cutting-edge deep learning models, enhancing image analysis capabilities while ensuring accessibility for users with varying technical expertise.
 </overview>
 
 ---
@@ -46,15 +46,15 @@ Chromakey is a real-time video background removal system designed for applicatio
 
 <corefeatures>
 
-1. **Real-time Video Background Removal**: Utilizes `CNN-based method` for seamless background removal.
+1. **CNN-based Chroma Keying**: Implements advanced image processing techniques for chroma keying using CNN methods.
 
-2. **Modular Architecture**: Separates client-server communication, model training, and deployment for easy maintenance.
+2. **Transformer Integration**: Enhances segmentation accuracy with advanced image analysis techniques through transformer-based methods.
 
-3. **Transformer-based Method**: Improves accuracy by incorporating `Transformer-based architecture` for contextual information.
+3. **Docker Containerization**: Facilitates easy deployment and execution across environments using Docker containers.
 
-4. **Containerization**: Employs `Docker` for easy deployment, scalability, and adaptability.
+4. **Configuration Management**: Supports configuration management and utility functions for efficient data handling.
 
-5. **Python-based Development**: Leverages `Python` for development, with `pip` for package management.
+5. **Focal Loss Implementation**: Addresses class imbalance during training, improving model performance in real-world applications.
 
 </corefeatures>
 

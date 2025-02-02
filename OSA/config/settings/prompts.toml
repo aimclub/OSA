@@ -18,22 +18,21 @@ Your response should adhere to the following guidelines:
 - The list should contain up to 5 items.
 - Limit your response for each line of the list to 15 words.
 - Start each feature description on a new line.
-- Highlight the key tools and technologies using the " `tool` " where necessary.
 
 Present your final list of core_features within <core_features> tags. Here's an example of a well-structured response:
 
 <example>
 <core_features>
 
-   - **Feature 1**: Brief description.
+1. **Feature 1**: Brief description.
 
-   - **Feature 2**: Brief description.
+2. **Feature 2**: Brief description.
 
-   - **Feature 3**: Brief description.
+3. **Feature 3**: Brief description.
 
-   - **Feature 4**: Brief description.
+4. **Feature 4**: Brief description.
 
-   - **Feature 5**: Brief description.
+5. **Feature 5**: Brief description.
 
 </core_features>
 </example>

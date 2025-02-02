@@ -26,7 +26,7 @@
 ## Overview
 
 <overview>
-nas-fedot is a framework that automates the design and optimization of neural networks for various tasks, such as image classification and seismic inversion. It enables users to focus on high-level tasks, accelerating the development of high-performance neural networks. The framework targets developers and researchers seeking to improve neural network performance without manual architecture design.
+nas-fedot is a framework designed for developing and optimizing neural network architectures, particularly for tasks like butterfly classification and seismic inversion. It empowers researchers and practitioners in machine learning to efficiently experiment with various model designs, enhancing their ability to innovate and improve performance in their projects.
 </overview>
 
 ---
@@ -51,15 +51,15 @@ nas-fedot is a framework that automates the design and optimization of neural ne
 
 <corefeatures>
 
-1. **Modular Framework**: Uses `Python` for Neural Architecture Search (NAS) development.
+1. **Neural Network Framework**: Comprehensive tools for developing and optimizing neural network architectures.
 
-2. **Graph-Based Representation**: Defines and composes neural network components using graphs.
+2. **Modular Design**: Customizable modules for graph building, model construction, and performance evaluation.
 
-3. **Optimization Tools**: Includes tools for evaluating and validating neural network performance.
+3. **GPU Support**: Multiple Dockerfiles for standard and GPU-accelerated environments.
 
-4. **Containerization**: Utilizes `Docker` for containerization and `pip` for package management.
+4. **Dependency Management**: Requirements file to manage all necessary dependencies effectively.
 
-5. **Extensive Libraries**: Leverages `TensorFlow`, `Keras`, `PyTorch`, and `scikit-learn` for neural networks.
+5. **Continuous Integration**: GitHub workflows for automated testing and robust development processes.
 
 </corefeatures>
 
