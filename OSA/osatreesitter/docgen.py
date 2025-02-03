@@ -2,6 +2,7 @@ import openai
 import dotenv
 import os
 import re
+import logging
 
 dotenv.load_dotenv()
 
@@ -57,12 +58,6 @@ class DocGen(object):
         Instantiates the object of the class.
 
         This method is a constructor that initializes the object by setting the 'api_key' attribute to the value of the 'OPENAI_API_KEY' environment variable.
-
-        Args:
-            self (object): A reference to the instance of the class.
-
-        Returns:
-            None
         """
         self.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -76,45 +71,55 @@ class DocGen(object):
         source code and docstrings if available.
 
         Args:
-            structure (dict): A dictionary containing details of the Python files structure. The dictionary should
+            structure: A dictionary containing details of the Python files structure. The dictionary should
             have filenames as keys and values as lists of dictionaries. Each dictionary in the list represents a
             class or function and should contain keys like 'type', 'name', 'start_line', 'docstring', 'methods'
             (for classes), 'details' (for functions) etc. Each 'methods' or 'details' is also a dictionary that
             includes detailed information about the method or function.
 
         Returns:
-            str: A formatted string representing the structure of the Python files.
+            A formatted string representing the structure of the Python files.
         """
         formatted_structure = "The following is the structure of the Python files:\n\n"
+
         for filename, structures in structure.items():
             formatted_structure += f"File: {filename}\n"
             for item in structures:
                 if item["type"] == "class":
-                    formatted_structure += (
-                        f"  - Class: {item['name']}, line {item['start_line']}\n"
-                    )
-                    if item["docstring"]:
-                        formatted_structure += f"      Docstring: {item['docstring']}\n"
-                    for method in item["methods"]:
-                        formatted_structure += f"      - Method: {method['method_name']}, Args: {method['arguments']}, Return: {method['return_type']}, line {method['start_line']}\n"
-                        if method["docstring"]:
-                            formatted_structure += (
-                                f"          Docstring:\n        {method['docstring']}\n"
-                            )
-                        formatted_structure += (
-                            f"        Source:\n{method['source_code']}\n"
-                        )
+                    formatted_structure += DocGen._format_class(item)
                 elif item["type"] == "function":
-                    details = item["details"]
-                    formatted_structure += f"  - Function: {details['method_name']}, Args: {details['arguments']}, Return: {details['return_type']}, line {details['start_line']}\n"
-                    if details["docstring"]:
-                        formatted_structure += (
-                            f"          Docstring:\n    {details['docstring']}\n"
-                        )
-                    formatted_structure += (
-                        f"        Source:\n{details['source_code']}\n"
-                    )
+                    formatted_structure += DocGen._format_function(item)
+
         return formatted_structure
+
+    @staticmethod
+    def _format_class(item):
+        """Formats class details."""
+        class_str = f"  - Class: {item['name']}, line {item['start_line']}\n"
+        if item["docstring"]:
+            class_str += f"      Docstring: {item['docstring']}\n"
+        for method in item["methods"]:
+            class_str += DocGen._format_method(method)
+        return class_str
+
+    @staticmethod
+    def _format_method(method):
+        """Formats method details."""
+        method_str = f"      - Method: {method['method_name']}, Args: {method['arguments']}, Return: {method['return_type']}, line {method['start_line']}\n"
+        if method["docstring"]:
+            method_str += f"          Docstring:\n        {method['docstring']}\n"
+        method_str += f"        Source:\n{method['source_code']}\n"
+        return method_str
+
+    @staticmethod
+    def _format_function(item):
+        """Formats function details."""
+        details = item["details"]
+        function_str = f"  - Function: {details['method_name']}, Args: {details['arguments']}, Return: {details['return_type']}, line {details['start_line']}\n"
+        if details["docstring"]:
+            function_str += f"          Docstring:\n    {details['docstring']}\n"
+        function_str += f"        Source:\n{details['source_code']}\n"
+        return function_str
 
     @staticmethod
     def count_tokens(prompt, model="gpt-4"):
@@ -122,11 +127,11 @@ class DocGen(object):
         Counts the number of tokens in a given prompt using a specified model.
 
         Args:
-            prompt (str): The text for which to count the tokens.
-            model (str, optional): The model to use for encoding. Defaults to "gpt-4".
+            prompt: The text for which to count the tokens.
+            model: The model to use for encoding. Defaults to "gpt-4".
 
         Returns:
-            int: The number of tokens in the prompt.
+            The number of tokens in the prompt.
         """
         enc = tiktoken.encoding_for_model(model)
         tokens = enc.encode(prompt)
@@ -137,11 +142,11 @@ class DocGen(object):
         Generate documentation for a class using OpenAI GPT.
 
         Args:
-            class_details (list): A list of dictionaries containing method names and their docstrings.
-            model (str, optional): The GPT model to use. Defaults to "gpt-4".
+            class_details: A list of dictionaries containing method names and their docstrings.
+            model: The GPT model to use. Defaults to "gpt-4".
 
         Returns:
-            str: The generated class docstring.
+            The generated class docstring.
         """
         openai.api_key = self.api_key
 
@@ -176,7 +181,6 @@ class DocGen(object):
         Generate documentation for a single method using OpenAI GPT.
         """
         openai.api_key = self.api_key
-        # print(type(method_details))
 
         prompt = f"""
         Generate a Python docstring for the following method. The docstring should follow Google-style format and include:
@@ -210,15 +214,15 @@ class DocGen(object):
 
         return response.choices[0].message.content
 
-    def extract_pure_docstring(self, gpt_response):
+    def extract_pure_docstring(self, gpt_response: str):
         """
         Extracts only the docstring from the GPT-4 response while keeping triple quotes.
 
         Args:
-            gpt_response (str): The full response from GPT-4.
+            gpt_response: The full response from GPT-4.
 
         Returns:
-            str: The properly formatted docstring including triple quotes.
+            The properly formatted docstring including triple quotes.
         """
         # Regex to capture the full docstring with triple quotes
         match = re.search(r'("""+)\n?(.*?)\n?\1', gpt_response, re.DOTALL)
@@ -228,11 +232,9 @@ class DocGen(object):
             extracted_docstring = match.group(
                 2
             )  # Extract only the content inside the docstring
-            # cleaned_docstring = textwrap.dedent(extracted_docstring.strip())  # Remove extra indentation
             cleaned_content = re.sub(
                 r"^\s*def\s+\w+\(.*?\):\s*", "", extracted_docstring, flags=re.MULTILINE
-            )  # .strip()
-            # cleaned_docstring = textwrap.dedent(cleaned_content)
+            )
 
             return f"{triple_quotes}\n{cleaned_content}{triple_quotes}"
 
@@ -245,18 +247,18 @@ class DocGen(object):
         This method inserts a generated docstring into the specified location in the source code.
 
         Args:
-            source_code (str): The source code where the docstring should be inserted.
-            method_details (dict): A dictionary containing details about the method.
+            source_code: The source code where the docstring should be inserted.
+            method_details: A dictionary containing details about the method.
                 It should have a key 'method_name' with the name of the method where the docstring should be inserted.
-            generated_docstring (str): The docstring that should be inserted into the source code.
+            generated_docstring: The docstring that should be inserted into the source code.
 
         Returns:
             None
         """
-        # method_pattern = rf"(def\s+{method_details['method_name']}\s*\(.*?\)\s*(->\s*[a-zA-Z0-9_\[\], ]+)?\s*:\n)(\s*)(?!\s*\"\"\")"
+        # Matches a method definition with the given name,
+        # including an optional return type. Ensures no docstring follows.
         method_pattern = rf"(def\s+{method_details['method_name']}\s*\([^)]*\)\s*(->\s*[a-zA-Z0-9_\[\], ]+)?\s*:\n)(\s*)(?!\s*\"\"\")"
 
-        # docstring_with_format = f'{generated_docstring.strip()}\n'
         docstring_with_format = self.extract_pure_docstring(generated_docstring)
         updated_code = re.sub(
             method_pattern, rf"\1\3{docstring_with_format}\n\3", source_code, count=1
@@ -271,15 +273,16 @@ class DocGen(object):
         Inserts a generated class docstring into the class definition.
 
         Args:
-            source_code (str): The source code where the docstring should be inserted.
-            class_details (list): A list of dictionaries containing method names and their docstrings.
-            generated_docstring (str): The docstring that should be inserted.
+            source_code: The source code where the docstring should be inserted.
+            class_details: A list of dictionaries containing method names and their docstrings.
+            generated_docstring: The docstring that should be inserted.
 
         Returns:
-            str: The updated source code with the class docstring inserted.
+            The updated source code with the class docstring inserted.
         """
 
-        # class_pattern = rf"(class\s+{class_name}\s*\([^)]*\)?:\n)(\s*)(?!\s*\"\"\")"
+        # Matches a class definition with the given name,
+        # including optional parentheses. Ensures no docstring follows.
         class_pattern = (
             rf"(class\s+{class_name}\s*(\([^)]*\))?\s*:\n)(\s*)(?!\s*\"\"\")"
         )
@@ -302,11 +305,9 @@ class DocGen(object):
         and prints the path of the updated file.
 
         Args:
-            parsed_structure (dict): A dictionary representing the parsed structure of the Python codebase.
+            parsed_structure: A dictionary representing the parsed structure of the Python codebase.
                 The dictionary keys are filenames and the values are lists of dictionaries representing
                 classes and their methods.
-            file_path (str, optional): The file path of the Python file to be processed. Defaults to
-                'test_dir/insert_test/osa_treesitter.py'.
 
         Returns:
             None
@@ -318,7 +319,7 @@ class DocGen(object):
                 if item["type"] == "class":
                     for method in item["methods"]:
                         if method["docstring"] == None:  # If docstring is missing
-                            print(
+                            logging.info(
                                 f"Generating docstring for method: {method['method_name']} in class {item['name']} at {filename}"
                             )
                             generated_docstring = self.generate_method_documentation(
@@ -328,7 +329,6 @@ class DocGen(object):
                                 method["docstring"] = self.extract_pure_docstring(
                                     generated_docstring
                                 )
-                            # print(generated_docstring)
                             source_code = self.insert_docstring_in_code(
                                 source_code, method, generated_docstring
                             )
@@ -344,19 +344,58 @@ class DocGen(object):
                                 "docstring": method["docstring"],
                             }
                         )
-                    print(
+                    logging.info(
                         f"Generating docstring for class: {item['name']} in class at {filename}"
                     )
                     generated_cls_docstring = self.generate_class_documentation(
                         cls_structure
                     )
-                    # print(generated_cls_docstring)
                     source_code = self.insert_cls_docstring_in_code(
                         source_code, class_name, generated_cls_docstring
                     )
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(source_code)
-            print(f"Updated file: {filename}")
+            logging.info(f"Updated file: {filename}")
+
+    def generate_method_documentation_md(self, method_details: dict, model="gpt-4"):
+        """
+        Generate documentation for a single method using OpenAI GPT.
+        """
+        openai.api_key = self.api_key
+
+        prompt = f"""
+        Generate detailed documentation for the following Python method. Include:
+        - Method name.
+        - Arguments and their purposes.
+        - Return type and its purpose.
+        - A high-level explanation of what the method does.
+        - Include the provided source code in the documentation.
+
+        Method Details:
+        - Method Name: {method_details["method_name"]}
+        - Arguments: {method_details["arguments"]}
+        - Return Type: {method_details["return_type"]}
+        - Docstring: {method_details["docstring"]}
+        - Source Code:
+        ```
+        {method_details["source_code"]}
+        ```
+        """
+
+        response = openai.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant for generating documentation.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=1500,
+            temperature=0.7,
+        )
+
+        return response.choices[0].message.content
 
     def generate_documentation_openai(self, file_structure: dict, model="gpt-4"):
         """
@@ -368,49 +407,56 @@ class DocGen(object):
 
         Args:
             self: The instance of the class where this method is defined.
-            file_structure (dict): A dictionary where keys are filenames and values are lists of dictionaries.
+            file_structure: A dictionary where keys are filenames and values are lists of dictionaries.
                 Each dictionary represents a class or a standalone function in the file and contains information
                 like its name, type (class or function), docstring, and methods (in case of a class).
-            model (str, optional): The model to be used by OpenAI's API to generate the documentation. Defaults to 'gpt-4'.
+            model: The model to be used by OpenAI's API to generate the documentation. Defaults to 'gpt-4'.
 
         Returns:
-            str: The final documentation as a string.
+            The final documentation as a string.
         """
         final_documentation = ""
 
         for filename, structure in file_structure.items():
-            final_documentation += f"# Documentation for {filename}\n\n"
+            final_documentation += self._format_file_header(filename)
 
             for item in structure:
                 if item["type"] == "class":
-                    final_documentation += f"## Class: {item['name']}\n\n{item['docstring'] or 'No docstring provided'}\n\n"
-
-                    for method in item["methods"]:
-                        if method["docstring"] == None:
-                            try:
-                                print(
-                                    f"Method {method['name']}'s docstring is generating"
-                                )
-                                method_doc = self.generate_method_documentation(
-                                    method_details=method, model=model
-                                )
-                                final_documentation += f"### Method: {method['method_name']}\n\n{method_doc}\n\n"
-                            except Exception as e:
-                                final_documentation += f"### Method: {method['method_name']}\n\nError generating documentation: {e}\n\n"
-
+                    final_documentation += self._format_class_doc(item, model)
                 elif item["type"] == "function":
-                    final_documentation += "## Standalone Functions\n\n"
-                    function_details = item["details"]
-                    if function_details["docstring"] == None:
-                        try:
-                            print(
-                                f"Method {function_details['name']}'s docstring is generating"
-                            )
-                            function_doc = self.generate_method_documentation(
-                                method_details=function_details, model=model
-                            )
-                            final_documentation += f"### Function: {function_details['method_name']}\n\n{function_doc}\n\n"
-                        except Exception as e:
-                            final_documentation += f"### Function: {function_details['method_name']}\n\nError generating documentation: {e}\n\n"
+                    final_documentation += self._format_function_doc(item, model)
 
         return final_documentation
+
+    def _format_file_header(self, filename):
+        """Formats the header for a file in documentation."""
+        return f"# Documentation for {filename}\n\n"
+
+    def _format_class_doc(self, item, model):
+        """Formats documentation for a class."""
+        class_doc = f"## Class: {item['name']}\n\n{item['docstring'] or 'No docstring provided'}\n\n"
+        for method in item["methods"]:
+            class_doc += self._generate_method_doc(method, model)
+        return class_doc
+
+    def _format_function_doc(self, item, model):
+        """Formats documentation for a standalone function."""
+        function_details = item["details"]
+        return self._generate_method_doc(function_details, model, is_function=True)
+
+    def _generate_method_doc(self, method_details, model, is_function=False):
+        """Generates documentation for a method or function."""
+        doc_type = "Function" if is_function else "Method"
+        try:
+            logging.info(
+                f"{doc_type} {method_details['method_name']}'s docstring is generating"
+            )
+            method_doc = self.generate_method_documentation_md(
+                method_details=method_details, model=model
+            )
+            return (
+                f"### {doc_type}: {method_details['method_name']}\n\n{method_doc}\n\n"
+            )
+        except Exception as e:
+            logging.error(e, exc_info=True)
+            return f"### {doc_type}: {method_details['method_name']}\n\nFailed to generate documentation.\n\n"
