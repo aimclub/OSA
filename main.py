@@ -1,6 +1,7 @@
 import os
 import argparse
 import logging
+from rich.logging import RichHandler
 from readmeai.config.settings import ConfigLoader, GitSettings
 from readmeai.main import readme_generator
 from OSA.github_agent.github_agent import GithubAgent
@@ -14,7 +15,11 @@ for handler in logging.root.handlers[:]:
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler()]
 )
+
+logger = logging.getLogger("rich")
 
 
 def main():
@@ -49,9 +54,9 @@ def main():
         readme_agent(repo_url)
         github_agent.commit_and_push_changes()
         github_agent.create_pull_request()
-        logging.info("All operations completed successfully.")
+        logger.info("All operations completed successfully.")
     except Exception as e:
-        logging.error("Error: %s", e, exc_info=True)
+        logger.error("Error: %s", e, exc_info=True)
 
 
 def readme_agent(repo_url: str) -> None:
@@ -63,7 +68,7 @@ def readme_agent(repo_url: str) -> None:
     Raises:
         Exception: If an error occurs during README.md generation.
     """
-    logging.info("Started generating README.md. Processing the repository: %s", repo_url)
+    logger.info("Started generating README.md. Processing the repository: %s", repo_url)
 
     try:
         # Load configurations and update repository URL
@@ -78,10 +83,10 @@ def readme_agent(repo_url: str) -> None:
         # Generate README.md
         readme_generator(config_loader, file_to_save)
 
-        logging.info("README.md successfully generated in folder: %s", output_dir)
+        logger.info("README.md successfully generated in folder: %s", output_dir)
 
     except Exception as e:
-        logging.error("Error while generating: %s", repr(e), exc_info=True)
+        logger.error("Error while generating: %s", repr(e), exc_info=True)
 
 
 if __name__ == "__main__":
