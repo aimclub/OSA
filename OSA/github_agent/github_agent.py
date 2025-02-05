@@ -1,6 +1,7 @@
 from git import Repo, GitCommandError, InvalidGitRepositoryError
 import os
 import logging
+from rich.logging import RichHandler
 import requests
 from dotenv import load_dotenv
 from OSA.utils import parse_folder_name
@@ -10,7 +11,11 @@ for handler in logging.root.handlers[:]:
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler()]
 )
+
+logger = logging.getLogger("rich")
 
 
 class GithubAgent:
@@ -67,10 +72,10 @@ class GithubAgent:
         response_check = requests.get(url_check, headers=headers)
 
         if response_check.status_code == 204:
-            logging.info(f"Repository {base_repo} is already starred.")
+            logger.info(f"Repository {base_repo} is already starred.")
             return
         elif response_check.status_code != 404:
-            logging.error(f"Failed to check star status: {response_check.status_code} - {response_check.text}")
+            logger.error(f"Failed to check star status: {response_check.status_code} - {response_check.text}")
             raise ValueError("Failed to check star status.")
 
         # Star the repository
@@ -78,9 +83,9 @@ class GithubAgent:
         response_star = requests.put(url_star, headers=headers)
 
         if response_star.status_code == 204:
-            logging.info(f"Repository {base_repo} has been starred successfully.")
+            logger.info(f"Repository {base_repo} has been starred successfully.")
         else:
-            logging.error(f"Failed to star repository: {response_star.status_code} - {response_star.text}")
+            logger.error(f"Failed to star repository: {response_star.status_code} - {response_star.text}")
             raise ValueError("Failed to star repository.")
 
     def clone_repository(self) -> None:
@@ -94,24 +99,24 @@ class GithubAgent:
             GitCommandError: If cloning the repository fails.
         """
         if self.repo:
-            logging.warning(f"Repository is already initialized ({self.repo_url})")
+            logger.warning(f"Repository is already initialized ({self.repo_url})")
             return
 
         if os.path.exists(self.clone_dir):
             try:
-                logging.info(f"Repository already exists at {self.clone_dir}. Initializing...")
+                logger.info(f"Repository already exists at {self.clone_dir}. Initializing...")
                 self.repo = Repo(self.clone_dir)
-                logging.info("Repository initialized from existing directory")
+                logger.info("Repository initialized from existing directory")
             except InvalidGitRepositoryError:
-                logging.error(f"Directory {self.clone_dir} exists but is not a valid Git repository")
+                logger.error(f"Directory {self.clone_dir} exists but is not a valid Git repository")
                 raise
         else:
             try:
-                logging.info(f"Cloning repository {self.repo_url} into {self.clone_dir}...")
+                logger.info(f"Cloning repository {self.repo_url} into {self.clone_dir}...")
                 self.repo = Repo.clone_from(self._get_auth_url(), self.clone_dir)
-                logging.info("Cloning completed")
+                logger.info("Cloning completed")
             except GitCommandError as e:
-                logging.error(f"Cloning failed: {repr(e)}")
+                logger.error(f"Cloning failed: {repr(e)}")
                 raise
 
     def create_and_checkout_branch(self) -> None:
@@ -120,13 +125,13 @@ class GithubAgent:
         If the branch already exists, it simply checks out the branch.
         """
         if self.branch_name in self.repo.heads:
-            logging.info(f"Branch {self.branch_name} already exists. Switching to it...")
+            logger.info(f"Branch {self.branch_name} already exists. Switching to it...")
             self.repo.git.checkout(self.branch_name)
             return
         else:
-            logging.info(f"Creating and switching to branch {self.branch_name}...")
+            logger.info(f"Creating and switching to branch {self.branch_name}...")
             self.repo.git.checkout('-b', self.branch_name)
-            logging.info(f"Switched to branch {self.branch_name}.")
+            logger.info(f"Switched to branch {self.branch_name}.")
 
     def commit_and_push_changes(self, commit_message: str = "OSA recommendations") -> None:
         """Commits and pushes changes to the remote branch.
@@ -134,14 +139,14 @@ class GithubAgent:
         Args:
             commit_message: The commit message. Defaults to "OSA recommendations".
         """
-        logging.info("Committing changes...")
+        logger.info("Committing changes...")
         self.repo.git.add('.')
         self.repo.git.commit('-m', commit_message)
-        logging.info("Commit completed.")
+        logger.info("Commit completed.")
 
-        logging.info(f"Pushing changes to branch {self.branch_name}...")
+        logger.info(f"Pushing changes to branch {self.branch_name}...")
         self.repo.git.push('--set-upstream', 'origin', self.branch_name)
-        logging.info("Push completed.")
+        logger.info("Push completed.")
 
     def create_pull_request(self, base_branch: str = "main", title: str = None, body: str = None) -> None:
         """Creates a pull request from the current branch to the specified base branch.
@@ -178,9 +183,9 @@ class GithubAgent:
         response = requests.post(url, json=pr_data, headers=headers)
 
         if response.status_code == 201:
-            logging.info(f"Pull request created successfully: {response.json()['html_url']}")
+            logger.info(f"Pull request created successfully: {response.json()['html_url']}")
         else:
-            logging.error(f"Failed to create pull request: {response.status_code} - {response.text}")
+            logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
             raise ValueError("Failed to create pull request.")
 
     def _get_auth_url(self) -> str:

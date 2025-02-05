@@ -1,10 +1,13 @@
 import os
 import argparse
 import logging
+from rich.logging import RichHandler
 from readmeai.config.settings import ConfigLoader, GitSettings
 from readmeai.main import readme_generator
 from OSA.github_agent.github_agent import GithubAgent
 from OSA.utils import parse_folder_name
+from OSA.osatreesitter.osa_treesitter import OSA_TreeSitter
+from OSA.osatreesitter.docgen import DocGen
 
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
@@ -12,7 +15,11 @@ for handler in logging.root.handlers[:]:
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler()]
 )
+
+logger = logging.getLogger("rich")
 
 
 def main():
@@ -40,12 +47,16 @@ def main():
         github_agent.star_repository()
         github_agent.clone_repository()
         github_agent.create_and_checkout_branch()
+        ts = OSA_TreeSitter(os.path.basename(repo_url))
+        res = ts.analyze_directory(ts.cwd)
+        dg = DocGen()
+        dg.process_python_file(res)
         readme_agent(repo_url)
         github_agent.commit_and_push_changes()
         github_agent.create_pull_request()
-        logging.info("All operations completed successfully.")
+        logger.info("All operations completed successfully.")
     except Exception as e:
-        logging.error("Error: %s", e, exc_info=True)
+        logger.error("Error: %s", e, exc_info=True)
 
 
 def readme_agent(repo_url: str) -> None:
@@ -57,7 +68,7 @@ def readme_agent(repo_url: str) -> None:
     Raises:
         Exception: If an error occurs during README.md generation.
     """
-    logging.info("Started generating README.md. Processing the repository: %s", repo_url)
+    logger.info("Started generating README.md. Processing the repository: %s", repo_url)
 
     try:
         # Load configurations and update repository URL
@@ -72,10 +83,10 @@ def readme_agent(repo_url: str) -> None:
         # Generate README.md
         readme_generator(config_loader, file_to_save)
 
-        logging.info("README.md successfully generated in folder: %s", output_dir)
+        logger.info("README.md successfully generated in folder: %s", output_dir)
 
     except Exception as e:
-        logging.error("Error while generating: %s", repr(e), exc_info=True)
+        logger.error("Error while generating: %s", repr(e), exc_info=True)
 
 
 if __name__ == "__main__":
