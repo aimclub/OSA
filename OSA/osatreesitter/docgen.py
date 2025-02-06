@@ -3,6 +3,7 @@ import dotenv
 import os
 import re
 import logging
+from OSA.osatreesitter.llama import requestHandler
 
 dotenv.load_dotenv()
 
@@ -137,7 +138,7 @@ class DocGen(object):
         tokens = enc.encode(prompt)
         return len(tokens)
 
-    def generate_class_documentation(self, class_details, model="gpt-4"):
+    def generate_class_documentation(self, class_details, model="llama"):
         """
         Generate documentation for a class using OpenAI GPT.
 
@@ -148,12 +149,11 @@ class DocGen(object):
         Returns:
             The generated class docstring.
         """
-        openai.api_key = self.api_key
-
         # Construct a structured prompt
         prompt = f"""
-        Generate a Python docstring for the following class. The docstring should follow Google-style format and include:
+        Generate a single Python docstring for the following class {class_details[0]['class_name']}. The docstring should follow Google-style format and include:
         - A short summary of what the class does.
+        - A list of its methods.
         - A brief description of its methods.
 
         Class Methods:
@@ -161,27 +161,42 @@ class DocGen(object):
         for method in class_details:
             prompt += f"- {method['method_name']}: {method['docstring']}\n"
 
-        response = openai.chat.completions.create(
-            model=model,
-            messages=[
+        if model == "gpt-4":
+            openai.api_key = self.api_key
+            response = openai.chat.completions.create(
+                model=model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a helpful assistant for generating Python docstrings.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=1000,
+                temperature=0.7,
+            )
+
+            return response.choices[0].message.content
+
+        elif model == "llama":
+            url = "http://10.32.15.21:6672/chat_completion"
+            roles = [
                 {
                     "role": "system",
-                    "content": "You are a helpful assistant for generating Python docstrings.",
+                    "content": "You are a helpful assistant for generating a Python docstrings.",
                 },
                 {"role": "user", "content": prompt},
-            ],
-            max_tokens=1000,
-            temperature=0.7,
-        )
+            ]
+            request = requestHandler(url)
+            request.initialize_payload(prompt=prompt, roles=roles, tokens_limit=1500)
+            response = request.send_request()
 
-        return response.choices[0].message.content
+            return response.json()["content"]
 
-    def generate_method_documentation(self, method_details: dict, model="gpt-4"):
+    def generate_method_documentation(self, method_details: dict, model="llama"):
         """
         Generate documentation for a single method using OpenAI GPT.
         """
-        openai.api_key = self.api_key
-
         prompt = f"""
         Generate a Python docstring for the following method. The docstring should follow Google-style format and include:
         - A short summary of what the method does.
@@ -198,21 +213,37 @@ class DocGen(object):
         {method_details["source_code"]}
         ```
         """
+        if model == "gpt-4":
+            openai.api_key = self.api_key
+            response = openai.chat.completions.create(
+                model=model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a helpful assistant for generating a Python docstrings.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=1500,
+                temperature=0.7,
+            )
 
-        response = openai.chat.completions.create(
-            model=model,
-            messages=[
+            return response.choices[0].message.content
+
+        elif model == "llama":
+            url = "http://10.32.15.21:6672/chat_completion"
+            roles = [
                 {
                     "role": "system",
                     "content": "You are a helpful assistant for generating a Python docstrings.",
                 },
                 {"role": "user", "content": prompt},
-            ],
-            max_tokens=1500,
-            temperature=0.7,
-        )
+            ]
+            request = requestHandler(url)
+            request.initialize_payload(prompt=prompt, roles=roles, tokens_limit=1500)
+            response = request.send_request()
 
-        return response.choices[0].message.content
+            return response.json()["content"]
 
     def extract_pure_docstring(self, gpt_response: str):
         """
@@ -340,6 +371,7 @@ class DocGen(object):
                     for method in item["methods"]:
                         cls_structure.append(
                             {
+                                "class_name": class_name,
                                 "method_name": method["method_name"],
                                 "docstring": method["docstring"],
                             }
