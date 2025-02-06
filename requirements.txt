@@ -33,7 +33,7 @@ Pygments==2.19.1
 pytest==8.3.4
 python-dotenv==1.0.1
 PyYAML==6.0.2
-readmeai @ git+https://github.com/fl1pcoin/readmeai.git@cdbd0777a8f0012c401942de39fa0f691cc267c9
+readmeai @ git+https://github.com/fl1pcoin/readmeai.git@d8d678ba12e3e835aef2f627b6dfc206f3e60a6c
 regex==2024.11.6
 requests==2.32.3
 rich==13.9.4

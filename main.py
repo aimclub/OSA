@@ -41,13 +41,17 @@ def main():
     parser.add_argument(
         "api",
         type=str,
-        help="LLM API service provider"
+        help="LLM API service provider",
+        nargs="?",
+        default="llama"
     )
 
     parser.add_argument(
         "model_name",
         type=str,
         help="Specific LLM model to use",
+        nargs="?",
+        default="llama"
     )
 
     args = parser.parse_args()
@@ -61,12 +65,14 @@ def main():
         github_agent.star_repository()
         github_agent.clone_repository()
         github_agent.create_and_checkout_branch()
-
+        
+        # Docstring generation
         ts = OSA_TreeSitter(os.path.basename(repo_url))
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen()
         dg.process_python_file(res)
-        
+
+        # Readme generation
         readme_agent(repo_url, api, model_name)
 
         github_agent.commit_and_push_changes()

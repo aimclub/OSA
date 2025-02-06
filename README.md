@@ -114,7 +114,7 @@ Examples of generated README files are available in [examples](https://github.co
 
 Local Llama ITMO:
 ```sh
-python main.py https://github.com/ITMO-NSS-team/nas-fedot llama llama
+python main.py https://github.com/ITMO-NSS-team/nas-fedot
 ```  
 OpenAI:
 ```sh
