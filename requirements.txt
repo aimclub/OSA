@@ -34,7 +34,6 @@ pytest==8.3.4
 pytest-mock==3.14.0
 python-dotenv==1.0.1
 PyYAML==6.0.2
-readmeai @ git+https://github.com/fl1pcoin/readmeai.git@d9bea40bfc188fa8f020a10f6caa739ccb20c016
 regex==2024.11.6
 requests==2.32.3
 rich==13.9.4
@@ -49,3 +48,5 @@ tree-sitter-python==0.23.4
 typing_extensions==4.12.2
 urllib3==2.3.0
 yarl==1.18.3
+
+readmeai @ git+https://github.com/fl1pcoin/readmeai.git@d9bea40bfc188fa8f020a10f6caa739ccb20c016
