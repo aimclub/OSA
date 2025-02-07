@@ -97,7 +97,7 @@ Install Open-Source-Advisor using one of the following methods:
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
-❯ docker build -t ITMO-NSS-team/Open-Source-Advisor .
+❯ docker build -f docker/Dockerfile -t {image-name} .
 ```
 
 
