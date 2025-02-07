@@ -13,6 +13,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ../OSA/ OSA/
 COPY ../main.py .
 
-ENV REPO_URL=""
-
-CMD ["sh", "-c", "python main.py $REPO_URL"]
+ENTRYPOINT ["python", "main.py"]
