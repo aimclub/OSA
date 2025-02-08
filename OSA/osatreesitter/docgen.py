@@ -54,13 +54,14 @@ class DocGen(object):
             file structure and for each class or standalone function, generating its documentation.
     """
 
-    def __init__(self):
+    def __init__(self, model: str = "llama"):
         """
         Instantiates the object of the class.
 
         This method is a constructor that initializes the object by setting the 'api_key' attribute to the value of the 'OPENAI_API_KEY' environment variable.
         """
         self.api_key = os.getenv("OPENAI_API_KEY")
+        self.model = model
 
     @staticmethod
     def format_structure_openai(structure: dict):
@@ -138,7 +139,7 @@ class DocGen(object):
         tokens = enc.encode(prompt)
         return len(tokens)
 
-    def generate_class_documentation(self, class_details, model="llama"):
+    def generate_class_documentation(self, class_details):
         """
         Generate documentation for a class using OpenAI GPT.
 
@@ -161,10 +162,10 @@ class DocGen(object):
         for method in class_details:
             prompt += f"- {method['method_name']}: {method['docstring']}\n"
 
-        if model == "gpt-4":
+        if self.model == "gpt-4":
             openai.api_key = self.api_key
             response = openai.chat.completions.create(
-                model=model,
+                model=self.model,
                 messages=[
                     {
                         "role": "system",
@@ -178,7 +179,7 @@ class DocGen(object):
 
             return response.choices[0].message.content
 
-        elif model == "llama":
+        elif self.model == "llama":
             url = "http://10.32.15.21:6672/chat_completion"
             roles = [
                 {
@@ -193,7 +194,7 @@ class DocGen(object):
 
             return response.json()["content"]
 
-    def generate_method_documentation(self, method_details: dict, model="llama"):
+    def generate_method_documentation(self, method_details: dict):
         """
         Generate documentation for a single method using OpenAI GPT.
         """
@@ -213,10 +214,10 @@ class DocGen(object):
         {method_details["source_code"]}
         ```
         """
-        if model == "gpt-4":
+        if self.model == "gpt-4":
             openai.api_key = self.api_key
             response = openai.chat.completions.create(
-                model=model,
+                model=self.model,
                 messages=[
                     {
                         "role": "system",
@@ -230,7 +231,7 @@ class DocGen(object):
 
             return response.choices[0].message.content
 
-        elif model == "llama":
+        elif self.model == "llama":
             url = "http://10.32.15.21:6672/chat_completion"
             roles = [
                 {
@@ -389,7 +390,7 @@ class DocGen(object):
                 f.write(source_code)
             logging.info(f"Updated file: {filename}")
 
-    def generate_method_documentation_md(self, method_details: dict, model="gpt-4"):
+    def generate_method_documentation_md(self, method_details: dict):
         """
         Generate documentation for a single method using OpenAI GPT.
         """
@@ -415,7 +416,7 @@ class DocGen(object):
         """
 
         response = openai.chat.completions.create(
-            model=model,
+            model=self.model,
             messages=[
                 {
                     "role": "system",
@@ -429,7 +430,7 @@ class DocGen(object):
 
         return response.choices[0].message.content
 
-    def generate_documentation_openai(self, file_structure: dict, model="gpt-4"):
+    def generate_documentation_openai(self, file_structure: dict):
         """
         Generates the documentation for a given file structure using OpenAI's API.
 
@@ -454,9 +455,9 @@ class DocGen(object):
 
             for item in structure:
                 if item["type"] == "class":
-                    final_documentation += self._format_class_doc(item, model)
+                    final_documentation += self._format_class_doc(item)
                 elif item["type"] == "function":
-                    final_documentation += self._format_function_doc(item, model)
+                    final_documentation += self._format_function_doc(item)
 
         return final_documentation
 
@@ -464,19 +465,19 @@ class DocGen(object):
         """Formats the header for a file in documentation."""
         return f"# Documentation for {filename}\n\n"
 
-    def _format_class_doc(self, item, model):
+    def _format_class_doc(self, item):
         """Formats documentation for a class."""
         class_doc = f"## Class: {item['name']}\n\n{item['docstring'] or 'No docstring provided'}\n\n"
         for method in item["methods"]:
-            class_doc += self._generate_method_doc(method, model)
+            class_doc += self._generate_method_doc(method)
         return class_doc
 
-    def _format_function_doc(self, item, model):
+    def _format_function_doc(self, item):
         """Formats documentation for a standalone function."""
         function_details = item["details"]
-        return self._generate_method_doc(function_details, model, is_function=True)
+        return self._generate_method_doc(function_details, is_function=True)
 
-    def _generate_method_doc(self, method_details, model, is_function=False):
+    def _generate_method_doc(self, method_details, is_function=False):
         """Generates documentation for a method or function."""
         doc_type = "Function" if is_function else "Method"
         try:
@@ -484,7 +485,7 @@ class DocGen(object):
                 f"{doc_type} {method_details['method_name']}'s docstring is generating"
             )
             method_doc = self.generate_method_documentation_md(
-                method_details=method_details, model=model
+                method_details=method_details
             )
             return (
                 f"### {doc_type}: {method_details['method_name']}\n\n{method_doc}\n\n"
