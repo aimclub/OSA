@@ -140,25 +140,26 @@ If you use this software, please cite it as below.
 
 ### APA format:
 
-    {owner} ({year}). {repo_name} repository (Version ...) [Computer software]. {repository_url}
+    {owner} ({year}). {repo_name} repository [Computer software]. {repository_url}
 
 ### BibTeX format:
 
-    @software{{{owner}_{repo_name}_repository_{year},
+    @misc{{{repo_name},
 
         author = {{{owner}}},
 
-        doi = {{}},
-
-        month = {{{month}}},
-
         title = {{{repo_name} repository}},
 
-        url = {{{repository_url}}},
-
-        version = {{}},
-
         year = {{{year}}}
+
+        publisher = {{{publisher}}}
+
+        journal = {{{publisher} repository}}
+
+        howpublished = {{\\url{{{repository_url}.git}}}}
+
+        url = {{{repository_url}.git}},
+
     }}
 
 ---

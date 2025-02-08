@@ -26,7 +26,7 @@
 ## Overview
 
 <overview>
-nas-fedot is a framework designed for developing and optimizing neural network architectures, particularly for tasks like butterfly classification and seismic inversion. It empowers researchers and practitioners in machine learning to efficiently experiment with various model designs, enhancing their ability to innovate and improve performance in their projects.
+nas-fedot is a framework designed for developing and deploying neural architecture search models, focusing on applications like butterfly classification and seismic inversion. It empowers researchers and developers to efficiently explore and optimize various neural network architectures, enhancing innovation in deep learning through a modular and user-friendly approach.
 </overview>
 
 ---
@@ -51,15 +51,15 @@ nas-fedot is a framework designed for developing and optimizing neural network a
 
 <corefeatures>
 
-1. **Neural Network Framework**: Comprehensive tools for developing and optimizing neural network architectures.
+1. **Neural Architecture Search**: Framework for developing and deploying NAS models for various tasks.
 
-2. **Modular Design**: Customizable modules for graph building, model construction, and performance evaluation.
+2. **Docker Support**: Configurations for standard and GPU environments ensure seamless deployment and scalability.
 
-3. **GPU Support**: Multiple Dockerfiles for standard and GPU-accelerated environments.
+3. **Modular Design**: Promotes extensibility, allowing easy experimentation with different neural network configurations.
 
-4. **Dependency Management**: Requirements file to manage all necessary dependencies effectively.
+4. **Graph-Based Representation**: Structured approach for dynamic composition of neural networks through builders and nodes.
 
-5. **Continuous Integration**: GitHub workflows for automated testing and robust development processes.
+5. **Performance Evaluation**: Incorporates metrics and validation rules to assess model performance effectively.
 
 </corefeatures>
 
@@ -184,25 +184,26 @@ If you use this software, please cite it as below.
 
 ### APA format:
 
-    ITMO-NSS-team (2024). nas-fedot repository (Version ...) [Computer software]. https://github.com/ITMO-NSS-team/nas-fedot
+    ITMO-NSS-team (2020). nas-fedot repository [Computer software]. https://github.com/ITMO-NSS-team/nas-fedot
 
 ### BibTeX format:
 
-    @software{ITMO-NSS-team_nas-fedot_repository_2024,
+    @misc{nas-fedot,
 
         author = {ITMO-NSS-team},
 
-        doi = {},
-
-        month = {12},
-
         title = {nas-fedot repository},
 
-        url = {https://github.com/ITMO-NSS-team/nas-fedot},
+        year = {2020}
 
-        version = {},
+        publisher = {github.com}
 
-        year = {2024}
+        journal = {github.com repository}
+
+        howpublished = {\url{https://github.com/ITMO-NSS-team/nas-fedot.git}}
+
+        url = {https://github.com/ITMO-NSS-team/nas-fedot.git},
+
     }
 
 ---
