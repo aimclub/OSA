@@ -22,7 +22,7 @@ rich = "13.9.4"
 readmeai = {git = "https://github.com/fl1pcoin/readmeai.git", rev = "c3242a72e7dc54b32d60ead20babfa4145cd9e2d"}
 tree-sitter = "^0.24.0"
 tree-sitter-python = "^0.23.6"
-openai = "^1.61.0"
+openai = "1.58.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.3.4"
