@@ -21,28 +21,24 @@
 </p>
 <br>
 
-
 ---
 ## Overview
 
 <overview>
-Open-Source-Advisor is a collaborative tool designed to facilitate the development and deployment of software projects. It enhances functionality and maintainability through automation and streamlined workflows, making it ideal for developers seeking to improve project management and documentation. This project targets software teams looking for an adaptable solution to optimize their development processes.
+Open-Source-Advisor is a productivity tool designed to simplify the management of GitHub repositories by automating tasks related to documentation and configuration. It enhances user experience through customizable outputs, ensuring that project documentation is always current. This tool is ideal for developers seeking to streamline their workflows and maintain high-quality documentation effortlessly.
 </overview>
 
 ---
-
 
 ## Table of contents
 
 - [Core features](#core-features)
 - [Installation](#installation)
-- [Examples](#examples)
-- [Documentation](#documentation)
 - [Getting started](#getting-started)
+- [Examples](#examples)
 - [Contributing](#contributing)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
-- [Contacts](#contacts)
 - [Citation](#citation)
 
 ---
@@ -59,12 +55,11 @@ Open-Source-Advisor is a collaborative tool designed to facilitate the developme
 
 4. **GitHub Integration**: Automates tasks via `githubagent.py`, enhancing collaboration and version control.
 
-5. **Documentation Generation**: `docgen.py` creates user-friendly guides, improving accessibility and user experience.
+5. **Documentation Generation**: Parses and generates up-to-date project documentation using dedicated scripts.
 
 </corefeatures>
 
 ---
-
 
 ## Installation
 
@@ -84,14 +79,12 @@ Install Open-Source-Advisor using one of the following methods:
 
 3. Install the project dependencies:
 
-
 **Using `pip`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
 
 ```sh
 ❯ pip install -r requirements.txt
 ```
-
 
 **Using `docker`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
@@ -100,17 +93,41 @@ Install Open-Source-Advisor using one of the following methods:
 ❯ docker build -f docker/Dockerfile -t {image-name} .
 ```
 
-
-
 ---
 
+## Getting started
+
+### Prerequisites
+
+OSA requires Python 3.10 or higher.
+
+File `.env` is required to specify GitHub token and LLM API key (OPENAI_API_KEY or VSE_GPT_KEY)
+
+### Usage
+
+Run Open-Source-Advisor using the following command:
+
+**Using `pip`** &nbsp;
+[<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
+
+```sh
+❯ python main.py {repo_url} {api} {model_name}
+```
+
+**Using `docker`** &nbsp;
+[<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
+
+```sh
+❯ docker run --env-file .env {image-name} {repo_url} {api} {model_name}
+```
+
+---
 
 ## Examples
 
 Examples of generated README files are available in [examples](https://github.com/ITMO-NSS-team/Open-Source-Advisor/tree/main/examples).
 
-**URL of the GitHub repository**, **LLM API service provider** and **Specific LLM model to use** are required to use the generator.
-
+URL of the GitHub repository, LLM API service provider (*optional*) and Specific LLM model to use (*optional*) are required to use the generator.
 
 Local Llama ITMO:
 ```sh
@@ -127,72 +144,25 @@ python main.py https://github.com/ITMO-NSS-team/nas-fedot vsegpt openai/gpt-3.5-
 
 ---
 
-
-## Documentation
-
-A detailed Open-Source-Advisor description is available in [Not found any docs]().
-
----
-
-
-## Getting started
-
-### Usage
-
-Run Open-Source-Advisor using the following command:
-**Using `pip`** &nbsp;
-[<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
-
-```sh
-❯ python main.py {repo_url} {api} {model_name}
-```
-
-
-**Using `docker`** &nbsp;
-[<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
-
-```sh
-❯ docker run -it {image_name}
-```
-
-
----
-
-
 ## Contributing
-
 
 - **[Report Issues](https://github.com/ITMO-NSS-team/Open-Source-Advisor/issues )**: Submit bugs found or log feature requests for the Open-Source-Advisor project.
 
-
 ---
-
 
 ## License
 
-This project is protected under the MIT License. For more details, refer to the [LICENSE](https://github.com/ITMO-NSS-team/Open-Source-Advisor/blob/main/LICENSE) file.
+This project is protected under the BSD 3-Clause "New" or "Revised" License. For more details, refer to the [LICENSE](https://github.com/ITMO-NSS-team/Open-Source-Advisor/blob/main/LICENSE) file.
 
 ---
-
 
 ## Acknowledgments
 
-- List any resources, contributors, inspiration, etc. here.
+- [**Open-source-ops**](https://github.com/aimclub/open-source-ops)
+
+- [**Readme-ai**](https://github.com/eli64s/readme-ai)
 
 ---
-
-
-
-## Contacts
-
-Your contacts. For example:
-
-- [Telegram channel](https://t.me/) answering questions about your project
-- [VK group](<https://vk.com/>) your VK group
-- etc.
-
----
-
 
 ## Citation
 
@@ -200,25 +170,26 @@ If you use this software, please cite it as below.
 
 ### APA format:
 
-    ITMO-NSS-team (2025). Open-Source-Advisor repository (Version ...) [Computer software]. https://github.com/ITMO-NSS-team/Open-Source-Advisor
+    ITMO-NSS-team (2024). Open-Source-Advisor repository [Computer software]. https://github.com/ITMO-NSS-team/Open-Source-Advisor
 
 ### BibTeX format:
 
-    @software{ITMO-NSS-team_Open-Source-Advisor_repository_2025,
+    @misc{Open-Source-Advisor,
 
         author = {ITMO-NSS-team},
 
-        doi = {},
-
-        month = {02},
-
         title = {Open-Source-Advisor repository},
 
-        url = {https://github.com/ITMO-NSS-team/Open-Source-Advisor},
+        year = {2024}
 
-        version = {},
+        publisher = {github.com}
 
-        year = {2025}
+        journal = {github.com repository}
+
+        howpublished = {\url{https://github.com/ITMO-NSS-team/Open-Source-Advisor.git}}
+
+        url = {https://github.com/ITMO-NSS-team/Open-Source-Advisor.git},
+
     }
 
 ---
