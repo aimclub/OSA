@@ -131,15 +131,15 @@ URL of the GitHub repository, LLM API service provider (*optional*) and Specific
 
 Local Llama ITMO:
 ```sh
-python main.py https://github.com/ITMO-NSS-team/nas-fedot
+python main.py https://github.com/ITMO-NSS-team/Open-Source-Advisor
 ```  
 OpenAI:
 ```sh
-python main.py https://github.com/ITMO-NSS-team/nas-fedot openai gpt-3.5-turbo
+python main.py https://github.com/ITMO-NSS-team/Open-Source-Advisor openai gpt-3.5-turbo
 ```
 VseGPT:
 ```sh
-python main.py https://github.com/ITMO-NSS-team/nas-fedot vsegpt openai/gpt-3.5-turbo
+python main.py https://github.com/ITMO-NSS-team/Open-Source-Advisor vsegpt openai/gpt-3.5-turbo
 ```
 
 ---
