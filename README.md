@@ -47,15 +47,13 @@ Open-Source-Advisor is a productivity tool designed to simplify the management o
 
 <corefeatures>
 
-1. **Main Application Logic**: Centralized in `main.py`, orchestrating overall system behavior.
+1. **Generation README file**: Automates the creation of a clear and structured README file for a repository, including projects with research papers.
 
-2. **Configuration Management**: Utilizes multiple TOML files for flexible parameter adjustments and prompts.
+2. **Generation Documentation**: Automatically generates docstrings for Python code.
 
-3. **Containerization Support**: Dockerfile ensures consistent environments across platforms for deployment.
+3. **Automatic implementation of changes**: Clones the repository, creates a branch, commits and pushes changes, and creates a pull request.
 
-4. **GitHub Integration**: Automates tasks via `githubagent.py`, enhancing collaboration and version control.
-
-5. **Documentation Generation**: Parses and generates up-to-date project documentation using dedicated scripts.
+4. **Deployed in ITMO servers**: Use OSA locally or hosted and running version on ITMO servers.
 
 </corefeatures>
 
@@ -86,6 +84,13 @@ Install Open-Source-Advisor using one of the following methods:
 ❯ pip install -r requirements.txt
 ```
 
+**Using `poetry`** &nbsp;
+[<img align="center" src="https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json" />](https://python-poetry.org/)
+
+```sh
+❯ poetry install 
+```
+
 **Using `docker`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
@@ -101,7 +106,7 @@ Install Open-Source-Advisor using one of the following methods:
 
 OSA requires Python 3.10 or higher.
 
-File `.env` is required to specify GitHub token and LLM API key (OPENAI_API_KEY or VSE_GPT_KEY)
+File `.env` is required to specify GitHub token (GIT_TOKEN) and LLM API key (OPENAI_API_KEY or VSE_GPT_KEY)
 
 ### Usage
 
@@ -176,19 +181,19 @@ If you use this software, please cite it as below.
 
     @misc{Open-Source-Advisor,
 
-        author = {ITMO-NSS-team},
+        author = {NSS Lab},
 
         title = {Open-Source-Advisor repository},
 
-        year = {2024}
+        year = {2024},
 
-        publisher = {github.com}
+        publisher = {github.com},
 
-        journal = {github.com repository}
+        journal = {github.com repository},
 
-        howpublished = {\url{https://github.com/ITMO-NSS-team/Open-Source-Advisor.git}}
+        howpublished = {\url{https://github.com/ITMO-NSS-team/Open-Source-Advisor.git}},
 
-        url = {https://github.com/ITMO-NSS-team/Open-Source-Advisor.git},
+        url = {https://github.com/ITMO-NSS-team/Open-Source-Advisor.git}
 
     }
 
