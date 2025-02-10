@@ -119,6 +119,7 @@ def readme_agent(repo_url: str, api: str, model_name: str) -> None:
 
     except Exception as e:
         logger.error("Error while generating: %s", repr(e), exc_info=True)
+        raise ValueError("Failed to generate README.md.")
 
 
 if __name__ == "__main__":

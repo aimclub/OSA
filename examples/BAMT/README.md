@@ -98,7 +98,7 @@ Install BAMT using one of the following methods:
 
 ## Examples
 
-Examples of how this should work and how it should be used are available in [examples](https://github.com/aimclub/BAMT/tree/master/docs/source/examples).
+Examples of how this should work and how it should be used are available in [examples](https://github.com/aimclub/BAMT/tree/master/docs\source\examples).
 
 ---
 

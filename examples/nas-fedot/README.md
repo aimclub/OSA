@@ -194,15 +194,15 @@ If you use this software, please cite it as below.
 
         title = {nas-fedot repository},
 
-        year = {2020}
+        year = {2020},
 
-        publisher = {github.com}
+        publisher = {github.com},
 
-        journal = {github.com repository}
+        journal = {github.com repository},
 
-        howpublished = {\url{https://github.com/ITMO-NSS-team/nas-fedot.git}}
+        howpublished = {\url{https://github.com/ITMO-NSS-team/nas-fedot.git}},
 
-        url = {https://github.com/ITMO-NSS-team/nas-fedot.git},
+        url = {https://github.com/ITMO-NSS-team/nas-fedot.git}
 
     }
 

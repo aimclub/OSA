@@ -150,16 +150,16 @@ If you use this software, please cite it as below.
 
         title = {{{repo_name} repository}},
 
-        year = {{{year}}}
+        year = {{{year}}},
 
-        publisher = {{{publisher}}}
+        publisher = {{{publisher}}},
 
-        journal = {{{publisher} repository}}
+        journal = {{{publisher} repository}},
 
-        howpublished = {{\\url{{{repository_url}.git}}}}
+        howpublished = {{\\url{{{repository_url}.git}}}},
 
-        url = {{{repository_url}.git}},
-
+        url = {{{repository_url}.git}}
+        
     }}
 
 ---
