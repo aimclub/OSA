@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://itmo.ru/file/pages/213/logo_na_plashke_russkiy_belyy.png" align="center" width="70%">
+    <img src="https://raw.githubusercontent.com/aimclub/open-source-ops/7de1e1321389ec177f236d0a5f41f876811a912a/badges/ITMO_badge.svg" align="center" width="20%">
 </p>
 <p align="center"><h1 align="center">CHROMAKEY</h1></p>
 <p align="center">
@@ -20,7 +20,9 @@
 ---
 ## Overview
 
-Chromakey is a cutting-edge video processing project that solves the problem of separating foreground objects from complex backgrounds in real-time. Its key features include a CNN-based chroma keying model, real-time video processing, and a user-friendly client application. Ideal for content creators, videographers, and filmmakers, Chromakey streamlines the post-production process, saving time and effort in achieving professional-grade visual effects. By leveraging AI-powered chroma keying, users can focus on creative storytelling, rather than tedious manual editing. With Chromakey, bring your visual ideas to life with ease and precision.
+<overview>
+Chromakey is a real-time video background removal system designed for applications like video conferencing, live streaming, and video editing. It offers a robust and efficient solution for seamless background integration, making it suitable for professionals and individuals seeking high-quality video production. By providing accurate and reliable background removal, Chromakey enhances video content creation.
+</overview>
 
 ---
 
@@ -36,16 +38,25 @@ Chromakey is a cutting-edge video processing project that solves the problem of 
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 - [Contacts](#contacts)
+- [Citation](#citation)
 
 ---
 
 ## Core features
 
-1. **Video Processing**: Utilizes `OpenCV` for video capture and frame processing.
-2. **Chroma Keying Model**: Employs a `CNN-based` model for chroma keying, implemented in `Python`.
-3. **Configuration Management**: Uses `YAML` configuration files for model settings and video path.
-4. **Containerization**: Supports `Docker` containerization for easy deployment and management.
-5. **Preprocessing**: Applies frame preprocessing using `PIL` and `NumPy` libraries.
+<corefeatures>
+
+1. **Real-time Video Background Removal**: Utilizes `CNN-based method` for seamless background removal.
+
+2. **Modular Architecture**: Separates client-server communication, model training, and deployment for easy maintenance.
+
+3. **Transformer-based Method**: Improves accuracy by incorporating `Transformer-based architecture` for contextual information.
+
+4. **Containerization**: Employs `Docker` for easy deployment, scalability, and adaptability.
+
+5. **Python-based Development**: Leverages `Python` for development, with `pip` for package management.
+
+</corefeatures>
 
 ---
 
@@ -98,7 +109,7 @@ Examples of how this should work and how it should be used are available in [Not
 
 ## Documentation
 
-A detailed Chromakey description is available in [Not found any docs](None).
+A detailed Chromakey description is available in [Not found any docs]().
 
 ---
 
@@ -161,3 +172,32 @@ Your contacts. For example:
 
 ---
 
+
+## Citation
+
+If you use this software, please cite it as below.
+
+### APA format:
+
+    CTLab-ITMO (2024). Chromakey repository (Version ...) [Computer software]. https://github.com/CTLab-ITMO/Chromakey
+
+### BibTeX format:
+
+    @software{CTLab-ITMO_Chromakey_repository_2024,
+
+        author = {CTLab-ITMO},
+
+        doi = {},
+
+        month = {12},
+
+        title = {Chromakey repository},
+
+        url = {https://github.com/CTLab-ITMO/Chromakey},
+
+        version = {},
+
+        year = {2024}
+    }
+
+---
