@@ -25,7 +25,7 @@
 ## Overview
 
 <overview>
-Open-Source-Advisor is a productivity tool designed to simplify the management of GitHub repositories by automating tasks related to documentation and configuration. It enhances user experience through customizable outputs, ensuring that project documentation is always current. This tool is ideal for developers seeking to streamline their workflows and maintain high-quality documentation effortlessly.
+Open-Source-Advisor is an open source Python library that provides a one-click way to get recommendations for improving an open source repository; generate documentation and code to implement those recommendations.
 </overview>
 
 ---
