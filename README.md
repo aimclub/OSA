@@ -47,13 +47,13 @@ Open-Source-Advisor is a productivity tool designed to simplify the management o
 
 <corefeatures>
 
-1. **Generation README file**: Automates the creation of a clear and structured README file for a repository, including projects with research papers.
+1. **README file generation**: Automates the creation of a clear and structured README file for a repository, including projects based on research papers.
 
-2. **Generation Documentation**: Automatically generates docstrings for Python code.
+2. **Documentation generation**: Automatically generates docstrings for Python code.
 
-3. **Automatic implementation of changes**: Clones the repository, creates a branch, commits and pushes changes, and creates a pull request.
+3. **Automatic implementation of changes**: Clones the repository, creates a branch, commits and pushes changes, and creates a pull request with proposed changes.
 
-4. **Deployed in ITMO servers**: Use OSA locally or hosted and running version on ITMO servers.
+4. **Deployed on ITMO servers**: Use OSA via API (OpenAI, VseGPT), on a local server, or a version hosted on ITMO servers.
 
 </corefeatures>
 
