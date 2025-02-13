@@ -3,7 +3,7 @@ import dotenv
 import os
 import re
 import logging
-from OSA.osatreesitter.models import modelHandlerFactory, modelHandler
+from OSA.osatreesitter.models import ModelHandlerFactory, ModelHandler
 
 dotenv.load_dotenv()
 
@@ -54,8 +54,6 @@ class DocGen(object):
             file structure and for each class or standalone function, generating its documentation.
     """
 
-    model_handler: modelHandler = modelHandlerFactory.build()
-
     def __init__(self):
         """
         Instantiates the object of the class.
@@ -63,6 +61,7 @@ class DocGen(object):
         This method is a constructor that initializes the object by setting the 'api_key' attribute to the value of the 'OPENAI_API_KEY' environment variable.
         """
         self.api_key = os.getenv("OPENAI_API_KEY")
+        self.model_handler: ModelHandler = ModelHandlerFactory.build()
 
     @staticmethod
     def format_structure_openai(structure: dict):

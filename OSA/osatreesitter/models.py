@@ -9,25 +9,25 @@ import os
 import dotenv
 
 
-class modelHandler(ABC):
+class ModelHandler(ABC):
     """
     Class: modelHandler
     This class handles the sending of requests to a specified URL and the initialization of payloads for instances.
 
     Methods:
-    - send_request: Sends a request to a specified URL and returns the response. The response is of type requests.Response.
+     send_request: Sends a request to a specified URL and returns the response. The response is of type requests.Response.
 
-    - initialize_payload: Initializes the payload for the instance using the provided configuration and prompt.
+     initialize_payload: Initializes the payload for the instance using the provided configuration and prompt.
       The payload is generated using the payloadFactory and is then converted to payload completions and stored in the instance's payload attribute.
-      The method takes two arguments: config (Settings) which are the configuration settings to be used for payload generation,
-      and prompt (str) which is the prompt to be used for payload generation. The method does not return anything.
+      The method takes two arguments: config which are the configuration settings to be used for payload generation,
+      and prompt which is the prompt to be used for payload generation. The method does not return anything.
     """
 
     url: str
     payload: dict
 
     @abstractmethod
-    def send_request() -> str: ...
+    def send_request(self, prompt: str) -> str: ...
 
     def initialize_payload(self, config: Settings, prompt: str):
         """
@@ -37,26 +37,26 @@ class modelHandler(ABC):
         The generated payload is then converted to payload completions and stored in the instance's payload attribute.
 
         Args:
-            config (Settings): The configuration settings to be used for payload generation.
-            prompt (str): The prompt to be used for payload generation.
+            config: The configuration settings to be used for payload generation.
+            prompt: The prompt to be used for payload generation.
 
         Returns:
             None
         """
-        self.payload = payloadFactory(config, prompt).to_payload_completions()
+        self.payload = PayloadFactory(config, prompt).to_payload_completions()
 
 
-class payloadFactory:
+class PayloadFactory:
     """
     Class: payloadFactory
 
     This class is responsible for creating payloads from instance variables. It is initialized with a unique job ID, temperature, tokens limit, prompt, and roles. The payloads can be used for serialization or for sending the instance data over a network.
 
     Methods:
-    - __init__(self, config: Settings, prompt: str) -> None:
+     __init__:
         Initializes the instance with a unique job ID, temperature, tokens limit, prompt, and roles. The 'config' parameter should include 'llm' with 'temperature' and 'tokens' attributes. The 'prompt' parameter is the initial user prompt.
 
-    - to_payload(self) -> dict:
+     to_payload:
         Converts the instance variables to a dictionary payload. This method takes the instance variables job_id, temperature, tokens_limit, and prompt and packages them into a dictionary. The returned dictionary has the following structure:
             {
                 "job_id": job_id,
@@ -67,7 +67,7 @@ class payloadFactory:
                 "content": prompt,
             }
 
-    - to_payload_completions(self) -> dict:
+     to_payload_completions:
         Converts the instance variables to a dictionary payload for completions. This method returns a dictionary with keys 'job_id', 'meta', and 'messages'. The 'meta' key contains a nested dictionary with keys 'temperature' and 'tokens_limit'. The values for these keys are taken from the instance variables of the same names.
     """
 
@@ -76,9 +76,9 @@ class payloadFactory:
         Initializes the instance with a unique job ID, temperature, tokens limit, prompt, and roles.
 
         Args:
-            config (Settings): The configuration settings for the instance. It should include 'llm'
+            config: The configuration settings for the instance. It should include 'llm'
                                with 'temperature' and 'tokens' attributes.
-            prompt (str): The initial user prompt.
+            prompt: The initial user prompt.
 
         Returns:
             None
@@ -147,17 +147,17 @@ class payloadFactory:
         }
 
 
-class llamaHandler(modelHandler):
+class LlamaHandler(ModelHandler):
     """
     Class: llamaHandler
 
     This class handles the interaction with a specified URL. It initializes the instance with a provided configuration and sends requests to the URL.
 
     Methods:
-        - __init__(self, config: Settings) -> None:
+         __init__:
             Initializes the instance with the provided configuration. This method sets the url and config attributes of the instance using the provided Settings object.
 
-        - send_request(self, prompt: str) -> None:
+         send_request:
             Sends a request to a specified URL with a payload initialized with a given prompt. This method initializes a payload with the provided prompt and configuration, sends a POST request to a specified URL with this payload, and logs the response.
     """
 
@@ -168,7 +168,7 @@ class llamaHandler(modelHandler):
         This method sets the url and config attributes of the instance using the provided Settings object.
 
         Args:
-            config (Settings): The configuration settings to be used for initializing the instance.
+            config: The configuration settings to be used for initializing the instance.
 
         Returns:
             None
@@ -183,7 +183,7 @@ class llamaHandler(modelHandler):
         This method sends a request to a specified URL and returns the response.
 
         Returns:
-            requests.Response: The response received from the request.
+            str: The response received from the request.
         """
         self.initialize_payload(self.config, prompt)
         response = requests.post(url=self.url, json=self.payload)
@@ -191,18 +191,18 @@ class llamaHandler(modelHandler):
         return response.json()["content"]
 
 
-class openaiHandler(modelHandler):
+class OpenaiHandler(ModelHandler):
     """
     This class, openaiHandler, is designed to handle interactions with the OpenAI API. It is initialized with configuration settings and can send requests to the API.
 
     Methods:
-        __init__(self, config: Settings) -> None:
+        __init__:
             Initializes the instance with the provided configuration settings. This method sets up the instance by assigning the provided configuration settings to the instance's config attribute. It also retrieves the API from the configuration settings and passes it to the _configure_api method.
 
-        send_request(self, prompt: str) -> str:
+        send_request:
             Sends a request to Sam Altman and initializes the payload with the given prompt. This method sends a request to Sam Altman, initializes the payload with the given prompt, and creates a chat completion with the specified model, messages, max tokens, and temperature from the configuration. It then returns the content of the first choice from the response.
 
-        _configure_api(self, api: str) -> None:
+        _configure_api:
             Configures the API for the instance based on the provided API name. This method loads environment variables, sets the URL and API key based on the provided API name, and initializes the OpenAI client with the set URL and API key.
     """
 
@@ -214,7 +214,7 @@ class openaiHandler(modelHandler):
         It also retrieves the API from the configuration settings and passes it to the _configure_api method.
 
         Args:
-            config (Settings): The configuration settings to be used for setting up the instance.
+            config: The configuration settings to be used for setting up the instance.
 
         Returns:
             None
@@ -231,10 +231,10 @@ class openaiHandler(modelHandler):
         sends a POST request to a specified URL with this payload, and logs the response.
 
         Args:
-            prompt (str): The prompt to initialize the payload with.
+            prompt: The prompt to initialize the payload with.
 
         Returns:
-            None
+            str: The response received from the request.
         """
         self.initialize_payload(self.config, prompt)
         messages = self.payload["messages"]
@@ -254,7 +254,7 @@ class openaiHandler(modelHandler):
         and initializes the OpenAI client with the set URL and API key.
 
         Args:
-            api (str): The name of the API to configure. It can be either "openai" or "vsegpt".
+            api: The name of the API to configure. It can be either "openai" or "vsegpt".
 
         Returns:
             None
@@ -263,6 +263,7 @@ class openaiHandler(modelHandler):
         if api == "openai":
             self.url = "https://api.openai.com/v1"
             self.key = os.getenv("OPENAI_API_KEY")
+            self.config.llm.tokens = 1500
         if api == "vsegpt":
             self.url = "https://api.vsegpt.ru/v1"
             self.key = os.getenv("VSE_GPT_KEY")
@@ -270,25 +271,23 @@ class openaiHandler(modelHandler):
         self.client = openai.OpenAI(base_url=self.url, api_key=self.key)
 
 
-class modelHandlerFactory:
+class ModelHandlerFactory:
     """
     Class: modelHandlerFactory
 
     This class is responsible for creating handlers based on the configuration of the class. It supports the creation of handlers for different types of models.
 
     Methods:
-    - build(cls: Class) -> None:
+     build:
         This method retrieves the configuration from the class
         and then creates and returns a handler using the configuration. The class from which the configuration is
         retrieved is passed as an argument.
 
-    - create_handler(config: Settings) -> None:
+     create_handler:
         This method uses the model specified in the configuration to create a handler. It supports three types of
         models: 'llama', 'openai', and 'gpt-4'. For 'llama', it creates a llamaHandler, and for 'openai' and 'gpt-4',
         it creates an openaiHandler. The configuration object which contains the model information is passed as an argument.
     """
-
-    cl: ConfigLoader = ConfigLoader("OSA/config")
 
     @classmethod
     def build(cls):
@@ -299,12 +298,13 @@ class modelHandlerFactory:
         and then creates and returns a handler using the configuration.
 
         Args:
-            cls (Class): The class from which the configuration is retrieved.
+            cls: The class from which the configuration is retrieved.
 
         Returns:
             None: This method does not return anything.
         """
-        config = cls.cl.config
+        config_loader: ConfigLoader = ConfigLoader("OSA/config")
+        config = config_loader.config
         return cls.create_handler(config)
 
     @staticmethod
@@ -317,15 +317,15 @@ class modelHandlerFactory:
         For 'llama', it creates a llamaHandler, and for 'openai' and 'gpt-4', it creates an openaiHandler.
 
         Args:
-            config (Settings): The configuration object which contains the model information.
+            config: The configuration object which contains the model information.
 
         Returns:
             None: This method does not return anything.
         """
         model = config.llm.model
         constructors = {
-            "llama": llamaHandler,
-            "openai": openaiHandler,
-            "gpt-4": openaiHandler,
+            "llama": LlamaHandler,
+            "openai": OpenaiHandler,
+            "gpt-4": OpenaiHandler,
         }
         return constructors[model](config)
