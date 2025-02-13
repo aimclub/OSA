@@ -26,7 +26,7 @@
 ## Overview
 
 <overview>
-FEDOT is a machine learning framework that simplifies the development of AI pipelines. It offers a modular and extensible architecture, enabling users to build, optimize, and deploy models efficiently. FEDOT targets data scientists and machine learning engineers, providing a flexible solution for various applications, from data preprocessing to complex AI tasks.
+FEDOT is an automated machine learning framework designed to simplify the creation, evaluation, and deployment of machine learning pipelines. It empowers data scientists and practitioners by streamlining workflows and providing versatile tools for various data challenges, ultimately enhancing productivity and fostering innovation in diverse applications.
 </overview>
 
 ---
@@ -51,15 +51,15 @@ FEDOT is a machine learning framework that simplifies the development of AI pipe
 
 <corefeatures>
 
-1. **Modular Framework**: Uses `Python` for machine learning pipeline development.
+1. **Automated Machine Learning**: Framework simplifies building, evaluating, and deploying machine learning pipelines.
 
-2. **Extensive Library**: Includes `scikit-learn`, `xgboost`, `lightgbm`, and `catboost` for modeling.
+2. **Data Processing Capabilities**: Includes data preprocessing, model selection, and hyperparameter tuning functionalities.
 
-3. **Hyperparameter Tuning**: Utilizes `hyperopt` and `scikit-optimize` for optimization.
+3. **Docker Integration**: Facilitates containerization for consistent environments across various platforms.
 
-4. **Pipeline Optimization**: Employs `joblib` and `psutil` for performance tuning.
+4. **Extensibility**: Supports custom models and operations, allowing adaptation to specific project needs.
 
-5. **Docker Support**: Allows for containerization using `docker` and `docker-compose`.
+5. **Comprehensive Documentation**: Provides guidance, usage instructions, and example scripts for effective navigation.
 
 </corefeatures>
 

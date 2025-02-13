@@ -25,7 +25,7 @@
 ## Overview
 
 <overview>
-BAMT is a software framework for building and analyzing Bayesian networks, enabling users to create and analyze complex probabilistic models. It offers a flexible and extensible architecture, supporting various applications, from data analysis and machine learning to decision support and risk analysis, catering to professionals and researchers in data-driven fields.
+BAMT is a framework designed for building and analyzing Bayesian networks, enabling advanced probabilistic modeling and inference. It empowers researchers and practitioners to create sophisticated models that extract insights from complex datasets, accommodating various data types and enhancing flexibility in analysis. This tool is ideal for those engaged in probabilistic reasoning and data-driven decision-making.
 </overview>
 
 ---
@@ -50,15 +50,15 @@ BAMT is a software framework for building and analyzing Bayesian networks, enabl
 
 <corefeatures>
 
-1. **Bayesian Network Framework**: Provides a comprehensive framework for building and analyzing Bayesian networks.
+1. **Bayesian Network Framework**: Comprehensive tools for building and analyzing Bayesian networks.
 
-2. **Modular Architecture**: Offers a modular architecture with separate modules for network construction, node definition, and data preprocessing.
+2. **Hybrid Model Support**: Accommodates both discrete and continuous variables for diverse data types.
 
-3. **Extensive Library Support**: Utilizes `numpy`, `scikit-learn`, `scipy`, `networkx`, `xgboost`, and `catboost` for various tasks.
+3. **Node Types Implementation**: Supports various node types, including discrete and Gaussian nodes.
 
-4. **Data Preprocessing Tools**: Includes tools for data discretization, graph manipulation, and model evaluation.
+4. **Evolutionary Algorithms**: Enables complex network construction through advanced evolutionary algorithms.
 
-5. **Visualization and Display**: Offers tools for visualizing and displaying network structures and results using `pyvis` and `matplotlib`.
+5. **Integration with External Libraries**: Enhances functionality with libraries like pyBN for graph manipulation.
 
 </corefeatures>
 
