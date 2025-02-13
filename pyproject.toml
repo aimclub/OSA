@@ -57,7 +57,7 @@ tree-sitter-python = "0.23.4"
 typing_extensions = "4.12.2"
 urllib3 = "2.3.0"
 yarl = "1.18.3"
-readmeai = { git = "https://github.com/fl1pcoin/readmeai.git", rev = "d9bea40bfc188fa8f020a10f6caa739ccb20c016" }
+readmeai = {git = "https://github.com/fl1pcoin/readmeai.git", rev = "b678fce9f32c6c2262292e21d18b99957b074374"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.3.4"

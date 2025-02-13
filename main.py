@@ -46,6 +46,22 @@ def main():
         default="llama",
     )
 
+    parser.add_argument(
+        "api",
+        type=str,
+        help="LLM API service provider",
+        nargs="?",
+        default="llama"
+    )
+
+    parser.add_argument(
+        "model_name",
+        type=str,
+        help="Specific LLM model to use",
+        nargs="?",
+        default="llama"
+    )
+
     args = parser.parse_args()
     repo_url = args.repo_url
     api = args.api
@@ -111,7 +127,10 @@ def readme_agent(repo_url: str, api: str, model_name: str) -> None:
         config_loader = ConfigLoader(config_dir="OSA/config")
         config_loader.config.git = GitSettings(repository=repo_url)
         config_loader.config.llm = config_loader.config.llm.model_copy(
-            update={"api": api, "model": model_name}
+            update={
+                "api": api,
+                "model": model_name
+            }
         )
 
         # Define output directory and ensure it exists
