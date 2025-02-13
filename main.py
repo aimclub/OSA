@@ -89,10 +89,14 @@ def generate_docstrings(repo_url: str) -> None:
         repo_url: URL of the GitHub repository.
 
     """
-    ts = OSA_TreeSitter(os.path.basename(repo_url))
-    res = ts.analyze_directory(ts.cwd)
-    dg = DocGen()
-    dg.process_python_file(res)
+    try:
+        ts = OSA_TreeSitter(os.path.basename(repo_url))
+        res = ts.analyze_directory(ts.cwd)
+        dg = DocGen()
+        dg.process_python_file(res)
+
+    except Exception as e:
+        logger.error("Error while docstring generation: %s", repr(e), exc_info=True)
 
 
 if __name__ == "__main__":
