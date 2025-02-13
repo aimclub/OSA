@@ -47,6 +47,7 @@ table_of_contents = """
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 - [Contacts](#contacts)
+- [Citation](#citation)
 
 ---
 """
@@ -121,36 +122,44 @@ Your contacts. For example:
 
 """
 
+# -- Citation Section ----------------------------------------------------------
 
-# -- API Documentation Section -------------------------------------------------
+citation = """
+## Citation
 
+"""
 
-api_docs = """
-### API Documentation
-
-The project API documentation is available at: [API Documentation]({api_url}).
+citation_v1 = """
+If you use this software, please cite it as it is written in the [CITATION](https://{host_domain}/{full_name}/blob/{default_branch}/{citation_path}) file.
 
 ---
 """
 
-env_variables = """
-### Environment Variables
+citation_v2 = """
+If you use this software, please cite it as below.
 
-To run this project, you will need to add the following environment variables to your environment:
+### APA format:
 
-{env_variables}
+    {owner} ({year}). {repo_name} repository (Version ...) [Computer software]. {repository_url}
 
----
-"""
+### BibTeX format:
 
-cli_docs = """
-### Command-Line Interface
+    @software{{{owner}_{repo_name}_repository_{year},
 
-The project supports the following command-line interface options:
+        author = {{{owner}}},
 
-```sh
-❯ {cli_command}
-```
+        doi = {{}},
+
+        month = {{{month}}},
+
+        title = {{{repo_name} repository}},
+
+        url = {{{repository_url}}},
+
+        version = {{}},
+
+        year = {{{year}}}
+    }}
 
 ---
 """

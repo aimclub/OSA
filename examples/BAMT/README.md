@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://itmo.ru/file/pages/213/logo_na_plashke_russkiy_belyy.png" align="center" width="70%">
+    <img src="https://raw.githubusercontent.com/aimclub/open-source-ops/7de1e1321389ec177f236d0a5f41f876811a912a/badges/ITMO_badge.svg" align="center" width="20%">
 </p>
 <p align="center"><h1 align="center">BAMT</h1></p>
 <p align="center">
@@ -24,7 +24,9 @@
 ---
 ## Overview
 
-Bayesian Model Toolbox (BAMT) is a Python library that simplifies the process of building and analyzing Bayesian networks. It provides a comprehensive framework for creating, training, and evaluating Bayesian models, making it easier to work with complex probabilistic relationships. With BAMT, users can efficiently construct and optimize Bayesian networks, leveraging various algorithms and techniques to uncover hidden patterns and relationships in their data. The library is designed to be user-friendly, flexible, and extensible, catering to a wide range of applications and use cases, from data analysis and machine learning to decision-making and risk assessment. By streamlining the Bayesian modeling process, BAMT empowers users to gain deeper insights into their data and make more informed decisions.
+<overview>
+BAMT is a software framework for building and analyzing Bayesian networks, enabling users to create and analyze complex probabilistic models. It offers a flexible and extensible architecture, supporting various applications, from data analysis and machine learning to decision support and risk analysis, catering to professionals and researchers in data-driven fields.
+</overview>
 
 ---
 
@@ -40,16 +42,25 @@ Bayesian Model Toolbox (BAMT) is a Python library that simplifies the process of
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 - [Contacts](#contacts)
+- [Citation](#citation)
 
 ---
 
 ## Core features
 
-1. **Bayesian Network Modeling**: Utilizes `Bayesian Networks` for probabilistic modeling and reasoning.
-2. **Machine Learning Integration**: Leverages `scikit-learn` and `xgboost` for machine learning tasks and model building.
-3. **Graph-Based Data Structures**: Employs `networkx` for graph-based data structures and algorithms.
-4. **Data Preprocessing**: Provides data preprocessing capabilities using `pandas` and `numpy`.
-5. **Genetic Algorithm Optimization**: Utilizes `deap` for genetic algorithm-based optimization and model selection.
+<corefeatures>
+
+1. **Bayesian Network Framework**: Provides a comprehensive framework for building and analyzing Bayesian networks.
+
+2. **Modular Architecture**: Offers a modular architecture with separate modules for network construction, node definition, and data preprocessing.
+
+3. **Extensive Library Support**: Utilizes `numpy`, `scikit-learn`, `scipy`, `networkx`, `xgboost`, and `catboost` for various tasks.
+
+4. **Data Preprocessing Tools**: Includes tools for data discretization, graph manipulation, and model evaluation.
+
+5. **Visualization and Display**: Offers tools for visualizing and displaying network structures and results using `pyvis` and `matplotlib`.
+
+</corefeatures>
 
 ---
 
@@ -87,7 +98,7 @@ Install BAMT using one of the following methods:
 
 ## Examples
 
-Examples of how this should work and how it should be used are available in [examples](https://github.com/aimclub/BAMT/tree/master/docs/source/examples).
+Examples of how this should work and how it should be used are available in [examples](https://github.com/aimclub/BAMT/tree/master/docs\source\examples).
 
 ---
 
@@ -151,3 +162,32 @@ Your contacts. For example:
 
 ---
 
+
+## Citation
+
+If you use this software, please cite it as below.
+
+### APA format:
+
+    aimclub (2025). BAMT repository (Version ...) [Computer software]. https://github.com/aimclub/BAMT
+
+### BibTeX format:
+
+    @software{aimclub_BAMT_repository_2025,
+
+        author = {aimclub},
+
+        doi = {},
+
+        month = {01},
+
+        title = {BAMT repository},
+
+        url = {https://github.com/aimclub/BAMT},
+
+        version = {},
+
+        year = {2025}
+    }
+
+---

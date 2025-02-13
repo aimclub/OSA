@@ -80,6 +80,7 @@ def readme_agent(repo_url: str) -> None:
 
     except Exception as e:
         logger.error("Error while generating: %s", repr(e), exc_info=True)
+        raise ValueError("Failed to generate README.md.")
 
 
 def generate_docstrings(repo_url: str) -> None:
