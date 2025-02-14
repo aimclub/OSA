@@ -1,0 +1,83 @@
+# LLM prompts for various text generation tasks.
+
+[prompts]
+file_summary = """Summarize the overall purpose and role of the provided code files within the codebase architecture. Emphasize what the code achieves and the algorithms it employs, without technical implementation details.
+
+CONTEXT:
+------------------------
+FILES CONTENT: {0}
+------------------------
+
+INSTRUCTIONS:
+------------------------
+1. Avoid phrases like "This file", "The file", or "This code".
+2. Begin with a verb or noun.
+3. Do not include quotes, code snippets, bullets, or lists.
+4. Limit the response to 200-250 words.
+------------------------
+"""
+
+pdf_summary = """Summarize the key themes, insights, and methodologies from the provided PDF documents. Highlight core concepts, findings, and any algorithms mentioned, ensuring alignment with the project objectives.
+
+CONTEXT:
+------------------------
+PDF CONTENT: {0}
+------------------------
+
+INSTRUCTIONS:
+------------------------
+1. Start with a strong, attention-grabbing statement.
+2. Avoid phrases like "This PDF" or "The document".
+3. Exclude quotes, code snippets, bullets, or lists.
+4. Limit the response to 200-250 words.
+------------------------
+"""
+
+overview = """Outline the repository's purpose and objectives based on the following context. Emphasize main functionalities and goals without technical jargon.
+
+CONTEXT:
+------------------------
+REPOSITORY NAME: {0}
+FILE SUMMARIES: {1}
+PDF SUMMARIES: {2}
+------------------------
+
+INSTRUCTIONS:
+------------------------
+1. Begin with a clear statement capturing the project's essence.
+2. Use 150-200 words.
+3. Avoid phrases like "This project" or "The repository".
+------------------------
+"""
+
+content = """Describe the repository's components—including databases, models, and other relevant parts—and explain how they interrelate to support the project’s functionality.
+
+CONTEXT:
+------------------------
+REPOSITORY NAME: {0}
+DEPENDENCIES: {1}
+FILE SUMMARIES: {2}
+------------------------
+
+INSTRUCTIONS:
+------------------------
+1. Emphasize each component's role in the overall project.
+2. Focus on high-level concepts, avoiding technical details.
+------------------------
+"""
+
+algorithms = """Detail the algorithms used in the codebase, explaining their functions and contributions to the project. Mention any innovative approaches or methodologies.
+
+CONTEXT:
+------------------------
+REPOSITORY NAME: {0}
+FILE SUMMARIES: {1}
+PDF SUMMARIES: {2}
+------------------------
+
+INSTRUCTIONS:
+------------------------
+1. Describe each algorithm's role without technical implementation details.
+2. Use clear, accessible language.
+------------------------
+"""
