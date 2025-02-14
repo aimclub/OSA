@@ -79,22 +79,22 @@ def main():
         
         # Initialize GitHub agent and perform operations
         github_agent = GithubAgent(repo_url)
-        #github_agent.star_repository()
+        github_agent.star_repository()
         github_agent.clone_repository()
         github_agent.create_and_checkout_branch()
-        """
+        
         # Docstring generation
         ts = OSA_TreeSitter(os.path.basename(repo_url))
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen()
         dg.process_python_file(res)
-        """
+        
         # Readme generation
         readme_agent(repo_url, api, model_name, article)
         
-        #github_agent.commit_and_push_changes()
-        #github_agent.create_pull_request()
-        #logger.info("All operations completed successfully.")
+        github_agent.commit_and_push_changes()
+        github_agent.create_pull_request()
+        logger.info("All operations completed successfully.")
         
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
