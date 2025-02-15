@@ -47,14 +47,12 @@ INSTRUCTIONS:
 """
 
 overview = """Outline the repository's purpose and objectives based on the following context. Emphasize main functionalities and goals without technical jargon.
-
 CONTEXT:
 ------------------------
 REPOSITORY NAME: {0}
 FILE SUMMARIES: {1}
 PDF SUMMARIES: {2}
 ------------------------
-
 INSTRUCTIONS:
 ------------------------
 1. Begin with a clear statement capturing the project's essence.
@@ -64,14 +62,12 @@ INSTRUCTIONS:
 """
 
 content = """Describe the repository's components—including databases, models, and other relevant parts—and explain how they interrelate to support the project’s functionality.
-
 CONTEXT:
 ------------------------
 REPOSITORY NAME: {0}
 DEPENDENCIES: {1}
 FILE SUMMARIES: {2}
 ------------------------
-
 INSTRUCTIONS:
 ------------------------
 1. Emphasize each component's role in the overall project.
@@ -79,15 +75,13 @@ INSTRUCTIONS:
 ------------------------
 """
 
-algorithms = """Detail the algorithms used in the codebase, explaining their functions and contributions to the project. Mention any innovative approaches or methodologies.
-
+algorithms = """Detail the algorithms used in the codebase, explaining their functions.
 CONTEXT:
 ------------------------
 REPOSITORY NAME: {0}
 FILE SUMMARIES: {1}
 PDF SUMMARIES: {2}
 ------------------------
-
 INSTRUCTIONS:
 ------------------------
 1. Describe each algorithm's role without technical implementation details.
