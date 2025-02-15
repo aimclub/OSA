@@ -95,7 +95,7 @@ Install Open-Source-Advisor using one of the following methods:
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
-❯ docker build -f docker/Dockerfile -t {image-name} .
+❯ docker build --build-arg GIT_USER_NAME="your-user-name" --build-arg GIT_USER_EMAIL="your-user-email" -f docker/Dockerfile -t {image-name} .
 ```
 
 ---
