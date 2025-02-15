@@ -3,7 +3,7 @@ import argparse
 import logging
 from rich.logging import RichHandler
 from typing import Optional
-from readmegen_article.config.settings import ArticleConfigLoader
+from readmeai.readmegen_article.config.settings import ArticleConfigLoader
 from readmeai.config.settings import ConfigLoader, GitSettings
 from readmeai.main import readme_generator
 from OSA.github_agent.github_agent import GithubAgent
