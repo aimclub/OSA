@@ -1,7 +1,13 @@
 # LLM prompts for various text generation tasks.
 
 [prompts]
-file_summary = """Summarize the overall purpose and role of the provided code files within the codebase architecture. Emphasize what the code achieves and the algorithms it employs, without technical implementation details.
+file_summary = """Analyze the provided code repository. Your task is to summarize the following:
+Purpose: The overall goal and intended function of the codebase.
+Architecture: The structure of the codebase and its key components.
+Functionality: What the code achieves and the main algorithms or approaches it implements.
+Connection to the context: How the code reflects or supports the methodology, key ideas, or results described in the article.
+Ensure your summary is clear, concise, and om3its technical implementation details. Focus on high-level insights that help understand the codebase.
+
 
 CONTEXT:
 ------------------------
@@ -17,7 +23,14 @@ INSTRUCTIONS:
 ------------------------
 """
 
-pdf_summary = """Summarize the key themes, insights, and methodologies from the provided PDF documents. Highlight core concepts, findings, and any algorithms mentioned, ensuring alignment with the project objectives.
+pdf_summary = """"Analyze the given text, which may be a technical report or article. Your task is to extract the following, basing your response solely on the context provided:
+
+Main topic: Identify the central subject of the document.
+Key ideas: Highlight the primary concepts or arguments presented.
+Methodology: Describe the methods or approaches used.
+Working steps: Outline the significant actions or processes involved.
+Results: Summarize the outcomes or findings.
+Ensure your response is precise, uses concise language, and avoids any additional information not present in the text.
 
 CONTEXT:
 ------------------------
