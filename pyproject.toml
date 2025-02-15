@@ -59,7 +59,7 @@ tree-sitter-python = "0.23.4"
 typing_extensions = "4.12.2"
 urllib3 = "2.3.0"
 yarl = "1.18.3"
-readmeai = {git = "https://github.com/fl1pcoin/readmeai.git", branch = "change-structure"}
+readmeai = {git = "https://github.com/fl1pcoin/readmeai.git", rev = "cc5472691b96d8240c5ea31f33ad25703129417a"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.3.4"
