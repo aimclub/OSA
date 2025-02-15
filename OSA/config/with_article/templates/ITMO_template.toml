@@ -4,29 +4,17 @@
 # -- Overview Section ----------------------------------------------------------
 
 overview = """
-## Overview
-
 {0}
-
----
 """
 
 # -- Repository Contents Section ------------------------------------------------------------
 
 content = """
-## Repository contents
-
 {0}
-
----
 """
 
 # -- Used Algorithms Section ------------------------------------------------------------
 
 algorithms = """
-## Used algorithms
-
 {0}
-
----
 """
