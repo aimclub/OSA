@@ -116,15 +116,17 @@ Run Open-Source-Advisor using the following command:
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
 
 ```sh
-❯ python main.py {repo_url} {api} {model_name}
+❯ python main.py {repo_url} {api} {model_name} [--article {article}]
 ```
 
 **Using `docker`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
-❯ docker run --env-file .env {image-name} {repo_url} {api} {model_name}
+❯ docker run --env-file .env {image-name} {repo_url} {api} {model_name} [--article {article}]
 ```
+
+The --article option allows to select a README template for repository which is based on an article. You can also provide a link to a PDF file of the article after the --article option.
 
 ---
 
