@@ -30,34 +30,42 @@ def main():
     """
     # Create a command line argument parser
     parser = argparse.ArgumentParser(
-        description="Generate README.md for a GitHub repository"
+        description="Generate README.md for a GitHub repository",
+        formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
-        "repo_url",
+        "-r",
+        "--repository",
         type=str,
         help="URL of the GitHub repository"
     )
 
     parser.add_argument(
-        "api",
+        "--api",
         type=str,
         help="LLM API service provider",
         nargs="?",
+        choices=["llama", "openai", "vsegpt"],
         default="llama"
     )
 
     parser.add_argument(
-        "model_name",
+        "--model",
         type=str,
-        help="Specific LLM model to use",
+        help=(
+            "Specific LLM model to use. "
+            "To see available models go there:\n"
+            "1. https://vsegpt.ru/Docs/Models\n"
+            "2. https://platform.openai.com/docs/models"
+        ),
         nargs="?",
         default="llama"
     )
 
     args = parser.parse_args()
-    repo_url = args.repo_url
+    repo_url = args.repository
     api = args.api
-    model_name = args.model_name
+    model_name = args.model
 
     try:
         # Initialize GitHub agent and perform operations
@@ -65,7 +73,7 @@ def main():
         github_agent.star_repository()
         github_agent.clone_repository()
         github_agent.create_and_checkout_branch()
-        
+
         # Docstring generation
         ts = OSA_TreeSitter(os.path.basename(repo_url))
         res = ts.analyze_directory(ts.cwd)
@@ -93,8 +101,9 @@ def readme_agent(repo_url: str, api: str, model_name: str) -> None:
     Raises:
         Exception: If an error occurs during README.md generation.
     """
-    
-    logger.info("Started generating README.md. Processing the repository: %s", repo_url)
+
+    logger.info("Started generating README.md. Processing the repository: %s",
+                repo_url)
 
     try:
         # Load configurations and update config
@@ -115,7 +124,8 @@ def readme_agent(repo_url: str, api: str, model_name: str) -> None:
         # Generate README.md
         readme_generator(config_loader, file_to_save)
 
-        logger.info("README.md successfully generated in folder: %s", output_dir)
+        logger.info("README.md successfully generated in folder: %s",
+                    output_dir)
 
     except Exception as e:
         logger.error("Error while generating: %s", repr(e), exc_info=True)

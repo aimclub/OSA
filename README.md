@@ -116,14 +116,14 @@ Run Open-Source-Advisor using the following command:
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
 
 ```sh
-❯ python main.py {repo_url} {api} {model_name}
+❯ python main.py [-r {repository}] [--api {api}] [--model {model_name}]
 ```
 
 **Using `docker`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
-❯ docker run --env-file .env {image-name} {repo_url} {api} {model_name}
+❯ docker run --env-file .env {image-name} [-r {repository}] [--api {api}] [--model {model_name}]
 ```
 
 ---
@@ -136,15 +136,15 @@ URL of the GitHub repository, LLM API service provider (*optional*) and Specific
 
 Local Llama ITMO:
 ```sh
-python main.py https://github.com/ITMO-NSS-team/Open-Source-Advisor
+python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor
 ```  
 OpenAI:
 ```sh
-python main.py https://github.com/ITMO-NSS-team/Open-Source-Advisor openai gpt-3.5-turbo
+python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai --model gpt-3.5-turbo
 ```
 VseGPT:
 ```sh
-python main.py https://github.com/ITMO-NSS-team/Open-Source-Advisor vsegpt openai/gpt-3.5-turbo
+python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api vsegpt --model openai/gpt-3.5-turbo
 ```
 
 ---
