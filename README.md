@@ -126,7 +126,7 @@ Run Open-Source-Advisor using the following command:
 ❯ docker run --env-file .env {image-name} {repo_url} {api} {model_name} [--article {article}]
 ```
 
-The --article option allows to select a README template for repository which is based on an article. You can also provide a link to a PDF file of the article after the --article option.
+The --article option enables you to choose a README template for a repository based on an article. You can provide either a link to a PDF file of the article or a path to a local PDF file after the --article option. If you are using Docker, ensure that you upload the PDF file to the OSA folder before building the image, then, specify the path as /app/OSA/... or just use volume mounting to access the file.
 
 ---
 
