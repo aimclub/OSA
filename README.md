@@ -8,7 +8,8 @@
 
 </p>
 
-<p>Built with: 
+<p>Built with:</p>
+<p>
 	<img src="https://img.shields.io/badge/Python-3776AB.svg?style=BadgeStyleOptions.DEFAULT&logo=Python&logoColor=white" alt="Python">
 	<img src="https://img.shields.io/badge/Docker-2496ED.svg?style=BadgeStyleOptions.DEFAULT&logo=Docker&logoColor=white" alt="Docker">
 	<img src="https://img.shields.io/badge/GitHub%20Actions-2088FF.svg?style=BadgeStyleOptions.DEFAULT&logo=GitHub-Actions&logoColor=white" alt="GitHub%20Actions">
