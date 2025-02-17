@@ -5,7 +5,7 @@
 [![Acknowledgement ITMO](https://raw.githubusercontent.com/aimclub/open-source-ops/43bb283758b43d75ec1df0a6bb4ae3eb20066323/badges/ITMO_badge.svg)](https://itmo.ru/)
 [![Open-source-ops website](https://raw.githubusercontent.com/aimclub/open-source-ops/7de1e1321389ec177f236d0a5f41f876811a912a/badges/open--source--ops-black.svg)](https://aimclub.github.io/open-source-ops/)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-
+[![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/ITMO-NSS-team/Open-Source-Advisor)
 </p>
 
 <p>Built with:</p>
@@ -28,6 +28,8 @@ It automates the generation of README, different levels of documentation, CI/CD 
 It also generates advices and recommendations for the repository.
 
 OSA is currently under development, so not all features are implemented.
+
+![Animation](./docs/images/osa_demo.gif)
 
 </overview>
 
