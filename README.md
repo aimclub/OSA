@@ -23,9 +23,9 @@
 
 <overview>
 
-OSA (Open-Source-Advisor) is an LLM-based tool to improve the quality of scientific open source projects and to help create them from scratch. 
+OSA (Open-Source-Advisor) is a LLM-based tool for improving the quality of scientific open source projects and helping create them from scratch. 
 It automates the generation of README, different levels of documentation, CI/CD scripts, etc. 
-It also generates advice and recommendations for the repository.
+It also generates advices and recommendations for the repository.
 
 OSA is currently under development, so not all features are implemented.
 
@@ -170,7 +170,7 @@ OSA is tested by the members of [ITMO OpenSource](https://t.me/scientific_openso
 is available in [**Open-source-ops**](https://github.com/aimclub/open-source-ops)
 
 Also, we thank [**Readme-ai**](https://github.com/eli64s/readme-ai) 
-for their code that we used a foundation for our own version of README generator.
+for their code that we used as a foundation for our own version of README generator.
 
 ---
 
