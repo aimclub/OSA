@@ -17,7 +17,6 @@
 	<img src="https://img.shields.io/badge/OpenAI-412991.svg?style=BadgeStyleOptions.DEFAULT&logo=OpenAI&logoColor=white" alt="OpenAI">
 	<img src="https://img.shields.io/badge/Pydantic-E92063.svg?style=BadgeStyleOptions.DEFAULT&logo=Pydantic&logoColor=white" alt="Pydantic">
 </p>
-<br>
 
 ---
 ## Overview
