@@ -28,10 +28,14 @@ It automates the generation of README, different levels of documentation, CI/CD 
 It also generates advices and recommendations for the repository.
 
 OSA is currently under development, so not all features are implemented.
+</overview>
+
+---
+## How it works?
+
+Here is a short demo:
 
 ![Animation](./docs/images/osa_demo.gif)
-
-</overview>
 
 ---
 
