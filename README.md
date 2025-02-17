@@ -3,10 +3,9 @@
 </p>
 <p align="center"><h1 align="center">OPEN-SOURCE-ADVISOR</h1></p>
 <p align="center">
+    <a href="https://itmo.ru/"><img src="https://raw.githubusercontent.com/aimclub/open-source-ops/43bb283758b43d75ec1df0a6bb4ae3eb20066323/badges/ITMO_badge.svg"></a>
 	<img src="https://img.shields.io/github/license/ITMO-NSS-team/Open-Source-Advisor?style=BadgeStyleOptions.DEFAULT&logo=opensourceinitiative&logoColor=white&color=blue" alt="license">
-	<img src="https://img.shields.io/github/last-commit/ITMO-NSS-team/Open-Source-Advisor?style=BadgeStyleOptions.DEFAULT&logo=git&logoColor=white&color=blue" alt="last-commit">
-	<img src="https://img.shields.io/github/languages/top/ITMO-NSS-team/Open-Source-Advisor?style=BadgeStyleOptions.DEFAULT&color=blue" alt="repo-top-language">
-	<img src="https://img.shields.io/github/languages/count/ITMO-NSS-team/Open-Source-Advisor?style=BadgeStyleOptions.DEFAULT&color=blue" alt="repo-language-count">
+    <a href="https://github.com/ITMO-NSS-team/Open-Source-Advisor"><img src="https://img.shields.io/badge/improved%20by-OSA-blue"></a>
 </p>
 <p align="center">Built with the tools and technologies:</p>
 <p align="center">
@@ -116,15 +115,24 @@ Run Open-Source-Advisor using the following command:
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
 
 ```sh
-❯ python main.py [-r {repository}] [--api {api}] [--model {model_name}]
+❯ python main.py -r {repository} [--api {api}] [--model {model_name}]
 ```
 
 **Using `docker`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
-❯ docker run --env-file .env {image-name} [-r {repository}] [--api {api}] [--model {model_name}]
+❯ docker run --env-file .env {image-name} -r {repository} [--api {api}] [--model {model_name}]
 ```
+
+### Configuration
+
+| Flag           | Description                                  | Default |
+|----------------|----------------------------------------------|---------|
+| `--repository` | URL of the GitHub repository (**Mandatory**) |         |
+| `--api`        | LLM API service provider                     | `llama` |
+| `--model`      | Specific LLM model to use                    | `llama` |
+| `--article`    | Link to the pdf file of the article          | `None`  |
 
 ---
 
