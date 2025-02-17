@@ -1,32 +1,41 @@
+# OSA: OPEN-SOURCE ADVISOR
+
 <p align="center">
-    <img src="https://raw.githubusercontent.com/aimclub/open-source-ops/7de1e1321389ec177f236d0a5f41f876811a912a/badges/ITMO_badge.svg" align="center" width="20%">
+
+[![Acknowledgement ITMO](https://raw.githubusercontent.com/aimclub/open-source-ops/43bb283758b43d75ec1df0a6bb4ae3eb20066323/badges/ITMO_badge.svg)](https://itmo.ru/)
+[![Open-source-ops website](https://raw.githubusercontent.com/aimclub/open-source-ops/7de1e1321389ec177f236d0a5f41f876811a912a/badges/open--source--ops-black.svg)](https://aimclub.github.io/open-source-ops/)
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/ITMO-NSS-team/Open-Source-Advisor)
 </p>
-<p align="center"><h1 align="center">OPEN-SOURCE-ADVISOR</h1></p>
-<p align="center">
-	<img src="https://img.shields.io/github/license/ITMO-NSS-team/Open-Source-Advisor?style=BadgeStyleOptions.DEFAULT&logo=opensourceinitiative&logoColor=white&color=blue" alt="license">
-	<img src="https://img.shields.io/github/last-commit/ITMO-NSS-team/Open-Source-Advisor?style=BadgeStyleOptions.DEFAULT&logo=git&logoColor=white&color=blue" alt="last-commit">
-	<img src="https://img.shields.io/github/languages/top/ITMO-NSS-team/Open-Source-Advisor?style=BadgeStyleOptions.DEFAULT&color=blue" alt="repo-top-language">
-	<img src="https://img.shields.io/github/languages/count/ITMO-NSS-team/Open-Source-Advisor?style=BadgeStyleOptions.DEFAULT&color=blue" alt="repo-language-count">
+
+<p>Built with:</p>
+<p>
+	<img src="https://img.shields.io/badge/Python-3776AB.svg?style=BadgeStyleOptions.DEFAULT&logo=Python&logoColor=white" alt="Python">
+	<img src="https://img.shields.io/badge/Docker-2496ED.svg?style=BadgeStyleOptions.DEFAULT&logo=Docker&logoColor=white" alt="Docker">
+	<img src="https://img.shields.io/badge/GitHub%20Actions-2088FF.svg?style=BadgeStyleOptions.DEFAULT&logo=GitHub-Actions&logoColor=white" alt="GitHub%20Actions">
+	<img src="https://img.shields.io/badge/AIOHTTP-2C5BB4.svg?style=BadgeStyleOptions.DEFAULT&logo=AIOHTTP&logoColor=white" alt="AIOHTTP">
+	<img src="https://img.shields.io/badge/OpenAI-412991.svg?style=BadgeStyleOptions.DEFAULT&logo=OpenAI&logoColor=white" alt="OpenAI">
+	<img src="https://img.shields.io/badge/Pydantic-E92063.svg?style=BadgeStyleOptions.DEFAULT&logo=Pydantic&logoColor=white" alt="Pydantic">
 </p>
-<p align="center">Built with the tools and technologies:</p>
-<p align="center">
-	<img src="https://img.shields.io/badge/tqdm-FFC107.svg?style=BadgeStyleOptions.DEFAULT&logo=tqdm&logoColor=black"alt="tqdm">
-	<img src="https://img.shields.io/badge/Pytest-0A9EDC.svg?style=BadgeStyleOptions.DEFAULT&logo=Pytest&logoColor=white"alt="Pytest">
-	<img src="https://img.shields.io/badge/Docker-2496ED.svg?style=BadgeStyleOptions.DEFAULT&logo=Docker&logoColor=white"alt="Docker">
-	<img src="https://img.shields.io/badge/Python-3776AB.svg?style=BadgeStyleOptions.DEFAULT&logo=Python&logoColor=white"alt="Python">
-	<img src="https://img.shields.io/badge/GitHub%20Actions-2088FF.svg?style=BadgeStyleOptions.DEFAULT&logo=GitHub-Actions&logoColor=white"alt="GitHub%20Actions">
-	<img src="https://img.shields.io/badge/AIOHTTP-2C5BB4.svg?style=BadgeStyleOptions.DEFAULT&logo=AIOHTTP&logoColor=white"alt="AIOHTTP">
-	<img src="https://img.shields.io/badge/OpenAI-412991.svg?style=BadgeStyleOptions.DEFAULT&logo=OpenAI&logoColor=white"alt="OpenAI">
-	<img src="https://img.shields.io/badge/Pydantic-E92063.svg?style=BadgeStyleOptions.DEFAULT&logo=Pydantic&logoColor=white"alt="Pydantic">
-</p>
-<br>
 
 ---
 ## Overview
 
 <overview>
-Open-Source-Advisor is an open source Python library that provides a one-click way to get recommendations for improving an open source repository; generate documentation and code to implement those recommendations.
+
+OSA (Open-Source-Advisor) is a LLM-based tool for improving the quality of scientific open source projects and helping create them from scratch. 
+It automates the generation of README, different levels of documentation, CI/CD scripts, etc. 
+It also generates advices and recommendations for the repository.
+
+OSA is currently under development, so not all features are implemented.
 </overview>
+
+---
+## How it works?
+
+Here is a short demo:
+
+![Animation](./docs/images/osa_demo.gif)
 
 ---
 
@@ -53,7 +62,7 @@ Open-Source-Advisor is an open source Python library that provides a one-click w
 
 3. **Automatic implementation of changes**: Clones the repository, creates a branch, commits and pushes changes, and creates a pull request with proposed changes.
 
-4. **Deployed on ITMO servers**: Use OSA via API (OpenAI, VseGPT), on a local server, or a version hosted on ITMO servers.
+4. **Various LLMs**: Use OSA with LLM accessible via API (OpenAI, VseGPT), on a local server, or a [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
 
 </corefeatures>
 
@@ -163,9 +172,11 @@ This project is protected under the BSD 3-Clause "New" or "Revised" License. For
 
 ## Acknowledgments
 
-- [**Open-source-ops**](https://github.com/aimclub/open-source-ops)
+OSA is tested by the members of [ITMO OpenSource](https://t.me/scientific_opensource) community. Useful content from community 
+is available in [**Open-source-ops**](https://github.com/aimclub/open-source-ops)
 
-- [**Readme-ai**](https://github.com/eli64s/readme-ai)
+Also, we thank [**Readme-ai**](https://github.com/eli64s/readme-ai) 
+for their code that we used as a foundation for our own version of README generator.
 
 ---
 
@@ -175,7 +186,7 @@ If you use this software, please cite it as below.
 
 ### APA format:
 
-    ITMO-NSS-team (2024). Open-Source-Advisor repository [Computer software]. https://github.com/ITMO-NSS-team/Open-Source-Advisor
+    NSS Lab (2025). Open-Source-Advisor repository [Computer software]. https://github.com/ITMO-NSS-team/Open-Source-Advisor
 
 ### BibTeX format:
 
@@ -185,7 +196,7 @@ If you use this software, please cite it as below.
 
         title = {Open-Source-Advisor repository},
 
-        year = {2024},
+        year = {2025},
 
         publisher = {github.com},
 
