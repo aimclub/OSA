@@ -1,3 +1,0 @@
-# Home
-
-{{ ../README.md }}
