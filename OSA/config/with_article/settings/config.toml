@@ -23,14 +23,14 @@ repository = "https://github.com/aimclub/FEDOT"
 [llm]
 api = "llama"
 url = "http://10.32.15.21:6672/generate"
-context_window = 8192
+context_window = 4096
 encoder = "cl100k_base"
 host_name = "http://10.32.15.21:6672/"
 localhost = "http://localhost:11434/"
 model = "llama"
 path = "generate"
 temperature = 0.05
-tokens = 8192
+tokens = 4096
 top_p = 0.95
 
 # Logging Configuration
