@@ -1,1 +1,3 @@
-# OSA: Tool that just makes your open source project better
+# Home
+
+{% include '../README.md' %}
