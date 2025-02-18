@@ -32,7 +32,7 @@ jobs:
           pip install pytest
 
       - name: Run tests
-        run: pytest tests/
+        run: PYTHONPATH=$PWD pytest tests/
 
   deploy_docs:
     name: Deploy MkDocs
