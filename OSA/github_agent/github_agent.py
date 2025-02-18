@@ -62,7 +62,7 @@ class GithubAgent:
         if not self.token:
             raise ValueError("GitHub token is required to create a fork.")
 
-        base_repo = self.repo_url[len("https://github.com/"):].rstrip('/')
+        base_repo = self._get_base_repo_url()
         headers = {
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json"
@@ -71,7 +71,7 @@ class GithubAgent:
         url = f"https://api.github.com/repos/{base_repo}/forks"
         response = requests.post(url, headers=headers)
 
-        if response.status_code == 202:
+        if response.status_code in {200, 202}:
             self.fork_url = response.json()['html_url']
             logger.info(f"Fork created successfully: {self.fork_url}")
         else:
@@ -87,7 +87,7 @@ class GithubAgent:
         if not self.token:
             raise ValueError("GitHub token is required to star the repository.")
 
-        base_repo = self.repo_url[len("https://github.com/"):].rstrip('/')
+        base_repo = self._get_base_repo_url()
         headers = {
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json"
@@ -192,7 +192,7 @@ class GithubAgent:
         if not self.token:
             raise ValueError("GitHub token is required to create a pull request.")
 
-        base_repo = self.repo_url[len("https://github.com/"):].rstrip('/')
+        base_repo = self._get_base_repo_url()
         last_commit = self.repo.head.commit
         pr_title = title if title else last_commit.message
         pr_body = body if body else last_commit.message
@@ -240,3 +240,7 @@ class GithubAgent:
             return auth_url
         else:
             raise ValueError("Unsupported repository URL format.")
+
+    def _get_base_repo_url(self, url: str = None) -> str:
+        repo_url = url if url else self.repo_url
+        return repo_url[len("https://github.com/"):].rstrip('/')
