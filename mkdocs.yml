@@ -14,7 +14,7 @@ plugins:
             show_object_full_path: false
 
 nav:
-  - Home: README.md
+  - Home: index.md
   - API docs: reference.md
 
 repo_url: https://github.com/ITMO-NSS-team/Open-Source-Advisor
