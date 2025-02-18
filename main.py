@@ -7,7 +7,7 @@ from readmeai.readmegen_article.config.settings import ArticleConfigLoader
 from readmeai.config.settings import ConfigLoader, GitSettings
 from readmeai.main import readme_generator
 from OSA.github_agent.github_agent import GithubAgent
-from OSA.utils import parse_folder_name
+from OSA.utils import parse_folder_name, update_toml_file
 from OSA.osatreesitter.osa_treesitter import OSA_TreeSitter
 from OSA.osatreesitter.docgen import DocGen
 
