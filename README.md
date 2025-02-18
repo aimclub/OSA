@@ -46,6 +46,7 @@ Here is a short demo:
 - [Installation](#installation)
 - [Getting started](#getting-started)
 - [Examples](#examples)
+- [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
@@ -171,6 +172,12 @@ VseGPT:
 ```sh
 python main.py https://github.com/ITMO-NSS-team/Open-Source-Advisor --api vsegpt --model openai/gpt-3.5-turbo
 ```
+
+---
+
+## Documentation
+
+Detailed description of OSA API is available [here](https://itmo-nss-team.github.io/Open-Source-Advisor/).
 
 ---
 

@@ -15,5 +15,5 @@ plugins:
 
 nav:
   - Home: index.md
-  - API: reference.md
+  - API docs: reference.md
 repo_url: https://github.com/ITMO-NSS-team/Open-Source-Advisor
