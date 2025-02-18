@@ -242,5 +242,20 @@ class GithubAgent:
             raise ValueError("Unsupported repository URL format.")
 
     def _get_base_repo_url(self, url: str = None) -> str:
+        """Extracts the base repository URL path from a given GitHub URL.
+
+        Args:
+            url (str, optional): The GitHub repository URL. If not provided,
+                the instance's `repo_url` attribute is used. Defaults to None.
+
+        Returns:
+            str: The base repository path (e.g., 'username/repo-name').
+
+        Raises:
+            ValueError: If the provided URL does not start with 'https://github.com/'.
+        """
         repo_url = url if url else self.repo_url
-        return repo_url[len("https://github.com/"):].rstrip('/')
+        if repo_url.startswith("https://github.com/"):
+            return repo_url[len("https://github.com/"):].rstrip('/')
+        else:
+            raise ValueError("Unsupported repository URL format.")
