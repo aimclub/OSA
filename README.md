@@ -142,6 +142,10 @@ Examples of generated README files are available in [examples](https://github.co
 
 URL of the GitHub repository, LLM API service provider (*optional*) and Specific LLM model to use (*optional*) are required to use the generator.
 
+To see available models go there:
+1. [VseGpt](https://vsegpt.ru/Docs/Models)
+2. [OpenAI](https://platform.openai.com/docs/models)
+
 Local Llama ITMO:
 ```sh
 python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor
