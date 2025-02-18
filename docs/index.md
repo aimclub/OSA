@@ -1,3 +1,3 @@
 # Home
 
-{% include '../README.md' %}
+{{ ../README.md }}
