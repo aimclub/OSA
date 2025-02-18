@@ -6,7 +6,7 @@
 [![Open-source-ops website](https://raw.githubusercontent.com/aimclub/open-source-ops/7de1e1321389ec177f236d0a5f41f876811a912a/badges/open--source--ops-black.svg)](https://aimclub.github.io/open-source-ops/)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/ITMO-NSS-team/Open-Source-Advisor)
-[![Telegram Chat](https://img.shields.io/badge/Telegram-group-blue)](https://t.me/FEDOT_helpdesk)
+[![Telegram Chat](https://img.shields.io/badge/Telegram-group-blue)](https://t.me/OSA_helpdesk)
 </p>
 
 <p>Built with:</p>
