@@ -3,6 +3,7 @@ import dotenv
 import os
 import re
 import logging
+from OSA.osatreesitter.models import ModelHandlerFactory, ModelHandler
 
 dotenv.load_dotenv()
 
@@ -60,6 +61,7 @@ class DocGen(object):
         This method is a constructor that initializes the object by setting the 'api_key' attribute to the value of the 'OPENAI_API_KEY' environment variable.
         """
         self.api_key = os.getenv("OPENAI_API_KEY")
+        self.model_handler: ModelHandler = ModelHandlerFactory.build()
 
     @staticmethod
     def format_structure_openai(structure: dict):
@@ -137,23 +139,21 @@ class DocGen(object):
         tokens = enc.encode(prompt)
         return len(tokens)
 
-    def generate_class_documentation(self, class_details, model="gpt-4"):
+    def generate_class_documentation(self, class_details):
         """
-        Generate documentation for a class using OpenAI GPT.
+        Generate documentation for a class.
 
         Args:
             class_details: A list of dictionaries containing method names and their docstrings.
-            model: The GPT model to use. Defaults to "gpt-4".
 
         Returns:
             The generated class docstring.
         """
-        openai.api_key = self.api_key
-
         # Construct a structured prompt
         prompt = f"""
-        Generate a Python docstring for the following class. The docstring should follow Google-style format and include:
+        Generate a single Python docstring for the following class {class_details[0]['class_name']}. The docstring should follow Google-style format and include:
         - A short summary of what the class does.
+        - A list of its methods.
         - A brief description of its methods.
 
         Class Methods:
@@ -161,27 +161,12 @@ class DocGen(object):
         for method in class_details:
             prompt += f"- {method['method_name']}: {method['docstring']}\n"
 
-        response = openai.chat.completions.create(
-            model=model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant for generating Python docstrings.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=1000,
-            temperature=0.7,
-        )
+        return self.model_handler.send_request(prompt)
 
-        return response.choices[0].message.content
-
-    def generate_method_documentation(self, method_details: dict, model="gpt-4"):
+    def generate_method_documentation(self, method_details: dict):
         """
-        Generate documentation for a single method using OpenAI GPT.
+        Generate documentation for a single method.
         """
-        openai.api_key = self.api_key
-
         prompt = f"""
         Generate a Python docstring for the following method. The docstring should follow Google-style format and include:
         - A short summary of what the method does.
@@ -198,21 +183,7 @@ class DocGen(object):
         {method_details["source_code"]}
         ```
         """
-
-        response = openai.chat.completions.create(
-            model=model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant for generating a Python docstrings.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=1500,
-            temperature=0.7,
-        )
-
-        return response.choices[0].message.content
+        return self.model_handler.send_request(prompt)
 
     def extract_pure_docstring(self, gpt_response: str):
         """
@@ -340,6 +311,7 @@ class DocGen(object):
                     for method in item["methods"]:
                         cls_structure.append(
                             {
+                                "class_name": class_name,
                                 "method_name": method["method_name"],
                                 "docstring": method["docstring"],
                             }

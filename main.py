@@ -5,7 +5,7 @@ from rich.logging import RichHandler
 from readmeai.config.settings import ConfigLoader, GitSettings
 from readmeai.main import readme_generator
 from OSA.github_agent.github_agent import GithubAgent
-from OSA.utils import parse_folder_name
+from OSA.utils import parse_folder_name, update_toml_file
 from OSA.osatreesitter.osa_treesitter import OSA_TreeSitter
 from OSA.osatreesitter.docgen import DocGen
 
@@ -16,7 +16,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(message)s",
     datefmt="[%X]",
-    handlers=[RichHandler()]
+    handlers=[RichHandler()],
 )
 
 logger = logging.getLogger("rich")
@@ -75,10 +75,7 @@ def main():
         github_agent.create_and_checkout_branch()
 
         # Docstring generation
-        ts = OSA_TreeSitter(os.path.basename(repo_url))
-        res = ts.analyze_directory(ts.cwd)
-        dg = DocGen()
-        dg.process_python_file(res)
+        generate_docstrings(repo_url, api, model_name)
 
         # Readme generation
         readme_agent(repo_url, api, model_name)
@@ -88,6 +85,27 @@ def main():
         logger.info("All operations completed successfully.")
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
+
+
+def generate_docstrings(repo_url: str, api: str, model_name: str) -> None:
+    """Generates a docstrings for .py's classes and methods of the provided repository.
+
+    Args:
+        repo_url: URL of the GitHub repository.
+        api: LLM API service provider.
+        model: Specific LLM model to use.
+
+    """
+    try:
+        update_toml_file("OSA/config/settings/config.toml", api, model_name)
+        ts = OSA_TreeSitter(os.path.basename(repo_url))
+        res = ts.analyze_directory(ts.cwd)
+        dg = DocGen()
+        dg.process_python_file(res)
+
+    except Exception as e:
+        logger.error("Error while docstring generation: %s", repr(e), exc_info=True)
+        raise ValueError("Failed to generate docstrings.")
 
 
 def readme_agent(repo_url: str, api: str, model_name: str) -> None:
@@ -102,8 +120,7 @@ def readme_agent(repo_url: str, api: str, model_name: str) -> None:
         Exception: If an error occurs during README.md generation.
     """
 
-    logger.info("Started generating README.md. Processing the repository: %s",
-                repo_url)
+    logger.info("Started generating README.md. Processing the repository: %s", repo_url)
 
     try:
         # Load configurations and update config
