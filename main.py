@@ -18,7 +18,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(message)s",
     datefmt="[%X]",
-    handlers=[RichHandler()]
+    handlers=[RichHandler()],
 )
 
 logger = logging.getLogger("rich")
@@ -34,10 +34,18 @@ def main():
     parser = argparse.ArgumentParser(
         description="Generate README.md for a GitHub repository"
     )
+    parser.add_argument("repo_url", type=str, help="URL of the GitHub repository")
+
     parser.add_argument(
-        "repo_url",
+        "api", type=str, help="LLM API service provider", nargs="?", default="llama"
+    )
+
+    parser.add_argument(
+        "model_name",
         type=str,
-        help="URL of the GitHub repository"
+        help="Specific LLM model to use",
+        nargs="?",
+        default="llama",
     )
 
     parser.add_argument(
@@ -82,10 +90,10 @@ def main():
         github_agent.star_repository()
         github_agent.clone_repository()
         github_agent.create_and_checkout_branch()
-        
+
         # Docstring generation
         generate_docstrings(repo_url, api, model_name)
-        
+
         # Readme generation
         readme_agent(repo_url, api, model_name, article)
         
@@ -116,6 +124,28 @@ def generate_docstrings(repo_url: str, api: str, model_name: str) -> None:
         logger.error("Error while docstring generation: %s", repr(e), exc_info=True)
         raise ValueError("Failed to generate docstrings.")
 
+
+def generate_docstrings(repo_url: str, api: str, model_name: str) -> None:
+    """Generates a docstrings for .py's classes and methods of the provided repository.
+
+    Args:
+        repo_url: URL of the GitHub repository.
+        api: LLM API service provider.
+        model: Specific LLM model to use.
+
+    """
+    try:
+        update_toml_file("OSA/config/settings/config.toml", api, model_name)
+        ts = OSA_TreeSitter(os.path.basename(repo_url))
+        res = ts.analyze_directory(ts.cwd)
+        dg = DocGen()
+        dg.process_python_file(res)
+
+    except Exception as e:
+        logger.error("Error while docstring generation: %s", repr(e), exc_info=True)
+        raise ValueError("Failed to generate docstrings.")
+
+
 def readme_agent(repo_url: str, api: str, model_name: str, article: Optional[str]) -> None:
     """Generates a README.md file for the specified GitHub repository.
 
@@ -128,7 +158,7 @@ def readme_agent(repo_url: str, api: str, model_name: str, article: Optional[str
     Raises:
         Exception: If an error occurs during README.md generation.
     """
-    
+
     logger.info("Started generating README.md. Processing the repository: %s", repo_url)
 
     try:
