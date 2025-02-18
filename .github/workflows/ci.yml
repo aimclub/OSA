@@ -52,4 +52,10 @@ jobs:
           pip install mkdocs mkdocs-material mkdocstrings[python]
 
       - name: Docs deploy
-        run: mkdocs gh-deploy --force
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/ITMO-NSS-team/Open-Source-Advisor.git
+          mkdocs gh-deploy --force
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
