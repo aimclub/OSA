@@ -63,7 +63,7 @@ Here is a short demo:
 
 3. **Automatic implementation of changes**: Clones the repository, creates a branch, commits and pushes changes, and creates a pull request with proposed changes.
 
-4. **Various LLMs**: Use OSA with LLM accessible via API (OpenAI, VseGPT), on a local server, or a [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
+4. **Various LLMs**: Use OSA with an LLM accessible via API (e.g., OpenAI, VseGPT), a local server, or try an [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
 
 </corefeatures>
 
