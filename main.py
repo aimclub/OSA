@@ -85,6 +85,7 @@ def main():
         # Initialize GitHub agent and perform operations
         github_agent = GithubAgent(repo_url)
         github_agent.star_repository()
+        github_agent.create_fork()
         github_agent.clone_repository()
         github_agent.create_and_checkout_branch()
 
