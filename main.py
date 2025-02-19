@@ -37,18 +37,6 @@ def main():
     parser.add_argument("repo_url", type=str, help="URL of the GitHub repository")
 
     parser.add_argument(
-        "api", type=str, help="LLM API service provider", nargs="?", default="llama"
-    )
-
-    parser.add_argument(
-        "model_name",
-        type=str,
-        help="Specific LLM model to use",
-        nargs="?",
-        default="llama",
-    )
-
-    parser.add_argument(
         "api",
         type=str,
         help="LLM API service provider",
