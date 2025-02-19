@@ -32,32 +32,41 @@ def main():
     """
     # Create a command line argument parser
     parser = argparse.ArgumentParser(
-        description="Generate README.md for a GitHub repository"
+        description="Generate README.md for a GitHub repository",
+        formatter_class=argparse.RawTextHelpFormatter,
     )
-    parser.add_argument("repo_url", type=str, help="URL of the GitHub repository")
-
     parser.add_argument(
-        "api",
+        "-r",
+        "--repository",
+        type=str,
+        help="URL of the GitHub repository"
+    )
+    parser.add_argument(
+        "--api",
         type=str,
         help="LLM API service provider",
         nargs="?",
+        choices=["llama", "openai", "vsegpt"],
         default="llama"
     )
-
     parser.add_argument(
-        "model_name",
+        "--model",
         type=str,
-        help="Specific LLM model to use",
+        help=(
+            "Specific LLM model to use. "
+            "To see available models go there:\n"
+            "1. https://vsegpt.ru/Docs/Models\n"
+            "2. https://platform.openai.com/docs/models"
+        ),
         nargs="?",
         default="llama"
     )
-
     parser.add_argument(
         "--article",
         type=str,
         help=(
-            "Select a README template for a repository with an article. "
-            "You can also provide a link to the pdf file of the article "
+            "Select a README template for a repository with an article.\n"
+            "You can also provide a link to the pdf file of the article\n"
             "after the --article option."
         ),
         nargs="?",
@@ -66,9 +75,9 @@ def main():
     )
 
     args = parser.parse_args()
-    repo_url = args.repo_url
+    repo_url = args.repository
     api = args.api
-    model_name = args.model_name
+    model_name = args.model
     article = args.article
 
     try:
