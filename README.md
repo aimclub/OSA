@@ -126,17 +126,26 @@ Run Open-Source-Advisor using the following command:
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
 
 ```sh
-❯ python main.py {repo_url} {api} {model_name} [--article {article}]
+❯ python main.py -r {repository} [--api {api}] [--model {model_name}] [--article {article}]
 ```
 
 **Using `docker`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
-❯ docker run --env-file .env {image-name} {repo_url} {api} {model_name} [--article {article}]
+❯ docker run --env-file .env {image-name} -r {repository} [--api {api}] [--model {model_name}] [--article {article}]
 ```
 
 The --article option enables you to choose a README template for a repository based on an article. You can provide either a link to a PDF file of the article or a path to a local PDF file after the --article option. If you are using Docker, ensure that you upload the PDF file to the OSA folder before building the image, then, specify the path as /app/OSA/... or just use volume mounting to access the file.
+
+### Configuration
+
+| Flag           | Description                                  | Default |
+|----------------|----------------------------------------------|---------|
+| `--repository` | URL of the GitHub repository (**Mandatory**) |         |
+| `--api`        | LLM API service provider                     | `llama` |
+| `--model`      | Specific LLM model to use                    | `llama` |
+| `--article`    | Link to the pdf file of the article          | `None`  |
 
 ---
 
@@ -146,17 +155,21 @@ Examples of generated README files are available in [examples](https://github.co
 
 URL of the GitHub repository, LLM API service provider (*optional*) and Specific LLM model to use (*optional*) are required to use the generator.
 
+To see available models go there:
+1. [VseGpt](https://vsegpt.ru/Docs/Models)
+2. [OpenAI](https://platform.openai.com/docs/models)
+
 Local Llama ITMO:
 ```sh
-python main.py https://github.com/ITMO-NSS-team/Open-Source-Advisor
+python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor
 ```  
 OpenAI:
 ```sh
-python main.py https://github.com/ITMO-NSS-team/Open-Source-Advisor openai gpt-3.5-turbo
+python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai --model gpt-3.5-turbo
 ```
 VseGPT:
 ```sh
-python main.py https://github.com/ITMO-NSS-team/Open-Source-Advisor vsegpt openai/gpt-3.5-turbo
+python main.py https://github.com/ITMO-NSS-team/Open-Source-Advisor --api vsegpt --model openai/gpt-3.5-turbo
 ```
 
 ---
