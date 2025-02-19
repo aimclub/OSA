@@ -105,7 +105,7 @@ Install Open-Source-Advisor using one of the following methods:
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
-❯ docker build -f docker/Dockerfile -t {image-name} .
+❯ docker build --build-arg GIT_USER_NAME="your-user-name" --build-arg GIT_USER_EMAIL="your-user-email" -f docker/Dockerfile -t {image-name} .
 ```
 
 ---
@@ -126,15 +126,17 @@ Run Open-Source-Advisor using the following command:
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
 
 ```sh
-❯ python main.py {repo_url} {api} {model_name}
+❯ python main.py {repo_url} {api} {model_name} [--article {article}]
 ```
 
 **Using `docker`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
-❯ docker run --env-file .env {image-name} {repo_url} {api} {model_name}
+❯ docker run --env-file .env {image-name} {repo_url} {api} {model_name} [--article {article}]
 ```
+
+The --article option enables you to choose a README template for a repository based on an article. You can provide either a link to a PDF file of the article or a path to a local PDF file after the --article option. If you are using Docker, ensure that you upload the PDF file to the OSA folder before building the image, then, specify the path as /app/OSA/... or just use volume mounting to access the file.
 
 ---
 
