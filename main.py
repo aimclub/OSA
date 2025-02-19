@@ -104,6 +104,7 @@ def main():
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
 
+
 def generate_docstrings(repo_url: str, api: str, model_name: str) -> None:
     """Generates a docstrings for .py's classes and methods of the provided repository.
 
