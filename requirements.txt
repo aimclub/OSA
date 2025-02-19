@@ -51,4 +51,4 @@ typing_extensions==4.12.2
 urllib3==2.3.0
 yarl==1.18.3
 
-readmeai @ git+https://github.com/fl1pcoin/readmeai.git@cc5472691b96d8240c5ea31f33ad25703129417a
+readmeai @ git+https://github.com/fl1pcoin/readmeai.git@512eef84ffd3e8b840957d2a3d57bc2343e9a639
