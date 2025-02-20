@@ -36,10 +36,7 @@ def main():
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
-        "-r",
-        "--repository",
-        type=str,
-        help="URL of the GitHub repository"
+        "-r", "--repository", type=str, help="URL of the GitHub repository"
     )
     parser.add_argument(
         "--api",
@@ -47,7 +44,7 @@ def main():
         help="LLM API service provider",
         nargs="?",
         choices=["llama", "openai", "vsegpt"],
-        default="llama"
+        default="llama",
     )
     parser.add_argument(
         "--model",
@@ -59,7 +56,7 @@ def main():
             "2. https://platform.openai.com/docs/models"
         ),
         nargs="?",
-        default="llama"
+        default="llama",
     )
     parser.add_argument(
         "--article",
@@ -71,7 +68,7 @@ def main():
         ),
         nargs="?",
         const="",
-        default=None
+        default=None,
     )
 
     args = parser.parse_args()
@@ -81,7 +78,7 @@ def main():
     article = args.article
 
     try:
-        
+
         # Initialize GitHub agent and perform operations
         github_agent = GithubAgent(repo_url)
         github_agent.star_repository()
@@ -94,11 +91,11 @@ def main():
 
         # Readme generation
         readme_agent(repo_url, api, model_name, article)
-        
+
         github_agent.commit_and_push_changes()
         github_agent.create_pull_request()
         logger.info("All operations completed successfully.")
-        
+
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
 
@@ -113,7 +110,7 @@ def generate_docstrings(repo_url: str, api: str, model_name: str) -> None:
 
     """
     try:
-        update_toml_file("OSA/config/settings/config.toml", api, model_name)
+        update_toml_file("OSA/config/standart/settings/config.toml", api, model_name)
         ts = OSA_TreeSitter(os.path.basename(repo_url))
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen()
@@ -124,7 +121,9 @@ def generate_docstrings(repo_url: str, api: str, model_name: str) -> None:
         raise ValueError("Failed to generate docstrings.")
 
 
-def readme_agent(repo_url: str, api: str, model_name: str, article: Optional[str]) -> None:
+def readme_agent(
+    repo_url: str, api: str, model_name: str, article: Optional[str]
+) -> None:
     """Generates a README.md file for the specified GitHub repository.
 
     Args:
@@ -147,10 +146,7 @@ def readme_agent(repo_url: str, api: str, model_name: str, article: Optional[str
             config_loader = ArticleConfigLoader(config_dir="OSA/config/with_article")
         config_loader.config.git = GitSettings(repository=repo_url)
         config_loader.config.llm = config_loader.config.llm.model_copy(
-            update={
-                "api": api,
-                "model": model_name
-            }
+            update={"api": api, "model": model_name}
         )
 
         # Define output directory and ensure it exists
