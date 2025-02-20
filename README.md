@@ -177,7 +177,7 @@ python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api ope
 ```
 VseGPT:
 ```sh
-python main.py https://github.com/ITMO-NSS-team/Open-Source-Advisor --api vsegpt --model openai/gpt-3.5-turbo
+python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api vsegpt --model openai/gpt-3.5-turbo
 ```
 
 ---
