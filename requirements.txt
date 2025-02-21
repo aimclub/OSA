@@ -28,7 +28,7 @@ packaging==24.2
 pdfminer.six==20231228
 pluggy==1.5.0
 propcache==0.2.1
-pydantic==2.10.5
+pydantic>=2.9.0,<2.11.0
 pydantic-extra-types==2.9.0
 pydantic_core==2.27.2
 Pygments==2.19.1
@@ -51,4 +51,4 @@ typing_extensions==4.12.2
 urllib3==2.3.0
 yarl==1.18.3
 
-readmeai @ git+https://github.com/fl1pcoin/readmeai.git@512eef84ffd3e8b840957d2a3d57bc2343e9a639
+readmeai @ git+https://github.com/fl1pcoin/readmeai.git@f8e87448a3ca141604ca5841c4887fd735d4a012
