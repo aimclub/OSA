@@ -303,7 +303,7 @@ class ModelHandlerFactory:
         Returns:
             None: This method does not return anything.
         """
-        config_loader: ConfigLoader = ConfigLoader("OSA/config")
+        config_loader: ConfigLoader = ConfigLoader("OSA/config/standart")
         config = config_loader.config
         return cls.create_handler(config)
 
@@ -322,10 +322,10 @@ class ModelHandlerFactory:
         Returns:
             None: This method does not return anything.
         """
-        model = config.llm.model
+        api = config.llm.api
         constructors = {
             "llama": LlamaHandler,
             "openai": OpenaiHandler,
-            "gpt-4": OpenaiHandler,
+            "vsegpt": OpenaiHandler,
         }
-        return constructors[model](config)
+        return constructors[api](config)

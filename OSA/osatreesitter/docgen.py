@@ -303,6 +303,18 @@ class DocGen(object):
                             source_code = self.insert_docstring_in_code(
                                 source_code, method, generated_docstring
                             )
+                if item["type"] == "function":
+                    func_details = item["details"]
+                    if func_details["docstring"] == None:
+                        logging.info(
+                            f"Generating docstring for a function: {func_details['method_name']} at {filename}"
+                        )
+                        generated_docstring = self.generate_method_documentation(
+                            func_details
+                        )
+                        source_code = self.insert_docstring_in_code(
+                            source_code, func_details, generated_docstring
+                        )
 
             for item in structure:
                 if item["type"] == "class" and item["docstring"] == None:
