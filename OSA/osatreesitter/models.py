@@ -290,7 +290,7 @@ class ModelHandlerFactory:
     """
 
     @classmethod
-    def build(cls):
+    def build(cls, config: Settings):
         """
         Builds and returns a handler based on the configuration of the class.
 
@@ -298,13 +298,12 @@ class ModelHandlerFactory:
         and then creates and returns a handler using the configuration.
 
         Args:
+            config: The configuration object which contains the model information.
             cls: The class from which the configuration is retrieved.
 
         Returns:
             None: This method does not return anything.
         """
-        config_loader: ConfigLoader = ConfigLoader("OSA/config")
-        config = config_loader.config
         return cls.create_handler(config)
 
     @staticmethod
@@ -313,8 +312,8 @@ class ModelHandlerFactory:
         Creates a handler based on the model specified in the configuration.
 
         This method uses the model specified in the configuration to create a handler.
-        It supports three types of models: 'llama', 'openai', and 'gpt-4'.
-        For 'llama', it creates a llamaHandler, and for 'openai' and 'gpt-4', it creates an openaiHandler.
+        It supports three types of models: 'llama', 'openai', and 'vsegpt'.
+        For 'llama', it creates a llamaHandler, and for 'openai' and 'vsegpt', it creates an openaiHandler.
 
         Args:
             config: The configuration object which contains the model information.
@@ -322,10 +321,10 @@ class ModelHandlerFactory:
         Returns:
             None: This method does not return anything.
         """
-        model = config.llm.model
+        api = config.llm.api
         constructors = {
             "llama": LlamaHandler,
             "openai": OpenaiHandler,
-            "gpt-4": OpenaiHandler,
+            "vsegpt": OpenaiHandler,
         }
-        return constructors[model](config)
+        return constructors[api](config)

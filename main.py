@@ -10,6 +10,7 @@ from OSA.github_agent.github_agent import GithubAgent
 from OSA.utils import parse_folder_name, update_toml_file
 from OSA.osatreesitter.osa_treesitter import OSA_TreeSitter
 from OSA.osatreesitter.docgen import DocGen
+from OSA.translation.dir_translator import DirectoryTranslator
 
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
@@ -81,7 +82,9 @@ def main():
     article = args.article
 
     try:
-        
+        # Load configurations and update
+        config = load_configuration(repo_url, api, model_name, article)
+
         # Initialize GitHub agent and perform operations
         github_agent = GithubAgent(repo_url)
         github_agent.star_repository()
@@ -89,14 +92,20 @@ def main():
         github_agent.clone_repository()
         github_agent.create_and_checkout_branch()
 
+        # Auto translating names of directories
+        translation = DirectoryTranslator(config)
+        translation.rename_directories()
+
         # Docstring generation
+        '''
         generate_docstrings(repo_url, api, model_name)
 
         # Readme generation
-        readme_agent(repo_url, api, model_name, article)
-        
+        readme_agent(config, article)
+
         github_agent.commit_and_push_changes()
         github_agent.create_pull_request()
+        '''
         logger.info("All operations completed successfully.")
         
     except Exception as e:
@@ -124,37 +133,24 @@ def generate_docstrings(repo_url: str, api: str, model_name: str) -> None:
         raise ValueError("Failed to generate docstrings.")
 
 
-def readme_agent(repo_url: str, api: str, model_name: str, article: Optional[str]) -> None:
+def readme_agent(config_loader, article: Optional[str]) -> None:
     """Generates a README.md file for the specified GitHub repository.
 
     Args:
-        api: LLM API service provider
-        model_name: Specific LLM model to use
-        repo_url: URL of the GitHub repository
+        config_loader:
         article: Optional link to the pdf file of the article.
 
     Raises:
         Exception: If an error occurs during README.md generation.
     """
-
-    logger.info("Started generating README.md. Processing the repository: %s", repo_url)
+    repo_url = config_loader.config.git.repository
+    logger.info("Started generating README.md. Processing the repository: %s"
+                , repo_url)
 
     try:
-        # Load configurations and update config
-        if article is None:
-            config_loader = ConfigLoader(config_dir="OSA/config/standart")
-        else:
-            config_loader = ArticleConfigLoader(config_dir="OSA/config/with_article")
-        config_loader.config.git = GitSettings(repository=repo_url)
-        config_loader.config.llm = config_loader.config.llm.model_copy(
-            update={
-                "api": api,
-                "model": model_name
-            }
-        )
-
         # Define output directory and ensure it exists
-        output_dir = os.path.join(os.getcwd(), parse_folder_name(repo_url))
+        output_dir = os.path.join(os.getcwd(),parse_folder_name(repo_url)
+                                  )
         os.makedirs(output_dir, exist_ok=True)
         file_to_save = os.path.join(output_dir, "README.md")
 
@@ -166,6 +162,28 @@ def readme_agent(repo_url: str, api: str, model_name: str, article: Optional[str
     except Exception as e:
         logger.error("Error while generating: %s", repr(e), exc_info=True)
         raise ValueError("Failed to generate README.md.")
+
+
+def load_configuration(
+        repo_url: str,
+        api: str,
+        model_name: str,
+        article: Optional[str]
+):
+    if article is None:
+        config_loader = ConfigLoader(config_dir="OSA/config/standart")
+    else:
+        config_loader = ArticleConfigLoader(
+            config_dir="OSA/config/with_article")
+
+    config_loader.config.git = GitSettings(repository=repo_url)
+    config_loader.config.llm = config_loader.config.llm.model_copy(
+        update={
+            "api": api,
+            "model": model_name
+        }
+    )
+    return config_loader
 
 
 if __name__ == "__main__":
