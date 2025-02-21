@@ -40,7 +40,8 @@ def main():
         "-r",
         "--repository",
         type=str,
-        help="URL of the GitHub repository"
+        help="URL of the GitHub repository",
+        required=True
     )
     parser.add_argument(
         "--api",
@@ -74,6 +75,13 @@ def main():
         const="",
         default=None
     )
+    parser.add_argument(
+        "--translate-dirs",
+        action="store_true",
+        help=(
+            "Enable automatic directory name translation to English."
+        ),
+    )
 
     args = parser.parse_args()
     repo_url = args.repository
@@ -93,8 +101,9 @@ def main():
         github_agent.create_and_checkout_branch()
 
         # Auto translating names of directories
-        translation = DirectoryTranslator(config)
-        translation.rename_directories()
+        if args.translate_dirs:
+            translation = DirectoryTranslator(config)
+            translation.rename_directories()
 
         # Docstring generation
         '''
@@ -183,6 +192,7 @@ def load_configuration(
             "model": model_name
         }
     )
+    logger.info("Config successfully updated and loaded")
     return config_loader
 
 
