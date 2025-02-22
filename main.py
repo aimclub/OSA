@@ -49,7 +49,7 @@ def main():
         help="LLM API service provider",
         nargs="?",
         choices=["llama", "openai", "vsegpt"],
-        default="llama"
+        default="llama",
     )
     parser.add_argument(
         "--model",
@@ -61,7 +61,7 @@ def main():
             "2. https://platform.openai.com/docs/models"
         ),
         nargs="?",
-        default="llama"
+        default="llama",
     )
     parser.add_argument(
         "--article",
@@ -73,7 +73,7 @@ def main():
         ),
         nargs="?",
         const="",
-        default=None
+        default=None,
     )
     parser.add_argument(
         "--translate-dirs",
@@ -92,7 +92,7 @@ def main():
     try:
         # Load configurations and update
         config = load_configuration(repo_url, api, model_name, article)
-
+        
         # Initialize GitHub agent and perform operations
         github_agent = GithubAgent(repo_url)
         github_agent.star_repository()

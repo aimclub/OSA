@@ -1,24 +1,5 @@
 # OSA: OPEN-SOURCE ADVISOR
 
-<p align="center">
-
-[![Acknowledgement ITMO](https://raw.githubusercontent.com/aimclub/open-source-ops/43bb283758b43d75ec1df0a6bb4ae3eb20066323/badges/ITMO_badge.svg)](https://itmo.ru/)
-[![Open-source-ops website](https://raw.githubusercontent.com/aimclub/open-source-ops/7de1e1321389ec177f236d0a5f41f876811a912a/badges/open--source--ops-black.svg)](https://aimclub.github.io/open-source-ops/)
-[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/ITMO-NSS-team/Open-Source-Advisor)
-[![Telegram Chat](https://img.shields.io/badge/Telegram-group-blue)](https://t.me/OSA_helpdesk)
-</p>
-
-<p>Built with:</p>
-<p>
-	<img src="https://img.shields.io/badge/Python-3776AB.svg?style=BadgeStyleOptions.DEFAULT&logo=Python&logoColor=white" alt="Python">
-	<img src="https://img.shields.io/badge/Docker-2496ED.svg?style=BadgeStyleOptions.DEFAULT&logo=Docker&logoColor=white" alt="Docker">
-	<img src="https://img.shields.io/badge/GitHub%20Actions-2088FF.svg?style=BadgeStyleOptions.DEFAULT&logo=GitHub-Actions&logoColor=white" alt="GitHub%20Actions">
-	<img src="https://img.shields.io/badge/AIOHTTP-2C5BB4.svg?style=BadgeStyleOptions.DEFAULT&logo=AIOHTTP&logoColor=white" alt="AIOHTTP">
-	<img src="https://img.shields.io/badge/OpenAI-412991.svg?style=BadgeStyleOptions.DEFAULT&logo=OpenAI&logoColor=white" alt="OpenAI">
-	<img src="https://img.shields.io/badge/Pydantic-E92063.svg?style=BadgeStyleOptions.DEFAULT&logo=Pydantic&logoColor=white" alt="Pydantic">
-</p>
-
 ---
 ## Overview
 
@@ -36,7 +17,7 @@ OSA is currently under development, so not all features are implemented.
 
 Here is a short demo:
 
-![Animation](./docs/images/osa_demo.gif)
+![Animation](./images/osa_demo.gif)
 
 ---
 
@@ -106,7 +87,7 @@ Install Open-Source-Advisor using one of the following methods:
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
-❯ docker build --build-arg GIT_USER_NAME="your-user-name" --build-arg GIT_USER_EMAIL="your-user-email" -f docker/Dockerfile -t {image-name} .
+❯ docker build -f docker/Dockerfile -t {image-name} .
 ```
 
 ---
@@ -127,26 +108,15 @@ Run Open-Source-Advisor using the following command:
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
 
 ```sh
-❯ python main.py -r {repository} [--api {api}] [--model {model_name}] [--article {article}]
+❯ python main.py {repo_url} {api} {model_name}
 ```
 
 **Using `docker`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
-❯ docker run --env-file .env {image-name} -r {repository} [--api {api}] [--model {model_name}] [--article {article}]
+❯ docker run --env-file .env {image-name} {repo_url} {api} {model_name}
 ```
-
-The --article option enables you to choose a README template for a repository based on an article. You can provide either a link to a PDF file of the article or a path to a local PDF file after the --article option. If you are using Docker, ensure that you upload the PDF file to the OSA folder before building the image, then, specify the path as /app/OSA/... or just use volume mounting to access the file.
-
-### Configuration
-
-| Flag           | Description                                  | Default |
-|----------------|----------------------------------------------|---------|
-| `--repository` | URL of the GitHub repository (**Mandatory**) |         |
-| `--api`        | LLM API service provider                     | `llama` |
-| `--model`      | Specific LLM model to use                    | `llama` |
-| `--article`    | Link to the pdf file of the article          | `None`  |
 
 ---
 
@@ -156,21 +126,17 @@ Examples of generated README files are available in [examples](https://github.co
 
 URL of the GitHub repository, LLM API service provider (*optional*) and Specific LLM model to use (*optional*) are required to use the generator.
 
-To see available models go there:
-1. [VseGpt](https://vsegpt.ru/Docs/Models)
-2. [OpenAI](https://platform.openai.com/docs/models)
-
 Local Llama ITMO:
 ```sh
-python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor
+python main.py https://github.com/ITMO-NSS-team/Open-Source-Advisor
 ```  
 OpenAI:
 ```sh
-python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai --model gpt-3.5-turbo
+python main.py https://github.com/ITMO-NSS-team/Open-Source-Advisor openai gpt-3.5-turbo
 ```
 VseGPT:
 ```sh
-python main.py https://github.com/ITMO-NSS-team/Open-Source-Advisor --api vsegpt --model openai/gpt-3.5-turbo
+python main.py https://github.com/ITMO-NSS-team/Open-Source-Advisor vsegpt openai/gpt-3.5-turbo
 ```
 
 ---
