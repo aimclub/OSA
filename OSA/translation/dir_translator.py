@@ -113,7 +113,7 @@ class DirectoryTranslator:
                 replace_imports,
                 updated_content
             )
-
+            '''
             def replace_path_elements(match):
                 path_str = match.group(1)
                 parts = re.split(r'([/,])', path_str)
@@ -152,7 +152,7 @@ class DirectoryTranslator:
 
             for pattern, repl in path_patterns:
                 updated_content = re.sub(pattern, repl, updated_content)
-
+            '''
             if updated_content != content:
                 with open(file_path, "w", encoding="utf-8") as f:
                     f.write(updated_content)
