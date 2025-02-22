@@ -79,8 +79,6 @@ class DirectoryTranslator:
 
         return python_files
 
-
-
     @staticmethod
     def update_code(file_path: str, rename_map: dict) -> None:
         """
@@ -94,8 +92,7 @@ class DirectoryTranslator:
             file_path: Path to the file in which imports and paths need to be updated.
             rename_map: Dictionary of {old_name:new_name} matches for replacement.
 
-        Returns:
-
+        Returns: None
         """
         try:
             with open(file_path, "r", encoding="utf-8") as f:
@@ -113,46 +110,47 @@ class DirectoryTranslator:
                 replace_imports,
                 updated_content
             )
-            '''
-            def replace_path_elements(match):
-                path_str = match.group(1)
-                parts = re.split(r'([/,])', path_str)
-                updated_parts = [
-                    '"{}"'.format(rename_map.get(p.strip("\"' "), p))
-                    if p.strip("\"' ").isidentifier() else p
-                    for p in parts
-                ]
-                return match.group(0).replace(path_str, ''.join(updated_parts))
 
-            def replace_os_path_join(match):
-                args = match.group(1)
-                parts = re.split(r'(\s*,\s*)', args)
-                updated_parts = [
-                    '"{}"'.format(rename_map.get(p.strip("\"' "), p))
-                    if p.strip("\"' ").isidentifier() else p
-                    for p in parts
-                ]
-                return f'os.path.join({"".join(updated_parts)})'
-
-            def replace_pathlib_path(match):
-                path_parts = match.group(0).split(" / ")
-                updated_parts = [
-                    '"{}"'.format(rename_map.get(p.strip("\"' "), p))
-                    if p.strip("\"' ").isidentifier() else p
-                    for p in path_parts
-                ]
-                return " / ".join(updated_parts)
-
+            # Regular expression for finding string arguments in functions
             path_patterns = [
-                (r'os\.path\.join\(([^)]+)\)', replace_os_path_join),
-                (r'Path\(["\']([^"\']+)["\']\)', replace_path_elements),
-                (r'open\(["\']([^"\']+)/', replace_path_elements),
-                (r'Path\(["\'][^"\']+["\']\)\s*(/\s*["\'][^"\']+["\'])*', replace_pathlib_path)
+                r"(os\.path\.join\()([^)]+)(\))",
+                r"(os\.path\.abspath\()([^)]+)(\))",
+                r"(os\.path\.dirname\()([^)]+)(\))",
+                r"(Path\()([^)]+)(\))",
+                r"(open\()([^)]+)(\))",
+                r"([a-zA-Z_]*\.read_csv\()([^)]+)(\))",
+                r"([a-zA-Z_]*\.to_csv\()([^)]+)(\))",
+                r"(shutil\.copy\()([^)]+)(\))",
+                r"(shutil\.move\()([^)]+)(\))",
+                r"(glob\.glob\()([^)]+)(\))",
+                r"(json\.load\()([^)]+)(\))",
+                r"(pickle\.load\()([^)]+)(\))",
+                r"(torch\.load\()([^)]+)(\))"
             ]
 
-            for pattern, repl in path_patterns:
-                updated_content = re.sub(pattern, repl, updated_content)
-            '''
+            def replace_directory_names(match):
+                prefix, text, suffix = match.groups()
+
+                string_pattern = r"(['\"])(.*?)\1"
+
+                def replace_in_string(str_match):
+                    quote, path = str_match.groups()
+                    parts = re.split(r"[/\\]", path)
+                    updated_parts = [
+                        rename_map.get(part, part)
+                        for part in parts
+                    ]
+                    return f"{quote}{'/'.join(updated_parts)}{quote}"
+                replaced_text = re.sub(string_pattern, replace_in_string, text)
+                return f"{prefix}{replaced_text}{suffix}"
+
+            for pattern in path_patterns:
+                updated_content = re.sub(
+                    pattern,
+                    replace_directory_names,
+                    updated_content
+                )
+
             if updated_content != content:
                 with open(file_path, "w", encoding="utf-8") as f:
                     f.write(updated_content)
