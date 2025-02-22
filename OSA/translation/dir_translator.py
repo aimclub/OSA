@@ -79,6 +79,8 @@ class DirectoryTranslator:
 
         return python_files
 
+
+
     @staticmethod
     def update_code(file_path: str, rename_map: dict) -> None:
         """
@@ -101,21 +103,55 @@ class DirectoryTranslator:
 
             updated_content = content
 
-            old_name = ""
-            patterns = [
-                (rf'\bimport ({old_name})\b', r'import \1'),
-                (rf'\bfrom ({old_name}) import', r'from \1 import'),
-                (rf'os\.path\.join\(["\']({old_name})["\']',
-                 r'os.path.join("\1"'),
-                (rf'Path\(["\']({old_name})["\']\)', r'Path("\1")'),
-                (rf'open\(["\']({old_name})/', r'open("\1/')
+            # Processes imports
+            def replace_imports(match):
+                words = re.split(r'(\W+)', match.group(0))
+                return ''.join([rename_map.get(w, w) for w in words])
+
+            updated_content = re.sub(
+                r'\b(import\s+[\w.]+|from\s+[\w.]+\s+import)',
+                replace_imports,
+                updated_content
+            )
+
+            def replace_path_elements(match):
+                path_str = match.group(1)
+                parts = re.split(r'([/,])', path_str)
+                updated_parts = [
+                    '"{}"'.format(rename_map.get(p.strip("\"' "), p))
+                    if p.strip("\"' ").isidentifier() else p
+                    for p in parts
+                ]
+                return match.group(0).replace(path_str, ''.join(updated_parts))
+
+            def replace_os_path_join(match):
+                args = match.group(1)
+                parts = re.split(r'(\s*,\s*)', args)
+                updated_parts = [
+                    '"{}"'.format(rename_map.get(p.strip("\"' "), p))
+                    if p.strip("\"' ").isidentifier() else p
+                    for p in parts
+                ]
+                return f'os.path.join({"".join(updated_parts)})'
+
+            def replace_pathlib_path(match):
+                path_parts = match.group(0).split(" / ")
+                updated_parts = [
+                    '"{}"'.format(rename_map.get(p.strip("\"' "), p))
+                    if p.strip("\"' ").isidentifier() else p
+                    for p in path_parts
+                ]
+                return " / ".join(updated_parts)
+
+            path_patterns = [
+                (r'os\.path\.join\(([^)]+)\)', replace_os_path_join),
+                (r'Path\(["\']([^"\']+)["\']\)', replace_path_elements),
+                (r'open\(["\']([^"\']+)/', replace_path_elements),
+                (r'Path\(["\'][^"\']+["\']\)\s*(/\s*["\'][^"\']+["\'])*', replace_pathlib_path)
             ]
 
-            for old_name, new_name in rename_map.items():
-                for pattern, replacement in patterns:
-                    updated_content = re.sub(pattern,
-                                             replacement.replace(r"\1", new_name),
-                                             updated_content)
+            for pattern, repl in path_patterns:
+                updated_content = re.sub(pattern, repl, updated_content)
 
             if updated_content != content:
                 with open(file_path, "w", encoding="utf-8") as f:

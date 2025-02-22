@@ -92,7 +92,7 @@ def main():
     try:
         # Load configurations and update
         config = load_configuration(repo_url, api, model_name, article)
-        
+
         # Initialize GitHub agent and perform operations
         github_agent = GithubAgent(repo_url)
         github_agent.star_repository()
