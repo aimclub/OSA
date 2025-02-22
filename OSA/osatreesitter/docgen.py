@@ -1,8 +1,8 @@
-import openai
 import dotenv
-import os
-import re
 import logging
+import re
+
+import tiktoken
 
 from typing import Union
 
@@ -11,8 +11,6 @@ from readmeai.config.settings import ConfigLoader
 from readmeai.readmegen_article.config.settings import ArticleConfigLoader
 
 dotenv.load_dotenv()
-
-import tiktoken
 
 
 class DocGen(object):
@@ -72,7 +70,7 @@ class DocGen(object):
             self.config)
 
     @staticmethod
-    def format_structure_openai(structure: dict):
+    def format_structure_openai(structure: dict) -> str:
         """
         Formats the structure of Python files in a readable string format.
 
@@ -103,7 +101,7 @@ class DocGen(object):
         return formatted_structure
 
     @staticmethod
-    def _format_class(item):
+    def _format_class(item) -> str:
         """Formats class details."""
         class_str = f"  - Class: {item['name']}, line {item['start_line']}\n"
         if item["docstring"]:
@@ -113,7 +111,7 @@ class DocGen(object):
         return class_str
 
     @staticmethod
-    def _format_method(method):
+    def _format_method(method) -> str:
         """Formats method details."""
         method_str = f"      - Method: {method['method_name']}, Args: {method['arguments']}, Return: {method['return_type']}, line {method['start_line']}\n"
         if method["docstring"]:
@@ -122,7 +120,7 @@ class DocGen(object):
         return method_str
 
     @staticmethod
-    def _format_function(item):
+    def _format_function(item) -> str:
         """Formats function details."""
         details = item["details"]
         function_str = f"  - Function: {details['method_name']}, Args: {details['arguments']}, Return: {details['return_type']}, line {details['start_line']}\n"
@@ -131,23 +129,21 @@ class DocGen(object):
         function_str += f"        Source:\n{details['source_code']}\n"
         return function_str
 
-    @staticmethod
-    def count_tokens(prompt, model="gpt-4"):
+    def count_tokens(self, prompt) -> int:
         """
         Counts the number of tokens in a given prompt using a specified model.
 
         Args:
             prompt: The text for which to count the tokens.
-            model: The model to use for encoding. Defaults to "gpt-4".
 
         Returns:
             The number of tokens in the prompt.
         """
-        enc = tiktoken.encoding_for_model(model)
+        enc = tiktoken.encoding_for_model(self.config.llm.model)
         tokens = enc.encode(prompt)
         return len(tokens)
 
-    def generate_class_documentation(self, class_details):
+    def generate_class_documentation(self, class_details) -> str:
         """
         Generate documentation for a class.
 
@@ -171,7 +167,7 @@ class DocGen(object):
 
         return self.model_handler.send_request(prompt)
 
-    def generate_method_documentation(self, method_details: dict):
+    def generate_method_documentation(self, method_details: dict) -> str:
         """
         Generate documentation for a single method.
         """
@@ -193,7 +189,7 @@ class DocGen(object):
         """
         return self.model_handler.send_request(prompt)
 
-    def extract_pure_docstring(self, gpt_response: str):
+    def extract_pure_docstring(self, gpt_response: str) -> str:
         """
         Extracts only the docstring from the GPT-4 response while keeping triple quotes.
 
@@ -223,7 +219,7 @@ class DocGen(object):
 
     def insert_docstring_in_code(
             self, source_code, method_details, generated_docstring: str
-    ):
+    ) -> str:
         """
         This method inserts a generated docstring into the specified location in the source code.
 
@@ -251,7 +247,7 @@ class DocGen(object):
 
     def insert_cls_docstring_in_code(
             self, source_code, class_name, generated_docstring
-    ):
+    ) -> str:
         """
         Inserts a generated class docstring into the class definition.
 
@@ -281,7 +277,7 @@ class DocGen(object):
 
         return updated_code
 
-    def process_python_file(self, parsed_structure: dict):
+    def process_python_file(self, parsed_structure: dict) -> None:
         """
         Processes a Python file by generating and inserting missing docstrings.
 
@@ -357,7 +353,7 @@ class DocGen(object):
                 f.write(source_code)
             logging.info(f"Updated file: {filename}")
 
-    def generate_method_documentation_md(self, method_details: dict):
+    def generate_method_documentation_md(self, method_details: dict) -> str:
         """
         Generate documentation for a single method using OpenAI GPT.
         """
@@ -382,8 +378,7 @@ class DocGen(object):
 
         return self.model_handler.send_request(prompt)
 
-    def generate_documentation_openai(self, file_structure: dict,
-                                      model="gpt-4"):
+    def generate_documentation_openai(self, file_structure: dict) -> str:
         """
         Generates the documentation for a given file structure using OpenAI's API.
 
@@ -408,31 +403,29 @@ class DocGen(object):
 
             for item in structure:
                 if item["type"] == "class":
-                    final_documentation += self._format_class_doc(item, model)
+                    final_documentation += self._format_class_doc(item)
                 elif item["type"] == "function":
-                    final_documentation += self._format_function_doc(item,
-                                                                     model)
+                    final_documentation += self._format_function_doc(item)
 
         return final_documentation
 
-    def _format_file_header(self, filename):
+    def _format_file_header(self, filename) -> str:
         """Formats the header for a file in documentation."""
         return f"# Documentation for {filename}\n\n"
 
-    def _format_class_doc(self, item, model):
+    def _format_class_doc(self, item) -> str:
         """Formats documentation for a class."""
         class_doc = f"## Class: {item['name']}\n\n{item['docstring'] or 'No docstring provided'}\n\n"
         for method in item["methods"]:
-            class_doc += self._generate_method_doc(method, model)
+            class_doc += self._generate_method_doc(method)
         return class_doc
 
-    def _format_function_doc(self, item, model):
+    def _format_function_doc(self, item) -> str:
         """Formats documentation for a standalone function."""
         function_details = item["details"]
-        return self._generate_method_doc(function_details, model,
-                                         is_function=True)
+        return self._generate_method_doc(function_details, is_function=True)
 
-    def _generate_method_doc(self, method_details, model, is_function=False):
+    def _generate_method_doc(self, method_details, is_function=False) -> str:
         """Generates documentation for a method or function."""
         doc_type = "Function" if is_function else "Method"
         try:

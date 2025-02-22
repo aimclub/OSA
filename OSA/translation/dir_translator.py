@@ -35,14 +35,34 @@ class DirectoryTranslator:
             self.config)
 
     def translate_text(self, text: str) -> str:
-        """Translation of directory name into English via LLM"""
+        """
+        Translation of directory name into English via LLM
+
+        The function sends a query to the language model (`LLM`),
+        asking for a translation of the passed text into English.
+        In the response, it leaves only the translated text and replaces spaces with underscores.
+
+        Arguments:
+            text (str): The original text to translate.
+
+        Returns:
+            str: The translated text, with spaces replaced by `_`.
+        """
         prompt = (f"Translate into English text: {text}\n"
                   f"Return only the answer.")
         response = self.model_handler.send_request(prompt)
         return response.replace(" ", "_")
 
     def get_python_files(self) -> List:
-        """Recursive search of all Python files in a project"""
+        """
+        Recursive search of all Python files in a project
+
+        The function scans the project folder (defined by the repository URL),
+        recursively goes through all subdirectories and collects paths to `.py` files.
+
+        Returns:
+            List[str]: List of absolute paths to all found Python files.
+        """
         python_files = []
         base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         try:
@@ -60,7 +80,21 @@ class DirectoryTranslator:
         return python_files
 
     @staticmethod
-    def update_code(self, file_path: str, rename_map: dict) -> None:
+    def update_code(file_path: str, rename_map: dict) -> None:
+        """
+        Updates imported modules and paths in the file, replacing old names with new ones.
+
+        The function opens the file at the specified path, reads its contents
+        and replaces the names of imported modules and paths according to the `rename_map` dictionary.
+        If changes were made, the file is overwritten.
+
+        Args:
+            file_path: Path to the file in which imports and paths need to be updated.
+            rename_map: Dictionary of {old_name:new_name} matches for replacement.
+
+        Returns:
+
+        """
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
