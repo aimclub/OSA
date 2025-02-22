@@ -1,0 +1,48 @@
+site_name: Open-Source-Advisor
+theme:
+  name: material
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            show_object_full_path: false
+
+nav:
+  - User Guide:
+    - index.md
+  - API Reference:
+      - Github Agent: core/github_agent/github_agent.md
+      - OSA Tree Sitter:
+          - core/osatreesitter/osatreesitter.md
+          - Documentation Generator: core/osatreesitter/docgen.md
+          - Model Handler: core/osatreesitter/models.md
+
+repo_url: https://github.com/ITMO-NSS-team/Open-Source-Advisor
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ITMO-NSS-team/Open-Source-Advisor
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - footnotes
+  - meta
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - toc:
+      permalink: True
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
