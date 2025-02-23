@@ -79,7 +79,7 @@ def main():
         "--translate-dirs",
         action="store_true",
         help=(
-            "Enable automatic directory name translation to English."
+            "Enable automatic translation of the directory name into English."
         ),
     )
 
