@@ -141,12 +141,13 @@ The --article option enables you to choose a README template for a repository ba
 
 ### Configuration
 
-| Flag           | Description                                  | Default |
-|----------------|----------------------------------------------|---------|
-| `--repository` | URL of the GitHub repository (**Mandatory**) |         |
-| `--api`        | LLM API service provider                     | `llama` |
-| `--model`      | Specific LLM model to use                    | `llama` |
-| `--article`    | Link to the pdf file of the article          | `None`  |
+| Flag                 | Description                                                     | Default    |
+|----------------------|-----------------------------------------------------------------|------------|
+| `-r`, `--repository` | URL of the GitHub repository (**Mandatory**)                    |            |
+| `--api`              | LLM API service provider                                        | `llama`    |
+| `--model`            | Specific LLM model to use                                       | `llama`    |
+| `--article`          | Link to the pdf file of the article                             | `None`     |
+| `--translate-dirs`   | Enable automatic translation of the directory name into English | `disabled` |
 
 ---
 

@@ -1,4 +1,3 @@
-from readmeai.config.settings import ConfigLoader
 from readmeai.config.settings import Settings
 from abc import ABC, abstractmethod
 from uuid import uuid4
@@ -29,7 +28,7 @@ class ModelHandler(ABC):
     @abstractmethod
     def send_request(self, prompt: str) -> str: ...
 
-    def initialize_payload(self, config: Settings, prompt: str):
+    def initialize_payload(self, config: Settings, prompt: str) -> None:
         """
         Initializes the payload for the instance.
 
@@ -176,7 +175,7 @@ class LlamaHandler(ModelHandler):
         self.url = os.path.dirname(config.llm.url) + "/chat_completion"
         self.config = config
 
-    def send_request(self, prompt):
+    def send_request(self, prompt) -> str:
         """
         Sends a request to a specified URL.
 
@@ -223,7 +222,7 @@ class OpenaiHandler(ModelHandler):
         api = config.llm.api
         self._configure_api(api)
 
-    def send_request(self, prompt: str):
+    def send_request(self, prompt: str) -> str:
         """
         Sends a request to a specified URL with a payload initialized with a given prompt.
 
@@ -246,7 +245,7 @@ class OpenaiHandler(ModelHandler):
         )
         return response.choices[0].message.content
 
-    def _configure_api(self, api: str):
+    def _configure_api(self, api: str) -> None:
         """
         Configures the API for the instance based on the provided API name.
 
@@ -290,7 +289,7 @@ class ModelHandlerFactory:
     """
 
     @classmethod
-    def build(cls):
+    def build(cls, config: Settings) -> ModelHandler:
         """
         Builds and returns a handler based on the configuration of the class.
 
@@ -298,23 +297,22 @@ class ModelHandlerFactory:
         and then creates and returns a handler using the configuration.
 
         Args:
+            config: The configuration object which contains the model information.
             cls: The class from which the configuration is retrieved.
 
         Returns:
             None: This method does not return anything.
         """
-        config_loader: ConfigLoader = ConfigLoader("OSA/config/standart")
-        config = config_loader.config
         return cls.create_handler(config)
 
     @staticmethod
-    def create_handler(config: Settings):
+    def create_handler(config: Settings) -> ModelHandler:
         """
         Creates a handler based on the model specified in the configuration.
 
         This method uses the model specified in the configuration to create a handler.
-        It supports three types of models: 'llama', 'openai', and 'gpt-4'.
-        For 'llama', it creates a llamaHandler, and for 'openai' and 'gpt-4', it creates an openaiHandler.
+        It supports three types of models: 'llama', 'openai', and 'vsegpt'.
+        For 'llama', it creates a llamaHandler, and for 'openai' and 'vsegpt', it creates an openaiHandler.
 
         Args:
             config: The configuration object which contains the model information.
