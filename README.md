@@ -3,7 +3,7 @@
 
 <p align="center">
 
-<img src="./docs/images/osa_logo_clip.PNG" width="400">
+<img src="./docs/images/osa_logo_h.PNG" width="600">
 </p>
 
 <p align="center">
