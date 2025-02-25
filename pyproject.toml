@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "Open Source Advisor"
+name = "open-source-advisor"
 version = "0.1.0"
 description = "Tool that just makes your open source project better!"
 authors = ["ITMO-NSS-team https://github.com/ITMO-NSS-team/"]
