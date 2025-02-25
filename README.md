@@ -1,5 +1,11 @@
 # OSA: OPEN-SOURCE ADVISOR
 
+
+<p align="center">
+
+<img src="./docs/images/osa_logo_clip.PNG" width="400">
+</p>
+
 <p align="center">
 
 [![Acknowledgement ITMO](https://raw.githubusercontent.com/aimclub/open-source-ops/43bb283758b43d75ec1df0a6bb4ae3eb20066323/badges/ITMO_badge.svg)](https://itmo.ru/)
@@ -20,9 +26,6 @@
 </p>
 
 ---
-<div style="text-align:center"><img src="./docs/images/osa_logo_clip.PNG" width="400">
-
-
 ## Overview
 
 <overview>
