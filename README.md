@@ -20,6 +20,9 @@
 </p>
 
 ---
+
+![Logo](./docs/images/osa_logo_clip.PNG)
+
 ## Overview
 
 <overview>
