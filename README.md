@@ -20,8 +20,8 @@
 </p>
 
 ---
+<div style="text-align:center"><img src="./docs/images/osa_logo_clip.PNG" width="400">
 
-![Logo](./docs/images/osa_logo_clip.PNG)
 
 ## Overview
 
