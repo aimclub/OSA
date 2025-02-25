@@ -3,7 +3,7 @@ name = "Open Source Advisor"
 version = "0.1.0"
 description = "Tool that just makes your open source project better!"
 authors = ["ITMO-NSS-team https://github.com/ITMO-NSS-team/"]
-package-mode = false
+package-mode = true
 
 [tool.poetry.dependencies]
 python = "^3.10"
