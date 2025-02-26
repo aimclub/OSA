@@ -57,17 +57,14 @@ class DocGen(object):
             file structure and for each class or standalone function, generating its documentation.
     """
 
-    def __init__(
-            self,
-            config_loader: Union[ConfigLoader, ArticleConfigLoader]):
+    def __init__(self, config_loader: Union[ConfigLoader, ArticleConfigLoader]):
         """
         Instantiates the object of the class.
 
         This method is a constructor that initializes the object by setting the 'api_key' attribute to the value of the 'OPENAI_API_KEY' environment variable.
         """
         self.config = config_loader.config
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(
-            self.config)
+        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
 
     @staticmethod
     def format_structure_openai(structure: dict) -> str:
@@ -203,14 +200,12 @@ class DocGen(object):
         match = re.search(r'("""+)\n?(.*?)\n?\1', gpt_response, re.DOTALL)
 
         if match:
-            triple_quotes = match.group(
-                1)  # Keep the triple quotes (""" or """)
+            triple_quotes = match.group(1)  # Keep the triple quotes (""" or """)
             extracted_docstring = match.group(
                 2
             )  # Extract only the content inside the docstring
             cleaned_content = re.sub(
-                r"^\s*def\s+\w+\(.*?\):\s*", "", extracted_docstring,
-                flags=re.MULTILINE
+                r"^\s*def\s+\w+\(.*?\):\s*", "", extracted_docstring, flags=re.MULTILINE
             )
 
             return f"{triple_quotes}\n{cleaned_content}{triple_quotes}"
@@ -218,10 +213,7 @@ class DocGen(object):
         return '"""No valid docstring found."""'  # Return a placeholder if no docstring was found
 
     def insert_docstring_in_code(
-            self,
-            source_code: str,
-            method_details: dict,
-            generated_docstring: str
+        self, source_code: str, method_details: dict, generated_docstring: str
     ) -> str:
         """
         This method inserts a generated docstring into the specified location in the source code.
@@ -239,20 +231,15 @@ class DocGen(object):
         # including an optional return type. Ensures no docstring follows.
         method_pattern = rf"((?:@\w+(?:\([^)]*\))?\s*\n)*\s*(?:async\s+)?def\s+{method_details['method_name']}\s*\(.*?\)\s*(->\s*[a-zA-Z0-9_\[\], ]+)?\s*:\n)(\s*)(?!\s*\"\"\")"
 
-        docstring_with_format = self.extract_pure_docstring(
-            generated_docstring)
+        docstring_with_format = self.extract_pure_docstring(generated_docstring)
         updated_code = re.sub(
-            method_pattern, rf"\1\3{docstring_with_format}\n\3", source_code,
-            count=1
+            method_pattern, rf"\1\3{docstring_with_format}\n\3", source_code, count=1
         )
 
         return updated_code
 
     def insert_cls_docstring_in_code(
-            self,
-            source_code: str,
-            class_name: str,
-            generated_docstring: str
+        self, source_code: str, class_name: str, generated_docstring: str
     ) -> str:
         """
         Inserts a generated class docstring into the class definition.
@@ -274,12 +261,10 @@ class DocGen(object):
         )
 
         # Ensure we keep only the extracted docstring
-        docstring_with_format = self.extract_pure_docstring(
-            generated_docstring)
+        docstring_with_format = self.extract_pure_docstring(generated_docstring)
 
         updated_code = re.sub(
-            class_pattern, rf"\1\3{docstring_with_format}\n\3", source_code,
-            count=1
+            class_pattern, rf"\1\3{docstring_with_format}\n\3", source_code, count=1
         )
 
         return updated_code
@@ -306,8 +291,7 @@ class DocGen(object):
             for item in structure:
                 if item["type"] == "class":
                     for method in item["methods"]:
-                        if method[
-                            "docstring"] == None:  # If docstring is missing
+                        if method["docstring"] == None:  # If docstring is missing
                             logging.info(
                                 f"Generating docstring for method: {method['method_name']} in class {item['name']} at {filename}"
                             )
@@ -315,8 +299,7 @@ class DocGen(object):
                                 method
                             )
                             if item["docstring"] == None:
-                                method[
-                                    "docstring"] = self.extract_pure_docstring(
+                                method["docstring"] = self.extract_pure_docstring(
                                     generated_docstring
                                 )
                             source_code = self.insert_docstring_in_code(

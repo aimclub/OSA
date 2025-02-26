@@ -104,7 +104,7 @@ class OSA_TreeSitter(object):
         parser: Parser = self._parser_build(filename)
         source_code: str = self.open_file(filename)
         return (parser.parse(source_code.encode("utf-8")), source_code)
-    
+
     def _class_parser(self, structure: list, source_code: str, node: tree_sitter.Node):
         print(node.children)
         class_name = node.child_by_field_name("name").text.decode("utf-8")
@@ -130,9 +130,7 @@ class OSA_TreeSitter(object):
                     class_methods.append(method)
 
             if child.type == "function_definition":
-                method_details = self._extract_function_details(
-                    child, source_code
-                )
+                method_details = self._extract_function_details(child, source_code)
                 class_methods.append(method_details)
 
         structure.append(
@@ -147,11 +145,11 @@ class OSA_TreeSitter(object):
 
         return structure
 
-    def _function_parser(self, structure: list, source_code: str, node: tree_sitter.Node):
+    def _function_parser(
+        self, structure: list, source_code: str, node: tree_sitter.Node
+    ):
         method_details = self._extract_function_details(node, source_code)
-        start_line = (
-            node.start_point[0] + 1
-        )  # convert 0-based to 1-based indexing
+        start_line = node.start_point[0] + 1  # convert 0-based to 1-based indexing
         structure.append(
             {
                 "type": "function",
@@ -184,7 +182,9 @@ class OSA_TreeSitter(object):
                         structure = self._class_parser(structure, source_code, dec_node)
 
                     elif dec_node.type == "function_definition":
-                        structure = self._function_parser(structure, source_code, dec_node)
+                        structure = self._function_parser(
+                            structure, source_code, dec_node
+                        )
 
             elif node.type == "function_definition":
                 structure = self._function_parser(structure, source_code, node)
