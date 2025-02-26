@@ -104,6 +104,63 @@ class OSA_TreeSitter(object):
         parser: Parser = self._parser_build(filename)
         source_code: str = self.open_file(filename)
         return (parser.parse(source_code.encode("utf-8")), source_code)
+    
+    def _class_parser(self, structure: list, source_code: str, node: tree_sitter.Node):
+        print(node.children)
+        class_name = node.child_by_field_name("name").text.decode("utf-8")
+        start_line = node.start_point[0] + 1
+        class_methods = []
+        docstring = None
+
+        for child in node.children:
+            if child.type == "block":
+                print(child.children)
+                for a in child.children:
+                    if a.type == "expression_statement":
+                        print(a.children)
+                        for b in a.children:
+                            if b.type == "assignment":
+                                print(b.children)
+                                for c in b.children:
+                                    if c.type == "identifier":
+                                        print(c.text.decode("utf-8"))
+                docstring = self._get_docstring(child)
+                method_details = self._traverse_block(child, source_code)
+                for method in method_details:
+                    class_methods.append(method)
+
+            if child.type == "function_definition":
+                method_details = self._extract_function_details(
+                    child, source_code
+                )
+                class_methods.append(method_details)
+
+        structure.append(
+            {
+                "type": "class",
+                "name": class_name,
+                "start_line": start_line,
+                "docstring": docstring,
+                "methods": class_methods,
+            }
+        )
+
+        return structure
+
+    def _function_parser(self, structure: list, source_code: str, node: tree_sitter.Node):
+        method_details = self._extract_function_details(node, source_code)
+        start_line = (
+            node.start_point[0] + 1
+        )  # convert 0-based to 1-based indexing
+        structure.append(
+            {
+                "type": "function",
+                "start_line": start_line,
+                "details": method_details,
+            }
+        )
+
+        return structure
 
     def extract_structure(self, filename: str) -> list:
         """Method extracts the structure of the occured file in the provided directory.
@@ -117,48 +174,23 @@ class OSA_TreeSitter(object):
         structure = []
         tree, source_code = self._parse_source_code(filename)
         root_node = tree.root_node
+        print(root_node.children)
         for node in root_node.children:
-            if node.type == "function_definition":
-                method_details = self._extract_function_details(node, source_code)
-                start_line = (
-                    node.start_point[0] + 1
-                )  # convert 0-based to 1-based indexing
-                structure.append(
-                    {
-                        "type": "function",
-                        "start_line": start_line,
-                        "details": method_details,
-                    }
-                )
+            print(node.children)
+            if node.type == "decorated_definition":
+                print("here")
+                for dec_node in node.children:
+                    if dec_node.type == "class_definition":
+                        structure = self._class_parser(structure, source_code, dec_node)
+
+                    elif dec_node.type == "function_definition":
+                        structure = self._function_parser(structure, source_code, dec_node)
+
+            elif node.type == "function_definition":
+                structure = self._function_parser(structure, source_code, node)
 
             elif node.type == "class_definition":
-                class_name = node.child_by_field_name("name").text.decode("utf-8")
-                start_line = node.start_point[0] + 1
-                class_methods = []
-                docstring = None
-
-                for child in node.children:
-                    if child.type == "block":
-                        docstring = self._get_docstring(child)
-                        method_details = self._traverse_block(child, source_code)
-                        for method in method_details:
-                            class_methods.append(method)
-
-                    if child.type == "function_definition":
-                        method_details = self._extract_function_details(
-                            child, source_code
-                        )
-                        class_methods.append(method_details)
-
-                structure.append(
-                    {
-                        "type": "class",
-                        "name": class_name,
-                        "start_line": start_line,
-                        "docstring": docstring,
-                        "methods": class_methods,
-                    }
-                )
+                structure = self._class_parser(structure, source_code, node)
 
         return structure
 

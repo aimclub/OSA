@@ -155,14 +155,14 @@ class DocGen(object):
         """
         # Construct a structured prompt
         prompt = f"""
-        Generate a single Python docstring for the following class {class_details[0]['class_name']}. The docstring should follow Google-style format and include:
+        Generate a single Python docstring for the following class {class_details[0]}. The docstring should follow Google-style format and include:
         - A short summary of what the class does.
         - A list of its methods.
         - A brief description of its methods.
 
         Class Methods:
         """
-        for method in class_details:
+        for method in class_details[1:]:
             prompt += f"- {method['method_name']}: {method['docstring']}\n"
 
         return self.model_handler.send_request(prompt)
@@ -237,7 +237,7 @@ class DocGen(object):
         """
         # Matches a method definition with the given name,
         # including an optional return type. Ensures no docstring follows.
-        method_pattern = rf"(def\s+{method_details['method_name']}\s*\([^)]*\)\s*(->\s*[a-zA-Z0-9_\[\], ]+)?\s*:\n)(\s*)(?!\s*\"\"\")"
+        method_pattern = rf"((?:@\w+(?:\([^)]*\))?\s*\n)*\s*(?:async\s+)?def\s+{method_details['method_name']}\s*\(.*?\)\s*(->\s*[a-zA-Z0-9_\[\], ]+)?\s*:\n)(\s*)(?!\s*\"\"\")"
 
         docstring_with_format = self.extract_pure_docstring(
             generated_docstring)
@@ -339,10 +339,10 @@ class DocGen(object):
                 if item["type"] == "class" and item["docstring"] == None:
                     class_name = item["name"]
                     cls_structure = []
+                    cls_structure.append(class_name)
                     for method in item["methods"]:
                         cls_structure.append(
                             {
-                                "class_name": class_name,
                                 "method_name": method["method_name"],
                                 "docstring": method["docstring"],
                             }
