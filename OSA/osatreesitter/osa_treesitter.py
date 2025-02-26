@@ -105,25 +105,22 @@ class OSA_TreeSitter(object):
         source_code: str = self.open_file(filename)
         return (parser.parse(source_code.encode("utf-8")), source_code)
 
-    def _class_parser(self, structure: list, source_code: str, node: tree_sitter.Node):
-        print(node.children)
+    def _class_parser(self, structure: list, source_code: str, node: tree_sitter.Node, dec_list: list = []):
         class_name = node.child_by_field_name("name").text.decode("utf-8")
         start_line = node.start_point[0] + 1
         class_methods = []
+        class_attributes = []
         docstring = None
 
         for child in node.children:
             if child.type == "block":
-                print(child.children)
                 for a in child.children:
                     if a.type == "expression_statement":
-                        print(a.children)
                         for b in a.children:
                             if b.type == "assignment":
-                                print(b.children)
                                 for c in b.children:
                                     if c.type == "identifier":
-                                        print(c.text.decode("utf-8"))
+                                        class_attributes.append(c.text.decode("utf-8"))
                 docstring = self._get_docstring(child)
                 method_details = self._traverse_block(child, source_code)
                 for method in method_details:
@@ -137,8 +134,10 @@ class OSA_TreeSitter(object):
             {
                 "type": "class",
                 "name": class_name,
+                "decorators": dec_list,
                 "start_line": start_line,
                 "docstring": docstring,
+                "attributes": class_attributes,
                 "methods": class_methods,
             }
         )
@@ -146,9 +145,9 @@ class OSA_TreeSitter(object):
         return structure
 
     def _function_parser(
-        self, structure: list, source_code: str, node: tree_sitter.Node
+        self, structure: list, source_code: str, node: tree_sitter.Node, dec_list: list = []
     ):
-        method_details = self._extract_function_details(node, source_code)
+        method_details = self._extract_function_details(node, source_code, dec_list)
         start_line = node.start_point[0] + 1  # convert 0-based to 1-based indexing
         structure.append(
             {
@@ -159,6 +158,13 @@ class OSA_TreeSitter(object):
         )
 
         return structure
+
+    def _get_decorators(self, dec_list: list, dec_node: tree_sitter.Node):
+        for decorator in dec_node.children:
+            if decorator.type == "identifier" or decorator.type == "call":
+                dec_list.append(f'@{decorator.text.decode("utf-8")}')
+        
+        return dec_list
 
     def extract_structure(self, filename: str) -> list:
         """Method extracts the structure of the occured file in the provided directory.
@@ -172,18 +178,19 @@ class OSA_TreeSitter(object):
         structure = []
         tree, source_code = self._parse_source_code(filename)
         root_node = tree.root_node
-        print(root_node.children)
         for node in root_node.children:
-            print(node.children)
             if node.type == "decorated_definition":
-                print("here")
+                dec_list = []
                 for dec_node in node.children:
-                    if dec_node.type == "class_definition":
-                        structure = self._class_parser(structure, source_code, dec_node)
+                    if dec_node.type == "decorator":
+                        dec_list = self._get_decorators(dec_list, dec_node)
+
+                    elif dec_node.type == "class_definition":
+                        structure = self._class_parser(structure, source_code, dec_node, dec_list)
 
                     elif dec_node.type == "function_definition":
                         structure = self._function_parser(
-                            structure, source_code, dec_node
+                            structure, source_code, dec_node, dec_list
                         )
 
             elif node.type == "function_definition":
@@ -224,10 +231,14 @@ class OSA_TreeSitter(object):
         methods = []
         for child in block_node.children:
             if child.type == "decorated_definition":
+                dec_list = []
                 for dec_child in child.children:
+                    if dec_child.type == "decorator":
+                        dec_list = self._get_decorators(dec_list, dec_child)
+
                     if dec_child.type == "function_definition":
                         method_details = self._extract_function_details(
-                            dec_child, source_code
+                            dec_child, source_code, dec_list
                         )
                         methods.append(method_details)
 
@@ -237,7 +248,7 @@ class OSA_TreeSitter(object):
         return methods
 
     def _extract_function_details(
-        self, function_node: tree_sitter.Node, source_code: str
+        self, function_node: tree_sitter.Node, source_code: str, dec_list: list = []
     ) -> dict:
         """Inner method extracts the details of "function_definition" node in file's tree structure.
 
@@ -283,6 +294,7 @@ class OSA_TreeSitter(object):
 
         return {
             "method_name": method_name,
+            "decorators": dec_list,
             "docstring": docstring,
             "arguments": arguments,
             "return_type": return_type,

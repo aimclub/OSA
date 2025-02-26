@@ -154,13 +154,17 @@ class DocGen(object):
         prompt = f"""
         Generate a single Python docstring for the following class {class_details[0]}. The docstring should follow Google-style format and include:
         - A short summary of what the class does.
-        - A list of its methods.
-        - A brief description of its methods.
+        - A list of its methods and attributes without details.
+        - A brief summary of what its methods and attributes do.
 
         Class Methods:
         """
-        for method in class_details[1:]:
+        for method in class_details[2:]:
             prompt += f"- {method['method_name']}: {method['docstring']}\n"
+
+        prompt += f"\nClass Attributes:\n"
+        for attr in class_details[1]:
+            prompt += f"- {attr}\n"
 
         return self.model_handler.send_request(prompt)
 
@@ -171,11 +175,12 @@ class DocGen(object):
         prompt = f"""
         Generate a Python docstring for the following method. The docstring should follow Google-style format and include:
         - A short summary of what the method does.
-        - A description of its parameters with types.
+        - A description of its parameters without types.
         - The return type and description.
 
         Method Details:
         - Method Name: {method_details["method_name"]}
+        - Method decorators: {method_details["decorators"]}
         - Arguments: {method_details["arguments"]}
         - Return Type: {method_details["return_type"]}
         - Docstring: {method_details["docstring"]}
@@ -323,6 +328,7 @@ class DocGen(object):
                     class_name = item["name"]
                     cls_structure = []
                     cls_structure.append(class_name)
+                    cls_structure.append(item["attributes"])
                     for method in item["methods"]:
                         cls_structure.append(
                             {
