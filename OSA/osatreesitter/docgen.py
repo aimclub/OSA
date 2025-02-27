@@ -7,8 +7,8 @@ import tiktoken
 from typing import Union, List
 
 from OSA.osatreesitter.models import ModelHandlerFactory, ModelHandler
-from readmeai.config.settings import ConfigLoader
-from readmeai.readmegen_article.config.settings import ArticleConfigLoader
+from OSA.readmeai.config.settings import ConfigLoader
+from OSA.readmeai.readmegen_article.config.settings import ArticleConfigLoader
 
 dotenv.load_dotenv()
 

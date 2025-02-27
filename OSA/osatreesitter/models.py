@@ -1,4 +1,4 @@
-from readmeai.config.settings import Settings
+from OSA.readmeai.config.settings import Settings
 from abc import ABC, abstractmethod
 from uuid import uuid4
 import requests
