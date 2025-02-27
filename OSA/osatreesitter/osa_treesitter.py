@@ -22,7 +22,7 @@ class OSA_TreeSitter(object):
         self.cwd = scripts_path
 
     @staticmethod
-    def files_list(path: str):
+    def files_list(path: str) -> tuple[list, 0] | tuple[list[str], 1]:
         """Method provides a list of files occuring in the provided path.
 
         If user provided a path to a file with a particular extension
@@ -53,7 +53,7 @@ class OSA_TreeSitter(object):
         return ([], 0)
 
     @classmethod
-    def _if_file_handler(cls, path: str):
+    def _if_file_handler(cls, path: str) -> str:
         """Inner method returns a path's head if status trigger occured.
 
         Args:
@@ -92,7 +92,7 @@ class OSA_TreeSitter(object):
             PY_LANGUAGE = Language(tspython.language())
             return Parser(PY_LANGUAGE)
 
-    def _parse_source_code(self, filename: str):
+    def _parse_source_code(self, filename: str) -> tuple[tree_sitter.Tree, str]:
         """Inner method parses the provided file with the source code.
 
         Args:
@@ -105,7 +105,68 @@ class OSA_TreeSitter(object):
         source_code: str = self.open_file(filename)
         return (parser.parse(source_code.encode("utf-8")), source_code)
 
-    def _class_parser(self, structure: list, source_code: str, node: tree_sitter.Node, dec_list: list = []):
+    def _traverse_expression(
+        self, class_attributes: list, expr_node: tree_sitter.Node
+    ) -> list:
+        """
+        Traverses an expression node and appends any identifiers found in assignment nodes to the class attributes list.
+
+        Args:
+            self: The instance of the class.
+            class_attributes: A list to which identifiers found in assignment nodes will be appended.
+            expr_node: The expression node to be traversed.
+
+        Returns:
+            list: The updated class attributes list after traversing the expression node.
+        """
+        for node in expr_node.children:
+            if node.type == "assignment":
+                for child in node.children:
+                    if child.type == "identifier":
+                        class_attributes.append(child.text.decode("utf-8"))
+        return class_attributes
+
+    def _get_attributes(
+        self, class_attributes: list, block_node: tree_sitter.Node
+    ) -> list:
+        """
+        Gets the attributes of a class.
+
+        This method traverses the children of a given block node and if the node type is "expression_statement",
+        it calls the _traverse_expression method to get the class attributes.
+
+        Args:
+            class_attributes: A list of class attributes.
+            block_node: A node in the tree_sitter.
+
+        Returns:
+            list: The updated list of class attributes after traversing the block node.
+        """
+        for node in block_node.children:
+            if node.type == "expression_statement":
+                class_attributes = self._traverse_expression(class_attributes, node)
+
+        return class_attributes
+
+    def _class_parser(
+        self,
+        structure: list,
+        source_code: str,
+        node: tree_sitter.Node,
+        dec_list: list = [],
+    ) -> list:
+        """
+        Parses a class from the source code and appends its details to the given structure.
+
+        Args:
+            structure: A list where the parsed class details will be appended.
+            source_code: A string of the source code that contains the class to be parsed.
+            node: A tree_sitter.Node object that represents the class in the source code.
+            dec_list: A list of decorators for the class. Defaults to an empty list.
+
+        Returns:
+            list: The updated structure list with the parsed class details appended."""
+
         class_name = node.child_by_field_name("name").text.decode("utf-8")
         start_line = node.start_point[0] + 1
         class_methods = []
@@ -114,13 +175,7 @@ class OSA_TreeSitter(object):
 
         for child in node.children:
             if child.type == "block":
-                for a in child.children:
-                    if a.type == "expression_statement":
-                        for b in a.children:
-                            if b.type == "assignment":
-                                for c in b.children:
-                                    if c.type == "identifier":
-                                        class_attributes.append(c.text.decode("utf-8"))
+                class_attributes = self._get_attributes(class_attributes, child)
                 docstring = self._get_docstring(child)
                 method_details = self._traverse_block(child, source_code)
                 for method in method_details:
@@ -145,8 +200,25 @@ class OSA_TreeSitter(object):
         return structure
 
     def _function_parser(
-        self, structure: list, source_code: str, node: tree_sitter.Node, dec_list: list = []
-    ):
+        self,
+        structure: list,
+        source_code: str,
+        node: tree_sitter.Node,
+        dec_list: list = [],
+    ) -> list:
+        """
+        Parses a function node and extracts its details to update the structure.
+
+        Parameters:
+            - self: The instance of the class.
+            - structure: A list containing the structure details of the code.
+            - source_code: The source code of the function.
+            - node: The tree-sitter Node representing the function.
+            - dec_list: A list of decorators for the function (default=[]).
+
+        Returns:
+            A list containing the updated structure with the function details added.
+        """
         method_details = self._extract_function_details(node, source_code, dec_list)
         start_line = node.start_point[0] + 1  # convert 0-based to 1-based indexing
         structure.append(
@@ -159,11 +231,21 @@ class OSA_TreeSitter(object):
 
         return structure
 
-    def _get_decorators(self, dec_list: list, dec_node: tree_sitter.Node):
+    def _get_decorators(self, dec_list: list, dec_node: tree_sitter.Node) -> list:
+        """
+        Extracts decorators from a given node and appends them to a list.
+
+        Args:
+            dec_list: The list to which decorators are to be appended.
+            dec_node: The node from which decorators are to be extracted.
+
+        Returns:
+            list: The updated list with appended decorators.
+        """
         for decorator in dec_node.children:
             if decorator.type == "identifier" or decorator.type == "call":
                 dec_list.append(f'@{decorator.text.decode("utf-8")}')
-        
+
         return dec_list
 
     def extract_structure(self, filename: str) -> list:
@@ -186,7 +268,9 @@ class OSA_TreeSitter(object):
                         dec_list = self._get_decorators(dec_list, dec_node)
 
                     elif dec_node.type == "class_definition":
-                        structure = self._class_parser(structure, source_code, dec_node, dec_list)
+                        structure = self._class_parser(
+                            structure, source_code, dec_node, dec_list
+                        )
 
                     elif dec_node.type == "function_definition":
                         structure = self._function_parser(
@@ -321,7 +405,7 @@ class OSA_TreeSitter(object):
                 results[filename] = structure
         return results
 
-    def show_results(self, results: dict):
+    def show_results(self, results: dict) -> None:
         """Method prints out the results of the directory analyze.
 
         Args:
@@ -354,7 +438,7 @@ class OSA_TreeSitter(object):
                     print(f"        Source:\n{details['source_code']}")
         print()
 
-    def log_results(self, results: dict):
+    def log_results(self, results: dict) -> None:
         """Method logs the results of the directory analyze into "examples/report.txt".
 
         Args:

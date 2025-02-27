@@ -234,7 +234,7 @@ class DocGen(object):
         """
         # Matches a method definition with the given name,
         # including an optional return type. Ensures no docstring follows.
-        method_pattern = rf"((?:@\w+(?:\([^)]*\))?\s*\n)*\s*(?:async\s+)?def\s+{method_details['method_name']}\s*\(.*?\)\s*(->\s*[a-zA-Z0-9_\[\], ]+)?\s*:\n)(\s*)(?!\s*\"\"\")"
+        method_pattern = rf"((?:@\w+(?:\([^)]*\))?\s*\n)*\s*(?:async\s+)?def\s+{method_details['method_name']}\s*\([\s\S]*?\)\s*(->\s*[a-zA-Z0-9_\[\], ]+)?\s*:\n)(\s*)(?!\s*\"\"\")"
 
         docstring_with_format = self.extract_pure_docstring(generated_docstring)
         updated_code = re.sub(
