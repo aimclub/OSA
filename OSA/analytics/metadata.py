@@ -146,14 +146,12 @@ def load_data_metadata(repo_url: str) -> RepositoryMetadata | None:
         url = _get_base_repo_url(repo_url)
 
         response = requests.get(url=url, headers=headers)
-        response.raise_for_status()
 
         metadata = response.json()
         logger.info(f"Successfully fetched metadata for repository: {repo_url}")
         return _parse_repository_metadata(metadata)
     except requests.RequestException as exc:
         logger.error(f"Error while fetching repository metadata: {exc}")
-        raise
 
 
 class GitHost(enum.Enum):

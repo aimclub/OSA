@@ -1,8 +1,8 @@
 """Pytest fixtures for reuse across the test suite."""
 import pytest
 from OSA.utils import osa_project_root
-from readmeai.config.settings import ConfigLoader
-from readmeai.ingestion.models import (
+from OSA.readmeai.config.settings import ConfigLoader
+from OSA.readmeai.ingestion.models import (
     RepositoryContext,
     QuickStart,
     FileContext,
