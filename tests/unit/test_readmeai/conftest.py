@@ -1,8 +1,8 @@
 """Pytest fixtures for reuse across the test suite."""
 import pytest
-from OSA.utils import osa_project_root
-from OSA.readmeai.config.settings import ConfigLoader
-from OSA.readmeai.ingestion.models import (
+from osa_tool.utils import osa_project_root
+from osa_tool.readmeai.config.settings import ConfigLoader
+from osa_tool.readmeai.ingestion.models import (
     RepositoryContext,
     QuickStart,
     FileContext,
@@ -13,7 +13,7 @@ from OSA.readmeai.ingestion.models import (
 
 @pytest.fixture(scope="session")
 def config_loader_fixture() -> ConfigLoader:
-    config_dir = osa_project_root().joinpath('OSA/config/standart')
+    config_dir = osa_project_root().joinpath('osa_tool/config/standart')
     return ConfigLoader(config_dir=str(config_dir))
 
 

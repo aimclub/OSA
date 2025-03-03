@@ -5,14 +5,14 @@ from typing import Optional
 
 from rich.logging import RichHandler
 
-from OSA.github_agent.github_agent import GithubAgent
-from OSA.osatreesitter.docgen import DocGen
-from OSA.osatreesitter.osa_treesitter import OSA_TreeSitter
-from OSA.readmeai.config.settings import ConfigLoader, GitSettings
-from OSA.readmeai.readmegen_article.config.settings import ArticleConfigLoader
-from OSA.readmeai.readme_core import readme_agent
-from OSA.translation.dir_translator import DirectoryTranslator
-from OSA.utils import osa_project_root
+from osa_tool.github_agent.github_agent import GithubAgent
+from osa_tool.osatreesitter.docgen import DocGen
+from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
+from osa_tool.readmeai.config.settings import ConfigLoader, GitSettings
+from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
+from osa_tool.readmeai.readme_core import readme_agent
+from osa_tool.translation.dir_translator import DirectoryTranslator
+from osa_tool.utils import osa_project_root
 
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
@@ -124,7 +124,7 @@ def generate_docstrings(config_loader) -> None:
     """Generates a docstrings for .py's classes and methods of the provided repository.
 
     Args:
-        config_loader: The configuration object which contains settings for OSA.
+        config_loader: The configuration object which contains settings for osa_tool.
 
     """
     try:
@@ -147,7 +147,7 @@ def load_configuration(
         article: Optional[str]
 ) -> ConfigLoader:
     """
-    Loads configuration for OSA.
+    Loads configuration for osa_tool.
 
     Args:
         repo_url (str): URL of the GitHub repository.
@@ -156,16 +156,16 @@ def load_configuration(
         article (Optional[str]): Link to the pdf file of the article. Can be None.
 
     Returns:
-        config_loader: The configuration object which contains settings for OSA.
+        config_loader: The configuration object which contains settings for osa_tool.
     """
     if article is None:
 
         config_loader = ConfigLoader(
-            config_dir=os.path.join(osa_project_root(), "OSA", "config",
+            config_dir=os.path.join(osa_project_root(), "osa_tool", "config",
                                     "standart"))
     else:
         config_loader = ArticleConfigLoader(
-            config_dir=os.path.join(osa_project_root(), "OSA", "config",
+            config_dir=os.path.join(osa_project_root(), "osa_tool", "config",
                                     "with_article"))
 
     config_loader.config.git = GitSettings(repository=repo_url)

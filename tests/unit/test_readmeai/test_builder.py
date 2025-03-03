@@ -3,9 +3,9 @@ from pathlib import Path
 import pytest
 from unittest.mock import patch
 
-from OSA.readmeai.config.settings import ConfigLoader
-from OSA.readmeai.generators.builder import MarkdownBuilder
-from OSA.readmeai.ingestion.models import RepositoryContext
+from osa_tool.readmeai.config.settings import ConfigLoader
+from osa_tool.readmeai.generators.builder import MarkdownBuilder
+from osa_tool.readmeai.ingestion.models import RepositoryContext
 
 
 @pytest.fixture
