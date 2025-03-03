@@ -1,3 +1,3 @@
 # Github Agent
 
-::: OSA.github_agent.github_agent.GithubAgent
+::: osa_tool.github_agent.github_agent.GithubAgent
