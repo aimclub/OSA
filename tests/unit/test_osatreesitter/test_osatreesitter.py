@@ -1,7 +1,7 @@
 import pytest
 import os
 from unittest.mock import patch, mock_open, MagicMock
-from OSA.osatreesitter.osa_treesitter import OSA_TreeSitter
+from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 
 
 @pytest.fixture
@@ -46,9 +46,9 @@ def test_open_file(mock_file, osa_tree_sitter):
 
 
 @patch("tree_sitter.Parser")
-@patch("OSA.osatreesitter.osa_treesitter.OSA_TreeSitter._parser_build")
+@patch("osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._parser_build")
 @patch(
-    "OSA.osatreesitter.osa_treesitter.OSA_TreeSitter.open_file",
+    "osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter.open_file",
     return_value="def test(): pass",
 )
 def test_parse_source_code(
@@ -64,11 +64,11 @@ def test_parse_source_code(
     assert source_code == "def test(): pass"
 
 
-@patch("OSA.osatreesitter.osa_treesitter.OSA_TreeSitter._class_parser")
-@patch("OSA.osatreesitter.osa_treesitter.OSA_TreeSitter._function_parser")
-@patch("OSA.osatreesitter.osa_treesitter.OSA_TreeSitter._parse_source_code")
+@patch("osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._class_parser")
+@patch("osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._function_parser")
+@patch("osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._parse_source_code")
 @patch(
-    "OSA.osatreesitter.osa_treesitter.OSA_TreeSitter._get_decorators",
+    "osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._get_decorators",
     return_value=["mock_decorator"],
 )
 def test_extract_structure(
@@ -146,11 +146,11 @@ def test_extract_structure(
 
 
 @patch(
-    "OSA.osatreesitter.osa_treesitter.OSA_TreeSitter.files_list",
+    "osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter.files_list",
     return_value=(["script.py"], 0),
 )
 @patch(
-    "OSA.osatreesitter.osa_treesitter.OSA_TreeSitter.extract_structure",
+    "osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter.extract_structure",
     return_value=[{"type": "function", "name": "test"}],
 )
 def test_analyze_directory(mock_extract_structure, mock_files_list, osa_tree_sitter):
