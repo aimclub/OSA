@@ -9,7 +9,8 @@ from osa_tool.github_agent.github_agent import GithubAgent
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 from osa_tool.readmeai.config.settings import ConfigLoader, GitSettings
-from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
+from osa_tool.readmeai.readmegen_article.config.settings import \
+    ArticleConfigLoader
 from osa_tool.readmeai.readme_core import readme_agent
 from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.utils import osa_project_root
@@ -43,7 +44,7 @@ def main():
         "--repository",
         type=str,
         help="URL of the GitHub repository",
-        required=True
+        required=True,
     )
     parser.add_argument(
         "--api",
@@ -81,8 +82,7 @@ def main():
         "--translate-dirs",
         action="store_true",
         help=(
-            "Enable automatic translation of the directory name into English."
-        ),
+            "Enable automatic translation of the directory name into English."),
     )
 
     args = parser.parse_args()
@@ -137,7 +137,6 @@ def generate_docstrings(config_loader) -> None:
     except Exception as e:
         logger.error("Error while docstring generation: %s", repr(e),
                      exc_info=True)
-        raise ValueError("Failed to generate docstrings.")
 
 
 def load_configuration(
