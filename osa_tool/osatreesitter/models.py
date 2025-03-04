@@ -1,12 +1,11 @@
 from osa_tool.readmeai.config.settings import Settings
 from abc import ABC, abstractmethod
 from uuid import uuid4
-
-import dotenv
-import openai
 import requests
-from protollm.connectors.connector_creator import create_llm_connector
-from readmeai.config.settings import Settings
+import logging
+import openai
+import os
+import dotenv
 
 
 class ModelHandler(ABC):
@@ -266,82 +265,6 @@ class OpenaiHandler(ModelHandler):
         self.client = openai.OpenAI(base_url=self.url, api_key=self.key)
 
 
-#TODO update docstrings; 
-class ProtollmConnector(ModelHandler):
-    """
-    This class is designed to handle interactions with the different LLMs using ProtoLLM connector. It is initialized with configuration settings and can send requests to the API.
-
-    Methods:
-        __init__:
-            Initializes the instance with the provided configuration settings. This method sets up the instance by assigning the provided configuration settings to the instance's config attribute. It also retrieves the API from the configuration settings and passes it to the _configure_api method.
-
-        send_request:
-            Sends a request and initializes the payload with the given prompt. This method sends a request , initializes the payload with the given prompt, and creates a chat completion with the specified model, messages, max tokens, and temperature from the configuration. It then returns the content of the first choice from the response.
-
-        _configure_api:
-            Configures the API for the instance based on the provided API name. This method loads environment variables, sets the URL and API key based on the provided API name, and initializes the ProtoLLM connector with the set URL and API key.
-    """
-
-    def __init__(self, config: Settings):
-        """
-        Initializes the instance with the provided configuration settings.
-
-        This method sets up the instance by assigning the provided configuration settings to the instance's config attribute.
-        It also retrieves the API from the configuration settings and passes it to the _configure_api method.
-
-        Args:
-            config: The configuration settings to be used for setting up the instance.
-
-        Returns:
-            None
-        """
-        self.config = config
-        self._configure_api(config.llm.api, model_name=config.llm.model)
-
-    def send_request(self, prompt: str) -> str:
-        """
-        Sends a request to a specified URL with a payload initialized with a given prompt.
-
-        This method initializes a payload with the provided prompt and configuration,
-        sends a POST request to a specified URL with this payload, and logs the response.
-
-        Args:
-            prompt: The prompt to initialize the payload with.
-
-        Returns:
-            str: The response received from the request.
-        """
-        self.initialize_payload(self.config, prompt)
-        messages = self.payload["messages"]
-        response = self.client.invoke(messages)
-        return response.content
-
-    def _configure_api(self, api: str, model_name: str) -> None:
-        """
-        Configures the API for the instance based on the provided API name.
-
-        This method loads environment variables, sets the URL and API key based on the provided API name,
-        and initializes the OpenAI client with the set URL and API key.
-
-        Args:
-            api: The name of the API to configure. It can be either "openai" or "vsegpt".
-
-        Returns:
-            None
-        """
-        dotenv.load_dotenv()
-        connector_creator = create_llm_connector
-        match api:
-            case "openai":
-                url = f"https://api.openai.com/v1;{model_name}"
-            case "vsegpt":
-                url = f"https://api.vsegpt.ru/v1;{model_name}"
-            case _:
-                #TODO discuss what to do in that case
-                raise NotImplementedError
-        self.client = connector_creator(url)
-
-
 class ModelHandlerFactory:
     """
     Class: modelHandlerFactory
@@ -392,10 +315,9 @@ class ModelHandlerFactory:
         Returns:
             None: This method does not return anything.
         """
-        # TODO remove this, if protollm handler is enough.
         api = config.llm.api
         constructors = {
             "llama": LlamaHandler,
             "openai": OpenaiHandler,
         }
-        return ProtollmConnector(config)
+        return constructors[api](config)
