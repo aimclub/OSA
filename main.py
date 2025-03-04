@@ -51,8 +51,15 @@ def main():
         type=str,
         help="LLM API service provider",
         nargs="?",
-        choices=["llama", "openai", "vsegpt"],
+        choices=["llama", "openai"],
         default="llama",
+    )
+    parser.add_argument(
+        "--base-url",
+        type=str,
+        help="URL of the provider compatible with API OpenAI",
+        nargs="?",
+        default="https://api.openai.com/v1",
     )
     parser.add_argument(
         "--model",
@@ -64,7 +71,7 @@ def main():
             "2. https://platform.openai.com/docs/models"
         ),
         nargs="?",
-        default="llama",
+        default="gpt-3.5-turbo",
     )
     parser.add_argument(
         "--article",
@@ -88,12 +95,13 @@ def main():
     args = parser.parse_args()
     repo_url = args.repository
     api = args.api
+    base_url = args.base_url
     model_name = args.model
     article = args.article
 
     try:
         # Load configurations and update
-        config = load_configuration(repo_url, api, model_name, article)
+        config = load_configuration(repo_url, api, base_url, model_name, article)
 
         # Initialize GitHub agent and perform operations
         github_agent = GithubAgent(repo_url)
@@ -106,10 +114,10 @@ def main():
         if args.translate_dirs:
             translation = DirectoryTranslator(config)
             translation.rename_directories()
-
+        '''
         # Docstring generation
         generate_docstrings(config)
-
+        '''
         # Readme generation
         readme_agent(config, article)
 
@@ -142,6 +150,7 @@ def generate_docstrings(config_loader) -> None:
 def load_configuration(
         repo_url: str,
         api: str,
+        base_url: str,
         model_name: str,
         article: Optional[str]
 ) -> ConfigLoader:
@@ -149,10 +158,11 @@ def load_configuration(
     Loads configuration for osa_tool.
 
     Args:
-        repo_url (str): URL of the GitHub repository.
-        api (str): LLM API service provider.
-        model_name (str): Specific LLM model to use.
-        article (Optional[str]): Link to the pdf file of the article. Can be None.
+        repo_url: URL of the GitHub repository.
+        api: LLM API service provider.
+        base_url: URL of the provider compatible with API OpenAI
+        model_name: Specific LLM model to use.
+        article: Link to the pdf file of the article. Can be None.
 
     Returns:
         config_loader: The configuration object which contains settings for osa_tool.
@@ -171,6 +181,7 @@ def load_configuration(
     config_loader.config.llm = config_loader.config.llm.model_copy(
         update={
             "api": api,
+            "url": base_url,
             "model": model_name
         }
     )

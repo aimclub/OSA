@@ -21,13 +21,13 @@ repository = "https://github.com/aimclub/FEDOT"
 
 # Language Model API Settings
 [llm]
-api = "llama"
-url = "http://10.32.15.21:6672/generate"
+api = "openai"
+url = "https://api.openai.com/v1"
 context_window = 4096
 encoder = "cl100k_base"
-host_name = "http://10.32.15.21:6672/"
+host_name = "https://api.openai.com/v1"
 localhost = "http://localhost:11434/"
-model = "llama"
+model = "gpt-3.5-turbo"
 path = "generate"
 temperature = 0.05
 tokens = 4096
