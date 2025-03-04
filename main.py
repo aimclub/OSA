@@ -41,7 +41,7 @@ def main():
         "--repository",
         type=str,
         help="URL of the GitHub repository",
-        required=True
+        required=True,
     )
     parser.add_argument(
         "--api",
@@ -78,9 +78,7 @@ def main():
     parser.add_argument(
         "--translate-dirs",
         action="store_true",
-        help=(
-            "Enable automatic translation of the directory name into English."
-        ),
+        help=("Enable automatic translation of the directory name into English."),
     )
 
     args = parser.parse_args()
@@ -133,9 +131,7 @@ def generate_docstrings(config_loader) -> None:
         dg.process_python_file(res)
 
     except Exception as e:
-        logger.error("Error while docstring generation: %s", repr(e),
-                     exc_info=True)
-        raise ValueError("Failed to generate docstrings.")
+        logger.error("Error while docstring generation: %s", repr(e), exc_info=True)
 
 
 def readme_agent(config_loader, article: Optional[str]) -> None:
@@ -149,21 +145,18 @@ def readme_agent(config_loader, article: Optional[str]) -> None:
         Exception: If an error occurs during README.md generation.
     """
     repo_url = config_loader.config.git.repository
-    logger.info("Started generating README.md. Processing the repository: %s"
-                , repo_url)
+    logger.info("Started generating README.md. Processing the repository: %s", repo_url)
 
     try:
         # Define output directory and ensure it exists
-        output_dir = os.path.join(os.getcwd(), parse_folder_name(repo_url)
-                                  )
+        output_dir = os.path.join(os.getcwd(), parse_folder_name(repo_url))
         os.makedirs(output_dir, exist_ok=True)
         file_to_save = os.path.join(output_dir, "README.md")
 
         # Generate README.md
         readme_generator(config_loader, file_to_save, article)
 
-        logger.info("README.md successfully generated in folder: %s",
-                    output_dir)
+        logger.info("README.md successfully generated in folder: %s", output_dir)
 
     except Exception as e:
         logger.error("Error while generating: %s", repr(e), exc_info=True)
@@ -171,27 +164,21 @@ def readme_agent(config_loader, article: Optional[str]) -> None:
 
 
 def load_configuration(
-        repo_url: str,
-        api: str,
-        model_name: str,
-        article: Optional[str]
+    repo_url: str, api: str, model_name: str, article: Optional[str]
 ):
     if article is None:
 
         config_loader = ConfigLoader(
-            config_dir=os.path.join(osa_project_root(), "OSA", "config",
-                                    "standart"))
+            config_dir=os.path.join(osa_project_root(), "OSA", "config", "standart")
+        )
     else:
         config_loader = ArticleConfigLoader(
-            config_dir=os.path.join(osa_project_root(), "OSA", "config",
-                                    "with_article"))
+            config_dir=os.path.join(osa_project_root(), "OSA", "config", "with_article")
+        )
 
     config_loader.config.git = GitSettings(repository=repo_url)
     config_loader.config.llm = config_loader.config.llm.model_copy(
-        update={
-            "api": api,
-            "model": model_name
-        }
+        update={"api": api, "model": model_name}
     )
     logger.info("Config successfully updated and loaded")
     return config_loader
