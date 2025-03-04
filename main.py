@@ -1,16 +1,19 @@
-import os
 import argparse
 import logging
-from rich.logging import RichHandler
+import os
 from typing import Optional
-from readmeai.readmegen_article.config.settings import ArticleConfigLoader
-from readmeai.config.settings import ConfigLoader, GitSettings
-from readmeai.main import readme_generator
-from OSA.github_agent.github_agent import GithubAgent
-from OSA.utils import parse_folder_name, osa_project_root
-from OSA.osatreesitter.osa_treesitter import OSA_TreeSitter
-from OSA.osatreesitter.docgen import DocGen
-from OSA.translation.dir_translator import DirectoryTranslator
+
+from rich.logging import RichHandler
+
+from osa_tool.github_agent.github_agent import GithubAgent
+from osa_tool.osatreesitter.docgen import DocGen
+from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
+from osa_tool.readmeai.config.settings import ConfigLoader, GitSettings
+from osa_tool.readmeai.readmegen_article.config.settings import \
+    ArticleConfigLoader
+from osa_tool.readmeai.readme_core import readme_agent
+from osa_tool.translation.dir_translator import DirectoryTranslator
+from osa_tool.utils import osa_project_root
 
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
@@ -78,7 +81,8 @@ def main():
     parser.add_argument(
         "--translate-dirs",
         action="store_true",
-        help=("Enable automatic translation of the directory name into English."),
+        help=(
+            "Enable automatic translation of the directory name into English."),
     )
 
     args = parser.parse_args()
@@ -120,7 +124,7 @@ def generate_docstrings(config_loader) -> None:
     """Generates a docstrings for .py's classes and methods of the provided repository.
 
     Args:
-        config_loader: The configuration object which contains settings for OSA.
+        config_loader: The configuration object which contains settings for osa_tool.
 
     """
     try:
@@ -131,54 +135,44 @@ def generate_docstrings(config_loader) -> None:
         dg.process_python_file(res)
 
     except Exception as e:
-        logger.error("Error while docstring generation: %s", repr(e), exc_info=True)
-
-
-def readme_agent(config_loader, article: Optional[str]) -> None:
-    """Generates a README.md file for the specified GitHub repository.
-
-    Args:
-        config_loader: The configuration object which contains settings for OSA.
-        article: Optional link to the pdf file of the article.
-
-    Raises:
-        Exception: If an error occurs during README.md generation.
-    """
-    repo_url = config_loader.config.git.repository
-    logger.info("Started generating README.md. Processing the repository: %s", repo_url)
-
-    try:
-        # Define output directory and ensure it exists
-        output_dir = os.path.join(os.getcwd(), parse_folder_name(repo_url))
-        os.makedirs(output_dir, exist_ok=True)
-        file_to_save = os.path.join(output_dir, "README.md")
-
-        # Generate README.md
-        readme_generator(config_loader, file_to_save, article)
-
-        logger.info("README.md successfully generated in folder: %s", output_dir)
-
-    except Exception as e:
-        logger.error("Error while generating: %s", repr(e), exc_info=True)
-        raise ValueError("Failed to generate README.md.")
+        logger.error("Error while docstring generation: %s", repr(e),
+                     exc_info=True)
 
 
 def load_configuration(
-    repo_url: str, api: str, model_name: str, article: Optional[str]
-):
+        repo_url: str,
+        api: str,
+        model_name: str,
+        article: Optional[str]
+) -> ConfigLoader:
+    """
+    Loads configuration for osa_tool.
+
+    Args:
+        repo_url (str): URL of the GitHub repository.
+        api (str): LLM API service provider.
+        model_name (str): Specific LLM model to use.
+        article (Optional[str]): Link to the pdf file of the article. Can be None.
+
+    Returns:
+        config_loader: The configuration object which contains settings for osa_tool.
+    """
     if article is None:
 
         config_loader = ConfigLoader(
-            config_dir=os.path.join(osa_project_root(), "OSA", "config", "standart")
-        )
+            config_dir=os.path.join(osa_project_root(), "osa_tool", "config",
+                                    "standart"))
     else:
         config_loader = ArticleConfigLoader(
-            config_dir=os.path.join(osa_project_root(), "OSA", "config", "with_article")
-        )
+            config_dir=os.path.join(osa_project_root(), "osa_tool", "config",
+                                    "with_article"))
 
     config_loader.config.git = GitSettings(repository=repo_url)
     config_loader.config.llm = config_loader.config.llm.model_copy(
-        update={"api": api, "model": model_name}
+        update={
+            "api": api,
+            "model": model_name
+        }
     )
     logger.info("Config successfully updated and loaded")
     return config_loader

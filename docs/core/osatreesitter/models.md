@@ -1,3 +1,3 @@
 # Model Handler
 
-::: OSA.osatreesitter.models.ModelHandler
+::: osa_tool.osatreesitter.models.ModelHandler

@@ -1,14 +1,11 @@
 from pathlib import Path
 
-import logging
 import pytest
 from unittest.mock import patch
 
-from readmeai.config.settings import ConfigLoader
-from readmeai.generators.builder import MarkdownBuilder
-from readmeai.ingestion.models import RepositoryContext
-
-logging.getLogger("readmeai.config.settings").setLevel(logging.CRITICAL)
+from osa_tool.readmeai.config.settings import ConfigLoader
+from osa_tool.readmeai.generators.builder import MarkdownBuilder
+from osa_tool.readmeai.ingestion.models import RepositoryContext
 
 
 @pytest.fixture
