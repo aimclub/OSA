@@ -114,10 +114,10 @@ def main():
         if args.translate_dirs:
             translation = DirectoryTranslator(config)
             translation.rename_directories()
-        '''
+
         # Docstring generation
         generate_docstrings(config)
-        '''
+
         # Readme generation
         readme_agent(config, article)
 

@@ -256,13 +256,11 @@ class OpenaiHandler(ModelHandler):
             None
         """
         dotenv.load_dotenv()
-        if self.url == "https://api.openai.com/v1":
-            self.key = os.getenv("OPENAI_API_KEY")
-            self.config.llm.tokens = 1500
-        elif self.url == "https://api.vsegpt.ru/v1":
+        if self.url == "https://api.vsegpt.ru/v1":
             self.key = os.getenv("VSE_GPT_KEY")
         else:
-            self.key = os.getenv("ANY_API_KEY")
+            self.key = os.getenv("OPENAI_API_KEY")
+            self.config.llm.tokens = 1500
 
         self.client = openai.OpenAI(base_url=self.url, api_key=self.key)
 
