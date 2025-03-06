@@ -1,3 +1,5 @@
+import logging
+import os
 from osa_tool.readmeai.config.settings import Settings
 from abc import ABC, abstractmethod
 from uuid import uuid4
@@ -267,7 +269,7 @@ class OpenaiHandler(ModelHandler):
 
 
 #TODO update docstrings; 
-class ProtollmConnector(ModelHandler):
+class ProtollmHandler(ModelHandler):
     """
     This class is designed to handle interactions with the different LLMs using ProtoLLM connector. It is initialized with configuration settings and can send requests to the API.
 
@@ -392,10 +394,11 @@ class ModelHandlerFactory:
         Returns:
             None: This method does not return anything.
         """
-        # TODO remove this, if protollm handler is enough.
+        # TODO remove this, after llama rework.
         api = config.llm.api
         constructors = {
             "llama": LlamaHandler,
-            "openai": OpenaiHandler,
+            "openai": ProtollmHandler,
+            "vsegpt": ProtollmHandler,
         }
-        return ProtollmConnector(config)
+        return constructors[api](config)
