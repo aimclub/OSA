@@ -268,7 +268,7 @@ class OpenaiHandler(ModelHandler):
         self.client = openai.OpenAI(base_url=self.url, api_key=self.key)
 
 
-#TODO update docstrings; 
+
 class ProtollmHandler(ModelHandler):
     """
     This class is designed to handle interactions with the different LLMs using ProtoLLM connector. It is initialized with configuration settings and can send requests to the API.
@@ -278,7 +278,7 @@ class ProtollmHandler(ModelHandler):
             Initializes the instance with the provided configuration settings. This method sets up the instance by assigning the provided configuration settings to the instance's config attribute. It also retrieves the API from the configuration settings and passes it to the _configure_api method.
 
         send_request:
-            Sends a request and initializes the payload with the given prompt. This method sends a request , initializes the payload with the given prompt, and creates a chat completion with the specified model, messages, max tokens, and temperature from the configuration. It then returns the content of the first choice from the response.
+            Sends a request and initializes the payload with the given prompt. This method sends a request, initializes the payload with the given prompt, and creates a chat completion with the specified model, messages, max tokens, and temperature from the configuration. It then returns the content of the first choice from the response.
 
         _configure_api:
             Configures the API for the instance based on the provided API name. This method loads environment variables, sets the URL and API key based on the provided API name, and initializes the ProtoLLM connector with the set URL and API key.
@@ -339,8 +339,8 @@ class ProtollmHandler(ModelHandler):
             case "vsegpt":
                 url = f"https://api.vsegpt.ru/v1;{model_name}"
             case _:
-                #TODO discuss what to do in that case
                 raise NotImplementedError
+        # TODO add additional parametes such as max tokens.
         self.client = connector_creator(url)
 
 
