@@ -39,7 +39,6 @@ class LLMService(str, enum.Enum):
 
     OLLAMA = "llama"
     OPENAI = "openai"
-    VSEGPT = "vsegpt"
 
 
 class ServiceAuthKeys(str, enum.Enum):

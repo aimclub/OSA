@@ -172,7 +172,7 @@ class LlamaHandler(ModelHandler):
         Returns:
             None
         """
-        self.url = os.path.dirname(config.llm.url) + "/chat_completion"
+        self.url = "http://10.32.15.21:6672/chat_completion"
         self.config = config
 
     def send_request(self, prompt) -> str:
@@ -202,7 +202,7 @@ class OpenaiHandler(ModelHandler):
             Sends a request to Sam Altman and initializes the payload with the given prompt. This method sends a request to Sam Altman, initializes the payload with the given prompt, and creates a chat completion with the specified model, messages, max tokens, and temperature from the configuration. It then returns the content of the first choice from the response.
 
         _configure_api:
-            Configures the API for the instance based on the provided API name. This method loads environment variables, sets the URL and API key based on the provided API name, and initializes the OpenAI client with the set URL and API key.
+            Configures the API for the instance based on the provided base_url. It loads environment variables, determines the appropriate API key based on the base URL, and initializes the OpenAI client.
     """
 
     def __init__(self, config: Settings):
@@ -219,8 +219,8 @@ class OpenaiHandler(ModelHandler):
             None
         """
         self.config = config
-        api = config.llm.api
-        self._configure_api(api)
+        self.url = self.config.llm.url
+        self._configure_api()
 
     def send_request(self, prompt: str) -> str:
         """
@@ -245,27 +245,22 @@ class OpenaiHandler(ModelHandler):
         )
         return response.choices[0].message.content
 
-    def _configure_api(self, api: str) -> None:
+    def _configure_api(self) -> None:
         """
-        Configures the API for the instance based on the provided API name.
+        Configures the API for the instance based on the provided base_url.
 
-        This method loads environment variables, sets the URL and API key based on the provided API name,
-        and initializes the OpenAI client with the set URL and API key.
-
-        Args:
-            api: The name of the API to configure. It can be either "openai" or "vsegpt".
+        This method loads environment variables, determines the API key based on the base URL,
+        and initializes the OpenAI client.
 
         Returns:
             None
         """
         dotenv.load_dotenv()
-        if api == "openai":
-            self.url = "https://api.openai.com/v1"
+        if self.url == "https://api.vsegpt.ru/v1":
+            self.key = os.getenv("VSE_GPT_KEY")
+        else:
             self.key = os.getenv("OPENAI_API_KEY")
             self.config.llm.tokens = 1500
-        if api == "vsegpt":
-            self.url = "https://api.vsegpt.ru/v1"
-            self.key = os.getenv("VSE_GPT_KEY")
 
         self.client = openai.OpenAI(base_url=self.url, api_key=self.key)
 
@@ -324,6 +319,5 @@ class ModelHandlerFactory:
         constructors = {
             "llama": LlamaHandler,
             "openai": OpenaiHandler,
-            "vsegpt": OpenaiHandler,
         }
         return constructors[api](config)

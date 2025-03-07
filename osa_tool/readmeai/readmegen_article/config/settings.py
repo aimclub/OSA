@@ -18,18 +18,16 @@ from osa_tool.readmeai.config.constants import (
     ImageOptions,
 )
 
-from osa_tool.readmeai.logger import get_logger
 from osa_tool.readmeai.utils.file_handler import FileHandler
 from osa_tool.readmeai.utils.file_resource import get_resource_path
 
-from osa_tool.readmeai.config.settings import APISettings, FileSettings, GitSettings, ModelSettings
+from osa_tool.readmeai.config.settings import APISettings, FileSettings, \
+    GitSettings, ModelSettings
 
 try:
     from typing import Self
 except ImportError:
     from typing_extensions import Self
-
-_logger = get_logger(__name__)
 
 
 class ArticleMarkdownSettings(BaseModel):
@@ -53,7 +51,6 @@ class ArticleMarkdownSettings(BaseModel):
     content: str = Field(default="INSERT-PROJECT-CONTENTS")
     algorithms: str = Field(default="INSERT-USED-ALGORITHMS")
     placeholder: str = Field(default="<code>❯ REPLACE-ME</code>")
-    
 
     model_config = ConfigDict(
         use_enum_values=True, arbitrary_types_allowed=True
@@ -128,7 +125,6 @@ class ArticleConfigLoader:
                 config_dict = self.file_handler.read(file_path)
                 settings[key] = config_dict
                 setattr(self, key, config_dict)
-                _logger.info(f"Configuration file loaded: {file_path}")
 
         return settings
 

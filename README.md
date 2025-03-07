@@ -28,14 +28,11 @@
 ---
 ## Overview
 
-<overview>
-
 OSA (Open-Source-Advisor) is a LLM-based tool for improving the quality of scientific open source projects and helping create them from scratch. 
 It automates the generation of README, different levels of documentation, CI/CD scripts, etc. 
 It also generates advices and recommendations for the repository.
 
 OSA is currently under development, so not all features are implemented.
-</overview>
 
 ---
 ## How it works?
@@ -62,8 +59,6 @@ Here is a short demo:
 
 ## Core features
 
-<corefeatures>
-
 1. **README file generation**: Automates the creation of a clear and structured README file for a repository, including projects based on research papers.
 
 2. **Documentation generation**: Automatically generates docstrings for Python code.
@@ -71,8 +66,6 @@ Here is a short demo:
 3. **Automatic implementation of changes**: Clones the repository, creates a branch, commits and pushes changes, and creates a pull request with proposed changes.
 
 4. **Various LLMs**: Use OSA with an LLM accessible via API (e.g., OpenAI, VseGPT), a local server, or try an [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
-
-</corefeatures>
 
 ---
 
@@ -84,12 +77,12 @@ Install Open-Source-Advisor using one of the following methods:
 
 1. Clone the Open-Source-Advisor repository:
 ```sh
-❯ git clone https://github.com/ITMO-NSS-team/Open-Source-Advisor
+git clone https://github.com/ITMO-NSS-team/Open-Source-Advisor
 ```
 
 2. Navigate to the project directory:
 ```sh
-❯ cd Open-Source-Advisor
+cd Open-Source-Advisor
 ```
 
 3. Install the project dependencies:
@@ -98,21 +91,21 @@ Install Open-Source-Advisor using one of the following methods:
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
 
 ```sh
-❯ pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 **Using `poetry`** &nbsp;
 [<img align="center" src="https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json" />](https://python-poetry.org/)
 
 ```sh
-❯ poetry install 
+poetry install 
 ```
 
 **Using `docker`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
-❯ docker build --build-arg GIT_USER_NAME="your-user-name" --build-arg GIT_USER_EMAIL="your-user-email" -f docker/Dockerfile -t {image-name} .
+docker build --build-arg GIT_USER_NAME="your-user-name" --build-arg GIT_USER_EMAIL="your-user-email" -f docker/Dockerfile -t {image-name} .
 ```
 
 ---
@@ -133,27 +126,28 @@ Run Open-Source-Advisor using the following command:
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
 
 ```sh
-❯ python main.py -r {repository} [--api {api}] [--model {model_name}] [--article {article}]
+python main.py -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--article {article}]
 ```
 
 **Using `docker`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
-❯ docker run --env-file .env {image-name} -r {repository} [--api {api}] [--model {model_name}] [--article {article}]
+docker run --env-file .env {image-name} -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--article {article}]
 ```
 
 The --article option enables you to choose a README template for a repository based on an article. You can provide either a link to a PDF file of the article or a path to a local PDF file after the --article option. If you are using Docker, ensure that you upload the PDF file to the OSA folder before building the image, then, specify the path as /app/OSA/... or just use volume mounting to access the file.
 
 ### Configuration
 
-| Flag                 | Description                                                     | Default    |
-|----------------------|-----------------------------------------------------------------|------------|
-| `-r`, `--repository` | URL of the GitHub repository (**Mandatory**)                    |            |
-| `--api`              | LLM API service provider                                        | `llama`    |
-| `--model`            | Specific LLM model to use                                       | `llama`    |
-| `--article`          | Link to the pdf file of the article                             | `None`     |
-| `--translate-dirs`   | Enable automatic translation of the directory name into English | `disabled` |
+| Flag                 | Description                                                     | Default                     |
+|----------------------|-----------------------------------------------------------------|-----------------------------|
+| `-r`, `--repository` | URL of the GitHub repository (**Mandatory**)                    |                             |
+| `--api`              | LLM API service provider                                        | `llama`                     |
+| `--base-url`         | URL of the provider compatible with API OpenAI                  | `https://api.openai.com/v1` |
+| `--model`            | Specific LLM model to use                                       | `gpt-3.5-turbo`             |
+| `--article`          | Link to the pdf file of the article                             | `None`                      |
+| `--translate-dirs`   | Enable automatic translation of the directory name into English | `disabled`                  |
 
 ---
 
@@ -173,11 +167,11 @@ python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor
 ```  
 OpenAI:
 ```sh
-python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai --model gpt-3.5-turbo
+python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai
 ```
 VseGPT:
 ```sh
-python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api vsegpt --model openai/gpt-3.5-turbo
+python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai --base-url https://api.vsegpt.ru/v1 --model openai/gpt-3.5-turbo
 ```
 
 ---
