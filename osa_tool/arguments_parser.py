@@ -59,10 +59,4 @@ def get_cli_args():
         help=(
             "Enable automatic translation of the directory name into English.")
     )
-    parser.add_argument(
-        "--save-dir",
-        action="store_true",
-        help=(
-            "Enable saving the repository directory after the script completes.")
-    )
     return parser.parse_args()
