@@ -5,6 +5,7 @@ from typing import Optional
 
 from rich.logging import RichHandler
 
+from osa_tool.arguments_parser import get_cli_args
 from osa_tool.github_agent.github_agent import GithubAgent
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
@@ -13,8 +14,8 @@ from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoa
 from osa_tool.readmeai.readme_core import readme_agent
 from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.utils import (
-    get_cli_args,
-    osa_project_root
+    osa_project_root,
+    parse_folder_name
 )
 
 for handler in logging.root.handlers[:]:
@@ -66,9 +67,10 @@ def main():
 
         # Readme generation
         readme_agent(config, article)
-
+        
         github_agent.commit_and_push_changes()
         github_agent.create_pull_request()
+
         logger.info("All operations completed successfully.")
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
@@ -83,7 +85,7 @@ def generate_docstrings(config_loader) -> None:
     """
     try:
         repo_url = config_loader.config.git.repository
-        ts = OSA_TreeSitter(os.path.basename(repo_url))
+        ts = OSA_TreeSitter(parse_folder_name(repo_url))
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen(config_loader)
         dg.process_python_file(res)
