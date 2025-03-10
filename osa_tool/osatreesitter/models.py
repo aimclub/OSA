@@ -149,6 +149,7 @@ class PayloadFactory:
         }
 
 
+# TODO remove after all fixes to protollm
 class LlamaHandler(ModelHandler):
     """
     Class: llamaHandler
@@ -193,6 +194,7 @@ class LlamaHandler(ModelHandler):
         return response.json()["content"]
 
 
+# TODO remove after all fixes to protollm
 class OpenaiHandler(ModelHandler):
     """
     This class, openaiHandler, is designed to handle interactions with the OpenAI API. It is initialized with configuration settings and can send requests to the API.
@@ -333,15 +335,10 @@ class ProtollmHandler(ModelHandler):
         """
         dotenv.load_dotenv()
         connector_creator = create_llm_connector
-        match api:
-            case "openai":
-                url = f"https://api.openai.com/v1;{model_name}"
-            case "vsegpt":
-                url = f"https://api.vsegpt.ru/v1;{model_name}"
-            case _:
-                raise NotImplementedError
+        url = self.config.llm.url
+        model_url = f"{url};{self.config.llm.model}"
         # TODO add additional parametes such as max tokens.
-        self.client = connector_creator(url)
+        self.client = connector_creator(model_url)
 
 
 class ModelHandlerFactory:
@@ -399,6 +396,5 @@ class ModelHandlerFactory:
         constructors = {
             "llama": LlamaHandler,
             "openai": ProtollmHandler,
-            "vsegpt": ProtollmHandler,
         }
         return constructors[api](config)
