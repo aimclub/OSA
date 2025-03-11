@@ -1,5 +1,6 @@
 import logging
 import os
+from osa_tool.osatreesitter.connector_creator import create_llm_connector
 from osa_tool.readmeai.config.settings import Settings
 from abc import ABC, abstractmethod
 from uuid import uuid4
@@ -7,8 +8,7 @@ from uuid import uuid4
 import dotenv
 import openai
 import requests
-from protollm.connectors.connector_creator import create_llm_connector
-from readmeai.config.settings import Settings
+from osa_tool.readmeai.config.settings import Settings
 
 
 class ModelHandler(ABC):
@@ -334,6 +334,7 @@ class ProtollmHandler(ModelHandler):
             None
         """
         dotenv.load_dotenv()
+        # TODO replace with create_llm_connector from protollm, after it's new release in pypi.
         connector_creator = create_llm_connector
         url = self.config.llm.url
         model_url = f"{url};{self.config.llm.model}"
