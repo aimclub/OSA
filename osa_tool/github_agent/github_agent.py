@@ -4,6 +4,7 @@ import logging
 from rich.logging import RichHandler
 import requests
 from dotenv import load_dotenv
+from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.utils import parse_folder_name
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
@@ -52,6 +53,8 @@ class GithubAgent:
         self.repo = None
         self.token = os.getenv("GIT_TOKEN")
         self.fork_url = None
+        self.metadata = load_data_metadata(self.repo_url)
+        self.base_branch = self.metadata.default_branch
 
     def create_fork(self) -> None:
         """Creates a fork of the repository in the osa_tool account.
@@ -178,11 +181,10 @@ class GithubAgent:
         self.repo.git.push('--set-upstream', 'origin', self.branch_name)
         logger.info("Push completed.")
 
-    def create_pull_request(self, base_branch: str = "main", title: str = None, body: str = None) -> None:
+    def create_pull_request(self, title: str = None, body: str = None) -> None:
         """Creates a pull request from the forked repository to the original repository.
 
         Args:
-            base_branch: The branch into which the PR should be merged.
             title: The title of the PR. If None, the commit message will be used.
             body: The body/description of the PR. If None, the commit message with agent signature will be used.
 
@@ -201,7 +203,7 @@ class GithubAgent:
         pr_data = {
             "title": pr_title,
             "head": f"{self.fork_url.split('/')[-2]}:{self.branch_name}",
-            "base": base_branch,
+            "base": self.base_branch,
             "body": pr_body
         }
 
