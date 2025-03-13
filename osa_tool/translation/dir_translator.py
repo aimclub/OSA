@@ -94,8 +94,7 @@ class DirectoryTranslator:
                 if any(excluded in root for excluded in self.exclude_dirs):
                     continue
 
-                for file in files:
-                    all_files.append(os.path.join(root, file))
+                all_files.extend(os.path.join(root, file) for file in files)
 
             logger.info(f"Collected {len(all_files)} files in repository")
         except Exception as e:
@@ -116,9 +115,7 @@ class DirectoryTranslator:
             for root, dirs, _ in os.walk(self.base_path, topdown=True):
                 dirs[:] = [d for d in dirs if d not in self.exclude_dirs]
 
-                for dirname in dirs:
-                    old_path = os.path.join(root, dirname)
-                    all_dirs.append(old_path)
+                all_dirs.extend(os.path.join(root, dirname) for dirname in dirs)
 
             logger.info(f"Finished collecting all directories of repository ({len(all_dirs)} found)")
         except Exception as e:
