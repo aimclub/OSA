@@ -1,6 +1,7 @@
 import logging
 import os
-from osa_tool.osatreesitter.connector_creator import create_llm_connector
+from protollm.connectors import create_llm_connector
+# from osa_tool.osatreesitter.connector_creator import create_llm_connector
 from osa_tool.readmeai.config.settings import Settings
 from abc import ABC, abstractmethod
 from uuid import uuid4
@@ -194,7 +195,6 @@ class LlamaHandler(ModelHandler):
         return response.json()["content"]
 
 
-# TODO remove after all fixes to protollm
 class OpenaiHandler(ModelHandler):
     """
     This class, openaiHandler, is designed to handle interactions with the OpenAI API. It is initialized with configuration settings and can send requests to the API.
@@ -334,7 +334,6 @@ class ProtollmHandler(ModelHandler):
             None
         """
         dotenv.load_dotenv()
-        # TODO replace with create_llm_connector from protollm, after it's new release in pypi.
         connector_creator = create_llm_connector
         url = self.config.llm.url
         model_url = f"{url};{self.config.llm.model}"
