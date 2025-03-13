@@ -141,9 +141,9 @@ class BaseModelHandler:
     def _article_process_batch(self, prompt: dict[str, Any]) -> Any:
         """Processes a single prompt and returns the generated text."""
         if prompt["type"] == "file_summary":
-            return self.model_handler.send_request(prompt["context"])
+            return self._make_request_code_summary(prompt["context"])
         elif prompt["type"] == "pdf_summary":
-            return self.model_handler.send_request(prompt["context"])
+            return self._make_request_pdf_summary(prompt["context"])
         else:
             formatted_prompt = get_prompt_context_article(
                 self.prompts,

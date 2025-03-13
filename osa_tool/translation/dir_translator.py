@@ -50,7 +50,7 @@ class DirectoryTranslator:
         Returns:
             response: The translated text, with spaces replaced by `_`.
         """
-        prompt = (f"Translate into English text: {text}\n"
+        prompt = (f"Translate into English text: {text} and save every word here.\n"
                   f"Return only the answer.")
         response = self.model_handler.send_request(prompt)
         return response.replace(" ", "_")
