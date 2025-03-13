@@ -4,7 +4,7 @@ aiosignal==1.3.2
 annotated-types==0.7.0
 anyio==4.7.0
 aspose-pdf==25.1.0
-async-timeout==5.0.1
+async-timeout>=4.0.0,<5.0.0
 attrs==25.1.0
 certifi==2024.12.14
 charset-normalizer==3.4.1
@@ -16,7 +16,7 @@ gitdb==4.0.11
 GitPython==3.1.43
 h11==0.14.0
 httpcore==1.0.7
-httpx==0.28.1
+httpx~=0.27.2
 idna==3.10
 iniconfig==2.0.0
 jiter==0.8.2
@@ -30,7 +30,7 @@ pluggy==1.5.0
 propcache==0.2.1
 pydantic>=2.9.0,<2.11.0
 pydantic-extra-types==2.9.0
-pydantic_core==2.27.2
+pydantic_core~=2.23.4
 Pygments==2.19.1
 pytest==8.3.4
 pytest-mock==3.14.0
@@ -50,3 +50,5 @@ tree-sitter-python==0.23.4
 typing_extensions==4.12.2
 urllib3==2.3.0
 yarl==1.18.3
+
+protollm>=0.1.1
