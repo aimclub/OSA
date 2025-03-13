@@ -1,19 +1,22 @@
-import argparse
 import logging
 import os
+
 from typing import Optional
 
 from rich.logging import RichHandler
 
+from osa_tool.arguments_parser import get_cli_args
 from osa_tool.github_agent.github_agent import GithubAgent
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 from osa_tool.readmeai.config.settings import ConfigLoader, GitSettings
-from osa_tool.readmeai.readmegen_article.config.settings import \
-    ArticleConfigLoader
+from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
 from osa_tool.readmeai.readme_core import readme_agent
 from osa_tool.translation.dir_translator import DirectoryTranslator
-from osa_tool.utils import osa_project_root
+from osa_tool.utils import (
+    osa_project_root,
+    parse_folder_name
+)
 
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
@@ -34,65 +37,9 @@ def main():
     Handles command-line arguments, clones the repository, creates and checks out a branch,
     generates the README.md file, and commits and pushes the changes.
     """
-    # Create a command line argument parser
-    parser = argparse.ArgumentParser(
-        description="Generate README.md for a GitHub repository",
-        formatter_class=argparse.RawTextHelpFormatter,
-    )
-    parser.add_argument(
-        "-r",
-        "--repository",
-        type=str,
-        help="URL of the GitHub repository",
-        required=True,
-    )
-    parser.add_argument(
-        "--api",
-        type=str,
-        help="LLM API service provider",
-        nargs="?",
-        choices=["llama", "openai"],
-        default="llama",
-    )
-    parser.add_argument(
-        "--base-url",
-        type=str,
-        help="URL of the provider compatible with API OpenAI",
-        nargs="?",
-        default="https://api.openai.com/v1",
-    )
-    parser.add_argument(
-        "--model",
-        type=str,
-        help=(
-            "Specific LLM model to use. "
-            "To see available models go there:\n"
-            "1. https://vsegpt.ru/Docs/Models\n"
-            "2. https://platform.openai.com/docs/models"
-        ),
-        nargs="?",
-        default="gpt-3.5-turbo",
-    )
-    parser.add_argument(
-        "--article",
-        type=str,
-        help=(
-            "Select a README template for a repository with an article.\n"
-            "You can also provide a link to the pdf file of the article\n"
-            "after the --article option."
-        ),
-        nargs="?",
-        const="",
-        default=None,
-    )
-    parser.add_argument(
-        "--translate-dirs",
-        action="store_true",
-        help=(
-            "Enable automatic translation of the directory name into English."),
-    )
 
-    args = parser.parse_args()
+    # Create a command line argument parser
+    args = get_cli_args()
     repo_url = args.repository
     api = args.api
     base_url = args.base_url
@@ -120,9 +67,10 @@ def main():
 
         # Readme generation
         readme_agent(config, article)
-
+        
         github_agent.commit_and_push_changes()
         github_agent.create_pull_request()
+
         logger.info("All operations completed successfully.")
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
@@ -137,7 +85,7 @@ def generate_docstrings(config_loader) -> None:
     """
     try:
         repo_url = config_loader.config.git.repository
-        ts = OSA_TreeSitter(os.path.basename(repo_url))
+        ts = OSA_TreeSitter(parse_folder_name(repo_url))
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen(config_loader)
         dg.process_python_file(res)

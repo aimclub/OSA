@@ -3,6 +3,7 @@ import logging
 import os
 import functools
 from dataclasses import dataclass
+from functools import lru_cache
 from pydantic import (
     BaseModel,
     Field,
@@ -134,6 +135,7 @@ def _get_base_repo_url(repo_url: str = None) -> str:
         raise ValueError("Unsupported repository URL format.")
 
 
+@lru_cache(maxsize=1)
 def load_data_metadata(repo_url: str) -> RepositoryMetadata | None:
     """
     Retrieves GitHub repository metadata and returns a dataclass.
