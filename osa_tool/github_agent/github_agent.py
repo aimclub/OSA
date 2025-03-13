@@ -5,7 +5,7 @@ from rich.logging import RichHandler
 import requests
 from dotenv import load_dotenv
 from osa_tool.analytics.metadata import load_data_metadata
-from osa_tool.utils import parse_folder_name
+from osa_tool.utils import parse_folder_name, get_base_repo_url
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
 
@@ -65,7 +65,7 @@ class GithubAgent:
         if not self.token:
             raise ValueError("GitHub token is required to create a fork.")
 
-        base_repo = self._get_base_repo_url()
+        base_repo = get_base_repo_url(self.repo_url)
         headers = {
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json"
@@ -90,7 +90,7 @@ class GithubAgent:
         if not self.token:
             raise ValueError("GitHub token is required to star the repository.")
 
-        base_repo = self._get_base_repo_url()
+        base_repo = get_base_repo_url(self.repo_url)
         headers = {
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json"
@@ -194,7 +194,7 @@ class GithubAgent:
         if not self.token:
             raise ValueError("GitHub token is required to create a pull request.")
 
-        base_repo = self._get_base_repo_url()
+        base_repo = get_base_repo_url(self.repo_url)
         last_commit = self.repo.head.commit
         pr_title = title if title else last_commit.message
         pr_body = body if body else last_commit.message
@@ -240,24 +240,5 @@ class GithubAgent:
             repo_path = repo_url[len("https://github.com/"):]
             auth_url = f"https://{self.token}@github.com/{repo_path}.git"
             return auth_url
-        else:
-            raise ValueError("Unsupported repository URL format.")
-
-    def _get_base_repo_url(self, url: str = None) -> str:
-        """Extracts the base repository URL path from a given GitHub URL.
-
-        Args:
-            url (str, optional): The GitHub repository URL. If not provided,
-                the instance's `repo_url` attribute is used. Defaults to None.
-
-        Returns:
-            str: The base repository path (e.g., 'username/repo-name').
-
-        Raises:
-            ValueError: If the provided URL does not start with 'https://github.com/'.
-        """
-        repo_url = url if url else self.repo_url
-        if repo_url.startswith("https://github.com/"):
-            return repo_url[len("https://github.com/"):].rstrip('/')
         else:
             raise ValueError("Unsupported repository URL format.")

@@ -16,3 +16,22 @@ def parse_folder_name(repo_url: str) -> str:
 def osa_project_root() -> Path:
     """Returns osa_tool project root folder."""
     return Path(__file__).parent.parent
+
+
+def get_base_repo_url(repo_url: str) -> str:
+    """Extracts the base repository URL path from a given GitHub URL.
+
+    Args:
+        repo_url (str, optional): The GitHub repository URL. If not provided,
+            the instance's `repo_url` attribute is used. Defaults to None.
+
+    Returns:
+        str: The base repository path (e.g., 'username/repo-name').
+
+    Raises:
+        ValueError: If the provided URL does not start with 'https://github.com/'.
+    """
+    if repo_url.startswith("https://github.com/"):
+        return repo_url[len("https://github.com/"):].rstrip('/')
+    else:
+        raise ValueError("Unsupported repository URL format.")

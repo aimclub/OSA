@@ -5,6 +5,7 @@ from typing import Optional
 
 from rich.logging import RichHandler
 
+from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.arguments_parser import get_cli_args
 from osa_tool.github_agent.github_agent import GithubAgent
 from osa_tool.osatreesitter.docgen import DocGen
@@ -56,6 +57,9 @@ def main():
         github_agent.create_fork()
         github_agent.clone_repository()
         github_agent.create_and_checkout_branch()
+
+        analytics = SourceRank(config)
+        analytics.print_results()
 
         # Auto translating names of directories
         if args.translate_dirs:
