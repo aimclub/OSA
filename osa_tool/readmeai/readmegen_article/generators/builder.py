@@ -30,7 +30,6 @@ class ArticleMarkdownBuilder:
         }
         return self.header_template.render(header_data)
 
-
     def build(self) -> str:
         """Builds each section of the README.md file."""
         readme_md_contents = [
