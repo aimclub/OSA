@@ -133,14 +133,14 @@ Run Open-Source-Advisor using the following command:
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
 
 ```sh
-python main.py -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--article {article}]
+python main.py -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--article {article}] [--convert-notebooks {notebook_paths}]
 ```
 
 **Using `docker`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
-docker run --env-file .env {image-name} -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--article {article}]
+docker run --env-file .env {image-name} -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--article {article}] [--convert-notebooks {notebook_paths}]
 ```
 
 The --article option enables you to choose a README template for a repository based on an article. You can provide either a link to a PDF file of the article or a path to a local PDF file after the --article option. If you are using Docker, ensure that you upload the PDF file to the OSA folder before building the image, then, specify the path as /app/OSA/... or just use volume mounting to access the file.
@@ -155,6 +155,7 @@ The --article option enables you to choose a README template for a repository ba
 | `--model`            | Specific LLM model to use                                       | `gpt-3.5-turbo`             |
 | `--article`          | Link to the pdf file of the article                             | `None`                      |
 | `--translate-dirs`   | Enable automatic translation of the directory name into English | `disabled`                  |
+| `--convert-notebooks`| One or more notebook file or directory paths                    | `repository directory`      |
 
 ---
 

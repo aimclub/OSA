@@ -59,4 +59,15 @@ def get_cli_args():
         help=(
             "Enable automatic translation of the directory name into English.")
     )
+    parser.add_argument(
+    "--convert-notebooks",
+    type=str,
+    help=(
+        "Convert Jupyter notebooks from .ipynb to .py format.\n"
+        "You can provide one or multiple paths to files or directories.\n"
+        "If no paths are provided, the repo directory will be used."
+    ),
+    nargs='*',
+    default=[],
+    )
     return parser.parse_args()
