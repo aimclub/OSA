@@ -32,9 +32,11 @@ class DirectoryTranslator:
         self.config = config_loader.config
         self.repo_url = self.config.git.repository
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
-        self.exclude_dirs = {".git", ".venv"}
-        self.extensions_code_files = {".py"}
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+
+        self.excluded_dirs = {".git", ".venv"}
+        self.extensions_code_files = {".py"}
+        self.excluded_names = {"main", "LICENSE", "README", "requirements", "examples", "docs"}
 
     def _translate_text(self, text: str) -> str:
         """
@@ -50,6 +52,9 @@ class DirectoryTranslator:
         Returns:
             response: The translated text, with spaces replaced by `_`.
         """
+        if text in self.excluded_names:
+            return text
+
         prompt = (f"Translate into English text: {text} and save every word here.\n"
                   f"Return only the answer.")
         response = self.model_handler.send_request(prompt)
@@ -91,7 +96,7 @@ class DirectoryTranslator:
 
         try:
             for root, _, files in os.walk(self.base_path):
-                if any(excluded in root for excluded in self.exclude_dirs):
+                if any(excluded in root for excluded in self.excluded_dirs):
                     continue
 
                 all_files.extend(os.path.join(root, file) for file in files)
@@ -113,7 +118,7 @@ class DirectoryTranslator:
 
         try:
             for root, dirs, _ in os.walk(self.base_path, topdown=True):
-                dirs[:] = [d for d in dirs if d not in self.exclude_dirs]
+                dirs[:] = [d for d in dirs if d not in self.excluded_dirs]
 
                 all_dirs.extend(os.path.join(root, dirname) for dirname in dirs)
 
@@ -164,13 +169,9 @@ class DirectoryTranslator:
 
             def replace_in_strings(match):
                 quote, path = match.groups()
-                if '/' in path or '\\' in path:
-                    parts = re.split(r"[/\\]", path)
-                    updated_parts = [rename_map.get(part, part) for part in parts]
-                    return f"{quote}{'/'.join(updated_parts)}{quote}"
-                return match.group(0)
-
-            updated_content = re.sub(string_pattern, replace_in_strings, updated_content)
+                parts = re.split(r"[/\\]", path)
+                updated_parts = [rename_map.get(part, part) for part in parts]
+                return f"{quote}{'/'.join(updated_parts)}{quote}"
 
             # Regular expression for finding string arguments in functions
             path_patterns = [
@@ -186,7 +187,7 @@ class DirectoryTranslator:
                 r"(glob\.glob\()([^)]+)(\))",
                 r"(json\.load\()([^)]+)(\))",
                 r"(pickle\.load\()([^)]+)(\))",
-                r"(torch\.load\()([^)]+)(\))"
+                r"(torch\.load\()([^)]+)(\))",
             ]
 
             def replace_names(match):
@@ -194,6 +195,7 @@ class DirectoryTranslator:
                 args = re.sub(string_pattern, replace_in_strings, args)
                 return f"{prefix}{args}{suffix}"
 
+            updated_content = re.sub(string_pattern, replace_in_strings, updated_content)
             for pattern in path_patterns:
                 updated_content = re.sub(
                     pattern,
