@@ -37,7 +37,9 @@ pytest==8.3.4
 pytest-mock==3.14.0
 python-dotenv==1.0.1
 PyYAML==6.0.2
+qrcode==8.0
 regex==2024.11.6
+reportlab==4.3.1
 requests==2.32.3
 rich==13.9.4
 smmap==5.0.2

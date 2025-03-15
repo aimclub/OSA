@@ -1,15 +1,15 @@
-import os
 import logging
+import os
 import re
-
-from rich.logging import RichHandler
 from typing import Union, List
 
-from osa_tool.readmeai.config.settings import ConfigLoader
-from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
+from rich.logging import RichHandler
 
-from osa_tool.utils import parse_folder_name
+from osa_tool.readmeai.config.settings import ConfigLoader
+from osa_tool.readmeai.readmegen_article.config.settings import \
+    ArticleConfigLoader
 from osa_tool.osatreesitter.models import ModelHandlerFactory, ModelHandler
+from osa_tool.utils import parse_folder_name
 
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
