@@ -1,7 +1,7 @@
 import logging
 import os
 
-from typing import Optional
+from typing import Optional, List
 
 from rich.logging import RichHandler
 
@@ -81,7 +81,7 @@ def main():
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
 
-def convert_notebooks(config_loader, notebook_paths) -> None:
+def convert_notebooks(config_loader: ConfigLoader, notebook_paths: Optional[List[str]] = None) -> None:
     """Converts Jupyter notebooks to Python scripts based on provided paths.
 
     Args:
