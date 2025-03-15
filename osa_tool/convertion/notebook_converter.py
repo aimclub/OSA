@@ -37,7 +37,7 @@ class NotebookConverter:
         elif os.path.isfile(path) and path.endswith(".ipynb"):
             self.convert_notebook(path)
         else:
-            logger.warning("Invalid path or unsupported file type: %s", path)
+            logger.error("Invalid path or unsupported file type: %s", path)
 
     def convert_notebooks_in_directory(self, directory: str) -> None:
         """Converts all .ipynb files in the specified directory.
