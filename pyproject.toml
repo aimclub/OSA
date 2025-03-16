@@ -1,10 +1,11 @@
 [tool.poetry]
-readme = "README.md"
-license = "BSD-3-Clause"
 name = "osa_tool"
 version = "0.1.0"
 description = "Tool that just makes your open source project better!"
 authors = ["ITMO-NSS-team <itmo.nss.team@gmail.com>"]
+readme = "README.md"
+license = "BSD-3-Clause"
+packages = [{ include = "osa_tool" }]
 
 [project.urls]
 Homepage = "https://github.com/ITMO-NSS-team/Open-Source-Advisor"
