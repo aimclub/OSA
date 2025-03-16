@@ -1,11 +1,15 @@
-[tool.poetry]
+[project]
 name = "osa_tool"
 version = "0.1.0"
 description = "Tool that just makes your open source project better!"
-authors = ["ITMO-NSS-team <itmo.nss.team@gmail.com>"]
+requires-python = ">=3.10,<4.0"
+authors = [ 
+    { name = "ITMO-NSS-team", email = "itmo.nss.team@gmail.com" }
+]
 readme = "README.md"
 license = "BSD-3-Clause"
 packages = [{ include = "osa_tool" }]
+dynamic = [ "dependencies" ]
 
 [project.urls]
 Homepage = "https://github.com/ITMO-NSS-team/Open-Source-Advisor"
@@ -13,7 +17,6 @@ Documentation = "https://itmo-nss-team.github.io/Open-Source-Advisor/"
 Issues = "https://github.com/ITMO-NSS-team/Open-Source-Advisor/issues"
 
 [tool.poetry.dependencies]
-python = "^3.10"
 aiohappyeyeballs = "2.4.4"
 aiohttp = "3.11.11"
 aiosignal = "1.3.2"
