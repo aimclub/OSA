@@ -1,5 +1,6 @@
 import logging
 import os
+import tomli as tomllib
 from typing import Union
 from datetime import datetime
 
@@ -25,6 +26,7 @@ from osa_tool.readmeai.config.settings import ConfigLoader
 from osa_tool.readmeai.readmegen_article.config.settings import \
     ArticleConfigLoader
 from osa_tool.osatreesitter.models import ModelHandlerFactory, ModelHandler
+from osa_tool.utils import parse_folder_name
 
 logging.basicConfig(
     level=logging.INFO,
@@ -41,8 +43,7 @@ class ReportGenerator:
                  config_loader: Union[ConfigLoader, ArticleConfigLoader]):
         self.config = config_loader.config
         self.sourcerank = SourceRank(config_loader)
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(
-            self.config)
+        self.text_generator = TextGenerator(config_loader)
         self.repo_url = self.config.git.repository
         self.osa_url = "https://github.com/ITMO-NSS-team/Open-Source-Advisor"
         self.metadata = load_data_metadata(self.repo_url)
@@ -64,6 +65,7 @@ class ReportGenerator:
             data,
             w_first_col,
             w_second_col,
+            coloring=False,
     ) -> Table:
         table = Table(data, colWidths=[w_first_col, w_second_col])
         style = [
@@ -76,6 +78,12 @@ class ReportGenerator:
             ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
             ("GRID", (0, 0), (-1, -1), 1, colors.black),
         ]
+        if coloring:
+            for row_idx, row in enumerate(data[1:], start=1):
+                value = row[1]
+                bg_color = colors.lightgreen if value == "✓" else colors.lightcoral
+                style.append(("BACKGROUND", (1, row_idx), (1, row_idx), bg_color))
+
         table.setStyle(TableStyle(style))
         return table
 
@@ -150,7 +158,7 @@ class ReportGenerator:
             ["Description Presence", "✓" if self.metadata.description else "✗"],
         ]
         table1 = self.table_builder(data1, 120, 76)
-        table2 = self.table_builder(data2, 160, 76)
+        table2 = self.table_builder(data2, 160, 76, True)
         return table1, table2
 
     def body_first_part(self) -> ListFlowable:
@@ -182,10 +190,20 @@ class ReportGenerator:
             name="LeftAlignedNormal",
             parent=styles["Normal"],
             fontSize=12,
+            leading=13,
+            spaceAfter=13,
+            leftIndent=-20,
+            rightIndent=-20,
             alignment=0,
         )
-        text = Paragraph("Some text ...", normal_style)
-        return text
+        text_content = self.text_generator.make_request()
+        paragraphs = text_content.split("\n")
+
+        story = []
+        for para in paragraphs:
+            if para.strip():
+                story.append(Paragraph(para.strip(), normal_style))
+        return story
 
     def build_pdf(self) -> None:
         logger.info(f"Starting analysis for repository {self.metadata.full_name}")
@@ -203,7 +221,7 @@ class ReportGenerator:
                     Spacer(0, 40),
                     self.body_first_part(),
                     Spacer(0, 125),
-                    self.body_second_part(),
+                    *self.body_second_part(),
                 ],
                 onFirstPage=self.draw_images_and_tables,
             )
@@ -211,3 +229,62 @@ class ReportGenerator:
         except Exception as e:
             logger.error("Error while building PDF report, %s", e,
                          exc_info=True)
+
+
+class TextGenerator:
+    def __init__(self,
+                 config_loader: Union[ConfigLoader, ArticleConfigLoader]):
+        self.config = config_loader.config
+        self.sourcerank = SourceRank(config_loader)
+        self.model_handler: ModelHandler = ModelHandlerFactory.build(
+            self.config)
+        self.repo_url = self.config.git.repository
+        self.metadata = load_data_metadata(self.repo_url)
+        self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.prompt_path = os.path.join(
+            os.getcwd(),
+            "osa_tool",
+            "config",
+            "standart",
+            "settings",
+            "prompt_for_analysis.toml"
+        )
+
+    def make_request(self) -> str:
+        response = self.model_handler.send_request(self._build_prompt())
+        return response
+
+    def _build_prompt(self):
+        with open(self.prompt_path, "rb") as f:
+            prompts = tomllib.load(f)
+
+        values = {
+            "project_name": self.metadata.name,
+            "metadata": self.metadata,
+            "repository_tree": self.sourcerank.tree,
+            "presence_files": self._extract_presence_files(),
+            "readme_content": self._extract_readme_content(),
+        }
+        main_prompt = prompts.get("prompt", {}).get("main_prompt", "")
+        return main_prompt.format(**values)
+
+    def _extract_readme_content(self) -> str:
+        if not self.sourcerank.readme_presence():
+            return "No README.md file"
+
+        for file in ["README.md", "README.rst"]:
+            readme_path = os.path.join(self.base_path, file)
+
+            if os.path.exists(readme_path):
+                with open(readme_path, "r", encoding="utf-8") as f:
+                    return f.read()
+
+    def _extract_presence_files(self) -> list[str]:
+        contents = [
+            f"README presence is {self.sourcerank.readme_presence()}",
+            f"LICENSE presence is {self.sourcerank.license_presence()}",
+            f"Examples presence is {self.sourcerank.examples_presence()}",
+            f"Documentation presence is {self.sourcerank.docs_presence()}",
+            f"Tests presence is {self.sourcerank.tests_presence()}",
+        ]
+        return contents

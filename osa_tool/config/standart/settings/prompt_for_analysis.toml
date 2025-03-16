@@ -1,0 +1,50 @@
+[prompt]
+main_prompt = """
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+2. METADATA: {metadata}
+3. REPOSITORY FILE TREE: {repository_tree}
+4. PRESENCE OF IMPORTANT FILES AND DIRECTORIES: {presence_files}
+5. README CONTENT: {readme_content}
+
+TASK:
+
+Analyze the quality of the {project_name} repository based on the following aspects:
+
+1. Repository Structure
+
+- Check if the repository contains standard files: README.md, LICENSE, .gitignore, CONTRIBUTING.md, CODE_OF_CONDUCT.md, docs/, tests/.
+- Identify missing but important files.
+
+2. README File
+
+- Evaluate the README.md content based on the following criteria:
+- Project Name and Description: Clear explanation of the project's purpose.
+- Installation and Setup: Instructions on installation and system requirements.
+- Usage: Examples of how to run and use the project.
+- Contribution Guidelines: Does it include information on how to contribute?
+- License: Is the license properly specified?
+- Badges and Links: Are there any relevant badges (build status, test coverage, downloads)?
+
+3. Code and Documentation
+
+- Are there documentation files (docs/ or wiki)?
+- Are there tests, and is their execution documented?
+
+4. Overall Assessment
+
+- Provide a repository quality rating from 1 to 10.
+- List key shortcomings and suggest improvements.
+
+ADDITIONAL INSTRUCTIONS:
+
+1. Don't use Markdown syntax.
+2. For each aspect, try to use plain text where necessary.
+3. Limit your response to a maximum of 250 words.
+
+OUTPUT:
+
+Generate a detailed report with specific observations and recommendations to enhance the repository.
+
+"""

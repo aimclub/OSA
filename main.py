@@ -65,7 +65,7 @@ def main():
         if args.translate_dirs:
             translation = DirectoryTranslator(config)
             translation.rename_directories()
-        '''
+
         # Docstring generation
         generate_docstrings(config)
 
@@ -74,7 +74,7 @@ def main():
         
         github_agent.commit_and_push_changes()
         github_agent.create_pull_request()
-        '''
+
         logger.info("All operations completed successfully.")
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
