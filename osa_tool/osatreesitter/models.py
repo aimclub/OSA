@@ -293,7 +293,10 @@ class OllamaHandler(ModelHandler):
             config: Configuration settings containing Ollama URL and model name.
         """
         self.config = config        
-        self.base_url = config.llm.url
+        if not config.llm.url:
+            self.base_url = "http://localhost:11434"
+        else:
+            self.base_url = config.llm.url
         self.model = config.llm.model
         self._configure_api()
 
