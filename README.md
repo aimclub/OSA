@@ -66,7 +66,7 @@ Here is a short demo:
 
 3. **Automatic implementation of changes**: Clones the repository, creates a branch, commits and pushes changes, and creates a pull request with proposed changes.
 
-4. **Various LLMs**: Use OSA with an LLM accessible via API (e.g., OpenAI, VseGPT), a local server, or try an [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
+4. **Various LLMs**: Use OSA with an LLM accessible via API (e.g., OpenAI, VseGPT, Ollama), a local server, or try an [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
 
 ---
 
@@ -167,6 +167,7 @@ URL of the GitHub repository, LLM API service provider (*optional*) and Specific
 To see available models go there:
 1. [VseGpt](https://vsegpt.ru/Docs/Models)
 2. [OpenAI](https://platform.openai.com/docs/models)
+3. [Ollama](https://ollama.com/library)
 
 Local Llama ITMO:
 ```sh
@@ -179,6 +180,10 @@ python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api ope
 VseGPT:
 ```sh
 python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai --base-url https://api.vsegpt.ru/v1 --model openai/gpt-3.5-turbo
+```
+Ollama:
+```sh
+python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api ollama --base-url http://[YOUR_OLLAMA_IP]:11434 --model gemma3:27b
 ```
 
 ---

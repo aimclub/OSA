@@ -271,6 +271,69 @@ class OpenaiHandler(ModelHandler):
 
 
 
+class OllamaHandler(ModelHandler):
+    """
+    Handles interactions with Ollama models. Initializes with configuration settings
+    and sends requests to the Ollama API endpoint.
+
+    Methods:
+        __init__:
+            Initializes the instance with Ollama configuration settings including URL and model name.        
+        _configure_api:
+            Configures the HTTP client with appropriate headers for API communication.
+        send_request:
+            Sends a chat request to Ollama API with the specified prompt and returns the response.
+    """
+
+    def __init__(self, config: Settings):
+        """
+        Initializes the instance with Ollama configuration settings.
+        
+        Args:
+            config: Configuration settings containing Ollama URL and model name.
+        """
+        self.config = config        
+        self.base_url = config.llm.url
+        self.model = config.llm.model
+        self._configure_api()
+
+    def _configure_api(self) -> requests.Session:
+        """Configures a requests session with Ollama headers."""
+        session = requests.Session()
+        session.headers.update({"Content-Type": "application/json"})
+        self.client = session
+
+    def send_request(self, prompt: str) -> str:
+        """
+        Sends a chat request to Ollama API with the specified prompt.
+        
+        Args:
+            prompt: Input text to send to the model.
+            
+        Returns:
+            str: Generated response content from the model.
+        """
+                
+        self.initialize_payload(self.config, prompt) 
+                
+        self.payload["model"] = self.model
+        self.payload["stream"] = False
+        self.payload["options"] = { 
+            "temperature": self.payload["meta"]["temperature"],
+            "max_tokens": self.payload["meta"]["tokens_limit"]
+        }              
+        
+        try:
+            response = self.client.post(
+                f"{self.base_url}/api/chat", 
+                json=self.payload                
+            )
+            response.raise_for_status()
+            return response.json()["message"]["content"]
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"Ollama API request failed: {str(e)}") from e
+
+
 class ProtollmHandler(ModelHandler):
     """
     This class is designed to handle interactions with the different LLMs using ProtoLLM connector. It is initialized with configuration settings and can send requests to the API.
@@ -382,8 +445,8 @@ class ModelHandlerFactory:
         Creates a handler based on the model specified in the configuration.
 
         This method uses the model specified in the configuration to create a handler.
-        It supports three types of models: 'llama', 'openai', and 'vsegpt'.
-        For 'llama', it creates a llamaHandler, and for 'openai' and 'vsegpt', it creates an openaiHandler.
+        It supports three types of models: 'llama', 'ollama', 'openai', and 'vsegpt'.
+        For 'llama', it creates a llamaHandler, 'ollama' - ollamaHandler, and for 'openai' and 'vsegpt', it creates an openaiHandler.
 
         Args:
             config: The configuration object which contains the model information.
@@ -396,5 +459,6 @@ class ModelHandlerFactory:
         constructors = {
             "llama": LlamaHandler,
             "openai": ProtollmHandler,
+            "ollama": OllamaHandler,
         }
         return constructors[api](config)
