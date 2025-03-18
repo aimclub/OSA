@@ -81,7 +81,7 @@ def main():
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
 
-def convert_notebooks(config_loader: ConfigLoader, notebook_paths: Optional[List[str]] = None) -> None:
+def convert_notebooks(config_loader: ConfigLoader, notebook_paths: List[str] | None = None) -> None:
     """Converts Jupyter notebooks to Python scripts based on provided paths.
 
     Args:
