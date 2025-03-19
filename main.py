@@ -1,8 +1,6 @@
 import logging
 import os
 
-from typing import Optional
-
 from rich.logging import RichHandler
 
 from osa_tool.analytics.report_maker import ReportGenerator
@@ -15,6 +13,7 @@ from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoa
 from osa_tool.readmeai.readme_core import readme_agent
 from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.utils import (
+    delete_repository,
     osa_project_root,
     parse_folder_name
 )
@@ -75,6 +74,9 @@ def main():
         github_agent.commit_and_push_changes()
         github_agent.create_pull_request()
 
+        if args.delete_dir:
+            delete_repository(repo_url)
+
         logger.info("All operations completed successfully.")
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
@@ -104,7 +106,7 @@ def load_configuration(
         api: str,
         base_url: str,
         model_name: str,
-        article: Optional[str]
+        article: str | None
 ) -> ConfigLoader:
     """
     Loads configuration for osa_tool.

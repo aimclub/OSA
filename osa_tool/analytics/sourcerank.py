@@ -1,6 +1,5 @@
 import os
 import re
-from typing import Union
 
 from gitingest import ingest
 
@@ -15,7 +14,7 @@ class SourceRank:
 
     def __init__(
             self,
-            config_loader: Union[ConfigLoader, ArticleConfigLoader]
+            config_loader: ConfigLoader | ArticleConfigLoader
     ):
         self.config = config_loader.config
         self.repo_url = self.config.git.repository

@@ -1,7 +1,6 @@
 import logging
 import os
 import re
-from typing import Union, List
 
 from rich.logging import RichHandler
 
@@ -27,7 +26,7 @@ logger = logging.getLogger("rich")
 class DirectoryTranslator:
     def __init__(
             self,
-            config_loader: Union[ConfigLoader, ArticleConfigLoader]
+            config_loader: ConfigLoader | ArticleConfigLoader
     ):
         self.config = config_loader.config
         self.repo_url = self.config.git.repository
@@ -53,7 +52,7 @@ class DirectoryTranslator:
         response = self.model_handler.send_request(prompt)
         return response.replace(" ", "_")
 
-    def get_python_files(self) -> List:
+    def get_python_files(self) -> list[str]:
         """
         Recursive search of all Python files in a project
 
@@ -61,7 +60,7 @@ class DirectoryTranslator:
         recursively goes through all subdirectories and collects paths to `.py` files.
 
         Returns:
-            List[str]: List of absolute paths to all found Python files.
+            list[str]: List of absolute paths to all found Python files.
         """
         python_files = []
         base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))

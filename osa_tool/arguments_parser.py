@@ -59,4 +59,10 @@ def get_cli_args():
         help=(
             "Enable automatic translation of the directory name into English.")
     )
+    parser.add_argument(
+        "--delete-dir",
+        action="store_true",
+        help="Enable deleting the downloaded repository after processing. ("
+             "Linux only)"
+    )
     return parser.parse_args()
