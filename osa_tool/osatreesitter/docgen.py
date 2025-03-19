@@ -293,7 +293,7 @@ class DocGen(object):
         for filename, structure in parsed_structure.items():
             with open(filename, "r", encoding="utf-8") as f:
                 source_code = f.read()
-            for item in structure:
+            for item in structure["structure"]:
                 if item["type"] == "class":
                     for method in item["methods"]:
                         if method["docstring"] == None:  # If docstring is missing
@@ -323,7 +323,7 @@ class DocGen(object):
                             source_code, func_details, generated_docstring
                         )
 
-            for item in structure:
+            for item in structure["structure"]:
                 if item["type"] == "class" and item["docstring"] == None:
                     class_name = item["name"]
                     cls_structure = []
