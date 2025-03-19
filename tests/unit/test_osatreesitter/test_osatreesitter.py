@@ -136,11 +136,11 @@ def test_extract_structure(
             mock_function_node,
         )
 
-        assert result == [
-            "mock_function_structure_0",
-            "mock_class_structure_1",
-            "mock_function_structure_2",
-        ]
+        assert result == {'structure': 
+                          ['mock_function_structure_0', 
+                           'mock_class_structure_1', 
+                           'mock_function_structure_2'], 
+                           'imports': {}}
 
         mock_parse_source_code.assert_called_with("script.py")
 

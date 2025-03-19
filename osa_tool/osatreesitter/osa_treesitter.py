@@ -20,6 +20,7 @@ class OSA_TreeSitter(object):
             scripts_path: provided by user path to the scripts.
         """
         self.cwd = scripts_path
+        self.import_map = {}
 
     @staticmethod
     def files_list(path: str) -> tuple[list, 0] | tuple[list[str], 1]:
@@ -178,8 +179,9 @@ class OSA_TreeSitter(object):
                 class_attributes = self._get_attributes(class_attributes, child)
                 docstring = self._get_docstring(child)
                 method_details = self._traverse_block(child, source_code)
-                for method in method_details:
-                    class_methods.append(method)
+                class_methods.extend(method_details)
+                #for method in method_details:
+                #    class_methods.append(method)
 
             if child.type == "function_definition":
                 method_details = self._extract_function_details(child, source_code)
@@ -247,6 +249,74 @@ class OSA_TreeSitter(object):
                 dec_list.append(f'@{decorator.text.decode("utf-8")}')
 
         return dec_list
+    
+    def _resolve_import_path(self, import_text: str):
+        """Finds the file path of a module or class based on its import name."""
+        import_mapping = {}
+
+        if "import " in import_text or "from " in import_text:
+            import_text = import_text.strip()
+
+            if import_text.startswith("from"):
+                try:
+                    from_part, import_part = import_text.split("import", 1)
+                except ValueError:
+                    return import_mapping
+                
+                module_name = from_part.replace("from", "").strip()
+                imported_entities = [entity.strip() for entity in import_part.split(",")]
+
+                module_path = None
+                for root, _, files in os.walk(self.cwd):
+                    if f"{module_name}.py" in files:
+                        module_path = os.path.join(root, f"{module_name}.py")
+                        break
+
+                for entity in imported_entities:
+                    if " as " in entity:
+                        imported_name, alias_name = [e.strip() for e in entity.split(" as ", 1)]
+                    else:
+                        imported_name = entity
+                        alias_name = imported_name
+                    if module_path:
+                        import_mapping[alias_name] = {
+                            "module": module_name,
+                            "class": imported_name,
+                            "path": module_path
+                        }
+            
+            elif import_text.startswith("import"):
+                parts = import_text.replace("import", "").strip().split()
+                if "as" in parts:
+                    idx = parts.index("as")
+                    module_name = parts[0]
+                    alias_name = parts[idx + 1]
+                else:
+                    module_name = parts[0]
+                    alias_name = module_name
+
+                module_path = None
+                for root, _, files in os.walk(self.cwd):
+                    if f"{module_name}.py" in files:
+                        module_path = os.path.join(root, f"{module_name}.py")
+                        break
+                if module_path:
+                    import_mapping[alias_name] = {
+                        "module": module_name,
+                        "path": module_path
+                    }
+
+        return import_mapping
+    
+    def _extract_imports(self, root_node: tree_sitter.Node):
+        """Extracts import statements and maps them to imported module names."""
+        import_map = {}
+        for node in root_node.children:
+            if node.type in ('import_statement', 'import_from_statement'):
+                import_text = node.text.decode("utf-8")
+                resolved_imports = self._resolve_import_path(import_text)
+                import_map.update(resolved_imports)
+        return import_map
 
     def extract_structure(self, filename: str) -> list:
         """Method extracts the structure of the occured file in the provided directory.
@@ -257,9 +327,12 @@ class OSA_TreeSitter(object):
         Returns:
             List containing occuring in file functions, classes, their start lines and methods
         """
-        structure = []
+        structure = {}
+        structure["structure"] = []
         tree, source_code = self._parse_source_code(filename)
         root_node = tree.root_node
+        imports = self._extract_imports(root_node)
+        structure['imports'] = imports
         for node in root_node.children:
             if node.type == "decorated_definition":
                 dec_list = []
@@ -268,20 +341,20 @@ class OSA_TreeSitter(object):
                         dec_list = self._get_decorators(dec_list, dec_node)
 
                     elif dec_node.type == "class_definition":
-                        structure = self._class_parser(
-                            structure, source_code, dec_node, dec_list
+                        structure['structure'] = self._class_parser(
+                            structure['structure'], source_code, dec_node, dec_list
                         )
 
                     elif dec_node.type == "function_definition":
-                        structure = self._function_parser(
-                            structure, source_code, dec_node, dec_list
+                        structure['structure'] = self._function_parser(
+                            structure['structure'], source_code, dec_node, dec_list
                         )
 
             elif node.type == "function_definition":
-                structure = self._function_parser(structure, source_code, node)
+                structure['structure'] = self._function_parser(structure['structure'], source_code, node)
 
             elif node.type == "class_definition":
-                structure = self._class_parser(structure, source_code, node)
+                structure['structure'] = self._class_parser(structure['structure'], source_code, node)
 
         return structure
 
