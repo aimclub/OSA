@@ -151,7 +151,7 @@ class OSA_TreeSitter(object):
 
     def _class_parser(
         self,
-        structure: list,
+        structure: dict[dict, list],
         source_code: str,
         node: tree_sitter.Node,
         dec_list: list = [],
@@ -178,16 +178,20 @@ class OSA_TreeSitter(object):
             if child.type == "block":
                 class_attributes = self._get_attributes(class_attributes, child)
                 docstring = self._get_docstring(child)
-                method_details = self._traverse_block(child, source_code)
+                method_details = self._traverse_block(
+                    child, source_code, structure["imports"]
+                )
                 class_methods.extend(method_details)
-                #for method in method_details:
+                # for method in method_details:
                 #    class_methods.append(method)
 
             if child.type == "function_definition":
-                method_details = self._extract_function_details(child, source_code)
+                method_details = self._extract_function_details(
+                    child, source_code, structure["imports"]
+                )
                 class_methods.append(method_details)
 
-        structure.append(
+        structure["structure"].append(
             {
                 "type": "class",
                 "name": class_name,
@@ -199,11 +203,9 @@ class OSA_TreeSitter(object):
             }
         )
 
-        return structure
-
     def _function_parser(
         self,
-        structure: list,
+        structure: dict[dict, list],
         source_code: str,
         node: tree_sitter.Node,
         dec_list: list = [],
@@ -221,17 +223,17 @@ class OSA_TreeSitter(object):
         Returns:
             A list containing the updated structure with the function details added.
         """
-        method_details = self._extract_function_details(node, source_code, dec_list)
+        method_details = self._extract_function_details(
+            node, source_code, structure["imports"], dec_list
+        )
         start_line = node.start_point[0] + 1  # convert 0-based to 1-based indexing
-        structure.append(
+        structure["structure"].append(
             {
                 "type": "function",
                 "start_line": start_line,
                 "details": method_details,
             }
         )
-
-        return structure
 
     def _get_decorators(self, dec_list: list, dec_node: tree_sitter.Node) -> list:
         """
@@ -249,7 +251,7 @@ class OSA_TreeSitter(object):
                 dec_list.append(f'@{decorator.text.decode("utf-8")}')
 
         return dec_list
-    
+
     def _resolve_import_path(self, import_text: str):
         """Finds the file path of a module or class based on its import name."""
         import_mapping = {}
@@ -262,19 +264,22 @@ class OSA_TreeSitter(object):
                     from_part, import_part = import_text.split("import", 1)
                 except ValueError:
                     return import_mapping
-                
+
                 module_name = from_part.replace("from", "").strip()
-                imported_entities = [entity.strip() for entity in import_part.split(",")]
+                imported_entities = [
+                    entity.strip() for entity in import_part.split(",")
+                ]
 
                 module_path = None
-                for root, _, files in os.walk(self.cwd):
-                    if f"{module_name}.py" in files:
-                        module_path = os.path.join(root, f"{module_name}.py")
-                        break
+                possible_path = os.path.join(self.cwd, *module_name.split(".")) + ".py"
+                if os.path.exists(possible_path):
+                    module_path = possible_path
 
                 for entity in imported_entities:
                     if " as " in entity:
-                        imported_name, alias_name = [e.strip() for e in entity.split(" as ", 1)]
+                        imported_name, alias_name = [
+                            e.strip() for e in entity.split(" as ", 1)
+                        ]
                     else:
                         imported_name = entity
                         alias_name = imported_name
@@ -282,9 +287,9 @@ class OSA_TreeSitter(object):
                         import_mapping[alias_name] = {
                             "module": module_name,
                             "class": imported_name,
-                            "path": module_path
+                            "path": module_path,
                         }
-            
+
             elif import_text.startswith("import"):
                 parts = import_text.replace("import", "").strip().split()
                 if "as" in parts:
@@ -296,27 +301,79 @@ class OSA_TreeSitter(object):
                     alias_name = module_name
 
                 module_path = None
-                for root, _, files in os.walk(self.cwd):
-                    if f"{module_name}.py" in files:
-                        module_path = os.path.join(root, f"{module_name}.py")
-                        break
+                possible_path = os.path.join(self.cwd, *module_name.split(".")) + ".py"
+                if os.path.exists(possible_path):
+                    module_path = possible_path
+
                 if module_path:
                     import_mapping[alias_name] = {
                         "module": module_name,
-                        "path": module_path
+                        "path": module_path,
                     }
 
         return import_mapping
-    
+
     def _extract_imports(self, root_node: tree_sitter.Node):
         """Extracts import statements and maps them to imported module names."""
         import_map = {}
         for node in root_node.children:
-            if node.type in ('import_statement', 'import_from_statement'):
+            if node.type in ("import_statement", "import_from_statement"):
                 import_text = node.text.decode("utf-8")
                 resolved_imports = self._resolve_import_path(import_text)
                 import_map.update(resolved_imports)
         return import_map
+
+    def _resolve_import(self, call_text: str, imports: dict) -> dict:
+        if "." in call_text:
+            alias, function_name = call_text.split(".", 1)
+        else:
+            alias, function_name = call_text, None
+
+        imports_data: dict = imports.get(alias)
+        if imports_data:
+            return {
+                "module": imports_data["module"],
+                "class": imports_data.get("class"),
+                "function": function_name,
+                "path": imports_data["path"],
+            }
+
+    def _resolve_method_calls(
+        self, function_node: tree_sitter.Node, source_code: str, imports: dict
+    ) -> list:
+
+        method_calls = []
+        for child in function_node.children:
+            if child.type == "block":
+                for expr in child.children:
+                    for act in expr.children:
+                        if act.type == "assignment":
+                            for call in act.children:
+                                if call.type == "call":
+                                    call_target = call.child_by_field_name("function")
+                                    if call_target:
+                                        call_text = source_code[
+                                            call_target.start_byte : call_target.end_byte
+                                        ]
+
+                                        resolved_call = self._resolve_import(
+                                            call_text, imports
+                                        )
+                                        if resolved_call:
+                                            method_calls.append(resolved_call)
+
+                        if act.type == "call":
+                            call_target = act.child_by_field_name("function")
+                            if call_target:
+                                call_text = source_code[
+                                    call_target.start_byte : call_target.end_byte
+                                ]
+
+                                resolved_call = self._resolve_import(call_text, imports)
+                                if resolved_call:
+                                    method_calls.append(resolved_call)
+
+        return method_calls
 
     def extract_structure(self, filename: str) -> list:
         """Method extracts the structure of the occured file in the provided directory.
@@ -332,7 +389,7 @@ class OSA_TreeSitter(object):
         tree, source_code = self._parse_source_code(filename)
         root_node = tree.root_node
         imports = self._extract_imports(root_node)
-        structure['imports'] = imports
+        structure["imports"] = imports
         for node in root_node.children:
             if node.type == "decorated_definition":
                 dec_list = []
@@ -341,20 +398,18 @@ class OSA_TreeSitter(object):
                         dec_list = self._get_decorators(dec_list, dec_node)
 
                     elif dec_node.type == "class_definition":
-                        structure['structure'] = self._class_parser(
-                            structure['structure'], source_code, dec_node, dec_list
-                        )
+                        self._class_parser(structure, source_code, dec_node, dec_list)
 
                     elif dec_node.type == "function_definition":
-                        structure['structure'] = self._function_parser(
-                            structure['structure'], source_code, dec_node, dec_list
+                        self._function_parser(
+                            structure, source_code, dec_node, dec_list
                         )
 
             elif node.type == "function_definition":
-                structure['structure'] = self._function_parser(structure['structure'], source_code, node)
+                self._function_parser(structure, source_code, node)
 
             elif node.type == "class_definition":
-                structure['structure'] = self._class_parser(structure['structure'], source_code, node)
+                self._class_parser(structure, source_code, node)
 
         return structure
 
@@ -375,7 +430,9 @@ class OSA_TreeSitter(object):
                         docstring = c_c.text.decode("utf-8")
         return docstring
 
-    def _traverse_block(self, block_node: tree_sitter.Node, source_code: bytes) -> list:
+    def _traverse_block(
+        self, block_node: tree_sitter.Node, source_code: bytes, imports: dict
+    ) -> list:
         """Inner method traverses occuring in file's tree structure "block" node.
 
         Args:
@@ -395,17 +452,23 @@ class OSA_TreeSitter(object):
 
                     if dec_child.type == "function_definition":
                         method_details = self._extract_function_details(
-                            dec_child, source_code, dec_list
+                            dec_child, source_code, imports, dec_list
                         )
                         methods.append(method_details)
 
             if child.type == "function_definition":
-                method_details = self._extract_function_details(child, source_code)
+                method_details = self._extract_function_details(
+                    child, source_code, imports
+                )
                 methods.append(method_details)
         return methods
 
     def _extract_function_details(
-        self, function_node: tree_sitter.Node, source_code: str, dec_list: list = []
+        self,
+        function_node: tree_sitter.Node,
+        source_code: str,
+        imports: dict,
+        dec_list: list = [],
     ) -> dict:
         """Inner method extracts the details of "function_definition" node in file's tree structure.
 
@@ -449,6 +512,8 @@ class OSA_TreeSitter(object):
         if return_node:
             return_type = source_code[return_node.start_byte : return_node.end_byte]
 
+        method_calls = self._resolve_method_calls(function_node, source_code, imports)
+
         return {
             "method_name": method_name,
             "decorators": dec_list,
@@ -457,6 +522,7 @@ class OSA_TreeSitter(object):
             "return_type": return_type,
             "start_line": start_line,
             "source_code": source,
+            "method_calls": method_calls,
         }
 
     def analyze_directory(self, path: str) -> dict:
@@ -487,7 +553,7 @@ class OSA_TreeSitter(object):
         print(f"The provided path: '{self.cwd}'")
         for filename, structures in results.items():
             print(f"File: {filename}")
-            for item in structures:
+            for item in structures["structure"]:
                 if item["type"] == "class":
                     print(f"  - Class: {item['name']}, line {item['start_line']}")
                     if item["docstring"]:
