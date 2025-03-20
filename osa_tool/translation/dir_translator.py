@@ -59,7 +59,7 @@ class DirectoryTranslator:
         response = self.model_handler.send_request(prompt)
         return response.replace(" ", "_")
 
-    def get_python_files(self) -> list[str]:
+    def _get_python_files(self) -> list[str]:
         """
         Recursive search of all Python files in a project
 
@@ -84,12 +84,12 @@ class DirectoryTranslator:
 
         return python_files
 
-    def _get_all_files(self) -> List[str]:
+    def _get_all_files(self) -> list[str]:
         """
         Recursively collects a list of all files in a project, excluding certain directories.
 
         Returns:
-            all_files: List of paths to all found files
+            list[str]: List of paths to all found files
         """
         all_files = []
 
@@ -106,12 +106,12 @@ class DirectoryTranslator:
 
         return all_files
 
-    def _get_all_directories(self) -> List[str]:
+    def _get_all_directories(self) -> list[str]:
         """
         Recursively collects a list of all directories in a project, excluding certain directories.
 
         Returns:
-            all_dirs: List of paths to all found files
+            list[str]: List of paths to all found files
         """
         all_dirs = []
 
