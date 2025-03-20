@@ -105,22 +105,6 @@ This project is protected under the {license_name}. For more details, refer to t
 ---
 """
 
-# -- Contact Section -----------------------------------------------------------
-
-contacts = """
-
-## Contacts
-
-Your contacts. For example:
-
-- [Telegram channel](https://t.me/) answering questions about your project
-- [VK group](<https://vk.com/>) your VK group
-- etc.
-
----
-
-"""
-
 # -- Citation Section ----------------------------------------------------------
 
 citation = """
