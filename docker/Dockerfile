@@ -16,7 +16,6 @@ ARG GIT_USER_EMAIL
 RUN git config --global user.name "$GIT_USER_NAME" && \
     git config --global user.email "$GIT_USER_EMAIL"
 
-COPY ../OSA/ OSA/
-COPY ../main.py .
+COPY ../osa_tool/ osa_tool/
 
-ENTRYPOINT ["python", "main.py"]
+ENTRYPOINT ["python", "-m", "osa_tool.main"]
