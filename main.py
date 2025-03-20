@@ -63,7 +63,7 @@ def main():
         # Auto translating names of directories
         if args.translate_dirs:
             translation = DirectoryTranslator(config)
-            translation.rename_directories()
+            translation.rename_directories_and_files()
 
         # Docstring generation
         generate_docstrings(config)

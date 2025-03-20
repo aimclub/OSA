@@ -23,7 +23,7 @@ INSTRUCTIONS:
 ------------------------
 """
 
-pdf_summary = """"Analyze the given text, which may be a technical report or article. Your task is to extract the following, basing your response solely on the context provided:
+pdf_summary = """Analyze the given text, which may be a technical report or article. Your task is to extract the following, basing your response solely on the context provided:
 
 Main topic: Identify the central subject of the document.
 Key ideas: Highlight the primary concepts or arguments presented.
@@ -72,6 +72,7 @@ INSTRUCTIONS:
 ------------------------
 1. Emphasize each component's role in the overall project.
 2. Focus on high-level concepts, avoiding technical details.
+3. Don't put quotes around or enclose any code.
 ------------------------
 """
 

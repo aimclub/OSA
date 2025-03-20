@@ -11,7 +11,7 @@
 [![Acknowledgement ITMO](https://raw.githubusercontent.com/aimclub/open-source-ops/43bb283758b43d75ec1df0a6bb4ae3eb20066323/badges/ITMO_badge.svg)](https://itmo.ru/)
 [![Open-source-ops website](https://raw.githubusercontent.com/aimclub/open-source-ops/7de1e1321389ec177f236d0a5f41f876811a912a/badges/open--source--ops-black.svg)](https://aimclub.github.io/open-source-ops/)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![PyPi](https://badge.fury.io/py/osa-tool.svg)](https://badge.fury.io/py/osa-tool)
+[![PyPi](https://badge.fury.io/py/osa_tool.svg)](https://badge.fury.io/py/osa_tool)
 [![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/ITMO-NSS-team/Open-Source-Advisor)
 [![Telegram Chat](https://img.shields.io/badge/Telegram-group-blue)](https://t.me/OSA_helpdesk)
 </p>
@@ -66,7 +66,7 @@ Here is a short demo:
 
 3. **Automatic implementation of changes**: Clones the repository, creates a branch, commits and pushes changes, and creates a pull request with proposed changes.
 
-4. **Various LLMs**: Use OSA with an LLM accessible via API (e.g., OpenAI, VseGPT), a local server, or try an [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
+4. **Various LLMs**: Use OSA with an LLM accessible via API (e.g., OpenAI, VseGPT, Ollama), a local server, or try an [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
 
 ---
 
@@ -77,7 +77,7 @@ Install Open-Source-Advisor using one of the following methods:
 **Using PyPi:**
 
 ```sh
-pip install osa-tool
+pip install osa_tool
 ```
 
 **Build from source:**
@@ -167,6 +167,7 @@ URL of the GitHub repository, LLM API service provider (*optional*) and Specific
 To see available models go there:
 1. [VseGpt](https://vsegpt.ru/Docs/Models)
 2. [OpenAI](https://platform.openai.com/docs/models)
+3. [Ollama](https://ollama.com/library)
 
 Local Llama ITMO:
 ```sh
@@ -179,6 +180,10 @@ python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api ope
 VseGPT:
 ```sh
 python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai --base-url https://api.vsegpt.ru/v1 --model openai/gpt-3.5-turbo
+```
+Ollama:
+```sh
+python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api ollama --base-url http://[YOUR_OLLAMA_IP]:11434 --model gemma3:27b
 ```
 
 ---
