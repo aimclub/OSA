@@ -133,7 +133,7 @@ Run Open-Source-Advisor using the following command:
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
 
 ```sh
-python main.py -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--article {article}]
+python -m osa_tool.main -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--article {article}]
 ```
 
 **Using `docker`** &nbsp;
@@ -171,19 +171,19 @@ To see available models go there:
 
 Local Llama ITMO:
 ```sh
-python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor
+python -m osa_tool.main -r https://github.com/ITMO-NSS-team/Open-Source-Advisor
 ```  
 OpenAI:
 ```sh
-python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai
+python -m osa_tool.main -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai
 ```
 VseGPT:
 ```sh
-python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai --base-url https://api.vsegpt.ru/v1 --model openai/gpt-3.5-turbo
+python -m osa_tool.main -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai --base-url https://api.vsegpt.ru/v1 --model openai/gpt-3.5-turbo
 ```
 Ollama:
 ```sh
-python main.py -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api ollama --base-url http://[YOUR_OLLAMA_IP]:11434 --model gemma3:27b
+python -m osa_tool.main -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api ollama --base-url http://[YOUR_OLLAMA_IP]:11434 --model gemma3:27b
 ```
 
 ---
