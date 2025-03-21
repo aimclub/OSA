@@ -20,12 +20,19 @@ logger = logging.getLogger("rich")
 
 
 class NotebookConverter:
-    """Class for converting Jupyter notebooks (.ipynb) to Python scripts."""
+    """
+    Class for converting Jupyter notebooks (.ipynb) to Python scripts.
 
-    def __init__(self, figures_dir: str = "figures") -> None:
+    During the conversion process, lines of code that display visualizations are replaced 
+    with lines that save them to folders. Additionally, the code for outputting table contents 
+    and their descriptions is removed. 
+    
+    The resulting script is saved after ensuring that there are no syntax errors.
+    """
+
+    def __init__(self) -> None:
         self.exporter = PythonExporter()
-        self.figures_dir = figures_dir
-
+        
     def process_path(self, path: str) -> None:
         """Processes the specified notebook file or directory.
 
@@ -63,7 +70,8 @@ class NotebookConverter:
 
             (body, _) = self.exporter.from_notebook_node(notebook_content)
 
-            body = self.process_visualizations(body)
+            notebook_name = notebook_path.split('\\')[-1].rsplit('.', 1)[0]
+            body = self.process_visualizations(notebook_name, body)
             
             if self.is_syntax_correct(body):
                 script_name = os.path.splitext(notebook_path)[0] + '.py'
@@ -76,7 +84,7 @@ class NotebookConverter:
         except Exception as e:
             logger.error("Failed to convert notebook %s: %s", notebook_path, repr(e))
 
-    def process_visualizations(self, code: str) -> str:
+    def process_visualizations(self, figures_dir: str, code: str) -> str:
         """Change code for visualizations.
 
         Args:
@@ -87,11 +95,23 @@ class NotebookConverter:
         """
         init_code = (
             f"import os\n"
-            f"os.makedirs('{self.figures_dir}', exist_ok=True)\n"
-            f"figure_counter = 0\n\n"
+            f"os.makedirs('{figures_dir}_figures', exist_ok=True)\n\n"
         )
 
-        pattern = r'''(?mix)
+        pattern_1 = r'(\s*)(plt|sns)\.show\(\)'
+        if re.search(pattern_1, code):
+            code = init_code + code
+
+        def replacement(match):
+            indent = match.group(1)
+            return (
+                f"{indent}plt.savefig(os.path.join('{figures_dir}_figures', f'figure.png'))\n"
+                f"{indent}plt.close()\n"
+            )
+
+        code = re.sub(pattern_1, replacement, code)
+
+        pattern_2 = r'''(?mix)
             ^\s*
             (
                 \w+\.(info|head|tail|describe)\(.*\)
@@ -100,26 +120,16 @@ class NotebookConverter:
                 | \#\s*In\[.*?\]\s*:?
             )
         '''
-
-        code = re.sub(pattern, '', code)
+        code = re.sub(pattern_2, '', code, flags=re.MULTILINE)
         code = re.sub(r'\n\s*\n', '\n', code)
-        
-        def replacement(match):
-            indent = match.group(1)
-            return (
-                f"{indent}global figure_counter"
-                f"{indent}plt.savefig(os.path.join('{self.figures_dir}', f'figure_{{figure_counter}}.png'))"
-                f"{indent}figure_counter += 1"
-                f"{indent}plt.close()"
-            )
 
-        code = re.sub(
-            r'(\s*)(plt|sns)\.show\(\)',
-            replacement,
-            code
-        )
+        pattern_3 = r"figure\.png"
+        lines = code.split('\n')
+        for i, line in enumerate(lines):
+            lines[i] = re.sub(pattern_3, f"figure_line{i+1}.png", line)
+        code = '\n'.join(lines)
 
-        return init_code + code
+        return code
     
     def is_syntax_correct(self, code: str) -> bool:
         """Checks if the given code has valid syntax.
