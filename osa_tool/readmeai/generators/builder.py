@@ -142,11 +142,6 @@ class MarkdownBuilder:
             return ""
 
     @property
-    def contacts(self) -> str:
-        """Generates the README Contacts section"""
-        return self.md.contacts
-
-    @property
     def acknowledgments(self) -> str:
         """Generates the README Contacts section"""
         return self.md.acknowledgments
