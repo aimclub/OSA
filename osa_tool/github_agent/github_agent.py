@@ -178,7 +178,7 @@ class GithubAgent:
 
         logger.info(f"Pushing changes to branch {self.branch_name} in fork...")
         self.repo.git.remote('set-url', 'origin', self._get_auth_url(self.fork_url))
-        self.repo.git.push('--set-upstream', 'origin', self.branch_name, force=True)
+        self.repo.git.push('--set-upstream', 'origin', self.branch_name, force_with_lease=True)
         logger.info("Push completed.")
 
     def create_pull_request(self, title: str = None, body: str = None) -> None:
