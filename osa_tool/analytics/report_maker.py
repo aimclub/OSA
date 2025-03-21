@@ -1,15 +1,12 @@
 import logging
 import os
-import tomli as tomllib
 from datetime import datetime
 
 import qrcode
-from rich.logging import RichHandler
-
-from reportlab.pdfgen.canvas import Canvas
+from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
+from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import (
     SimpleDocTemplate,
     Table,
@@ -19,14 +16,14 @@ from reportlab.platypus import (
     ListFlowable,
     ListItem
 )
+from rich.logging import RichHandler
 
 from osa_tool.analytics.metadata import load_data_metadata
+from osa_tool.analytics.report_generator import TextGenerator
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.readmeai.config.settings import ConfigLoader
 from osa_tool.readmeai.readmegen_article.config.settings import \
     ArticleConfigLoader
-from osa_tool.osatreesitter.models import ModelHandlerFactory, ModelHandler
-from osa_tool.utils import parse_folder_name
 
 logging.basicConfig(
     level=logging.INFO,
@@ -264,7 +261,7 @@ class ReportGenerator:
         Generates the second part of the report, which contains the analysis of the repository.
 
         Returns:
-            list: A list of Paragraph objects representing the second part of the body content.
+            list: A list of Paragraph objects for the PDF report.
         """
         styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(
@@ -272,18 +269,68 @@ class ReportGenerator:
             parent=styles["Normal"],
             fontSize=12,
             leading=13,
-            spaceAfter=13,
             leftIndent=-20,
             rightIndent=-20,
             alignment=0,
         )
-        text_content = self.text_generator.make_request()
-        paragraphs = text_content.split("\n")
+        custom_style = ParagraphStyle(
+            name="CustomStyle",
+            parent=normal_style,
+            spaceBefore=6,
+            spaceAfter=2,
+        )
+
+        parsed_report = self.text_generator.make_request()
 
         story = []
-        for para in paragraphs:
-            if para.strip():
-                story.append(Paragraph(para.strip(), normal_style))
+
+        # Repository Structure
+        story.append(Paragraph("<b>Repository Structure:</b>", custom_style))
+        story.append(
+            Paragraph(f"• Compliance: {parsed_report.structure.compliance}",
+                      normal_style))
+        if parsed_report.structure.missing_files:
+            missing_files = ", ".join(parsed_report.structure.missing_files)
+            story.append(
+                Paragraph(f"• Missing files: {missing_files}", normal_style))
+        story.append(Paragraph(
+            f"• Organization: {parsed_report.structure.organization}",
+            normal_style))
+
+        # README Analysis
+        story.append(Paragraph("<b>README Analysis:</b>", custom_style))
+        story.append(Paragraph(f"• Quality: {parsed_report.readme.readme_quality}", normal_style))
+
+        for field_name, value in parsed_report.readme.model_dump().items():
+            if field_name == "readme_quality":
+                continue
+
+            story.append(Paragraph(
+                f"• {field_name.replace('_', ' ').capitalize()}: {value.value}",
+                normal_style))
+
+        # Documentation
+        story.append(Paragraph("<b>Documentation:</b>", custom_style))
+        story.append(Paragraph(
+            f"• Tests present: {parsed_report.documentation.tests_present.value}",
+            normal_style))
+        story.append(Paragraph(
+            f"• Documentation quality: {parsed_report.documentation.docs_quality}",
+            normal_style))
+        story.append(Paragraph(
+            f"• Outdated content: {'Yes' if parsed_report.documentation.outdated_content else 'No'}",
+            normal_style))
+
+        if parsed_report.assessment.key_shortcomings:
+            story.append(Paragraph("<b>Key Shortcomings:</b>", custom_style))
+            for shortcoming in parsed_report.assessment.key_shortcomings:
+                story.append(Paragraph(f"  - {shortcoming}", normal_style))
+
+        # Recommendations
+        story.append(Paragraph("<b>Recommendations:</b>", custom_style))
+        for rec in parsed_report.assessment.recommendations:
+            story.append(Paragraph(f"  - {rec}", normal_style))
+
         return story
 
     def build_pdf(self) -> None:
@@ -325,98 +372,3 @@ class ReportGenerator:
         except Exception as e:
             logger.error("Error while building PDF report, %s", e,
                          exc_info=True)
-
-
-class TextGenerator:
-    def __init__(self,
-                 config_loader: ConfigLoader | ArticleConfigLoader):
-        self.config = config_loader.config
-        self.sourcerank = SourceRank(config_loader)
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(
-            self.config)
-        self.repo_url = self.config.git.repository
-        self.metadata = load_data_metadata(self.repo_url)
-        self.base_path = os.path.join(os.getcwd(),
-                                      parse_folder_name(self.repo_url))
-        self.prompt_path = os.path.join(
-            os.getcwd(),
-            "osa_tool",
-            "config",
-            "standart",
-            "settings",
-            "prompt_for_analysis.toml"
-        )
-
-    def make_request(self) -> str:
-        """
-        Sends a request to the model handler to generate the repository analysis.
-
-        Returns:
-            str: The generated repository analysis response from the model.
-        """
-        response = self.model_handler.send_request(self._build_prompt())
-        return response
-
-    def _build_prompt(self) -> str:
-        """
-        Builds the prompt to be sent to the model for repository analysis.
-
-        This method loads the prompt structure from a file and formats it with values
-        extracted from the repository's metadata and other relevant information like
-        the project name, presence of key files, and repository tree.
-
-        Returns:
-            str: The formatted prompt to be used in the model request.
-        """
-        with open(self.prompt_path, "rb") as f:
-            prompts = tomllib.load(f)
-
-        values = {
-            "project_name": self.metadata.name,
-            "metadata": self.metadata,
-            "repository_tree": self.sourcerank.tree,
-            "presence_files": self._extract_presence_files(),
-            "readme_content": self._extract_readme_content(),
-        }
-        main_prompt = prompts.get("prompt", {}).get("main_prompt", "")
-        return main_prompt.format(**values)
-
-    def _extract_readme_content(self) -> str:
-        """
-        Extracts the content of the README file from the repository.
-
-        If a README file exists in the repository, it will return its content.
-        It checks for both "README.md" and "README.rst" files. If no README is found,
-        it returns a default message.
-
-        Returns:
-            str: The content of the README file or a message indicating absence.
-        """
-        if not self.sourcerank.readme_presence():
-            return "No README.md file"
-
-        for file in ["README.md", "README.rst"]:
-            readme_path = os.path.join(self.base_path, file)
-
-            if os.path.exists(readme_path):
-                with open(readme_path, "r", encoding="utf-8") as f:
-                    return f.read()
-
-    def _extract_presence_files(self) -> list[str]:
-        """
-        Extracts information about the presence of key files in the repository.
-
-        This method generates a list of strings indicating whether key files like
-        README, LICENSE, documentation, examples, and tests are present in the repository.
-
-        Returns:
-            list[str]: A list of strings summarizing the presence of key files in the repository.
-        """
-        contents = [
-            f"README presence is {self.sourcerank.readme_presence()}",
-            f"LICENSE presence is {self.sourcerank.license_presence()}",
-            f"Examples presence is {self.sourcerank.examples_presence()}",
-            f"Documentation presence is {self.sourcerank.docs_presence()}",
-            f"Tests presence is {self.sourcerank.tests_presence()}",
-        ]
-        return contents
