@@ -178,7 +178,7 @@ class GithubAgent:
 
         logger.info(f"Pushing changes to branch {self.branch_name} in fork...")
         self.repo.git.remote('set-url', 'origin', self._get_auth_url(self.fork_url))
-        self.repo.git.push('--set-upstream', 'origin', self.branch_name)
+        self.repo.git.push('--set-upstream', 'origin', self.branch_name, force=True)
         logger.info("Push completed.")
 
     def create_pull_request(self, title: str = None, body: str = None) -> None:
@@ -218,7 +218,8 @@ class GithubAgent:
             logger.info(f"Pull request created successfully: {response.json()['html_url']}")
         else:
             logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
-            raise ValueError("Failed to create pull request.")
+            if not "pull request already exists" in response.text:
+                raise ValueError("Failed to create pull request.")
 
     def _get_auth_url(self, url: str = None) -> str:
         """Converts the repository URL by adding a token for authentication.
