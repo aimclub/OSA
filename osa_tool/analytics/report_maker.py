@@ -140,16 +140,16 @@ class ReportGenerator:
         canvas_obj.setStrokeColor(colors.black)
         canvas_obj.setLineWidth(1.5)
         canvas_obj.line(30, 705, 570, 705)
-        canvas_obj.line(30, 525, 570, 525)
+        canvas_obj.line(30, 540, 570, 540)
 
         # Tables
         table1, table2 = self.table_generator()
 
         table1.wrapOn(canvas_obj, 0, 0)
-        table1.drawOn(canvas_obj, 64, 540)
+        table1.drawOn(canvas_obj, 64, 555)
 
         table2.wrapOn(canvas_obj, 0, 0)
-        table2.drawOn(canvas_obj, 286, 540)
+        table2.drawOn(canvas_obj, 286, 555)
 
     def header(self) -> list:
         """
@@ -194,7 +194,6 @@ class ReportGenerator:
             [Paragraph("<b>Statistics</b>", normal_style),
              Paragraph("<b>Values</b>", normal_style)],
             ["Stars Count", str(self.metadata.stars_count)],
-            ["Watchers Count", str(self.metadata.watchers_count)],
             ["Forks Count", str(self.metadata.forks_count)],
             ["Issues Count", str(self.metadata.open_issues_count)],
         ]
@@ -362,7 +361,7 @@ class ReportGenerator:
                     *self.header(),
                     Spacer(0, 40),
                     self.body_first_part(),
-                    Spacer(0, 125),
+                    Spacer(0, 110),
                     *self.body_second_part(),
                 ],
                 onFirstPage=self.draw_images_and_tables,
