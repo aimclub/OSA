@@ -10,7 +10,7 @@ from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.osatreesitter.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmeai.config.settings import ConfigLoader
 from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
-from osa_tool.utils import parse_folder_name
+from osa_tool.utils import parse_folder_name, osa_project_root
 
 
 class TextGenerator:
@@ -22,10 +22,10 @@ class TextGenerator:
             self.config)
         self.repo_url = self.config.git.repository
         self.metadata = load_data_metadata(self.repo_url)
-        self.base_path = os.path.join(os.getcwd(),
+        self.base_path = os.path.join(osa_project_root(),
                                       parse_folder_name(self.repo_url))
         self.prompt_path = os.path.join(
-            os.getcwd(),
+            osa_project_root(),
             "osa_tool",
             "config",
             "standart",

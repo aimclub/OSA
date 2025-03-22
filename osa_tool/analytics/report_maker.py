@@ -24,6 +24,7 @@ from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.readmeai.config.settings import ConfigLoader
 from osa_tool.readmeai.readmegen_article.config.settings import \
     ArticleConfigLoader
+from osa_tool.utils import osa_project_root
 
 logging.basicConfig(
     level=logging.INFO,
@@ -46,13 +47,13 @@ class ReportGenerator:
         self.metadata = load_data_metadata(self.repo_url)
 
         self.logo_path = os.path.join(
-            os.getcwd(),
+            osa_project_root(),
             "docs",
             "images",
             "osa_logo.PNG"
         )
         self.output_path = os.path.join(
-            os.getcwd(),
+            osa_project_root(),
             "examples",
             f"{self.metadata.name}_report.pdf"
         )
@@ -106,7 +107,7 @@ class ReportGenerator:
             str: The file path of the generated QR code image.
         """
         qr = qrcode.make(self.osa_url)
-        qr_path = os.path.join(os.getcwd(), "temp_qr.png")
+        qr_path = os.path.join(osa_project_root(), "temp_qr.png")
         qr.save(qr_path)
         return qr_path
 

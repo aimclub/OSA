@@ -7,7 +7,7 @@ from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.readmeai.config.settings import ConfigLoader
 from osa_tool.readmeai.readmegen_article.config.settings import \
     ArticleConfigLoader
-from osa_tool.utils import parse_folder_name
+from osa_tool.utils import parse_folder_name, osa_project_root
 
 
 class SourceRank:
@@ -19,7 +19,7 @@ class SourceRank:
         self.config = config_loader.config
         self.repo_url = self.config.git.repository
         self.metadata = load_data_metadata(self.repo_url)
-        self.repo_path = os.path.join(os.getcwd(),
+        self.repo_path = os.path.join(osa_project_root(),
                                       parse_folder_name(self.repo_url))
         self.summary, self.tree, self.content = ingest(self.repo_path)
 
