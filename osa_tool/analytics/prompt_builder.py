@@ -33,8 +33,8 @@ class CodeDocumentation(BaseModel):
 
 
 class OverallAssessment(BaseModel):
-    key_shortcomings: List[str] = Field(default_factory=list, description="List of the most critical issues")
-    recommendations: List[str] = Field(default_factory=list, description="Suggested improvements")
+    key_shortcomings: List[str] = Field(default_factory=lambda: ["There are no critical issues"], description="List of the most significant and critical issues that need to be addressed")
+    recommendations: List[str] = Field(default_factory=lambda: ["No recommendations"], description="Specific improvements to address issues or optimize the process")
 
 
 class RepositoryReport(BaseModel):

@@ -109,6 +109,6 @@ class TextGenerator:
             f"LICENSE presence is {self.sourcerank.license_presence()}",
             f"Examples presence is {self.sourcerank.examples_presence()}",
             f"Documentation presence is {self.sourcerank.docs_presence()}",
-            f"Tests presence is {self.sourcerank.tests_presence()}",
+            # f"Tests presence is {self.sourcerank.tests_presence()}",
         ]
         return contents
