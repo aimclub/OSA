@@ -11,7 +11,7 @@ from osa_tool.readmeai.models.base import BaseModelHandler
 from osa_tool.readmeai.postprocessor import response_cleaner
 from osa_tool.readmeai.readmegen_article.generators.builder import ArticleMarkdownBuilder
 from osa_tool.readmeai.utils.file_handler import FileHandler
-from osa_tool.utils import parse_folder_name
+from osa_tool.utils import parse_folder_name, osa_project_root
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,7 +34,7 @@ def readme_agent(config_loader, article: Optional[str]) -> None:
         Exception: If an error occurs during README.md generation.
     """
     repo_url = config_loader.config.git.repository
-    repo_path = os.path.join(os.getcwd(), parse_folder_name(repo_url))
+    repo_path = os.path.join(osa_project_root(), parse_folder_name(repo_url))
     file_to_save = os.path.join(repo_path, "README.md")
 
     logger.info("Started generating README.md. Processing the repository: %s"
