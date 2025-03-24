@@ -11,7 +11,7 @@ class TestDirectoryTranslator:
     def mock_walk_data(self):
         return [
             (os.path.normpath("/repo"), [], ["file.py", "data.txt"]),
-            (os.path.normpath("/repo/subdir"), [], ["module.py", "readme.md"]),
+            (os.path.normpath("/repo"), ["subdir"], ["subdir/module.py", "readme.md"]),
             (os.path.normpath("/repo"), ["subdir2"], [])
         ]
 
@@ -55,7 +55,10 @@ class TestDirectoryTranslator:
     def test_get_all_directories(self, mock_walk, mock_walk_data, translator):
         mock_walk.return_value = mock_walk_data
         result = translator._get_all_directories()
-        expected = [os.path.normpath("/repo/subdir2")]
+        expected = [
+            os.path.normpath("/repo/subdir"),
+            os.path.normpath("/repo/subdir2")
+        ]
 
         assert result == expected
 
