@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Any, ClassVar
 
 from osa_tool.readmeai.config.constants import HeaderStyleOptions
@@ -19,7 +20,7 @@ class ArticleHeaderTemplate(BaseTemplate):
 """,
     }
 
-    def __init__(self, style: str = HeaderStyleOptions.CLASSIC) -> None:
+    def __init__(self, style: HeaderStyleOptions = HeaderStyleOptions.CLASSIC) -> None:
         self.style = style
 
     def render(self, data: dict[str, Any]) -> str:

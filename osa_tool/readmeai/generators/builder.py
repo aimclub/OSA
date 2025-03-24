@@ -1,13 +1,13 @@
 import os
 from pathlib import Path
 
+from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.readmeai.config.settings import ConfigLoader
 from osa_tool.readmeai.generators import badges
 from osa_tool.readmeai.ingestion.models import RepositoryContext
+from osa_tool.readmeai.templates.contributing import ContributingBuilder
 from osa_tool.readmeai.templates.header import HeaderTemplate
 from osa_tool.readmeai.templates.quickstart import QuickStartBuilder
-from osa_tool.readmeai.templates.contributing import ContributingBuilder
-from osa_tool.analytics.metadata import load_data_metadata
 
 
 class MarkdownBuilder:
@@ -134,14 +134,12 @@ class MarkdownBuilder:
         else:
             homepage_url = self.metadata.homepage_url
 
-        return self.md.documentation.format(
-            repo_name=self.git.name, docs=docs, homepage_url=homepage_url
-        )
-
-    @property
-    def contacts(self) -> str:
-        """Generates the README Contacts section"""
-        return self.md.contacts
+        if homepage_url != "":
+            return self.md.documentation.format(
+                repo_name=self.git.name, docs=docs, homepage_url=homepage_url
+            )
+        else:
+            return ""
 
     @property
     def acknowledgments(self) -> str:
@@ -182,7 +180,7 @@ class MarkdownBuilder:
             self.contributing,
             self.license,
             self.acknowledgments,
-            self.contacts,
+            # self.contacts, # disabled as non-working
             self.citation,
         ]
 
