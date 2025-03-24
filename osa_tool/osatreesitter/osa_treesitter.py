@@ -323,32 +323,61 @@ class OSA_TreeSitter(object):
                 import_map.update(resolved_imports)
         return import_map
 
-    def _resolve_import(self, call_text: str, imports: dict) -> dict:
+    def _resolve_import(self, call_text: str, call_alias: str, imports: dict, incantations: dict = None) -> dict:
+        # Split at the first dot to get alias and the rest of the call
         if "." in call_text:
-            alias, function_name = call_text.split(".", 1)
+            alias, rest = call_text.split(".", 1)
+            if alias in incantations.keys():
+                alias = incantations[alias]
         else:
-            alias, function_name = call_text, None
+            incantations[call_alias] = call_text
+            alias, rest = call_text, None
 
-        imports_data: dict = imports.get(alias)
-        if imports_data:
-            return {
-                "module": imports_data["module"],
-                "class": imports_data.get("class"),
-                "function": function_name,
-                "path": imports_data["path"],
-            }
+        # Retrieve module/class info from imports
+        imports_data = imports.get(alias)
+        if not imports_data:
+            return {}
+
+        resolved_import = {
+            "module": imports_data["module"],
+            "class": imports_data.get("class"),
+            "function": None,
+            "path": imports_data["path"],
+        }
+
+        if rest:
+            parts = rest.split(".")
+
+            if "()" in parts[0]:
+                class_name = parts[0].replace("()", "")
+                resolved_import["class"] = class_name
+
+                if len(parts) > 1:
+                    resolved_import["function"] = parts[1]  # Get method name after class
+            else:
+                resolved_import["function"] = parts[0]  # Direct function call
+
+            # Handle chained methods
+            if len(parts) > 1:
+                resolved_import["function"] = ".".join(parts)
+
+        return resolved_import
 
     def _resolve_method_calls(
         self, function_node: tree_sitter.Node, source_code: str, imports: dict
     ) -> list:
 
         method_calls = []
+        incan = {}
         for child in function_node.children:
             if child.type == "block":
                 for expr in child.children:
                     for act in expr.children:
+                        call_alias = None
                         if act.type == "assignment":
                             for call in act.children:
+                                if call.type == "identifier":
+                                    call_alias = call.text.decode("utf-8")
                                 if call.type == "call":
                                     call_target = call.child_by_field_name("function")
                                     if call_target:
@@ -357,7 +386,7 @@ class OSA_TreeSitter(object):
                                         ]
 
                                         resolved_call = self._resolve_import(
-                                            call_text, imports
+                                            call_text, call_alias, imports, incan
                                         )
                                         if resolved_call:
                                             method_calls.append(resolved_call)
@@ -368,8 +397,7 @@ class OSA_TreeSitter(object):
                                 call_text = source_code[
                                     call_target.start_byte : call_target.end_byte
                                 ]
-
-                                resolved_call = self._resolve_import(call_text, imports)
+                                resolved_call = self._resolve_import(call_text, call_alias, imports, incan)
                                 if resolved_call:
                                     method_calls.append(resolved_call)
 

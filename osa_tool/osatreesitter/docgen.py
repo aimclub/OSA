@@ -168,7 +168,7 @@ class DocGen(object):
 
         return self.model_handler.send_request(prompt)
 
-    def generate_method_documentation(self, method_details: dict) -> str:
+    def generate_method_documentation(self, method_details: dict, context_code: str = None) -> str:
         """
         Generate documentation for a single method.
         """
@@ -177,6 +177,7 @@ class DocGen(object):
         - A short summary of what the method does.
         - A description of its parameters without types.
         - The return type and description.
+        - Use provided context for the method's docstring.
 
         Method Details:
         - Method Name: {method_details["method_name"]}
@@ -189,6 +190,8 @@ class DocGen(object):
         {method_details["source_code"]}
         ```
         """
+        if context_code:
+            prompt += f"\nAdditional Context from Dependencies:\n{context_code}\n"
         return self.model_handler.send_request(prompt)
 
     def extract_pure_docstring(self, gpt_response: str) -> str:
@@ -273,6 +276,27 @@ class DocGen(object):
         )
 
         return updated_code
+    
+    def context_extractor(self, method_details: dict, structure: dict) -> str:
+        context = []
+        
+        for call in method_details.get("method_calls", []):
+            file_data = structure.get(call["path"], {})
+            if not file_data:
+                continue
+            
+            for item in file_data.get("structure", []):
+                if item["type"] == "class" and item["name"] == call["class"]:
+                    for method in item.get("methods", []):
+                        if method["method_name"] == call["function"]:
+                            print("here")
+                            context.append(f"# Method {call['function']} in class {call['class']}\n" + method.get("source_code", ""))
+                        elif call["function"] == None and method["method_name"] == "__init__":
+                            context.append(f"# Method __init__ in class {call['class']}\n" + method.get("source_code", ""))
+                elif item["type"] == "function" and item["details"]["method_name"] == call["class"]:
+                    context.append(f"# Function {call['class']}\n" + item["details"].get("source_code", ""))
+        
+        return "\n".join(context)
 
     def process_python_file(self, parsed_structure: dict) -> None:
         """
@@ -300,8 +324,9 @@ class DocGen(object):
                             logging.info(
                                 f"Generating docstring for method: {method['method_name']} in class {item['name']} at {filename}"
                             )
+                            method_context = self.context_extractor(method, parsed_structure)
                             generated_docstring = self.generate_method_documentation(
-                                method
+                                method, method_context
                             )
                             if item["docstring"] == None:
                                 method["docstring"] = self.extract_pure_docstring(
