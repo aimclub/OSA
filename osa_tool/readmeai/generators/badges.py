@@ -3,7 +3,6 @@
 import colorsys
 
 from osa_tool.readmeai.config.settings import Settings
-from osa_tool.analytics.metadata import GitHost
 from osa_tool.readmeai.utils.file_handler import FileHandler
 from osa_tool.readmeai.utils.file_resource import get_resource_path
 

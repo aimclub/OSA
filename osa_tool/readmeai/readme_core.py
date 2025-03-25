@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import Optional
 
 from rich.logging import RichHandler
 
@@ -23,7 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger("rich")
 
 
-def readme_agent(config_loader, article: Optional[str]) -> None:
+def readme_agent(config_loader, article: str | None) -> None:
     """Generates a README.md file for the specified GitHub repository.
 
     Args:

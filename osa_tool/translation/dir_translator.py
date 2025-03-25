@@ -3,7 +3,6 @@ import logging
 import re
 
 from rich.logging import RichHandler
-from typing import Union, List
 
 from osa_tool.readmeai.config.settings import ConfigLoader
 from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
@@ -27,7 +26,7 @@ logger = logging.getLogger("rich")
 class DirectoryTranslator:
     def __init__(
             self,
-            config_loader: Union[ConfigLoader, ArticleConfigLoader]
+            config_loader: ConfigLoader | ArticleConfigLoader
     ):
         self.config = config_loader.config
         self.repo_url = self.config.git.repository
@@ -60,7 +59,7 @@ class DirectoryTranslator:
         response = self.model_handler.send_request(prompt)
         return response.replace(" ", "_")
 
-    def _get_python_files(self) -> List[str]:
+    def _get_python_files(self) -> list[str]:
         """
         Recursive search of all Python files in a project
 
@@ -68,7 +67,7 @@ class DirectoryTranslator:
         recursively goes through all subdirectories and collects paths to `.py` files.
 
         Returns:
-            python_files: List of absolute paths to all found Python files.
+            list[str]: List of absolute paths to all found Python files.
         """
         python_files = []
         try:
@@ -85,12 +84,12 @@ class DirectoryTranslator:
 
         return python_files
 
-    def _get_all_files(self) -> List[str]:
+    def _get_all_files(self) -> list[str]:
         """
         Recursively collects a list of all files in a project, excluding certain directories.
 
         Returns:
-            all_files: List of paths to all found files
+            list[str]: List of paths to all found files
         """
         all_files = []
 
@@ -107,12 +106,12 @@ class DirectoryTranslator:
 
         return all_files
 
-    def _get_all_directories(self) -> List[str]:
+    def _get_all_directories(self) -> list[str]:
         """
         Recursively collects a list of all directories in a project, excluding certain directories.
 
         Returns:
-            all_dirs: List of paths to all found files
+            list[str]: List of paths to all found files
         """
         all_dirs = []
 

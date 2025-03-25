@@ -138,7 +138,6 @@ class MarkdownSettings(BaseModel):
     table_of_contents: str
     license: str
     documentation: str
-    contacts: str
     acknowledgments: str
     citation: str
     citation_v1: str
