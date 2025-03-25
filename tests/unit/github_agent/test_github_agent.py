@@ -9,6 +9,7 @@ from osa_tool.github_agent.github_agent import GithubAgent
 def github_agent():
     agent = GithubAgent(repo_url="https://github.com/testuser/testrepo")
     agent.repo = MagicMock(Repo)
+    agent.token = "test_token"
     return agent
 
 
