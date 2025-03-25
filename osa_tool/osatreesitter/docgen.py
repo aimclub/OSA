@@ -4,8 +4,6 @@ import re
 
 import tiktoken
 
-from typing import Union, List
-
 from osa_tool.osatreesitter.models import ModelHandlerFactory, ModelHandler
 from osa_tool.readmeai.config.settings import ConfigLoader
 from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
@@ -57,7 +55,7 @@ class DocGen(object):
             file structure and for each class or standalone function, generating its documentation.
     """
 
-    def __init__(self, config_loader: Union[ConfigLoader, ArticleConfigLoader]):
+    def __init__(self, config_loader: ConfigLoader | ArticleConfigLoader):
         """
         Instantiates the object of the class.
 
