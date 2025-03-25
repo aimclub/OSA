@@ -70,7 +70,7 @@ class NotebookConverter:
 
             (body, _) = self.exporter.from_notebook_node(notebook_content)
 
-            notebook_name = notebook_path.split('\\')[-1].rsplit('.', 1)[0]
+            notebook_name = os.path.splitext(os.path.basename(notebook_path))[0]
             body = self.process_visualizations(notebook_name, body)
             
             if self.is_syntax_correct(body):
