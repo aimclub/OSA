@@ -1,6 +1,5 @@
 import logging
 import os
-import time
 
 from rich.logging import RichHandler
 

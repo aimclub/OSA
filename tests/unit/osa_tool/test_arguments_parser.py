@@ -71,3 +71,10 @@ class TestArgumentParser:
 
         args = self.run_parser(["-r", repo_url])
         assert args.translate_dirs is False
+
+    def test_delete_dir_flag(self, repo_url):
+        args = self.run_parser(["-r", repo_url, "--delete-dir"])
+        assert args.delete_dir is True
+
+        args = self.run_parser(["-r", repo_url])
+        assert args.delete_dir is False
