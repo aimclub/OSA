@@ -54,4 +54,4 @@ typing_extensions==4.12.2
 urllib3==2.3.0
 yarl==1.18.3
 
-protollm>=0.1.1
+protollm>=0.1.2
