@@ -1,5 +1,6 @@
 import pytest
 
+
 def test_git_auth_url_success(github_agent):
     # Arrange
     expected_url = "https://test_token@github.com/testuser/testrepo.git"
@@ -15,6 +16,7 @@ def test_get_auth_url_invalid_url_format(github_agent):
     # Assert
     with pytest.raises(ValueError, match="Unsupported repository URL format."):
         github_agent._get_auth_url()
+
 
 @pytest.mark.parametrize(
     "method, exception_message",

@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 from git import Repo
 from osa_tool.github_agent.github_agent import GithubAgent
 
+
 @pytest.fixture
 def github_agent():
     agent = GithubAgent(repo_url="https://github.com/testuser/testrepo")
