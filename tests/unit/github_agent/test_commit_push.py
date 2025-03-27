@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
+
 def test_commit_and_push_changes_success(github_agent):
     # Arrange
     with patch.object(
@@ -27,6 +28,7 @@ def test_commit_and_push_changes_success(github_agent):
     mock_logger.info.assert_any_call("Commit completed.")
     mock_logger.info.assert_any_call("Pushing changes to branch feature-branch in fork...")
     mock_logger.info.assert_any_call("Push completed.")
+
 
 def test_commit_and_push_changes_no_fork_url(github_agent):
     # Arrange

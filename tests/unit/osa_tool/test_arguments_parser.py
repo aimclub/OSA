@@ -19,6 +19,7 @@ class TestArgumentParser:
         args = self.run_parser(["-r", repo_url])
         # Assert
         assert args.repository == repo_url
+
     def test_repository_url_long(self, repo_url):
         # Act
         args = self.run_parser(["--repository", repo_url])

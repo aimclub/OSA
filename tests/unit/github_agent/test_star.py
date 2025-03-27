@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import patch
 
+
 @patch("osa_tool.github_agent.github_agent.requests.get")
 @patch("osa_tool.github_agent.github_agent.requests.put")
 def test_star_repository_already_stars(mock_put, mock_get, github_agent):
@@ -11,6 +12,7 @@ def test_star_repository_already_stars(mock_put, mock_get, github_agent):
     github_agent.star_repository()
     # Assert
     mock_put.assert_not_called()
+
 
 @patch("osa_tool.github_agent.github_agent.requests.get")
 @patch("osa_tool.github_agent.github_agent.requests.put")
@@ -24,6 +26,7 @@ def test_star_repository_adds_star(mock_put, mock_get, github_agent):
     # Assert
     mock_put.assert_called_once()
 
+
 @patch("osa_tool.github_agent.github_agent.requests.get")
 @patch("osa_tool.github_agent.github_agent.requests.put")
 def test_star_repository_error(mock_put, mock_get, github_agent):
@@ -34,6 +37,7 @@ def test_star_repository_error(mock_put, mock_get, github_agent):
     # Assert
     with pytest.raises(ValueError, match="Failed to star repository."):
         github_agent.star_repository()
+
 
 @patch("osa_tool.github_agent.github_agent.requests.get")
 def test_star_repository_request_error(mock_get, github_agent):

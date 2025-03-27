@@ -5,8 +5,7 @@ from gitingest import ingest
 
 from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.readmeai.config.settings import ConfigLoader
-from osa_tool.readmeai.readmegen_article.config.settings import \
-    ArticleConfigLoader
+from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
 from osa_tool.utils import parse_folder_name, osa_project_root
 
 

@@ -1,5 +1,6 @@
 from unittest.mock import patch, call, MagicMock
 
+
 @patch("osa_tool.github_agent.github_agent.logger")
 def test_create_and_checkout_branch_exists(mock_logger, github_agent):
     # Arrange
@@ -9,6 +10,7 @@ def test_create_and_checkout_branch_exists(mock_logger, github_agent):
     # Assert
     github_agent.repo.git.checkout.assert_called_once_with("feature-branch")
     mock_logger.info.assert_called_once_with("Branch feature-branch already exists. Switching to it...")
+
 
 @patch("osa_tool.github_agent.github_agent.logger")
 def test_create_and_checkout_branch_new(mock_logger, github_agent):
