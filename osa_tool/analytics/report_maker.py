@@ -38,10 +38,11 @@ logger = logging.getLogger("rich")
 
 class ReportGenerator:
     def __init__(self,
-                 config_loader: ConfigLoader | ArticleConfigLoader):
+                 config_loader: ConfigLoader | ArticleConfigLoader,
+                 sourcerank: SourceRank):
         self.config = config_loader.config
-        self.sourcerank = SourceRank(config_loader)
-        self.text_generator = TextGenerator(config_loader)
+        self.sourcerank = sourcerank
+        self.text_generator = TextGenerator(config_loader, self.sourcerank)
         self.repo_url = self.config.git.repository
         self.osa_url = "https://github.com/ITMO-NSS-team/Open-Source-Advisor"
         self.metadata = load_data_metadata(self.repo_url)

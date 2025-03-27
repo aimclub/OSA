@@ -7,7 +7,7 @@ from pydantic import ValidationError
 from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.analytics.prompt_builder import RepositoryReport
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.osatreesitter.models import ModelHandler, ModelHandlerFactory
+from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmeai.config.settings import ConfigLoader
 from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
 from osa_tool.utils import parse_folder_name, osa_project_root
@@ -15,9 +15,10 @@ from osa_tool.utils import parse_folder_name, osa_project_root
 
 class TextGenerator:
     def __init__(self,
-                 config_loader: ConfigLoader | ArticleConfigLoader):
+                 config_loader: ConfigLoader | ArticleConfigLoader,
+                 sourcerank: SourceRank):
         self.config = config_loader.config
-        self.sourcerank = SourceRank(config_loader)
+        self.sourcerank = sourcerank
         self.model_handler: ModelHandler = ModelHandlerFactory.build(
             self.config)
         self.repo_url = self.config.git.repository
@@ -109,6 +110,5 @@ class TextGenerator:
             f"LICENSE presence is {self.sourcerank.license_presence()}",
             f"Examples presence is {self.sourcerank.examples_presence()}",
             f"Documentation presence is {self.sourcerank.docs_presence()}",
-            # f"Tests presence is {self.sourcerank.tests_presence()}",
         ]
         return contents

@@ -2,7 +2,7 @@ import os
 import pytest
 from unittest.mock import MagicMock
 from osa_tool.readmeai.config.settings import ConfigLoader
-from osa_tool.osatreesitter.models import ModelHandlerFactory
+from osa_tool.models.models import ModelHandlerFactory
 from osa_tool.translation.dir_translator import DirectoryTranslator
 
 

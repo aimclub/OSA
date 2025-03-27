@@ -8,7 +8,7 @@ from osa_tool.readmeai.config.settings import ConfigLoader
 from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
 
 from osa_tool.utils import parse_folder_name, osa_project_root
-from osa_tool.osatreesitter.models import ModelHandlerFactory, ModelHandler
+from osa_tool.models.models import ModelHandlerFactory, ModelHandler
 
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)

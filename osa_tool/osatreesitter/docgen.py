@@ -4,7 +4,7 @@ import re
 
 import tiktoken
 
-from osa_tool.osatreesitter.models import ModelHandlerFactory, ModelHandler
+from osa_tool.models.models import ModelHandlerFactory, ModelHandler
 from osa_tool.readmeai.config.settings import ConfigLoader
 from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
 
