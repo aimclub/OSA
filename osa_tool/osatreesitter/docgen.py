@@ -1,6 +1,8 @@
 import dotenv
 import logging
 import re
+import black
+from pathlib import Path
 
 import tiktoken
 
@@ -372,6 +374,7 @@ class DocGen(object):
                     )
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(source_code)
+            black.format_file_in_place(Path(filename), fast=True, mode=black.FileMode(), write_back=black.WriteBack.YES)
             logging.info(f"Updated file: {filename}")
 
     def generate_method_documentation_md(self, method_details: dict) -> str:
