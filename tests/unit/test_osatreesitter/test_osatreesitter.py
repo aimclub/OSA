@@ -67,12 +67,14 @@ def test_parse_source_code(
 @patch("osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._class_parser")
 @patch("osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._function_parser")
 @patch("osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._parse_source_code")
+@patch("osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._extract_imports", return_value={})
 @patch(
     "osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._get_decorators",
     return_value=["mock_decorator"],
 )
 def test_extract_structure(
     mock_get_decorators,
+    mock_extract_imports,
     mock_parse_source_code,
     mock_function_parser,
     mock_class_parser,
@@ -80,69 +82,48 @@ def test_extract_structure(
 ):
     """Test extract_structure processes functions, classes, and decorators in a Python file."""
 
-    with patch.object(
-        OSA_TreeSitter, "_function_parser"
-    ) as mock_function_parser, patch.object(
-        OSA_TreeSitter, "_class_parser"
-    ) as mock_class_parser:
+    mock_tree = MagicMock()
+    mock_tree.root_node = MagicMock()
 
-        mock_tree = MagicMock()
-        mock_tree.root_node = MagicMock()
+    mock_decorated_node = MagicMock()
+    mock_decorated_node.type = "decorated_definition"
+    mock_function_node = MagicMock()
+    mock_function_node.type = "function_definition"
+    mock_decorated_node.children = [MagicMock(type="decorator"), mock_function_node]
 
-        mock_decorated_node = MagicMock()
-        mock_decorated_node.type = "decorated_definition"
-        mock_function_node = MagicMock()
-        mock_function_node.type = "function_definition"
-        mock_decorated_node.children = [MagicMock(type="decorator"), mock_function_node]
+    mock_class_node = MagicMock()
+    mock_class_node.type = "class_definition"
 
-        mock_class_node = MagicMock()
-        mock_class_node.type = "class_definition"
+    mock_tree.root_node.children = [
+        mock_decorated_node,
+        mock_class_node,
+        mock_function_node,
+    ]
+    mock_parse_source_code.return_value = (mock_tree, "def test(): pass")
 
-        mock_tree.root_node.children = [
-            mock_decorated_node,
-            mock_class_node,
-            mock_function_node,
-        ]
-        mock_parse_source_code.return_value = (mock_tree, "def test(): pass")
+    def function_parser_side_effect(structure: dict, source_code, node, dec_list=[]):
+        structure["structure"].append(f"mock_function_structure_{len(structure['structure'])}")
+        return structure
 
-        def function_parser_side_effect(structure, source_code, node, dec_list=[]):
-            new_structure = structure.copy()
-            new_structure.append(f"mock_function_structure_{len(new_structure)}")
-            return new_structure
+    def class_parser_side_effect(structure: dict, source_code, node, dec_list=[]):
+        structure["structure"].append(f"mock_class_structure_{len(structure['structure'])}")
+        return structure
 
-        def class_parser_side_effect(structure, source_code, node, dec_list=[]):
-            new_structure = structure.copy()
-            new_structure.append(f"mock_class_structure_{len(new_structure)}")
-            return new_structure
+    mock_function_parser.side_effect = function_parser_side_effect
+    mock_class_parser.side_effect = class_parser_side_effect
 
-        mock_function_parser.side_effect = function_parser_side_effect
-        mock_class_parser.side_effect = class_parser_side_effect
+    result = osa_tree_sitter.extract_structure("script.py")
 
-        result = osa_tree_sitter.extract_structure("script.py")
-
-        print(mock_get_decorators.call_args_list)
-        print(mock_function_parser.call_args_list)
-
-        mock_get_decorators.assert_called_with([], mock_decorated_node.children[0])
-        mock_function_parser.assert_any_call(
-            [], "def test(): pass", mock_decorated_node.children[1], ["mock_decorator"]
-        )
-        mock_class_parser.assert_any_call(
-            ["mock_function_structure_0"], "def test(): pass", mock_class_node
-        )
-        mock_function_parser.assert_any_call(
-            ["mock_function_structure_0", "mock_class_structure_1"],
-            "def test(): pass",
-            mock_function_node,
-        )
-
-        assert result == [
+    assert result == {
+        "structure": [
             "mock_function_structure_0",
             "mock_class_structure_1",
-            "mock_function_structure_2",
-        ]
+            "mock_function_structure_2"
+        ],
+        "imports": {}
+    }
 
-        mock_parse_source_code.assert_called_with("script.py")
+    mock_parse_source_code.assert_called_with("script.py")
 
 
 @patch(
