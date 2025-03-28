@@ -50,7 +50,6 @@ def main():
     try:
         # Load configurations and update
         config = load_configuration(repo_url, api, base_url, model_name, article)
-        sourcerank = SourceRank(config)
 
         # Initialize GitHub agent and perform operations
         github_agent = GithubAgent(repo_url)
@@ -60,6 +59,7 @@ def main():
         github_agent.create_and_checkout_branch()
 
         # Repository Analysis Report generation
+        sourcerank = SourceRank(config)
         analytics = ReportGenerator(config, sourcerank)
         analytics.build_pdf()
 

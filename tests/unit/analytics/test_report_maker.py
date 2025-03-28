@@ -1,13 +1,17 @@
-import json
 import os
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from reportlab.platypus import Table, ListFlowable
 
-from osa_tool.analytics.prompt_builder import RepositoryReport, RepositoryStructure, ReadmeEvaluation, YesNoPartial, \
-    CodeDocumentation, OverallAssessment
+from osa_tool.analytics.prompt_builder import (
+    RepositoryReport,
+    RepositoryStructure,
+    ReadmeEvaluation,
+    YesNoPartial,
+    CodeDocumentation,
+    OverallAssessment
+)
 from osa_tool.analytics.report_maker import ReportGenerator
 
 
@@ -24,6 +28,8 @@ def test_generate_qr_code(report_generator):
     # Assert
     assert qr_path.endswith("temp_qr.png")
     assert os.path.exists(qr_path)
+    # TearDown
+    os.remove(qr_path)
 
 
 def test_table_builder(report_generator):
