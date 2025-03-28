@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import Any, ClassVar
 
 from osa_tool.readmeai.config.constants import HeaderStyleOptions

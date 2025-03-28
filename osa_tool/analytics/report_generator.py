@@ -44,7 +44,7 @@ class TextGenerator:
         response = self.model_handler.send_request(self._build_prompt())
         try:
             parsed_json = json.loads(response)
-            parsed_report = RepositoryReport.parse_obj(parsed_json)
+            parsed_report = RepositoryReport.model_validate(parsed_json)
 
             return parsed_report
         except (ValidationError, json.JSONDecodeError) as e:
@@ -74,7 +74,7 @@ class TextGenerator:
         )
         return prompt
 
-    def _extract_readme_content(self) -> str:
+    def _extract_readme_content(self) -> str | None:
         """
         Extracts the content of the README file from the repository.
 

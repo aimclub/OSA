@@ -1,4 +1,3 @@
-import pytest
 from osa_tool.analytics.prompt_builder import RepositoryReport, YesNoPartial
 
 

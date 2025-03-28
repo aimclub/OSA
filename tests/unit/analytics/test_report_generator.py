@@ -10,7 +10,7 @@ def test_text_generator_initialization(text_generator):
 
 
 @patch("json.loads", return_value={})
-@patch("osa_tool.analytics.prompt_builder.RepositoryReport.parse_obj", return_value=MagicMock())
+@patch("osa_tool.analytics.prompt_builder.RepositoryReport.model_validate", return_value=MagicMock())
 def test_make_request(mock_parse_obj, mock_json_loads, text_generator):
     # Act
     report = text_generator.make_request()

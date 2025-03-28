@@ -72,7 +72,7 @@ def hex_to_hls(hex_color: str) -> tuple[float, float, float]:
     return colorsys.rgb_to_hls(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255)
 
 
-def sort_badges(badges: list[tuple[str, str]]) -> list[tuple[str, str]]:
+def sort_badges(badges: list[str]) -> list[tuple[str, str]]:
     """Sorts badges by color and then by name."""
     badges = [(badge[0], str(badge[1])) for badge in badges]
     badges = list(set(badges))
