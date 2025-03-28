@@ -64,16 +64,12 @@ def custom_report():
     )
 
 
+
 @pytest.fixture
-def report_generator(mock_config_loader, source_rank):
+@patch("osa_tool.analytics.metadata.load_data_metadata")
+@patch("osa_tool.models.models.ModelHandlerFactory.build")
+def report_generator(mock_model, mock_load_data_metadata, mock_config_loader, source_rank):
     """Return a ReportGenerator instance with mocked dependencies."""
-    with patch("osa_tool.analytics.metadata.load_data_metadata") as mock_load_data_metadata, \
-            patch("osa_tool.models.models.ModelHandlerFactory.build") as mock_model:
-        mock_metadata = MagicMock()
-        mock_metadata.name = "testrepo"
-        mock_metadata.created_at = "2025-03-27T21:53:35Z"
+    mock_model.return_value.send_request.return_value = json.dumps({})
 
-        mock_load_data_metadata.return_value = mock_metadata
-        mock_model.return_value.send_request.return_value = json.dumps({})
-
-        return ReportGenerator(mock_config_loader, source_rank)
+    return ReportGenerator(mock_config_loader, source_rank)
