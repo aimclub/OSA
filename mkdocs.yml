@@ -18,10 +18,10 @@ nav:
     - index.md
   - API Reference:
       - Github Agent: core/github_agent/github_agent.md
+      - Model Handler: core/models/models.md
       - OSA Tree Sitter:
           - core/osatreesitter/osatreesitter.md
           - Documentation Generator: core/osatreesitter/docgen.md
-          - Model Handler: core/osatreesitter/models.md
 
 repo_url: https://github.com/ITMO-NSS-team/Open-Source-Advisor
 

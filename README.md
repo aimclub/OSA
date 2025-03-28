@@ -133,7 +133,7 @@ Run Open-Source-Advisor using the following command:
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
 
 ```sh
-python -m osa_tool.main -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--article {article}]
+python -m osa_tool.run -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--article {article}]
 ```
 
 **Using `docker`** &nbsp;
@@ -147,14 +147,15 @@ The --article option enables you to choose a README template for a repository ba
 
 ### Configuration
 
-| Flag                 | Description                                                     | Default                     |
-|----------------------|-----------------------------------------------------------------|-----------------------------|
-| `-r`, `--repository` | URL of the GitHub repository (**Mandatory**)                    |                             |
-| `--api`              | LLM API service provider                                        | `llama`                     |
-| `--base-url`         | URL of the provider compatible with API OpenAI                  | `https://api.openai.com/v1` |
-| `--model`            | Specific LLM model to use                                       | `gpt-3.5-turbo`             |
-| `--article`          | Link to the pdf file of the article                             | `None`                      |
-| `--translate-dirs`   | Enable automatic translation of the directory name into English | `disabled`                  |
+| Flag                 | Description                                                                 | Default                     |
+|----------------------|-----------------------------------------------------------------------------|-----------------------------|
+| `-r`, `--repository` | URL of the GitHub repository (**Mandatory**)                                |                             |
+| `--api`              | LLM API service provider                                                    | `llama`                     |
+| `--base-url`         | URL of the provider compatible with API OpenAI                              | `https://api.openai.com/v1` |
+| `--model`            | Specific LLM model to use                                                   | `gpt-3.5-turbo`             |
+| `--article`          | Link to the pdf file of the article                                         | `None`                      |
+| `--translate-dirs`   | Enable automatic translation of the directory name into English             | `disabled`                  |
+| `--delete-dir`       | Enable deleting the downloaded repository after processing (**Linux only**) | `disabled`                  |
 
 ---
 
@@ -171,19 +172,19 @@ To see available models go there:
 
 Local Llama ITMO:
 ```sh
-python -m osa_tool.main -r https://github.com/ITMO-NSS-team/Open-Source-Advisor
+python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor
 ```  
 OpenAI:
 ```sh
-python -m osa_tool.main -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai
+python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai
 ```
 VseGPT:
 ```sh
-python -m osa_tool.main -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai --base-url https://api.vsegpt.ru/v1 --model openai/gpt-3.5-turbo
+python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai --base-url https://api.vsegpt.ru/v1 --model openai/gpt-3.5-turbo
 ```
 Ollama:
 ```sh
-python -m osa_tool.main -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api ollama --base-url http://[YOUR_OLLAMA_IP]:11434 --model gemma3:27b
+python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api ollama --base-url http://[YOUR_OLLAMA_IP]:11434 --model gemma3:27b
 ```
 
 ---

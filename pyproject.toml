@@ -78,7 +78,7 @@ ProtoLLM = ">=0.1.1"
 pytest = "8.3.4"
 
 [project.scripts]
-osa-tool = "osa_tool.main:main"
+osa-tool = "osa_tool.run:run"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
