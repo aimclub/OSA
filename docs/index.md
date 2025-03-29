@@ -99,6 +99,13 @@ OSA requires Python 3.10 or higher.
 
 File `.env` is required to specify GitHub token (GIT_TOKEN) and LLM API key (OPENAI_API_KEY or VSE_GPT_KEY)
 
+When running `osa-tool` from CLI, you need to set the GIT_TOKEN and API key first:
+
+```commandline
+export OPENAI_API_KEY=<your_api_key>
+export GIT_TOKEN=<your_git_token>
+```
+
 ### Usage
 
 Run Open-Source-Advisor using the following command:
