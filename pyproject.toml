@@ -1,6 +1,6 @@
 [project]
 name = "osa_tool"
-version = "0.1.1"
+version = "0.1.2"
 description = "Tool that just makes your open source project better!"
 requires-python = ">=3.10,<4.0"
 authors = [
@@ -78,7 +78,7 @@ ProtoLLM = ">=0.1.1"
 pytest = "8.3.4"
 
 [project.scripts]
-osa-tool = "osa_tool.run:run"
+osa-tool = "osa_tool.run:main"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
