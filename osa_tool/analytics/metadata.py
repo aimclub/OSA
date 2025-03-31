@@ -17,6 +17,9 @@ from pathlib import Path
 from osa_tool.utils import get_base_repo_url
 from osa_tool.readmeai.errors import GitURLError
 
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(message)s",

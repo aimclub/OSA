@@ -1,5 +1,4 @@
 import asyncio
-from abc import ABC, abstractmethod
 from collections.abc import Generator
 
 from typing import Any, Optional
@@ -23,8 +22,7 @@ from osa_tool.readmeai.readmegen_article.models.prompts import (
     set_summary_context_article,
     set_pdf_summary_context_article,
 )
-from osa_tool.readmeai.models.tokens import update_max_tokens
-from osa_tool.osatreesitter.models import ModelHandlerFactory, ModelHandler
+from osa_tool.models.models import ModelHandlerFactory, ModelHandler
 
 
 class BaseModelHandler:

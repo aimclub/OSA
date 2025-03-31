@@ -1,10 +1,10 @@
 import logging
 import os
-import time
 
 from rich.logging import RichHandler
 
 from osa_tool.analytics.report_maker import ReportGenerator
+from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.arguments_parser import get_cli_args
 from osa_tool.github_agent.github_agent import GithubAgent
 from osa_tool.osatreesitter.docgen import DocGen
@@ -59,7 +59,8 @@ def main():
         github_agent.create_and_checkout_branch()
 
         # Repository Analysis Report generation
-        analytics = ReportGenerator(config)
+        sourcerank = SourceRank(config)
+        analytics = ReportGenerator(config, sourcerank)
         analytics.build_pdf()
 
         # Auto translating names of directories

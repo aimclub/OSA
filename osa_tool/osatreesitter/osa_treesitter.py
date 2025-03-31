@@ -1,6 +1,4 @@
 import os
-from os import listdir
-from os.path import isfile, join
 import tree_sitter
 from tree_sitter import Parser, Language
 import tree_sitter_python as tspython

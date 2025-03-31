@@ -270,7 +270,6 @@ class OpenaiHandler(ModelHandler):
         self.client = openai.OpenAI(base_url=self.url, api_key=self.key)
 
 
-
 class OllamaHandler(ModelHandler):
     """
     Handles interactions with Ollama models. Initializes with configuration settings
@@ -292,7 +291,7 @@ class OllamaHandler(ModelHandler):
         Args:
             config: Configuration settings containing Ollama URL and model name.
         """
-        self.config = config        
+        self.config = config
         if not config.llm.url:
             self.base_url = "http://localhost:11434"
         else:
@@ -316,20 +315,20 @@ class OllamaHandler(ModelHandler):
         Returns:
             str: Generated response content from the model.
         """
-                
-        self.initialize_payload(self.config, prompt) 
-                
+
+        self.initialize_payload(self.config, prompt)
+
         self.payload["model"] = self.model
         self.payload["stream"] = False
-        self.payload["options"] = { 
+        self.payload["options"] = {
             "temperature": self.payload["meta"]["temperature"],
             "max_tokens": self.payload["meta"]["tokens_limit"]
-        }              
-        
+        }
+
         try:
             response = self.client.post(
-                f"{self.base_url}/api/chat", 
-                json=self.payload                
+                f"{self.base_url}/api/chat",
+                json=self.payload
             )
             response.raise_for_status()
             return response.json()["message"]["content"]
