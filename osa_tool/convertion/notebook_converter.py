@@ -88,6 +88,7 @@ class NotebookConverter:
         """Change code for visualizations.
 
         Args:
+            figures_dir: Path to save a figure
             code: The Python code as a string.
 
         Returns:
