@@ -1,5 +1,6 @@
 import json
 import os
+from json import JSONDecodeError
 
 import tomli as tomllib
 from pydantic import ValidationError
@@ -43,7 +44,11 @@ class TextGenerator:
         """
         response = self.model_handler.send_request(self._build_prompt())
         try:
-            parsed_json = json.loads(response)
+            try:
+                parsed_json = json.loads(response)
+            except JSONDecodeError:
+                # workaround if response starts with ```json and ends with ```
+                parsed_json = json.loads(response.replace('```json', '').replace('```', ''))
             parsed_report = RepositoryReport.model_validate(parsed_json)
 
             return parsed_report
