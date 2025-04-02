@@ -1,5 +1,6 @@
 import json
 import os
+from json import JSONDecodeError
 
 import tomli as tomllib
 from pydantic import ValidationError
@@ -10,7 +11,7 @@ from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmeai.config.settings import ConfigLoader
 from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
-from osa_tool.utils import parse_folder_name, osa_project_root
+from osa_tool.utils import parse_folder_name, osa_project_root, logger
 
 
 class TextGenerator:
@@ -43,7 +44,12 @@ class TextGenerator:
         """
         response = self.model_handler.send_request(self._build_prompt())
         try:
-            parsed_json = json.loads(response)
+            try:
+                parsed_json = json.loads(response)
+            except JSONDecodeError:
+                # workaround if response starts with ```json and ends with ```
+                parsed_json = json.loads(response.replace('```json', '').replace('```', ''))
+                logger.info(f"JSON from model response is infested with ```. Auto-cleaning workaround applied.")
             parsed_report = RepositoryReport.model_validate(parsed_json)
 
             return parsed_report
