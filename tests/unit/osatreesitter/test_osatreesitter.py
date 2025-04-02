@@ -14,10 +14,10 @@ def osa_tree_sitter():
 @patch("os.walk", return_value=[("test_directory", [], ["script.py", "test.txt"])])
 def test_files_list_directory(mock_walk, mock_isdir, osa_tree_sitter):
     """Test that files_list correctly identifies Python files in a directory."""
+    # Act
     files, status = osa_tree_sitter.files_list("test_directory")
-
     expected_files = [os.path.join("test_directory", "script.py")]
-
+    # Assert
     assert files == expected_files
     assert status == 0
 
@@ -26,22 +26,29 @@ def test_files_list_directory(mock_walk, mock_isdir, osa_tree_sitter):
 @patch("os.path.abspath", return_value="/absolute/path/to/script.py")
 def test_files_list_file(mock_abspath, mock_isfile, osa_tree_sitter):
     """Test that files_list correctly handles a single file path."""
+    # Act
     files, status = osa_tree_sitter.files_list("script.py")
+    # Assert
     assert files == ["/absolute/path/to/script.py"]
     assert status == 1
 
 
 def test_if_file_handler(osa_tree_sitter):
     """Test _if_file_handler returns the directory path."""
+    # Arrange
     path = "/path/to/script.py"
+    # Act
     result = osa_tree_sitter._if_file_handler(path)
+    # Assert
     assert result == "/path/to"
 
 
 @patch("builtins.open", new_callable=mock_open, read_data="print('Hello')")
 def test_open_file(mock_file, osa_tree_sitter):
     """Test open_file correctly reads a file's content."""
+    # Act
     content = osa_tree_sitter.open_file("script.py")
+    # Assert
     assert content == "print('Hello')"
 
 
@@ -55,11 +62,12 @@ def test_parse_source_code(
     mock_open_file, mock_parser_build, mock_parser, osa_tree_sitter
 ):
     """Test _parse_source_code returns a parsed tree."""
+    # Arrange
     mock_parser_build.return_value = mock_parser
     mock_parser.parse.return_value = "mock_tree"
-
+    # Act
     tree, source_code = osa_tree_sitter._parse_source_code("script.py")
-
+    # Assert
     assert tree == "mock_tree"
     assert source_code == "def test(): pass"
 
@@ -136,6 +144,8 @@ def test_extract_structure(
 )
 def test_analyze_directory(mock_extract_structure, mock_files_list, osa_tree_sitter):
     """Test analyze_directory correctly processes all Python files."""
+    # Act
     result = osa_tree_sitter.analyze_directory("test_directory")
+    # Assert
     assert "script.py" in result
     assert result["script.py"] == [{"type": "function", "name": "test"}]

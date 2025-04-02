@@ -1,7 +1,5 @@
 """Utility methods to build prompts for LLM text generation."""
 
-from typing import Dict
-
 from osa_tool.readmeai.readmegen_article.config.settings import ArticleSettings
 from osa_tool.readmeai.ingestion.models import RepositoryContext
 from osa_tool.readmeai.logger import get_logger

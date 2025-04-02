@@ -1,14 +1,14 @@
-import logging
 import os
+import logging
 import re
 
 from rich.logging import RichHandler
 
 from osa_tool.readmeai.config.settings import ConfigLoader
-from osa_tool.readmeai.readmegen_article.config.settings import \
-    ArticleConfigLoader
-from osa_tool.osatreesitter.models import ModelHandlerFactory, ModelHandler
-from osa_tool.utils import parse_folder_name
+from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
+
+from osa_tool.utils import parse_folder_name, osa_project_root
+from osa_tool.models.models import ModelHandlerFactory, ModelHandler
 
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
@@ -31,7 +31,7 @@ class DirectoryTranslator:
         self.config = config_loader.config
         self.repo_url = self.config.git.repository
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
-        self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.base_path = os.path.join(osa_project_root(), parse_folder_name(self.repo_url))
 
         self.excluded_dirs = {".git", ".venv"}
         self.extensions_code_files = {".py"}

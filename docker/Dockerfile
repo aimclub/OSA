@@ -18,4 +18,4 @@ RUN git config --global user.name "$GIT_USER_NAME" && \
 
 COPY ../osa_tool/ osa_tool/
 
-ENTRYPOINT ["python", "-m", "osa_tool.main"]
+ENTRYPOINT ["python", "-m", "osa_tool.run"]
