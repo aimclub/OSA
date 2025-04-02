@@ -180,8 +180,6 @@ class OSA_TreeSitter(object):
                     child, source_code, structure["imports"]
                 )
                 class_methods.extend(method_details)
-                # for method in method_details:
-                #    class_methods.append(method)
 
             if child.type == "function_definition":
                 method_details = self._extract_function_details(
@@ -364,41 +362,56 @@ class OSA_TreeSitter(object):
     def _resolve_method_calls(
         self, function_node: tree_sitter.Node, source_code: str, imports: dict
     ) -> list:
-
+        """
+        Extract and resolve method calls from a function node.
+        
+        Args:
+            function_node: Tree-sitter node representing the function
+            source_code: Source code text
+            imports: Dictionary of import statements
+            
+        Returns:
+            List of resolved method calls
+        """
         method_calls = []
-        incan = {}
-        for child in function_node.children:
-            if child.type == "block":
-                for expr in child.children:
-                    for act in expr.children:
-                        call_alias = None
-                        if act.type == "assignment":
-                            for call in act.children:
-                                if call.type == "identifier":
-                                    call_alias = call.text.decode("utf-8")
-                                if call.type == "call":
-                                    call_target = call.child_by_field_name("function")
-                                    if call_target:
-                                        call_text = source_code[
-                                            call_target.start_byte : call_target.end_byte
-                                        ]
-
-                                        resolved_call = self._resolve_import(
-                                            call_text, call_alias, imports, incan
-                                        )
-                                        if resolved_call:
-                                            method_calls.append(resolved_call)
-
-                        if act.type == "call":
-                            call_target = act.child_by_field_name("function")
-                            if call_target:
-                                call_text = source_code[
-                                    call_target.start_byte : call_target.end_byte
-                                ]
-                                resolved_call = self._resolve_import(call_text, call_alias, imports, incan)
-                                if resolved_call:
-                                    method_calls.append(resolved_call)
-
+        alias_map = {}
+        
+        def process_call(call_node: tree_sitter.Node, alias=None):
+            call_target = call_node.child_by_field_name("function")
+            if not call_target:
+                return
+                
+            call_text = source_code[call_target.start_byte:call_target.end_byte]
+            resolved_call = self._resolve_import(call_text, alias, imports, alias_map)
+            if resolved_call:
+                method_calls.append(resolved_call)
+        
+        block_node = next((child for child in function_node.children if child.type == "block"), None)
+        if not block_node:
+            return []
+            
+        for expr in block_node.children:
+            if not expr.children:
+                continue
+                
+            for node in expr.children:
+                # Handle assignment statements
+                if node.type == "assignment":
+                    alias = None
+                    call_node = None
+                    
+                    for child in node.children:
+                        if child.type == "identifier":
+                            alias = child.text.decode("utf-8")
+                        elif child.type == "call":
+                            call_node = child
+                    
+                    if call_node:
+                        process_call(call_node, alias)
+                
+                elif node.type == "call":
+                    process_call(node)
+        
         return method_calls
 
     def extract_structure(self, filename: str) -> list:

@@ -179,21 +179,18 @@ class DocGen(object):
         - A short summary of what the method does.
         - A description of its parameters without types.
         - The return type and description.
-        - Use provided context for the method's docstring.
+        {"- Use provided source code of imported methods, functions to describe their usage." if context_code else ""}
 
         Method Details:
         - Method Name: {method_details["method_name"]}
         - Method decorators: {method_details["decorators"]}
-        - Arguments: {method_details["arguments"]}
-        - Return Type: {method_details["return_type"]}
-        - Docstring: {method_details["docstring"]}
         - Source Code:
         ```
         {method_details["source_code"]}
         ```
+        {"- Imported methods source code:" if context_code else ""}
+        {context_code if context_code else ""}
         """
-        if context_code:
-            prompt += f"\nAdditional Context from Dependencies:\n{context_code}\n"
         return self.model_handler.send_request(prompt)
 
     def extract_pure_docstring(self, gpt_response: str) -> str:
@@ -280,6 +277,18 @@ class DocGen(object):
         return updated_code
     
     def context_extractor(self, method_details: dict, structure: dict) -> str:
+        def is_target_class(item, call):
+            return item["type"] == "class" and item["name"] == call["class"]
+
+        def is_target_method(method, call):
+            return method["method_name"] == call["function"]
+
+        def is_constructor(method, call):
+            return method["method_name"] == "__init__" and call["function"] is None
+
+        def is_target_function(item, call):
+            return item["type"] == "function" and item["details"]["method_name"] == call["class"]
+        
         context = []
         
         for call in method_details.get("method_calls", []):
@@ -288,14 +297,12 @@ class DocGen(object):
                 continue
             
             for item in file_data.get("structure", []):
-                if item["type"] == "class" and item["name"] == call["class"]:
+                if is_target_class(item, call):
                     for method in item.get("methods", []):
-                        if method["method_name"] == call["function"]:
-                            print("here")
-                            context.append(f"# Method {call['function']} in class {call['class']}\n" + method.get("source_code", ""))
-                        elif call["function"] == None and method["method_name"] == "__init__":
-                            context.append(f"# Method __init__ in class {call['class']}\n" + method.get("source_code", ""))
-                elif item["type"] == "function" and item["details"]["method_name"] == call["class"]:
+                        if is_target_method(method, call) or is_constructor(method, call):
+                            method_name = call['function'] if call["function"] else "__init__"
+                            context.append(f"# Method {method_name} in class {call['class']}\n" + method.get("source_code", ""))
+                elif is_target_function(item, call):
                     context.append(f"# Function {call['class']}\n" + item["details"].get("source_code", ""))
         
         return "\n".join(context)
