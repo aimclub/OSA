@@ -19,7 +19,7 @@ def get_cli_args():
         type=str,
         help="LLM API service provider",
         nargs="?",
-        choices=["llama", "openai"],
+        choices=["llama", "openai", "ollama"],
         default="llama",
     )
     parser.add_argument(
@@ -36,7 +36,8 @@ def get_cli_args():
             "Specific LLM model to use. "
             "To see available models go there:\n"
             "1. https://vsegpt.ru/Docs/Models\n"
-            "2. https://platform.openai.com/docs/models"
+            "2. https://platform.openai.com/docs/models\n"
+            "3. https://ollama.com/library"
         ),
         nargs="?",
         default="gpt-3.5-turbo",
@@ -69,5 +70,11 @@ def get_cli_args():
     ),
     nargs='*',
     default=[],
+    )
+    parser.add_argument(
+    "--delete-dir",
+    action="store_true",
+    help="Enable deleting the downloaded repository after processing. ("
+         "Linux only)"
     )
     return parser.parse_args()

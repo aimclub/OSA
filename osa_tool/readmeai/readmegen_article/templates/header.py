@@ -11,14 +11,15 @@ class ArticleHeaderTemplate(BaseTemplate):
 
     HEADER_TEMPLATES: ClassVar[dict] = {
         HeaderStyleOptions.CLASSIC: """\
-<p align="{align}">
-    <img src="{image}" align="{align}" width="{image_width}">
-</p>
 <p align="{align}"><h1 align="{align}">{repo_name}</h1></p>
+<p align="center">
+  <a href="https://itmo.ru/"><img src="https://raw.githubusercontent.com/aimclub/open-source-ops/43bb283758b43d75ec1df0a6bb4ae3eb20066323/badges/ITMO_badge.svg"></a>
+  <a href="https://github.com/ITMO-NSS-team/Open-Source-Advisor"><img src="https://img.shields.io/badge/improved%20by-OSA-blue"></a>
+</p>
 """,
     }
 
-    def __init__(self, style: str = HeaderStyleOptions.CLASSIC) -> None:
+    def __init__(self, style: HeaderStyleOptions = HeaderStyleOptions.CLASSIC) -> None:
         self.style = style
 
     def render(self, data: dict[str, Any]) -> str:

@@ -4,9 +4,7 @@ import re
 
 import tiktoken
 
-from typing import Union, List
-
-from osa_tool.osatreesitter.models import ModelHandlerFactory, ModelHandler
+from osa_tool.models.models import ModelHandlerFactory, ModelHandler
 from osa_tool.readmeai.config.settings import ConfigLoader
 from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
 
@@ -57,7 +55,7 @@ class DocGen(object):
             file structure and for each class or standalone function, generating its documentation.
     """
 
-    def __init__(self, config_loader: Union[ConfigLoader, ArticleConfigLoader]):
+    def __init__(self, config_loader: ConfigLoader | ArticleConfigLoader):
         """
         Instantiates the object of the class.
 
@@ -389,7 +387,6 @@ class DocGen(object):
             file_structure: A dictionary where keys are filenames and values are lists of dictionaries.
                 Each dictionary represents a class or a standalone function in the file and contains information
                 like its name, type (class or function), docstring, and methods (in case of a class).
-            model: The model to be used by OpenAI's API to generate the documentation. Defaults to 'gpt-4'.
 
         Returns:
             The final documentation as a string.

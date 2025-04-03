@@ -14,7 +14,11 @@ from pydantic import (
 import requests
 from rich.logging import RichHandler
 from pathlib import Path
+from osa_tool.utils import get_base_repo_url
 from osa_tool.readmeai.errors import GitURLError
+
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -115,26 +119,6 @@ def _parse_repository_metadata(repo_data: dict) -> RepositoryMetadata:
     )
 
 
-def _get_base_repo_url(repo_url: str = None) -> str:
-    """Extracts the base repository URL path from a given GitHub URL.
-
-    Args:
-        repo_url (str, optional): The GitHub repository URL. If not provided,
-            the instance's `repo_url` attribute is used. Defaults to None.
-
-    Returns:
-        str: The base repository path (e.g., 'username/repo-name').
-
-    Raises:
-        ValueError: If the provided URL does not start with 'https://github.com/'.
-    """
-    if repo_url.startswith("https://github.com/"):
-        base_repo_path = repo_url[len("https://github.com/"):].rstrip('/')
-        return f"https://api.github.com/repos/{base_repo_path}"
-    else:
-        raise ValueError("Unsupported repository URL format.")
-
-
 @lru_cache(maxsize=1)
 def load_data_metadata(repo_url: str) -> RepositoryMetadata | None:
     """
@@ -145,7 +129,8 @@ def load_data_metadata(repo_url: str) -> RepositoryMetadata | None:
             "Authorization": f"token {os.getenv('GIT_TOKEN')}",
             "Accept": "application/vnd.github.v3+json"
         }
-        url = _get_base_repo_url(repo_url)
+        base_url = get_base_repo_url(repo_url)
+        url = f"https://api.github.com/repos/{base_url}"
 
         response = requests.get(url=url, headers=headers)
 

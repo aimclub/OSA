@@ -1,13 +1,15 @@
-[tool.poetry]
+[project]
+name = "osa_tool"
+version = "0.1.2"
+description = "Tool that just makes your open source project better!"
+requires-python = ">=3.10,<4.0"
+authors = [
+    { name = "ITMO-NSS-team", email = "itmo.nss.team@gmail.com" }
+]
 readme = "README.md"
 license = "BSD-3-Clause"
-name = "osa-tool"
-version = "0.1.0"
-description = "Tool that just makes your open source project better!"
-authors = ["ITMO-NSS-team <itmo.nss.team@gmail.com>"]
-packages = [
-    { include = "OSA" },
-]
+packages = [{ include = "osa_tool" }]
+dynamic = [ "dependencies" ]
 
 [project.urls]
 Homepage = "https://github.com/ITMO-NSS-team/Open-Source-Advisor"
@@ -15,7 +17,6 @@ Documentation = "https://itmo-nss-team.github.io/Open-Source-Advisor/"
 Issues = "https://github.com/ITMO-NSS-team/Open-Source-Advisor/issues"
 
 [tool.poetry.dependencies]
-python = "^3.10"
 aiohappyeyeballs = "2.4.4"
 aiohttp = "3.11.11"
 aiosignal = "1.3.2"
@@ -31,6 +32,7 @@ distro = "1.9.0"
 exceptiongroup = "1.2.2"
 frozenlist = "1.5.0"
 gitdb = "4.0.11"
+gitingest = "0.1.3"
 gitpython = "3.1.43"
 h11 = "0.14.0"
 httpcore = "1.0.7"
@@ -56,7 +58,9 @@ pytest = "8.3.4"
 pytest-mock = "3.14.0"
 python-dotenv = "1.0.1"
 PyYAML = "6.0.2"
+qrcode = "8.0"
 regex = "2024.11.6"
+reportlab = "4.3.1"
 requests = "2.32.3"
 rich = "13.9.4"
 smmap = "5.0.2"
@@ -70,10 +74,13 @@ tree-sitter-python = "0.23.4"
 typing_extensions = "4.12.2"
 urllib3 = "2.3.0"
 yarl = "1.18.3"
-ProtoLLM = ">=0.1.1"
+ProtoLLM = ">=0.1.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.3.4"
+
+[project.scripts]
+osa-tool = "osa_tool.run:main"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

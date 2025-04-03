@@ -80,11 +80,6 @@ def test_build(markdown_builder: MarkdownBuilder):
         ),
         patch.object(
             MarkdownBuilder,
-            "contacts",
-            new="Contacts"
-        ),
-        patch.object(
-            MarkdownBuilder,
             "citation",
             new="Citation"
         ),
@@ -105,7 +100,6 @@ def test_build(markdown_builder: MarkdownBuilder):
                 "- [Contributing](#contributing)",
                 "- [License](#license)",
                 "- [Acknowledgments](#acknowledgments)",
-                "- [Contacts](#contacts)",
                 "- [Citation](#citation)",
                 "",
                 "---",
@@ -118,7 +112,6 @@ def test_build(markdown_builder: MarkdownBuilder):
                 "Contributing",
                 "License",
                 "Acknowledgements",
-                "Contacts",
                 "Citation"
             ]
         )

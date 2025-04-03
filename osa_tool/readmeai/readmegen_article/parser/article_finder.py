@@ -26,14 +26,16 @@ class ArticleFinder:
         - PDF files found in one or more readme.md
         - PDF file from the provided URL (if available) or file path
         """
-
+        '''
         pdf_paths = [f"{self.config.git.name}/{path}" for path in self.docs if path.endswith(".pdf")]
-
+        
         readme_paths = [f"{self.config.git.name}/{path}" for path in self.docs if path.lower().endswith("readme.md")]
         for readme_path in readme_paths:
             pdf_links = self.extract_pdf_links_from_readme(readme_path)
             pdf_paths.extend(pdf_links)
+        '''
 
+        pdf_paths = []
         if self.pdf_source:
             if self.pdf_source.lower().startswith("http"):
                 pdf_file = self.fetch_pdf_from_url(self.pdf_source)
