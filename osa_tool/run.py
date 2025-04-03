@@ -92,6 +92,7 @@ def main():
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
 
+
 def convert_notebooks(config_loader: ConfigLoader, notebook_paths: List[str] | None = None) -> None:
     """Converts Jupyter notebooks to Python scripts based on provided paths.
 
@@ -112,6 +113,7 @@ def convert_notebooks(config_loader: ConfigLoader, notebook_paths: List[str] | N
     
     except Exception as e:
         logger.error("Error while converting notebooks: %s", repr(e), exc_info=True)
+
 
 def generate_docstrings(config_loader) -> None:
     """Generates a docstrings for .py's classes and methods of the provided repository.
