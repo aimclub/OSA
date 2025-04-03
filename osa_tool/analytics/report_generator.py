@@ -28,7 +28,6 @@ class TextGenerator:
                                       parse_folder_name(self.repo_url))
         self.prompt_path = os.path.join(
             osa_project_root(),
-            "osa_tool",
             "config",
             "standart",
             "settings",

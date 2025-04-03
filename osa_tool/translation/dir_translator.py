@@ -31,7 +31,7 @@ class DirectoryTranslator:
         self.config = config_loader.config
         self.repo_url = self.config.git.repository
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
-        self.base_path = os.path.join(osa_project_root(), parse_folder_name(self.repo_url))
+        self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
 
         self.excluded_dirs = {".git", ".venv"}
         self.extensions_code_files = {".py"}
