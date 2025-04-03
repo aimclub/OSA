@@ -1,6 +1,8 @@
 import logging
 import os
 
+from typing import List
+
 from rich.logging import RichHandler
 
 from osa_tool.analytics.report_maker import ReportGenerator
@@ -13,6 +15,7 @@ from osa_tool.readmeai.config.settings import ConfigLoader, GitSettings
 from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
 from osa_tool.readmeai.readme_core import readme_agent
 from osa_tool.translation.dir_translator import DirectoryTranslator
+from osa_tool.convertion.notebook_converter import NotebookConverter
 from osa_tool.utils import (
     delete_repository,
     osa_project_root,
@@ -46,6 +49,7 @@ def main():
     base_url = args.base_url
     model_name = args.model
     article = args.article
+    notebook_paths = args.convert_notebooks
 
     try:
         # Load configurations and update
@@ -58,6 +62,10 @@ def main():
         github_agent.clone_repository()
         github_agent.create_and_checkout_branch()
 
+        # .ipynb to .py convertion
+        if notebook_paths is not None:
+            convert_notebooks(config, notebook_paths)
+        
         # Repository Analysis Report generation
         sourcerank = SourceRank(config)
         analytics = ReportGenerator(config, sourcerank)
@@ -84,6 +92,26 @@ def main():
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
 
+def convert_notebooks(config_loader: ConfigLoader, notebook_paths: List[str] | None = None) -> None:
+    """Converts Jupyter notebooks to Python scripts based on provided paths.
+
+    Args:
+        config_loader: The configuration object which contains repo_url.
+        notebook_paths: A list of paths to the notebooks to be converted (or None). If empty,
+                        the converter will process the current repository.
+
+    """
+    try:
+        converter = NotebookConverter()
+        if len(notebook_paths) == 0:
+            repo_url = config_loader.config.git.repository
+            converter.process_path(os.path.basename(repo_url))
+        else:
+            for path in notebook_paths:
+                converter.process_path(path)
+    
+    except Exception as e:
+        logger.error("Error while converting notebooks: %s", repr(e), exc_info=True)
 
 def generate_docstrings(config_loader) -> None:
     """Generates a docstrings for .py's classes and methods of the provided repository.
