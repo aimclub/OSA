@@ -33,7 +33,7 @@ def readme_agent(config_loader, article: str | None) -> None:
         Exception: If an error occurs during README.md generation.
     """
     repo_url = config_loader.config.git.repository
-    repo_path = os.path.join(osa_project_root(), parse_folder_name(repo_url))
+    repo_path = os.path.join(os.getcwd(), parse_folder_name(repo_url))
     file_to_save = os.path.join(repo_path, "README.md")
 
     logger.info("Started generating README.md. Processing the repository: %s"

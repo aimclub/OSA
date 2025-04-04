@@ -155,11 +155,11 @@ def load_configuration(
     if article is None:
 
         config_loader = ConfigLoader(
-            config_dir=os.path.join(osa_project_root(), "osa_tool", "config",
+            config_dir=os.path.join(osa_project_root(), "config",
                                     "standart"))
     else:
         config_loader = ArticleConfigLoader(
-            config_dir=os.path.join(osa_project_root(), "osa_tool", "config",
+            config_dir=os.path.join(osa_project_root(), "config",
                                     "with_article"))
 
     config_loader.config.git = GitSettings(repository=repo_url)
