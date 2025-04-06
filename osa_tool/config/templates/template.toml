@@ -1,0 +1,90 @@
+# -- Overview Section ----------------------------------------------------------
+overview = """
+
+## Overview
+
+{0}
+
+---
+"""
+
+# -- Core Features Section -----------------------------------------------------
+core_features = """
+## Core features
+
+{0}
+
+---
+"""
+
+# -- Examples Section ---------------------------------------------------------------
+examples = """
+
+## Examples
+
+Examples of how this should work and how it should be used are available [here]({path}).
+
+---
+"""
+
+# -- Docs Section --------------------------------------------------------------
+documentation = """
+## Documentation
+
+A detailed {repo_name} description is available [here]({path}).
+
+---
+"""
+
+# -- License Section -----------------------------------------------------------
+license = """
+
+## License
+
+This project is protected under the {license_name}. For more details, refer to the [LICENSE]({path}) file.
+
+---
+"""
+
+# -- Citation Section ----------------------------------------------------------
+citation = """
+
+## Citation
+
+"""
+
+citation_v1 = """
+If you use this software, please cite it as it is written in the [CITATION]({path}) file.
+
+---
+"""
+
+citation_v2 = """
+If you use this software, please cite it as below.
+
+### APA format:
+
+    {owner} ({year}). {repo_name} repository [Computer software]. {repository_url}
+
+### BibTeX format:
+
+    @misc{{{repo_name},
+
+        author = {{{owner}}},
+
+        title = {{{repo_name} repository}},
+
+        year = {{{year}}},
+
+        publisher = {{{publisher}}},
+
+        journal = {{{publisher} repository}},
+
+        howpublished = {{\\url{{{repository_url}.git}}}},
+
+        url = {{{repository_url}.git}}
+
+    }}
+
+---
+"""

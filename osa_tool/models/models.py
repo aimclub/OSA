@@ -1,15 +1,15 @@
-import logging
 import os
-from protollm.connectors import create_llm_connector
 # from osa_tool.osatreesitter.connector_creator import create_llm_connector
-from osa_tool.readmeai.config.settings import Settings
 from abc import ABC, abstractmethod
 from uuid import uuid4
 
 import dotenv
 import openai
 import requests
-from osa_tool.readmeai.config.settings import Settings
+from protollm.connectors import create_llm_connector
+
+from osa_tool.config.settings import Settings
+from osa_tool.utils import logger
 
 
 class ModelHandler(ABC):
@@ -191,7 +191,7 @@ class LlamaHandler(ModelHandler):
         """
         self.initialize_payload(self.config, prompt)
         response = requests.post(url=self.url, json=self.payload)
-        logging.info(response)
+        logger.info(response)
         return response.json()["content"]
 
 

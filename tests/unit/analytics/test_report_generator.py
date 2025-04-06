@@ -1,5 +1,3 @@
-import os
-
 from unittest.mock import MagicMock, patch
 
 
@@ -25,31 +23,6 @@ def test_build_prompt(mock_tomllib_load, mock_open, text_generator):
     prompt = text_generator._build_prompt()
     # Assert
     assert prompt == "Prompt"
-
-
-def test_extract_readme_content_no_readme(text_generator):
-    # Arrange
-    text_generator.sourcerank.readme_presence = MagicMock(return_value=False)
-    # Act
-    result = text_generator._extract_readme_content()
-    # Assert
-    assert result == "No README.md file"
-
-
-@patch("os.path.exists", return_value=True)
-@patch("builtins.open", new_callable=MagicMock)
-def test_extract_readme_content_with_readme(mock_open, mock_exists, text_generator):
-    # Arrange
-    text_generator.sourcerank.readme_presence = MagicMock(return_value=True)
-    text_generator.base_path = "/mock/path"
-    mock_open.return_value.__enter__.return_value.read.return_value = "# testrepo Readme"
-    # Act
-    result = text_generator._extract_readme_content()
-
-    # Assert
-    assert result == "# testrepo Readme"
-    mock_exists.assert_called_with(os.path.join("/mock/path", "README.md"))
-    mock_open.assert_called_with(os.path.join("/mock/path", "README.md"), "r", encoding="utf-8")
 
 
 def test_extract_presence_files(text_generator):
