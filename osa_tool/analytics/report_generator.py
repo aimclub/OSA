@@ -24,8 +24,10 @@ class TextGenerator:
             self.config)
         self.repo_url = self.config.git.repository
         self.metadata = load_data_metadata(self.repo_url)
-        self.base_path = os.path.join(osa_project_root(),
-                                      parse_folder_name(self.repo_url))
+        self.base_path = os.path.join(
+            os.getcwd(),
+            parse_folder_name(self.repo_url)
+        )
         self.prompt_path = os.path.join(
             osa_project_root(),
             "config",
