@@ -17,7 +17,7 @@ core_features = """
 ---
 """
 
-# -- Examples Section ---------------------------------------------------------------
+# -- Examples Section ----------------------------------------------------------
 examples = """
 
 ## Examples
@@ -34,6 +34,29 @@ documentation = """
 A detailed {repo_name} description is available [here]({path}).
 
 ---
+"""
+
+# -- Contribution Section ------------------------------------------------------
+contributing = """
+## Contributing
+
+{dicsussion_section}
+{issue_section}
+{contributing_section}
+
+---
+"""
+
+discussion_section = """
+- **[Join the Discussions]({discussions_url})**: Share your insights, provide feedback, or ask questions.
+"""
+
+issues_section = """
+- **[Report Issues]({issues_url})**: Submit bugs found or log feature requests for the project.
+"""
+
+contributing_section = """
+- **[Submit Pull Requests]({contributing_url})**: To learn more about making a contribution to {name}.
 """
 
 # -- License Section -----------------------------------------------------------

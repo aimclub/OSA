@@ -1,6 +1,8 @@
 import json
 import os
+import re
 
+import requests
 import tomli
 
 from osa_tool.analytics.metadata import load_data_metadata
@@ -31,11 +33,8 @@ class MarkdownBuilder:
             "templates",
             "template.toml"
         )
-        self.url_path = (
-            f"https://{self.config.git.host_domain}/"
-            f"{self.config.git.full_name}/tree/"
-            f"{self.metadata.default_branch}/"
-        )
+        self.url_path = f"https://{self.config.git.host_domain}/{self.config.git.full_name}/"
+        self.branch_path = f"tree/{self.metadata.default_branch}/"
         self._overview_json = overview
         self._core_features_json = core_features
         self._template = self.load_template()
@@ -46,6 +45,11 @@ class MarkdownBuilder:
         """
         with open(self.template_path, "rb") as file:
             return tomli.load(file)
+
+    @staticmethod
+    def _check_url(url):
+        response = requests.get(url)
+        return response.status_code == 200
 
     @property
     def overview(self) -> str:
@@ -75,20 +79,20 @@ class MarkdownBuilder:
     @property
     def examples(self) -> str:
         """Generates the README Examples section"""
-        pattern = r'\b(tutorials?|examples|notebooks?)\b'
         if not self.sourcerank.examples_presence():
             return ""
 
-        path = self.url_path + f"{find_in_repo_tree(self.sourcerank.tree, pattern)}"
+        pattern = r'\b(tutorials?|examples|notebooks?)\b'
+        path = self.url_path + self.branch_path + f"{find_in_repo_tree(self.sourcerank.tree, pattern)}"
         return self._template["examples"].format(path=path)
 
     @property
     def documentation(self) -> str:
         """Generates the README Documentation section"""
-        pattern = r'\b(docs?|documentation|wiki|manuals?)\b'
         if not self.metadata.homepage_url:
             if self.sourcerank.docs_presence():
-                path = self.url_path + f"{find_in_repo_tree(self.sourcerank.tree, pattern)}"
+                pattern = r'\b(docs?|documentation|wiki|manuals?)\b'
+                path = self.url_path + self.branch_path + f"{find_in_repo_tree(self.sourcerank.tree, pattern)}"
             else:
                 return ""
         else:
@@ -96,22 +100,51 @@ class MarkdownBuilder:
         return self._template["documentation"].format(repo_name=self.metadata.name, path=path)
 
     @property
+    def contributing(self) -> str:
+        """Generates the README Contributing section"""
+        discussions_url = self.url_path + "discussions"
+        if self._check_url(discussions_url):
+            discussions = self._template["discussion_section"].format(discussions_url=discussions_url)
+        else:
+            discussions = ""
+
+        issues_url = self.url_path + "issues"
+        issues = self._template["issues_section"].format(issues_url=issues_url)
+
+        if self.sourcerank.contributing_presence():
+            pattern = r'\b\w*contribut\w*\.(md|rst|txt)$'
+
+            contributing_url = self.url_path + self.branch_path + find_in_repo_tree(self.sourcerank.tree, pattern)
+            contributing = self._template["contributing_section"].format(
+                contributing_url=contributing_url,
+                name=self.config.git.name
+            )
+        else:
+            contributing = ""
+
+        return self._template["contributing"].format(
+            dicsussion_section=discussions,
+            issue_section=issues,
+            contributing_section=contributing
+        )
+
+    @property
     def license(self) -> str:
         """Generates the README License section"""
-        pattern = r'\bLICEN[SC]E(\.\w+)?\b'
         if not self.metadata.license_name:
             return ""
 
+        pattern = r'\bLICEN[SC]E(\.\w+)?\b'
         help_var = find_in_repo_tree(self.sourcerank.tree, pattern)
-        path = self.url_path + help_var if help_var else self.metadata.license_url
+        path = self.url_path + self.branch_path + help_var if help_var else self.metadata.license_url
         return self._template["license"].format(license_name=self.metadata.license_name, path=path)
 
     @property
     def citation(self) -> str:
         """Generates the README Citation section"""
-        pattern = r'\bCITATION(\.\w+)?\b'
         if self.sourcerank.citation_presence():
-            path = self.url_path + find_in_repo_tree(self.sourcerank.tree, pattern)
+            pattern = r'\bCITATION(\.\w+)?\b'
+            path = self.url_path + self.branch_path + find_in_repo_tree(self.sourcerank.tree, pattern)
             return self._template["citation"] + self._template["citation_v1"].format(path=path)
 
         return self._template["citation"] + self._template["citation_v2"].format(
@@ -122,13 +155,36 @@ class MarkdownBuilder:
             repository_url=self.config.git.repository,
         )
 
+    @property
+    def table_of_contents(self) -> str:
+        """Generates the README an adaptive Table of Contents"""
+        sections = {
+            "Core features": self.core_features,
+            "Examples": self.examples,
+            "Documentation": self.documentation,
+            "Contributing": self.contributing,
+            "License": self.license,
+            "Citation": self.citation,
+        }
+
+        toc = ["## Table of Contents\n"]
+
+        for section_name, section_content in sections.items():
+            if section_content:
+                toc.append("- [{}]({})".format(section_name, "#" + re.sub(r'\s+', '-', section_name.lower())))
+
+        toc.append("\n---")
+        return "\n".join(toc)
+
     def build(self) -> str:
         """Builds each section of the README.md file."""
         readme_contents = [
             self.overview,
+            self.table_of_contents,
             self.core_features,
             self.examples,
             self.documentation,
+            self.contributing,
             self.license,
             self.citation
         ]

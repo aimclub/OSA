@@ -70,5 +70,5 @@ def find_in_repo_tree(tree: str, pattern: str) -> str:
 
     for line in tree.split("\n"):
         if compiled_pattern.search(line):
-            return line
+            return line.replace("\\", "/")
     return ""

@@ -53,3 +53,10 @@ class SourceRank:
             re.IGNORECASE
         )
         return bool(pattern.search(self.tree))
+
+    def contributing_presence(self) -> bool:
+        pattern = re.compile(
+            r'\b\w*contribut\w*\.(md|rst|txt)$',
+            re.IGNORECASE
+        )
+        return bool(pattern.search(self.tree))
