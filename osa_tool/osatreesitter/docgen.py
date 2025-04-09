@@ -170,7 +170,9 @@ class DocGen(object):
 
         return self.model_handler.send_request(prompt)
 
-    def generate_method_documentation(self, method_details: dict, context_code: str = None) -> str:
+    def generate_method_documentation(
+        self, method_details: dict, context_code: str = None
+    ) -> str:
         """
         Generate documentation for a single method.
         """
@@ -275,8 +277,31 @@ class DocGen(object):
         )
 
         return updated_code
-    
+
     def context_extractor(self, method_details: dict, structure: dict) -> str:
+        """
+            Extracts the context of method calls and functions from given method_details and code structure.
+
+            Parameters:
+            - method_details: A dictionary containing details about the method calls.
+            - structure: A dictionary representing the code structure.
+
+            Returns:
+            A string containing the context of the method calls and functions in the format:
+            - If a method call is found:
+              "# Method {method_name} in class {class_name}
+        {source_code}"
+            - If a function call is found:
+              "# Function {class_name}
+        {source_code}"
+
+            Note:
+            - This method iterates over the method calls in method_details and searches for the corresponding methods and functions
+              in the code structure. It constructs the context of the found methods and functions by appending their source code
+              along with indicator comments.
+            - The returned string contains the structured context of all the detected methods and functions.
+        """
+
         def is_target_class(item, call):
             return item["type"] == "class" and item["name"] == call["class"]
 
@@ -287,24 +312,37 @@ class DocGen(object):
             return method["method_name"] == "__init__" and call["function"] is None
 
         def is_target_function(item, call):
-            return item["type"] == "function" and item["details"]["method_name"] == call["class"]
-        
+            return (
+                item["type"] == "function"
+                and item["details"]["method_name"] == call["class"]
+            )
+
         context = []
-        
+
         for call in method_details.get("method_calls", []):
             file_data = structure.get(call["path"], {})
             if not file_data:
                 continue
-            
+
             for item in file_data.get("structure", []):
                 if is_target_class(item, call):
                     for method in item.get("methods", []):
-                        if is_target_method(method, call) or is_constructor(method, call):
-                            method_name = call['function'] if call["function"] else "__init__"
-                            context.append(f"# Method {method_name} in class {call['class']}\n" + method.get("source_code", ""))
+                        if is_target_method(method, call) or is_constructor(
+                            method, call
+                        ):
+                            method_name = (
+                                call["function"] if call["function"] else "__init__"
+                            )
+                            context.append(
+                                f"# Method {method_name} in class {call['class']}\n"
+                                + method.get("source_code", "")
+                            )
                 elif is_target_function(item, call):
-                    context.append(f"# Function {call['class']}\n" + item["details"].get("source_code", ""))
-        
+                    context.append(
+                        f"# Function {call['class']}\n"
+                        + item["details"].get("source_code", "")
+                    )
+
         return "\n".join(context)
 
     def process_python_file(self, parsed_structure: dict) -> None:
@@ -333,7 +371,9 @@ class DocGen(object):
                             logging.info(
                                 f"Generating docstring for method: {method['method_name']} in class {item['name']} at {filename}"
                             )
-                            method_context = self.context_extractor(method, parsed_structure)
+                            method_context = self.context_extractor(
+                                method, parsed_structure
+                            )
                             generated_docstring = self.generate_method_documentation(
                                 method, method_context
                             )
@@ -381,7 +421,12 @@ class DocGen(object):
                     )
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(source_code)
-            black.format_file_in_place(Path(filename), fast=True, mode=black.FileMode(), write_back=black.WriteBack.YES)
+            black.format_file_in_place(
+                Path(filename),
+                fast=True,
+                mode=black.FileMode(),
+                write_back=black.WriteBack.YES,
+            )
             logging.info(f"Updated file: {filename}")
 
     def generate_method_documentation_md(self, method_details: dict) -> str:

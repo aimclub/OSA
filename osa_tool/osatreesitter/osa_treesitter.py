@@ -249,7 +249,19 @@ class OSA_TreeSitter(object):
         return dec_list
 
     def _resolve_import_path(self, import_text: str):
-        """Finds the file path of a module or class based on its import name."""
+        """
+        Resolve import path from given import text.
+
+        This method resolves the import path of entities specified in the import_text. It extracts the module name,
+        entity names, and their corresponding paths in case they are found in the current working directory.
+
+        Parameters:
+            - import_text: The import text containing import statements to be resolved.
+
+        Returns:
+            dict: A dictionary containing the import mappings where keys are alias names and values are dictionaries
+                  with 'module', 'class', and 'path' keys indicating the imported module, class, and path respectively.
+        """
         import_mapping = {}
 
         if "import " in import_text or "from " in import_text:
@@ -310,7 +322,16 @@ class OSA_TreeSitter(object):
         return import_mapping
 
     def _extract_imports(self, root_node: tree_sitter.Node):
-        """Extracts import statements and maps them to imported module names."""
+        """
+        Extracts import statements from the given root node and returns a dictionary mapping imported
+        module names to their resolved paths.
+
+        Parameters:
+            root_node: The root node from which to extract import statements.
+
+        Returns:
+            dict: A dictionary mapping imported module names to their resolved paths.
+        """
         import_map = {}
         for node in root_node.children:
             if node.type in ("import_statement", "import_from_statement"):
@@ -319,11 +340,35 @@ class OSA_TreeSitter(object):
                 import_map.update(resolved_imports)
         return import_map
 
-    def _resolve_import(self, call_text: str, call_alias: str, imports: dict, incantations: dict = None) -> dict:
+    def _resolve_import(
+        self, call_text: str, call_alias: str, imports: dict, incantations: dict = None
+    ) -> dict:
+        """
+        Resolves an import call to retrieve module/class information based on provided imports and aliases.
+
+        Parameters:
+        - call_text: The full import call text that needs to be resolved.
+        - call_alias: The alias used in the import call.
+        - imports: A dictionary mapping import aliases to corresponding module/class data.
+        - incantations: A dictionary containing any alias substitutions for import resolution. (default None)
+
+        Returns:
+        A dictionary containing the resolved import information with the following keys:
+        - "module": The module name extracted from imports data.
+        - "class": The class name extracted from imports data if available.
+        - "function": The function/method name extracted from the import call if available, None otherwise.
+        - "path": The path to the module extracted from imports data.
+
+        Note:
+        - In case of a chained method call, the "function" key will hold the entire method call string.
+
+        Example:
+        resolved_import = self._resolve_import("my_module.MyClass.some_method", "my_alias", imports_data)
+        """
         # Split at the first dot to get alias and the rest of the call
         if "." in call_text:
             alias, rest = call_text.split(".", 1)
-            if alias in incantations.keys():
+            if incantations and alias in incantations.keys():
                 alias = incantations[alias]
         else:
             incantations[call_alias] = call_text
@@ -349,7 +394,9 @@ class OSA_TreeSitter(object):
                 resolved_import["class"] = class_name
 
                 if len(parts) > 1:
-                    resolved_import["function"] = parts[1]  # Get method name after class
+                    resolved_import["function"] = parts[
+                        1
+                    ]  # Get method name after class
             else:
                 resolved_import["function"] = parts[0]  # Direct function call
 
@@ -363,55 +410,57 @@ class OSA_TreeSitter(object):
         self, function_node: tree_sitter.Node, source_code: str, imports: dict
     ) -> list:
         """
-        Extract and resolve method calls from a function node.
-        
-        Args:
-            function_node: Tree-sitter node representing the function
-            source_code: Source code text
-            imports: Dictionary of import statements
-            
+        Resolve method calls in the given function node and return a list of resolved method calls.
+
+        Parameters:
+            - function_node: The tree_sitter.Node representing the function node to analyze.
+            - source_code: The source code of the function as a string.
+            - imports: A dictionary containing information about imports.
+
         Returns:
-            List of resolved method calls
+            list: A list of resolved method calls extracted from the function node.
         """
         method_calls = []
         alias_map = {}
-        
+
         def process_call(call_node: tree_sitter.Node, alias=None):
             call_target = call_node.child_by_field_name("function")
             if not call_target:
                 return
-                
-            call_text = source_code[call_target.start_byte:call_target.end_byte]
+
+            call_text = source_code[call_target.start_byte : call_target.end_byte]
             resolved_call = self._resolve_import(call_text, alias, imports, alias_map)
             if resolved_call:
                 method_calls.append(resolved_call)
-        
-        block_node = next((child for child in function_node.children if child.type == "block"), None)
+
+        block_node = next(
+            (child for child in function_node.children if child.type == "block"), None
+        )
         if not block_node:
             return []
-            
+
         for expr in block_node.children:
             if not expr.children:
                 continue
-                
+
             for node in expr.children:
                 # Handle assignment statements
                 if node.type == "assignment":
                     alias = None
                     call_node = None
-                    
+
                     for child in node.children:
                         if child.type == "identifier":
                             alias = child.text.decode("utf-8")
                         elif child.type == "call":
                             call_node = child
-                    
+
                     if call_node:
                         process_call(call_node, alias)
-                
+
                 elif node.type == "call":
                     process_call(node)
-        
+
         return method_calls
 
     def extract_structure(self, filename: str) -> list:

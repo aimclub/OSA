@@ -1,6 +1,6 @@
 import pytest
 import os
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import patch, mock_open, MagicMock, Mock
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 
 
@@ -149,3 +149,73 @@ def test_analyze_directory(mock_extract_structure, mock_files_list, osa_tree_sit
     # Assert
     assert "script.py" in result
     assert result["script.py"] == [{"type": "function", "name": "test"}]
+
+def test_resolve_import_path_from_import(osa_tree_sitter, tmp_path):
+    file = tmp_path / "utils.py"
+    file.write_text("# dummy")
+    osa_tree_sitter.cwd = str(tmp_path)
+
+    with patch("os.path.exists", return_value=True):
+        result = osa_tree_sitter._resolve_import_path("from utils import MyClass")
+
+    assert "MyClass" in result
+    assert result["MyClass"]["module"] == "utils"
+    assert result["MyClass"]["path"].endswith("utils.py")
+
+
+def test_resolve_import_path_with_alias(osa_tree_sitter, tmp_path):
+    (tmp_path / "mypkg").mkdir()
+    file = tmp_path / "mypkg" / "core.py"
+    file.write_text("# dummy")
+    osa_tree_sitter.cwd = str(tmp_path)
+
+    with patch("os.path.exists", return_value=True):
+        result = osa_tree_sitter._resolve_import_path("import mypkg.core as core")
+
+    assert "core" in result
+    assert result["core"]["module"] == "mypkg.core"
+    assert result["core"]["path"].endswith("core.py")
+
+
+def test_resolve_import_path_invalid_format(osa_tree_sitter):
+    assert osa_tree_sitter._resolve_import_path("not an import") == {}
+
+
+def test_extract_imports_parses_nodes(osa_tree_sitter):
+    node1 = Mock()
+    node1.type = "import_statement"
+    node1.text = b"import os"
+
+    node2 = Mock()
+    node2.type = "import_from_statement"
+    node2.text = b"from math import sqrt"
+
+    root_node = Mock()
+    root_node.children = [node1, node2]
+
+    with patch.object(osa_tree_sitter, "_resolve_import_path") as mock_resolve:
+        mock_resolve.side_effect = [
+            {"os": {"module": "os", "path": "/fake/os.py"}},
+            {"sqrt": {"module": "math", "class": "sqrt", "path": "/fake/math.py"}}
+        ]
+        result = osa_tree_sitter._extract_imports(root_node)
+
+    assert "os" in result and "sqrt" in result
+
+
+def test_resolve_import_with_function(osa_tree_sitter):
+    imports = {"np": {"module": "numpy", "path": "/numpy.py"}}
+    result = osa_tree_sitter._resolve_import("np.array", "np", imports)
+    assert result["module"] == "numpy"
+    assert result["function"] == "array"
+
+
+def test_resolve_import_class_method_chain(osa_tree_sitter):
+    imports = {"mod": {"module": "pkg.module", "class": "MyClass", "path": "/module.py"}}
+    result = osa_tree_sitter._resolve_import("mod.MyClass().run", "mod", imports)
+    assert result["class"] == "MyClass"
+    assert result["function"] == "MyClass().run"
+
+
+def test_resolve_import_unknown(osa_tree_sitter):
+    assert osa_tree_sitter._resolve_import("foo.bar", "foo", {}) == {}
