@@ -1,3 +1,24 @@
+# -- Headers Section -----------------------------------------------------------
+headers = """
+# {project_name}
+
+---
+
+{info_badges}
+{tech_badges}
+---
+"""
+
+information_badges = """
+{badges_data}
+[![Acknowledgement ITMO](https://raw.githubusercontent.com/aimclub/open-source-ops/43bb283758b43d75ec1df0a6bb4ae3eb20066323/badges/ITMO_badge.svg)](https://itmo.ru/)
+[![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/ITMO-NSS-team/Open-Source-Advisor)
+"""
+
+technology_badges = """
+{technology_badges}
+"""
+
 # -- Overview Section ----------------------------------------------------------
 overview = """
 

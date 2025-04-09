@@ -8,6 +8,7 @@ import tomli
 from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.readmegen.generator.header import HeaderBuilder
 from osa_tool.readmegen.utils import find_in_repo_tree
 from osa_tool.utils import osa_project_root
 
@@ -35,8 +36,11 @@ class MarkdownBuilder:
         )
         self.url_path = f"https://{self.config.git.host_domain}/{self.config.git.full_name}/"
         self.branch_path = f"tree/{self.metadata.default_branch}/"
+
         self._overview_json = overview
         self._core_features_json = core_features
+
+        self.header = HeaderBuilder(self.config_loader).build_header()
         self._template = self.load_template()
 
     def load_template(self) -> dict:
@@ -179,6 +183,7 @@ class MarkdownBuilder:
     def build(self) -> str:
         """Builds each section of the README.md file."""
         readme_contents = [
+            self.header,
             self.overview,
             self.table_of_contents,
             self.core_features,
