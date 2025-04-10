@@ -48,7 +48,7 @@ class GithubAgent:
         """
         load_dotenv()
         self.repo_url = repo_url
-        self.clone_dir = parse_folder_name(repo_url)
+        self.clone_dir = os.path.join(os.getcwd(), parse_folder_name(repo_url))
         self.branch_name = branch_name
         self.repo = None
         self.token = os.getenv("GIT_TOKEN")

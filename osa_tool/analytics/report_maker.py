@@ -54,8 +54,7 @@ class ReportGenerator:
             "osa_logo.PNG"
         )
         self.output_path = os.path.join(
-            osa_project_root(),
-            "examples",
+            os.getcwd(),
             f"{self.metadata.name}_report.pdf"
         )
 
@@ -108,7 +107,7 @@ class ReportGenerator:
             str: The file path of the generated QR code image.
         """
         qr = qrcode.make(self.osa_url)
-        qr_path = os.path.join(osa_project_root(), "temp_qr.png")
+        qr_path = os.path.join(os.getcwd(), "temp_qr.png")
         qr.save(qr_path)
         return qr_path
 

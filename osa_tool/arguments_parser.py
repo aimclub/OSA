@@ -69,7 +69,6 @@ def get_cli_args():
             "If no paths are provided, the repo directory will be used."
         ),
         nargs='*',
-        default=[],
     )
     parser.add_argument(
         "--delete-dir",

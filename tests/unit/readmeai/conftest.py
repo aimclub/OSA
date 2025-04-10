@@ -13,7 +13,7 @@ from osa_tool.readmeai.ingestion.models import (
 
 @pytest.fixture(scope="session")
 def config_loader_fixture() -> ConfigLoader:
-    config_dir = osa_project_root().joinpath('osa_tool/config/standart')
+    config_dir = osa_project_root().joinpath('config/standart')
     return ConfigLoader(config_dir=str(config_dir))
 
 

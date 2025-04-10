@@ -18,7 +18,7 @@ class SourceRank:
         self.config = config_loader.config
         self.repo_url = self.config.git.repository
         self.metadata = load_data_metadata(self.repo_url)
-        self.repo_path = os.path.join(osa_project_root(),
+        self.repo_path = os.path.join(os.getcwd(),
                                       parse_folder_name(self.repo_url))
         self.summary, self.tree, self.content = ingest(self.repo_path)
 
