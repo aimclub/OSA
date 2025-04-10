@@ -9,6 +9,7 @@ from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.generator.header import HeaderBuilder
+from osa_tool.readmegen.generator.installation import InstallationSectionBuilder
 from osa_tool.readmegen.utils import find_in_repo_tree
 from osa_tool.utils import osa_project_root
 
@@ -41,6 +42,7 @@ class MarkdownBuilder:
         self._core_features_json = core_features
 
         self.header = HeaderBuilder(self.config_loader).build_header()
+        self.installation = InstallationSectionBuilder(self.config_loader).build_installation()
         self._template = self.load_template()
 
     def load_template(self) -> dict:
@@ -164,6 +166,7 @@ class MarkdownBuilder:
         """Generates the README an adaptive Table of Contents"""
         sections = {
             "Core features": self.core_features,
+            "Installation": self.installation,
             "Examples": self.examples,
             "Documentation": self.documentation,
             "Contributing": self.contributing,
@@ -187,6 +190,7 @@ class MarkdownBuilder:
             self.overview,
             self.table_of_contents,
             self.core_features,
+            self.installation,
             self.examples,
             self.documentation,
             self.contributing,

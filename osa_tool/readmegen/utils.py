@@ -1,3 +1,4 @@
+import json
 import os
 import re
 
@@ -14,8 +15,38 @@ def read_file(file_path: str) -> str:
     Returns:
         str: The content of the file as a string.
     """
+    if file_path.endswith(".ipynb"):
+        return read_ipynb_file(file_path)
+
     with open(file_path, "r", encoding="utf-8") as file:
         return file.read()
+
+
+def read_ipynb_file(file_path: str) -> str:
+    """
+    Extracts and returns only code and markdown cells from a Jupyter notebook file.
+
+    Args:
+        file_path: The path to the .ipynb file.
+
+    Returns:
+        str: The extracted content from code and markdown cells.
+    """
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            notebook = json.load(f)
+        cells = notebook.get("cells", [])
+        lines = []
+        for cell in cells:
+            cell_type = cell.get("cell_type")
+            if cell_type in ("code", "markdown"):
+                source = cell.get("source", [])
+                lines.append(f"# --- {cell_type.upper()} CELL ---")
+                lines.extend(source)
+                lines.append("\n")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"# Failed to read notebook: {e}"
 
 
 def save_sections(sections: str, path: str) -> None:

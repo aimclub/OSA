@@ -11,7 +11,6 @@ headers = """
 
 information_badges = """
 {badges_data}
-[![Acknowledgement ITMO](https://raw.githubusercontent.com/aimclub/open-source-ops/43bb283758b43d75ec1df0a6bb4ae3eb20066323/badges/ITMO_badge.svg)](https://itmo.ru/)
 [![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/ITMO-NSS-team/Open-Source-Advisor)
 """
 
@@ -38,9 +37,20 @@ core_features = """
 ---
 """
 
+# -- Installation Section ------------------------------------------------------
+installation = """
+## Installation
+
+{prerequisites}
+Install {project} using one of the following methods:
+
+{steps}
+
+---
+"""
+
 # -- Examples Section ----------------------------------------------------------
 examples = """
-
 ## Examples
 
 Examples of how this should work and how it should be used are available [here]({path}).
