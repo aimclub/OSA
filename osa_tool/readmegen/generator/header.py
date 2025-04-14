@@ -159,5 +159,6 @@ class HeaderBuilder:
 
             if len(badges) >= self.max_tech_badges + 1:
                 break
-
+        if len(badges) <= 3:
+            return ""
         return "\n".join(badges)

@@ -23,6 +23,7 @@ RULES:
 - Return one path per line.
 - Choose the most important files that define the project’s core logic.
 - Exclude files related to tests, configuration, or assets unless they are central to the business logic.
+- Exclude README files.
 
 """
 
@@ -94,6 +95,44 @@ RULES:
 - Focus on the project's core purpose and its value proposition without mentioning specific technical aspects.
 - Avoid technical jargon, code snippets, or any implementation details.
 - The overview should be no more than 60 words.
+
+"""
+
+getting_started = """
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+3. REAMDE CONTENT:
+
+{readme_content}
+
+3. CONTENTS OF THE EXAMPLES DIRECTORY:
+
+{examples_files_content}
+
+TASK:
+You are generating the "Getting Started" section for the README file of the project above.
+Your goal is to help a new user understand how to start using the project by analyzing the provided example files.
+
+If you find a clear entrypoint or demonstration of how to run or integrate the project — use that information to generate a concise, helpful section.
+
+If the example files are empty, contain only boilerplate code (e.g., import statements or data definitions), or do not provide any meaningful insight on how to use the project — return `null` in JSON instead of a section.
+
+Generate a JSON response following this exact structure:
+
+{{
+    "getting_started": "text or null"
+}}
+
+RULES:
+
+- Be concise and beginner-friendly.
+- Use markdown formatting with code blocks if needed.
+- Prefer actual code found in the examples over assumptions.
+- DO NOT make up usage instructions — rely only on provided content.
+- If unsure or examples are not helpful, return "getting_started": null
+- Don't add ## Getting Started at the beginning
 
 """
 

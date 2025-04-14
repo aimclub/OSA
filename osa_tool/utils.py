@@ -127,7 +127,7 @@ def get_repo_tree(repo_path: str) -> str:
 
     lines = []
     for path in sorted(repo_path.rglob("*")):
-        if ".git" in path.parts:
+        if any(part.lower() in {".git", "log", "logs"} for part in path.parts):
             continue
         if path.is_file() and path.suffix.lower() in excluded_extensions:
             continue
@@ -150,7 +150,7 @@ def extract_readme_content(repo_path: str) -> str:
     Returns:
         str: The content of the README file or a message indicating absence.
     """
-    for file in ["README.md", "README.rst"]:
+    for file in ["README.md", "README_en.rst", "README.rst"]:
         readme_path = os.path.join(repo_path, file)
 
         if os.path.exists(readme_path):

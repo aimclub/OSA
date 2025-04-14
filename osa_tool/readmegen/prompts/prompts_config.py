@@ -13,6 +13,7 @@ class PromptConfig(BaseModel):
     preanalysis: str = Field(..., description="Template for highlighting key files based on structure and README.")
     core_features: str = Field(..., description="Template for extracting core features of the project.")
     overview: str = Field(..., description="Template for generating a concise project overview.")
+    getting_started: str = Field(..., description="Template for generating a Getting Started section")
 
 
 class PromptLoader:

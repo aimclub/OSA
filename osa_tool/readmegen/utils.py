@@ -18,8 +18,10 @@ def read_file(file_path: str) -> str:
     if file_path.endswith(".ipynb"):
         return read_ipynb_file(file_path)
 
-    with open(file_path, "r", encoding="utf-8") as file:
-        return file.read()
+    if os.path.isfile(file_path):
+        with open(file_path, "r", encoding="utf-8") as file:
+            return file.read()
+    return ""
 
 
 def read_ipynb_file(file_path: str) -> str:
@@ -103,3 +105,36 @@ def find_in_repo_tree(tree: str, pattern: str) -> str:
         if compiled_pattern.search(line):
             return line.replace("\\", "/")
     return ""
+
+
+def extract_example_paths(tree: str):
+    pattern = r'\b(tutorials?|examples)\b'
+    result = []
+
+    for line in tree.splitlines():
+        line = line.strip()
+        if line.endswith('__init__.py'):
+            continue
+        if re.search(pattern, line):
+            result.append(line)
+    return result
+
+
+def remove_extra_blank_lines(path: str) -> None:
+    with open(path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+
+    cleaned_lines = []
+    blank_line = False
+
+    for line in lines:
+        if line.strip() == '':
+            if not blank_line:
+                cleaned_lines.append('\n')
+                blank_line = True
+        else:
+            cleaned_lines.append(line)
+            blank_line = False
+
+    with open(path, 'w', encoding='utf-8') as f:
+        f.writelines(cleaned_lines)

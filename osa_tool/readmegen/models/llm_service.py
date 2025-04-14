@@ -6,10 +6,11 @@ from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.context.files_contents import FileContext, FileProcessor
 from osa_tool.readmegen.postprocessor.response_cleaner import process_text
-from osa_tool.readmegen.prompts.prompts_builder import get_prompt_core_features, get_prompt_overview, \
+from osa_tool.readmegen.prompts.prompts_builder import get_getting_started_prompt, get_prompt_core_features, \
+    get_prompt_overview, \
     get_prompt_preanalysis
 from osa_tool.readmegen.prompts.prompts_config import PromptLoader
-from osa_tool.readmegen.utils import extract_relative_paths
+from osa_tool.readmegen.utils import extract_example_paths, extract_relative_paths
 from osa_tool.utils import logger, parse_folder_name
 
 
@@ -19,12 +20,13 @@ class LLMClient:
         self.config = self.config_loader.config
         self.prompts = PromptLoader().prompts
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
-        self.tree = SourceRank(config_loader).tree
+        self.sourcerank = SourceRank(config_loader)
+        self.tree = self.sourcerank.tree
         self.repo_url = self.config.git.repository
         self.metadata = load_data_metadata(self.repo_url)
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
 
-    def get_responses(self) -> tuple[str, str]:
+    def get_responses(self) -> tuple[str, str, str]:
         """
         Retrieves core features and an overview of the project by processing key files
         and sending requests to the model for the necessary information.
@@ -43,7 +45,15 @@ class LLMClient:
         core_features = process_text(core_features)
         overview = process_text(overview)
 
-        return core_features, overview
+        getting_started = None
+        if self.sourcerank.examples_presence():
+            examples_files = extract_example_paths(self.tree)
+            if examples_files:
+                examples_content = FileProcessor(self.config_loader, examples_files).process_files()
+                getting_started = self.get_getting_started(examples_content)
+                getting_started = process_text(getting_started)
+
+        return core_features, overview, getting_started
 
     def get_key_files(self) -> list[str]:
         """
@@ -97,4 +107,10 @@ class LLMClient:
         prompt = get_prompt_overview(self.prompts.overview, self.metadata, self.base_path, core_features)
         response = self.model_handler.send_request(prompt)
         logger.info("Overview analysis completed successfully.")
+        return response
+
+    def get_getting_started(self, examples_context: list[FileContext]) -> str:
+        prompt = get_getting_started_prompt(self.prompts.getting_started, self.metadata, self.base_path, examples_context)
+        response = self.model_handler.send_request(prompt)
+        logger.info("Getting Started analysis completed successfully.")
         return response

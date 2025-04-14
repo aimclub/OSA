@@ -65,6 +65,24 @@ def get_prompt_overview(
         raise
 
 
+def get_getting_started_prompt(
+        prompt: str,
+        metadata: RepositoryMetadata,
+        base_path: str,
+        examples_files: list[FileContext]
+) -> str:
+    try:
+        formatted_prompt = prompt.format(
+            project_name=metadata.name,
+            readme_content=extract_readme_content(base_path),
+            examples_files_content=serialize_file_contexts(examples_files)
+        )
+        return formatted_prompt
+    except Exception as e:
+        logger.error(f"Failed to build getting started prompt: {e}")
+        raise
+
+
 def serialize_file_contexts(files: list[FileContext]) -> str:
     """
     Serializes a list of FileContext objects into a string.

@@ -20,7 +20,6 @@ technology_badges = """
 
 # -- Overview Section ----------------------------------------------------------
 overview = """
-
 ## Overview
 
 {0}
@@ -45,6 +44,15 @@ installation = """
 Install {project} using one of the following methods:
 
 {steps}
+
+---
+"""
+
+# -- Getting Started Section ---------------------------------------------------
+getting_started = """
+## Getting Started
+
+{0}
 
 ---
 """

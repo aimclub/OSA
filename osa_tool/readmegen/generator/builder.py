@@ -22,7 +22,8 @@ class MarkdownBuilder:
     def __init__(self,
                  config_loader: ConfigLoader,
                  overview: str = None,
-                 core_features: str = None
+                 core_features: str = None,
+                 getting_started: str = None
                  ):
         self.config_loader = config_loader
         self.config = self.config_loader.config
@@ -40,6 +41,7 @@ class MarkdownBuilder:
 
         self._overview_json = overview
         self._core_features_json = core_features
+        self._getting_started_json = getting_started
 
         self.header = HeaderBuilder(self.config_loader).build_header()
         self.installation = InstallationSectionBuilder(self.config_loader).build_installation()
@@ -81,6 +83,17 @@ class MarkdownBuilder:
             for i, f in enumerate(critical)
         )
         return self._template["core_features"].format(formatted_features)
+
+    @property
+    def getting_started(self) -> str:
+        """Generates the README Getting Started section"""
+        if not self._getting_started_json:
+            return ""
+
+        getting_started_text = json.loads(self._getting_started_json)
+        if not getting_started_text["getting_started"]:
+            return ""
+        return self._template["getting_started"].format(getting_started_text["getting_started"])
 
     @property
     def examples(self) -> str:
@@ -167,6 +180,7 @@ class MarkdownBuilder:
         sections = {
             "Core features": self.core_features,
             "Installation": self.installation,
+            "Getting Started": self.getting_started,
             "Examples": self.examples,
             "Documentation": self.documentation,
             "Contributing": self.contributing,
@@ -191,6 +205,7 @@ class MarkdownBuilder:
             self.table_of_contents,
             self.core_features,
             self.installation,
+            self.getting_started,
             self.examples,
             self.documentation,
             self.contributing,
