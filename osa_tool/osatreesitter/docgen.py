@@ -345,13 +345,32 @@ class DocGen(object):
 
         return "\n".join(context)
 
+    def format_with_black(self, filename):
+        """
+        Formats a Python source code file using the `black` code formatter.
+
+        This method takes a filename as input and formats the code in the specified file using the `black` code formatter.
+
+        Parameters:
+            - filename: The path to the Python source code file to be formatted.
+
+        Returns:
+            None
+        """
+        black.format_file_in_place(
+            Path(filename),
+            fast=True,
+            mode=black.FileMode(),
+            write_back=black.WriteBack.YES,
+        )
+
     def process_python_file(self, parsed_structure: dict) -> None:
         """
         Processes a Python file by generating and inserting missing docstrings.
 
         This method iterates over the given parsed structure of a Python codebase, checks each class method for missing
         docstrings, and generates and inserts them if missing. The method updates the source file with the new docstrings
-        and prints the path of the updated file.
+        and logs the path of the updated file.
 
         Args:
             parsed_structure: A dictionary representing the parsed structure of the Python codebase.
@@ -362,6 +381,7 @@ class DocGen(object):
             None
         """
         for filename, structure in parsed_structure.items():
+            self.format_with_black(filename)
             with open(filename, "r", encoding="utf-8") as f:
                 source_code = f.read()
             for item in structure["structure"]:
@@ -421,12 +441,7 @@ class DocGen(object):
                     )
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(source_code)
-            black.format_file_in_place(
-                Path(filename),
-                fast=True,
-                mode=black.FileMode(),
-                write_back=black.WriteBack.YES,
-            )
+            self.format_with_black(filename)
             logging.info(f"Updated file: {filename}")
 
     def generate_method_documentation_md(self, method_details: dict) -> str:

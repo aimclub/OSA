@@ -1,4 +1,5 @@
 import os
+import logging
 import tree_sitter
 from tree_sitter import Parser, Language
 import tree_sitter_python as tspython
@@ -633,37 +634,40 @@ class OSA_TreeSitter(object):
         return results
 
     def show_results(self, results: dict) -> None:
-        """Method prints out the results of the directory analyze.
+        """Method logs out the results of the directory analyze.
 
         Args:
             results: dictionary containing a filename and its source code's structure.
         """
-        print(f"The provided path: '{self.cwd}'")
+        logging.info(f"The provided path: '{self.cwd}'")
         for filename, structures in results.items():
-            print(f"File: {filename}")
+            logging.info(f"File: {filename}")
             for item in structures["structure"]:
                 if item["type"] == "class":
-                    print(f"  - Class: {item['name']}, line {item['start_line']}")
+                    logging.info(
+                        f"  - Class: {item['name']}, line {item['start_line']}"
+                    )
                     if item["docstring"]:
-                        print(f"      Docstring: {item['docstring']}")
+                        logging.info(f"      Docstring: {item['docstring']}")
                     for method in item["methods"]:
-                        print(
+                        logging.info(
                             f"      - Method: {method['method_name']}, Args: {method['arguments']}, Return: {method['return_type']}, line {method['start_line']}"
                         )
                         if method["docstring"]:
-                            print(
+                            logging.info(
                                 f"          Docstring:\n        {method['docstring']}"
                             )
-                        print(f"        Source:\n{method['source_code']}")
+                        logging.info(f"        Source:\n{method['source_code']}")
                 elif item["type"] == "function":
                     details = item["details"]
-                    print(
+                    logging.info(
                         f"  - Function: {details['method_name']}, Args: {details['arguments']}, Return: {details['return_type']}, line {details['start_line']}"
                     )
                     if details["docstring"]:
-                        print(f"          Docstring:\n    {details['docstring']}")
-                    print(f"        Source:\n{details['source_code']}")
-        print()
+                        logging.info(
+                            f"          Docstring:\n    {details['docstring']}"
+                        )
+                    logging.info(f"        Source:\n{details['source_code']}")
 
     def log_results(self, results: dict) -> None:
         """Method logs the results of the directory analyze into "examples/report.txt".
