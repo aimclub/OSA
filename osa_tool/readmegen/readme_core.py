@@ -35,7 +35,12 @@ def readme_agent(config_loader, article: str | None) -> None:
             save_sections(readme_content, file_to_save)
         else:
             responses = LLMClient(config_loader).get_responses_article()
-
+            (
+                overview,
+                content,
+                algorithms
+            ) = responses
+            # still working
 
         remove_extra_blank_lines(file_to_save)
         logger.info(f"README.md successfully generated in folder {repo_path}")

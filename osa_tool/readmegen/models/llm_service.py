@@ -9,11 +9,17 @@ from osa_tool.readmegen.context.article_path import get_pdf_path
 from osa_tool.readmegen.context.files_contents import FileContext, FileProcessor
 from osa_tool.readmegen.postprocessor.response_cleaner import process_text
 from osa_tool.readmegen.prompts.prompts_article_config import PromptArticleLoader
-from osa_tool.readmegen.prompts.prompts_builder import get_files_summary_prompt, get_getting_started_prompt, \
-    get_pdf_summary_prompt, \
-    get_prompt_core_features, \
-    get_prompt_overview, \
-    get_prompt_preanalysis
+from osa_tool.readmegen.prompts.prompts_builder import (
+    get_files_summary_prompt,
+    get_getting_started_prompt,
+    get_pdf_summary_prompt,
+    get_prompt_core_features,
+    get_prompt_overview,
+    get_prompt_preanalysis,
+    get_prompt_overview_article,
+    get_prompt_content_article,
+    get_prompt_algorithms_article
+)
 from osa_tool.readmegen.prompts.prompts_config import PromptLoader
 from osa_tool.readmegen.utils import extract_example_paths, extract_relative_paths
 from osa_tool.utils import logger, parse_folder_name
@@ -69,6 +75,16 @@ class LLMClient:
         path_to_pdf = get_pdf_path(article)
         pdf_content = PdfParser(path_to_pdf).data_extractor()
         pdf_summary = self.get_pdf_summary(pdf_content)
+
+        overview = self.get_overview_article(files_summary, pdf_summary)
+        content = self.get_content_article(key_files_content, pdf_summary)
+        algorithms = self.get_algorithms_article(files_summary, pdf_summary)
+
+        overview = process_text(overview)
+        content = process_text(content)
+        algorithms = process_text(algorithms)
+
+        return overview, content, algorithms
 
 
     def get_key_files(self) -> list[str]:
@@ -142,3 +158,23 @@ class LLMClient:
         response = self.model_handler.send_request(prompt)
         logger.info("PDF Summary analysis completed successfully.")
         return response
+
+    def get_overview_article(self, files_summary: str, pdf_summary: str) -> str:
+        prompt = get_prompt_overview_article(self.prompts_article.overview, self.metadata, files_summary, pdf_summary)
+        response = self.model_handler.send_request(prompt)
+        logger.info("Overview analysis completed successfully.")
+        return response
+
+    def get_content_article(self, key_files_context: list[FileContext], pdf_summary: str) -> str:
+        prompt = get_prompt_content_article(self.prompts_article.content, self.metadata, key_files_context, pdf_summary)
+        response = self.model_handler.send_request(prompt)
+        logger.info("Content analysis completed successfully.")
+        return response
+
+    def get_algorithms_article(self, files_summary: str, pdf_summary: str) -> str:
+        prompt = get_prompt_algorithms_article(self.prompts_article.overview, self.metadata, files_summary, pdf_summary)
+        response = self.model_handler.send_request(prompt)
+        logger.info("Algorithms analysis completed successfully.")
+        return response
+
+

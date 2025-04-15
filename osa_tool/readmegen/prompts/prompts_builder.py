@@ -89,7 +89,7 @@ def get_files_summary_prompt(
 ) -> str:
     try:
         formatted_prompt = prompt.format(
-            files_content=files_content
+            files_content=serialize_file_contexts(files_content)
         )
         return formatted_prompt
     except Exception as e:
@@ -108,6 +108,59 @@ def get_pdf_summary_prompt(
         return formatted_prompt
     except Exception as e:
         logger.error(f"Failed to build PDF summary prompt: {e}")
+        raise
+
+
+def get_prompt_overview_article(
+        prompt: str,
+        metadata: RepositoryMetadata,
+        files_summary: str,
+        pdf_summary: str
+) -> str:
+    try:
+        formatted_prompt = prompt.format(
+            project_name=metadata.name,
+            files_summary=files_summary,
+            pdf_summary=pdf_summary
+        )
+        return formatted_prompt
+    except Exception as e:
+        logger.error(f"Failed to build overview prompt: {e}")
+        raise
+
+def get_prompt_content_article(
+        prompt: str,
+        metadata: RepositoryMetadata,
+        key_files: list[FileContext],
+        pdf_summary: str
+) -> str:
+    try:
+        formatted_prompt = prompt.format(
+            project_name=metadata.name,
+            files_content=key_files,
+            pdf_summary=pdf_summary
+        )
+        return formatted_prompt
+    except Exception as e:
+        logger.error(f"Failed to build content prompt: {e}")
+        raise
+
+
+def get_prompt_algorithms_article(
+        prompt: str,
+        metadata: RepositoryMetadata,
+        files_summary: str,
+        pdf_summary: str
+) -> str:
+    try:
+        formatted_prompt = prompt.format(
+            project_name=metadata.name,
+            files_summary=files_summary,
+            pdf_summary=pdf_summary
+        )
+        return formatted_prompt
+    except Exception as e:
+        logger.error(f"Failed to build algorithms prompt: {e}")
         raise
 
 
