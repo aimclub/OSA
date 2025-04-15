@@ -33,6 +33,9 @@ def readme_agent(config_loader, article: str | None) -> None:
 
             readme_content = MarkdownBuilder(config_loader, overview, core_features, getting_started).build()
             save_sections(readme_content, file_to_save)
+        else:
+            responses = LLMClient(config_loader).get_responses_article()
+
 
         remove_extra_blank_lines(file_to_save)
         logger.info(f"README.md successfully generated in folder {repo_path}")

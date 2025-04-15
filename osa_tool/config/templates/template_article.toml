@@ -1,29 +1,42 @@
-# Markdown Configuration
-[md]
+# -- Headers Section -----------------------------------------------------------
+headers = """
+# {project_name}
+
+---
+
+{info_badges}
+
+---
+"""
+
+information_badges = """
+{badges_data}
+[![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/ITMO-NSS-team/Open-Source-Advisor)
+"""
 
 # -- Overview Section ----------------------------------------------------------
-
 overview = """
 ## Overview
 
 {0}
 
+---
 """
 
 # -- Repository Contents Section ------------------------------------------------------------
-
 content = """
 ## Repository content
 
 {0}
 
+---
 """
 
 # -- Used Algorithms Section ------------------------------------------------------------
-
 algorithms = """
 ## Used algorithms
 
 {0}
 
+---
 """

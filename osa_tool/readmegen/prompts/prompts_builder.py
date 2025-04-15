@@ -83,6 +83,34 @@ def get_getting_started_prompt(
         raise
 
 
+def get_files_summary_prompt(
+        prompt: str,
+        files_content: list[FileContext]
+) -> str:
+    try:
+        formatted_prompt = prompt.format(
+            files_content=files_content
+        )
+        return formatted_prompt
+    except Exception as e:
+        logger.error(f"Failed to build files summary prompt: {e}")
+        raise
+
+
+def get_pdf_summary_prompt(
+        prompt: str,
+        pdf_content: str
+) -> str:
+    try:
+        formatted_prompt = prompt.format(
+            pdf_content=pdf_content
+        )
+        return formatted_prompt
+    except Exception as e:
+        logger.error(f"Failed to build PDF summary prompt: {e}")
+        raise
+
+
 def serialize_file_contexts(files: list[FileContext]) -> str:
     """
     Serializes a list of FileContext objects into a string.

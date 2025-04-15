@@ -4,9 +4,14 @@ from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
+from osa_tool.readmegen.context.article_content import PdfParser
+from osa_tool.readmegen.context.article_path import get_pdf_path
 from osa_tool.readmegen.context.files_contents import FileContext, FileProcessor
 from osa_tool.readmegen.postprocessor.response_cleaner import process_text
-from osa_tool.readmegen.prompts.prompts_builder import get_getting_started_prompt, get_prompt_core_features, \
+from osa_tool.readmegen.prompts.prompts_article_config import PromptArticleLoader
+from osa_tool.readmegen.prompts.prompts_builder import get_files_summary_prompt, get_getting_started_prompt, \
+    get_pdf_summary_prompt, \
+    get_prompt_core_features, \
     get_prompt_overview, \
     get_prompt_preanalysis
 from osa_tool.readmegen.prompts.prompts_config import PromptLoader
@@ -19,6 +24,7 @@ class LLMClient:
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.prompts = PromptLoader().prompts
+        self.prompts_article = PromptArticleLoader().prompts
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.sourcerank = SourceRank(config_loader)
         self.tree = self.sourcerank.tree
@@ -54,6 +60,16 @@ class LLMClient:
                 getting_started = process_text(getting_started)
 
         return core_features, overview, getting_started
+
+    def get_responses_article(self, article: str) -> tuple[str, str, str]:
+        key_files = self.get_key_files()
+        key_files_content = FileProcessor(self.config_loader, key_files).process_files()
+        files_summary = self.get_files_summary(key_files_content)
+
+        path_to_pdf = get_pdf_path(article)
+        pdf_content = PdfParser(path_to_pdf).data_extractor()
+        pdf_summary = self.get_pdf_summary(pdf_content)
+
 
     def get_key_files(self) -> list[str]:
         """
@@ -113,4 +129,16 @@ class LLMClient:
         prompt = get_getting_started_prompt(self.prompts.getting_started, self.metadata, self.base_path, examples_context)
         response = self.model_handler.send_request(prompt)
         logger.info("Getting Started analysis completed successfully.")
+        return response
+
+    def get_files_summary(self, files_content: list[FileContext]) -> str:
+        prompt = get_files_summary_prompt(self.prompts_article.file_summary, files_content)
+        response = self.model_handler.send_request(prompt)
+        logger.info("Files summary analysis completed successfully.")
+        return response
+
+    def get_pdf_summary(self, pdf_content: str) -> str:
+        prompt = get_pdf_summary_prompt(self.prompts_article.pdf_summary, pdf_content)
+        response = self.model_handler.send_request(prompt)
+        logger.info("PDF Summary analysis completed successfully.")
         return response

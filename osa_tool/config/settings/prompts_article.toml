@@ -1,29 +1,41 @@
 # LLM prompts for various text generation tasks.
 
 [prompts]
-file_summary = """Analyze the provided code repository. Your task is to summarize the following:
+file_summary = """
+INPUT DATA:
+
+1. FILES CONTENT: {files_content}
+
+TASK:
+Analyze the provided code repository. Your task is to summarize the following:
 Purpose: The overall goal and intended function of the codebase.
 Architecture: The structure of the codebase and its key components.
 Functionality: What the code achieves and the main algorithms or approaches it implements.
 Connection to the context: How the code reflects or supports the methodology, key ideas, or results described in the article.
 Ensure your summary is clear, concise, and om3its technical implementation details. Focus on high-level insights that help understand the codebase.
 
+Generate a JSON response following this exact structure:
 
-CONTEXT:
-------------------------
-FILES CONTENT: {0}
-------------------------
+{{
+    "file_summary": "text"
+}}
 
-INSTRUCTIONS:
-------------------------
-1. Avoid phrases like "This file", "The file", or "This code".
-2. Begin with a verb or noun.
-3. Do not include quotes, code snippets, bullets, or lists.
-4. Limit the response to 200-250 words.
-------------------------
+RULES:
+
+- Avoid phrases like "This file", "The file", or "This code".
+- Begin with a verb or noun.
+- Do not include quotes, code snippets, bullets, or lists.
+- Limit the response to 200-250 words.
+
 """
 
-pdf_summary = """Analyze the given text, which may be a technical report or article. Your task is to extract the following, basing your response solely on the context provided:
+pdf_summary = """
+INPUT DATA:
+
+1. PDF CONTENT: {pdf_content}
+
+TASK:
+Analyze the given text, which may be a technical report or article. Your task is to extract the following, basing your response solely on the context provided:
 
 Main topic: Identify the central subject of the document.
 Key ideas: Highlight the primary concepts or arguments presented.
@@ -32,18 +44,19 @@ Working steps: Outline the significant actions or processes involved.
 Results: Summarize the outcomes or findings.
 Ensure your response is precise, uses concise language, and avoids any additional information not present in the text.
 
-CONTEXT:
-------------------------
-PDF CONTENT: {0}
-------------------------
+Generate a JSON response following this exact structure:
 
-INSTRUCTIONS:
-------------------------
-1. Start with a strong, attention-grabbing statement.
-2. Avoid phrases like "This PDF" or "The document".
-3. Exclude quotes, code snippets, bullets, or lists.
-4. Limit the response to 200-250 words.
-------------------------
+{{
+    "pdf_summary": "text"
+}}
+
+RULES:
+
+- Start with a strong, attention-grabbing statement.
+- Avoid phrases like "This PDF" or "The document".
+- Exclude quotes, code snippets, bullets, or lists.
+- Limit the response to 200-250 words.
+
 """
 
 overview = """Outline the repository's purpose and objectives based on the following context. Emphasize main functionalities and goals without technical jargon.
