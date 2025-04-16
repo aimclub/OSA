@@ -31,8 +31,9 @@ class GithubAgent:
     Attributes:
         AGENT_SIGNATURE: A signature string appended to pull request descriptions.
         repo_url: The URL of the GitHub repository.
+        base_branch: The name of the repository's branch to be checked out.
         clone_dir: The directory where the repository will be cloned.
-        branch_name: The name of the branch to be created or checked out.
+        branch_name: The name of the branch to be created.
         repo: The GitPython Repo object representing the repository.
         token: The GitHub token for authentication.
     """
@@ -42,11 +43,12 @@ class GithubAgent:
         "\n_OSA just makes your open source project better!_"
     )
 
-    def __init__(self, repo_url: str, branch_name: str = "osa_tool"):
+    def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool"):
         """Initializes the GithubAgent with the repository URL and branch name.
 
         Args:
             repo_url: The URL of the GitHub repository.
+            repo_branch_name: The name of the repository's branch to be checked out.
             branch_name: The name of the branch to be created. Defaults to "osa_tool".
         """
         load_dotenv()
@@ -57,7 +59,7 @@ class GithubAgent:
         self.token = os.getenv("GIT_TOKEN")
         self.fork_url = None
         self.metadata = load_data_metadata(self.repo_url)
-        self.base_branch = self.metadata.default_branch
+        self.base_branch = repo_branch_name or self.metadata.default_branch
 
     def create_fork(self) -> None:
         """Creates a fork of the repository in the osa_tool account.
@@ -156,6 +158,9 @@ class GithubAgent:
 
         If the branch already exists, it simply checks out the branch.
         """
+        logger.info(f"Checking out to base branch {self.base_branch}.")
+        self.repo.git.checkout(self.base_branch)
+        logger.info(f"Switched to a branch {self.base_branch}.")
         if self.branch_name in self.repo.heads:
             logger.info(f"Branch {self.branch_name} already exists. Switching to it...")
             self.repo.git.checkout(self.branch_name)
