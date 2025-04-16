@@ -90,12 +90,21 @@ class DependencyExtractor:
             return set()
 
         techs = set()
+        encodings_to_try = ["utf-8", "utf-16", "latin-1"]
 
-        with open(path, encoding="utf-8") as file:
-            for line in file:
-                match = re.match(self.regex_requirements, line)
-                if match:
-                    techs.add(match.group(1).lower())
+        for encoding in encodings_to_try:
+            try:
+                with open(path, encoding=encoding) as file:
+                    for line in file:
+                        match = re.match(self.regex_requirements, line)
+                        if match:
+                            techs.add(match.group(1).lower())
+                    break
+            except UnicodeDecodeError:
+                continue
+        else:
+            logger.error(f"Could not decode {path} using known encodings.")
+
         return techs
 
     def _extract_from_pyproject(self) -> set[str]:
