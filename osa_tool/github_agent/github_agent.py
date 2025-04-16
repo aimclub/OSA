@@ -1,11 +1,14 @@
-from git import Repo, GitCommandError, InvalidGitRepositoryError
-import os
 import logging
-from rich.logging import RichHandler
+import os
+
 import requests
 from dotenv import load_dotenv
+from git import GitCommandError, InvalidGitRepositoryError, Repo
+from rich.logging import RichHandler
+
 from osa_tool.analytics.metadata import load_data_metadata
-from osa_tool.utils import parse_folder_name, get_base_repo_url
+from osa_tool.utils import get_base_repo_url, parse_folder_name
+
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
 
