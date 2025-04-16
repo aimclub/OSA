@@ -157,12 +157,13 @@ The --article option enables you to choose a README template for a repository ba
 | Flag                 | Description                                                                 | Default                     |
 |----------------------|-----------------------------------------------------------------------------|-----------------------------|
 | `-r`, `--repository` | URL of the GitHub repository (**Mandatory**)                                |                             |
+| `-b`, `--branch`     | Branch name of the GitHub repository                                        | Default branch              |
 | `--api`              | LLM API service provider                                                    | `llama`                     |
 | `--base-url`         | URL of the provider compatible with API OpenAI                              | `https://api.openai.com/v1` |
 | `--model`            | Specific LLM model to use                                                   | `gpt-3.5-turbo`             |
 | `--article`          | Link to the pdf file of the article                                         | `None`                      |
 | `--translate-dirs`   | Enable automatic translation of the directory name into English             | `disabled`                  |
-| `--convert-notebooks`| One or more notebook file or directory paths                    | `repository directory`      |
+| `--convert-notebooks`| One or more notebook file or directory paths                                | `repository directory`      |
 | `--delete-dir`       | Enable deleting the downloaded repository after processing (**Linux only**) | `disabled`                  |
 
 ---
