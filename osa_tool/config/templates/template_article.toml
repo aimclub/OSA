@@ -23,7 +23,7 @@ overview = """
 ---
 """
 
-# -- Repository Contents Section ------------------------------------------------------------
+# -- Repository Contents Section -----------------------------------------------
 content = """
 ## Repository content
 
@@ -32,7 +32,7 @@ content = """
 ---
 """
 
-# -- Used Algorithms Section ------------------------------------------------------------
+# -- Used Algorithms Section ---------------------------------------------------
 algorithms = """
 ## Used algorithms
 

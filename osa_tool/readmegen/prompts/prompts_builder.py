@@ -155,7 +155,7 @@ def get_prompt_algorithms_article(
     try:
         formatted_prompt = prompt.format(
             project_name=metadata.name,
-            files_summary=files_summary,
+            file_summary=files_summary,
             pdf_summary=pdf_summary
         )
         return formatted_prompt

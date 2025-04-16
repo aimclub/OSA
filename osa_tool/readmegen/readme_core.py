@@ -1,6 +1,7 @@
 import os
 
 from osa_tool.readmegen.generator.builder import MarkdownBuilder
+from osa_tool.readmegen.generator.builder_article import MarkdownBuilderArticle
 from osa_tool.readmegen.models.llm_service import LLMClient
 from osa_tool.readmegen.utils import remove_extra_blank_lines, save_sections
 from osa_tool.utils import logger, parse_folder_name
@@ -24,7 +25,6 @@ def readme_agent(config_loader, article: str | None) -> None:
     try:
         if article is None:
             responses = LLMClient(config_loader).get_responses()
-
             (
                 core_features,
                 overview,
@@ -32,16 +32,17 @@ def readme_agent(config_loader, article: str | None) -> None:
             ) = responses
 
             readme_content = MarkdownBuilder(config_loader, overview, core_features, getting_started).build()
-            save_sections(readme_content, file_to_save)
         else:
-            responses = LLMClient(config_loader).get_responses_article()
+            responses = LLMClient(config_loader).get_responses_article(article)
             (
                 overview,
                 content,
                 algorithms
             ) = responses
-            # still working
 
+            readme_content = MarkdownBuilderArticle(config_loader, overview, content, algorithms).build()
+
+        save_sections(readme_content, file_to_save)
         remove_extra_blank_lines(file_to_save)
         logger.info(f"README.md successfully generated in folder {repo_path}")
     except Exception as e:
