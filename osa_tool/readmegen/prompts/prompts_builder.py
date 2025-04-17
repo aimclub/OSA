@@ -1,184 +1,153 @@
-from osa_tool.analytics.metadata import RepositoryMetadata
+import os
+
+from osa_tool.analytics.metadata import load_data_metadata
+from osa_tool.analytics.sourcerank import SourceRank
+from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.context.files_contents import FileContext
-from osa_tool.utils import extract_readme_content, logger
+from osa_tool.readmegen.prompts.prompts_article_config import PromptArticleLoader
+from osa_tool.readmegen.prompts.prompts_config import PromptLoader
+from osa_tool.utils import extract_readme_content, logger, parse_folder_name
 
 
-def get_prompt_preanalysis(prompt: str, tree: str, base_path: str) -> str:
-    """
-    Builds a prompt by formatting the preanalysis template with the repository
-    tree and README content.
+class PromptBuilder:
+    def __init__(self, config_loader: ConfigLoader):
+        self.config_loader = config_loader
+        self.config = self.config_loader.config
+        self.prompts = PromptLoader().prompts
+        self.prompts_article = PromptArticleLoader().prompts
+        self.sourcerank = SourceRank(config_loader)
+        self.tree = self.sourcerank.tree
 
-    Args:
-        prompt: The prompt template containing placeholders for formatting.
-        tree: A string representation of the repository's file structure.
-        base_path: The base local path to the cloned repository.
+        self.repo_url = self.config.git.repository
+        self.metadata = load_data_metadata(self.repo_url)
+        self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
 
-    Returns:
-        str: The formatted prompt string to be sent to the model.
-    """
-    try:
-        formatted_prompt = prompt.format(
-            repository_tree=tree,
-            reamde_content=extract_readme_content(base_path)
+    def get_prompt_preanalysis(self) -> str:
+        """Builds a preanalysis prompt using the repository tree and README content."""
+        try:
+            formatted_prompt = self.prompts.preanalysis.format(
+                repository_tree=self.tree,
+                reamde_content=extract_readme_content(self.base_path)
+            )
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build preanalysis prompt: {e}")
+            raise
+
+    def get_prompt_core_features(self, key_files: list[FileContext]) -> str:
+        """Builds a core features prompt using project metadata, README content, and key files."""
+        try:
+            formatted_prompt = self.prompts.core_features.format(
+                project_name=self.metadata.name,
+                metadata=self.metadata,
+                readme_content=extract_readme_content(self.base_path),
+                key_files_content=self.serialize_file_contexts(key_files)
+            )
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build core features prompt: {e}")
+            raise
+
+    def get_prompt_overview(self, core_features: str) -> str:
+        """Builds an overview prompt using metadata, README content, and extracted core features."""
+        try:
+            formatted_prompt = self.prompts.overview.format(
+                project_name=self.metadata.name,
+                description=self.metadata.description,
+                readme_content=extract_readme_content(self.base_path),
+                core_features=core_features
+            )
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build overview prompt: {e}")
+            raise
+
+    def get_prompt_getting_started(self, examples_files: list[FileContext]) -> str:
+        """Builds a getting started prompt using metadata, README content, and example files."""
+        try:
+            formatted_prompt = self.prompts.getting_started.format(
+                project_name=self.metadata.name,
+                readme_content=extract_readme_content(self.base_path),
+                examples_files_content=self.serialize_file_contexts(examples_files)
+            )
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build getting started prompt: {e}")
+            raise
+
+    def get_prompt_files_summary(self, files_content: list[FileContext]) -> str:
+        """Builds a files summary prompt using serialized file contents."""
+        try:
+            formatted_prompt = self.prompts_article.file_summary.format(
+                files_content=self.serialize_file_contexts(files_content)
+            )
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build files summary prompt: {e}")
+            raise
+
+    def get_prompt_pdf_summary(self, pdf_content: str) -> str:
+        """Builds a PDF summary prompt using the provided PDF content."""
+        try:
+            formatted_prompt = self.prompts_article.pdf_summary.format(
+                pdf_content=pdf_content
+            )
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build PDF summary prompt: {e}")
+            raise
+
+    def get_prompt_overview_article(self, files_summary: str, pdf_summary: str) -> str:
+        """Builds an article overview prompt using metadata, file summary, and PDF summary."""
+        try:
+            formatted_prompt = self.prompts_article.overview.format(
+                project_name=self.metadata.name,
+                files_summary=files_summary,
+                pdf_summary=pdf_summary
+            )
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build overview prompt: {e}")
+            raise
+
+    def get_prompt_content_article(self, key_files: list[FileContext], pdf_summary: str) -> str:
+        """Builds a content article prompt using metadata, key file content, and PDF summary."""
+        try:
+            formatted_prompt = self.prompts_article.content.format(
+                project_name=self.metadata.name,
+                files_content=key_files,
+                pdf_summary=pdf_summary
+            )
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build content prompt: {e}")
+            raise
+
+    def get_prompt_algorithms_article(self, files_summary: str, pdf_summary: str) -> str:
+        """Builds an algorithms article prompt using metadata, file summary, and PDF summary."""
+        try:
+            formatted_prompt = self.prompts_article.algorithms.format(
+                project_name=self.metadata.name,
+                file_summary=files_summary,
+                pdf_summary=pdf_summary
+            )
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build algorithms prompt: {e}")
+            raise
+
+    @staticmethod
+    def serialize_file_contexts(files: list[FileContext]) -> str:
+        """
+        Serializes a list of FileContext objects into a string.
+
+        Args:
+            files (list[FileContext]): A list of FileContext objects representing files.
+
+        Returns:
+            str: A string representing the serialized file data.
+                Each section includes the file's name, path, and content.
+        """
+        return "\n\n".join(
+            f"### {f.name} ({f.path})\n{f.content}" for f in files
         )
-        return formatted_prompt
-    except Exception as e:
-        logger.error(f"Failed to build preanalysis prompt: {e}")
-        raise
-
-
-def get_prompt_core_features(
-        prompt: str,
-        metadata: RepositoryMetadata,
-        base_path: str,
-        key_files: list[FileContext]
-) -> str:
-    try:
-        formatted_prompt = prompt.format(
-            project_name=metadata.name,
-            metadata=metadata,
-            readme_content=extract_readme_content(base_path),
-            key_files_content=serialize_file_contexts(key_files)
-        )
-        return formatted_prompt
-    except Exception as e:
-        logger.error(f"Failed to build core features prompt: {e}")
-        raise
-
-
-def get_prompt_overview(
-        prompt: str,
-        metadata: RepositoryMetadata,
-        base_path: str,
-        core_features: str
-) -> str:
-    try:
-        formatted_prompt = prompt.format(
-            project_name=metadata.name,
-            description=metadata.description,
-            readme_content=extract_readme_content(base_path),
-            core_features=core_features
-        )
-        return formatted_prompt
-    except Exception as e:
-        logger.error(f"Failed to build overview prompt: {e}")
-        raise
-
-
-def get_getting_started_prompt(
-        prompt: str,
-        metadata: RepositoryMetadata,
-        base_path: str,
-        examples_files: list[FileContext]
-) -> str:
-    try:
-        formatted_prompt = prompt.format(
-            project_name=metadata.name,
-            readme_content=extract_readme_content(base_path),
-            examples_files_content=serialize_file_contexts(examples_files)
-        )
-        return formatted_prompt
-    except Exception as e:
-        logger.error(f"Failed to build getting started prompt: {e}")
-        raise
-
-
-def get_files_summary_prompt(
-        prompt: str,
-        files_content: list[FileContext]
-) -> str:
-    try:
-        formatted_prompt = prompt.format(
-            files_content=serialize_file_contexts(files_content)
-        )
-        return formatted_prompt
-    except Exception as e:
-        logger.error(f"Failed to build files summary prompt: {e}")
-        raise
-
-
-def get_pdf_summary_prompt(
-        prompt: str,
-        pdf_content: str
-) -> str:
-    try:
-        formatted_prompt = prompt.format(
-            pdf_content=pdf_content
-        )
-        return formatted_prompt
-    except Exception as e:
-        logger.error(f"Failed to build PDF summary prompt: {e}")
-        raise
-
-
-def get_prompt_overview_article(
-        prompt: str,
-        metadata: RepositoryMetadata,
-        files_summary: str,
-        pdf_summary: str
-) -> str:
-    try:
-        formatted_prompt = prompt.format(
-            project_name=metadata.name,
-            files_summary=files_summary,
-            pdf_summary=pdf_summary
-        )
-        return formatted_prompt
-    except Exception as e:
-        logger.error(f"Failed to build overview prompt: {e}")
-        raise
-
-def get_prompt_content_article(
-        prompt: str,
-        metadata: RepositoryMetadata,
-        key_files: list[FileContext],
-        pdf_summary: str
-) -> str:
-    try:
-        formatted_prompt = prompt.format(
-            project_name=metadata.name,
-            files_content=key_files,
-            pdf_summary=pdf_summary
-        )
-        return formatted_prompt
-    except Exception as e:
-        logger.error(f"Failed to build content prompt: {e}")
-        raise
-
-
-def get_prompt_algorithms_article(
-        prompt: str,
-        metadata: RepositoryMetadata,
-        files_summary: str,
-        pdf_summary: str
-) -> str:
-    try:
-        formatted_prompt = prompt.format(
-            project_name=metadata.name,
-            file_summary=files_summary,
-            pdf_summary=pdf_summary
-        )
-        return formatted_prompt
-    except Exception as e:
-        logger.error(f"Failed to build algorithms prompt: {e}")
-        raise
-
-
-def serialize_file_contexts(files: list[FileContext]) -> str:
-    """
-    Serializes a list of FileContext objects into a string.
-
-    For each FileContext object, a Markdown section is created that includes
-    the file's name, its path, and its content. All sections are separated by
-    two newlines.
-
-    Args:
-        files (list[FileContext]): A list of FileContext objects representing files.
-
-    Returns:
-        str: A string representing the serialized file data in Markdown format.
-            Each section includes the file's name, path, and content.
-    """
-    return "\n\n".join(
-        f"### {f.name} ({f.path})\n{f.content}" for f in files
-    )

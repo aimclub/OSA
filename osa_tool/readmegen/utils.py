@@ -33,6 +33,7 @@ def read_ipynb_file(file_path: str) -> str:
 
     Returns:
         str: The extracted content from code and markdown cells.
+            If an error occurs, returns an empty string.
     """
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -48,7 +49,8 @@ def read_ipynb_file(file_path: str) -> str:
                 lines.append("\n")
         return "\n".join(lines)
     except Exception as e:
-        return f"# Failed to read notebook: {e}"
+        logger.error(f"Failed to read notebook: {file_path}. Returning empty string. Error: {e}.")
+        return ""
 
 
 def save_sections(sections: str, path: str) -> None:
@@ -65,17 +67,13 @@ def save_sections(sections: str, path: str) -> None:
 
 def extract_relative_paths(paths_string: str) -> list[str]:
     """
-    Converts newline-separated paths into a list of normalized string paths.
-
-    This function takes a multiline string, where each line is expected to be a file path,
-    strips whitespace from each line, removes empty lines, and normalizes the paths using
-    `os.path.normpath`.
+    Converts a newline-separated string of paths into a list of normalized paths.
 
     Args:
         paths_string: A string containing newline-separated file or directory paths.
 
     Returns:
-        list[str]: Normalized relative paths.
+        list[str]: A list of normalized paths.
     """
     try:
         return [
@@ -94,10 +92,11 @@ def find_in_repo_tree(tree: str, pattern: str) -> str:
 
     Args:
         tree: A string representation of the repository's file tree.
-        pattern: The regular expression pattern to search for in the repository tree.
+        pattern: A regular expression pattern to search for.
 
     Returns:
-        str: The first line from the tree that matches the pattern. If no match is found, returns an empty string.
+        str: The first matching line with normalized path separators,
+             or an empty string if no match is found.
     """
     compiled_pattern = re.compile(pattern, re.IGNORECASE)
 
@@ -108,6 +107,14 @@ def find_in_repo_tree(tree: str, pattern: str) -> str:
 
 
 def extract_example_paths(tree: str):
+    """
+    Extracts paths from the repository tree that contain 'example' or 'tutorial' in their names.
+    Args:
+        tree: A string representation of the repository's file tree.
+
+    Returns:
+        list[str]: A list of matched paths excluding __init__.py files.
+    """
     pattern = r'\b(tutorials?|examples)\b'
     result = []
 
@@ -121,6 +128,9 @@ def extract_example_paths(tree: str):
 
 
 def remove_extra_blank_lines(path: str) -> None:
+    """
+    Cleans up extra blank lines from a file, leaving only single empty lines between content blocks.
+    """
     with open(path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
 

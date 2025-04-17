@@ -10,11 +10,11 @@ class PromptConfig(BaseModel):
     """
     Model for validating the structure of prompts loaded from prompts.toml.
     """
-    file_summary: str = Field(..., description="Template for highlighting key files based on structure and README.")
-    pdf_summary: str = Field(..., description="Template for extracting core features of the project.")
-    overview: str = Field(..., description="Template for generating a concise project overview.")
-    content: str = Field(..., description="Template for generating a Getting Started section")
-    algorithms: str = Field(..., description="Template for generating a Getting Started section")
+    file_summary: str = Field(..., description="Template for summarizing important files in the project structure and README.")
+    pdf_summary: str = Field(..., description="Template for summarizing the main features of the project from a PDF.")
+    overview: str = Field(..., description="Template for generating a general overview of the project.")
+    content: str = Field(..., description="Template for generating the project's content'.")
+    algorithms: str = Field(..., description="Template for describing key algorithms or methods used in the project.")
 
 
 class PromptArticleLoader:

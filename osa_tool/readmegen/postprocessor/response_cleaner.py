@@ -2,6 +2,7 @@ import re
 
 
 def process_text(response: str) -> str:
+    """Cleans LLM response by removing formatting quotes and unwanted prefixes."""
 
     # Remove leading and trailing quotes (single, double, backticks) using regex
     text = clean_llm_response(response)
@@ -38,12 +39,6 @@ def clean_llm_response(response: str) -> str:
 def remove_plaintext_prefix(response: str) -> str:
     """
     Removes the 'plaintext' prefix from the beginning of the response, if present.
-
-    Args:
-        response: The response from the LLM that may start with 'plaintext'.
-
-    Returns:
-        str: The cleaned response without the 'plaintext' prefix.
     """
     if response.startswith("plaintext"):
         return response[len("plaintext"):].strip()
@@ -53,12 +48,6 @@ def remove_plaintext_prefix(response: str) -> str:
 def remove_json_prefix(response: str) -> str:
     """
     Removes the 'json' prefix from the beginning of the response, if present.
-
-    Args:
-        response: The response from the LLM that may start with 'json'.
-
-    Returns:
-        str: The cleaned response without the 'plaintext' prefix.
     """
     if response.startswith("json"):
         return response[len("json"):].strip()

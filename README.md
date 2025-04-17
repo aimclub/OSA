@@ -132,6 +132,15 @@ export OPENAI_API_KEY=<your_api_key>
 export GIT_TOKEN=<your_git_token>
 ```
 
+### Tokens
+
+| Token name       | Description                                                                                                        | Mandatory |
+|------------------|--------------------------------------------------------------------------------------------------------------------|-----------|
+| `GIT_TOKEN`      | Personal GitHub token used to clone private repositories, access metadata, and interact with the GitHub API.       | Yes       |
+| `OPENAI_API_KEY` | API key for accessing [OpenAI](https://platform.openai.com/docs/api-reference/introduction)'s language models.     | No        |
+| `VSE_GPT_KEY`    | API key for [vsegpt](https://vsegpt.ru/Docs/API) LLM provider compatible with OpenAI's API format.                 | No        |
+| `X-API-Key`      | API key for the [pepy.tech](https://pepy.tech/pepy-api) REST API, used to fetch Python package download statistics | No        |
+
 ### Usage
 
 Run Open-Source-Advisor using the following command:

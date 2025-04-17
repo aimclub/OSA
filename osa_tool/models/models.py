@@ -93,7 +93,7 @@ class PayloadFactory:
         self.roles = [
             {
                 "role": "system",
-                "content": "You are a helpful assistant for generating a Python docstrings.",
+                "content": "You are a helpful assistant for analyzing open-source repositories.",
             },
             {"role": "user", "content": prompt},
         ]

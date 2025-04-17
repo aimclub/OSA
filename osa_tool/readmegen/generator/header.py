@@ -38,19 +38,12 @@ class HeaderBuilder:
         self.techs = DependencyExtractor(self.tree, self.repo_path).extract_techs()
 
     def load_template(self) -> dict:
-        """
-        Loads a TOML template file and returns its sections as a dictionary.
-        """
+        """Loads and parses the TOML template file."""
         with open(self.template_path, "rb") as file:
             return tomli.load(file)
 
     def load_tech_icons(self) -> dict:
-        """
-        Loads technology icons data from a JSON file.
-
-        Returns:
-            dict: Dictionary with technology names as keys and badge URLs as values.
-        """
+        """Loads technology icons from a JSON file."""
         if not os.path.exists(self.icons_tech_path):
             raise FileNotFoundError(f"Icon file not found at: {self.icons_tech_path}")
 
@@ -77,36 +70,18 @@ class HeaderBuilder:
 
     @property
     def build_information_section(self) -> str:
-        """
-        Builds the information section for the README, including badges for project
-        name, version, and download statistics.
-
-        Returns:
-            str: Formatted string with project information badges.
-        """
+        """Builds the section with PyPi and license badges."""
         badges_data = self.generate_info_badges() + self.generate_license_badge()
         return self._template["information_badges"].format(badges_data=badges_data)
 
     @property
     def build_technology_section(self) -> str:
-        """
-        Builds the technology section for the README, including badges for technologies
-        used in the project, based on the extracted technology names.
-
-        Returns:
-            str: Formatted string with technology badges.
-        """
+        """Builds the section with technology badges based on project dependencies."""
         badges_data = self.generate_tech_badges()
         return self._template["technology_badges"].format(technology_badges=badges_data)
 
     def generate_info_badges(self) -> str:
-        """
-        Generates badges related to PyPi project information, such as the project name,
-        version, and downloads.
-
-        Returns:
-            str: Formatted string with PyPi-related badges.
-        """
+        """Generates PyPi-related badges: version and download stats."""
         if not self.info:
             return ""
 
@@ -128,6 +103,7 @@ class HeaderBuilder:
         return "\n".join(badges)
 
     def generate_license_badge(self) -> str:
+        """Generates a license badge using Shields.io."""
         if not self.metadata.license_name:
             return ""
         badge_style = "flat"
@@ -139,13 +115,7 @@ class HeaderBuilder:
         return badge_html
 
     def generate_tech_badges(self) -> str:
-        """
-        Generates badges for the technologies used in the repository, based on the
-        extracted technology names and available icons.
-
-        Returns:
-            str: Formatted string with technology badges.
-        """
+        """Generates badges for technologies used in the project using available icons."""
         if not self.techs:
             return ""
 

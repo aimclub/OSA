@@ -30,13 +30,12 @@ class InstallationSectionBuilder:
         self.version = DependencyExtractor(self.tree, self.repo_path).extract_python_version_requirement()
 
     def load_template(self) -> dict:
-        """
-        Loads a TOML template file and returns its sections as a dictionary.
-        """
+        """Loads and parses the TOML template file."""
         with open(self.template_path, "rb") as file:
             return tomli.load(file)
 
     def build_installation(self) -> str:
+        """Constructs the formatted installation section based on template and repo data."""
         python_requirements = self._python_requires()
         install_cmd = self._generate_install_command()
 
@@ -47,12 +46,14 @@ class InstallationSectionBuilder:
         )
 
     def _python_requires(self) -> str:
+        """Returns the Python version requirement string if specified."""
         if not self.version:
             return ""
 
         return f"**Prerequisites:** requires Python {self.version}\n"
 
     def _generate_install_command(self) -> str:
+        """Generates installation instructions using PyPI or from source."""
         if self.info:
             return f"**Using PyPi:**\n\n```sh\npip install {self.info.get('name')}\n```"
 
