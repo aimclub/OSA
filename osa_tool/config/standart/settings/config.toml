@@ -39,3 +39,19 @@ log_level = "info"
 indent = 2
 pad_event = 20
 use_json = true
+
+# GitHub Actions Workflow Settings
+[workflows]
+generate_workflows = false
+output_dir = ".github/workflows"
+include_tests = true
+include_black = true
+include_pep8 = true
+include_autopep8 = false
+include_fix_pep8 = false
+include_pypi = false
+python_versions = ["3.8", "3.9", "3.10"]
+pep8_tool = "flake8" # "flake8" or "pylint"
+use_poetry = false
+branches = []
+codecov_token = false

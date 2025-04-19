@@ -22,7 +22,7 @@ from osa_tool.readmeai.utils.file_handler import FileHandler
 from osa_tool.readmeai.utils.file_resource import get_resource_path
 
 from osa_tool.readmeai.config.settings import APISettings, FileSettings, \
-    GitSettings, ModelSettings
+    GitSettings, ModelSettings, WorkflowSettings
 
 try:
     from typing import Self
@@ -67,6 +67,7 @@ class ArticleSettings(BaseModel):
     git: GitSettings
     llm: ModelSettings
     md: ArticleMarkdownSettings
+    workflows: WorkflowSettings
 
     model_config = ConfigDict(
         validate_assignment=True,

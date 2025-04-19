@@ -68,6 +68,8 @@ Here is a short demo:
 
 4. **Various LLMs**: Use OSA with an LLM accessible via API (e.g., OpenAI, VseGPT, Ollama), a local server, or try an [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
 
+5. **GitHub Action Workflow Generator**: Automatically generates customizable CI/CD workflows for Python repositories, including unit tests, code formatting, PEP 8 compliance checks, and PyPI publication.
+
 ---
 
 ## Installation
@@ -193,6 +195,15 @@ python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor -
 Ollama:
 ```sh
 python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api ollama --base-url http://[YOUR_OLLAMA_IP]:11434 --model gemma3:27b
+```
+
+### GitHub Action Workflow Generator
+
+OSA includes a GitHub Action Workflow Generator that can create customizable CI/CD pipelines for Python repositories. For detailed documentation, see the [GitHub Action Workflow Generator README](./osa_tool/github_workflow/README.md).
+
+To use the workflow generator, add the `--generate-workflows` flag to your command:
+```sh
+python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --generate-workflows
 ```
 
 ---
