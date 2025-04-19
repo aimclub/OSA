@@ -121,7 +121,7 @@ def get_repo_tree(repo_path: str) -> str:
         '.mp4', '.mov', '.avi', '.mkv', '.flv', '.wmv', '.webm',  # videos
         '.csv', '.tsv', '.parquet', '.json', '.xml', '.xls', '.xlsx',  # data files
         '.zip', '.tar', '.gz', '.bz2', '.7z',  # archives
-        '.exe', '.dll', '.so', '.bin', '.obj', '.class',  # binaries
+        '.exe', '.dll', '.so', '.bin', '.obj', '.class', '.pkl',  # binaries
         '.pdf'  # documents
     }
 

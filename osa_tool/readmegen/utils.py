@@ -122,7 +122,8 @@ def extract_example_paths(tree: str):
         line = line.strip()
         if line.endswith('__init__.py'):
             continue
-        if re.search(pattern, line):
+        parts = line.split('/')
+        if len(parts) == 2 and re.search(pattern, parts[0]):
             result.append(line)
     return result
 
