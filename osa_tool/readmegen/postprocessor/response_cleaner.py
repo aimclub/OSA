@@ -7,11 +7,12 @@ def process_text(response: str) -> str:
     # Remove leading and trailing quotes (single, double, backticks) using regex
     text = clean_llm_response(response)
 
+    # Remove the 'json' prefix
+    text = remove_json_prefix(text)
+
     # Remove the 'plaintext' prefix
     text = remove_plaintext_prefix(text)
 
-    # Remove the 'json' prefix
-    text = remove_json_prefix(text)
     return text
 
 

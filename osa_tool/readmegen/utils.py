@@ -77,7 +77,7 @@ def extract_relative_paths(paths_string: str) -> list[str]:
     """
     try:
         return [
-            os.path.normpath(line.strip())
+            os.path.normpath(line.strip()).replace("\\", "/")
             for line in paths_string.strip().splitlines()
             if line.strip()
         ]

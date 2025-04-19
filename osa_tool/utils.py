@@ -83,7 +83,7 @@ def parse_git_url(repo_url: str) -> tuple[str, str, str, str]:
         repo_url: The URL of the GitHub repository.
 
     Returns:
-        tuple: host_domain, host, full name, and project name
+        tuple: host_domain, host, project name and full name.
     """
     parsed_url = urlparse(repo_url)
 
@@ -131,7 +131,7 @@ def get_repo_tree(repo_path: str) -> str:
             continue
         if path.is_file() and path.suffix.lower() in excluded_extensions:
             continue
-        rel_path = path.relative_to(repo_path)
+        rel_path = path.relative_to(repo_path).as_posix()
         lines.append(str(rel_path))
     return "\n".join(lines)
 
