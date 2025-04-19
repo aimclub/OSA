@@ -31,7 +31,7 @@ class GithubAgent:
     Attributes:
         AGENT_SIGNATURE: A signature string appended to pull request descriptions.
         repo_url: The URL of the GitHub repository.
-        base_branch: The name of the repository's branch to be checked out.
+        base_branch: The name of the repository's branch.
         clone_dir: The directory where the repository will be cloned.
         branch_name: The name of the branch to be created.
         repo: The GitPython Repo object representing the repository.
@@ -146,8 +146,12 @@ class GithubAgent:
                 raise
         else:
             try:
-                logger.info(f"Cloning repository {self.repo_url} into {self.clone_dir}...")
-                self.repo = Repo.clone_from(self._get_auth_url(), self.clone_dir)
+                logger.info(
+                    f"Cloning the {self.base_branch} branch from {self.repo_url} into directory {self.clone_dir}...")
+                self.repo = Repo.clone_from(
+                    url=self._get_auth_url(),
+                    to_path=self.clone_dir,
+                    branch=self.base_branch)
                 logger.info("Cloning completed")
             except GitCommandError as e:
                 logger.error(f"Cloning failed: {repr(e)}")
@@ -158,9 +162,6 @@ class GithubAgent:
 
         If the branch already exists, it simply checks out the branch.
         """
-        logger.info(f"Checking out to base branch {self.base_branch}.")
-        self.repo.git.checkout(self.base_branch)
-        logger.info(f"Switched to a branch {self.base_branch}.")
         if self.branch_name in self.repo.heads:
             logger.info(f"Branch {self.branch_name} already exists. Switching to it...")
             self.repo.git.checkout(self.branch_name)
