@@ -100,7 +100,6 @@ contributing_section = """
 
 # -- License Section -----------------------------------------------------------
 license = """
-
 ## License
 
 This project is protected under the {license_name}. For more details, refer to the [LICENSE]({path}) file.
@@ -110,7 +109,6 @@ This project is protected under the {license_name}. For more details, refer to t
 
 # -- Citation Section ----------------------------------------------------------
 citation = """
-
 ## Citation
 
 """
