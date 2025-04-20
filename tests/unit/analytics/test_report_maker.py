@@ -3,12 +3,14 @@ from unittest.mock import MagicMock, patch
 
 from reportlab.platypus import ListFlowable, Table
 
-from osa_tool.analytics.prompt_builder import (CodeDocumentation,
-                                               OverallAssessment,
-                                               ReadmeEvaluation,
-                                               RepositoryReport,
-                                               RepositoryStructure,
-                                               YesNoPartial)
+from osa_tool.analytics.prompt_builder import (
+    CodeDocumentation,
+    OverallAssessment,
+    ReadmeEvaluation,
+    RepositoryReport,
+    RepositoryStructure,
+    YesNoPartial
+)
 from osa_tool.analytics.report_maker import ReportGenerator
 
 

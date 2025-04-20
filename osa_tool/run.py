@@ -1,6 +1,8 @@
 import os
 from typing import List
 
+from osa_tool.analytics.report_maker import ReportGenerator
+from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.arguments_parser import get_cli_args
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.convertion.notebook_converter import NotebookConverter
@@ -44,13 +46,13 @@ def main():
         github_agent.create_and_checkout_branch()
 
         # .ipynb to .py convertion
-        # if notebook_paths is not None:
-        #     convert_notebooks(config, notebook_paths)
-        #
-        # # Repository Analysis Report generation
-        # sourcerank = SourceRank(config)
-        # analytics = ReportGenerator(config, sourcerank)
-        # analytics.build_pdf()
+        if notebook_paths is not None:
+            convert_notebooks(config, notebook_paths)
+
+        # Repository Analysis Report generation
+        sourcerank = SourceRank(config)
+        analytics = ReportGenerator(config, sourcerank)
+        analytics.build_pdf()
 
         # Auto translating names of directories
         if args.translate_dirs:
@@ -58,13 +60,13 @@ def main():
             translation.rename_directories_and_files()
 
         # Docstring generation
-        # generate_docstrings(config)
+        generate_docstrings(config)
 
         # Readme generation
         readme_agent(config, article)
 
-        # github_agent.commit_and_push_changes()
-        # github_agent.create_pull_request()
+        github_agent.commit_and_push_changes()
+        github_agent.create_pull_request()
 
         if args.delete_dir:
             delete_repository(repo_url)
