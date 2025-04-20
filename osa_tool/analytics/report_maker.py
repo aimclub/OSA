@@ -127,10 +127,10 @@ class ReportGenerator:
         table1, table2 = self.table_generator()
 
         table1.wrapOn(canvas_obj, 0, 0)
-        table1.drawOn(canvas_obj, 64, 555)
+        table1.drawOn(canvas_obj, 58, 555)
 
         table2.wrapOn(canvas_obj, 0, 0)
-        table2.drawOn(canvas_obj, 286, 555)
+        table2.drawOn(canvas_obj, 292, 555)
 
     def header(self) -> list:
         """
@@ -228,9 +228,9 @@ class ReportGenerator:
 
         bullet_list = ListFlowable(
             [
-                ListItem(repo_link, leftIndent=14),
-                ListItem(owner_link, leftIndent=14),
-                ListItem(created_at, leftIndent=14),
+                ListItem(repo_link, leftIndent=-20),
+                ListItem(owner_link, leftIndent=-20),
+                ListItem(created_at, leftIndent=-20),
             ],
             bulletType="bullet"
         )

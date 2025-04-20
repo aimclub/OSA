@@ -1,4 +1,6 @@
 import re
+import black
+from pathlib import Path
 
 import dotenv
 import tiktoken
@@ -167,7 +169,9 @@ class DocGen(object):
 
         return self.model_handler.send_request(prompt)
 
-    def generate_method_documentation(self, method_details: dict) -> str:
+    def generate_method_documentation(
+        self, method_details: dict, context_code: str = None
+    ) -> str:
         """
         Generate documentation for a single method.
         """
@@ -176,17 +180,17 @@ class DocGen(object):
         - A short summary of what the method does.
         - A description of its parameters without types.
         - The return type and description.
+        {"- Use provided source code of imported methods, functions to describe their usage." if context_code else ""}
 
         Method Details:
         - Method Name: {method_details["method_name"]}
         - Method decorators: {method_details["decorators"]}
-        - Arguments: {method_details["arguments"]}
-        - Return Type: {method_details["return_type"]}
-        - Docstring: {method_details["docstring"]}
         - Source Code:
         ```
         {method_details["source_code"]}
         ```
+        {"- Imported methods source code:" if context_code else ""}
+        {context_code if context_code else ""}
         """
         return self.model_handler.send_request(prompt)
 
@@ -273,13 +277,99 @@ class DocGen(object):
 
         return updated_code
 
+    def context_extractor(self, method_details: dict, structure: dict) -> str:
+        """
+            Extracts the context of method calls and functions from given method_details and code structure.
+
+            Parameters:
+            - method_details: A dictionary containing details about the method calls.
+            - structure: A dictionary representing the code structure.
+
+            Returns:
+            A string containing the context of the method calls and functions in the format:
+            - If a method call is found:
+              "# Method {method_name} in class {class_name}
+        {source_code}"
+            - If a function call is found:
+              "# Function {class_name}
+        {source_code}"
+
+            Note:
+            - This method iterates over the method calls in method_details and searches for the corresponding methods and functions
+              in the code structure. It constructs the context of the found methods and functions by appending their source code
+              along with indicator comments.
+            - The returned string contains the structured context of all the detected methods and functions.
+        """
+
+        def is_target_class(item, call):
+            return item["type"] == "class" and item["name"] == call["class"]
+
+        def is_target_method(method, call):
+            return method["method_name"] == call["function"]
+
+        def is_constructor(method, call):
+            return method["method_name"] == "__init__" and call["function"] is None
+
+        def is_target_function(item, call):
+            return (
+                item["type"] == "function"
+                and item["details"]["method_name"] == call["class"]
+            )
+
+        context = []
+
+        for call in method_details.get("method_calls", []):
+            file_data = structure.get(call["path"], {})
+            if not file_data:
+                continue
+
+            for item in file_data.get("structure", []):
+                if is_target_class(item, call):
+                    for method in item.get("methods", []):
+                        if is_target_method(method, call) or is_constructor(
+                            method, call
+                        ):
+                            method_name = (
+                                call["function"] if call["function"] else "__init__"
+                            )
+                            context.append(
+                                f"# Method {method_name} in class {call['class']}\n"
+                                + method.get("source_code", "")
+                            )
+                elif is_target_function(item, call):
+                    context.append(
+                        f"# Function {call['class']}\n"
+                        + item["details"].get("source_code", "")
+                    )
+
+        return "\n".join(context)
+
+    def format_with_black(self, filename):
+        """
+        Formats a Python source code file using the `black` code formatter.
+
+        This method takes a filename as input and formats the code in the specified file using the `black` code formatter.
+
+        Parameters:
+            - filename: The path to the Python source code file to be formatted.
+
+        Returns:
+            None
+        """
+        black.format_file_in_place(
+            Path(filename),
+            fast=True,
+            mode=black.FileMode(),
+            write_back=black.WriteBack.YES,
+        )
+
     def process_python_file(self, parsed_structure: dict) -> None:
         """
         Processes a Python file by generating and inserting missing docstrings.
 
         This method iterates over the given parsed structure of a Python codebase, checks each class method for missing
         docstrings, and generates and inserts them if missing. The method updates the source file with the new docstrings
-        and prints the path of the updated file.
+        and logs the path of the updated file.
 
         Args:
             parsed_structure: A dictionary representing the parsed structure of the Python codebase.
@@ -290,17 +380,21 @@ class DocGen(object):
             None
         """
         for filename, structure in parsed_structure.items():
+            self.format_with_black(filename)
             with open(filename, "r", encoding="utf-8") as f:
                 source_code = f.read()
-            for item in structure:
+            for item in structure["structure"]:
                 if item["type"] == "class":
                     for method in item["methods"]:
                         if method["docstring"] == None:  # If docstring is missing
                             logger.info(
                                 f"Generating docstring for method: {method['method_name']} in class {item['name']} at {filename}"
                             )
+                            method_context = self.context_extractor(
+                                method, parsed_structure
+                            )
                             generated_docstring = self.generate_method_documentation(
-                                method
+                                method, method_context
                             )
                             if item["docstring"] == None:
                                 method["docstring"] = self.extract_pure_docstring(
@@ -322,7 +416,7 @@ class DocGen(object):
                             source_code, func_details, generated_docstring
                         )
 
-            for item in structure:
+            for item in structure["structure"]:
                 if item["type"] == "class" and item["docstring"] == None:
                     class_name = item["name"]
                     cls_structure = []
@@ -346,7 +440,9 @@ class DocGen(object):
                     )
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(source_code)
+            self.format_with_black(filename)
             logger.info(f"Updated file: {filename}")
+
 
     def generate_method_documentation_md(self, method_details: dict) -> str:
         """
