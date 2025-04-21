@@ -58,7 +58,7 @@ class GithubAgent:
         self.fork_url = None
         self.metadata = load_data_metadata(self.repo_url)
         self.base_branch = self.metadata.default_branch
-        self.pr_report_body = None
+        self.pr_report_body = ""
 
     def create_fork(self) -> None:
         """Creates a fork of the repository in the osa_tool account.
