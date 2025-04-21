@@ -2,7 +2,8 @@ import os
 import yaml
 from typing import Dict, List, Any
 
-from osa_tool.github_workflow.black import generate_black_formatter_workflow
+from osa_tool.github_workflow.providers.black import generate_black_formatter_workflow
+from osa_tool.github_workflow.providers.unit_test import generate_unit_test_workflow
 from osa_tool.readmeai.config.settings import WorkflowSettings
 
 
@@ -52,94 +53,6 @@ class GitHubWorkflowGenerator:
             yaml.dump(workflow, f, sort_keys=False, Dumper=yaml.Dumper)
 
         return file_path
-
-    def generate_unit_test_workflow(
-        self,
-        name: str = "Unit Tests",
-        python_versions: List[str] = ["3.8", "3.9", "3.10"],
-        os_list: List[str] = ["ubuntu-latest"],
-        dependencies_command: str = "pip install -r requirements.txt",
-        test_command: str = "pytest tests/",
-        branches: List[str] = ["main", "master"],
-        coverage: bool = True,
-        timeout_minutes: int = 15,
-        codecov_token: bool = False
-    ) -> str:
-        """
-        Generate a workflow for running unit tests.
-
-        Args:
-            name: Name of the workflow
-            python_versions: List of Python versions to test against
-            os_list: List of operating systems to test on
-            dependencies_command: Command to install dependencies
-            test_command: Command to run tests
-            branches: List of branches to trigger the workflow on
-            coverage: Whether to include code coverage reporting
-            timeout_minutes: Maximum time in minutes for the job to run
-            codecov_token: Whether to use a Codecov token for uploading coverage
-
-        Returns:
-            Path to the created workflow file
-        """
-        workflow = {
-            "name": name,
-            "on": {
-                "push": {"branches": branches},
-                "pull_request": {"branches": branches},
-                "workflow_dispatch": {}  # Allow manual triggering
-            },
-            "jobs": {
-                "test": {
-                    "name": "Run Tests",
-                    "runs-on": "${{ matrix.os }}",
-                    "timeout-minutes": timeout_minutes,
-                    "strategy": {
-                        "matrix": {
-                            "os": os_list,
-                            "python-version": python_versions
-                        }
-                    },
-                    "steps": [
-                        {
-                            "name": "Checkout repo",
-                            "uses": "actions/checkout@v4"
-                        },
-                        {
-                            "name": "Set up Python ${{ matrix.python-version }}",
-                            "uses": "actions/setup-python@v4",
-                            "with": {
-                                "python-version": "${{ matrix.python-version }}"
-                            }
-                        },
-                        {
-                            "name": "Install dependencies",
-                            "run": dependencies_command + "\npip install pytest pytest-cov"
-                        },
-                        {
-                            "name": "Run tests",
-                            "run": test_command + " --cov=."
-                        }
-                    ]
-                }
-            }
-        }
-
-        # Add code coverage if requested
-        if coverage:
-            codecov_step = {
-                "name": "Upload coverage to Codecov",
-                "uses": "codecov/codecov-action@v4"
-            }
-
-            if codecov_token:
-                codecov_step["with"] = {
-                    "token": "${{ secrets.CODECOV_TOKEN }}"
-                }
-
-            workflow["jobs"]["test"]["steps"].append(codecov_step)
-
-        return self._write_workflow("unit-tests.yml", workflow)
 
     def generate_pep8_workflow(
         self,
@@ -573,16 +486,12 @@ class GitHubWorkflowGenerator:
             file_path = self._write_workflow("black.yml", workflow)
             created_files.append(file_path)
 
-        """ Эта часть ещё в работе, пока отключил
-
         if settings.include_tests:
-            file_path = self.generate_unit_test_workflow(
-                python_versions=settings.python_versions,
-                branches=settings.branches,
-                codecov_token=settings.codecov_token
-            )
+            workflow = generate_unit_test_workflow()
+            file_path = self._write_workflow("unit_tests.yml", workflow)
             created_files.append(file_path)
 
+        """ Эта часть ещё в работе, пока отключил
         if settings.include_pep8:
             file_path = self.generate_pep8_workflow(
                 tool=settings.pep8_tool,
