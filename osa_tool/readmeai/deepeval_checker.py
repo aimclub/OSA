@@ -16,21 +16,23 @@ from osa_tool.utils import osa_project_root
 # Class wrapper over vsegpt model class. Uses osa's handlers for initialize vsegpt model class
 # Invokes calls to vsegpt instead of openai to assess generated Readme file.
 class CustomLLM(DeepEvalBaseLLM):
-    def __init__(self, api: str, model_name: str, url: str):
-        self.model = self.load_model(api, model_name, url)
+    def __init__(self, api: str, model_name: str, url: str, prompt: str = "", **kwargs):
+        self._system_prompt = prompt
+        self.model = self.load_model(api, model_name, url, **kwargs)
 
-    def load_model(self, api: str, model_name: str, base_url: str):
+    def load_model(self, api: str, model_name: str, base_url: str, **kwargs):
         config_loader = ConfigLoader(
             config_dir=os.path.join(
                 osa_project_root(), "osa_tool", "config", "standart"
             )
         )
         config_loader.config.llm = config_loader.config.llm.model_copy(
-            update={"api": api, "model": model_name, "url": base_url}
+            update={"api": api, "model": model_name, "url": base_url} | kwargs
         )
         return ModelHandlerFactory.build(config_loader.config)
 
     def generate(self, prompt: str) -> str:
+        prompt = self._system_prompt + prompt
         response = self.model.send_request(prompt)
         return response
 
