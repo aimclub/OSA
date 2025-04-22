@@ -6,12 +6,12 @@ from osa_tool.run import load_configuration
 @pytest.mark.parametrize(
     "repo_url, api, api_url, model, article, workflows_output_dir, generate_workflows, "
     "include_tests, include_black, include_pep8, include_autopep8, include_fix_pep8, "
-    "include_pypi, python_versions, pep8_tool, use_poetry, branches, codecov_token, "
+    "include_pypi, python_versions, pep8_tool, use_poetry, branches, codecov_token, include_codecov, "
     "expected_repo, expected_api, expected_url, expected_model, "
     "expected_output_dir, expected_generate_workflows, expected_include_tests, "
     "expected_include_black, expected_include_pep8, expected_include_autopep8, "
     "expected_include_fix_pep8, expected_include_pypi, expected_python_versions, "
-    "expected_pep8_tool, expected_use_poetry, expected_branches, expected_codecov_token",
+    "expected_pep8_tool, expected_use_poetry, expected_branches, expected_codecov_token, expected_include_codecov",
     [
         # First test case
         (
@@ -20,7 +20,7 @@ from osa_tool.run import load_configuration
             ["3.8", "3.9", "3.10"], "flake8", False, [], "false",
             "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test",
             ".github/workflows", True, True, True, True, False, False, False,
-            ["3.8", "3.9", "3.10"], "flake8", False, [], "false"
+            ["3.8", "3.9", "3.10"], "flake8", False, [], "false", "true"
         ),
         # Second test case
         (
@@ -29,7 +29,7 @@ from osa_tool.run import load_configuration
             ["3.7", "3.11"], "pylint", True, ["main", "dev"], "abc123",
             "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test-article",
             "custom/workflows", False, False, False, False, True, True, True,
-            ["3.7", "3.11"], "pylint", True, ["main", "dev"], "abc123"
+            ["3.7", "3.11"], "pylint", True, ["main", "dev"], "abc123", "true"
         )
     ]
 )
@@ -39,12 +39,12 @@ from osa_tool.run import load_configuration
 def test_load_configuration(mock_article_loader, mock_config_loader, mock_project_root,
                             repo_url, api, api_url, model, article, workflows_output_dir, generate_workflows,
                             include_tests, include_black, include_pep8, include_autopep8, include_fix_pep8,
-                            include_pypi, python_versions, pep8_tool, use_poetry, branches, codecov_token,
+                            include_pypi, python_versions, pep8_tool, use_poetry, branches, codecov_token, include_codecov,
                             expected_repo, expected_api, expected_url, expected_model,
                             expected_output_dir, expected_generate_workflows, expected_include_tests,
                             expected_include_black, expected_include_pep8, expected_include_autopep8,
                             expected_include_fix_pep8, expected_include_pypi, expected_python_versions,
-                            expected_pep8_tool, expected_use_poetry, expected_branches, expected_codecov_token):
+                            expected_pep8_tool, expected_use_poetry, expected_branches, expected_codecov_token, expected_include_codecov):
     # Arrange
     mock_config = MagicMock()
     mock_config_loader.return_value = mock_config
@@ -69,7 +69,8 @@ def test_load_configuration(mock_article_loader, mock_config_loader, mock_projec
         pep8_tool=pep8_tool,
         use_poetry=use_poetry,
         branches=branches,
-        codecov_token=codecov_token
+        codecov_token=codecov_token,
+        include_codecov=include_codecov
     )
     
     # Assert
@@ -92,3 +93,5 @@ def test_load_configuration(mock_article_loader, mock_config_loader, mock_projec
     assert config.config.workflows.use_poetry == expected_use_poetry
     assert config.config.workflows.branches == expected_branches
     assert config.config.workflows.codecov_token == expected_codecov_token
+    assert config.config.workflows.codecov_token == expected_codecov_token
+    assert config.config.workflows.include_codecov == expected_include_codecov

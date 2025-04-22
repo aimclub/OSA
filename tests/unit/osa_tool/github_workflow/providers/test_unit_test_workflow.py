@@ -7,15 +7,13 @@ class TestUnitTestWorkflowGenerator(unittest.TestCase):
         workflow = generate_unit_test_workflow()
 
         self.assertEqual(workflow["name"], "Unit Tests")
-        self.assertEqual(workflow["on"]["push"]["branches"], ["main", "master"])
-        self.assertEqual(workflow["on"]["pull_request"]["branches"], ["main", "master"])
-        self.assertIn("workflow_dispatch", workflow["on"])
+        self.assertEqual(workflow["on"], ["push", "pull_request"])
         self.assertEqual(workflow["jobs"]["test"]["name"], "Run Tests")
         self.assertEqual(workflow["jobs"]["test"]["strategy"]["matrix"]["os"], ["ubuntu-latest"])
         self.assertEqual(workflow["jobs"]["test"]["strategy"]["matrix"]["python-version"], ["3.8", "3.9", "3.10"])
         self.assertEqual(workflow["jobs"]["test"]["steps"][0]["uses"], "actions/checkout@v4")
         self.assertEqual(workflow["jobs"]["test"]["steps"][1]["uses"], "actions/setup-python@v4")
-        self.assertEqual(workflow["jobs"]["test"]["steps"][2]["run"], "pip install -r requirements.txt\npip install pytest pytest-cov")
+        self.assertEqual(workflow["jobs"]["test"]["steps"][2]["run"], "pip install -r requirements.txt && pip install pytest pytest-cov")
         self.assertEqual(workflow["jobs"]["test"]["steps"][3]["run"], "pytest tests/ --cov=.")
         self.assertEqual(workflow["jobs"]["test"]["steps"][4]["uses"], "codecov/codecov-action@v4") # Default includes Codecov
         self.assertNotIn("token", workflow["jobs"]["test"]["steps"][4].get("with", {})) # No token by default
@@ -39,7 +37,7 @@ class TestUnitTestWorkflowGenerator(unittest.TestCase):
         self.assertEqual(workflow["jobs"]["test"]["timeout-minutes"], 30)
         self.assertEqual(workflow["jobs"]["test"]["strategy"]["matrix"]["os"], ["macos-latest"])
         self.assertEqual(workflow["jobs"]["test"]["strategy"]["matrix"]["python-version"], ["3.7", "3.11"])
-        self.assertEqual(workflow["jobs"]["test"]["steps"][2]["run"], "poetry install\npip install pytest pytest-cov")
+        self.assertEqual(workflow["jobs"]["test"]["steps"][2]["run"], "poetry install && pip install pytest pytest-cov")
         self.assertEqual(workflow["jobs"]["test"]["steps"][3]["run"], "python -m unittest discover --cov=.")
         self.assertNotIn("codecov/codecov-action@v4", [step.get("uses", "") for step in workflow["jobs"]["test"]["steps"]]) # No Codecov step
 
