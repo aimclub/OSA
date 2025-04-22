@@ -7,8 +7,7 @@ import openai
 import requests
 from protollm.connectors import create_llm_connector
 
-from osa_tool.config.settings import Settings
-from osa_tool.utils import logger
+from osa_tool.readmeai.config.settings import Settings
 
 
 class ModelHandler(ABC):
@@ -407,8 +406,13 @@ class ProtollmHandler(ModelHandler):
         connector_creator = create_llm_connector
         url = self.config.llm.url
         model_url = f"{url};{self.config.llm.model}"
-        # TODO add additional parametes such as max tokens.
-        self.client = connector_creator(model_url)
+        
+        temperature = self.config.llm.temperature
+        max_tokens = self.config.llm.tokens
+        top_p = self.config.llm.top_p
+        self.client = connector_creator(
+            model_url, temperature=temperature, max_tokens=max_tokens, top_p=top_p
+        )
 
 
 class ModelHandlerFactory:
