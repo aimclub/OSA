@@ -17,7 +17,7 @@ from osa_tool.run import load_configuration
         (
             "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test", None,
             ".github/workflows", True, True, True, True, False, False, False,
-            ["3.8", "3.9", "3.10"], "flake8", False, [], "false",
+            ["3.8", "3.9", "3.10"], "flake8", False, [], "false", "true",
             "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test",
             ".github/workflows", True, True, True, True, False, False, False,
             ["3.8", "3.9", "3.10"], "flake8", False, [], "false", "true"
@@ -26,7 +26,7 @@ from osa_tool.run import load_configuration
         (
             "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test-article", "article.pdf",
             "custom/workflows", False, False, False, False, True, True, True,
-            ["3.7", "3.11"], "pylint", True, ["main", "dev"], "abc123",
+            ["3.7", "3.11"], "pylint", True, ["main", "dev"], "abc123", "true",
             "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test-article",
             "custom/workflows", False, False, False, False, True, True, True,
             ["3.7", "3.11"], "pylint", True, ["main", "dev"], "abc123", "true"
