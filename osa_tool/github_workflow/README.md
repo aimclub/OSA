@@ -35,6 +35,7 @@ You can customize the generated workflows using the following command-line argum
 | `--use-poetry` | Use Poetry for packaging | `False` |
 | `--branches` | Branches to trigger the workflows on | `main master` |
 | `--codecov-token` | Use Codecov token for uploading coverage | `False` |
+| `--include-codecov` | Include Codecov coverage step in a unit tests workflow | `True` |
 
 ### Example
 
@@ -53,7 +54,8 @@ python -m osa_tool.run --repository https://github.com/username/repo \
   --pep8-tool flake8 \
   --use-poetry \
   --branches main develop \
-  --codecov-token
+  --codecov-token \
+  --include-codecov
 ```
 
 ## Generated Workflows
@@ -65,12 +67,16 @@ The unit tests workflow runs your tests on multiple Python versions and operatin
 Example:
 ```yaml
 name: Unit Tests
-on:
+'on':
   push:
-    branches: [main, master]
+    branches:
+    - main
+    - develop
   pull_request:
-    branches: [main, master]
-  workflow_dispatch:
+    branches:
+    - main
+    - develop
+  workflow_dispatch: {}
 jobs:
   test:
     name: Run Tests
@@ -78,24 +84,27 @@ jobs:
     timeout-minutes: 15
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        python-version: [3.8, 3.9, '3.10']
+        os:
+        - ubuntu-latest
+        python-version:
+        - '3.8'
+        - '3.9'
+        - '3.10'
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-             pip install pytest pytest-cov
-      - name: Run tests
-        run: pytest tests/ --cov=.
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+    - name: Checkout repo
+      uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: pip install -r requirements.txt && pip install pytest pytest-cov
+    - name: Run tests
+      run: pytest tests/ --cov=.
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
 ```
 
 ### Black Formatter Workflow

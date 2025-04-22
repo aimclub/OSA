@@ -55,3 +55,4 @@ pep8_tool = "flake8" # "flake8" or "pylint"
 use_poetry = false
 branches = []
 codecov_token = false
+include_codecov = true

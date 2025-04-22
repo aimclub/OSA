@@ -159,4 +159,10 @@ def get_cli_args():
         default=False,
         help="Use Codecov token for uploading coverage"
     )
+    workflow_group.add_argument(
+        "--include-codecov",
+        action="store_true",
+        default=True,
+        help="Include Codecov coverage step in a unit tests workflow."
+    )
     return parser.parse_args()

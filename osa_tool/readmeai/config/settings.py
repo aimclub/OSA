@@ -189,6 +189,7 @@ class WorkflowSettings(BaseModel):
     use_poetry: bool = Field(default=False, description="Use Poetry for packaging in PyPI workflow.")
     branches: List[str] = Field(default_factory=lambda: ["main", "master"], description="Branches to trigger workflows on.")
     codecov_token: bool = Field(default=False, description="Use Codecov token for coverage upload.")
+    include_codecov: bool = Field(default=True, description="Include Codecov coverage step in a unit tests workflow.")
 
 
 class Settings(BaseModel):

@@ -8,7 +8,7 @@ def generate_unit_test_workflow(
     os_list: List[str] = ["ubuntu-latest"],
     dependencies_command: str = "pip install -r requirements.txt",
     test_command: str = "pytest tests/",
-    branches: List[str] = ["main", "master"],
+    branches: List[str] = [],
     coverage: bool = True,
     timeout_minutes: int = 15,
     codecov_token: bool = False
@@ -30,13 +30,20 @@ def generate_unit_test_workflow(
     Returns:
         Path to the created workflow file
     """
-    workflow = {
-        "name": name,
-        "on": {
+
+    # Default to ["push", "pull_request"] unless specific branches are provided
+    if branches:
+        on_section = {
             "push": {"branches": branches},
             "pull_request": {"branches": branches},
             "workflow_dispatch": {}  # Allow manual triggering
-        },
+        }
+    else:
+        on_section = ["push", "pull_request"]
+
+    workflow = {
+        "name": name,
+        "on": on_section,
         "jobs": {
             "test": {
                 "name": "Run Tests",
@@ -62,7 +69,7 @@ def generate_unit_test_workflow(
                     },
                     {
                         "name": "Install dependencies",
-                        "run": dependencies_command + "\npip install pytest pytest-cov"
+                        "run": dependencies_command + " && pip install pytest pytest-cov"
                     },
                     {
                         "name": "Run tests",

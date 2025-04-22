@@ -487,7 +487,12 @@ class GitHubWorkflowGenerator:
             created_files.append(file_path)
 
         if settings.include_tests:
-            workflow = generate_unit_test_workflow()
+            workflow = generate_unit_test_workflow(
+                branches=settings.branches,
+                python_versions=settings.python_versions,
+                codecov_token=settings.codecov_token,
+                coverage=settings.include_codecov
+                )
             file_path = self._write_workflow("unit_tests.yml", workflow)
             created_files.append(file_path)
 

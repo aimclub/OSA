@@ -66,6 +66,7 @@ def main():
     use_poetry = args.use_poetry
     branches = args.branches
     codecov_token = args.codecov_token
+    include_codecov = args.include_codecov
 
     try:
         # Load configurations and update
@@ -87,7 +88,8 @@ def main():
             pep8_tool=pep8_tool,
             use_poetry=use_poetry,
             branches=branches,
-            codecov_token=codecov_token
+            codecov_token=codecov_token,
+            include_codecov=include_codecov
         )
 
         # Initialize GitHub agent and perform operations
@@ -191,7 +193,8 @@ def load_configuration(
         pep8_tool: str,
         use_poetry: bool,
         branches: List[str],
-        codecov_token: str
+        codecov_token: str,
+        include_codecov: bool,
 ) -> ConfigLoader:
     """
     Loads configuration for osa_tool.
@@ -250,7 +253,8 @@ def load_configuration(
         "pep8_tool": pep8_tool,
         "use_poetry": use_poetry,
         "branches": branches,
-        "codecov_token": codecov_token
+        "codecov_token": codecov_token,
+        "include_codecov": include_codecov
     })
     logger.info("Config successfully updated and loaded")
     return config_loader
