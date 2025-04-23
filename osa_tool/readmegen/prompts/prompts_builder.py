@@ -27,7 +27,7 @@ class PromptBuilder:
         try:
             formatted_prompt = self.prompts.preanalysis.format(
                 repository_tree=self.tree,
-                reamde_content=extract_readme_content(self.base_path)
+                readme_content=extract_readme_content(self.base_path)
             )
             return formatted_prompt
         except Exception as e:
