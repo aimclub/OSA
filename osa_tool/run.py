@@ -184,10 +184,8 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
 
     """
     try:
-        # repo_url = config_loader.config.git.repository
-        # ts = OSA_TreeSitter(parse_folder_name(repo_url))
-        repo_url = "./osa_tool/run.py"
-        ts = OSA_TreeSitter(repo_url)
+        repo_url = config_loader.config.git.repository
+        ts = OSA_TreeSitter(parse_folder_name(repo_url))
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen(config_loader)
         dg.process_python_file(res)
