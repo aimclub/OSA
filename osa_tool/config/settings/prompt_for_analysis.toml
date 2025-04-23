@@ -1,0 +1,49 @@
+[prompt]
+main_prompt = """
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+2. METADATA: {metadata}
+3. REPOSITORY FILE TREE: {repository_tree}
+4. PRESENCE OF IMPORTANT FILES AND DIRECTORIES: {presence_files}
+5. README CONTENT: {readme_content}
+
+TASK:
+
+Generate a JSON report following this exact structure:
+
+{{
+  "structure": {{
+    "compliance": "text",
+    "missing_files": ["list"],
+    "organization": "text"
+  }},
+  "readme": {{
+    "readme_quality": "text"
+    "project_description": "Yes/No/Partial",
+    "installation": "Yes/No/Partial",
+    "usage_examples": "Yes/No/Partial",
+    "contribution_guidelines": "Yes/No/Partial",
+    "license_specified": "Yes/No/Partial",
+    "badges_present": "Yes/No/Partial"
+  }},
+  "documentation": {{
+    "tests_present": "Yes/No/Partial",
+    "docs_quality": "text",
+    "outdated_content": boolean
+  }},
+  "assessment": {{
+    "key_shortcomings": ["list"],
+    "recommendations": ["list"]
+  }}
+}}
+
+RULES:
+
+- Use double quotes for JSON
+- No markdown formatting
+- Only use Yes/No/Partial for readme fields
+- Be strictly factual about file presence
+- Prioritize 3 most critical recommendations
+
+"""

@@ -1,22 +1,11 @@
+import ast
 import os
+import re
+
 import nbformat
 from nbconvert import PythonExporter
-import logging
-import ast
-import re
-from rich.logging import RichHandler
 
-for handler in logging.root.handlers[:]:
-    logging.root.removeHandler(handler)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler()]
-)
-
-logger = logging.getLogger("rich")
+from osa_tool.utils import logger
 
 
 class NotebookConverter:
@@ -84,7 +73,8 @@ class NotebookConverter:
         except Exception as e:
             logger.error("Failed to convert notebook %s: %s", notebook_path, repr(e))
 
-    def process_visualizations(self, figures_dir: str, code: str) -> str:
+    @staticmethod
+    def process_visualizations(figures_dir: str, code: str) -> str:
         """Change code for visualizations.
 
         Args:
@@ -131,8 +121,9 @@ class NotebookConverter:
         code = '\n'.join(lines)
 
         return code
-    
-    def is_syntax_correct(self, code: str) -> bool:
+
+    @staticmethod
+    def is_syntax_correct(code: str) -> bool:
         """Checks if the given code has valid syntax.
 
         Args:

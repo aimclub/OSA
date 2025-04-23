@@ -1,0 +1,138 @@
+# LLM prompts for various text generation tasks.
+
+[prompts]
+preanalysis = """
+INPUT DATA:
+
+1. REPOSITORY FILE TREE:
+
+{repository_tree}
+
+2. README CONTENT:
+
+{reamde_content}
+
+TASK:
+
+Based on the provided data about the files and the README content,
+your task is to identify and return the paths to 3-5 key files that
+contain the main business logic or project description.
+
+RULES:
+
+- Return one path per line.
+- Choose the most important files that define the project’s core logic.
+- Exclude files related to tests, configuration, or assets unless they are central to the business logic.
+- Exclude README files.
+
+"""
+
+core_features = """
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. METADATA:
+
+{metadata}
+
+3. REAMDE CONTENT:
+
+{readme_content}
+
+4. KEY FILES CONTENTS:
+
+{key_files_content}
+
+TASK:
+
+Based on the provided information about the project, generate a list of core features for the project.
+Each core feature should be represented by JSON format following this exact structure:
+
+{{
+    "feature_name": "text",
+    "feature_description": "text",
+    "is_critical": boolean
+}}
+
+RULES:
+
+- The output should be a JSON array.
+- Each element in the array should represent one core feature.
+- Use double quotes for JSON formatting.
+- Be sure to generate multiple core features, each describing a different aspect of the project.
+- The 'feature_name' should describe a key aspect.
+- The 'feature_description' should be a detailed but short explanation of the feature.
+
+"""
+
+overview = """
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. SHORT DESCRIPTION: {description}
+
+3. REAMDE CONTENT:
+
+{readme_content}
+
+4. CORE FEATURES:
+
+{core_features}
+
+TASK:
+Generate a concise overview of the project by analyzing the provided data.
+Your response should be a short paragraph that encapsulates the core use-case, value proposition.
+Generate a JSON response following this exact structure:
+
+{{
+    "overview": "text"
+}}
+
+RULES:
+
+- Focus on the project's core purpose and its value proposition without mentioning specific technical aspects.
+- Avoid technical jargon, code snippets, or any implementation details.
+- The overview should be no more than 60 words.
+
+"""
+
+getting_started = """
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+3. REAMDE CONTENT:
+
+{readme_content}
+
+3. CONTENTS OF THE EXAMPLES DIRECTORY:
+
+{examples_files_content}
+
+TASK:
+You are generating the "Getting Started" section for the README file of the project above.
+Your goal is to help a new user understand how to start using the project by analyzing the provided example files.
+
+If you find a clear entrypoint or demonstration of how to run or integrate the project — use that information to generate a concise, helpful section.
+
+If the example files are empty, contain only boilerplate code (e.g., import statements or data definitions), or do not provide any meaningful insight on how to use the project — return `null` in JSON instead of a section.
+
+Generate a JSON response following this exact structure:
+
+{{
+    "getting_started": "text or null"
+}}
+
+RULES:
+
+- Be concise and beginner-friendly.
+- Use markdown formatting with code blocks if needed.
+- Prefer actual code found in the examples over assumptions.
+- DO NOT make up usage instructions — rely only on provided content.
+- If unsure or examples are not helpful, return "getting_started": null
+- Don't add ## Getting Started at the beginning
+
+"""
+
