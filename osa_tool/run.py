@@ -1,5 +1,6 @@
 import os
 from typing import List
+import tomli
 
 from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.sourcerank import SourceRank
@@ -159,7 +160,8 @@ def compile_license_file(sourcerank: SourceRank):
         license_template_path = os.path.join(
             os.getcwd(), "osa_tool", "docs", "license_template", "licenses.toml"
         )
-        license_template = FileHandler().read_toml(license_template_path)
+        with open(license_template_path, "rb") as f:
+            license_template = tomli.load(f)
         license_type = "bsd"
         year = sourcerank.metadata.created_at[:4]
         author = sourcerank.metadata.owner
