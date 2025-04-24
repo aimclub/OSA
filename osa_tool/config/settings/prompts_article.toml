@@ -1,0 +1,139 @@
+# LLM prompts for various text generation tasks.
+
+[prompts]
+file_summary = """
+INPUT DATA:
+
+1. FILES CONTENT:
+
+{files_content}
+
+TASK:
+Analyze the provided code repository. Your task is to summarize the following:
+Purpose: The overall goal and intended function of the codebase.
+Architecture: The structure of the codebase and its key components.
+Functionality: What the code achieves and the main algorithms or approaches it implements.
+Connection to the context: How the code reflects or supports the methodology, key ideas, or results described in the article.
+Ensure your summary is clear, concise, and om3its technical implementation details. Focus on high-level insights that help understand the codebase.
+
+Generate a JSON response following this exact structure:
+
+{{
+    "file_summary": "text"
+}}
+
+RULES:
+
+- Avoid phrases like "This file", "The file", or "This code".
+- Begin with a verb or noun.
+- Do not include quotes, code snippets, bullets, or lists.
+- Limit the response to 200-250 words.
+
+"""
+
+pdf_summary = """
+INPUT DATA:
+
+1. PDF CONTENT: {pdf_content}
+
+TASK:
+Analyze the given text, which may be a technical report or article. Your task is to extract the following, basing your response solely on the context provided:
+
+Main topic: Identify the central subject of the document.
+Key ideas: Highlight the primary concepts or arguments presented.
+Methodology: Describe the methods or approaches used.
+Working steps: Outline the significant actions or processes involved.
+Results: Summarize the outcomes or findings.
+Ensure your response is precise, uses concise language, and avoids any additional information not present in the text.
+
+Generate a JSON response following this exact structure:
+
+{{
+    "pdf_summary": "text"
+}}
+
+RULES:
+
+- Start with a strong, attention-grabbing statement.
+- Avoid phrases like "This PDF" or "The document".
+- Exclude quotes, code snippets, bullets, or lists.
+- Limit the response to 200-250 words.
+
+"""
+
+overview = """
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. FILE SUMMARIES: {files_summary}
+
+3. PDF SUMMARIES: {pdf_summary}
+
+TASK:
+Outline the repository's purpose and objectives based on the following context. Emphasize main functionalities and goals without technical jargon.
+Generate a JSON response following this exact structure:
+
+{{
+    "overview": "text"
+}}
+
+RULES:
+
+- Begin with a clear statement capturing the project's essence.
+- Use 150-200 words.
+- Avoid phrases like "This project" or "The repository".
+-
+
+"""
+
+content = """
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. FILE SUMMARIES:
+
+{files_content}
+
+3. PDF SUMMARIES: {pdf_summary}
+
+TASK:
+Describe the repository's components—including databases, models, and other relevant parts—and explain how they interrelate to support the project’s functionality.
+Generate a JSON response following this exact structure:
+
+{{
+    "content": "text"
+}}
+
+RULES:
+
+- Emphasize each component's role in the overall project.
+- Focus on high-level concepts, avoiding technical details.
+- Don't put quotes around or enclose any code.
+
+"""
+
+algorithms = """
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. FILE SUMMARIES: {file_summary}
+
+3. PDF SUMMARIES: {pdf_summary}
+
+TASK:
+Detail the algorithms used in the codebase, explaining their functions.
+Generate a JSON response following this exact structure:
+
+{{
+    "algorithms": "text"
+}}
+
+RULES:
+
+- Describe each algorithm's role without technical implementation details.
+- Use clear, accessible language.
+
+"""

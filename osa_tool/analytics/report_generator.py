@@ -8,20 +8,18 @@ from pydantic import ValidationError
 from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.analytics.prompt_builder import RepositoryReport
 from osa_tool.analytics.sourcerank import SourceRank
+from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
-from osa_tool.readmeai.config.settings import ConfigLoader
-from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
-from osa_tool.utils import parse_folder_name, osa_project_root, logger
+from osa_tool.utils import extract_readme_content, logger, osa_project_root, parse_folder_name
 
 
 class TextGenerator:
     def __init__(self,
-                 config_loader: ConfigLoader | ArticleConfigLoader,
+                 config_loader: ConfigLoader,
                  sourcerank: SourceRank):
         self.config = config_loader.config
         self.sourcerank = sourcerank
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(
-            self.config)
+        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.repo_url = self.config.git.repository
         self.metadata = load_data_metadata(self.repo_url)
         self.base_path = os.path.join(
@@ -31,7 +29,6 @@ class TextGenerator:
         self.prompt_path = os.path.join(
             osa_project_root(),
             "config",
-            "standart",
             "settings",
             "prompt_for_analysis.toml"
         )
@@ -77,30 +74,9 @@ class TextGenerator:
             metadata=self.metadata,
             repository_tree=self.sourcerank.tree,
             presence_files=self._extract_presence_files(),
-            readme_content=self._extract_readme_content()
+            readme_content=extract_readme_content(self.base_path)
         )
         return prompt
-
-    def _extract_readme_content(self) -> str | None:
-        """
-        Extracts the content of the README file from the repository.
-
-        If a README file exists in the repository, it will return its content.
-        It checks for both "README.md" and "README.rst" files. If no README is found,
-        it returns a default message.
-
-        Returns:
-            str: The content of the README file or a message indicating absence.
-        """
-        if not self.sourcerank.readme_presence():
-            return "No README.md file"
-
-        for file in ["README.md", "README.rst"]:
-            readme_path = os.path.join(self.base_path, file)
-
-            if os.path.exists(readme_path):
-                with open(readme_path, "r", encoding="utf-8") as f:
-                    return f.read()
 
     def _extract_presence_files(self) -> list[str]:
         """

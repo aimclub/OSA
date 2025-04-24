@@ -1,32 +1,15 @@
 import os
-import logging
 import re
 
-from rich.logging import RichHandler
-
-from osa_tool.readmeai.config.settings import ConfigLoader
-from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
-
-from osa_tool.utils import parse_folder_name, osa_project_root
-from osa_tool.models.models import ModelHandlerFactory, ModelHandler
-
-for handler in logging.root.handlers[:]:
-    logging.root.removeHandler(handler)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler()]
-)
-
-logger = logging.getLogger("rich")
+from osa_tool.config.settings import ConfigLoader
+from osa_tool.models.models import ModelHandler, ModelHandlerFactory
+from osa_tool.utils import logger, parse_folder_name
 
 
 class DirectoryTranslator:
     def __init__(
             self,
-            config_loader: ConfigLoader | ArticleConfigLoader
+            config_loader: ConfigLoader
     ):
         self.config = config_loader.config
         self.repo_url = self.config.git.repository

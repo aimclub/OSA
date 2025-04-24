@@ -1,25 +1,11 @@
-import logging
 import os
 
 import requests
 from dotenv import load_dotenv
 from git import GitCommandError, InvalidGitRepositoryError, Repo
-from rich.logging import RichHandler
 
 from osa_tool.analytics.metadata import load_data_metadata
-from osa_tool.utils import get_base_repo_url, parse_folder_name
-
-for handler in logging.root.handlers[:]:
-    logging.root.removeHandler(handler)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler()]
-)
-
-logger = logging.getLogger("rich")
+from osa_tool.utils import get_base_repo_url, logger, parse_folder_name
 
 
 class GithubAgent:

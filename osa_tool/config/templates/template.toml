@@ -1,0 +1,150 @@
+# -- Headers Section -----------------------------------------------------------
+headers = """
+# {project_name}
+
+---
+
+{info_badges}
+{tech_badges}
+---
+"""
+
+information_badges = """
+{badges_data}
+[![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/ITMO-NSS-team/Open-Source-Advisor)
+"""
+
+technology_badges = """
+{technology_badges}
+"""
+
+# -- Overview Section ----------------------------------------------------------
+overview = """
+## Overview
+
+{0}
+
+---
+"""
+
+# -- Core Features Section -----------------------------------------------------
+core_features = """
+## Core features
+
+{0}
+
+---
+"""
+
+# -- Installation Section ------------------------------------------------------
+installation = """
+## Installation
+
+{prerequisites}
+Install {project} using one of the following methods:
+
+{steps}
+
+---
+"""
+
+# -- Getting Started Section ---------------------------------------------------
+getting_started = """
+## Getting Started
+
+{0}
+
+---
+"""
+
+# -- Examples Section ----------------------------------------------------------
+examples = """
+## Examples
+
+Examples of how this should work and how it should be used are available [here]({path}).
+
+---
+"""
+
+# -- Docs Section --------------------------------------------------------------
+documentation = """
+## Documentation
+
+A detailed {repo_name} description is available [here]({path}).
+
+---
+"""
+
+# -- Contribution Section ------------------------------------------------------
+contributing = """
+## Contributing
+
+{dicsussion_section}
+{issue_section}
+{contributing_section}
+
+---
+"""
+
+discussion_section = """
+- **[Join the Discussions]({discussions_url})**: Share your insights, provide feedback, or ask questions.
+"""
+
+issues_section = """
+- **[Report Issues]({issues_url})**: Submit bugs found or log feature requests for the project.
+"""
+
+contributing_section = """
+- **[Submit Pull Requests]({contributing_url})**: To learn more about making a contribution to {name}.
+"""
+
+# -- License Section -----------------------------------------------------------
+license = """
+## License
+
+This project is protected under the {license_name}. For more details, refer to the [LICENSE]({path}) file.
+
+---
+"""
+
+# -- Citation Section ----------------------------------------------------------
+citation = """
+## Citation
+
+"""
+
+citation_v1 = """
+If you use this software, please cite it as it is written in the [CITATION]({path}) file.
+
+---
+"""
+
+citation_v2 = """
+If you use this software, please cite it as below.
+
+### APA format:
+
+    {owner} ({year}). {repo_name} repository [Computer software]. {repository_url}
+
+### BibTeX format:
+
+    @misc{{{repo_name},
+
+        author = {{{owner}}},
+
+        title = {{{repo_name} repository}},
+
+        year = {{{year}}},
+
+        publisher = {{{publisher}}},
+
+        journal = {{{publisher} repository}},
+
+        howpublished = {{\\url{{{repository_url}.git}}}},
+
+        url = {{{repository_url}.git}}
+
+    }}
+
+---
+"""
