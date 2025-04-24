@@ -41,7 +41,7 @@ def test_clone_repository_clone_new_repo(mock_exists, mock_logger, mock_repo, gi
     github_agent.clone_repository()
     # Assert
     mock_repo.clone_from.assert_called_once_with(
-        url=github_agent._get_auth_url(), to_path=github_agent.clone_dir, branch=github_agent.base_branch)
+        url=github_agent._get_auth_url(), to_path=github_agent.clone_dir, branch=github_agent.base_branch, single_branch=True)
     mock_logger.info.assert_any_call(
         f"Cloning the {github_agent.base_branch} branch from {github_agent.repo_url} into directory {github_agent.clone_dir}...")
 
