@@ -151,7 +151,8 @@ class GithubAgent:
                 self.repo = Repo.clone_from(
                     url=self._get_auth_url(),
                     to_path=self.clone_dir,
-                    branch=self.base_branch)
+                    branch=self.base_branch,
+                    single_branch=True)
                 logger.info("Cloning completed")
             except GitCommandError as e:
                 logger.error(f"Cloning failed: {repr(e)}")
@@ -187,8 +188,19 @@ class GithubAgent:
 
         logger.info(f"Pushing changes to branch {self.branch_name} in fork...")
         self.repo.git.remote('set-url', 'origin', self._get_auth_url(self.fork_url))
-        self.repo.git.push('--set-upstream', 'origin', self.branch_name, force_with_lease=True)
-        logger.info("Push completed.")
+        try:
+            self.repo.git.push('--set-upstream', 'origin',
+                               self.branch_name, force_with_lease=True)
+            logger.info("Push completed.")
+        except GitCommandError as e:
+            logger.error(
+                f"""Push failed: Branch '{self.branch_name}' already exists in the fork.
+             To resolve this, please either:
+                1. Choose a different branch name that doesn't exist in the fork by modifying the `branch_name` parameter.
+                2. Delete the existing branch from forked repository.
+                3. Delete the fork entirely.""")
+            raise
+
 
     def create_pull_request(self, title: str = None, body: str = None) -> None:
         """Creates a pull request from the forked repository to the original repository.
