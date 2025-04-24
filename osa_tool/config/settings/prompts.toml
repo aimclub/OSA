@@ -10,7 +10,7 @@ INPUT DATA:
 
 2. README CONTENT:
 
-{reamde_content}
+{readme_content}
 
 TASK:
 
@@ -36,7 +36,7 @@ INPUT DATA:
 
 {metadata}
 
-3. REAMDE CONTENT:
+3. README CONTENT:
 
 {readme_content}
 
@@ -73,7 +73,7 @@ INPUT DATA:
 
 2. SHORT DESCRIPTION: {description}
 
-3. REAMDE CONTENT:
+3. README CONTENT:
 
 {readme_content}
 
@@ -103,7 +103,7 @@ INPUT DATA:
 
 1. PROJECT NAME: {project_name}
 
-3. REAMDE CONTENT:
+3. README CONTENT:
 
 {readme_content}
 
