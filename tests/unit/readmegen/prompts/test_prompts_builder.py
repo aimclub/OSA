@@ -40,7 +40,7 @@ def patch_dependencies(mock_metadata):
         mock_sourcerank.return_value.tree = "repo/tree"
 
         mock_prompt_loader.return_value.prompts = MagicMock(
-            preanalysis="Tree: {repository_tree} | Readme: {reamde_content}",
+            preanalysis="Tree: {repository_tree} | Readme: {readme_content}",
             core_features="Project: {project_name}, Meta: {metadata}, Readme: {readme_content}, Keys: {key_files_content}",
             overview="Name: {project_name}, Desc: {description}, Readme: {readme_content}, Features: {core_features}",
             getting_started="Proj: {project_name}, Readme: {readme_content}, Examples: {examples_files_content}"
