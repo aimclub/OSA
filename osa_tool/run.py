@@ -279,8 +279,8 @@ def generate_github_workflows(config_loader: ConfigLoader) -> None:
             workflow_settings, output_dir)
 
         if created_files:
-            logger.info("Successfully generated the following workflow files:")
-            logger.info('\n'.join(created_files))
+            formatted_files = "\n".join(f" - {file}" for file in created_files)
+            logger.info("Successfully generated the following workflow files:\n%s", formatted_files)
         else:
             logger.info("No workflow files were generated.")
 
