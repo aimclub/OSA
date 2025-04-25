@@ -1,39 +1,22 @@
-import logging
 import os
-
 from typing import List
-
-from rich.logging import RichHandler
 
 from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.arguments_parser import get_cli_args
+from osa_tool.config.settings import ConfigLoader, GitSettings
+from osa_tool.convertion.notebook_converter import NotebookConverter
 from osa_tool.github_agent.github_agent import GithubAgent
 from osa_tool.github_workflow import generate_workflows_from_settings
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
-from osa_tool.readmeai.config.settings import ConfigLoader, GitSettings
-from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
-from osa_tool.readmeai.readme_core import readme_agent
+from osa_tool.readmegen.readme_core import readme_agent
 from osa_tool.translation.dir_translator import DirectoryTranslator
-from osa_tool.convertion.notebook_converter import NotebookConverter
 from osa_tool.utils import (
     delete_repository,
-    osa_project_root,
+    logger,
     parse_folder_name
 )
-
-for handler in logging.root.handlers[:]:
-    logging.root.removeHandler(handler)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler()],
-)
-
-logger = logging.getLogger("rich")
 
 
 def main():
@@ -102,7 +85,7 @@ def main():
         # .ipynb to .py convertion
         if notebook_paths is not None:
             convert_notebooks(config, notebook_paths)
-        
+
         # Repository Analysis Report generation
         sourcerank = SourceRank(config)
         analytics = ReportGenerator(config, sourcerank)
@@ -139,9 +122,8 @@ def convert_notebooks(config_loader: ConfigLoader, notebook_paths: List[str] | N
 
     Args:
         config_loader: The configuration object which contains repo_url.
-        notebook_paths: A list of paths to the notebooks to be converted (or None). If empty,
-                        the converter will process the current repository.
-
+        notebook_paths: A list of paths to the notebooks to be converted (or None).
+                        If empty, the converter will process the current repository.
     """
     try:
         converter = NotebookConverter()
@@ -222,15 +204,7 @@ def load_configuration(
     Returns:
         config_loader: The configuration object which contains settings for osa_tool.
     """
-    if article is None:
-
-        config_loader = ConfigLoader(
-            config_dir=os.path.join(osa_project_root(), "config",
-                                    "standart"))
-    else:
-        config_loader = ArticleConfigLoader(
-            config_dir=os.path.join(osa_project_root(), "config",
-                                    "with_article"))
+    config_loader = ConfigLoader()
 
     config_loader.config.git = GitSettings(repository=repo_url)
     config_loader.config.llm = config_loader.config.llm.model_copy(

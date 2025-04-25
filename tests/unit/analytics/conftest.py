@@ -1,13 +1,14 @@
 import json
-import pytest
-
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from osa_tool.analytics.sourcerank import SourceRank
+import pytest
+
 from osa_tool.analytics.prompt_builder import RepositoryReport, YesNoPartial
-from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.report_generator import TextGenerator
+from osa_tool.analytics.report_maker import ReportGenerator
+from osa_tool.analytics.sourcerank import SourceRank
+
 
 @pytest.fixture
 def mock_config_loader():
@@ -24,7 +25,7 @@ def mock_config_loader():
 @patch("osa_tool.analytics.metadata.load_data_metadata", return_value={})
 @patch("osa_tool.utils.osa_project_root", return_value="/mock/path")
 @patch("osa_tool.utils.parse_folder_name", return_value="testrepo")
-@patch("osa_tool.analytics.sourcerank.ingest",
+@patch("osa_tool.utils.get_repo_tree",
        return_value=(None, "README.md LICENSE tests", None))
 def source_rank(
         mock_ingest,

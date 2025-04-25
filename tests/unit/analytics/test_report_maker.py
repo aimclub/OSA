@@ -1,16 +1,15 @@
 import os
-
 from unittest.mock import MagicMock, patch
 
-from reportlab.platypus import Table, ListFlowable
+from reportlab.platypus import ListFlowable, Table
 
 from osa_tool.analytics.prompt_builder import (
+    CodeDocumentation,
+    OverallAssessment,
+    ReadmeEvaluation,
     RepositoryReport,
     RepositoryStructure,
-    ReadmeEvaluation,
-    YesNoPartial,
-    CodeDocumentation,
-    OverallAssessment
+    YesNoPartial
 )
 from osa_tool.analytics.report_maker import ReportGenerator
 
@@ -82,7 +81,6 @@ def test_body_first_part(report_generator):
     body_part = report_generator.body_first_part()
     # Assert
     assert isinstance(body_part, ListFlowable)
-
 
 
 def test_body_second_part(report_generator):
