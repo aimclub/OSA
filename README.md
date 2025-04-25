@@ -154,18 +154,21 @@ docker run --env-file .env {image-name} -r {repository} [--api {api}] [--base-ur
 
 The --article option enables you to choose a README template for a repository based on an article. You can provide either a link to a PDF file of the article or a path to a local PDF file after the --article option. If you are using Docker, ensure that you upload the PDF file to the OSA folder before building the image, then, specify the path as /app/OSA/... or just use volume mounting to access the file.
 
+The --generate-workflows option is intended to create customizable CI/CD pipelines for Python repositories. For detailed documentation, see the [GitHub Action Workflow Generator README](./osa_tool/github_workflow/README.md).
+
 ### Configuration
 
-| Flag                 | Description                                                                 | Default                     |
-|----------------------|-----------------------------------------------------------------------------|-----------------------------|
-| `-r`, `--repository` | URL of the GitHub repository (**Mandatory**)                                |                             |
-| `--api`              | LLM API service provider                                                    | `llama`                     |
-| `--base-url`         | URL of the provider compatible with API OpenAI                              | `https://api.openai.com/v1` |
-| `--model`            | Specific LLM model to use                                                   | `gpt-3.5-turbo`             |
-| `--article`          | Link to the pdf file of the article                                         | `None`                      |
-| `--translate-dirs`   | Enable automatic translation of the directory name into English             | `disabled`                  |
-| `--convert-notebooks`| One or more notebook file or directory paths                    | `repository directory`      |
-| `--delete-dir`       | Enable deleting the downloaded repository after processing (**Linux only**) | `disabled`                  |
+| Flag                   | Description                                                                   | Default                     |
+|------------------------|-------------------------------------------------------------------------------|-----------------------------|
+| `-r`, `--repository`   | URL of the GitHub repository (**Mandatory**)                                  |                             |
+| `--api`                | LLM API service provider                                                      | `llama`                     |
+| `--base-url`           | URL of the provider compatible with API OpenAI                                | `https://api.openai.com/v1` |
+| `--model`              | Specific LLM model to use                                                     | `gpt-3.5-turbo`             |
+| `--article`            | Link to the pdf file of the article                                           | `None`                      |
+| `--translate-dirs`     | Enable automatic translation of the directory name into English               | `disabled`                  |
+| `--convert-notebooks`  | One or more notebook file or directory paths                                  | `repository directory`      |
+| `--delete-dir`         | Enable deleting the downloaded repository after processing (**Linux only**)   | `disabled`                  |
+| `--generate-workflows` | Enable creation of CI/CD pipelines (**only for Python repositories**)         | `disabled`                  |
 
 ---
 
@@ -195,15 +198,6 @@ python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor -
 Ollama:
 ```sh
 python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api ollama --base-url http://[YOUR_OLLAMA_IP]:11434 --model gemma3:27b
-```
-
-### GitHub Action Workflow Generator
-
-OSA includes a GitHub Action Workflow Generator that can create customizable CI/CD pipelines for Python repositories. For detailed documentation, see the [GitHub Action Workflow Generator README](./osa_tool/github_workflow/README.md).
-
-To use the workflow generator, add the `--generate-workflows` flag to your command:
-```sh
-python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --generate-workflows
 ```
 
 ---
