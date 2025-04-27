@@ -25,10 +25,10 @@ from osa_tool.run import load_configuration
         ),
         # Second test case
         (
-            "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test-article",
+            "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test",
             "custom/workflows", False, False, False, False, True, True, True,
             ["3.7", "3.11"], "pylint", True, ["main", "dev"], "abc123", "true",
-            "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test-article",
+            "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test",
             "custom/workflows", False, False, False, False, True, True, True,
             ["3.7", "3.11"], "pylint", True, ["main", "dev"], "abc123", "true"
         )
