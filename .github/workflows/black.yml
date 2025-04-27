@@ -1,11 +1,17 @@
-name: black-action
-on: [push, pull_request]
+name: Black Formatter
+'on':
+- push
+- pull_request
 jobs:
-  linter_name:
-    name: Run black formatter
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: rickstaa/action-black@v1.3.3
-        with:
-          black_args: "."
+    - name: Checkout repo
+      uses: actions/checkout@v4
+    - name: Run Black
+      uses: psf/black@stable
+      with:
+        options: --check --diff
+        src: .
+        jupyter: 'false'
