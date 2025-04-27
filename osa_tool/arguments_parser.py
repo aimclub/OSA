@@ -76,4 +76,93 @@ def get_cli_args():
         help="Enable deleting the downloaded repository after processing. ("
              "Linux only)"
     )
+
+    # Create a group for GitHub workflow generator arguments
+    workflow_group = parser.add_argument_group('GitHub workflow generator arguments')
+    workflow_group.add_argument(
+        "--generate-workflows",
+        action="store_true",
+        help="Generate GitHub Action workflows for the repository"
+    )
+    workflow_group.add_argument(
+        "--workflows-output-dir",
+        type=str,
+        default=".github/workflows",
+        help="Directory where the workflow files will be saved"
+    )
+    workflow_group.add_argument(
+        "--include-tests",
+        action="store_true",
+        default=True,
+        help="Include unit tests workflow"
+    )
+    workflow_group.add_argument(
+        "--include-black",
+        action="store_true",
+        default=True,
+        help="Include Black formatter workflow"
+    )
+    workflow_group.add_argument(
+        "--include-pep8",
+        action="store_true",
+        default=True,
+        help="Include PEP 8 compliance workflow"
+    )
+    workflow_group.add_argument(
+        "--include-autopep8",
+        action="store_true",
+        default=False,
+        help="Include autopep8 formatter workflow"
+    )
+    workflow_group.add_argument(
+        "--include-fix-pep8",
+        action="store_true",
+        default=False,
+        help="Include fix-pep8 command workflow"
+    )
+    workflow_group.add_argument(
+        "--include-pypi",
+        action="store_true",
+        default=False,
+        help="Include PyPI publish workflow"
+    )
+    workflow_group.add_argument(
+        "--python-versions",
+        type=str,
+        nargs="+",
+        default=["3.8", "3.9", "3.10"],
+        help="Python versions to test against"
+    )
+    workflow_group.add_argument(
+        "--pep8-tool",
+        type=str,
+        choices=["flake8", "pylint"],
+        default="flake8",
+        help="Tool to use for PEP 8 checking"
+    )
+    workflow_group.add_argument(
+        "--use-poetry",
+        action="store_true",
+        default=False,
+        help="Use Poetry for packaging"
+    )
+    workflow_group.add_argument(
+        "--branches",
+        type=str,
+        nargs="+",
+        default=[],
+        help="Branches to trigger the workflows on"
+    )
+    workflow_group.add_argument(
+        "--codecov-token",
+        action="store_true",
+        default=False,
+        help="Use Codecov token for uploading coverage"
+    )
+    workflow_group.add_argument(
+        "--include-codecov",
+        action="store_true",
+        default=True,
+        help="Include Codecov coverage step in a unit tests workflow."
+    )
     return parser.parse_args()
