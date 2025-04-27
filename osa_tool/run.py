@@ -58,7 +58,6 @@ def main():
             api=api,
             base_url=base_url,
             model_name=model_name,
-            article=article,
             generate_workflows=generate_workflows,
             workflows_output_dir=workflows_output_dir,
             include_tests=include_tests,
@@ -84,7 +83,7 @@ def main():
 
         # .ipynb to .py convertion
         if notebook_paths is not None:
-            convert_notebooks(config, notebook_paths)
+            convert_notebooks(repo_url, notebook_paths)
 
         # Repository Analysis Report generation
         sourcerank = SourceRank(config)
@@ -117,18 +116,17 @@ def main():
         logger.error("Error: %s", e, exc_info=True)
 
 
-def convert_notebooks(config_loader: ConfigLoader, notebook_paths: List[str] | None = None) -> None:
+def convert_notebooks(repo_url: str, notebook_paths: List[str] | None = None) -> None:
     """Converts Jupyter notebooks to Python scripts based on provided paths.
 
     Args:
-        config_loader: The configuration object which contains repo_url.
+        repo_url: Repository url.
         notebook_paths: A list of paths to the notebooks to be converted (or None).
                         If empty, the converter will process the current repository.
     """
     try:
         converter = NotebookConverter()
         if len(notebook_paths) == 0:
-            repo_url = config_loader.config.git.repository
             converter.process_path(os.path.basename(repo_url))
         else:
             for path in notebook_paths:
@@ -162,7 +160,6 @@ def load_configuration(
         api: str,
         base_url: str,
         model_name: str,
-        article: str | None,
         workflows_output_dir: str,
         generate_workflows: bool,
         include_tests: bool,
@@ -186,7 +183,6 @@ def load_configuration(
         api: LLM API service provider.
         base_url: URL of the provider compatible with API OpenAI
         model_name: Specific LLM model to use.
-        article: Link to the pdf file of the article. Can be None.
         workflows_output_dir: Directory where GitHub workflows will be generated.        
         generate_workflows: Flag to generate GitHub workflows (True/False).
         include_tests: Whether to include tests in the workflows.

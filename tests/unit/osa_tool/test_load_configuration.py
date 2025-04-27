@@ -5,7 +5,7 @@ import pytest
 from osa_tool.run import load_configuration
 
 @pytest.mark.parametrize(
-    "repo_url, api, api_url, model, article, workflows_output_dir, generate_workflows, "
+    "repo_url, api, api_url, model, workflows_output_dir, generate_workflows, "
     "include_tests, include_black, include_pep8, include_autopep8, include_fix_pep8, "
     "include_pypi, python_versions, pep8_tool, use_poetry, branches, codecov_token, include_codecov, "
     "expected_repo, expected_api, expected_url, expected_model, "
@@ -16,7 +16,7 @@ from osa_tool.run import load_configuration
     [
         # First test case
         (
-            "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test", None,
+            "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test",
             ".github/workflows", True, True, True, True, False, False, False,
             ["3.8", "3.9", "3.10"], "flake8", False, [], "false", "true",
             "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test",
@@ -25,7 +25,7 @@ from osa_tool.run import load_configuration
         ),
         # Second test case
         (
-            "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test-article", "article.pdf",
+            "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test-article",
             "custom/workflows", False, False, False, False, True, True, True,
             ["3.7", "3.11"], "pylint", True, ["main", "dev"], "abc123", "true",
             "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test-article",
@@ -35,10 +35,9 @@ from osa_tool.run import load_configuration
     ]
 )
 @patch("osa_tool.utils.osa_project_root", return_value="/mock/project/root")
-@patch("osa_tool.readmeai.config.settings.ConfigLoader", autospec=True)
-@patch("osa_tool.readmeai.readmegen_article.config.settings.ArticleConfigLoader", autospec=True)
-def test_load_configuration(mock_article_loader, mock_config_loader, mock_project_root,
-                            repo_url, api, api_url, model, article, workflows_output_dir, generate_workflows,
+@patch("osa_tool.config.settings.ConfigLoader", autospec=True)
+def test_load_configuration(mock_config_loader, mock_project_root,
+                            repo_url, api, api_url, model, workflows_output_dir, generate_workflows,
                             include_tests, include_black, include_pep8, include_autopep8, include_fix_pep8,
                             include_pypi, python_versions, pep8_tool, use_poetry, branches, codecov_token, include_codecov,
                             expected_repo, expected_api, expected_url, expected_model,
@@ -49,7 +48,6 @@ def test_load_configuration(mock_article_loader, mock_config_loader, mock_projec
     # Arrange
     mock_config = MagicMock()
     mock_config_loader.return_value = mock_config
-    mock_article_loader.return_value = mock_config
     
     # Act
     config = load_configuration(
@@ -57,7 +55,6 @@ def test_load_configuration(mock_article_loader, mock_config_loader, mock_projec
         api=api,
         base_url=api_url,
         model_name=model,
-        article=article,
         workflows_output_dir=workflows_output_dir,
         generate_workflows=generate_workflows,
         include_tests=include_tests,

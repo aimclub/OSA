@@ -4,7 +4,7 @@ from typing import Dict, List, Any
 
 from osa_tool.github_workflow.providers.black import generate_black_formatter_workflow
 from osa_tool.github_workflow.providers.unit_test import generate_unit_test_workflow
-from osa_tool.readmeai.config.settings import WorkflowSettings
+from osa_tool.config.settings import WorkflowSettings
 
 
 class GitHubWorkflowGenerator:
