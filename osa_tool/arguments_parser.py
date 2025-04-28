@@ -15,6 +15,13 @@ def get_cli_args():
         required=True,
     )
     parser.add_argument(
+        "-b",
+        "--branch",
+        type=str,
+        help="Branch name of the GitHub repository",
+        required=False,
+    )
+    parser.add_argument(
         "--api",
         type=str,
         help="LLM API service provider",

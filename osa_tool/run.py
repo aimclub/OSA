@@ -29,6 +29,7 @@ def main():
     # Create a command line argument parser
     args = get_cli_args()
     repo_url = args.repository
+    repo_branch_name = args.branch
     api = args.api
     base_url = args.base_url
     model_name = args.model
@@ -75,7 +76,7 @@ def main():
         )
 
         # Initialize GitHub agent and perform operations
-        github_agent = GithubAgent(repo_url)
+        github_agent = GithubAgent(repo_url, repo_branch_name)
         github_agent.star_repository()
         github_agent.create_fork()
         github_agent.clone_repository()

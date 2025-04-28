@@ -1,7 +1,6 @@
 import os
 import re
 
-from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.utils import get_repo_tree, parse_folder_name
 
@@ -14,7 +13,6 @@ class SourceRank:
     ):
         self.config = config_loader.config
         self.repo_url = self.config.git.repository
-        self.metadata = load_data_metadata(self.repo_url)
         self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.tree = get_repo_tree(self.repo_path)
 

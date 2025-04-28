@@ -170,6 +170,7 @@ The --generate-workflows option is intended to create customizable CI/CD pipelin
 | Flag                   | Description                                                                   | Default                     |
 |------------------------|-------------------------------------------------------------------------------|-----------------------------|
 | `-r`, `--repository`   | URL of the GitHub repository (**Mandatory**)                                  |                             |
+| `-b`, `--branch`       | Branch name of the GitHub repository                                          | Default branch              |
 | `--api`                | LLM API service provider                                                      | `llama`                     |
 | `--base-url`           | URL of the provider compatible with API OpenAI                                | `https://api.openai.com/v1` |
 | `--model`              | Specific LLM model to use                                                     | `gpt-3.5-turbo`             |
