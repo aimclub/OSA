@@ -88,8 +88,9 @@ def main():
 
         # Repository Analysis Report generation
         sourcerank = SourceRank(config)
-        analytics = ReportGenerator(config, sourcerank)
+        analytics = ReportGenerator(config, sourcerank, github_agent.clone_dir)
         analytics.build_pdf()
+        github_agent.upload_report(analytics.filename)
 
         # Auto translating names of directories
         if args.translate_dirs:

@@ -46,6 +46,7 @@ class GithubAgent:
         self.fork_url = None
         self.metadata = load_data_metadata(self.repo_url)
         self.base_branch = repo_branch_name or self.metadata.default_branch
+        self.pr_report_body = ""
 
     def create_fork(self) -> None:
         """Creates a fork of the repository in the osa_tool account.
@@ -144,49 +145,57 @@ class GithubAgent:
                 logger.error(f"Cloning failed: {repr(e)}")
                 raise
 
-    def create_and_checkout_branch(self) -> None:
+    def create_and_checkout_branch(self, branch: str = None) -> None:
         """Creates and checks out a new branch.
 
         If the branch already exists, it simply checks out the branch.
+
+        Args:
+            branch: The name of the branch to create or check out. Defaults to `branch_name`.
         """
-        if self.branch_name in self.repo.heads:
-            logger.info(f"Branch {self.branch_name} already exists. Switching to it...")
-            self.repo.git.checkout(self.branch_name)
+        if branch is None:
+            branch = self.branch_name
+
+        if branch in self.repo.heads:
+            logger.info(f"Branch {branch} already exists. Switching to it...")
+            self.repo.git.checkout(branch)
             return
         else:
-            logger.info(f"Creating and switching to branch {self.branch_name}...")
-            self.repo.git.checkout('-b', self.branch_name)
-            logger.info(f"Switched to branch {self.branch_name}.")
+            logger.info(f"Creating and switching to branch {branch}...")
+            self.repo.git.checkout('-b', branch)
+            logger.info(f"Switched to branch {branch}.")
 
-    def commit_and_push_changes(self, commit_message: str = "osa_tool recommendations") -> None:
+    def commit_and_push_changes(self, branch: str = None, commit_message: str = "osa_tool recommendations") -> None:
         """Commits and pushes changes to the forked repository.
 
         Args:
+            branch: The name of the branch to push changes to. Defaults to `branch_name`.
             commit_message: The commit message. Defaults to "osa_tool recommendations".
         """
         if not self.fork_url:
             raise ValueError("Fork URL is not set. Please create a fork first.")
+        if branch is None:
+            branch = self.branch_name
 
         logger.info("Committing changes...")
         self.repo.git.add('.')
         self.repo.git.commit('-m', commit_message)
         logger.info("Commit completed.")
 
-        logger.info(f"Pushing changes to branch {self.branch_name} in fork...")
+        logger.info(f"Pushing changes to branch {branch} in fork...")
         self.repo.git.remote('set-url', 'origin', self._get_auth_url(self.fork_url))
         try:
             self.repo.git.push('--set-upstream', 'origin',
-                               self.branch_name, force_with_lease=True)
+                               branch, force_with_lease=True)
             logger.info("Push completed.")
         except GitCommandError as e:
             logger.error(
-                f"""Push failed: Branch '{self.branch_name}' already exists in the fork.
+                f"""Push failed: Branch '{branch}' already exists in the fork.
              To resolve this, please either:
                 1. Choose a different branch name that doesn't exist in the fork by modifying the `branch_name` parameter.
                 2. Delete the existing branch from forked repository.
                 3. Delete the fork entirely.""")
             raise
-
 
     def create_pull_request(self, title: str = None, body: str = None) -> None:
         """Creates a pull request from the forked repository to the original repository.
@@ -205,6 +214,7 @@ class GithubAgent:
         last_commit = self.repo.head.commit
         pr_title = title if title else last_commit.message
         pr_body = body if body else last_commit.message
+        pr_body += self.pr_report_body
         pr_body += self.AGENT_SIGNATURE
 
         pr_data = {
@@ -227,6 +237,21 @@ class GithubAgent:
             logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
             if not "pull request already exists" in response.text:
                 raise ValueError("Failed to create pull request.")
+
+    def upload_report(self, report_filename: str, report_branch: str = "osa_tool_attachments", commit_message: str = "upload pdf report") -> None:
+        """Uploads the generated PDF report to a separate branch.
+
+        Args:
+            report_filename: The name of the report file.
+            report_branch: Name of the branch for storing reports. Defaults to "osa_tool_attachments".
+            commit_message: Commit message for the report upload. Defaults to "upload pdf report".
+        """
+        self.create_and_checkout_branch(report_branch)
+        self.commit_and_push_changes(report_branch, commit_message)
+        self.create_and_checkout_branch()  # Return to original branch
+
+        report_url = f"{self.fork_url}/blob/{report_branch}/{report_filename}"
+        self.pr_report_body = f"\nGenerated report - [{report_filename}]({report_url})\n"
 
     def _get_auth_url(self, url: str = None) -> str:
         """Converts the repository URL by adding a token for authentication.
