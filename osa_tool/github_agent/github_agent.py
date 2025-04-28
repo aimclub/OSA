@@ -1,25 +1,11 @@
-import logging
 import os
 
 import requests
 from dotenv import load_dotenv
 from git import GitCommandError, InvalidGitRepositoryError, Repo
-from rich.logging import RichHandler
 
 from osa_tool.analytics.metadata import load_data_metadata
-from osa_tool.utils import get_base_repo_url, parse_folder_name
-
-for handler in logging.root.handlers[:]:
-    logging.root.removeHandler(handler)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler()]
-)
-
-logger = logging.getLogger("rich")
+from osa_tool.utils import get_base_repo_url, logger, parse_folder_name
 
 
 class GithubAgent:
@@ -31,8 +17,9 @@ class GithubAgent:
     Attributes:
         AGENT_SIGNATURE: A signature string appended to pull request descriptions.
         repo_url: The URL of the GitHub repository.
+        base_branch: The name of the repository's branch.
         clone_dir: The directory where the repository will be cloned.
-        branch_name: The name of the branch to be created or checked out.
+        branch_name: The name of the branch to be created.
         repo: The GitPython Repo object representing the repository.
         token: The GitHub token for authentication.
     """
@@ -42,11 +29,12 @@ class GithubAgent:
         "\n_OSA just makes your open source project better!_"
     )
 
-    def __init__(self, repo_url: str, branch_name: str = "osa_tool"):
+    def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool"):
         """Initializes the GithubAgent with the repository URL and branch name.
 
         Args:
             repo_url: The URL of the GitHub repository.
+            repo_branch_name: The name of the repository's branch to be checked out.
             branch_name: The name of the branch to be created. Defaults to "osa_tool".
         """
         load_dotenv()
@@ -57,7 +45,7 @@ class GithubAgent:
         self.token = os.getenv("GIT_TOKEN")
         self.fork_url = None
         self.metadata = load_data_metadata(self.repo_url)
-        self.base_branch = self.metadata.default_branch
+        self.base_branch = repo_branch_name or self.metadata.default_branch
         self.pr_report_body = ""
 
     def create_fork(self) -> None:
@@ -145,8 +133,13 @@ class GithubAgent:
                 raise
         else:
             try:
-                logger.info(f"Cloning repository {self.repo_url} into {self.clone_dir}...")
-                self.repo = Repo.clone_from(self._get_auth_url(), self.clone_dir)
+                logger.info(
+                    f"Cloning the {self.base_branch} branch from {self.repo_url} into directory {self.clone_dir}...")
+                self.repo = Repo.clone_from(
+                    url=self._get_auth_url(),
+                    to_path=self.clone_dir,
+                    branch=self.base_branch,
+                    single_branch=True)
                 logger.info("Cloning completed")
             except GitCommandError as e:
                 logger.error(f"Cloning failed: {repr(e)}")
@@ -191,9 +184,18 @@ class GithubAgent:
 
         logger.info(f"Pushing changes to branch {branch} in fork...")
         self.repo.git.remote('set-url', 'origin', self._get_auth_url(self.fork_url))
-        self.repo.git.push('--set-upstream', 'origin',
-                           branch, force_with_lease=True)
-        logger.info("Push completed.")
+        try:
+            self.repo.git.push('--set-upstream', 'origin',
+                               self.branch_name, force_with_lease=True)
+            logger.info("Push completed.")
+        except GitCommandError as e:
+            logger.error(
+                f"""Push failed: Branch '{self.branch_name}' already exists in the fork.
+             To resolve this, please either:
+                1. Choose a different branch name that doesn't exist in the fork by modifying the `branch_name` parameter.
+                2. Delete the existing branch from forked repository.
+                3. Delete the fork entirely.""")
+            raise
 
     def create_pull_request(self, title: str = None, body: str = None) -> None:
         """Creates a pull request from the forked repository to the original repository.

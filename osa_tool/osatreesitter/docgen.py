@@ -1,14 +1,13 @@
-import dotenv
-import logging
 import re
 import black
 from pathlib import Path
 
+import dotenv
 import tiktoken
 
-from osa_tool.models.models import ModelHandlerFactory, ModelHandler
-from osa_tool.readmeai.config.settings import ConfigLoader
-from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
+from osa_tool.config.settings import ConfigLoader
+from osa_tool.models.models import ModelHandler, ModelHandlerFactory
+from osa_tool.utils import logger
 
 dotenv.load_dotenv()
 
@@ -57,7 +56,7 @@ class DocGen(object):
             file structure and for each class or standalone function, generating its documentation.
     """
 
-    def __init__(self, config_loader: ConfigLoader | ArticleConfigLoader):
+    def __init__(self, config_loader: ConfigLoader):
         """
         Instantiates the object of the class.
 
@@ -388,7 +387,7 @@ class DocGen(object):
                 if item["type"] == "class":
                     for method in item["methods"]:
                         if method["docstring"] == None:  # If docstring is missing
-                            logging.info(
+                            logger.info(
                                 f"Generating docstring for method: {method['method_name']} in class {item['name']} at {filename}"
                             )
                             method_context = self.context_extractor(
@@ -407,7 +406,7 @@ class DocGen(object):
                 if item["type"] == "function":
                     func_details = item["details"]
                     if func_details["docstring"] == None:
-                        logging.info(
+                        logger.info(
                             f"Generating docstring for a function: {func_details['method_name']} at {filename}"
                         )
                         generated_docstring = self.generate_method_documentation(
@@ -430,7 +429,7 @@ class DocGen(object):
                                 "docstring": method["docstring"],
                             }
                         )
-                    logging.info(
+                    logger.info(
                         f"Generating docstring for class: {item['name']} in class at {filename}"
                     )
                     generated_cls_docstring = self.generate_class_documentation(
@@ -442,7 +441,8 @@ class DocGen(object):
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(source_code)
             self.format_with_black(filename)
-            logging.info(f"Updated file: {filename}")
+            logger.info(f"Updated file: {filename}")
+
 
     def generate_method_documentation_md(self, method_details: dict) -> str:
         """
@@ -519,7 +519,7 @@ class DocGen(object):
         """Generates documentation for a method or function."""
         doc_type = "Function" if is_function else "Method"
         try:
-            logging.info(
+            logger.info(
                 f"{doc_type} {method_details['method_name']}'s docstring is generating"
             )
             method_doc = self.generate_method_documentation_md(
@@ -529,5 +529,5 @@ class DocGen(object):
                 f"### {doc_type}: {method_details['method_name']}\n\n{method_doc}\n\n"
             )
         except Exception as e:
-            logging.error(e, exc_info=True)
+            logger.error(e, exc_info=True)
             return f"### {doc_type}: {method_details['method_name']}\n\nFailed to generate documentation.\n\n"

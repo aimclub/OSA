@@ -1,4 +1,3 @@
-import logging
 import os
 from datetime import datetime
 
@@ -7,39 +6,21 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfgen.canvas import Canvas
-from reportlab.platypus import (
-    ListFlowable,
-    ListItem,
-    Paragraph,
-    SimpleDocTemplate,
-    Spacer,
-    Table,
-    TableStyle,
-)
-from rich.logging import RichHandler
+
+from reportlab.platypus import (ListFlowable, ListItem, Paragraph,
+                                SimpleDocTemplate, Spacer, Table, TableStyle)
 
 from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.analytics.report_generator import TextGenerator
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.readmeai.config.settings import ConfigLoader
-from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
-from osa_tool.utils import osa_project_root
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler()],
-)
-
-logger = logging.getLogger("rich")
+from osa_tool.config.settings import ConfigLoader
+from osa_tool.utils import logger, osa_project_root
 
 
 class ReportGenerator:
     def __init__(self,
-                 config_loader: ConfigLoader | ArticleConfigLoader,
-                 sourcerank: SourceRank,
-                 output_path: str = None):
+                 config_loader: ConfigLoader,
+                 sourcerank: SourceRank):
         self.config = config_loader.config
         self.sourcerank = sourcerank
         self.text_generator = TextGenerator(config_loader, self.sourcerank)

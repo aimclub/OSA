@@ -1,0 +1,58 @@
+# Default API Settings
+[api]
+rate_limit = 10
+system_message = "You're a brilliant Tech Lead and Staff Software Engineer with a passion for open-source projects."
+
+# File Resources
+[files]
+docs_list = "docs_list.toml"
+ignore_list = "ignore_list.toml"
+languages = "languages.toml"
+parsers = "parsers.toml"
+prompts = "prompts.toml"
+tool_config = "tool_config.toml"
+tooling = "tooling.toml"
+shieldsio_icons = "shieldsio_icons.json"
+skill_icons = "skill_icons.json"
+
+# Git Repository Settings
+[git]
+repository = "https://github.com/aimclub/FEDOT"
+
+# Language Model API Settings
+[llm]
+api = "openai"
+url = "https://api.openai.com/v1"
+context_window = 4096
+encoder = "cl100k_base"
+host_name = "https://api.openai.com/v1"
+localhost = "http://localhost:11434/"
+model = "gpt-3.5-turbo"
+path = "generate"
+temperature = 0.05
+tokens = 4096
+top_p = 0.95
+
+# Logging Configuration
+[log]
+log_level = "info"
+indent = 2
+pad_event = 20
+use_json = true
+
+# GitHub Actions Workflow Settings
+[workflows]
+generate_workflows = false
+output_dir = ".github/workflows"
+include_tests = true
+include_black = true
+include_pep8 = true
+include_autopep8 = false
+include_fix_pep8 = false
+include_pypi = false
+python_versions = ["3.8", "3.9", "3.10"]
+pep8_tool = "flake8" # "flake8" or "pylint"
+use_poetry = false
+branches = []
+codecov_token = false
+include_codecov = true
