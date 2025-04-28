@@ -68,6 +68,8 @@ Here is a short demo:
 
 4. **Various LLMs**: Use OSA with an LLM accessible via API (e.g., OpenAI, VseGPT, Ollama), a local server, or try an [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
 
+5. **GitHub Action Workflow Generator**: Automatically generates customizable CI/CD workflows for Python repositories, including unit tests, code formatting, PEP 8 compliance checks, and PyPI publication.
+
 ---
 
 ## Installation
@@ -161,19 +163,22 @@ docker run --env-file .env {image-name} -r {repository} [--api {api}] [--base-ur
 
 The --article option enables you to choose a README template for a repository based on an article. You can provide either a link to a PDF file of the article or a path to a local PDF file after the --article option. If you are using Docker, ensure that you upload the PDF file to the OSA folder before building the image, then, specify the path as /app/OSA/... or just use volume mounting to access the file.
 
+The --generate-workflows option is intended to create customizable CI/CD pipelines for Python repositories. For detailed documentation, see the [GitHub Action Workflow Generator README](./osa_tool/github_workflow/README.md).
+
 ### Configuration
 
-| Flag                 | Description                                                                 | Default                     |
-|----------------------|-----------------------------------------------------------------------------|-----------------------------|
-| `-r`, `--repository` | URL of the GitHub repository (**Mandatory**)                                |                             |
-| `-b`, `--branch`     | Branch name of the GitHub repository                                        | Default branch              |
-| `--api`              | LLM API service provider                                                    | `llama`                     |
-| `--base-url`         | URL of the provider compatible with API OpenAI                              | `https://api.openai.com/v1` |
-| `--model`            | Specific LLM model to use                                                   | `gpt-3.5-turbo`             |
-| `--article`          | Link to the pdf file of the article                                         | `None`                      |
-| `--translate-dirs`   | Enable automatic translation of the directory name into English             | `disabled`                  |
-| `--convert-notebooks`| One or more notebook file or directory paths                                | `repository directory`      |
-| `--delete-dir`       | Enable deleting the downloaded repository after processing (**Linux only**) | `disabled`                  |
+| Flag                   | Description                                                                   | Default                     |
+|------------------------|-------------------------------------------------------------------------------|-----------------------------|
+| `-r`, `--repository`   | URL of the GitHub repository (**Mandatory**)                                  |                             |
+| `-b`, `--branch`       | Branch name of the GitHub repository                                          | Default branch              |
+| `--api`                | LLM API service provider                                                      | `llama`                     |
+| `--base-url`           | URL of the provider compatible with API OpenAI                                | `https://api.openai.com/v1` |
+| `--model`              | Specific LLM model to use                                                     | `gpt-3.5-turbo`             |
+| `--article`            | Link to the pdf file of the article                                           | `None`                      |
+| `--translate-dirs`     | Enable automatic translation of the directory name into English               | `disabled`                  |
+| `--convert-notebooks`  | One or more notebook file or directory paths                                  | `repository directory`      |
+| `--delete-dir`         | Enable deleting the downloaded repository after processing (**Linux only**)   | `disabled`                  |
+| `--generate-workflows` | Enable creation of CI/CD pipelines (**only for Python repositories**)         | `disabled`                  |
 
 ---
 
