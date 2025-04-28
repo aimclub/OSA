@@ -20,7 +20,8 @@ from osa_tool.utils import logger, osa_project_root
 class ReportGenerator:
     def __init__(self,
                  config_loader: ConfigLoader,
-                 sourcerank: SourceRank):
+                 sourcerank: SourceRank,
+                 output_path: str = None):
         self.config = config_loader.config
         self.sourcerank = sourcerank
         self.text_generator = TextGenerator(config_loader, self.sourcerank)

@@ -186,11 +186,11 @@ class GithubAgent:
         self.repo.git.remote('set-url', 'origin', self._get_auth_url(self.fork_url))
         try:
             self.repo.git.push('--set-upstream', 'origin',
-                               self.branch_name, force_with_lease=True)
+                               branch, force_with_lease=True)
             logger.info("Push completed.")
         except GitCommandError as e:
             logger.error(
-                f"""Push failed: Branch '{self.branch_name}' already exists in the fork.
+                f"""Push failed: Branch '{branch}' already exists in the fork.
              To resolve this, please either:
                 1. Choose a different branch name that doesn't exist in the fork by modifying the `branch_name` parameter.
                 2. Delete the existing branch from forked repository.
