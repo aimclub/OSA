@@ -1,4 +1,4 @@
-[bsd]
+[bsd-3]
 template = """BSD 3-Clause License
 
 Copyright (c) {year}, {author}

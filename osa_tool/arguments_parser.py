@@ -76,6 +76,13 @@ def get_cli_args():
         help="Enable deleting the downloaded repository after processing. ("
              "Linux only)"
     )
+    parser.add_argument(
+        "--ensure-license",
+        nargs='?',
+        const="bsd-3",
+        default=None,
+        help="Enable LICENSE file compilation"
+    )
 
     # Create a group for GitHub workflow generator arguments
     workflow_group = parser.add_argument_group('GitHub workflow generator arguments')
