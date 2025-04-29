@@ -1,5 +1,6 @@
 import os
 from typing import List
+import tomli
 
 from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.sourcerank import SourceRank
@@ -35,6 +36,7 @@ def main():
     model_name = args.model
     article = args.article
     notebook_paths = args.convert_notebooks
+    ensure_license = args.ensure_license
 
     # Extract workflow-related arguments
     generate_workflows = args.generate_workflows
@@ -100,6 +102,10 @@ def main():
         # Docstring generation
         generate_docstrings(config)
 
+        # License compiling
+        if ensure_license:
+            compile_license_file(sourcerank, ensure_license)
+
         # Readme generation
         readme_agent(config, article)
 
@@ -133,12 +139,56 @@ def convert_notebooks(repo_url: str, notebook_paths: List[str] | None = None) ->
         else:
             for path in notebook_paths:
                 converter.process_path(path)
-    
+
     except Exception as e:
         logger.error("Error while converting notebooks: %s", repr(e), exc_info=True)
 
 
-def generate_docstrings(config_loader) -> None:
+def compile_license_file(sourcerank: SourceRank, ensure_license):
+    """
+    Compiles a license file for a software project using a specified template.
+
+    This method takes a SourceRank object as input, extracts necessary information such as creation year and author
+    to compile a license file based on a predefined template. The compiled license file is then saved in the repository
+    directory of the SourceRank object.
+
+    Parameters:
+        - sourcerank: SourceRank object containing metadata about the software project.
+        - ensure_license: License type provided by user.
+
+    Returns:
+        None. The compiled license file is saved in the repository directory of the SourceRank object.
+    """
+    try:
+        if sourcerank.license_presence():
+            logger.info("LICENSE file already exists")
+        else:
+            logger.info("LICENSE was not resolved, compiling started...")
+            license_template_path = os.path.join(
+                os.getcwd(), "osa_tool", "docs", "license_template", "licenses.toml"
+            )
+            with open(license_template_path, "rb") as f:
+                license_template = tomli.load(f)
+            license_type = ensure_license
+            year = sourcerank.metadata.created_at[:4]
+            author = sourcerank.metadata.owner
+            try:
+                license_text = license_template[license_type]["template"].format(
+                    year=year, author=author
+                )
+                license_output_path = os.path.join(sourcerank.repo_path, "LICENSE")
+                with open(license_output_path, "w") as f:
+                    f.write(license_text)
+                logger.info(
+                    f"""LICENSE has been successfully compiled at {os.path.join(sourcerank.repo_path, "LICENSE")}"""
+                )
+            except KeyError:
+                logger.error(f"Couldn't resolve {license_type} license type, try to look up available licenses at documentation.")
+    except Exception as e:
+        logger.error("Error while compiling LICENSE: %s", e, exc_info=True)
+
+
+def generate_docstrings(config_loader: ConfigLoader) -> None:
     """Generates a docstrings for .py's classes and methods of the provided repository.
 
     Args:
@@ -153,8 +203,7 @@ def generate_docstrings(config_loader) -> None:
         dg.process_python_file(res)
 
     except Exception as e:
-        logger.error("Error while docstring generation: %s", repr(e),
-                     exc_info=True)
+        logger.error("Error while docstring generation: %s", repr(e), exc_info=True)
 
 
 def load_configuration(
@@ -206,11 +255,7 @@ def load_configuration(
 
     config_loader.config.git = GitSettings(repository=repo_url)
     config_loader.config.llm = config_loader.config.llm.model_copy(
-        update={
-            "api": api,
-            "url": base_url,
-            "model": model_name
-        }
+        update={"api": api, "url": base_url, "model": model_name}
     )
     config_loader.config.workflows = config_loader.config.workflows.model_copy(update={
         "generate_workflows": generate_workflows,

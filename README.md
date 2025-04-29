@@ -179,6 +179,7 @@ The --generate-workflows option is intended to create customizable CI/CD pipelin
 | `--convert-notebooks`  | One or more notebook file or directory paths                                  | `repository directory`      |
 | `--delete-dir`         | Enable deleting the downloaded repository after processing (**Linux only**)   | `disabled`                  |
 | `--generate-workflows` | Enable creation of CI/CD pipelines (**only for Python repositories**)         | `disabled`                  |
+| `--ensure-license`     | Enable creation of LICENSE file by choice from BSD-3 Clause, MIT or Apache-2.0| `bsd-3`                     |
 
 ---
 
