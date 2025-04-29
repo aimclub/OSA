@@ -26,7 +26,7 @@ class ReportGenerator:
         self.sourcerank = sourcerank
         self.text_generator = TextGenerator(config_loader, self.sourcerank)
         self.repo_url = self.config.git.repository
-        self.osa_url = "https://github.com/ITMO-NSS-team/Open-Source-Advisor"
+        self.osa_url = "https://github.com/aimclub/OSA"
         self.metadata = load_data_metadata(self.repo_url)
 
         self.logo_path = os.path.join(
