@@ -152,6 +152,7 @@ def compile_license_file(sourcerank: SourceRank, ensure_license):
 
     Parameters:
         - sourcerank: SourceRank object containing metadata about the software project.
+        - ensure_license: License type provided by user.
 
     Returns:
         None. The compiled license file is saved in the repository directory of the SourceRank object.

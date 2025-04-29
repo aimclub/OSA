@@ -81,7 +81,8 @@ def get_cli_args():
         nargs='?',
         const="bsd-3",
         default=None,
-        help="Enable LICENSE file compilation"
+        help="Enable LICENSE file compilation.",
+        choices=["bsd-3", "mit", "ap2"]
     )
 
     # Create a group for GitHub workflow generator arguments
