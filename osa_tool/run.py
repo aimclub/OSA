@@ -37,6 +37,7 @@ def main():
     article = args.article
     notebook_paths = args.convert_notebooks
     ensure_license = args.ensure_license
+    publish_results = not args.not_publish_results
 
     # Extract workflow-related arguments
     generate_workflows = args.generate_workflows
@@ -79,10 +80,12 @@ def main():
 
         # Initialize GitHub agent and perform operations
         github_agent = GithubAgent(repo_url, repo_branch_name)
-        github_agent.star_repository()
-        github_agent.create_fork()
+        if publish_results:
+            github_agent.star_repository()
+            github_agent.create_fork()
         github_agent.clone_repository()
-        github_agent.create_and_checkout_branch()
+        if publish_results:
+            github_agent.create_and_checkout_branch()
 
         # .ipynb to .py convertion
         if notebook_paths is not None:
@@ -92,7 +95,8 @@ def main():
         sourcerank = SourceRank(config)
         analytics = ReportGenerator(config, sourcerank, github_agent.clone_dir)
         analytics.build_pdf()
-        github_agent.upload_report(analytics.filename)
+        if publish_results:
+            github_agent.upload_report(analytics.filename)
 
         # Auto translating names of directories
         if args.translate_dirs:
@@ -112,9 +116,10 @@ def main():
         # Generate GitHub workflows
         if generate_workflows:
             generate_github_workflows(config)
-        
-        github_agent.commit_and_push_changes()
-        github_agent.create_pull_request()
+
+        if publish_results:
+            github_agent.commit_and_push_changes()
+            github_agent.create_pull_request()
 
         if args.delete_dir:
             delete_repository(repo_url)

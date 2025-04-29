@@ -92,6 +92,12 @@ def get_cli_args():
         choices=["bsd-3", "mit", "ap2"]
     )
 
+    parser.add_argument(
+        "--not-publish-results",
+        action="store_true",
+        help="Create public fork and PR the target repository."
+    )
+
     # Create a group for GitHub workflow generator arguments
     workflow_group = parser.add_argument_group('GitHub workflow generator arguments')
     workflow_group.add_argument(
