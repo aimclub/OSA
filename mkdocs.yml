@@ -23,12 +23,12 @@ nav:
           - core/osatreesitter/osatreesitter.md
           - Documentation Generator: core/osatreesitter/docgen.md
 
-repo_url: https://github.com/ITMO-NSS-team/Open-Source-Advisor
+repo_url: https://github.com/aimclub/OSA
 
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/ITMO-NSS-team/Open-Source-Advisor
+      link: https://github.com/aimclub/OSA
 
 markdown_extensions:
   - admonition

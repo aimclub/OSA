@@ -12,9 +12,9 @@ packages = [{ include = "osa_tool" }]
 dynamic = [ "dependencies" ]
 
 [project.urls]
-Homepage = "https://github.com/ITMO-NSS-team/Open-Source-Advisor"
+Homepage = "https://github.com/aimclub/OSA"
 Documentation = "https://itmo-nss-team.github.io/Open-Source-Advisor/"
-Issues = "https://github.com/ITMO-NSS-team/Open-Source-Advisor/issues"
+Issues = "https://github.com/aimclub/OSA/issues"
 
 [tool.poetry.dependencies]
 aiohappyeyeballs = "2.4.4"

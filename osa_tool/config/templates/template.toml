@@ -11,7 +11,7 @@ headers = """
 
 information_badges = """
 {badges_data}
-[![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/ITMO-NSS-team/Open-Source-Advisor)
+[![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/aimclub/OSA)
 """
 
 technology_badges = """
