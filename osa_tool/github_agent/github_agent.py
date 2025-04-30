@@ -25,7 +25,7 @@ class GithubAgent:
     """
 
     AGENT_SIGNATURE = (
-        "\n\n---\n*This PR was created by [osa_tool](https://github.com/ITMO-NSS-team/Open-Source-Advisor).*"
+        "\n\n---\n*This PR was created by [osa_tool](https://github.com/aimclub/OSA).*"
         "\n_OSA just makes your open source project better!_"
     )
 

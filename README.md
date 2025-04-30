@@ -12,7 +12,7 @@
 [![Open-source-ops website](https://raw.githubusercontent.com/aimclub/open-source-ops/7de1e1321389ec177f236d0a5f41f876811a912a/badges/open--source--ops-black.svg)](https://aimclub.github.io/open-source-ops/)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![PyPi](https://badge.fury.io/py/osa_tool.svg)](https://badge.fury.io/py/osa_tool)
-[![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/ITMO-NSS-team/Open-Source-Advisor)
+[![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/aimclub/OSA)
 [![Telegram Chat](https://img.shields.io/badge/Telegram-group-blue)](https://t.me/OSA_helpdesk)
 </p>
 
@@ -86,7 +86,7 @@ pip install osa_tool
 
 1. Clone the Open-Source-Advisor repository:
 ```sh
-git clone https://github.com/ITMO-NSS-team/Open-Source-Advisor
+git clone https://github.com/aimclub/OSA
 ```
 
 2. Navigate to the project directory:
@@ -180,12 +180,13 @@ The --generate-workflows option is intended to create customizable CI/CD pipelin
 | `--delete-dir`         | Enable deleting the downloaded repository after processing (**Linux only**)   | `disabled`                  |
 | `--generate-workflows` | Enable creation of CI/CD pipelines (**only for Python repositories**)         | `disabled`                  |
 | `--ensure-license`     | Enable creation of LICENSE file by choice from BSD-3 Clause, MIT or Apache-2.0| `bsd-3`                     |
+| `--not-publish-results`       | Avoid create fork and pull request for target repository           | `False`                     |
 
 ---
 
 ## Examples
 
-Examples of generated README files are available in [examples](https://github.com/ITMO-NSS-team/Open-Source-Advisor/tree/main/examples).
+Examples of generated README files are available in [examples](https://github.com/aimclub/OSA/tree/main/examples).
 
 URL of the GitHub repository, LLM API service provider (*optional*) and Specific LLM model to use (*optional*) are required to use the generator.
 
@@ -196,19 +197,19 @@ To see available models go there:
 
 Local Llama ITMO:
 ```sh
-python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor
+python -m osa_tool.run -r https://github.com/aimclub/OSA
 ```  
 OpenAI:
 ```sh
-python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai
+python -m osa_tool.run -r https://github.com/aimclub/OSA --api openai
 ```
 VseGPT:
 ```sh
-python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai --base-url https://api.vsegpt.ru/v1 --model openai/gpt-3.5-turbo
+python -m osa_tool.run -r https://github.com/aimclub/OSA --api openai --base-url https://api.vsegpt.ru/v1 --model openai/gpt-3.5-turbo
 ```
 Ollama:
 ```sh
-python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api ollama --base-url http://[YOUR_OLLAMA_IP]:11434 --model gemma3:27b
+python -m osa_tool.run -r https://github.com/aimclub/OSA --api ollama --base-url http://[YOUR_OLLAMA_IP]:11434 --model gemma3:27b
 ```
 
 ---
@@ -221,13 +222,13 @@ Detailed description of OSA API is available [here](https://itmo-nss-team.github
 
 ## Contributing
 
-- **[Report Issues](https://github.com/ITMO-NSS-team/Open-Source-Advisor/issues )**: Submit bugs found or log feature requests for the Open-Source-Advisor project.
+- **[Report Issues](https://github.com/aimclub/OSA/issues )**: Submit bugs found or log feature requests for the Open-Source-Advisor project.
 
 ---
 
 ## License
 
-This project is protected under the BSD 3-Clause "New" or "Revised" License. For more details, refer to the [LICENSE](https://github.com/ITMO-NSS-team/Open-Source-Advisor/blob/main/LICENSE) file.
+This project is protected under the BSD 3-Clause "New" or "Revised" License. For more details, refer to the [LICENSE](https://github.com/aimclub/OSA/blob/main/LICENSE) file.
 
 ---
 
@@ -249,7 +250,7 @@ If you use this software, please cite it as below.
 
 ### APA format:
 
-    ITMO, NSS Lab (2025). Open-Source-Advisor repository [Computer software]. https://github.com/ITMO-NSS-team/Open-Source-Advisor
+    ITMO, NSS Lab (2025). Open-Source-Advisor repository [Computer software]. https://github.com/aimclub/OSA
 
 ### BibTeX format:
 
@@ -265,9 +266,9 @@ If you use this software, please cite it as below.
 
         journal = {github.com repository},
 
-        howpublished = {\url{https://github.com/ITMO-NSS-team/Open-Source-Advisor.git}},
+        howpublished = {\url{https://github.com/aimclub/OSA.git}},
 
-        url = {https://github.com/ITMO-NSS-team/Open-Source-Advisor.git}
+        url = {https://github.com/aimclub/OSA.git}
 
     }
 

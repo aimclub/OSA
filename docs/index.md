@@ -58,7 +58,7 @@ pip install osa_tool
 
 1. Clone the Open-Source-Advisor repository:
 ```sh
-git clone https://github.com/ITMO-NSS-team/Open-Source-Advisor
+git clone https://github.com/aimclub/OSA
 ```
 
 2. Navigate to the project directory:
@@ -147,12 +147,13 @@ The --article option enables you to choose a README template for a repository ba
 | `--article`          | Link to the pdf file of the article                                         | `None`                      |
 | `--translate-dirs`   | Enable automatic translation of the directory name into English             | `disabled`                  |
 | `--delete-dir`       | Enable deleting the downloaded repository after processing (**Linux only**) | `disabled`                  |
+| `--not-publish-results`       | Avoid create fork and pull request for target repository           | `False`                     |
 
 ---
 
 ## Examples
 
-Examples of generated README files are available in [examples](https://github.com/ITMO-NSS-team/Open-Source-Advisor/tree/main/examples).
+Examples of generated README files are available in [examples](https://github.com/aimclub/OSA/tree/main/examples).
 
 URL of the GitHub repository, LLM API service provider (*optional*) and Specific LLM model to use (*optional*) are required to use the generator.
 
@@ -163,19 +164,19 @@ To see available models go there:
 
 Local Llama ITMO:
 ```sh
-python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor
+python -m osa_tool.run -r https://github.com/aimclub/OSA
 ```  
 OpenAI:
 ```sh
-python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai
+python -m osa_tool.run -r https://github.com/aimclub/OSA --api openai
 ```
 VseGPT:
 ```sh
-python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api openai --base-url https://api.vsegpt.ru/v1 --model openai/gpt-3.5-turbo
+python -m osa_tool.run -r https://github.com/aimclub/OSA --api openai --base-url https://api.vsegpt.ru/v1 --model openai/gpt-3.5-turbo
 ```
 Ollama:
 ```sh
-python -m osa_tool.run -r https://github.com/ITMO-NSS-team/Open-Source-Advisor --api ollama --base-url http://[YOUR_OLLAMA_IP]:11434 --model gemma3:27b
+python -m osa_tool.run -r https://github.com/aimclub/OSA --api ollama --base-url http://[YOUR_OLLAMA_IP]:11434 --model gemma3:27b
 ```
 
 ---
@@ -188,13 +189,13 @@ Detailed description of OSA API is available [here](https://itmo-nss-team.github
 
 ## Contributing
 
-- **[Report Issues](https://github.com/ITMO-NSS-team/Open-Source-Advisor/issues )**: Submit bugs found or log feature requests for the Open-Source-Advisor project.
+- **[Report Issues](https://github.com/aimclub/OSA/issues )**: Submit bugs found or log feature requests for the Open-Source-Advisor project.
 
 ---
 
 ## License
 
-This project is protected under the BSD 3-Clause "New" or "Revised" License. For more details, refer to the [LICENSE](https://github.com/ITMO-NSS-team/Open-Source-Advisor/blob/main/LICENSE) file.
+This project is protected under the BSD 3-Clause "New" or "Revised" License. For more details, refer to the [LICENSE](https://github.com/aimclub/OSA/blob/main/LICENSE) file.
 
 ---
 
@@ -216,7 +217,7 @@ If you use this software, please cite it as below.
 
 ### APA format:
 
-    ITMO, NSS Lab (2025). Open-Source-Advisor repository [Computer software]. https://github.com/ITMO-NSS-team/Open-Source-Advisor
+    ITMO, NSS Lab (2025). Open-Source-Advisor repository [Computer software]. https://github.com/aimclub/OSA
 
 ### BibTeX format:
 
@@ -232,9 +233,9 @@ If you use this software, please cite it as below.
 
         journal = {github.com repository},
 
-        howpublished = {\url{https://github.com/ITMO-NSS-team/Open-Source-Advisor.git}},
+        howpublished = {\url{https://github.com/aimclub/OSA.git}},
 
-        url = {https://github.com/ITMO-NSS-team/Open-Source-Advisor.git}
+        url = {https://github.com/aimclub/OSA.git}
 
     }
 
