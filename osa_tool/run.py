@@ -1,5 +1,6 @@
 import os
 from typing import List
+
 import tomli
 
 from osa_tool.analytics.report_maker import ReportGenerator
@@ -16,6 +17,7 @@ from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.utils import (
     delete_repository,
     logger,
+    osa_project_root,
     parse_folder_name
 )
 
@@ -170,7 +172,7 @@ def compile_license_file(sourcerank: SourceRank, ensure_license):
         else:
             logger.info("LICENSE was not resolved, compiling started...")
             license_template_path = os.path.join(
-                os.getcwd(), "osa_tool", "docs", "license_template", "licenses.toml"
+                osa_project_root(), "docs", "templates", "licenses.toml"
             )
             with open(license_template_path, "rb") as f:
                 license_template = tomli.load(f)
@@ -286,7 +288,7 @@ def generate_github_workflows(config_loader: ConfigLoader) -> None:
     """
     Generate GitHub Action workflows based on configuration settings.
     Args:
-        config: Configuration loader object which contains workflow settings
+        config_loader: Configuration loader object which contains workflow settings
     """
     try:
         logger.info("Generating GitHub action workflows...")
