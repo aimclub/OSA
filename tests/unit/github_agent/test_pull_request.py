@@ -17,7 +17,8 @@ def test_create_pull_request_success(mock_logger, mock_post, github_agent):
             "title": "Initial commit",
             "head": "testuser:feature-branch",
             "base": "main",
-            "body": "Initial commit" + github_agent.AGENT_SIGNATURE
+            "body": "Initial commit" + github_agent.AGENT_SIGNATURE,
+            "maintainer_can_modify": True
         },
         headers={
             "Authorization": "token test_token",
