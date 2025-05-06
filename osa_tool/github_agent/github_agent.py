@@ -221,7 +221,8 @@ class GithubAgent:
             "title": pr_title,
             "head": f"{self.fork_url.split('/')[-2]}:{self.branch_name}",
             "base": self.base_branch,
-            "body": pr_body
+            "body": pr_body,
+            "maintainer_can_modify": True
         }
 
         headers = {
