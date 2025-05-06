@@ -1,0 +1,91 @@
+import os
+import shutil
+from typing import List, Dict
+from fnmatch import fnmatch
+from osa_tool.utils import logger
+
+class RepoOrganizer:
+    """
+    Organizes repository by adding 'tests' and 'examples' directories if they aren't exist,
+    moves test and example files into the appropriate folders.
+    """
+
+    # File patterns for test files by language
+    TEST_PATTERNS: Dict[str, List[str]] = {
+        "python": ["test_*.py", "*_test.py"],
+        "javascript": ["*.spec.js", "*.test.js"],
+        "java": ["*Test.java"],
+        "cpp": ["test_*.cpp", "*_test.cpp"],
+    }
+    # File patterns for example files
+    EXAMPLE_PATTERNS: List[str] = [
+        "example*", "*example*", "*sample*", "*demo*"
+    ]
+
+    def __init__(self, repo_path: str) -> None:
+        """
+        Initialize with the local repository path.
+
+        Args:
+            repo_path (str): Local path to the repository.
+        """
+        self.repo_path = repo_path
+        self.tests_dir = os.path.join(repo_path, "tests")
+        self.examples_dir = os.path.join(repo_path, "examples")
+
+    def add_directories(self) -> None:
+        """
+        Add 'tests' and 'examples' directories if they aren't exist.
+        """
+        for dir_path in [self.tests_dir, self.examples_dir]:
+            try:
+                if not os.path.exists(dir_path):
+                    os.makedirs(dir_path)
+                    logger.info(f"Created directory: {dir_path}")
+                else:
+                    logger.info(f"Directory already exists: {dir_path}")
+            except Exception as e:
+                logger.error(f"Failed to create directory {dir_path}: {e}")
+
+    def match_patterns(self, filename: str, patterns: List[str]) -> bool:
+        """
+        Check if filename matches any of the provided patterns.
+
+        Args:
+            filename (str): Name of the file.
+            patterns (List[str]): List of glob-like patterns.
+        Returns:
+            bool: True if file matches any pattern, False otherwise.
+        """
+        return any(fnmatch(filename.lower(), pattern.lower()) for pattern in patterns)
+
+    def move_files_by_patterns(self, target_dir: str, patterns: List[str]) -> None:
+        """
+        Move files matching patterns to the target directory.
+
+        Args:
+            target_dir (str): Directory to move files into.
+            patterns (List[str]): Patterns to match files.
+        """
+        for root, dirs, files in os.walk(self.repo_path):
+            for file in files:
+                if self.match_patterns(file, patterns):
+                    src = os.path.join(root, file)
+                    dst = os.path.join(target_dir, file)
+                    try:
+                        if os.path.abspath(src) != os.path.abspath(dst):
+                            shutil.move(src, dst)
+                            logger.info(f"Moved '{src}' to '{dst}'")
+                    except Exception as e:
+                        logger.error(f"Failed to move '{src}' to '{dst}': {e}")
+
+    def organize(self) -> None:
+        """
+        Ensure directories exist and move test and example files.
+        """
+        logger.info("Starting repository organization process.")
+        self.add_directories()
+        for lang, patterns in self.TEST_PATTERNS.items():
+            self.move_files_by_patterns(self.tests_dir, patterns)
+        self.move_files_by_patterns(self.examples_dir, self.EXAMPLE_PATTERNS)
+        logger.info("Repository organization process completed.")
