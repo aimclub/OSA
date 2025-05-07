@@ -1,22 +1,18 @@
 import os
 import shutil
-from typing import List, Dict
+from typing import List
 from fnmatch import fnmatch
 from osa_tool.utils import logger
 
 class RepoOrganizer:
     """
     Organizes repository by adding 'tests' and 'examples' directories if they aren't exist,
-    moves test and example files into the appropriate folders.
+    moves Python test and example files into the appropriate folders.
     """
 
-    # File patterns for test files by language
-    TEST_PATTERNS: Dict[str, List[str]] = {
-        "python": ["test_*.py", "*_test.py"],
-        "javascript": ["*.spec.js", "*.test.js"],
-        "java": ["*Test.java"],
-        "cpp": ["test_*.cpp", "*_test.cpp"],
-    }
+    # File patterns for Python test files only
+    TEST_PATTERNS: List[str] = ["test_*.py", "*_test.py"]
+
     # File patterns for example files
     EXAMPLE_PATTERNS: List[str] = [
         "example*", "*example*", "*sample*", "*demo*"
@@ -37,13 +33,10 @@ class RepoOrganizer:
         """
         Add 'tests' and 'examples' directories if they aren't exist.
         """
-        for dir_path in [self.tests_dir, self.examples_dir]:
+        for dir_path in (self.tests_dir, self.examples_dir):
             try:
-                if not os.path.exists(dir_path):
-                    os.makedirs(dir_path)
-                    logger.info(f"Created directory: {dir_path}")
-                else:
-                    logger.info(f"Directory already exists: {dir_path}")
+                os.makedirs(dir_path, exist_ok=True)
+                logger.info(f"Ensured directory exists: {dir_path}")
             except Exception as e:
                 logger.error(f"Failed to create directory {dir_path}: {e}")
 
@@ -54,6 +47,7 @@ class RepoOrganizer:
         Args:
             filename (str): Name of the file.
             patterns (List[str]): List of glob-like patterns.
+
         Returns:
             bool: True if file matches any pattern, False otherwise.
         """
@@ -67,7 +61,7 @@ class RepoOrganizer:
             target_dir (str): Directory to move files into.
             patterns (List[str]): Patterns to match files.
         """
-        for root, dirs, files in os.walk(self.repo_path):
+        for root, _, files in os.walk(self.repo_path):
             for file in files:
                 if self.match_patterns(file, patterns):
                     src = os.path.join(root, file)
@@ -81,11 +75,10 @@ class RepoOrganizer:
 
     def organize(self) -> None:
         """
-        Ensure directories exist and move test and example files.
+        Ensure directories exist and move Python test and example files.
         """
         logger.info("Starting repository organization process.")
         self.add_directories()
-        for lang, patterns in self.TEST_PATTERNS.items():
-            self.move_files_by_patterns(self.tests_dir, patterns)
+        self.move_files_by_patterns(self.tests_dir, self.TEST_PATTERNS)
         self.move_files_by_patterns(self.examples_dir, self.EXAMPLE_PATTERNS)
         logger.info("Repository organization process completed.")
