@@ -35,8 +35,11 @@ class RepoOrganizer:
         """
         for dir_path in (self.tests_dir, self.examples_dir):
             try:
-                os.makedirs(dir_path, exist_ok=True)
-                logger.info(f"Ensured directory exists: {dir_path}")
+                if not os.path.exists(dir_path):
+                    os.makedirs(dir_path)
+                    logger.info(f"Created directory: {dir_path}")
+                else:
+                    logger.info(f"Directory already exists: {dir_path}")
             except Exception as e:
                 logger.error(f"Failed to create directory {dir_path}: {e}")
 
@@ -61,7 +64,11 @@ class RepoOrganizer:
             target_dir (str): Directory to move files into.
             patterns (List[str]): Patterns to match files.
         """
-        for root, _, files in os.walk(self.repo_path):
+        excluded_dirs = {'.git', '.venv', '__pycache__', 'node_modules', '.idea', '.vscode'}
+
+        for root, dirs, files in os.walk(self.repo_path):
+            dirs[:] = [d for d in dirs if d not in excluded_dirs]
+
             for file in files:
                 if self.match_patterns(file, patterns):
                     src = os.path.join(root, file)
