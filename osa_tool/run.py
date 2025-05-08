@@ -9,6 +9,7 @@ from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.convertion.notebook_converter import NotebookConverter
 from osa_tool.github_agent.github_agent import GithubAgent
 from osa_tool.github_workflow import generate_workflows_from_settings
+from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 from osa_tool.readmegen.readme_core import readme_agent
@@ -116,6 +117,10 @@ def main():
         # Generate GitHub workflows
         if generate_workflows:
             generate_github_workflows(config)
+
+        #Organize repository by adding 'tests' and 'examples' directories if they aren't exist
+        organizer = RepoOrganizer(os.path.basename(repo_url))
+        organizer.organize()
 
         if publish_results:
             github_agent.commit_and_push_changes()
