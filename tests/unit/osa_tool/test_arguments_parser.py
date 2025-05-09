@@ -102,3 +102,51 @@ class TestArgumentParser:
         args = self.run_parser(["-r", repo_url])
         # Assert
         assert args.delete_dir is False
+
+    def test_ensure_license_default(self, repo_url):
+        # Act
+        args = self.run_parser(["-r", repo_url])
+        # Assert
+        assert args.ensure_license is None
+
+    @pytest.mark.parametrize("license_type", ["bsd-3", "mit", "ap2"])
+    def test_ensure_license_choices(self, repo_url, license_type):
+        # Act
+        args = self.run_parser(["-r", repo_url, "--ensure-license", license_type])
+        # Assert
+        assert args.ensure_license == license_type
+
+    def test_ensure_license_const_value(self, repo_url):
+        # Act
+        args = self.run_parser(["-r", repo_url, "--ensure-license"])
+        # Assert
+        assert args.ensure_license == "bsd-3"
+
+    def test_ensure_license_invalid_choice(self, repo_url):
+        # Assert
+        with pytest.raises(SystemExit):
+            self.run_parser(["-r", repo_url, "--ensure-license", "invalid_license"])
+
+    def test_not_publish_flag_true(self, repo_url):
+        # Act
+        args = self.run_parser(["-r", repo_url, "--not-publish-results"])
+        # Assert
+        assert args.not_publish_results is True
+
+    def test_not_publish_flag_false(self, repo_url):
+        # Act
+        args = self.run_parser(["-r", repo_url])
+        # Assert
+        assert args.not_publish_results is False
+
+    def test_community_docs_flag_true(self, repo_url):
+        # Act
+        args = self.run_parser(["-r", repo_url, "--community-docs"])
+        # Assert
+        assert args.community_docs is True
+
+    def test_community_docs_flag_false(self, repo_url):
+        # Act
+        args = self.run_parser(["-r", repo_url])
+        # Assert
+        assert args.community_docs is False

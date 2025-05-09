@@ -8,6 +8,7 @@ from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.arguments_parser import get_cli_args
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.convertion.notebook_converter import NotebookConverter
+from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.github_agent.github_agent import GithubAgent
 from osa_tool.github_workflow import generate_workflows_from_settings
 from osa_tool.osatreesitter.docgen import DocGen
@@ -39,6 +40,7 @@ def main():
     article = args.article
     notebook_paths = args.convert_notebooks
     ensure_license = args.ensure_license
+    community_docs = args.community_docs
     publish_results = not args.not_publish_results
 
     # Extract workflow-related arguments
@@ -111,6 +113,10 @@ def main():
         # License compiling
         if ensure_license:
             compile_license_file(sourcerank, ensure_license)
+
+        # Generate community documentation
+        if community_docs:
+            generate_documentation(config)
 
         # Readme generation
         readme_agent(config, article)
