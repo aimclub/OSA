@@ -22,12 +22,18 @@ class AboutGenerator:
         self.readme_content = extract_readme_content(self.base_path)
 
     def generate_about_section(self) -> Dict[str, any]:
-        """Generate complete About section content."""
-        return {
-            "description": self._generate_description(),
-            "homepage": self._detect_homepage(),
-            "topics": self._generate_topics()
+        """
+        Generates complete About section content that consists of description,
+        homepage, and topics.
+        """
+        logger.info("Started generating About section content.")
+        about_section_data = {
+            "description": self.generate_description(),
+            "homepage": self.detect_homepage(),
+            "topics": self.generate_topics()
         }
+        logger.info("Finished generating About section content.")
+        return about_section_data
 
     def _generate_description(self) -> str:
         """
