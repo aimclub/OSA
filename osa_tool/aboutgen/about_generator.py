@@ -35,29 +35,47 @@ class AboutGenerator:
         logger.info("Finished generating About section content.")
         return about_section_data
 
-    def _generate_description(self) -> str:
+    def generate_description(self) -> str:
         """
-        Generate repository description based on README content.
-        If description already exists in metadata, return it.
-        Otherwise, use LLM to generate a concise description.
+        Generates a repository description based on README content.
+
+        Returns:
+            str: A repository description (up to 150 characters) or an empty string
+                 if README content is unavailable.
         """
+        logger.info("Generating repository description...")
         if self.metadata and self.metadata.description:
+            logger.warning(
+                "Description already exists in metadata. Skipping generation.")
             return self.metadata.description
 
-        readme_content = extract_readme_content(self.base_path)
-        if not readme_content:
+        if not self.readme_content:
+            logger.warning(
+                "No README content found. Cannot generate description.")
             return ""
 
         prompt = (
-            "Based on the following README content, generate a concise one-line description "
-            "for the GitHub repository (max 150 characters):\n\n"
-            f"{readme_content}\n\n"
-            "Return only the description text without quotes or additional formatting."
+            "Create a technical, concise GitHub repository description (120 chars) from README content below.\n"
+            "Focus on:\n"
+            "- Core functionality/automation provided\n"
+            "- Key technical differentiation\n"
+            "- Problem domain/specialization\n"
+            "- Primary architectural pattern\n"
+            "Avoid:\n"
+            "- Marketing language ('easy', 'powerful')\n"
+            "- Generic verbs('helps with', 'manages')\n"
+            "- Repository type mentions unless novel\n\n"
+            "Format: Third person technical voice. Example outputs:\n"
+            "1. 'Dynamic DNS updater with Docker support and Let's Encrypt integration'\n"
+            "2. 'Distributed graph processing engine using actor model parallelism'\n\n"
+            f"README content:\n{self.readme_content}\n\n"
+            "Return only the final description text with no commentary."
         )
 
         try:
             description = self.model_handler.send_request(prompt)
-            return description[:150]
+            logger.debug(f"Generated description: {description}")
+            return description[:350]
         except Exception as e:
             logger.error(f"Error generating description: {e}")
             return ""
