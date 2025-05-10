@@ -1,7 +1,8 @@
+import os
+import re
 from typing import Dict, List, Optional
 
 from osa_tool.analytics.metadata import load_data_metadata
-from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.utils import extract_readme_content, logger, parse_folder_name
@@ -11,14 +12,14 @@ class AboutGenerator:
     """Generates GitHub repository About section content."""
 
     def __init__(self, 
-                 config_loader: ConfigLoader,
-                 sourcerank: SourceRank):
+                 config_loader: ConfigLoader):
         self.config = config_loader.config
-        self.sourcerank = sourcerank
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.repo_url = self.config.git.repository
         self.metadata = load_data_metadata(self.repo_url)
-        self.base_path = parse_folder_name(self.repo_url)
+        self.base_path = os.path.join(
+            os.getcwd(), parse_folder_name(self.repo_url))
+        self.readme_content = extract_readme_content(self.base_path)
 
     def generate_about_section(self) -> Dict[str, any]:
         """Generate complete About section content."""
