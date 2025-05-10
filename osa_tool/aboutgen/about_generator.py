@@ -80,29 +80,46 @@ class AboutGenerator:
             logger.error(f"Error generating description: {e}")
             return ""
 
-    def _generate_topics(self) -> List[str]:
+    def generate_topics(self, amount: int = 7) -> List[str]:
         """
-        Get repository topics from metadata if they exist,
-        otherwise generate them using LLM based on README content.
-        Returns up to 5 most relevant topics.
-        """
-        if self.metadata and self.metadata.topics:
-            return self.metadata.topics
+        Generates GitHub repository topics based on README content.
 
-        readme_content = extract_readme_content(self.base_path)
-        if not readme_content:
+        Args:
+            amount (int): Maximum number of topics to return (default 7, max 20).
+
+        Returns:
+            List[str]: A list of up to `amount` topics, or an empty list if none can be generated.
+        """
+        logger.info(f"Generating up to {amount} topics...")
+        if self.metadata and self.metadata.topics:
+            if amount > 20:
+                logger.critical("Maximum amount of topics is 20.")
+                return self.metadata.topics
+            if len(self.metadata.topics) >= amount:
+                logger.warning(
+                    f"{amount} topics already exist in the metadata. Skipping generation.")
+                return self.metadata.topics
+
+        if not self.readme_content:
+            logger.error(
+                "No README content found. Cannot generate topics.")
             return []
 
         prompt = (
-            "Based on the following README content, generate up to 5 relevant GitHub topics.\n"
-            "Topics should be lowercase, use hyphens instead of spaces, and be relevant to:\n"
-            "- Main programming language\n"
-            "- Framework or technology\n"
-            "- Problem domain\n"
-            "- Type of project (e.g., library, tool, framework)\n\n"
-            f"README content:\n{readme_content}\n\n"
-            "Return only topics as a comma-separated list, for example:\n"
-            "code analysis, code improvement, llm, open source, scientific software"
+            "Analyze the README content and already existing topics below"
+            f"to generate up to {amount} specific, technical GitHub topics focusing on:\n"
+            "1. Specialized libraries/packages used (beyond base framework)\n"
+            "2. Core algorithms/technical approaches\n"
+            "3. Specific problem sub-domains\n"
+            "4. Implementation patterns/architectural styles\n"
+            "5. Key technical differentiators\n\n"
+            "Avoid generic terms like programming languages or frameworks unless they are novel implementations.\n"
+            "Do not change the existing topics.\n"
+            "Format: lowercase, hyphens, technical terms only, use 50 characters per topic or less. Example:\n"
+            "computer-vision, graph-algorithms, genetic-algorithm, distributed-systems, gpu-acceleration\n\n"
+            f"README content:\n{self.readme_content}\n\n"
+            f"Existing topics: {', '.join(self.metadata.topics)}\n\n"
+            "Return only topics as a comma-separated list without explanations."
         )
 
         try:
@@ -113,7 +130,7 @@ class AboutGenerator:
                 if topic.strip()
             ]
             logger.debug(f"Generated topics from LLM: {topics}")
-            return topics[:5]
+            return topics[:amount]
         except Exception as e:
             logger.error(f"Error generating topics: {e}")
             return []
