@@ -10,6 +10,7 @@ from osa_tool.analytics.prompt_builder import RepositoryReport
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
+from osa_tool.readmegen.postprocessor.response_cleaner import process_text
 from osa_tool.utils import extract_readme_content, logger, osa_project_root, parse_folder_name
 
 
@@ -41,15 +42,10 @@ class TextGenerator:
             str: The generated repository analysis response from the model.
         """
         response = self.model_handler.send_request(self._build_prompt())
+        cleaned_response = process_text(response)
         try:
-            try:
-                parsed_json = json.loads(response)
-            except JSONDecodeError:
-                # workaround if response starts with ```json and ends with ```
-                parsed_json = json.loads(response.replace('```json', '').replace('```', ''))
-                logger.info(f"JSON from model response is infested with ```. Auto-cleaning workaround applied.")
+            parsed_json = json.loads(cleaned_response)
             parsed_report = RepositoryReport.model_validate(parsed_json)
-
             return parsed_report
         except (ValidationError, json.JSONDecodeError) as e:
             raise ValueError(f"JSON parsing error: {e}")
