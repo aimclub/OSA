@@ -113,14 +113,7 @@ def main():
 
         # About section generation
         about_gen = AboutGenerator(config)
-        about_data = about_gen.generate_about_section()
-        pr_body = (
-            "You can add the following information to the `About` section of your GitHub repository:\n"
-            f"- Description: {about_data['description']}\n"
-            f"- Homepage: {about_data['homepage']}\n"
-            f"- Topics: {', '.join(about_data['topics'])}\n"
-            "Please review and add them to your repository.\n"
-        )
+        about_section_content = about_gen.generate_about_section()
 
         # Generate GitHub workflows
         if generate_workflows:
@@ -128,7 +121,7 @@ def main():
 
         if publish_results:
             github_agent.commit_and_push_changes()
-            github_agent.create_pull_request(body=pr_body)
+            github_agent.create_pull_request(body=about_section_content)
 
         if args.delete_dir:
             delete_repository(repo_url)

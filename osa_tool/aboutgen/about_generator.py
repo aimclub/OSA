@@ -24,19 +24,23 @@ class AboutGenerator:
         self.readme_content = extract_readme_content(self.base_path)
         self.prompts = PromptAboutLoader().prompts
 
-    def generate_about_section(self) -> Dict[str, any]:
+    def generate_about_section(self) -> str:
         """
         Generates complete About section content that consists of description,
         homepage, and topics.
         """
         logger.info("Started generating About section content.")
-        about_section_data = {
-            "description": self.generate_description(),
-            "homepage": self.detect_homepage(),
-            "topics": self.generate_topics()
-        }
+        about_section_content = (
+            "You can add the following information to the `About` section of your GitHub repository:\n"
+            f"- Description: {self.generate_description()}\n"
+            f"- Homepage: {self.detect_homepage()}\n"
+            f"- Topics: {', '.join(self.generate_topics())}\n"
+            "Please review and add them to your repository."
+        )
+        logger.debug(
+            f"Generated About section content: {about_section_content}")
         logger.info("Finished generating About section content.")
-        return about_section_data
+        return about_section_content
 
     def generate_description(self) -> str:
         """
