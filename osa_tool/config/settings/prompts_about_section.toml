@@ -1,0 +1,71 @@
+# LLM prompts for generating the about section of repositories.
+
+[prompts]
+
+description = """
+INPUT DATA:
+1. README content: {readme_content}
+
+TASK:
+Create a technical, concise GitHub repository description (120 chars) from README content.
+Return only the final description text with no commentary.
+
+RULES:
+- Third person technical voice.
+Focus on:
+- Core functionality/automation provided.
+- Key technical differentiation.
+- Problem domain/specialization.
+- Primary architectural pattern.
+Avoid:
+- Marketing language ('easy', 'powerful')
+- Generic verbs('helps with', 'manages')
+- Repository type mentions unless novel
+Example outputs:
+1. 'Dynamic DNS updater with Docker support and Let's Encrypt integration'
+2. 'Distributed graph processing engine using actor model parallelism'
+"""
+
+topics = """
+INPUT DATA:
+1. README content: {readme_content}
+2. Existing topics: {topics}
+
+TASK:
+Analyze the README content and already existing topics below to generate up to {amount} specific, technical GitHub topics focusing on:
+1. Specialized libraries/packages used (beyond base framework)
+2. Core algorithms/technical approaches
+3. Specific problem sub-domains
+4. Implementation patterns/architectural styles
+5. Key technical differentiators
+Return only topics as a comma-separated list without explanations.
+
+RULES:
+Avoid generic terms like programming languages or frameworks unless they are novel implementations.
+Do not change the existing topics.
+Format: lowercase, hyphens, technical terms only, use 50 characters per topic or less. 
+Example output: computer-vision, graph-algorithms, genetic-algorithm, distributed-systems, gpu-acceleration
+"""
+
+analyze_urls = """
+INPUT DATA:
+1. Repository URLs: {urls}
+
+TASK:
+Analyze these repository URLs to identify the best homepage candidate.
+Return only the comma-separated ranked list of candidates without explanations.
+
+RULES:
+Homepage should be either:
+- Official project documentation
+- Dedicated project website
+- GitHub Pages URL (format: *.github.io/*)
+- Primary external project site
+Exclude:
+- Repository links (github.com/<owner>/<repo>)
+- CI/CD badges
+- Package registries
+- Social media links
+Format: <url1>,<url2>
+Example output: https://aimclub.github.io/OSA/,https://fedot.readthedocs.io/
+"""

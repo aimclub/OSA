@@ -1,7 +1,8 @@
 import os
 import re
-from typing import Dict, List, Optional
+from typing import List, Optional
 
+from osa_tool.aboutgen.prompts_about_config import PromptAboutLoader
 from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
@@ -10,12 +11,10 @@ from osa_tool.utils import extract_readme_content, logger, parse_folder_name
 HOMEPAGE_KEYS = ["documentation", "doc", "docs", "about",
                  "homepage", "wiki", "gh-pages", "readthedocs", "netlify", "github.io"]
 
-
 class AboutGenerator:
     """Generates GitHub repository About section content."""
 
-    def __init__(self, 
-                 config_loader: ConfigLoader):
+    def __init__(self, config_loader: ConfigLoader):
         self.config = config_loader.config
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.repo_url = self.config.git.repository
@@ -23,6 +22,7 @@ class AboutGenerator:
         self.base_path = os.path.join(
             os.getcwd(), parse_folder_name(self.repo_url))
         self.readme_content = extract_readme_content(self.base_path)
+        self.prompts = PromptAboutLoader().prompts
 
     def generate_about_section(self) -> Dict[str, any]:
         """
@@ -57,26 +57,11 @@ class AboutGenerator:
                 "No README content found. Cannot generate description.")
             return ""
 
-        prompt = (
-            "Create a technical, concise GitHub repository description (120 chars) from README content below.\n"
-            "Focus on:\n"
-            "- Core functionality/automation provided\n"
-            "- Key technical differentiation\n"
-            "- Problem domain/specialization\n"
-            "- Primary architectural pattern\n"
-            "Avoid:\n"
-            "- Marketing language ('easy', 'powerful')\n"
-            "- Generic verbs('helps with', 'manages')\n"
-            "- Repository type mentions unless novel\n\n"
-            "Format: Third person technical voice. Example outputs:\n"
-            "1. 'Dynamic DNS updater with Docker support and Let's Encrypt integration'\n"
-            "2. 'Distributed graph processing engine using actor model parallelism'\n\n"
-            f"README content:\n{self.readme_content}\n\n"
-            "Return only the final description text with no commentary."
-        )
+        formatted_prompt = self.prompts.description.format(
+            readme_content=self.readme_content)
 
         try:
-            description = self.model_handler.send_request(prompt)
+            description = self.model_handler.send_request(formatted_prompt)
             logger.debug(f"Generated description: {description}")
             return description[:350]
         except Exception as e:
@@ -94,39 +79,25 @@ class AboutGenerator:
             List[str]: A list of up to `amount` topics, or an empty list if none can be generated.
         """
         logger.info(f"Generating up to {amount} topics...")
-        if self.metadata and self.metadata.topics:
+        existing_topics = []
+        if self.metadata and hasattr(self.metadata, 'topics'):
+            existing_topics = self.metadata.topics
             if amount > 20:
                 logger.critical("Maximum amount of topics is 20.")
-                return self.metadata.topics
-            if len(self.metadata.topics) >= amount:
+                return existing_topics
+            if len(existing_topics) >= amount:
                 logger.warning(
                     f"{amount} topics already exist in the metadata. Skipping generation.")
-                return self.metadata.topics
+                return existing_topics
 
-        if not self.readme_content:
-            logger.error(
-                "No README content found. Cannot generate topics.")
-            return []
-
-        prompt = (
-            "Analyze the README content and already existing topics below"
-            f"to generate up to {amount} specific, technical GitHub topics focusing on:\n"
-            "1. Specialized libraries/packages used (beyond base framework)\n"
-            "2. Core algorithms/technical approaches\n"
-            "3. Specific problem sub-domains\n"
-            "4. Implementation patterns/architectural styles\n"
-            "5. Key technical differentiators\n\n"
-            "Avoid generic terms like programming languages or frameworks unless they are novel implementations.\n"
-            "Do not change the existing topics.\n"
-            "Format: lowercase, hyphens, technical terms only, use 50 characters per topic or less. Example:\n"
-            "computer-vision, graph-algorithms, genetic-algorithm, distributed-systems, gpu-acceleration\n\n"
-            f"README content:\n{self.readme_content}\n\n"
-            f"Existing topics: {', '.join(self.metadata.topics)}\n\n"
-            "Return only topics as a comma-separated list without explanations."
+        formatted_prompt = self.prompts.topics.format(
+            amount=amount,
+            readme_content=self.readme_content,
+            topics=", ".join(existing_topics)
         )
 
         try:
-            response = self.model_handler.send_request(prompt)
+            response = self.model_handler.send_request(formatted_prompt)
             topics = [
                 topic.strip().lower().replace(" ", "-")
                 for topic in response.split(",")
@@ -181,24 +152,11 @@ class AboutGenerator:
     def _analyze_urls(self, urls: List[str]) -> List[str]:
         """Generates LLM prompt for URL analysis"""
         logger.info(f"Analyzing project URLs...")
-        prompt = (
-            "Analyze these repository URLs to identify the best homepage candidate:\n"
-            "Homepage should be either:\n"
-            "- Official project documentation\n"
-            "- Dedicated project website\n"
-            "- GitHub Pages URL (format: *.github.io/*)\n"
-            "- Primary external project site\n\n"
-            "Exclude:\n"
-            "- Repository links (github.com/<owner>/<repo>)\n"
-            "- CI/CD badges\n"
-            "- Package registries\n"
-            "- Social media links\n\n"
-            f"URL List: {', '.join(urls)}\n\n"
-            "Format: <url1>,<url2>. Example: https://aimclub.github.io/OSA/,https://fedot.readthedocs.io/"
-            "Return only the comma-separated ranked list of candidates without explanations.\n"
+        formatted_prompt = self.prompts.analyze_urls.format(
+            urls=", ".join(urls)
         )
-        response = self.model_handler.send_request(prompt)
+        response = self.model_handler.send_request(formatted_prompt)
         if not response:
             return []
 
-        return [url.strip() for url in response.split(',')]
+        return [url.strip() for url in response.split(",")]
