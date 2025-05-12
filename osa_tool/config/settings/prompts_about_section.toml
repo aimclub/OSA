@@ -32,7 +32,7 @@ INPUT DATA:
 2. Existing topics: {topics}
 
 TASK:
-Analyze the README content and already existing topics below to generate up to {amount} specific, technical GitHub topics focusing on:
+Analyze the README content and already existing topics to generate up to {amount} specific, technical GitHub topics focusing on:
 1. Specialized libraries/packages used (beyond base framework)
 2. Core algorithms/technical approaches
 3. Specific problem sub-domains
