@@ -34,7 +34,7 @@ class AboutGenerator:
             "You can add the following information to the `About` section of your GitHub repository:\n"
             f"- Description: {self.generate_description()}\n"
             f"- Homepage: {self.detect_homepage()}\n"
-            f"- Topics: {', '.join(self.generate_topics())}\n"
+            f"- Topics: {', '.join(f'`{topic}`' for topic in self.generate_topics())}\n"
             "\nPlease review and add them to your repository.\n"
         )
         logger.debug(
