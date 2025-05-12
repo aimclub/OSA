@@ -1,6 +1,9 @@
 import os
 import re
+import time
 from typing import List, Optional
+
+import requests
 
 from osa_tool.aboutgen.prompts_about_config import PromptAboutLoader
 from osa_tool.analytics.metadata import load_data_metadata
@@ -108,10 +111,53 @@ class AboutGenerator:
                 if topic.strip()
             ]
             logger.debug(f"Generated topics from LLM: {topics}")
-            return topics[:amount]
+            validated_topics = self._validate_github_topics(topics)
+            return validated_topics[:amount]
         except Exception as e:
             logger.error(f"Error generating topics: {e}")
             return []
+
+    def _validate_github_topics(self, topics: List[str]) -> List[str]:
+        """
+        Validates topics against GitHub Topics API to ensure they exist.
+        
+        Args:
+            topics (List[str]): List of potential topics to validate
+            
+        Returns:
+            List[str]: List of validated topics that exist on GitHub
+        """
+        logger.info("Validating topics against GitHub Topics API...")
+        validated_topics = []
+
+        for topic in topics:
+            try:
+                response = requests.get(
+                    f"https://api.github.com/search/topics?q={topic}",
+                    headers={"Accept": "application/vnd.github.v3+json"}
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("total_count", 0) > 0:
+                        validated_topics.append(topic)
+                        logger.debug(f"Topic '{topic}' is valid")
+                    else:
+                        logger.debug(
+                            f"Generated topic '{topic}' is not valid, skipping")
+                elif response.status_code == 403:
+                    logger.warning("Rate limit exceeded, waiting 60 seconds")
+                    time.sleep(60)
+
+                time.sleep(0.5)
+
+            except Exception as e:
+                logger.error(f"Error validating topic '{topic}': {e}")
+                continue
+
+        logger.info(
+            f"Validated {len(validated_topics)} topics out of {len(topics)}")
+        return validated_topics
 
     def detect_homepage(self) -> Optional[str]:
         """
