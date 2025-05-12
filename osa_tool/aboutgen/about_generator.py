@@ -35,7 +35,7 @@ class AboutGenerator:
             f"- Description: {self.generate_description()}\n"
             f"- Homepage: {self.detect_homepage()}\n"
             f"- Topics: {', '.join(self.generate_topics())}\n"
-            "Please review and add them to your repository."
+            "\nPlease review and add them to your repository.\n"
         )
         logger.debug(
             f"Generated About section content: {about_section_content}")
