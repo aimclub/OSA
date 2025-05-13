@@ -160,10 +160,12 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
     """
     try:
         repo_url = config_loader.config.git.repository
-        ts = OSA_TreeSitter(parse_folder_name(repo_url))
+        repo_path = parse_folder_name(repo_url)
+        ts = OSA_TreeSitter(repo_path)
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen(config_loader)
         dg.process_python_file(res)
+        dg.generate_documentation_mkdocs(repo_path)
 
     except Exception as e:
         logger.error("Error while docstring generation: %s", repr(e), exc_info=True)

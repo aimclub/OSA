@@ -1,6 +1,8 @@
 import re
 import black
 from pathlib import Path
+import shutil
+import subprocess
 
 import dotenv
 import tiktoken
@@ -418,30 +420,78 @@ class DocGen(object):
             self.format_with_black(filename)
             logger.info(f"Updated file: {filename}")
 
-    def generate_method_documentation_md(self, method_details: dict) -> str:
+    def generate_documentation_mkdocs(self, path: str) -> None:
         """
-        Generate documentation for a single method using OpenAI GPT.
-        """
-        prompt = f"""
-        Generate detailed documentation for the following Python method. Include:
-        - Method name.
-        - Arguments and their purposes.
-        - Return type and its purpose.
-        - A high-level explanation of what the method does.
-        - Include the provided source code in the documentation.
+        Generates MkDocs documentation for a Python project based on provided path.
 
-        Method Details:
-        - Method Name: {method_details["method_name"]}
-        - Arguments: {method_details["arguments"]}
-        - Return Type: {method_details["return_type"]}
-        - Docstring: {method_details["docstring"]}
-        - Source Code:
-        ```
-        {method_details["source_code"]}
-        ```
-        """
+        Parameters:
+            path: str - The path to the root directory of the Python project.
 
-        return self.model_handler.send_request(prompt)
+        Returns:
+            None. The method generates MkDocs documentation for the project.
+        """
+        repo_path = Path(path)
+        mkdocs_dir = repo_path / "mkdocs_temp"
+        docs_output_path = repo_path / "site"
+        if docs_output_path.exists():
+            shutil.rmtree(docs_output_path)
+        docs_output_path.mkdir()
+        if mkdocs_dir.exists():
+            shutil.rmtree(mkdocs_dir)
+        mkdocs_dir.mkdir()
+
+        docs_dir = mkdocs_dir / "docs"
+        docs_dir.mkdir()
+
+        index_path = docs_dir / "index.md"
+        index_content = "# Project Documentation\n\n"
+
+        for py_file in repo_path.rglob("*.py"):
+            rel_path = py_file.relative_to(repo_path)
+            module_path = ".".join(rel_path.with_suffix("").parts)
+            index_content += f"## `{module_path}`\n\n::: {module_path}\n\n"
+
+        index_path.write_text(index_content, encoding="utf-8")
+
+        mkdocs_config = f"""
+site_name: AutoDocs
+site_dir: {docs_output_path.absolute()}
+theme:
+    name: material
+plugins:
+    - search
+    - mkdocstrings:
+        default_handler: python
+        handlers:
+            python:
+                paths: [{repo_path.absolute()}]
+                options:
+                    show_source: true
+                    docstring_style: google
+nav:
+    - Home: index.md
+            """
+        mkdocs_yml = mkdocs_dir / "mkdocs.yml"
+        mkdocs_yml.write_text(mkdocs_config.strip(), encoding="utf-8")
+
+        result = subprocess.run(
+            ["mkdocs", "build", "--config-file", str(mkdocs_yml)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        if result.stdout:
+            logger.info(result.stdout)
+
+        if result.stderr:
+            logger.info(result.stderr)
+
+        if result.returncode == 0:
+            logger.info("MkDocs build completed successfully.")
+        else:
+            logger.error("MkDocs build failed.")
+        shutil.rmtree(mkdocs_dir)
+        logger.info(f"Documentation successfully built at: {docs_output_path}")
 
     def generate_documentation_openai(self, file_structure: dict) -> str:
         """

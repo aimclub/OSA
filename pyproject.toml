@@ -76,6 +76,9 @@ urllib3 = "2.3.0"
 yarl = "1.18.3"
 ProtoLLM = ">=0.1.2"
 black = "25.1.0"
+mkdocs = "1.6.1"
+mkdocstrings = {extras = ["python"], version = "0.29.1"}
+mkdocs-material = "9.6.13"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.3.4"
