@@ -220,6 +220,18 @@ Detailed description of OSA API is available [here](https://itmo-nss-team.github
 
 ---
 
+## Publications about OSA
+
+In English:
+
+- [Automate Your Coding with OSA – ITMO-Made AI Assistant for Researchers](https://news.itmo.ru/en/news/14282/)
+
+In Russian:
+
+- [OSA: ИИ-помощник для разработчиков научного open source кода](https://habr.com/ru/companies/spbifmo/articles/906018/)
+
+---
+
 ## Contributing
 
 - **[Report Issues](https://github.com/aimclub/OSA/issues )**: Submit bugs found or log feature requests for the Open-Source-Advisor project.
