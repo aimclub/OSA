@@ -118,8 +118,8 @@ def main():
         if generate_workflows:
             generate_github_workflows(config)
 
-        #Organize repository by adding 'tests' and 'examples' directories if they aren't exist
-        organizer = RepoOrganizer(os.path.basename(repo_url))
+        # Organize repository by adding 'tests' and 'examples' directories if they aren't exist
+        organizer = RepoOrganizer(os.path.join(os.getcwd(), parse_folder_name(repo_url)))
         organizer.organize()
 
         if publish_results:
