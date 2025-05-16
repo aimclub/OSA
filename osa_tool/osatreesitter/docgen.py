@@ -237,7 +237,29 @@ class DocGen(object):
         """
         # Matches a method definition with the given name,
         # including an optional return type. Ensures no docstring follows.
-        method_pattern = rf"((?:@\w+(?:\([^)]*\))?\s*\n)*\s*(?:async\s+)?def\s+{method_details['method_name']}\s*\([\s\S]*?\)\s*(->\s*[a-zA-Z0-9_\[\], ]+)?\s*:\n)(\s*)(?!\s*\"\"\")"
+        method_pattern = rf"((?:@\w+(?:\([^)]*\))?\s*\n)*\s*(?:async\s+)?def\s+{method_details['method_name']}\s*\((?:[^)(]|\((?:[^)(]*|\([^)(]*\))*\))*\)\s*(->\s*[a-zA-Z0-9_\[\],. |]+)?\s*:\n)(\s*)(?!\s*\"\"\")"
+        """
+        (
+            (?:@\w+(?:\([^)]*\))?\s*\n)*                # Optional decorators: e.g. @decorator or @decorator(args), each followed by newline
+            \s*                                         # Optional whitespace before function definition
+            (?:async\s+)?                               # Optional 'async' keyword followed by whitespace
+            def\s+{method_details['method_name']}\s*    # 'def' keyword followed by the specific method name and optional spaces
+            \(                                          # Opening parenthesis for the parameter list
+                (?:                                     # Non-capturing group to match parameters inside parentheses
+                    [^)(]                               # Match any character except parentheses (simple parameter)
+                    |                                   # OR
+                    \(                                  # Opening a nested parenthesis
+                        (?:[^)(]*|\([^)(]*\))*          # Recursively match nested parentheses content
+                    \)                                  # Closing the nested parenthesis
+                )*                                      # Repeat zero or more times (all parameters)
+            \)                                          # Closing parenthesis of the parameter list
+            \s*                                         # Optional whitespace after parameters
+            (->\s*[a-zA-Z0-9_\[\],. |]+)?               # Optional return type annotation (e.g. -> int, -> dict[str, Any])
+            \s*:\n                                      # Colon ending the function header followed by newline
+        )
+        (\s*)                                          # Capture indentation (spaces/tabs) of the next line (function body)
+        (?!\s*\"\"\")                                  # Negative lookahead: ensure the next non-space characters are NOT triple quotes (no docstring yet)
+        """
 
         docstring_with_format = self.extract_pure_docstring(generated_docstring)
         updated_code = re.sub(
@@ -442,7 +464,6 @@ class DocGen(object):
                 f.write(source_code)
             self.format_with_black(filename)
             logger.info(f"Updated file: {filename}")
-
 
     def generate_method_documentation_md(self, method_details: dict) -> str:
         """
