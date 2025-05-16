@@ -49,23 +49,25 @@ Example output: computer-vision, graph-algorithms, genetic-algorithm, distribute
 
 analyze_urls = """
 INPUT DATA:
-1. Repository URLs: {urls}
+1. Repository URL: {project_url}
+2. URLs: {urls}
 
 TASK:
-Analyze these repository URLs to identify the best homepage candidate.
-Return only the comma-separated ranked list of candidates without explanations.
+Analyze input URLs and return a comma-separated list of valid homepages/documentation sources ranked by relevance excluding any github url. 
+Return empty string if none qualify with no commentary or explanations.
 
 RULES:
-Homepage should be either:
-- Official project documentation
-- Dedicated project website
-- GitHub Pages URL (format: *.github.io/*)
-- Primary external project site
-Exclude:
-- Repository links (github.com/<owner>/<repo>)
-- CI/CD badges
-- Package registries
-- Social media links
-Format: <url1>,<url2>
-Example output: https://aimclub.github.io/OSA/,https://fedot.readthedocs.io/
+1. Include:
+- OFFICIAL WEBSITE: Root domain (project.com, www.project.org)
+- PRIMARY DOCS: Documentation root (docs.project.io) - no subpaths
+- GITHUB PAGES: *.github.io (with/without path)
+- EXPLICIT HOMEPAGE: External sites clearly designated as main homepage
+
+2. Exclude:
+- ALL repository links (github/gitlab/bitbucket URLs - including Project URL itself)
+- Repository subpages (/issues, /blob/, /tree/, /raw/)
+- CI/CD badges (/badge/, .svg, /actions/)
+- Package registries (pypi.org, npmjs.com)
+- Social media (twitter.com, linkedin.com)
+- Non-root paths (any URL with /subdirectory/)
 """
