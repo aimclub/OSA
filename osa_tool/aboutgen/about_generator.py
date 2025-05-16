@@ -200,15 +200,16 @@ class AboutGenerator:
     def _extract_readme_urls(self, readme_content: str) -> List[str]:
         """Extract all absolute URLs from README content"""
         logger.info("Extracting URLs from README.")
-        url_pattern = r'https?:\/\/.*'
+        url_pattern = r'(?:http|ftp|https):\/\/(?:[\w_-]+(?:(?:\.[\w_-]+)+))(?:[\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])'
         urls = re.findall(url_pattern, readme_content)
         logger.debug(f"Extracted URLs from README: {urls}")
         return list(set(urls))
 
     def _analyze_urls(self, urls: List[str]) -> List[str]:
         """Generates LLM prompt for URL analysis"""
-        logger.info(f"Analyzing project URLs...")
+        logger.info(f"Analyzing {len(urls)} project URLs...")
         formatted_prompt = self.prompts.analyze_urls.format(
+            project_url=self.repo_url,
             urls=", ".join(urls)
         )
         response = self.model_handler.send_request(formatted_prompt)
