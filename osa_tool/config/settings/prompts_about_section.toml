@@ -28,23 +28,61 @@ Example outputs:
 
 topics = """
 INPUT DATA:
+1. README content: "{readme_content}"
+2. Topics: "{topics}"
+3. Amount: "{amount}"
+
+TASK:
+Analyze the provided README content and existing repository topics (if any) to generate up to amount relevant technical topics. 
+Follow the rules below.
+Return only a comma-separated string (no quotes, bullets, or explanations).
+
+RULES:
+Strictly lowercase, hyphen-separated, under 50 characters (e.g., machine-learning, data-visualization).
+Technical nouns only (languages, frameworks, tools, domains). Exclude non-technical terms.
+Avoid duplicating existing topics.
+
+Example OUTPUT:
+computer-vision, genetic-algorithm, neural-radiance-fields, gpu-cluster-scheduling, federated-learning, realtime-pipelines
+"""
+
+topics_extra = """
+INPUT DATA:
 1. README content: {readme_content}
 2. Existing topics: {topics}
 
 TASK:
-Analyze the README content and already existing topics to generate up to {amount} specific, technical GitHub topics focusing on:
-1. Specialized libraries/packages used (beyond base framework)
-2. Core algorithms/technical approaches
-3. Specific problem sub-domains
-4. Implementation patterns/architectural styles
-5. Key technical differentiators
-Return only topics as a comma-separated list without explanations.
+Analyze the README content systematically through these steps:
+
+1. Identify technical components that meet ALL criteria:
+- Specialized/non-generic implementation details
+- Directly contributes to core functionality
+- Matches one focus category below
+
+2. Focus categories (must choose exactly one per topic):
+a) Specialized libraries: Versioned/published packages beyond base framework
+b) Core algorithms: Mathematical/procedural innovations (<common algo = exclude)
+c) Problem subspaces: Narrow technical subdomains (e.g., "3d-slam" vs "robotics")
+d) Architecture: Distinct structural patterns with implementation evidence
+e) Technical USP: Quantifiable differentiators (benchmarks, unique combinations)
+
+3. Validation:
+- Exclude version numbers and brand names unless critical to technical identity
+- Cross-check candidates against README content occurrences
+- Remove candidates with <2 independent mentions or implicit references
+- Compare against existing topics to avoid duplication
+- Reject broad domains - require technical specificity (e.g., "cnn-model-pruning" not "deep-learning")
+
+Generate up to {amount} GitHub topics meeting these requirements:
 
 RULES:
-Avoid generic terms like programming languages or frameworks unless they are novel implementations.
-Do not change the existing topics.
-Format: lowercase, hyphens, technical terms only, use 50 characters per topic or less. 
-Example output: computer-vision, graph-algorithms, genetic-algorithm, distributed-systems, gpu-acceleration
+- Use compound terms only when README shows combined usage
+- Return only the final topics with no commentary.
+- MUST appear in README technical content (exclude inferred/assumed concepts)
+- Strict format: lowercase, hyphenated, <50 chars, technical nouns only
+
+Example OUTPUT:
+computer-vision, genetic-algorithm, neural-radiance-fields, gpu-cluster-scheduling, federated-learning, realtime-pipelines
 """
 
 analyze_urls = """
