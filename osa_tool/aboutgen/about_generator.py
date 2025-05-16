@@ -99,8 +99,8 @@ class AboutGenerator:
 
         formatted_prompt = self.prompts.topics.format(
             amount=amount,
+            topics=existing_topics,
             readme_content=self.readme_content,
-            topics=", ".join(existing_topics)
         )
 
         try:
@@ -112,7 +112,7 @@ class AboutGenerator:
             ]
             logger.debug(f"Generated topics from LLM: {topics}")
             validated_topics = self._validate_github_topics(topics)
-            return validated_topics[:amount]
+            return list(set([*existing_topics, *validated_topics]))
         except Exception as e:
             logger.error(f"Error generating topics: {e}")
             return []
@@ -128,20 +128,26 @@ class AboutGenerator:
             List[str]: List of validated topics that exist on GitHub
         """
         logger.info("Validating topics against GitHub Topics API...")
+        min_repo = 5
         validated_topics = []
 
         for topic in topics:
             try:
                 response = requests.get(
-                    f"https://api.github.com/search/topics?q={topic}",
+                    f"https://api.github.com/search/topics?q={topic}+repositories:>{min_repo}",
                     headers={"Accept": "application/vnd.github.v3+json"}
                 )
 
                 if response.status_code == 200:
                     data = response.json()
-                    if data.get("total_count", 0) > 0:
-                        validated_topics.append(topic)
-                        logger.debug(f"Topic '{topic}' is valid")
+                    if (total := data.get("total_count", 0)) > 0:
+                        if total == 1:
+                            valid_topic = data.get("items")[0].get("name")
+                            logger.debug(
+                                f"Applied transformation for topic: '{topic} -> {valid_topic}'")
+                        else:
+                            valid_topic = topic
+                        validated_topics.append(valid_topic)
                     else:
                         logger.debug(
                             f"Generated topic '{topic}' is not valid, skipping")
@@ -149,7 +155,7 @@ class AboutGenerator:
                     logger.warning("Rate limit exceeded, waiting 60 seconds")
                     time.sleep(60)
 
-                time.sleep(0.5)
+                time.sleep(1)
 
             except Exception as e:
                 logger.error(f"Error validating topic '{topic}': {e}")
