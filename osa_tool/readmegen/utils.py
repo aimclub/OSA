@@ -19,14 +19,19 @@ def read_file(file_path: str) -> str:
         return read_ipynb_file(file_path)
 
     encodings_to_try = ["utf-8", "utf-16", "latin-1"]
+    if not os.path.isfile(file_path):
+        logger.warning(f"File not found: {file_path}")
+        return ""
+    
+    encodings_to_try = ["utf-8", "utf-16", "latin-1"]
     for encoding in encodings_to_try:
         try:
-            if os.path.isfile(file_path):
-                with open(file_path, "r", encoding=encoding) as file:
-                    return file.read()
+            with open(file_path, "r", encoding=encoding) as file:
+                return file.read()
         except UnicodeDecodeError:
             continue
 
+    logger.error(f"Failed to read {file_path} with any supported encoding")
     return ""
 
 
