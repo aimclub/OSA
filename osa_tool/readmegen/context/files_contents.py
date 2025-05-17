@@ -38,7 +38,7 @@ class FileProcessor:
     def _create_file_context(self, file_path: str) -> FileContext:
         """Create a file context object for the given file path."""
         abs_file_path = os.path.join(self.repo_path, file_path)
-        content = read_file(abs_file_path)
+        content = read_file(abs_file_path)[:50000]
         return FileContext(
             path=file_path,
             name=os.path.basename(file_path),
