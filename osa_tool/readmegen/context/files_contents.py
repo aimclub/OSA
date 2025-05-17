@@ -27,6 +27,7 @@ class FileProcessor:
         self.core_files = core_files
         self.repo_url = self.config.git.repository
         self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.length_of_content = 50_000
 
     def process_files(self) -> list[FileContext]:
         """Generate file info for the given repository path."""
@@ -38,7 +39,7 @@ class FileProcessor:
     def _create_file_context(self, file_path: str) -> FileContext:
         """Create a file context object for the given file path."""
         abs_file_path = os.path.join(self.repo_path, file_path)
-        content = read_file(abs_file_path)[:50000]
+        content = read_file(abs_file_path)[:self.length_of_content]
         return FileContext(
             path=file_path,
             name=os.path.basename(file_path),
