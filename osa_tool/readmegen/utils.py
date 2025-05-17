@@ -18,9 +18,20 @@ def read_file(file_path: str) -> str:
     if file_path.endswith(".ipynb"):
         return read_ipynb_file(file_path)
 
-    if os.path.isfile(file_path):
-        with open(file_path, "r", encoding="utf-8") as file:
-            return file.read()
+    encodings_to_try = ["utf-8", "utf-16", "latin-1"]
+    if not os.path.isfile(file_path):
+        logger.warning(f"File not found: {file_path}")
+        return ""
+    
+    encodings_to_try = ["utf-8", "utf-16", "latin-1"]
+    for encoding in encodings_to_try:
+        try:
+            with open(file_path, "r", encoding=encoding) as file:
+                return file.read()
+        except UnicodeDecodeError:
+            continue
+
+    logger.error(f"Failed to read {file_path} with any supported encoding")
     return ""
 
 
