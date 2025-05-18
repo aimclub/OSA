@@ -47,7 +47,7 @@ rich==13.9.4
 smmap==5.0.2
 sniffio==1.3.1
 structlog==24.4.0
-tiktoken==0.8.0
+tiktoken==0.8.0ar
 tomli==2.2.1
 tqdm==4.67.1
 tree-sitter==0.23.2

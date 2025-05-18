@@ -165,7 +165,7 @@ class GithubAgent:
             self.repo.git.checkout('-b', branch)
             logger.info(f"Switched to branch {branch}.")
 
-    def commit_and_push_changes(self, branch: str = None, commit_message: str = "osa_tool recommendations") -> None:
+    def commit_and_push_changes(self, branch: str = None, commit_message: str = "osa_tool recommendations") -> bool:
         """Commits and pushes changes to the forked repository.
 
         Args:
@@ -188,14 +188,16 @@ class GithubAgent:
             self.repo.git.push('--set-upstream', 'origin',
                                branch, force_with_lease=True)
             logger.info("Push completed.")
+            return True
         except GitCommandError as e:
             logger.error(
                 f"""Push failed: Branch '{branch}' already exists in the fork.
              To resolve this, please either:
-                1. Choose a different branch name that doesn't exist in the fork by modifying the `branch_name` parameter.
+                1. Choose a different branch name that doesn't exist in the fork 
+                   by modifying the `branch_name` parameter.
                 2. Delete the existing branch from forked repository.
                 3. Delete the fork entirely.""")
-            raise
+            return False
 
     def create_pull_request(self, title: str = None, body: str = None) -> None:
         """Creates a pull request from the forked repository to the original repository.
