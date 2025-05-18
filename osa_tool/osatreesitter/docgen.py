@@ -440,15 +440,36 @@ class DocGen(object):
             shutil.rmtree(mkdocs_dir)
         mkdocs_dir.mkdir()
 
+        rename_map = self._rename_invalid_dirs(repo_path)
+        self._update_imports(repo_path, rename_map)
+
         docs_dir = mkdocs_dir / "docs"
         docs_dir.mkdir()
+
+        for folder in repo_path.rglob("*"):
+            if folder.is_dir():
+                has_py_files = any(
+                    f.suffix == ".py" and f.name != "__init__.py"
+                    for f in folder.iterdir()
+                    if f.is_file()
+                )
+                if has_py_files:
+                    init_file = folder / "__init__.py"
+                    if not init_file.exists():
+                        init_file.touch()
 
         index_path = docs_dir / "index.md"
         index_content = "# Project Documentation\n\n"
 
+        def is_valid_module_path(parts: tuple[str, ...]):
+            return all(part.isidentifier() for part in parts)
+
         for py_file in repo_path.rglob("*.py"):
             rel_path = py_file.relative_to(repo_path)
-            module_path = ".".join(rel_path.with_suffix("").parts)
+            parts = rel_path.with_suffix("").parts
+            if py_file.name == "__init__.py" or not is_valid_module_path(parts):
+                continue
+            module_path = ".".join(parts)
             index_content += f"## `{module_path}`\n\n::: {module_path}\n\n"
 
         index_path.write_text(index_content, encoding="utf-8")
@@ -466,8 +487,11 @@ plugins:
             python:
                 paths: [{repo_path.absolute()}]
                 options:
+                    members_order: alphabetical
                     show_source: true
                     docstring_style: google
+                    filters:
+                    - ""
 nav:
     - Home: index.md
             """
@@ -493,59 +517,104 @@ nav:
         shutil.rmtree(mkdocs_dir)
         logger.info(f"Documentation successfully built at: {docs_output_path}")
 
-    def generate_documentation_openai(self, file_structure: dict) -> str:
+    @staticmethod
+    def _sanitize_name(name: str) -> str:
         """
-        Generates the documentation for a given file structure using OpenAI's API.
+        Sanitize a given name for use as an identifier.
 
-        This method traverses the given file structure and for each class or standalone function, it generates
-        its documentation. If the documentation is not available, it attempts to generate it using the OpenAI's API.
-        The generated documentation is returned as a string.
+        This method replaces any periods in the name with underscores
+        and ensures that the name starts with an alphabetic character.
+        If the name does not start with an alphabetic character, it
+        prepends a 'v' to the name.
 
         Args:
-            self: The instance of the class where this method is defined.
-            file_structure: A dictionary where keys are filenames and values are lists of dictionaries.
-                Each dictionary represents a class or a standalone function in the file and contains information
-                like its name, type (class or function), docstring, and methods (in case of a class).
+            name: The name string to sanitize.
 
         Returns:
-            The final documentation as a string.
+            The sanitized name as a string.
         """
-        final_documentation = ""
+        name = name.replace(".", "_")
+        if not name[0].isalpha():
+            name = "v" + name
+        return name
 
-        for filename, structure in file_structure.items():
-            final_documentation += self._format_file_header(filename)
+    def _rename_invalid_dirs(self, repo_path: Path) -> dict:
+        """
+        Renames directories within a specified path that have invalid names.
 
-            for item in structure:
-                if item["type"] == "class":
-                    final_documentation += self._format_class_doc(item)
-                elif item["type"] == "function":
-                    final_documentation += self._format_function_doc(item)
+            This method recursively searches for directories within the given repository path,
+            identifies those whose names are not valid Python identifiers or start with a dot,
+            and renames them to valid names using a sanitization process. The method maintains a
+            mapping of the original directory names to their new names.
 
-        return final_documentation
+            Args:
+                repo_path: The path to the repository where directories will be checked and renamed.
 
-    def _format_file_header(self, filename: str) -> str:
-        """Formats the header for a file in documentation."""
-        return f"# Documentation for {filename}\n\n"
+            Returns:
+                A dictionary mapping original directory paths to their new, sanitized paths.
+        """
+        rename_map = {}
 
-    def _format_class_doc(self, item: dict) -> str:
-        """Formats documentation for a class."""
-        class_doc = f"## Class: {item['name']}\n\n{item['docstring'] or 'No docstring provided'}\n\n"
-        for method in item["methods"]:
-            class_doc += self._generate_method_doc(method)
-        return class_doc
+        all_dirs = sorted(
+            [p for p in repo_path.rglob("*") if p.is_dir()],
+            key=lambda p: len(p.parts),
+            reverse=True,  # Rename from nested to parents'
+        )
 
-    def _format_function_doc(self, item: dict) -> str:
-        """Formats documentation for a standalone function."""
-        function_details = item["details"]
-        return self._generate_method_doc(function_details, is_function=True)
+        for dir_path in all_dirs:
+            if dir_path.name.startswith("."):
+                continue
+            if not dir_path.name.isidentifier():
+                new_name = self._sanitize_name(dir_path.name)
+                new_path = dir_path.parent / new_name
 
-    def _generate_method_doc(self, method_details: dict, is_function=False) -> str:
-        """Generates documentation for a method or function."""
-        doc_type = "Function" if is_function else "Method"
-        try:
-            logger.info(f"{doc_type} {method_details['method_name']}'s docstring is generating")
-            method_doc = self.generate_method_documentation_md(method_details=method_details)
-            return f"### {doc_type}: {method_details['method_name']}\n\n{method_doc}\n\n"
-        except Exception as e:
-            logger.error(e, exc_info=True)
-            return f"### {doc_type}: {method_details['method_name']}\n\nFailed to generate documentation.\n\n"
+                if new_path.exists():
+                    continue  # To avoid overwriting
+
+                dir_path.rename(new_path)
+                rename_map[str(dir_path)] = str(new_path)
+
+        return rename_map
+
+    @staticmethod
+    def _update_imports(repo_path: Path, rename_map: dict) -> None:
+        """
+        Update import statements in Python files within a repository.
+
+            This static method searches for Python files in the specified repository path,
+            and updates import statements based on the provided renaming map. It replaces
+            occurrences of old import paths with new ones, ensuring that the structure
+            of the paths remains consistent.
+
+            Args:
+                repo_path: The file path to the root directory of the repository where
+                           Python files are located.
+                rename_map: A dictionary mapping old import paths to new import paths.
+
+            Returns:
+                None: This method does not return a value. It directly modifies the
+                      contents of the Python files in the specified repository.
+        """
+        for py_file in repo_path.rglob("*.py"):
+            content = py_file.read_text(encoding="utf-8")
+            for old_path, new_path in rename_map.items():
+                old_parts = Path(old_path).relative_to(repo_path).parts
+                new_parts = Path(new_path).relative_to(repo_path).parts
+
+                if len(old_parts) != len(new_parts):
+                    continue
+
+                old_module = ".".join(old_parts)
+                new_module = ".".join(new_parts)
+
+                # Replace import and from strings
+                content = re.sub(
+                    rf"\bimport {re.escape(old_module)}\b",
+                    f"import {new_module}",
+                    content,
+                )
+                content = re.sub(
+                    rf"\bfrom {re.escape(old_module)}\b", f"from {new_module}", content
+                )
+
+            py_file.write_text(content, encoding="utf-8")
