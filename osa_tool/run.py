@@ -1,14 +1,13 @@
 import os
 from typing import List
 
-import tomli
-
 from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.arguments_parser import get_cli_args
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.convertion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
+from osa_tool.docs_generator.license import compile_license_file
 from osa_tool.github_agent.github_agent import GithubAgent
 from osa_tool.github_workflow import generate_workflows_from_settings
 from osa_tool.organization.repo_organizer import RepoOrganizer
@@ -19,7 +18,6 @@ from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.utils import (
     delete_repository,
     logger,
-    osa_project_root,
     parse_folder_name
 )
 
@@ -160,50 +158,6 @@ def convert_notebooks(repo_url: str, notebook_paths: List[str] | None = None) ->
 
     except Exception as e:
         logger.error("Error while converting notebooks: %s", repr(e), exc_info=True)
-
-
-def compile_license_file(sourcerank: SourceRank, ensure_license):
-    """
-    Compiles a license file for a software project using a specified template.
-
-    This method takes a SourceRank object as input, extracts necessary information such as creation year and author
-    to compile a license file based on a predefined template. The compiled license file is then saved in the repository
-    directory of the SourceRank object.
-
-    Parameters:
-        - sourcerank: SourceRank object containing metadata about the software project.
-        - ensure_license: License type provided by user.
-
-    Returns:
-        None. The compiled license file is saved in the repository directory of the SourceRank object.
-    """
-    try:
-        if sourcerank.license_presence():
-            logger.info("LICENSE file already exists")
-        else:
-            logger.info("LICENSE was not resolved, compiling started...")
-            license_template_path = os.path.join(
-                osa_project_root(), "docs", "templates", "licenses.toml"
-            )
-            with open(license_template_path, "rb") as f:
-                license_template = tomli.load(f)
-            license_type = ensure_license
-            year = sourcerank.metadata.created_at[:4]
-            author = sourcerank.metadata.owner
-            try:
-                license_text = license_template[license_type]["template"].format(
-                    year=year, author=author
-                )
-                license_output_path = os.path.join(sourcerank.repo_path, "LICENSE")
-                with open(license_output_path, "w") as f:
-                    f.write(license_text)
-                logger.info(
-                    f"""LICENSE has been successfully compiled at {os.path.join(sourcerank.repo_path, "LICENSE")}"""
-                )
-            except KeyError:
-                logger.error(f"Couldn't resolve {license_type} license type, try to look up available licenses at documentation.")
-    except Exception as e:
-        logger.error("Error while compiling LICENSE: %s", e, exc_info=True)
 
 
 def generate_docstrings(config_loader: ConfigLoader) -> None:
