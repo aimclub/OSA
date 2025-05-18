@@ -15,6 +15,20 @@ def get_cli_args():
         required=True,
     )
     parser.add_argument(
+        "-m", "--mode",
+        type=str,
+        help=(
+            "Select the operation mode for repository processing:\n"
+            "  basic     — run a minimal predefined set of tasks (Report, README and Community docs, Organize).\n"
+            "  auto      — automatically determine necessary actions based on repository analysis.\n"
+            "  advanced  — run all enabled features based on provided flags (default)."
+        ),
+        nargs="?",
+        choices=["basic", "auto", "advanced"],
+        const="advanced",
+        default="advanced"
+    )
+    parser.add_argument(
         "-b",
         "--branch",
         type=str,
@@ -100,6 +114,26 @@ def get_cli_args():
         "--community-docs",
         action="store_true",
         help="Generate community-related documentation files, such as Code of Conduct and Contributing guidelines."
+    )
+    parser.add_argument(
+        "--generate-docstring",
+        action="store_true",
+        help="Automatically generate docstrings for all Python files in the repository."
+    )
+    parser.add_argument(
+        "--generate-report",
+        action="store_true",
+        help="Analyze the repository and generate a PDF report with project insights."
+    )
+    parser.add_argument(
+        "--readme", "--generate-readme",
+        action="store_true",
+        help="Generate a README.md file based on repository content and metadata."
+    )
+    parser.add_argument(
+        "--organize",
+        action="store_true",
+        help="Organize the repository structure by adding standard 'tests' and 'examples' directories if missing."
     )
 
     # Create a group for GitHub workflow generator arguments
