@@ -1,3 +1,4 @@
+import os
 import re
 import black
 from pathlib import Path
@@ -6,6 +7,7 @@ import subprocess
 
 import dotenv
 import tiktoken
+import yaml
 
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
@@ -505,6 +507,82 @@ nav:
             logger.error("MkDocs build failed.")
         shutil.rmtree(mkdocs_dir)
         logger.info(f"Documentation successfully built at: {docs_output_path}")
+
+    # It seems to better place it in the osa_tool/github_workflow
+    def create_mkdocs_github_workflow(
+            self,
+            repository_url: str,
+            path: str,
+            filename: str = "osa_mkdocs",
+            branches: list[str] = None,
+    ) -> None:
+        """
+        Generates GitHub workflow .yaml for MkDocs documentation for a Python project.
+
+        Parameters:
+            repository_url: str - URI of the Python project's repository on GitHub.
+            path: str - The path to the root directory of the Python project.
+            filename: str - The name of the .yaml file that contains GitHub workflow for mkdocs deploying.
+            branches: list[str] - List of branches to trigger the MkDocs workflow on
+
+        Returns:
+            None. The method generates GitHub workflow for MkDocs documentation of a current project.
+        """
+        clear_repo_name = re.sub(pattern="https://", repl="", string=repository_url)
+
+        if not branches: branches = ["main", "master"]
+
+        _workflow = {
+            "name": "MkDocs workflow",
+            "on": {
+                "push": {"branches": branches},
+                "pull_request": {"branches": branches}
+            },
+            "jobs": {
+                "mkdocs_deployment": {
+                    "name": "[OSA] Deploying MkDocs",
+                    "runs-on": "ubuntu-latest",
+                    "steps": [
+                        {
+                            "name": "[OSA] Checking-out repository",
+                            "uses": "actions/checkout@v4"
+                        },
+                        {
+                            "name": "[OSA] Installing Python",
+                            "uses": "actions/setup-python@v4",
+                            "with": {
+                                "python-version": "3.10"
+                            }
+                        },
+                        {
+                            "name": "[OSA] Installing MkDocs dependencies",
+                            "run": "pip install mkdocs mkdocs-material mkdocstrings[python]"
+                        },
+                        {
+                            "name": "[OSA] MkDocs documentation deploying",
+                            "run": "git config --global user.email 'github-actions[bot]@users.noreply.github.com'"
+                                   + "\n"
+                                   + "git config --global user.name 'github-actions[bot]'"
+                                   + "\n"
+                                   + "git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}" + f"@{clear_repo_name}"
+                                   + "\n"
+                                   + "mkdocs gh-deploy --force",
+                            "env": {
+                                "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+
+        workflows_path = f"{path}/.github/workflows"
+
+        if not os.path.exists(workflows_path):
+            os.makedirs(workflows_path)
+
+        with open(f"{workflows_path}/{filename}.yaml", mode="w") as actions:
+             yaml.dump(data=_workflow, stream=actions, sort_keys=False)
 
     @staticmethod
     def _sanitize_name(name: str) -> str:

@@ -166,6 +166,7 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
         dg = DocGen(config_loader)
         dg.process_python_file(res)
         dg.generate_documentation_mkdocs(repo_path)
+        dg.create_mkdocs_github_workflow(repo_url, repo_path)
 
     except Exception as e:
         logger.error("Error while docstring generation: %s", repr(e), exc_info=True)
