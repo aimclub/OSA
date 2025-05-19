@@ -113,7 +113,10 @@ def main():
 
         # About section generation
         about_gen = AboutGenerator(config)
-        about_section_content = about_gen.generate_about_section()
+        about_gen.generate_about_content()
+        if publish_results:
+            github_agent.update_about_section(
+                about_gen.get_about_content())
 
         # Generate GitHub workflows
         if generate_workflows:
@@ -121,7 +124,8 @@ def main():
 
         if publish_results:
             github_agent.commit_and_push_changes()
-            github_agent.create_pull_request(body=about_section_content)
+            github_agent.create_pull_request(
+                body=about_gen.get_about_section_message())
 
         if args.delete_dir:
             delete_repository(repo_url)

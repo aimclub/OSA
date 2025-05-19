@@ -27,17 +27,41 @@ class AboutGenerator:
         self.readme_content = extract_readme_content(self.base_path)
         self.prompts = PromptAboutLoader().prompts
 
-    def generate_about_section(self) -> str:
+        self._content: Optional[dict] = None
+
+    def generate_about_content(self) -> None:
         """
-        Generates complete About section content that consists of description,
-        homepage, and topics.
+        Generates content for About section.
+        """
+        if self._content is not None:
+            logger.warning(
+                "About section content already generated. Skipping generation.")
+            return
+        self._content = {"description": self.generate_description(),
+                         "homepage": self.detect_homepage(),
+                         "topics": self.generate_topics()}
+
+    def get_about_content(self) -> dict:
+        """
+        Returns the generated About section content.
+        """
+        if self._content is None:
+            self.generate_about_content()
+        return self._content
+
+    def get_about_section_message(self) -> str:
+        """
+        Returns a formatted message for the GitHub About section.
         """
         logger.info("Started generating About section content.")
+        if self._content is None:
+            self.generate_about_content()
+
         about_section_content = (
             "You can add the following information to the `About` section of your GitHub repository:\n"
-            f"- Description: {self.generate_description()}\n"
-            f"- Homepage: {self.detect_homepage()}\n"
-            f"- Topics: {', '.join(f'`{topic}`' for topic in self.generate_topics())}\n"
+            f"- Description: {self._content['description']}\n"
+            f"- Homepage: {self._content['homepage']}\n"
+            f"- Topics: {', '.join(f'`{topic}`' for topic in self._content['topics'])}\n"
             "\nPlease review and add them to your repository.\n"
         )
         logger.debug(
