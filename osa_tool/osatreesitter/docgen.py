@@ -440,23 +440,12 @@ class DocGen(object):
             shutil.rmtree(mkdocs_dir)
         mkdocs_dir.mkdir()
 
-        rename_map = self._rename_invalid_dirs(repo_path)
-        self._update_imports(repo_path, rename_map)
+        self._rename_invalid_dirs(repo_path)
 
         docs_dir = mkdocs_dir / "docs"
         docs_dir.mkdir()
 
-        for folder in repo_path.rglob("*"):
-            if folder.is_dir():
-                has_py_files = any(
-                    f.suffix == ".py" and f.name != "__init__.py"
-                    for f in folder.iterdir()
-                    if f.is_file()
-                )
-                if has_py_files:
-                    init_file = folder / "__init__.py"
-                    if not init_file.exists():
-                        init_file.touch()
+        self._add_init_files(repo_path)
 
         index_path = docs_dir / "index.md"
         index_content = "# Project Documentation\n\n"
@@ -538,7 +527,7 @@ nav:
             name = "v" + name
         return name
 
-    def _rename_invalid_dirs(self, repo_path: Path) -> dict:
+    def _rename_invalid_dirs(self, repo_path: Path):
         """
         Renames directories within a specified path that have invalid names.
 
@@ -551,9 +540,8 @@ nav:
                 repo_path: The path to the repository where directories will be checked and renamed.
 
             Returns:
-                A dictionary mapping original directory paths to their new, sanitized paths.
+                None.
         """
-        rename_map = {}
 
         all_dirs = sorted(
             [p for p in repo_path.rglob("*") if p.is_dir()],
@@ -572,49 +560,34 @@ nav:
                     continue  # To avoid overwriting
 
                 dir_path.rename(new_path)
-                rename_map[str(dir_path)] = str(new_path)
-
-        return rename_map
 
     @staticmethod
-    def _update_imports(repo_path: Path, rename_map: dict) -> None:
+    def _add_init_files(repo_path: Path):
         """
-        Update import statements in Python files within a repository.
+        Creates __init__.py files in all parent directories of Python files.
 
-            This static method searches for Python files in the specified repository path,
-            and updates import statements based on the provided renaming map. It replaces
-            occurrences of old import paths with new ones, ensuring that the structure
-            of the paths remains consistent.
+            This static method searches through the given repository path to find all
+            Python files and adds an empty __init__.py file to each of their parent
+            directories, excluding the directory containing the repository itself. This
+            is useful for treating directories as Python packages.
 
             Args:
-                repo_path: The file path to the root directory of the repository where
-                           Python files are located.
-                rename_map: A dictionary mapping old import paths to new import paths.
+                repo_path: The path to the repository where the Python files are located.
 
             Returns:
-                None: This method does not return a value. It directly modifies the
-                      contents of the Python files in the specified repository.
+                None
         """
+        py_dirs = set()
         for py_file in repo_path.rglob("*.py"):
-            content = py_file.read_text(encoding="utf-8")
-            for old_path, new_path in rename_map.items():
-                old_parts = Path(old_path).relative_to(repo_path).parts
-                new_parts = Path(new_path).relative_to(repo_path).parts
+            if py_file.name != "__init__.py":
+                parent = py_file.parent
+                while parent != repo_path.parent:
+                    py_dirs.add(parent)
+                    if parent == repo_path:
+                        break
+                    parent = parent.parent
 
-                if len(old_parts) != len(new_parts):
-                    continue
-
-                old_module = ".".join(old_parts)
-                new_module = ".".join(new_parts)
-
-                # Replace import and from strings
-                content = re.sub(
-                    rf"\bimport {re.escape(old_module)}\b",
-                    f"import {new_module}",
-                    content,
-                )
-                content = re.sub(
-                    rf"\bfrom {re.escape(old_module)}\b", f"from {new_module}", content
-                )
-
-            py_file.write_text(content, encoding="utf-8")
+        for folder in py_dirs:
+            init_path: Path = folder / "__init__.py"
+            if not init_path.exists():
+                init_path.touch()
