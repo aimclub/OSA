@@ -129,8 +129,9 @@ def main():
         organizer.organize()
 
         if publish_results:
-            github_agent.commit_and_push_changes()
-            github_agent.create_pull_request()
+            push_successful = github_agent.commit_and_push_changes()
+            if push_successful:
+                github_agent.create_pull_request()
 
         if args.delete_dir:
             delete_repository(repo_url)

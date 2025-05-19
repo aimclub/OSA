@@ -155,7 +155,7 @@ def get_cli_args():
         "--python-versions",
         type=str,
         nargs="+",
-        default=["3.8", "3.9", "3.10"],
+        default=["3.9", "3.10"],
         help="Python versions to test against"
     )
     workflow_group.add_argument(

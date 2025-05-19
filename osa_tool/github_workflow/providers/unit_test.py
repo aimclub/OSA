@@ -4,7 +4,7 @@ from typing import List
 
 def generate_unit_test_workflow(    
     name: str = "Unit Tests",
-    python_versions: List[str] = ["3.8", "3.9", "3.10"],
+    python_versions: List[str] = ["3.9", "3.10"],
     os_list: List[str] = ["ubuntu-latest"],
     dependencies_command: str = "pip install -r requirements.txt",
     test_command: str = "pytest tests/",

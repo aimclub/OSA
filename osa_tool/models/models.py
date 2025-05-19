@@ -1,5 +1,4 @@
 import os
-# from osa_tool.osatreesitter.connector_creator import create_llm_connector
 from abc import ABC, abstractmethod
 from uuid import uuid4
 
@@ -338,17 +337,26 @@ class OllamaHandler(ModelHandler):
 
 class ProtollmHandler(ModelHandler):
     """
-    This class is designed to handle interactions with the different LLMs using ProtoLLM connector. It is initialized with configuration settings and can send requests to the API.
+    This class is designed to handle interactions with the different LLMs using ProtoLLM connector.
+    It is initialized with configuration settings and can send requests to the API.
 
     Methods:
         __init__:
-            Initializes the instance with the provided configuration settings. This method sets up the instance by assigning the provided configuration settings to the instance's config attribute. It also retrieves the API from the configuration settings and passes it to the _configure_api method.
+            Initializes the instance with the provided configuration settings.
+            This method sets up the instance by assigning the provided configuration settings
+            to the instance's config attribute.
+            It also retrieves the API from the configuration settings and passes it to the _configure_api method.
 
         send_request:
-            Sends a request and initializes the payload with the given prompt. This method sends a request, initializes the payload with the given prompt, and creates a chat completion with the specified model, messages, max tokens, and temperature from the configuration. It then returns the content of the first choice from the response.
+            Sends a request and initializes the payload with the given prompt.
+            This method sends a request, initializes the payload with the given prompt, and creates a chat completion
+            with the specified model, messages, max tokens, and temperature from the configuration.
+            It then returns the content of the first choice from the response.
 
         _configure_api:
-            Configures the API for the instance based on the provided API name. This method loads environment variables, sets the URL and API key based on the provided API name, and initializes the ProtoLLM connector with the set URL and API key.
+            Configures the API for the instance based on the provided API name.
+            This method loads environment variables, sets the URL and API key based on the provided API name,
+            and initializes the ProtoLLM connector with the set URL and API key.
     """
 
     def __init__(self, config: Settings):
@@ -448,7 +456,8 @@ class ModelHandlerFactory:
 
         This method uses the model specified in the configuration to create a handler.
         It supports three types of models: 'llama', 'ollama', 'openai', and 'vsegpt'.
-        For 'llama', it creates a llamaHandler, 'ollama' - ollamaHandler, and for 'openai' and 'vsegpt', it creates an openaiHandler.
+        For 'llama', it creates a llamaHandler, 'ollama' - ollamaHandler, and for 'openai' and 'vsegpt',
+        it creates an openaiHandler.
 
         Args:
             config: The configuration object which contains the model information.

@@ -10,7 +10,7 @@ class TestUnitTestWorkflowGenerator(unittest.TestCase):
         self.assertEqual(workflow["on"], ["push", "pull_request"])
         self.assertEqual(workflow["jobs"]["test"]["name"], "Run Tests")
         self.assertEqual(workflow["jobs"]["test"]["strategy"]["matrix"]["os"], ["ubuntu-latest"])
-        self.assertEqual(workflow["jobs"]["test"]["strategy"]["matrix"]["python-version"], ["3.8", "3.9", "3.10"])
+        self.assertEqual(workflow["jobs"]["test"]["strategy"]["matrix"]["python-version"], ["3.9", "3.10"])
         self.assertEqual(workflow["jobs"]["test"]["steps"][0]["uses"], "actions/checkout@v4")
         self.assertEqual(workflow["jobs"]["test"]["steps"][1]["uses"], "actions/setup-python@v4")
         self.assertEqual(workflow["jobs"]["test"]["steps"][2]["run"], "pip install -r requirements.txt && pip install pytest pytest-cov")
