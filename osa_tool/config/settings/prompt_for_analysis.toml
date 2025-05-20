@@ -42,8 +42,9 @@ RULES:
 
 - Use double quotes for JSON
 - No markdown formatting
-- Only use Yes/No/Partial for readme fields
+- Only use Yes/No/Partial for readme fields and tests_present
 - Be strictly factual about file presence
+- Check for the presence of the directory with tests
 - Prioritize 3 most critical recommendations
 
 """

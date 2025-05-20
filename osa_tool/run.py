@@ -1,16 +1,17 @@
 import os
 from typing import List
 
-import tomli
-
 from osa_tool.aboutgen.about_generator import AboutGenerator
 from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.arguments_parser import get_cli_args
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.convertion.notebook_converter import NotebookConverter
+from osa_tool.docs_generator.docs_run import generate_documentation
+from osa_tool.docs_generator.license import compile_license_file
 from osa_tool.github_agent.github_agent import GithubAgent
 from osa_tool.github_workflow import generate_workflows_from_settings
+from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 from osa_tool.readmegen.readme_core import readme_agent
@@ -35,6 +36,7 @@ def main():
     article = args.article
     notebook_paths = args.convert_notebooks
     ensure_license = args.ensure_license
+    community_docs = args.community_docs
     publish_results = not args.not_publish_results
 
     # Extract workflow-related arguments
@@ -108,6 +110,10 @@ def main():
         if ensure_license:
             compile_license_file(sourcerank, ensure_license)
 
+        # Generate community documentation
+        if community_docs:
+            generate_documentation(config)
+
         # Readme generation
         readme_agent(config, article)
 
@@ -121,6 +127,10 @@ def main():
         # Generate GitHub workflows
         if generate_workflows:
             generate_github_workflows(config)
+
+        # Organize repository by adding 'tests' and 'examples' directories if they aren't exist
+        organizer = RepoOrganizer(os.path.join(os.getcwd(), parse_folder_name(repo_url)))
+        organizer.organize()
 
         if publish_results:
             github_agent.commit_and_push_changes()
@@ -153,50 +163,6 @@ def convert_notebooks(repo_url: str, notebook_paths: List[str] | None = None) ->
 
     except Exception as e:
         logger.error("Error while converting notebooks: %s", repr(e), exc_info=True)
-
-
-def compile_license_file(sourcerank: SourceRank, ensure_license):
-    """
-    Compiles a license file for a software project using a specified template.
-
-    This method takes a SourceRank object as input, extracts necessary information such as creation year and author
-    to compile a license file based on a predefined template. The compiled license file is then saved in the repository
-    directory of the SourceRank object.
-
-    Parameters:
-        - sourcerank: SourceRank object containing metadata about the software project.
-        - ensure_license: License type provided by user.
-
-    Returns:
-        None. The compiled license file is saved in the repository directory of the SourceRank object.
-    """
-    try:
-        if sourcerank.license_presence():
-            logger.info("LICENSE file already exists")
-        else:
-            logger.info("LICENSE was not resolved, compiling started...")
-            license_template_path = os.path.join(
-                os.getcwd(), "osa_tool", "docs", "license_template", "licenses.toml"
-            )
-            with open(license_template_path, "rb") as f:
-                license_template = tomli.load(f)
-            license_type = ensure_license
-            year = sourcerank.metadata.created_at[:4]
-            author = sourcerank.metadata.owner
-            try:
-                license_text = license_template[license_type]["template"].format(
-                    year=year, author=author
-                )
-                license_output_path = os.path.join(sourcerank.repo_path, "LICENSE")
-                with open(license_output_path, "w") as f:
-                    f.write(license_text)
-                logger.info(
-                    f"""LICENSE has been successfully compiled at {os.path.join(sourcerank.repo_path, "LICENSE")}"""
-                )
-            except KeyError:
-                logger.error(f"Couldn't resolve {license_type} license type, try to look up available licenses at documentation.")
-    except Exception as e:
-        logger.error("Error while compiling LICENSE: %s", e, exc_info=True)
 
 
 def generate_docstrings(config_loader: ConfigLoader) -> None:
@@ -292,7 +258,7 @@ def generate_github_workflows(config_loader: ConfigLoader) -> None:
     """
     Generate GitHub Action workflows based on configuration settings.
     Args:
-        config: Configuration loader object which contains workflow settings
+        config_loader: Configuration loader object which contains workflow settings
     """
     try:
         logger.info("Generating GitHub action workflows...")

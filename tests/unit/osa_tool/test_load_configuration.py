@@ -18,10 +18,10 @@ from osa_tool.run import load_configuration
         (
             "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test",
             ".github/workflows", True, True, True, True, False, False, False,
-            ["3.8", "3.9", "3.10"], "flake8", False, [], "false", "true",
+            ["3.9", "3.10"], "flake8", False, [], "false", "true",
             "https://github.com/example/repo", "openai", "https://api.openai.com", "gpt-test",
             ".github/workflows", True, True, True, True, False, False, False,
-            ["3.8", "3.9", "3.10"], "flake8", False, [], "false", "true"
+            ["3.9", "3.10"], "flake8", False, [], "false", "true"
         ),
         # Second test case
         (

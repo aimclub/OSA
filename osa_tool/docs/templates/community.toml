@@ -1,0 +1,257 @@
+code_of_conduct = """
+# Contributor Covenant Code of Conduct
+
+## Our Pledge
+
+In the interest of fostering an open and welcoming environment, we as
+contributors and maintainers pledge to make participation in our project and
+our community a harassment-free experience for everyone, regardless of age, body
+size, disability, ethnicity, sex characteristics, gender identity and expression,
+level of experience, education, socio-economic status, nationality, personal
+appearance, race, religion, or sexual identity and orientation.
+
+## Our Standards
+
+Examples of behavior that contributes to creating a positive environment
+include:
+
+* Using welcoming and inclusive language
+* Being respectful of differing viewpoints and experiences
+* Gracefully accepting constructive criticism
+* Focusing on what is best for the community
+* Showing empathy towards other community members
+
+Examples of unacceptable behavior by participants include:
+
+* The use of sexualized language or imagery and unwelcome sexual attention or
+  advances
+* Trolling, insulting/derogatory comments, and personal or political attacks
+* Public or private harassment
+* Publishing others' private information, such as a physical or electronic
+  address, without explicit permission
+* Other conduct which could reasonably be considered inappropriate in a
+  professional setting
+
+## Our Responsibilities
+
+Project maintainers are responsible for clarifying the standards of acceptable
+behavior and are expected to take appropriate and fair corrective action in
+response to any instances of unacceptable behavior.
+
+Project maintainers have the right and responsibility to remove, edit, or
+reject comments, commits, code, wiki edits, issues, and other contributions
+that are not aligned to this Code of Conduct, or to ban temporarily or
+permanently any contributor for other behaviors that they deem inappropriate,
+threatening, offensive, or harmful.
+
+## Scope
+
+This Code of Conduct applies within all project spaces, and it also applies when
+an individual is representing the project or its community in public spaces.
+Examples of representing a project or community include using an official
+project e-mail address, posting via an official social media account, or acting
+as an appointed representative at an online or offline event. Representation of
+a project may be further defined and clarified by project maintainers.
+
+## Enforcement
+
+Project maintainers who do not follow or enforce the Code of Conduct in good
+faith may face temporary or permanent repercussions as determined by other
+members of the project's leadership.
+
+## Attribution
+
+This Code of Conduct is adapted from the [Contributor Covenant][homepage], version 1.4,
+available at https://www.contributor-covenant.org/version/1/4/code-of-conduct.html
+
+[homepage]: https://www.contributor-covenant.org
+
+For answers to common questions about this code of conduct, see
+https://www.contributor-covenant.org/faq
+"""
+
+pull_request = """
+<!--
+  Thanks for creating a Pull Request! Before you submit, please make sure
+  you've done the following:
+
+  - I read the contributing document at {contributing_url}
+-->
+
+<!--
+  Help us quickly understand your PR! Choose one of the following by uncommenting it:
+-->
+
+<!-- This is a 🐛 Bug fix -->
+<!-- This is a ✨ New feature -->
+<!-- This is a 📝 Documentation update -->
+<!-- This is a 🔨 Code refactoring -->
+<!-- This is a 📦 Dependency update -->
+<!-- This is a ⚙️ Build/CI improvement -->
+
+---
+
+## Checklist
+
+Please check all that apply (`x` inside `[ ]`):
+
+- [ ] I've performed a self-review of my code
+- [ ] I've run linters and tests locally before submission
+- [ ] I've added tests (if it's a bug, feature or enhancement)
+- [ ] I've adjusted the documentation (if it's a feature or enhancement)
+
+## Summary
+
+<!--
+  Provide a description of what your pull request changes.
+-->
+
+## Context
+
+<!--
+  Is this related to any GitHub issue(s)?
+
+  You can use keywords to automatically close the related issue.
+  For example, (all of) the following will close issue #4567 when your PR is merged.
+
+  Closes #4567
+  Fixes #4567
+  Resolves #4567
+
+  Use any one of the above as applicable.
+-->
+
+## Additional Notes
+
+Add any additional context for reviewers (questions, implementation details, suggestions):
+"""
+
+docs_issue = """
+---
+name: Documentation
+about: Found a typo or something that isn't crystal clear in our docs?
+title: "[Docs]: "
+labels: documentation
+assignees: ''
+
+---
+
+<!-- Thanks for taking the time to open an issue and help us make project better! -->
+
+## Motivation
+
+<!-- Why should we update our docs? -->
+
+
+
+## Suggestion
+
+<!-- What should we do instead? -->
+
+"""
+
+feature_issue = """
+---
+name: Feature request
+about: Want us to add any features to {project_name}?
+title: 'enh: '
+labels: enhancement
+assignees: ''
+
+---
+
+<!--
+  Hi! Thanks for considering to file a feature request with {project_name}. Please take the time to
+  answer the basic questions. Please try to be as detailed as possible.
+
+  Thanks!
+-->
+
+## Summary
+
+<!--
+  A one-paragraph explanation of the feature.
+-->
+
+## Motivation
+
+<!--
+  Why do you want to see this feature in {project_name}? What use cases does it support?
+-->
+
+## Guide-level explanation
+
+<!--
+  Explain the proposal as if it was already included in the project and you
+  were teaching it to another programmer. That generally means:
+
+  - Introducing new named concepts.
+  - Explaining the feature largely in terms of examples.
+  - If applicable, provide sample error messages, deprecation warnings, or
+    migration guidance.
+
+  If this is a small feature, you may omit this section.
+-->
+
+## Reference-level explanation
+
+<!--
+  This is the technical portion of the feature request. Explain the design in
+  sufficient detail that:
+
+  - Its interaction with other features is clear.
+  - It is reasonably clear how the feature would be implemented.
+  - Corner cases are dissected by example.
+
+  If you do not know how to answer this, you can omit it. No worries!
+-->
+
+## Drawbacks
+
+<!--
+  Why should we *not* do this?
+-->
+
+## Unresolved Questions
+
+<!--
+  What related issues do you consider out of scope for this feature that could be
+  addressed in the future independently of the solution that comes out of this
+  feature?
+-->
+"""
+
+bug_issue = """
+---
+name: Bug report
+about: Is something not working as expected?
+title: "[Bug]: "
+labels: bug
+assignees: ''
+
+---
+
+Hi! Thank you for taking the time to report a bug with {project_name}.
+
+Additionally, please note that this platform is meant for bugs in {project_name} only.
+Issues regarding dependencies and libraries should be reported in their respective repositories.
+
+<!--- Provide a general summary of the issue in the Title above -->
+
+## Expected Behavior
+<!--- If you're suggesting a change/improvement, tell us how it should work -->
+
+## Current Behavior
+<!--- If suggesting a change/improvement, explain the difference from current behavior -->
+
+## Possible Solution
+<!--- Not obligatory, but suggest a fix/reason -->
+<!--- or ideas how to implement the addition or change -->
+
+## Steps to Reproduce
+<!--- Provide a link to a live example -->
+
+## Context [OPTIONAL]
+<!--- How has this issue affected you? What are you trying to accomplish? -->
+<!--- Providing context helps us come up with a solution that is most useful in the real world -->
+"""

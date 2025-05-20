@@ -91,11 +91,15 @@ def get_cli_args():
         help="Enable LICENSE file compilation.",
         choices=["bsd-3", "mit", "ap2"]
     )
-
     parser.add_argument(
         "--not-publish-results",
         action="store_true",
         help="Create public fork and PR the target repository."
+    )
+    parser.add_argument(
+        "--community-docs",
+        action="store_true",
+        help="Generate community-related documentation files, such as Code of Conduct and Contributing guidelines."
     )
 
     # Create a group for GitHub workflow generator arguments
@@ -151,7 +155,7 @@ def get_cli_args():
         "--python-versions",
         type=str,
         nargs="+",
-        default=["3.8", "3.9", "3.10"],
+        default=["3.9", "3.10"],
         help="Python versions to test against"
     )
     workflow_group.add_argument(
