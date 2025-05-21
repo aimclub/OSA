@@ -257,53 +257,67 @@ class GithubAgent:
         self.pr_report_body = f"\nGenerated report - [{report_filename}]({report_url})\n"
 
     def update_about_section(self, about_content: dict) -> None:
-        """Updates the about section of the repository with the provided content.
+        """Tries to update the 'About' section of the base and fork repository with the provided content.
 
         Args:
             about_section: Dictionary containing the metadata to update about section.
         """
         if not self.token:
-            raise ValueError("GitHub token is required to fill about section.")
+            raise ValueError(
+                "GitHub token is required to fill repository's 'About' section."
+            )
         if not self.fork_url:
             raise ValueError(
                 "Fork URL is not set. Please create a fork first.")
 
-        base_repo = get_base_repo_url(self.fork_url)
+        base_repo = get_base_repo_url(self.repo_url)
+        logger.info(f"Updating 'About' section for base repository - {self.repo_url}")
+        self._update_description_homepage(base_repo, about_content)
+        self._update_topics(base_repo, about_content)
 
-        url = f"https://api.github.com/repos/{base_repo}"
-        headers = {"Accept": "application/vnd.github+json",
-                   "Authorization": f"token {self.token}",
-                   "X-GitHub-Api-Version": "2022-11-28",
-                   "Content-Type": "application/json"}
+        fork_repo = get_base_repo_url(self.fork_url)
+        logger.info(f"Updating 'About' section for the fork - {self.fork_url}")
+        self._update_description_homepage(fork_repo, about_content)
+        self._update_topics(fork_repo, about_content)
+
+    def _update_description_homepage(self, repo_url: str, about_content: dict):
+        url = f"https://api.github.com/repos/{repo_url}"
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"token {self.token}",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Content-Type": "application/json",
+        }
         about_data = {
             "description": about_content["description"],
-            "homepage": about_content["homepage"]
+            "homepage": about_content["homepage"],
         }
         response = requests.patch(url, headers=headers, json=about_data)
 
         if response.status_code in {200, 201}:
-            logger.info(
-                f"Updated repository description and homepage.")
+            logger.info(f"Successfully updated repository description and homepage.")
         else:
             logger.error(
-                f"Failed to update description and homepage: {response.status_code}")
+                f"{response.status_code} - Failed to update description and homepage for {repo_url}."
+            )
 
-        url = f"https://api.github.com/repos/{base_repo}/topics"
-        headers = {"Accept": "application/vnd.github+json",
-                   "Authorization": f"token {self.token}",
-                   "X-GitHub-Api-Version": "2022-11-28",
-                   "Content-Type": "application/json"}
-        topics_data = {
-            "names": about_content["topics"]
+    def _update_topics(self, repo_url: str, about_content: dict):
+        url = f"https://api.github.com/repos/{repo_url}/topics"
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"token {self.token}",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Content-Type": "application/json",
         }
+        topics_data = {"names": about_content["topics"]}
         response = requests.put(url, headers=headers, json=topics_data)
 
         if response.status_code in {200, 201}:
-            logger.info(
-                f"Updated repository topics: {about_content['topics']}")
-            logger.info(response)
+            logger.info(f"Successfully updated repository topics.")
         else:
-            logger.error(f"Failed to update topics.")
+            logger.error(
+                f"{response.status_code} - Failed to update topics for {repo_url}."
+            )
 
     def _get_auth_url(self, url: str = None) -> str:
         """Converts the repository URL by adding a token for authentication.
