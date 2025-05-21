@@ -22,24 +22,24 @@ def tree_to_dict(tree):
             result.append({"name": name, "type": "file"})
     return result
 
-for file in os.listdir('data'):
-    with open(f'data/{file}', 'r', encoding='utf-8') as f:
-        data = json.load(f)
+# for file in os.listdir('data'):
+#     with open(f'data/{file}', 'r', encoding='utf-8') as f:
+#         data = json.load(f)
 
-# Извлечение путей
-    stop_words = ['assets', 'results', 'sources', 'packages', 'images', 'data']
-    paths = [
-        entry['path']
-        for entry in data.get('tree', [])
-        if not any(f"/{stop}/" in f"/{entry['path']}/" or entry['path'].startswith(f"{stop}/") for stop in stop_words)
-    ]
-    # Построение финальной структуры
-    tree = build_tree(paths)
-    structured = tree_to_dict(tree)
+# # Извлечение путей
+#     stop_words = ['assets', 'results', 'sources', 'packages', 'images', 'data']
+#     paths = [
+#         entry['path']
+#         for entry in data.get('tree', [])
+#         if not any(f"/{stop}/" in f"/{entry['path']}/" or entry['path'].startswith(f"{stop}/") for stop in stop_words)
+#     ]
+#     # Построение финальной структуры
+#     tree = build_tree(paths)
+#     structured = tree_to_dict(tree)
 
 # Сохранение результата
-    with open(f'data/struct_{file}', 'w', encoding='utf-8') as f:
-        json.dump(structured, f, indent=2, ensure_ascii=False)
+    # with open(f'data/struct_{file}', 'w', encoding='utf-8') as f:
+    #     json.dump(structured, f, indent=2, ensure_ascii=False)
 
 # Пример вывода:
 # [
