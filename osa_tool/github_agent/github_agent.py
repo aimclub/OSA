@@ -257,7 +257,7 @@ class GithubAgent:
             with open(report_filepath, "rb") as f:
                 preserved_content = f.read()
             self.repo.git.checkout("-f", report_branch)
-            with open(report_branch, "wb") as f:
+            with open(report_filepath, "wb") as f:
                 f.write(preserved_content)
             logger.info(f"Sucessfuly moved PDF report to {report_branch} branch.")
 
