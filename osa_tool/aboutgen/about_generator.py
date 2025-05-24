@@ -37,6 +37,7 @@ class AboutGenerator:
             logger.warning(
                 "About section content already generated. Skipping generation.")
             return
+        logger.info("Generating 'About' section...")
         self._content = {"description": self.generate_description(),
                          "homepage": self.detect_homepage(),
                          "topics": self.generate_topics()}
@@ -189,12 +190,12 @@ class AboutGenerator:
             f"Validated {len(validated_topics)} topics out of {len(topics)}")
         return validated_topics
 
-    def detect_homepage(self) -> Optional[str]:
+    def detect_homepage(self) -> str:
         """
         Detects the homepage URL for a project.
 
         Returns:
-            Optional[str]: The detected homepage URL, an empty string if none is found.
+            str: The detected homepage URL, an empty string if none is found.
         """
         logger.info("Detecting homepage URL...")
         if self.metadata and self.metadata.homepage_url:
