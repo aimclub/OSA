@@ -248,14 +248,39 @@ class GithubAgent:
             report_branch: Name of the branch for storing reports. Defaults to "osa_tool_attachments".
             commit_message: Commit message for the report upload. Defaults to "upload pdf report".
         """
-        if not self.fork_url:
-            logger.error(
-                "Fork URL is not set. Please create a fork first. Skipping uploading PDF report."
+        try:
+            self.create_and_checkout_branch(report_branch)
+        except GitCommandError:
+            logger.warning(
+                f"PDF report located in the {self.branch_name} branch, moving it."
             )
-            return
+            with open(report_filepath, "rb") as f:
+                preserved_content = f.read()
+            self.repo.git.checkout("-f", report_branch)
+            with open(report_branch, "wb") as f:
+                f.write(preserved_content)
+            logger.info(f"Sucessfuly moved PDF report to {report_branch} branch.")
 
-        self.create_and_checkout_branch(report_branch)
-        self.commit_and_push_changes(report_branch, commit_message)
+        try:
+            self.commit_and_push_changes(report_branch, commit_message)
+        except GitCommandError:
+            logger.warning(
+                "Branch already exists in the fork. Comparing last commit message..."
+            )
+            last_commit = self.repo.refs[report_branch].commit
+            if last_commit.message == "upload pdf report\n":
+                logger.warning(
+                    f"Commit matches. Force pushing new PDF report to {report_branch} branch of the fork."
+                )
+                self.repo.git.push(
+                    "--set-upstream", "origin", report_branch, force=True
+                )
+                logger.info("Push completed.")
+            else:
+                logger.error(
+                    "Commit does not match the default, aborting upload report."
+                )
+
         self.create_and_checkout_branch()  # Return to original branch
 
         report_url = f"{self.fork_url}/blob/{report_branch}/{report_filename}"
