@@ -241,7 +241,13 @@ class GithubAgent:
             if not "pull request already exists" in response.text:
                 raise ValueError("Failed to create pull request.")
 
-    def upload_report(self, report_filename: str, report_branch: str = "osa_tool_attachments", commit_message: str = "upload pdf report") -> None:
+    def upload_report(
+        self,
+        report_filename: str,
+        report_filepath: str,
+        report_branch: str = "osa_tool_attachments",
+        commit_message: str = "upload pdf report",
+    ) -> None:
         """Uploads the generated PDF report to a separate branch.
 
         Args:
