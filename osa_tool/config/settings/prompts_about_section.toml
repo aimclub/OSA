@@ -1,0 +1,111 @@
+# LLM prompts for generating the about section of repositories.
+
+[prompts]
+
+description = """
+INPUT DATA:
+1. README content: {readme_content}
+
+TASK:
+Create a technical, concise GitHub repository description (120 chars) from README content.
+Return only the final description text with no commentary.
+
+RULES:
+- Third person technical voice.
+Focus on:
+- Core functionality/automation provided.
+- Key technical differentiation.
+- Problem domain/specialization.
+- Primary architectural pattern.
+Avoid:
+- Marketing language ('easy', 'powerful')
+- Generic verbs('helps with', 'manages')
+- Repository type mentions unless novel
+Example outputs:
+1. 'Dynamic DNS updater with Docker support and Let's Encrypt integration'
+2. 'Distributed graph processing engine using actor model parallelism'
+"""
+
+topics = """
+INPUT DATA:
+1. README content: "{readme_content}"
+2. Topics: "{topics}"
+3. Amount: "{amount}"
+
+TASK:
+Analyze the provided README content and existing repository topics (if any) to generate up to amount relevant technical topics. 
+Follow the rules below.
+Return only a comma-separated string (no quotes, bullets, or explanations).
+
+RULES:
+Strictly lowercase, hyphen-separated, under 50 characters (e.g., machine-learning, data-visualization).
+Technical nouns only (languages, frameworks, tools, domains). Exclude non-technical terms.
+Avoid duplicating existing topics.
+
+Example OUTPUT:
+computer-vision, genetic-algorithm, neural-radiance-fields, gpu-cluster-scheduling, federated-learning, realtime-pipelines
+"""
+
+topics_extra = """
+INPUT DATA:
+1. README content: {readme_content}
+2. Existing topics: {topics}
+
+TASK:
+Analyze the README content systematically through these steps:
+
+1. Identify technical components that meet ALL criteria:
+- Specialized/non-generic implementation details
+- Directly contributes to core functionality
+- Matches one focus category below
+
+2. Focus categories (must choose exactly one per topic):
+a) Specialized libraries: Versioned/published packages beyond base framework
+b) Core algorithms: Mathematical/procedural innovations (<common algo = exclude)
+c) Problem subspaces: Narrow technical subdomains (e.g., "3d-slam" vs "robotics")
+d) Architecture: Distinct structural patterns with implementation evidence
+e) Technical USP: Quantifiable differentiators (benchmarks, unique combinations)
+
+3. Validation:
+- Exclude version numbers and brand names unless critical to technical identity
+- Cross-check candidates against README content occurrences
+- Remove candidates with <2 independent mentions or implicit references
+- Compare against existing topics to avoid duplication
+- Reject broad domains - require technical specificity (e.g., "cnn-model-pruning" not "deep-learning")
+
+Generate up to {amount} GitHub topics meeting these requirements:
+
+RULES:
+- Use compound terms only when README shows combined usage
+- Return only the final topics with no commentary.
+- MUST appear in README technical content (exclude inferred/assumed concepts)
+- Strict format: lowercase, hyphenated, <50 chars, technical nouns only
+
+Example OUTPUT:
+computer-vision, genetic-algorithm, neural-radiance-fields, gpu-cluster-scheduling, federated-learning, realtime-pipelines
+"""
+
+analyze_urls = """
+INPUT DATA:
+1. Repository URL: {project_url}
+2. URLs: {urls}
+
+TASK:
+Analyze input URLs and return a comma-separated list of valid homepages/documentation sources ranked by relevance excluding any github url. 
+Return empty string if none qualify with no commentary or explanations.
+
+RULES:
+1. Include:
+- OFFICIAL WEBSITE: Root domain (project.com, www.project.org)
+- PRIMARY DOCS: Documentation root (docs.project.io) - no subpaths
+- GITHUB PAGES: *.github.io (with/without path)
+- EXPLICIT HOMEPAGE: External sites clearly designated as main homepage
+
+2. Exclude:
+- ALL repository links (github/gitlab/bitbucket URLs - including Project URL itself)
+- Repository subpages (/issues, /blob/, /tree/, /raw/)
+- CI/CD badges (/badge/, .svg, /actions/)
+- Package registries (pypi.org, npmjs.com)
+- Social media (twitter.com, linkedin.com)
+- Non-root paths (any URL with /subdirectory/)
+"""
