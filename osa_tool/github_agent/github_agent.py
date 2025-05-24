@@ -249,6 +249,12 @@ class GithubAgent:
             report_branch: Name of the branch for storing reports. Defaults to "osa_tool_attachments".
             commit_message: Commit message for the report upload. Defaults to "upload pdf report".
         """
+        if not self.fork_url:
+            logger.error(
+                "Fork URL is not set. Please create a fork first. Skipping uploading PDF report."
+            )
+            return
+
         self.create_and_checkout_branch(report_branch)
         self.commit_and_push_changes(report_branch, commit_message)
         self.create_and_checkout_branch()  # Return to original branch
