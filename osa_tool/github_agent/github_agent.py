@@ -190,14 +190,7 @@ class GithubAgent:
             logger.info("Push completed.")
             return True
         except GitCommandError as e:
-            logger.error(
-                f"""Push failed: Branch '{branch}' already exists in the fork.
-             To resolve this, please either:
-                1. Choose a different branch name that doesn't exist in the fork 
-                   by modifying the `branch_name` parameter.
-                2. Delete the existing branch from forked repository.
-                3. Delete the fork entirely.""")
-            return False
+            raise
 
     def create_pull_request(self, title: str = None, body: str = None) -> None:
         """Creates a pull request from the forked repository to the original repository.
@@ -241,7 +234,13 @@ class GithubAgent:
             if not "pull request already exists" in response.text:
                 raise ValueError("Failed to create pull request.")
 
-    def upload_report(self, report_filename: str, report_branch: str = "osa_tool_attachments", commit_message: str = "upload pdf report") -> None:
+    def upload_report(
+        self,
+        report_filename: str,
+        report_filepath: str,
+        report_branch: str = "osa_tool_attachments",
+        commit_message: str = "upload pdf report",
+    ) -> None:
         """Uploads the generated PDF report to a separate branch.
 
         Args:
@@ -249,8 +248,39 @@ class GithubAgent:
             report_branch: Name of the branch for storing reports. Defaults to "osa_tool_attachments".
             commit_message: Commit message for the report upload. Defaults to "upload pdf report".
         """
-        self.create_and_checkout_branch(report_branch)
-        self.commit_and_push_changes(report_branch, commit_message)
+        try:
+            self.create_and_checkout_branch(report_branch)
+        except GitCommandError:
+            logger.warning(
+                f"PDF report located in the {self.branch_name} branch, moving it."
+            )
+            with open(report_filepath, "rb") as f:
+                preserved_content = f.read()
+            self.repo.git.checkout("-f", report_branch)
+            with open(report_filepath, "wb") as f:
+                f.write(preserved_content)
+            logger.info(f"Sucessfuly moved PDF report to {report_branch} branch.")
+
+        try:
+            self.commit_and_push_changes(report_branch, commit_message)
+        except GitCommandError:
+            logger.warning(
+                "Branch already exists in the fork. Comparing last commit message..."
+            )
+            last_commit = self.repo.refs[report_branch].commit
+            if last_commit.message == "upload pdf report\n":
+                logger.warning(
+                    f"Commit matches. Force pushing new PDF report to {report_branch} branch of the fork."
+                )
+                self.repo.git.push(
+                    "--set-upstream", "origin", report_branch, force=True
+                )
+                logger.info("Push completed.")
+            else:
+                logger.error(
+                    "Commit does not match the default, aborting upload report."
+                )
+
         self.create_and_checkout_branch()  # Return to original branch
 
         report_url = f"{self.fork_url}/blob/{report_branch}/{report_filename}"
