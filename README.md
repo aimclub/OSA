@@ -1,19 +1,7 @@
-# OSA: OPEN-SOURCE ADVISOR
-
-
 <p align="center">
 
-<img src="./docs/images/osa_logo_h.PNG" width="600">
-</p>
-
-<p align="center">
-
-[![Acknowledgement ITMO](https://raw.githubusercontent.com/aimclub/open-source-ops/43bb283758b43d75ec1df0a6bb4ae3eb20066323/badges/ITMO_badge.svg)](https://itmo.ru/)
-[![Open-source-ops website](https://raw.githubusercontent.com/aimclub/open-source-ops/7de1e1321389ec177f236d0a5f41f876811a912a/badges/open--source--ops-black.svg)](https://aimclub.github.io/open-source-ops/)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![PyPi](https://badge.fury.io/py/osa_tool.svg)](https://badge.fury.io/py/osa_tool)
-[![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/aimclub/OSA)
-[![Telegram Chat](https://img.shields.io/badge/Telegram-group-blue)](https://t.me/OSA_helpdesk)
+
 </p>
 
 <p>Built with:</p>
@@ -34,13 +22,6 @@ It automates the generation of README, different levels of documentation, CI/CD 
 It also generates advices and recommendations for the repository.
 
 OSA is currently under development, so not all features are implemented.
-
----
-## How it works?
-
-Here is a short demo:
-
-![Animation](./docs/images/osa_demo.gif)
 
 ---
 
@@ -191,9 +172,8 @@ Examples of generated README files are available in [examples](https://github.co
 URL of the GitHub repository, LLM API service provider (*optional*) and Specific LLM model to use (*optional*) are required to use the generator.
 
 To see available models go there:
-1. [VseGpt](https://vsegpt.ru/Docs/Models)
-2. [OpenAI](https://platform.openai.com/docs/models)
-3. [Ollama](https://ollama.com/library)
+1. [OpenAI](https://platform.openai.com/docs/models)
+2. [Ollama](https://ollama.com/library)
 
 Local Llama ITMO:
 ```sh
@@ -214,24 +194,6 @@ python -m osa_tool.run -r https://github.com/aimclub/OSA --api ollama --base-url
 
 ---
 
-## Documentation
-
-Detailed description of OSA API is available [here](https://itmo-nss-team.github.io/Open-Source-Advisor/).
-
----
-
-## Publications about OSA
-
-In English:
-
-- [Automate Your Coding with OSA – ITMO-Made AI Assistant for Researchers](https://news.itmo.ru/en/news/14282/)
-
-In Russian:
-
-- [OSA: ИИ-помощник для разработчиков научного open source кода](https://habr.com/ru/companies/spbifmo/articles/906018/)
-
----
-
 ## Contributing
 
 - **[Report Issues](https://github.com/aimclub/OSA/issues )**: Submit bugs found or log feature requests for the Open-Source-Advisor project.
@@ -241,47 +203,5 @@ In Russian:
 ## License
 
 This project is protected under the BSD 3-Clause "New" or "Revised" License. For more details, refer to the [LICENSE](https://github.com/aimclub/OSA/blob/main/LICENSE) file.
-
----
-
-## Acknowledgments
-
-The project is supported as ITMO University Research Project in AI Initiative (RPAII).
-
-OSA is tested by the members of [ITMO OpenSource](https://t.me/scientific_opensource) community. Useful content from community 
-is available in [**Open-source-ops**](https://github.com/aimclub/open-source-ops)
-
-Also, we thank [**Readme-ai**](https://github.com/eli64s/readme-ai) 
-for their code that we used as a foundation for our own version of README generator.
-
----
-
-## Citation
-
-If you use this software, please cite it as below.
-
-### APA format:
-
-    ITMO, NSS Lab (2025). Open-Source-Advisor repository [Computer software]. https://github.com/aimclub/OSA
-
-### BibTeX format:
-
-    @misc{Open-Source-Advisor,
-
-        author = {ITMO, NSS Lab},
-
-        title = {Open-Source-Advisor repository},
-
-        year = {2025},
-
-        publisher = {github.com},
-
-        journal = {github.com repository},
-
-        howpublished = {\url{https://github.com/aimclub/OSA.git}},
-
-        url = {https://github.com/aimclub/OSA.git}
-
-    }
 
 ---
