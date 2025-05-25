@@ -47,7 +47,7 @@ OSA is currently under development, so not all features are implemented.
 
 3. **Automatic implementation of changes**: Clones the repository, creates a branch, commits and pushes changes, and creates a pull request with proposed changes.
 
-4. **Various LLMs**: Use OSA with an LLM accessible via API (e.g., OpenAI, VseGPT, Ollama), a local server, or try an [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
+4. **Various LLMs**: Use OSA with an LLM accessible via API (e.g., OpenAI, VseGPT, Ollama), a local server, or try an ... 
 
 5. **GitHub Action Workflow Generator**: Automatically generates customizable CI/CD workflows for Python repositories, including unit tests, code formatting, PEP 8 compliance checks, and PyPI publication.
 
@@ -67,7 +67,7 @@ pip install osa_tool
 
 1. Clone the Open-Source-Advisor repository:
 ```sh
-git clone https://github.com/aimclub/OSA
+git clone ...
 ```
 
 2. Navigate to the project directory:
@@ -167,15 +167,13 @@ The --generate-workflows option is intended to create customizable CI/CD pipelin
 
 ## Examples
 
-Examples of generated README files are available in [examples](https://github.com/aimclub/OSA/tree/main/examples).
-
 URL of the GitHub repository, LLM API service provider (*optional*) and Specific LLM model to use (*optional*) are required to use the generator.
 
 To see available models go there:
 1. [OpenAI](https://platform.openai.com/docs/models)
 2. [Ollama](https://ollama.com/library)
 
-Local Llama ITMO:
+Local Llama:
 ```sh
 python -m osa_tool.run -r https://github.com/aimclub/OSA
 ```  
@@ -183,20 +181,12 @@ OpenAI:
 ```sh
 python -m osa_tool.run -r https://github.com/aimclub/OSA --api openai
 ```
-VseGPT:
-```sh
-python -m osa_tool.run -r https://github.com/aimclub/OSA --api openai --base-url https://api.vsegpt.ru/v1 --model openai/gpt-3.5-turbo
+
 ```
 Ollama:
 ```sh
 python -m osa_tool.run -r https://github.com/aimclub/OSA --api ollama --base-url http://[YOUR_OLLAMA_IP]:11434 --model gemma3:27b
 ```
-
----
-
-## Contributing
-
-- **[Report Issues](https://github.com/aimclub/OSA/issues )**: Submit bugs found or log feature requests for the Open-Source-Advisor project.
 
 ---
 
