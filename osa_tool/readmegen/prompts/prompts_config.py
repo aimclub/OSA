@@ -32,8 +32,7 @@ class PromptLoader:
     @staticmethod
     def _get_prompts_path() -> str:
         """
-        Helper method to get the correct resource path,
-        looking outside the package.
+        Helper method to get the correct resource path.
         """
         file_path = os.path.join(
             osa_project_root(),

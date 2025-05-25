@@ -14,7 +14,7 @@ from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 from osa_tool.readmegen.readme_core import readme_agent
-from osa_tool.scheduler import ModeScheduler
+from osa_tool.scheduler.scheduler import ModeScheduler
 from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.utils import (
     delete_repository,
@@ -45,10 +45,7 @@ def main():
             base_url=args.base_url,
             model_name=args.model,
         )
-
-        # Initialize ModeScheduler
-        scheduler = ModeScheduler(args)
-        plan = scheduler.plan
+        sourcerank = SourceRank(config)
 
         # Initialize GitHub agent and perform operations
         github_agent = GithubAgent(args.repository, args.branch)
@@ -56,6 +53,11 @@ def main():
             github_agent.star_repository()
             github_agent.create_fork()
         github_agent.clone_repository()
+
+        # Initialize ModeScheduler
+        scheduler = ModeScheduler(config, sourcerank, args)
+        plan = scheduler.plan
+
         if publish_results:
             github_agent.create_and_checkout_branch()
 
@@ -64,7 +66,6 @@ def main():
             convert_notebooks(args.repository, args.convert_notebooks)
 
         # Repository Analysis Report generation
-        sourcerank = SourceRank(config)
         if plan.get("generate_report"):
             analytics = ReportGenerator(config, sourcerank, github_agent.clone_dir)
             analytics.build_pdf()
