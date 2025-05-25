@@ -189,8 +189,16 @@ class GithubAgent:
                                branch, force_with_lease=True)
             logger.info("Push completed.")
             return True
-        except GitCommandError as e:
-            raise
+        except GitCommandError:
+            logger.error(
+                f"""Push failed: Branch '{branch}' already exists in the fork.
+             To resolve this, please either:
+                1. Choose a different branch name that doesn't exist in the fork 
+                   by modifying the `branch_name` parameter.
+                2. Delete the existing branch from forked repository.
+                3. Delete the fork entirely."""
+            )
+            return False
 
     def create_pull_request(self, title: str = None, body: str = None) -> None:
         """Creates a pull request from the forked repository to the original repository.
@@ -261,12 +269,8 @@ class GithubAgent:
                 f.write(preserved_content)
             logger.info(f"Sucessfuly moved PDF report to {report_branch} branch.")
 
-        try:
-            self.commit_and_push_changes(report_branch, commit_message)
-        except GitCommandError:
-            logger.warning(
-                "Branch already exists in the fork. Comparing last commit message..."
-            )
+        if not self.commit_and_push_changes(report_branch, commit_message):
+            logger.info("Handling failed push. Comparing last commit message...")
             last_commit = self.repo.refs[report_branch].commit
             if last_commit.message == "upload pdf report\n":
                 logger.warning(
