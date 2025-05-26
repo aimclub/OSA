@@ -1,7 +1,11 @@
 import os
 from pathlib import Path
 
-import aspose.pdf as ap
+try:
+    import aspose.pdf as ap
+except Exception as ex:
+    print(f"Can not use aspose lib: {ex}. Please note that it can be MacOS-specific issue.")
+
 from pdfminer.high_level import extract_pages
 from pdfminer.layout import LTLine, LTTextContainer
 
