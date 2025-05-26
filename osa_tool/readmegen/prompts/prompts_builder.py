@@ -25,7 +25,7 @@ class PromptBuilder:
     def get_prompt_preanalysis(self) -> str:
         """Builds a preanalysis prompt using the repository tree and README content."""
         try:
-            formatted_prompt = self.prompts.preanalysis.format(
+            formatted_prompt = self.prompts["preanalysis"].format(
                 repository_tree=self.tree,
                 readme_content=extract_readme_content(self.base_path)
             )
@@ -37,7 +37,7 @@ class PromptBuilder:
     def get_prompt_core_features(self, key_files: list[FileContext]) -> str:
         """Builds a core features prompt using project metadata, README content, and key files."""
         try:
-            formatted_prompt = self.prompts.core_features.format(
+            formatted_prompt = self.prompts["core_features"].format(
                 project_name=self.metadata.name,
                 metadata=self.metadata,
                 readme_content=extract_readme_content(self.base_path),
@@ -51,7 +51,7 @@ class PromptBuilder:
     def get_prompt_overview(self, core_features: str) -> str:
         """Builds an overview prompt using metadata, README content, and extracted core features."""
         try:
-            formatted_prompt = self.prompts.overview.format(
+            formatted_prompt = self.prompts["overview"].format(
                 project_name=self.metadata.name,
                 description=self.metadata.description,
                 readme_content=extract_readme_content(self.base_path),
@@ -65,7 +65,7 @@ class PromptBuilder:
     def get_prompt_getting_started(self, examples_files: list[FileContext]) -> str:
         """Builds a getting started prompt using metadata, README content, and example files."""
         try:
-            formatted_prompt = self.prompts.getting_started.format(
+            formatted_prompt = self.prompts["getting_started"].format(
                 project_name=self.metadata.name,
                 readme_content=extract_readme_content(self.base_path),
                 examples_files_content=self.serialize_file_contexts(examples_files)
@@ -78,7 +78,7 @@ class PromptBuilder:
     def get_prompt_files_summary(self, files_content: list[FileContext]) -> str:
         """Builds a files summary prompt using serialized file contents."""
         try:
-            formatted_prompt = self.prompts_article.file_summary.format(
+            formatted_prompt = self.prompts_article["file_summary"].format(
                 files_content=self.serialize_file_contexts(files_content)
             )
             return formatted_prompt
@@ -89,7 +89,7 @@ class PromptBuilder:
     def get_prompt_pdf_summary(self, pdf_content: str) -> str:
         """Builds a PDF summary prompt using the provided PDF content."""
         try:
-            formatted_prompt = self.prompts_article.pdf_summary.format(
+            formatted_prompt = self.prompts_article["pdf_summary"].format(
                 pdf_content=pdf_content
             )
             return formatted_prompt
@@ -100,7 +100,7 @@ class PromptBuilder:
     def get_prompt_overview_article(self, files_summary: str, pdf_summary: str) -> str:
         """Builds an article overview prompt using metadata, file summary, and PDF summary."""
         try:
-            formatted_prompt = self.prompts_article.overview.format(
+            formatted_prompt = self.prompts_article["overview"].format(
                 project_name=self.metadata.name,
                 files_summary=files_summary,
                 pdf_summary=pdf_summary
@@ -113,7 +113,7 @@ class PromptBuilder:
     def get_prompt_content_article(self, key_files: list[FileContext], pdf_summary: str) -> str:
         """Builds a content article prompt using metadata, key file content, and PDF summary."""
         try:
-            formatted_prompt = self.prompts_article.content.format(
+            formatted_prompt = self.prompts_article["content"].format(
                 project_name=self.metadata.name,
                 files_content=key_files,
                 pdf_summary=pdf_summary
@@ -126,7 +126,7 @@ class PromptBuilder:
     def get_prompt_algorithms_article(self, files_summary: str, pdf_summary: str) -> str:
         """Builds an algorithms article prompt using metadata, file summary, and PDF summary."""
         try:
-            formatted_prompt = self.prompts_article.algorithms.format(
+            formatted_prompt = self.prompts_article["algorithms"].format(
                 project_name=self.metadata.name,
                 file_summary=files_summary,
                 pdf_summary=pdf_summary
