@@ -57,4 +57,4 @@ yarl==1.18.3
 
 protollm>=0.1.3
 
-aspose-pdf==25.1.0
+aspose-pdf==25.1.0; sys_platform != 'darwin'
