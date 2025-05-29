@@ -435,9 +435,12 @@ class DocGen(object):
         repo_path = Path(path)
         mkdocs_dir = repo_path / "mkdocs_temp"
         docs_output_path = repo_path / "site"
+        local = False
+
         if docs_output_path.exists():
             shutil.rmtree(docs_output_path)
-        docs_output_path.mkdir()
+        if local:
+            docs_output_path.mkdir()
         if mkdocs_dir.exists():
             shutil.rmtree(mkdocs_dir)
         mkdocs_dir.mkdir()
@@ -467,7 +470,6 @@ class DocGen(object):
 
         mkdocs_config = f"""
 site_name: AutoDocs
-site_dir: {docs_output_path.absolute()}
 theme:
     name: material
 plugins:
@@ -476,7 +478,7 @@ plugins:
         default_handler: python
         handlers:
             python:
-                paths: [{repo_path.absolute()}]
+                paths: [..]
                 options:
                     members_order: alphabetical
                     show_source: true
@@ -489,23 +491,24 @@ nav:
         mkdocs_yml = mkdocs_dir / "mkdocs.yml"
         mkdocs_yml.write_text(mkdocs_config.strip(), encoding="utf-8")
 
-        result = subprocess.run(
-            ["mkdocs", "build", "--config-file", str(mkdocs_yml)],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        if result.stdout:
-            logger.info(result.stdout)
+        if local:
+            result = subprocess.run(
+                ["mkdocs", "build", "--config-file", str(mkdocs_yml)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            if result.stdout:
+                logger.info(result.stdout)
 
-        if result.stderr:
-            logger.info(result.stderr)
+            if result.stderr:
+                logger.info(result.stderr)
 
-        if result.returncode == 0:
-            logger.info("MkDocs build completed successfully.")
-        else:
-            logger.error("MkDocs build failed.")
-        shutil.rmtree(mkdocs_dir)
+            if result.returncode == 0:
+                logger.info("MkDocs build completed successfully.")
+            else:
+                logger.error("MkDocs build failed.")
+            shutil.rmtree(mkdocs_dir)
         logger.info(f"Documentation successfully built at: {docs_output_path}")
 
     # It seems to better place it in the osa_tool/github_workflow
@@ -566,7 +569,7 @@ nav:
                                    + "\n"
                                    + "git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}" + f"@{clear_repo_name}"
                                    + "\n"
-                                   + "mkdocs gh-deploy --force",
+                                   + "mkdocs gh-deploy --force --config-file mkdocs_temp/mkdocs.yml",
                             "env": {
                                 "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
                             }
@@ -581,7 +584,7 @@ nav:
         if not os.path.exists(workflows_path):
             os.makedirs(workflows_path)
 
-        with open(f"{workflows_path}/{filename}.yaml", mode="w") as actions:
+        with open(f"{workflows_path}/{filename}.yml", mode="w") as actions:
              yaml.dump(data=_workflow, stream=actions, sort_keys=False)
 
     @staticmethod
