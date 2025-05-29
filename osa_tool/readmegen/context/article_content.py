@@ -59,7 +59,7 @@ class PdfParser:
 
     @staticmethod
     def extract_table_bboxes(
-        doc: ap.Document
+        doc
     ) -> dict[int, list[tuple[float, float, float, float]]]:
         """Extract standard table bounding boxes using Aspose."""
         table_bboxes: dict[int, list[tuple[float, float, float, float]]] = {}
