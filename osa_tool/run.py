@@ -75,7 +75,7 @@ def main():
             use_poetry=use_poetry,
             branches=branches,
             codecov_token=codecov_token,
-            include_codecov=include_codecov
+            include_codecov=include_codecov,
         )
 
         # Initialize GitHub agent and perform operations
@@ -121,21 +121,21 @@ def main():
         about_gen = AboutGenerator(config)
         about_gen.generate_about_content()
         if publish_results:
-            github_agent.update_about_section(
-                about_gen.get_about_content())
+            github_agent.update_about_section(about_gen.get_about_content())
 
         # Generate GitHub workflows
         if generate_workflows:
             generate_github_workflows(config)
 
         # Organize repository by adding 'tests' and 'examples' directories if they aren't exist
-        organizer = RepoOrganizer(os.path.join(os.getcwd(), parse_folder_name(repo_url)))
+        organizer = RepoOrganizer(
+            os.path.join(os.getcwd(), parse_folder_name(repo_url))
+        )
         organizer.organize()
 
         if publish_results:
             github_agent.commit_and_push_changes()
-            github_agent.create_pull_request(
-                body=about_gen.get_about_section_message())
+            github_agent.create_pull_request(body=about_gen.get_about_section_message())
 
         if args.delete_dir:
             delete_repository(repo_url)
@@ -184,24 +184,24 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
 
 
 def load_configuration(
-        repo_url: str,
-        api: str,
-        base_url: str,
-        model_name: str,
-        workflows_output_dir: str,
-        generate_workflows: bool,
-        include_tests: bool,
-        include_black: bool,
-        include_pep8: bool,
-        include_autopep8: bool,
-        include_fix_pep8: bool,
-        include_pypi: bool,
-        python_versions: List[str],
-        pep8_tool: str,
-        use_poetry: bool,
-        branches: List[str],
-        codecov_token: str,
-        include_codecov: bool,
+    repo_url: str,
+    api: str,
+    base_url: str,
+    model_name: str,
+    workflows_output_dir: str,
+    generate_workflows: bool,
+    include_tests: bool,
+    include_black: bool,
+    include_pep8: bool,
+    include_autopep8: bool,
+    include_fix_pep8: bool,
+    include_pypi: bool,
+    python_versions: List[str],
+    pep8_tool: str,
+    use_poetry: bool,
+    branches: List[str],
+    codecov_token: str,
+    include_codecov: bool,
 ) -> ConfigLoader:
     """
     Loads configuration for osa_tool.
@@ -211,7 +211,7 @@ def load_configuration(
         api: LLM API service provider.
         base_url: URL of the provider compatible with API OpenAI
         model_name: Specific LLM model to use.
-        workflows_output_dir: Directory where GitHub workflows will be generated.        
+        workflows_output_dir: Directory where GitHub workflows will be generated.
         generate_workflows: Flag to generate GitHub workflows (True/False).
         include_tests: Whether to include tests in the workflows.
         include_black: Whether to include black formatting in the workflows.
@@ -234,22 +234,24 @@ def load_configuration(
     config_loader.config.llm = config_loader.config.llm.model_copy(
         update={"api": api, "url": base_url, "model": model_name}
     )
-    config_loader.config.workflows = config_loader.config.workflows.model_copy(update={
-        "generate_workflows": generate_workflows,
-        "output_dir": workflows_output_dir,
-        "include_tests": include_tests,
-        "include_black": include_black,
-        "include_pep8": include_pep8,
-        "include_autopep8": include_autopep8,
-        "include_fix_pep8": include_fix_pep8,
-        "include_pypi": include_pypi,
-        "python_versions": python_versions,
-        "pep8_tool": pep8_tool,
-        "use_poetry": use_poetry,
-        "branches": branches,
-        "codecov_token": codecov_token,
-        "include_codecov": include_codecov
-    })
+    config_loader.config.workflows = config_loader.config.workflows.model_copy(
+        update={
+            "generate_workflows": generate_workflows,
+            "output_dir": workflows_output_dir,
+            "include_tests": include_tests,
+            "include_black": include_black,
+            "include_pep8": include_pep8,
+            "include_autopep8": include_autopep8,
+            "include_fix_pep8": include_fix_pep8,
+            "include_pypi": include_pypi,
+            "python_versions": python_versions,
+            "pep8_tool": pep8_tool,
+            "use_poetry": use_poetry,
+            "branches": branches,
+            "codecov_token": codecov_token,
+            "include_codecov": include_codecov,
+        }
+    )
     logger.info("Config successfully updated and loaded")
     return config_loader
 
@@ -266,21 +268,25 @@ def generate_github_workflows(config_loader: ConfigLoader) -> None:
         # Get the workflow settings from the config
         workflow_settings = config_loader.config.workflows
         repo_url = config_loader.config.git.repository
-        output_dir = os.path.join(os.getcwd(), parse_folder_name(
-            repo_url), workflow_settings.output_dir)
+        output_dir = os.path.join(
+            os.getcwd(), parse_folder_name(repo_url), workflow_settings.output_dir
+        )
 
-        created_files = generate_workflows_from_settings(
-            workflow_settings, output_dir)
+        created_files = generate_workflows_from_settings(workflow_settings, output_dir)
 
         if created_files:
             formatted_files = "\n".join(f" - {file}" for file in created_files)
-            logger.info("Successfully generated the following workflow files:\n%s", formatted_files)
+            logger.info(
+                "Successfully generated the following workflow files:\n%s",
+                formatted_files,
+            )
         else:
             logger.info("No workflow files were generated.")
 
     except Exception as e:
-        logger.error("Error while generating GitHub workflows: %s",
-                     repr(e), exc_info=True)
+        logger.error(
+            "Error while generating GitHub workflows: %s", repr(e), exc_info=True
+        )
 
 
 if __name__ == "__main__":

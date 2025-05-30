@@ -13,7 +13,7 @@ class PyPiPackageInspector:
         self.tree = tree
         self.base_path = base_path
         self.api_key = os.getenv("X-API-Key")
-        self.pattern_for_file = r'(pyproject\.toml|setup\.py)'
+        self.pattern_for_file = r"(pyproject\.toml|setup\.py)"
         self.pattern_for_setup = r"name\s*=\s*['\"]([^'\"]+)['\"]"
         self.pypi_url_template = "https://pypi.org/pypi/{package}/json"
         self.pepy_url_template = "https://api.pepy.tech/api/v2/projects/{package}"
@@ -32,11 +32,7 @@ class PyPiPackageInspector:
         version = self._get_package_version_from_pypi(package_name)
         downloads = self._get_downloads_from_pepy(package_name)
 
-        return {
-            "name": package_name,
-            "version": version,
-            "downloads": downloads
-        }
+        return {"name": package_name, "version": version, "downloads": downloads}
 
     def get_published_package_name(self) -> str | None:
         """
@@ -152,9 +148,7 @@ class PyPiPackageInspector:
             int | None: The number of downloads or None if request fails.
         """
         url = self.pepy_url_template.format(package=package_name)
-        headers = {
-            "X-API-Key": f"{self.api_key}"
-        }
+        headers = {"X-API-Key": f"{self.api_key}"}
 
         try:
             response = requests.get(url, headers=headers)
@@ -162,7 +156,9 @@ class PyPiPackageInspector:
                 data = response.json()
                 return data.get("total_downloads")
             else:
-                logger.error(f"Request failed for {package_name}. Status code: {response.status_code}. URL: {url}")
+                logger.error(
+                    f"Request failed for {package_name}. Status code: {response.status_code}. URL: {url}"
+                )
         except requests.RequestException as e:
             logger.error(f"Failed to fetch download stats from pepy.tech: {e}")
         return None

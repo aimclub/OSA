@@ -4,6 +4,7 @@ from typing import List
 from fnmatch import fnmatch
 from osa_tool.utils import logger
 
+
 class RepoOrganizer:
     """
     Organizes repository by adding 'tests' and 'examples' directories if they aren't exist,
@@ -14,9 +15,7 @@ class RepoOrganizer:
     TEST_PATTERNS: List[str] = ["test_*.py", "*_test.py"]
 
     # File patterns for example files
-    EXAMPLE_PATTERNS: List[str] = [
-        "example*", "*example*", "*sample*", "*demo*"
-    ]
+    EXAMPLE_PATTERNS: List[str] = ["example*", "*example*", "*sample*", "*demo*"]
 
     def __init__(self, repo_path: str) -> None:
         """
@@ -64,7 +63,14 @@ class RepoOrganizer:
             target_dir (str): Directory to move files into.
             patterns (List[str]): Patterns to match files.
         """
-        excluded_dirs = {'.git', '.venv', '__pycache__', 'node_modules', '.idea', '.vscode'}
+        excluded_dirs = {
+            ".git",
+            ".venv",
+            "__pycache__",
+            "node_modules",
+            ".idea",
+            ".vscode",
+        }
 
         for root, dirs, files in os.walk(self.repo_path):
             dirs[:] = [d for d in dirs if d not in excluded_dirs]

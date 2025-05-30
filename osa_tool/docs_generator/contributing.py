@@ -5,7 +5,11 @@ import tomli
 from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.readmegen.utils import find_in_repo_tree, remove_extra_blank_lines, save_sections
+from osa_tool.readmegen.utils import (
+    find_in_repo_tree,
+    remove_extra_blank_lines,
+    save_sections,
+)
 from osa_tool.utils import logger, osa_project_root, parse_folder_name
 
 
@@ -21,17 +25,18 @@ class ContributingBuilder:
         self.repo_url = self.config.git.repository
         self.metadata = load_data_metadata(self.repo_url)
         self.template_path = os.path.join(
-            osa_project_root(),
-            "docs",
-            "templates",
-            "contributing.toml"
+            osa_project_root(), "docs", "templates", "contributing.toml"
         )
-        self.url_path = f"https://{self.config.git.host_domain}/{self.config.git.full_name}/"
+        self.url_path = (
+            f"https://{self.config.git.host_domain}/{self.config.git.full_name}/"
+        )
         self.branch_path = f"tree/{self.metadata.default_branch}/"
         self.issues_url = self.url_path + "issues"
         self._template = self.load_template()
 
-        self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url), ".github")
+        self.repo_path = os.path.join(
+            os.getcwd(), parse_folder_name(self.repo_url), ".github"
+        )
         self.file_to_save = os.path.join(self.repo_path, "CONTRIBUTING.md")
 
     def load_template(self) -> dict:
@@ -53,8 +58,7 @@ class ContributingBuilder:
     def guide(self) -> str:
         """Generates the guide section with basic project contribution instructions."""
         return self._template["guide"].format(
-            url=self.url_path,
-            project_name=self.metadata.name
+            url=self.url_path, project_name=self.metadata.name
         )
 
     @property
@@ -72,8 +76,12 @@ class ContributingBuilder:
         """Generates the documentation resources section link."""
         if not self.metadata.homepage_url:
             if self.sourcerank.docs_presence():
-                pattern = r'\b(docs?|documentation|wiki|manuals?)\b'
-                path = self.url_path + self.branch_path + f"{find_in_repo_tree(self.sourcerank.tree, pattern)}"
+                pattern = r"\b(docs?|documentation|wiki|manuals?)\b"
+                path = (
+                    self.url_path
+                    + self.branch_path
+                    + f"{find_in_repo_tree(self.sourcerank.tree, pattern)}"
+                )
             else:
                 return ""
         else:
@@ -84,8 +92,12 @@ class ContributingBuilder:
     def readme(self) -> str:
         """Generates the README file link section."""
         if self.sourcerank.readme_presence():
-            pattern = r'\bREADME(\.\w+)?\b'
-            path = self.url_path + self.branch_path + f"{find_in_repo_tree(self.sourcerank.tree, pattern)}"
+            pattern = r"\bREADME(\.\w+)?\b"
+            path = (
+                self.url_path
+                + self.branch_path
+                + f"{find_in_repo_tree(self.sourcerank.tree, pattern)}"
+            )
         else:
             return ""
         return self._template["readme"].format(readme=path)
@@ -94,8 +106,12 @@ class ContributingBuilder:
     def tests(self) -> str:
         """Generates the test resources section link."""
         if self.sourcerank.tests_presence():
-            pattern = r'\b(tests?|testcases?|unittest|test_suite)\b'
-            path = self.url_path + self.branch_path + f"{find_in_repo_tree(self.sourcerank.tree, pattern)}"
+            pattern = r"\b(tests?|testcases?|unittest|test_suite)\b"
+            path = (
+                self.url_path
+                + self.branch_path
+                + f"{find_in_repo_tree(self.sourcerank.tree, pattern)}"
+            )
         else:
             return ""
         return self._template["tests"].format(tests=path)
@@ -112,7 +128,7 @@ class ContributingBuilder:
                 self.introduction,
                 self.guide,
                 self.before_pr,
-                self.acknowledgements
+                self.acknowledgements,
             ]
             string_content = "\n".join(content)
 
@@ -121,6 +137,10 @@ class ContributingBuilder:
 
             save_sections(string_content, self.file_to_save)
             remove_extra_blank_lines(self.file_to_save)
-            logger.info(f"CONTRIBUTING.md successfully generated in folder {self.repo_path}")
+            logger.info(
+                f"CONTRIBUTING.md successfully generated in folder {self.repo_path}"
+            )
         except Exception as e:
-            logger.error("Error while generating CONTRIBUTING.md: %s", repr(e), exc_info=True)
+            logger.error(
+                "Error while generating CONTRIBUTING.md: %s", repr(e), exc_info=True
+            )

@@ -8,12 +8,12 @@ from osa_tool.utils import osa_project_root
 
 class PromptConfig(BaseModel):
     """Model for validating the structure of prompts loaded from prompts_about_section.toml."""
-    description: str = Field(...,
-                             description="Template for generating a project description.")
-    topics: str = Field(...,
-                        description="Template for generating project topics.")
-    analyze_urls: str = Field(...,
-                              description="Template for analyzing project urls.")
+
+    description: str = Field(
+        ..., description="Template for generating a project description."
+    )
+    topics: str = Field(..., description="Template for generating project topics.")
+    analyze_urls: str = Field(..., description="Template for analyzing project urls.")
 
 
 class PromptAboutLoader:
@@ -36,12 +36,8 @@ class PromptAboutLoader:
         looking outside the package.
         """
         file_path = os.path.join(
-            osa_project_root(),
-            "config",
-            "settings",
-            "prompts_about_section.toml"
+            osa_project_root(), "config", "settings", "prompts_about_section.toml"
         )
         if not os.path.exists(file_path):
-            raise FileNotFoundError(
-                f"Prompts file {file_path} not found.")
+            raise FileNotFoundError(f"Prompts file {file_path} not found.")
         return str(file_path)

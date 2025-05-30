@@ -32,9 +32,6 @@ def test_get_all_directories(mock_walk, mock_walk_data, translator):
     mock_walk.return_value = mock_walk_data
     # Act
     result = [os.path.normpath(path) for path in translator._get_all_directories()]
-    expected = [
-        os.path.normpath("/repo/subdir"),
-        os.path.normpath("/repo/subdir2")
-    ]
+    expected = [os.path.normpath("/repo/subdir"), os.path.normpath("/repo/subdir2")]
     # Assert
     assert result == expected

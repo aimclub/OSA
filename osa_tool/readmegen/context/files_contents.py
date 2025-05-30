@@ -31,17 +31,12 @@ class FileProcessor:
 
     def process_files(self) -> list[FileContext]:
         """Generate file info for the given repository path."""
-        return [
-            self._create_file_context(file_path)
-            for file_path in self.core_files
-        ]
+        return [self._create_file_context(file_path) for file_path in self.core_files]
 
     def _create_file_context(self, file_path: str) -> FileContext:
         """Create a file context object for the given file path."""
         abs_file_path = os.path.join(self.repo_path, file_path)
-        content = read_file(abs_file_path)[:self.length_of_content]
+        content = read_file(abs_file_path)[: self.length_of_content]
         return FileContext(
-            path=file_path,
-            name=os.path.basename(file_path),
-            content=content
+            path=file_path, name=os.path.basename(file_path), content=content
         )

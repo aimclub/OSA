@@ -1,8 +1,7 @@
 """
-Integration tests for the GitHub workflow generator.  These tests verify that 
+Integration tests for the GitHub workflow generator.  These tests verify that
 workflow files are generated correctly.
 """
-
 
 import shutil
 import tempfile
@@ -30,15 +29,17 @@ class TestWorkflowGeneration(unittest.TestCase):
         black_workflow = generate_black_formatter_workflow()
         generated_path = self.generator._write_workflow("black.yml", black_workflow)
         self.assertEqual(generated_path, str(expected_path))
-        self.assertTrue(expected_path.exists())        
+        self.assertTrue(expected_path.exists())
 
     def test_generate_unit_test_workflow(self):
         expected_path = Path(self.temp_dir) / "unit-tests.yml"
         unit_test_workflow = generate_unit_test_workflow()
-        generated_path = self.generator._write_workflow("unit-tests.yml", unit_test_workflow)
+        generated_path = self.generator._write_workflow(
+            "unit-tests.yml", unit_test_workflow
+        )
         self.assertEqual(generated_path, str(expected_path))
-        self.assertTrue(expected_path.exists())        
+        self.assertTrue(expected_path.exists())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

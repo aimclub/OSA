@@ -42,7 +42,7 @@ def remove_plaintext_prefix(response: str) -> str:
     Removes the 'plaintext' prefix from the beginning of the response, if present.
     """
     if response.startswith("plaintext"):
-        return response[len("plaintext"):].strip()
+        return response[len("plaintext") :].strip()
     return response.strip()
 
 
@@ -51,5 +51,5 @@ def remove_json_prefix(response: str) -> str:
     Removes the 'json' prefix from the beginning of the response, if present.
     """
     if response.startswith("json"):
-        return response[len("json"):].strip()
+        return response[len("json") :].strip()
     return response.strip()

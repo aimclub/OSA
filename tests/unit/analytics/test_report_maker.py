@@ -9,7 +9,7 @@ from osa_tool.analytics.prompt_builder import (
     ReadmeEvaluation,
     RepositoryReport,
     RepositoryStructure,
-    YesNoPartial
+    YesNoPartial,
 )
 from osa_tool.analytics.report_maker import ReportGenerator
 
@@ -40,7 +40,7 @@ def test_table_builder(report_generator):
     assert isinstance(table, Table)
 
 
-@patch.object(ReportGenerator, 'generate_qr_code', return_value="temp_qr.png")
+@patch.object(ReportGenerator, "generate_qr_code", return_value="temp_qr.png")
 @patch("os.remove")
 def test_draw_images_and_tables(mock_remove, mock_generate_qr_code, report_generator):
     # Arrange
@@ -72,7 +72,7 @@ def test_table_generator(report_generator):
 def test_body_first_part(report_generator):
     # Arrange
     report_generator.metadata = MagicMock()
-    report_generator.metadata.created_at = '2025-03-28T14:30:00Z'
+    report_generator.metadata.created_at = "2025-03-28T14:30:00Z"
     report_generator.metadata.owner = "testuser"
     report_generator.metadata.owner_url = "https://github.com/testuser"
     report_generator.metadata.name = "testrepo"
@@ -90,7 +90,7 @@ def test_body_second_part(report_generator):
         structure=RepositoryStructure(
             compliance="Yes",
             missing_files=["file1.py", "file2.py"],
-            organization="Well structured"
+            organization="Well structured",
         ),
         readme=ReadmeEvaluation(
             readme_quality="High",
@@ -99,17 +99,15 @@ def test_body_second_part(report_generator):
             usage_examples=YesNoPartial.NO,
             contribution_guidelines=YesNoPartial.YES,
             license_specified=YesNoPartial.NO,
-            badges_present=YesNoPartial.PARTIAL
+            badges_present=YesNoPartial.PARTIAL,
         ),
         documentation=CodeDocumentation(
-            tests_present=YesNoPartial.YES,
-            docs_quality="Good",
-            outdated_content=False
+            tests_present=YesNoPartial.YES, docs_quality="Good", outdated_content=False
         ),
         assessment=OverallAssessment(
             key_shortcomings=["Missing tests", "No documentation"],
-            recommendations=["Improve tests", "Update docs"]
-        )
+            recommendations=["Improve tests", "Update docs"],
+        ),
     )
 
     # Act

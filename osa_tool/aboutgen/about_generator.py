@@ -11,8 +11,19 @@ from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.utils import extract_readme_content, logger, parse_folder_name
 
-HOMEPAGE_KEYS = ["documentation", "doc", "docs", "about",
-                 "homepage", "wiki", "gh-pages", "readthedocs", "netlify", "github.io"]
+HOMEPAGE_KEYS = [
+    "documentation",
+    "doc",
+    "docs",
+    "about",
+    "homepage",
+    "wiki",
+    "gh-pages",
+    "readthedocs",
+    "netlify",
+    "github.io",
+]
+
 
 class AboutGenerator:
     """Generates GitHub repository About section content."""
@@ -22,8 +33,7 @@ class AboutGenerator:
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.repo_url = self.config.git.repository
         self.metadata = load_data_metadata(self.repo_url)
-        self.base_path = os.path.join(
-            os.getcwd(), parse_folder_name(self.repo_url))
+        self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.readme_content = extract_readme_content(self.base_path)
         self.prompts = PromptAboutLoader().prompts
 
@@ -35,12 +45,15 @@ class AboutGenerator:
         """
         if self._content is not None:
             logger.warning(
-                "About section content already generated. Skipping generation.")
+                "About section content already generated. Skipping generation."
+            )
             return
         logger.info("Generating 'About' section...")
-        self._content = {"description": self.generate_description(),
-                         "homepage": self.detect_homepage(),
-                         "topics": self.generate_topics()}
+        self._content = {
+            "description": self.generate_description(),
+            "homepage": self.detect_homepage(),
+            "topics": self.generate_topics(),
+        }
 
     def get_about_content(self) -> dict:
         """
@@ -65,8 +78,7 @@ class AboutGenerator:
             f"- Topics: {', '.join(f'`{topic}`' for topic in self._content['topics'])}\n"
             "\nPlease review and add them to your repository.\n"
         )
-        logger.debug(
-            f"Generated About section content: {about_section_content}")
+        logger.debug(f"Generated About section content: {about_section_content}")
         logger.info("Finished generating About section content.")
         return about_section_content
 
@@ -81,16 +93,17 @@ class AboutGenerator:
         logger.info("Generating repository description...")
         if self.metadata and self.metadata.description:
             logger.warning(
-                "Description already exists in metadata. Skipping generation.")
+                "Description already exists in metadata. Skipping generation."
+            )
             return self.metadata.description
 
         if not self.readme_content:
-            logger.warning(
-                "No README content found. Cannot generate description.")
+            logger.warning("No README content found. Cannot generate description.")
             return ""
 
         formatted_prompt = self.prompts.description.format(
-            readme_content=self.readme_content)
+            readme_content=self.readme_content
+        )
 
         try:
             description = self.model_handler.send_request(formatted_prompt)
@@ -112,14 +125,15 @@ class AboutGenerator:
         """
         logger.info(f"Generating up to {amount} topics...")
         existing_topics = []
-        if self.metadata and hasattr(self.metadata, 'topics'):
+        if self.metadata and hasattr(self.metadata, "topics"):
             existing_topics = self.metadata.topics
             if amount > 20:
                 logger.critical("Maximum amount of topics is 20.")
                 return existing_topics
             if len(existing_topics) >= amount:
                 logger.warning(
-                    f"{amount} topics already exist in the metadata. Skipping generation.")
+                    f"{amount} topics already exist in the metadata. Skipping generation."
+                )
                 return existing_topics
 
         formatted_prompt = self.prompts.topics.format(
@@ -145,10 +159,10 @@ class AboutGenerator:
     def _validate_github_topics(self, topics: List[str]) -> List[str]:
         """
         Validates topics against GitHub Topics API to ensure they exist.
-        
+
         Args:
             topics (List[str]): List of potential topics to validate
-            
+
         Returns:
             List[str]: List of validated topics that exist on GitHub
         """
@@ -160,7 +174,7 @@ class AboutGenerator:
             try:
                 response = requests.get(
                     f"https://api.github.com/search/topics?q={topic}+repositories:>{min_repo}",
-                    headers={"Accept": "application/vnd.github.v3+json"}
+                    headers={"Accept": "application/vnd.github.v3+json"},
                 )
 
                 if response.status_code == 200:
@@ -169,13 +183,15 @@ class AboutGenerator:
                         if total == 1:
                             valid_topic = data.get("items")[0].get("name")
                             logger.debug(
-                                f"Applied transformation for topic: '{topic} -> {valid_topic}'")
+                                f"Applied transformation for topic: '{topic} -> {valid_topic}'"
+                            )
                         else:
                             valid_topic = topic
                         validated_topics.append(valid_topic)
                     else:
                         logger.debug(
-                            f"Generated topic '{topic}' is not valid, skipping")
+                            f"Generated topic '{topic}' is not valid, skipping"
+                        )
                 elif response.status_code == 403:
                     logger.warning("Rate limit exceeded, waiting 60 seconds")
                     time.sleep(60)
@@ -186,8 +202,7 @@ class AboutGenerator:
                 logger.error(f"Error validating topic '{topic}': {e}")
                 continue
 
-        logger.info(
-            f"Validated {len(validated_topics)} topics out of {len(topics)}")
+        logger.info(f"Validated {len(validated_topics)} topics out of {len(topics)}")
         return validated_topics
 
     def detect_homepage(self) -> str:
@@ -199,13 +214,11 @@ class AboutGenerator:
         """
         logger.info("Detecting homepage URL...")
         if self.metadata and self.metadata.homepage_url:
-            logger.warning(
-                "Homepage already exists in metadata. Skipping generation.")
+            logger.warning("Homepage already exists in metadata. Skipping generation.")
             return self.metadata.homepage_url
 
         if not self.readme_content:
-            logger.warning(
-                "No README content found. Cannot detect homepage.")
+            logger.warning("No README content found. Cannot detect homepage.")
             return ""
 
         urls = self._extract_readme_urls(self.readme_content)
@@ -225,7 +238,7 @@ class AboutGenerator:
     def _extract_readme_urls(self, readme_content: str) -> List[str]:
         """Extract all absolute URLs from README content"""
         logger.info("Extracting URLs from README.")
-        url_pattern = r'(?:http|ftp|https):\/\/(?:[\w_-]+(?:(?:\.[\w_-]+)+))(?:[\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])'
+        url_pattern = r"(?:http|ftp|https):\/\/(?:[\w_-]+(?:(?:\.[\w_-]+)+))(?:[\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])"
         urls = re.findall(url_pattern, readme_content)
         logger.debug(f"Extracted URLs from README: {urls}")
         return list(set(urls))
@@ -234,8 +247,7 @@ class AboutGenerator:
         """Generates LLM prompt for URL analysis"""
         logger.info(f"Analyzing {len(urls)} project URLs...")
         formatted_prompt = self.prompts.analyze_urls.format(
-            project_url=self.repo_url,
-            urls=", ".join(urls)
+            project_url=self.repo_url, urls=", ".join(urls)
         )
         response = self.model_handler.send_request(formatted_prompt)
         if not response:

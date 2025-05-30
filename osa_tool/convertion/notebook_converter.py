@@ -12,16 +12,16 @@ class NotebookConverter:
     """
     Class for converting Jupyter notebooks (.ipynb) to Python scripts.
 
-    During the conversion process, lines of code that display visualizations are replaced 
-    with lines that save them to folders. Additionally, the code for outputting table contents 
-    and their descriptions is removed. 
-    
+    During the conversion process, lines of code that display visualizations are replaced
+    with lines that save them to folders. Additionally, the code for outputting table contents
+    and their descriptions is removed.
+
     The resulting script is saved after ensuring that there are no syntax errors.
     """
 
     def __init__(self) -> None:
         self.exporter = PythonExporter()
-        
+
     def process_path(self, path: str) -> None:
         """Processes the specified notebook file or directory.
 
@@ -54,17 +54,17 @@ class NotebookConverter:
             notebook_path: The path to the notebook file to be converted.
         """
         try:
-            with open(notebook_path, 'r') as f:
+            with open(notebook_path, "r") as f:
                 notebook_content = nbformat.read(f, as_version=4)
 
             (body, _) = self.exporter.from_notebook_node(notebook_content)
 
             notebook_name = os.path.splitext(os.path.basename(notebook_path))[0]
             body = self.process_visualizations(notebook_name, body)
-            
+
             if self.is_syntax_correct(body):
-                script_name = os.path.splitext(notebook_path)[0] + '.py'
-                with open(script_name, 'w') as script_file:
+                script_name = os.path.splitext(notebook_path)[0] + ".py"
+                with open(script_name, "w") as script_file:
                     script_file.write(body)
                 logger.info("Converted notebook to script: %s", script_name)
             else:
@@ -85,11 +85,10 @@ class NotebookConverter:
             The modified code without printing visualizations and tables.
         """
         init_code = (
-            f"import os\n"
-            f"os.makedirs('{figures_dir}_figures', exist_ok=True)\n\n"
+            f"import os\n" f"os.makedirs('{figures_dir}_figures', exist_ok=True)\n\n"
         )
 
-        pattern_1 = r'(\s*)(plt|sns)\.show\(\)'
+        pattern_1 = r"(\s*)(plt|sns)\.show\(\)"
         if re.search(pattern_1, code):
             code = init_code + code
 
@@ -102,7 +101,7 @@ class NotebookConverter:
 
         code = re.sub(pattern_1, replacement, code)
 
-        pattern_2 = r'''(?mix)
+        pattern_2 = r"""(?mix)
             ^\s*
             (
                 \w+\.(info|head|tail|describe)\(.*\)
@@ -110,15 +109,15 @@ class NotebookConverter:
                 | display\(.*\)
                 | \#\s*In\[.*?\]\s*:?
             )
-        '''
-        code = re.sub(pattern_2, '', code, flags=re.MULTILINE)
-        code = re.sub(r'\n\s*\n', '\n', code)
+        """
+        code = re.sub(pattern_2, "", code, flags=re.MULTILINE)
+        code = re.sub(r"\n\s*\n", "\n", code)
 
         pattern_3 = r"figure\.png"
-        lines = code.split('\n')
+        lines = code.split("\n")
         for i, line in enumerate(lines):
             lines[i] = re.sub(pattern_3, f"figure_line{i+1}.png", line)
-        code = '\n'.join(lines)
+        code = "\n".join(lines)
 
         return code
 

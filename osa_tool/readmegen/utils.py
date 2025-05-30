@@ -22,7 +22,7 @@ def read_file(file_path: str) -> str:
     if not os.path.isfile(file_path):
         logger.warning(f"File not found: {file_path}")
         return ""
-    
+
     encodings_to_try = ["utf-8", "utf-16", "latin-1"]
     for encoding in encodings_to_try:
         try:
@@ -60,7 +60,9 @@ def read_ipynb_file(file_path: str) -> str:
                 lines.append("\n")
         return "\n".join(lines)
     except Exception as e:
-        logger.error(f"Failed to read notebook: {file_path}. Returning empty string. Error: {e}.")
+        logger.error(
+            f"Failed to read notebook: {file_path}. Returning empty string. Error: {e}."
+        )
         return ""
 
 
@@ -126,14 +128,14 @@ def extract_example_paths(tree: str):
     Returns:
         list[str]: A list of matched paths excluding __init__.py files.
     """
-    pattern = r'\b(tutorials?|examples)\b'
+    pattern = r"\b(tutorials?|examples)\b"
     result = []
 
     for line in tree.splitlines():
         line = line.strip()
-        if line.endswith('__init__.py'):
+        if line.endswith("__init__.py"):
             continue
-        parts = line.split('/')
+        parts = line.split("/")
         if len(parts) == 2 and re.search(pattern, parts[0]):
             result.append(line)
     return result
@@ -143,20 +145,20 @@ def remove_extra_blank_lines(path: str) -> None:
     """
     Cleans up extra blank lines from a file, leaving only single empty lines between content blocks.
     """
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
     cleaned_lines = []
     blank_line = False
 
     for line in lines:
-        if line.strip() == '':
+        if line.strip() == "":
             if not blank_line:
-                cleaned_lines.append('\n')
+                cleaned_lines.append("\n")
                 blank_line = True
         else:
             cleaned_lines.append(line)
             blank_line = False
 
-    with open(path, 'w', encoding='utf-8') as f:
+    with open(path, "w", encoding="utf-8") as f:
         f.writelines(cleaned_lines)
