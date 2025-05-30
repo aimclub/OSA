@@ -24,7 +24,7 @@ def compile_license_file(sourcerank: SourceRank, ensure_license):
     """
     try:
         if sourcerank.license_presence():
-            logger.info("LICENSE file already exists")
+            logger.info("LICENSE file already exists.")
         else:
             logger.info("LICENSE was not resolved, compiling started...")
             metadata = load_data_metadata(sourcerank.repo_url)
@@ -44,7 +44,7 @@ def compile_license_file(sourcerank: SourceRank, ensure_license):
                 with open(license_output_path, "w") as f:
                     f.write(license_text)
                 logger.info(
-                    f"""LICENSE has been successfully compiled at {os.path.join(sourcerank.repo_path, "LICENSE")}"""
+                    f"LICENSE has been successfully compiled at {os.path.join(sourcerank.repo_path, 'LICENSE')}."
                 )
             except KeyError:
                 logger.error(f"Couldn't resolve {license_type} license type, try to look up available licenses at documentation.")

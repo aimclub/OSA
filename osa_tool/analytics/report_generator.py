@@ -11,7 +11,7 @@ from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.postprocessor.response_cleaner import process_text
-from osa_tool.utils import extract_readme_content, logger, osa_project_root, parse_folder_name
+from osa_tool.utils import extract_readme_content, osa_project_root, parse_folder_name
 
 
 class TextGenerator:
@@ -47,7 +47,7 @@ class TextGenerator:
             parsed_json = json.loads(cleaned_response)
             parsed_report = RepositoryReport.model_validate(parsed_json)
             return parsed_report
-        except (ValidationError, json.JSONDecodeError) as e:
+        except (ValidationError, JSONDecodeError) as e:
             raise ValueError(f"JSON parsing error: {e}")
 
     def _build_prompt(self) -> str:

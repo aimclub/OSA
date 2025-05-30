@@ -1,0 +1,44 @@
+[prompts]
+main_prompt = """
+INPUT DATA:
+
+1. LISENCE PRESENCE: {license_presence}
+
+2. REPOSITORY FILE TREE:
+
+{repository_tree}
+
+3. README CONTENT:
+
+{readme_content}
+
+TASK:
+Analyze the repository structure and README content to determine the appropriate settings for the following options.
+Generate a JSON report following this exact structure:
+{{
+  "generate_report": boolean,
+  "translate_dirs": boolean,
+  "generate_docstring": boolean,
+  "ensure_license": str or None,
+  "community_docs": boolean,
+  "generate_readme": boolean,
+  "organize": boolean,
+}}
+
+RULES:
+
+- Return only a valid JSON object following exactly the structure above.
+- "generate_report": true if an additional user report would be helpful, false otherwise.
+- "translate_dirs": true if directory and file names need to be translated to English.
+- "generate_docstring": true if significant Python code lacks docstrings.
+- "ensure_license": one of "bsd-3", "mit", "ap2" if a license file should be generated, or None if license is alreade presented.
+- "community_docs": true if community files like CODE_OF_CONDUCT.md or PULL_REQUEST_TEMPLATE.md should be created.
+- "generate_readme": true if README is missing or of low quality, false if README is clear and sufficient.
+- "organize": true if 'tests' or 'examples' directories are missing and should be added.
+
+- Do not add any explanations, comments or extra text.
+- Use lowercase true/false and null exactly as JSON booleans/null.
+- Your response must be valid JSON parsable by standard parsers.
+
+Begin your JSON output now:
+"""
