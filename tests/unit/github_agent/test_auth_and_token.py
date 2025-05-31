@@ -22,12 +22,10 @@ def test_get_auth_url_invalid_url_format(github_agent):
     "method, exception_message",
     [
         ("create_fork", "GitHub token is required to create a fork."),
-        ("star_repository",
-         "GitHub token is required to star the repository."),
-        ("create_pull_request",
-         "GitHub token is required to create a pull request."),
+        ("star_repository", "GitHub token is required to star the repository."),
+        ("create_pull_request", "GitHub token is required to create a pull request."),
         ("_get_auth_url", "Token not found in environment variables."),
-    ]
+    ],
 )
 def test_methods_require_token(method, exception_message, github_agent):
     """Test that all methods raise an exception when the GitHub token is missing."""

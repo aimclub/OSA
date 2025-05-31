@@ -64,12 +64,11 @@ def test_generate_topics_with_existing(about_generator, mock_metadata):
     assert result == ["python", "testing"]
 
 
-
 def test_generate_topics_new(about_generator, mocker):
     about_generator.metadata = mocker.Mock()
     about_generator.metadata.topics = []
     mock_response = "python,testing,automation"
-    
+
     mocker.patch.object(
         about_generator.model_handler, "send_request", return_value=mock_response
     )

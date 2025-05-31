@@ -31,8 +31,8 @@ def test_update_about_section_success(github_agent, about_content):
 
         github_agent.update_about_section(about_content)
 
-        assert mock_patch.call_count == 2  
-        assert mock_put.call_count == 2 
+        assert mock_patch.call_count == 2
+        assert mock_put.call_count == 2
 
 
 def test_update_about_section_no_token(github_agent, about_content):

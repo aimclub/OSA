@@ -9,7 +9,7 @@ from osa_tool.readmegen.utils import (
     read_file,
     read_ipynb_file,
     remove_extra_blank_lines,
-    save_sections
+    save_sections,
 )
 
 
@@ -34,7 +34,7 @@ def sample_notebook(tmp_path):
     notebook = {
         "cells": [
             {"cell_type": "markdown", "source": ["# Title\n", "Some text"]},
-            {"cell_type": "code", "source": ["print('Hello, world!')\n"]}
+            {"cell_type": "code", "source": ["print('Hello, world!')\n"]},
         ]
     }
     with open(file_path, "w", encoding="utf-8") as f:

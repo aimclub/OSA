@@ -2,7 +2,9 @@ import pytest
 from unittest.mock import mock_open, patch
 
 
-@patch("builtins.open", new_callable=mock_open, read_data="import os\nos.path.join('test')")
+@patch(
+    "builtins.open", new_callable=mock_open, read_data="import os\nos.path.join('test')"
+)
 @patch("os.path.exists", return_value=False)
 def test_update_code(mock_open, translator):
     # Act
@@ -26,26 +28,26 @@ def test_update_code_with_invalid_regex(mock_open, translator):
     "rename_map, input_code, expected_output",
     [
         (
-                {"os": "new_os", "sys": "new_sys"},
-                "import os\nimport sys\nfrom os.path import join",
-                "import new_os\nimport new_sys\nfrom new_os.path import join"
+            {"os": "new_os", "sys": "new_sys"},
+            "import os\nimport sys\nfrom os.path import join",
+            "import new_os\nimport new_sys\nfrom new_os.path import join",
         ),
         (
-                {"folder": "new_folder", "file": "new_file"},
-                "os.path.join('folder', 'file')\nPath('folder/file')",
-                "os.path.join('new_folder', 'new_file')\nPath('new_folder/new_file')"
+            {"folder": "new_folder", "file": "new_file"},
+            "os.path.join('folder', 'file')\nPath('folder/file')",
+            "os.path.join('new_folder', 'new_file')\nPath('new_folder/new_file')",
         ),
         (
-                {"folder": "new_folder"},
-                "shutil.copy('folder/file', 'folder/destination')",
-                "shutil.copy('new_folder/file', 'new_folder/destination')"
+            {"folder": "new_folder"},
+            "shutil.copy('folder/file', 'folder/destination')",
+            "shutil.copy('new_folder/file', 'new_folder/destination')",
         ),
         (
-                {"folder": "new_folder"},
-                "glob.glob('folder/*.py')",
-                "glob.glob('new_folder/*.py')"
+            {"folder": "new_folder"},
+            "glob.glob('folder/*.py')",
+            "glob.glob('new_folder/*.py')",
         ),
-    ]
+    ],
 )
 @patch("builtins.open", new_callable=mock_open)
 def test_update_code(mock_open, translator, rename_map, input_code, expected_output):

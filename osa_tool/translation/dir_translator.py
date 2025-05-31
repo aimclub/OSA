@@ -7,10 +7,7 @@ from osa_tool.utils import logger, parse_folder_name
 
 
 class DirectoryTranslator:
-    def __init__(
-            self,
-            config_loader: ConfigLoader
-    ):
+    def __init__(self, config_loader: ConfigLoader):
         self.config = config_loader.config
         self.repo_url = self.config.git.repository
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
@@ -18,7 +15,14 @@ class DirectoryTranslator:
 
         self.excluded_dirs = {".git", ".venv"}
         self.extensions_code_files = {".py"}
-        self.excluded_names = {"main", "LICENSE", "README", "requirements", "examples", "docs"}
+        self.excluded_names = {
+            "main",
+            "LICENSE",
+            "README",
+            "requirements",
+            "examples",
+            "docs",
+        }
 
     def _translate_text(self, text: str) -> str:
         """
@@ -37,8 +41,10 @@ class DirectoryTranslator:
         if text in self.excluded_names:
             return text
 
-        prompt = (f"Translate into English text: {text} and save every word here.\n"
-                  f"Return only the answer.")
+        prompt = (
+            f"Translate into English text: {text} and save every word here.\n"
+            f"Return only the answer."
+        )
         response = self.model_handler.send_request(prompt)
         return response.replace(" ", "_")
 
@@ -59,11 +65,9 @@ class DirectoryTranslator:
                     if file.endswith(".py"):
                         python_files.append(os.path.join(root, file))
 
-            logger.info(
-                f"Collected {len(python_files)} Python files")
+            logger.info(f"Collected {len(python_files)} Python files")
         except Exception as e:
-            logger.error("Error while searching Python files, %s", e,
-                         exc_info=True)
+            logger.error("Error while searching Python files, %s", e, exc_info=True)
 
         return python_files
 
@@ -104,7 +108,9 @@ class DirectoryTranslator:
 
                 all_dirs.extend(os.path.join(root, dirname) for dirname in dirs)
 
-            logger.info(f"Finished collecting all directories of repository ({len(all_dirs)} found)")
+            logger.info(
+                f"Finished collecting all directories of repository ({len(all_dirs)} found)"
+            )
         except Exception as e:
             logger.error("Error: %s", e, exc_info=True)
 
@@ -135,15 +141,14 @@ class DirectoryTranslator:
             def replace_imports(match):
                 keyword, module, alias = match.groups()
                 module_parts = module.split(".")
-                updated_parts = [rename_map.get(part, part) for part in
-                                 module_parts]
+                updated_parts = [rename_map.get(part, part) for part in module_parts]
                 updated_module = ".".join(updated_parts)
                 return f"{keyword} {updated_module}{alias or ''}"
 
             updated_content = re.sub(
-                r'\b(import|from)\s+([\w.]+)(\s+as\s+\w+)?',
+                r"\b(import|from)\s+([\w.]+)(\s+as\s+\w+)?",
                 replace_imports,
-                updated_content
+                updated_content,
             )
 
             # Update names in strings
@@ -177,13 +182,11 @@ class DirectoryTranslator:
                 args = re.sub(string_pattern, replace_in_strings, args)
                 return f"{prefix}{args}{suffix}"
 
-            updated_content = re.sub(string_pattern, replace_in_strings, updated_content)
+            updated_content = re.sub(
+                string_pattern, replace_in_strings, updated_content
+            )
             for pattern in path_patterns:
-                updated_content = re.sub(
-                    pattern,
-                    replace_names,
-                    updated_content
-                )
+                updated_content = re.sub(pattern, replace_names, updated_content)
 
             if updated_content != content:
                 with open(file_path, "w", encoding="utf-8") as f:
@@ -206,16 +209,18 @@ class DirectoryTranslator:
 
                 dirname = os.path.basename(old_path)
                 translated_name = self._translate_text(dirname)
-                new_path = os.path.join(os.path.dirname(old_path),
-                                        translated_name)
+                new_path = os.path.join(os.path.dirname(old_path), translated_name)
 
                 if old_path != new_path and not os.path.exists(new_path):
                     rename_map[dirname] = translated_name
 
-            logger.info(f"Finished generating new names for {len(rename_map)} directories")
+            logger.info(
+                f"Finished generating new names for {len(rename_map)} directories"
+            )
         except Exception as e:
             logger.error(
-                "Error while generating new names for directories: %s", e, exc_info=True)
+                "Error while generating new names for directories: %s", e, exc_info=True
+            )
         return rename_map
 
     def translate_files(self, all_files) -> tuple[dict, dict]:
@@ -241,7 +246,8 @@ class DirectoryTranslator:
             logger.info(f"Finished generating new names for {len(rename_map)} files")
         except Exception as e:
             logger.error(
-                "Error while generating new names for files: %s", e, exc_info=True)
+                "Error while generating new names for files: %s", e, exc_info=True
+            )
 
         return rename_map, rename_map_code
 
@@ -285,8 +291,7 @@ class DirectoryTranslator:
                 old_name = os.path.basename(old_path)
                 if old_name in rename_map:
                     new_name = rename_map[old_name]
-                    new_path = os.path.join(os.path.dirname(old_path),
-                                            new_name)
+                    new_path = os.path.join(os.path.dirname(old_path), new_name)
                     os.rename(old_path, new_path)
                     logger.info(f'Renamed: "{old_name}" → "{new_name}"')
         except Exception as e:
@@ -300,5 +305,3 @@ class DirectoryTranslator:
         """
         self.rename_directories()
         self.rename_files()
-
-

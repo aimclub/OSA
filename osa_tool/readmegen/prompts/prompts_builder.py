@@ -27,7 +27,7 @@ class PromptBuilder:
         try:
             formatted_prompt = self.prompts.preanalysis.format(
                 repository_tree=self.tree,
-                readme_content=extract_readme_content(self.base_path)
+                readme_content=extract_readme_content(self.base_path),
             )
             return formatted_prompt
         except Exception as e:
@@ -41,7 +41,7 @@ class PromptBuilder:
                 project_name=self.metadata.name,
                 metadata=self.metadata,
                 readme_content=extract_readme_content(self.base_path),
-                key_files_content=self.serialize_file_contexts(key_files)
+                key_files_content=self.serialize_file_contexts(key_files),
             )
             return formatted_prompt
         except Exception as e:
@@ -55,7 +55,7 @@ class PromptBuilder:
                 project_name=self.metadata.name,
                 description=self.metadata.description,
                 readme_content=extract_readme_content(self.base_path),
-                core_features=core_features
+                core_features=core_features,
             )
             return formatted_prompt
         except Exception as e:
@@ -68,7 +68,7 @@ class PromptBuilder:
             formatted_prompt = self.prompts.getting_started.format(
                 project_name=self.metadata.name,
                 readme_content=extract_readme_content(self.base_path),
-                examples_files_content=self.serialize_file_contexts(examples_files)
+                examples_files_content=self.serialize_file_contexts(examples_files),
             )
             return formatted_prompt
         except Exception as e:
@@ -103,33 +103,37 @@ class PromptBuilder:
             formatted_prompt = self.prompts_article.overview.format(
                 project_name=self.metadata.name,
                 files_summary=files_summary,
-                pdf_summary=pdf_summary
+                pdf_summary=pdf_summary,
             )
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build overview prompt: {e}")
             raise
 
-    def get_prompt_content_article(self, key_files: list[FileContext], pdf_summary: str) -> str:
+    def get_prompt_content_article(
+        self, key_files: list[FileContext], pdf_summary: str
+    ) -> str:
         """Builds a content article prompt using metadata, key file content, and PDF summary."""
         try:
             formatted_prompt = self.prompts_article.content.format(
                 project_name=self.metadata.name,
                 files_content=key_files,
-                pdf_summary=pdf_summary
+                pdf_summary=pdf_summary,
             )
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build content prompt: {e}")
             raise
 
-    def get_prompt_algorithms_article(self, files_summary: str, pdf_summary: str) -> str:
+    def get_prompt_algorithms_article(
+        self, files_summary: str, pdf_summary: str
+    ) -> str:
         """Builds an algorithms article prompt using metadata, file summary, and PDF summary."""
         try:
             formatted_prompt = self.prompts_article.algorithms.format(
                 project_name=self.metadata.name,
                 file_summary=files_summary,
-                pdf_summary=pdf_summary
+                pdf_summary=pdf_summary,
             )
             return formatted_prompt
         except Exception as e:
@@ -148,6 +152,4 @@ class PromptBuilder:
             str: A string representing the serialized file data.
                 Each section includes the file's name, path, and content.
         """
-        return "\n\n".join(
-            f"### {f.name} ({f.path})\n{f.content}" for f in files
-        )
+        return "\n\n".join(f"### {f.name} ({f.path})\n{f.content}" for f in files)

@@ -276,7 +276,7 @@ class OllamaHandler(ModelHandler):
 
     Methods:
         __init__:
-            Initializes the instance with Ollama configuration settings including URL and model name.        
+            Initializes the instance with Ollama configuration settings including URL and model name.
         _configure_api:
             Configures the HTTP client with appropriate headers for API communication.
         send_request:
@@ -286,7 +286,7 @@ class OllamaHandler(ModelHandler):
     def __init__(self, config: Settings):
         """
         Initializes the instance with Ollama configuration settings.
-        
+
         Args:
             config: Configuration settings containing Ollama URL and model name.
         """
@@ -307,10 +307,10 @@ class OllamaHandler(ModelHandler):
     def send_request(self, prompt: str) -> str:
         """
         Sends a chat request to Ollama API with the specified prompt.
-        
+
         Args:
             prompt: Input text to send to the model.
-            
+
         Returns:
             str: Generated response content from the model.
         """
@@ -321,14 +321,11 @@ class OllamaHandler(ModelHandler):
         self.payload["stream"] = False
         self.payload["options"] = {
             "temperature": self.payload["meta"]["temperature"],
-            "max_tokens": self.payload["meta"]["tokens_limit"]
+            "max_tokens": self.payload["meta"]["tokens_limit"],
         }
 
         try:
-            response = self.client.post(
-                f"{self.base_url}/api/chat",
-                json=self.payload
-            )
+            response = self.client.post(f"{self.base_url}/api/chat", json=self.payload)
             response.raise_for_status()
             return response.json()["message"]["content"]
         except requests.exceptions.RequestException as e:

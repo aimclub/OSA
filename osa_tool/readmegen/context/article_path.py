@@ -23,10 +23,12 @@ def get_pdf_path(pdf_source: str) -> str | None:
         pdf_file = fetch_pdf_from_url(pdf_source)
         if pdf_file:
             return pdf_file
-    elif os.path.isfile(pdf_source) and pdf_source.lower().endswith('.pdf'):
+    elif os.path.isfile(pdf_source) and pdf_source.lower().endswith(".pdf"):
         return pdf_source
 
-    logger.info(f"Invalid PDF source provided: {pdf_source}. Could not locate a valid PDF.")
+    logger.info(
+        f"Invalid PDF source provided: {pdf_source}. Could not locate a valid PDF."
+    )
     return None
 
 
@@ -46,11 +48,13 @@ def fetch_pdf_from_url(url: str) -> str | None:
     """
     try:
         response = requests.get(url, stream=True, timeout=10)
-        content_type = response.headers.get('Content-Type', '')
+        content_type = response.headers.get("Content-Type", "")
 
-        if response.status_code == 200 and 'application/pdf' in content_type.lower():
-            temp_pdf = NamedTemporaryFile(delete=False, suffix=".pdf", prefix="downloaded_", dir=os.getcwd())
-            with open(temp_pdf.name, 'wb') as pdf_file:
+        if response.status_code == 200 and "application/pdf" in content_type.lower():
+            temp_pdf = NamedTemporaryFile(
+                delete=False, suffix=".pdf", prefix="downloaded_", dir=os.getcwd()
+            )
+            with open(temp_pdf.name, "wb") as pdf_file:
                 for chunk in response.iter_content(chunk_size=8192):
                     pdf_file.write(chunk)
 
