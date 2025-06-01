@@ -85,3 +85,6 @@ osa-tool = "osa_tool.run:main"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 120

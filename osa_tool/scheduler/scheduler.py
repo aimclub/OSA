@@ -140,7 +140,9 @@ class ModeScheduler:
         session = PromptSession()
 
         while True:
-            key_to_edit = session.prompt("\nEnter the key you want to edit (or 'done' to finish): ", completer=completer).strip()
+            key_to_edit = session.prompt(
+                "\nEnter the key you want to edit (or 'done' to finish): ", completer=completer
+            ).strip()
 
             if key_to_edit.lower() == "done":
                 console.print("\n[bold green]Finished editing plan.[/bold green]\n")
