@@ -12,6 +12,8 @@ from osa_tool.readmegen.postprocessor.response_cleaner import process_text
 from osa_tool.scheduler.prompts import PromptLoader, PromptConfig
 from osa_tool.utils import logger, parse_folder_name, extract_readme_content
 
+from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import WordCompleter
 from rich.console import Console
 from rich.prompt import Prompt
 from rich.table import Table
@@ -23,9 +25,11 @@ class ModeScheduler:
     def __init__(self,
                  config: ConfigLoader,
                  sourcerank: SourceRank,
-                 args):
+                 args,
+                 workflow_keys: list):
         self.mode = args.mode
         self.args = args
+        self.workflow_keys = workflow_keys
         self.config = config.config
         self.sourcerank = sourcerank
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
@@ -48,9 +52,6 @@ class ModeScheduler:
 
         self.plan = self._select_plan()
 
-    def _collect_active_args(self) -> dict:
-        return {key: value for key, value in vars(self.args).items() if value not in [None, False]}
-
     @staticmethod
     def _basic_plan() -> dict:
         plan = {
@@ -62,31 +63,26 @@ class ModeScheduler:
         return plan
 
     def _select_plan(self) -> dict:
-        active_args = self._collect_active_args()
+        plan = dict(vars(self.args))
         if self.mode == "basic":
             logger.info("Basic mode selected for task scheduler.")
-            plan = self._basic_plan()
 
-            for key, value in active_args.items():
-                if key not in plan:
-                    plan[key] = value
-            return plan
+            for key, value in self._basic_plan().items():
+                plan[key] = value
 
         elif self.mode == "advanced":
             logger.info("Advanced mode selected for task scheduler.")
-            return active_args
 
         elif self.mode == "auto":
             logger.info("Auto mode selected for task scheduler.")
-            plan = self._make_request_for_auto_mode()
+            auto_plan = self._make_request_for_auto_mode()
 
-            for key, value in active_args.items():
+            for key, value in auto_plan.items():
                 plan[key] = value
+        else:
+            raise ValueError(f"Unsupported mode: {self.mode}")
 
-            plan = self._confirm_action(plan)
-            return plan
-
-        raise ValueError(f"Unsupported mode: {self.mode}")
+        return self._confirm_action(plan)
 
     def _make_request_for_auto_mode(self) -> dict:
         main_prompt = self.prompts.get("main_prompt")
@@ -136,10 +132,13 @@ class ModeScheduler:
         editable_keys = [k for k in plan.keys() if k not in self.info_keys]
 
         console.print(f"\nAvailable keys for editing: [cyan]{', '.join(editable_keys)}[/cyan]")
-        console.print("Type [bold]done[/bold] to finish editing.\n")
+        console.print("Type [bold]done[/bold] to finish editing.")
+
+        completer = WordCompleter(editable_keys, ignore_case=True)
+        session = PromptSession()
 
         while True:
-            key_to_edit = Prompt.ask("Enter the key you want to edit (or 'done' to finish)").strip()
+            key_to_edit = session.prompt("\nEnter the key you want to edit (or 'done' to finish): ", completer=completer).strip()
 
             if key_to_edit.lower() == "done":
                 console.print("\n[bold green]Finished editing plan.[/bold green]\n")
@@ -159,10 +158,10 @@ class ModeScheduler:
                 elif new_value == "n":
                     plan[key_to_edit] = False
 
-            elif isinstance(current_value, str):
+            elif isinstance(current_value, str) or current_value is None:
                 new_value = Prompt.ask(f"Enter new value for {key_to_edit} (or leave blank to skip)", default="")
                 if new_value != "":
-                    plan[key_to_edit] = new_value
+                    plan[key_to_edit] = self.convert_input_value(new_value)
 
             elif isinstance(current_value, list):
                 new_value = Prompt.ask(f"Enter comma-separated values for {key_to_edit} (or leave blank to skip)",
@@ -194,10 +193,12 @@ class ModeScheduler:
         actions_table.add_column("Value")
 
         for key, value in plan.items():
-            if key in self.info_keys:
+            if key in self.info_keys or key in self.workflow_keys:
                 continue
-            if value and value != []:
+            if value and value not in [None, [], ""]:
                 actions_table.add_row(key, str(value))
+
+        self._append_workflow_section(actions_table, plan, active=True)
         console.print(actions_table)
 
         # Inactive actions in console output
@@ -207,8 +208,38 @@ class ModeScheduler:
         inactive_table.add_column("Value")
 
         for key, value in plan.items():
-            if key in self.info_keys:
+            if key in self.info_keys or key in self.workflow_keys:
                 continue
             if not value or value == []:
                 inactive_table.add_row(key, str(value))
+
+        self._append_workflow_section(inactive_table, plan, active=False)
         console.print(inactive_table)
+
+    def _append_workflow_section(self, table: Table, plan: dict, active: bool) -> None:
+        if active:
+            has_items = any(plan.get(k) and plan.get(k) not in [None, [], ""] for k in self.workflow_keys)
+        else:
+            has_items = any(not plan.get(k) or plan.get(k) == [] for k in self.workflow_keys)
+
+        if not has_items:
+            return
+
+        table.add_row("", "")
+        table.add_row("[bold]GitHub Workflows actions[/bold]", "")
+
+        for key in self.workflow_keys:
+            value = plan.get(key)
+            if active:
+                if value and value not in [None, [], ""]:
+                    table.add_row(key, str(value))
+            else:
+                if not value or value == []:
+                    table.add_row(key, str(value))
+
+    @staticmethod
+    def convert_input_value(value: str) -> str | None:
+        if value.strip().lower() == "none":
+            return None
+        return value
+

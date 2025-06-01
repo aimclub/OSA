@@ -126,7 +126,7 @@ def get_cli_args():
         help="Analyze the repository and generate a PDF report with project insights."
     )
     parser.add_argument(
-        "--readme", "--generate-readme",
+        "--generate-readme", "--readme",
         action="store_true",
         help="Generate a README.md file based on repository content and metadata."
     )
@@ -224,4 +224,13 @@ def get_cli_args():
         default=True,
         help="Include Codecov coverage step in a unit tests workflow."
     )
-    return parser.parse_args()
+    return parser
+
+
+def get_workflow_keys(parser):
+    workflow_keys = []
+    for group in parser._action_groups:
+        if group.title == 'GitHub workflow generator arguments':
+            for action in group._group_actions:
+                workflow_keys.append(action.dest)
+    return workflow_keys

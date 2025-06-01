@@ -3,7 +3,7 @@ from typing import List
 
 from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.arguments_parser import get_cli_args
+from osa_tool.arguments_parser import get_cli_args, get_workflow_keys
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.convertion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
@@ -19,7 +19,7 @@ from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.utils import (
     delete_repository,
     logger,
-    parse_folder_name
+    parse_folder_name, rich_section
 )
 
 
@@ -31,7 +31,9 @@ def main():
     """
 
     # Create a command line argument parser
-    args = get_cli_args()
+    parser = get_cli_args()
+    args = parser.parse_args()
+    workflow_keys = get_workflow_keys(parser)
     publish_results = not args.not_publish_results
 
     # Extract workflow-related arguments
@@ -55,7 +57,7 @@ def main():
         github_agent.clone_repository()
 
         # Initialize ModeScheduler
-        scheduler = ModeScheduler(config, sourcerank, args)
+        scheduler = ModeScheduler(config, sourcerank, args, workflow_keys)
         plan = scheduler.plan
 
         if publish_results:
@@ -63,10 +65,12 @@ def main():
 
         # .ipynb to .py convertion
         if plan.get("convert_notebooks"):
-            convert_notebooks(args.repository, args.convert_notebooks)
+            rich_section("Jupyter notebooks converter")
+            convert_notebooks(args.repository, plan.get("convert_notebooks"))
 
         # Repository Analysis Report generation
         if plan.get("generate_report"):
+            rich_section("Report generator")
             analytics = ReportGenerator(config, sourcerank, github_agent.clone_dir)
             analytics.build_pdf()
             if publish_results:
@@ -74,31 +78,38 @@ def main():
 
         # Auto translating names of directories
         if plan.get("translate_dirs"):
+            rich_section("Directory and file translator")
             translation = DirectoryTranslator(config)
             translation.rename_directories_and_files()
 
         # Docstring generation
         if plan.get("generate_docstring"):
+            rich_section("Docstrings generator")
             generate_docstrings(config)
 
         # License compiling
         if plan.get("ensure_license"):
-            compile_license_file(sourcerank, args.ensure_license)
+            rich_section("License generator")
+            compile_license_file(sourcerank, plan.get("ensure_license"))
 
         # Generate community documentation
         if plan.get("community_docs"):
+            rich_section("Community docs generator")
             generate_documentation(config)
 
         # Readme generation
         if plan.get("generate_readme"):
+            rich_section("README generator")
             readme_agent(config, args.article)
 
         # Generate GitHub workflows
         if generate_workflows:
+            rich_section("Workflows generator")
             generate_github_workflows(config)
 
         # Organize repository by adding 'tests' and 'examples' directories if they aren't exist
         if plan.get("organize"):
+            rich_section("Repository Organizer")
             organizer = RepoOrganizer(os.path.join(os.getcwd(), parse_folder_name(args.repository)))
             organizer.organize()
 
@@ -106,7 +117,7 @@ def main():
             github_agent.commit_and_push_changes()
             github_agent.create_pull_request()
 
-        if args.delete_dir:
+        if plan.get("delete_dir"):
             delete_repository(args.repository)
 
         logger.info("All operations completed successfully.")

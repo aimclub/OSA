@@ -5,6 +5,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from rich.logging import RichHandler
+from rich.console import Console
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,6 +15,12 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("rich")
+
+console = Console()
+
+def rich_section(title: str):
+    console.print("")
+    console.rule(f"[bold cyan]{title}[/bold cyan]", style="cyan")
 
 
 def parse_folder_name(repo_url: str) -> str:
