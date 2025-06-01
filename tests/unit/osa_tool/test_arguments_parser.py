@@ -7,7 +7,7 @@ class TestArgumentParser:
     @staticmethod
     def run_parser(args):
         sys.argv = ["arguments_parser.py"] + args
-        return get_cli_args()
+        return get_cli_args().parse_args()
 
     def test_required_repository(self):
         # Assert
