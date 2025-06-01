@@ -71,7 +71,7 @@ def main():
             convert_notebooks(args.repository, plan.get("convert_notebooks"))
 
         # Repository Analysis Report generation
-        if plan.get("generate_report"):
+        if plan.get("report"):
             rich_section("Report generator")
             analytics = ReportGenerator(config, sourcerank, github_agent.clone_dir)
             analytics.build_pdf()
@@ -85,7 +85,7 @@ def main():
             translation.rename_directories_and_files()
 
         # Docstring generation
-        if plan.get("generate_docstring"):
+        if plan.get("docstring"):
             rich_section("Docstrings generator")
             generate_docstrings(config)
 
@@ -100,15 +100,17 @@ def main():
             generate_documentation(config)
 
         # Readme generation
-        if plan.get("generate_readme"):
+        if plan.get("readme"):
             rich_section("README generator")
-            readme_agent(config, args.article)
+            readme_agent(config, plan.get("article"))
 
         # About section generation
-        about_gen = AboutGenerator(config)
-        about_gen.generate_about_content()
-        if publish_results:
-            github_agent.update_about_section(about_gen.get_about_content())
+        about_gen = None
+        if plan.get("about"):
+            about_gen = AboutGenerator(config)
+            about_gen.generate_about_content()
+            if publish_results:
+                github_agent.update_about_section(about_gen.get_about_content())
 
         # Generate GitHub workflows
         if generate_workflows:

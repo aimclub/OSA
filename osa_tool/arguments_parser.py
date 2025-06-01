@@ -78,7 +78,7 @@ def get_cli_args():
     parser.add_argument(
         "--translate-dirs",
         action="store_true",
-        help=("Enable automatic translation of the directory name into English."),
+        help="Enable automatic translation of the directory name into English.",
     )
     parser.add_argument(
         "--convert-notebooks",
@@ -115,17 +115,17 @@ def get_cli_args():
         help="Generate community-related documentation files, such as Code of Conduct and Contributing guidelines.",
     )
     parser.add_argument(
-        "--generate-docstring",
+        "--docstring",
         action="store_true",
         help="Automatically generate docstrings for all Python files in the repository."
     )
     parser.add_argument(
-        "--generate-report",
+        "--report",
         action="store_true",
         help="Analyze the repository and generate a PDF report with project insights."
     )
     parser.add_argument(
-        "--generate-readme", "--readme",
+        "--readme",
         action="store_true",
         help="Generate a README.md file based on repository content and metadata."
     )
@@ -133,6 +133,11 @@ def get_cli_args():
         "--organize",
         action="store_true",
         help="Organize the repository structure by adding standard 'tests' and 'examples' directories if missing."
+    )
+    parser.add_argument(
+        "--about",
+        action="store_true",
+        help="Generate About section with tags.",
     )
 
     # Create a group for GitHub workflow generator arguments

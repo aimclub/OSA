@@ -55,10 +55,11 @@ class ModeScheduler:
     @staticmethod
     def _basic_plan() -> dict:
         plan = {
-            "generate_report": True,
+            "report": True,
             "community_docs": True,
-            "generate_readme": True,
-            "organize": True
+            "readme": True,
+            "organize": True,
+            "about": True,
         }
         return plan
 
@@ -88,6 +89,7 @@ class ModeScheduler:
         main_prompt = self.prompts.get("main_prompt")
         formatted_prompt = main_prompt.format(
             license_presence=self.sourcerank.license_presence(),
+            about_section=self.metadata.description,
             repository_tree=self.sourcerank.tree,
             readme_content=extract_readme_content(self.base_path),
         )
