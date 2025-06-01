@@ -6,23 +6,35 @@ from osa_tool.readmegen.generator.builder import MarkdownBuilder
 
 
 def example_overview():
-    return json.dumps({
-        "overview": "This project does amazing things with AI."
-    })
+    return json.dumps({"overview": "This project does amazing things with AI."})
 
 
 def example_core_features():
-    return json.dumps([
-        {"feature_name": "Fast Inference", "feature_description": "Performs prediction in under 10ms", "is_critical": True},
-        {"feature_name": "Modular Design", "feature_description": "Easily plug in new components", "is_critical": False},
-        {"feature_name": "API Ready", "feature_description": "Exposes a REST API for integration", "is_critical": True}
-    ])
+    return json.dumps(
+        [
+            {
+                "feature_name": "Fast Inference",
+                "feature_description": "Performs prediction in under 10ms",
+                "is_critical": True,
+            },
+            {
+                "feature_name": "Modular Design",
+                "feature_description": "Easily plug in new components",
+                "is_critical": False,
+            },
+            {
+                "feature_name": "API Ready",
+                "feature_description": "Exposes a REST API for integration",
+                "is_critical": True,
+            },
+        ]
+    )
 
 
 def example_getting_started():
-    return json.dumps({
-        "getting_started": "To get started, install the package and run `main.py`."
-    })
+    return json.dumps(
+        {"getting_started": "To get started, install the package and run `main.py`."}
+    )
 
 
 @pytest.fixture
@@ -31,7 +43,7 @@ def markdown_builder(config_loader):
         config_loader=config_loader,
         overview=example_overview(),
         core_features=example_core_features(),
-        getting_started=example_getting_started()
+        getting_started=example_getting_started(),
     )
 
 

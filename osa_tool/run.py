@@ -1,6 +1,7 @@
 import os
 from typing import List
 
+from osa_tool.aboutgen.about_generator import AboutGenerator
 from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.arguments_parser import get_cli_args, get_workflow_keys
@@ -19,7 +20,8 @@ from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.utils import (
     delete_repository,
     logger,
-    parse_folder_name, rich_section
+    parse_folder_name,
+    rich_section
 )
 
 
@@ -102,6 +104,12 @@ def main():
             rich_section("README generator")
             readme_agent(config, args.article)
 
+        # About section generation
+        about_gen = AboutGenerator(config)
+        about_gen.generate_about_content()
+        if publish_results:
+            github_agent.update_about_section(about_gen.get_about_content())
+
         # Generate GitHub workflows
         if generate_workflows:
             rich_section("Workflows generator")
@@ -115,7 +123,7 @@ def main():
 
         if publish_results:
             github_agent.commit_and_push_changes()
-            github_agent.create_pull_request()
+            github_agent.create_pull_request(body=about_gen.get_about_section_message())
 
         if plan.get("delete_dir"):
             delete_repository(args.repository)
@@ -167,7 +175,7 @@ def load_configuration(
         repo_url: str,
         api: str,
         base_url: str,
-        model_name: str
+        model_name: str,
 ) -> ConfigLoader:
     """
     Loads configuration for osa_tool.

@@ -1,17 +1,16 @@
-
 from typing import List
 
 
-def generate_unit_test_workflow(    
+def generate_unit_test_workflow(
     name: str = "Unit Tests",
-    python_versions: List[str] = ["3.8", "3.9", "3.10"],
+    python_versions: List[str] = ["3.9", "3.10"],
     os_list: List[str] = ["ubuntu-latest"],
     dependencies_command: str = "pip install -r requirements.txt",
     test_command: str = "pytest tests/",
     branches: List[str] = [],
     coverage: bool = True,
     timeout_minutes: int = 15,
-    codecov_token: bool = False
+    codecov_token: bool = False,
 ) -> str:
     """
     Generate a workflow for running unit tests.
@@ -36,7 +35,7 @@ def generate_unit_test_workflow(
         on_section = {
             "push": {"branches": branches},
             "pull_request": {"branches": branches},
-            "workflow_dispatch": {}  # Allow manual triggering
+            "workflow_dispatch": {},  # Allow manual triggering
         }
     else:
         on_section = ["push", "pull_request"]
@@ -50,47 +49,35 @@ def generate_unit_test_workflow(
                 "runs-on": "${{ matrix.os }}",
                 "timeout-minutes": timeout_minutes,
                 "strategy": {
-                    "matrix": {
-                        "os": os_list,
-                        "python-version": python_versions
-                    }
+                    "matrix": {"os": os_list, "python-version": python_versions}
                 },
                 "steps": [
-                    {
-                        "name": "Checkout repo",
-                        "uses": "actions/checkout@v4"
-                    },
+                    {"name": "Checkout repo", "uses": "actions/checkout@v4"},
                     {
                         "name": "Set up Python ${{ matrix.python-version }}",
                         "uses": "actions/setup-python@v4",
-                        "with": {
-                            "python-version": "${{ matrix.python-version }}"
-                        }
+                        "with": {"python-version": "${{ matrix.python-version }}"},
                     },
                     {
                         "name": "Install dependencies",
-                        "run": dependencies_command + " && pip install pytest pytest-cov"
+                        "run": dependencies_command
+                        + " && pip install pytest pytest-cov",
                     },
-                    {
-                        "name": "Run tests",
-                        "run": test_command + " --cov=."
-                    }
-                ]
+                    {"name": "Run tests", "run": test_command + " --cov=."},
+                ],
             }
-        }
+        },
     }
 
     # Add code coverage if requested
     if coverage:
         codecov_step = {
             "name": "Upload coverage to Codecov",
-            "uses": "codecov/codecov-action@v4"
+            "uses": "codecov/codecov-action@v4",
         }
 
         if codecov_token:
-            codecov_step["with"] = {
-                "token": "${{ secrets.CODECOV_TOKEN }}"
-            }
+            codecov_step["with"] = {"token": "${{ secrets.CODECOV_TOKEN }}"}
 
         workflow["jobs"]["test"]["steps"].append(codecov_step)
 

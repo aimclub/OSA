@@ -27,7 +27,9 @@ def test_data_extractor_filters_table_text(mock_doc_class, mock_extract_pages, p
     mock_table_rect = MagicMock(llx=0, lly=0, urx=500, ury=500)
     mock_table = MagicMock(rectangle=mock_table_rect)
 
-    with patch("osa_tool.readmegen.context.article_content.ap.text.TableAbsorber") as mock_absorber_class:
+    with patch(
+        "osa_tool.readmegen.context.article_content.ap.text.TableAbsorber"
+    ) as mock_absorber_class:
         absorber_instance = mock_absorber_class.return_value
         absorber_instance.visit.return_value = None
         absorber_instance.table_list = [mock_table]

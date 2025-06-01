@@ -24,12 +24,8 @@ class PromptLoader:
         Helper method to get the correct resource path.
         """
         file_path = os.path.join(
-            osa_project_root(),
-            "config",
-            "settings",
-            "prompts.toml"
+            osa_project_root(), "config", "settings", "prompts.toml"
         )
         if not os.path.exists(file_path):
-            raise FileNotFoundError(
-                f"Prompts file {file_path} not found.")
+            raise FileNotFoundError(f"Prompts file {file_path} not found.")
         return str(file_path)

@@ -47,6 +47,8 @@ def compile_license_file(sourcerank: SourceRank, ensure_license):
                     f"LICENSE has been successfully compiled at {os.path.join(sourcerank.repo_path, 'LICENSE')}."
                 )
             except KeyError:
-                logger.error(f"Couldn't resolve {license_type} license type, try to look up available licenses at documentation.")
+                logger.error(
+                    f"Couldn't resolve {license_type} license type, try to look up available licenses at documentation."
+                )
     except Exception as e:
         logger.error("Error while compiling LICENSE: %s", e, exc_info=True)

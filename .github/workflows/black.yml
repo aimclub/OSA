@@ -1,11 +1,10 @@
-name: black-action
+name: Black Lint
+
 on: [push, pull_request]
+
 jobs:
-  linter_name:
-    name: Run black formatter
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: rickstaa/action-black@v1.3.3
-        with:
-          black_args: "."
+      - uses: psf/black@stable

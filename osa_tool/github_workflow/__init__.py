@@ -10,12 +10,6 @@ This module provides tools to generate GitHub Action workflows for:
 - Slash command for fixing PEP8 issues
 """
 
-from .generator import (
-    GitHubWorkflowGenerator,
-    generate_workflows_from_settings
-)
+from .generator import GitHubWorkflowGenerator, generate_workflows_from_settings
 
-__all__ = [
-    'GitHubWorkflowGenerator',
-    'generate_workflows_from_settings'
-]
+__all__ = ["GitHubWorkflowGenerator", "generate_workflows_from_settings"]

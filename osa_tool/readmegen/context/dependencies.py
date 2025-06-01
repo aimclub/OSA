@@ -12,6 +12,7 @@ class DependencyExtractor:
     A utility class for extracting technology dependencies from common Python project files
     such as requirements.txt, pyproject.toml, and setup.py within a given repository.
     """
+
     def __init__(self, tree: str, base_path: str):
         self.tree = tree
         self.base_path = base_path
@@ -55,7 +56,9 @@ class DependencyExtractor:
                     return version.strip()
 
                 # Poetry format
-                poetry_info = data.get("tool", {}).get("poetry", {}).get("dependencies", {})
+                poetry_info = (
+                    data.get("tool", {}).get("poetry", {}).get("dependencies", {})
+                )
                 if "python" in poetry_info:
                     python_spec = poetry_info["python"]
                     return python_spec.strip() if isinstance(python_spec, str) else None
@@ -128,7 +131,9 @@ class DependencyExtractor:
                 techs.update(self._normalize_dependency(dep) for dep in deps)
 
                 # Poetry
-                poetry_deps = data.get("tool", {}).get("poetry", {}).get("dependencies", {})
+                poetry_deps = (
+                    data.get("tool", {}).get("poetry", {}).get("dependencies", {})
+                )
                 techs.update(name.lower() for name in poetry_deps.keys())
 
             except tomli.TOMLDecodeError:
@@ -162,7 +167,7 @@ class DependencyExtractor:
 
     @staticmethod
     def _normalize_dependency(dep: str) -> str:
-        return dep.split()[0].split(';')[0].strip().lower()
+        return dep.split()[0].split(";")[0].strip().lower()
 
     def _find_file(self, pattern: str) -> str | None:
         rel_path = find_in_repo_tree(self.tree, pattern)

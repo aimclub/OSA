@@ -25,7 +25,9 @@ def test_documentation_defaults(default_report):
 
 
 def test_assessment_defaults(default_report):
-    assert default_report.assessment.key_shortcomings == ["There are no critical issues"]
+    assert default_report.assessment.key_shortcomings == [
+        "There are no critical issues"
+    ]
     assert default_report.assessment.recommendations == ["No recommendations"]
 
 

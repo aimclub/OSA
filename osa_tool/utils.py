@@ -56,7 +56,7 @@ def get_base_repo_url(repo_url: str) -> str:
         ValueError: If the provided URL does not start with 'https://github.com/'.
     """
     if repo_url.startswith("https://github.com/"):
-        return repo_url[len("https://github.com/"):].rstrip('/')
+        return repo_url[len("https://github.com/") :].rstrip("/")
     else:
         raise ValueError("Unsupported repository URL format.")
 
@@ -124,12 +124,41 @@ def get_repo_tree(repo_path: str) -> str:
     """
     repo_path = Path(repo_path)
     excluded_extensions = {
-        '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp', '.drawio',  # images
-        '.mp4', '.mov', '.avi', '.mkv', '.flv', '.wmv', '.webm',  # videos
-        '.csv', '.tsv', '.parquet', '.json', '.xml', '.xls', '.xlsx',  # data files
-        '.zip', '.tar', '.gz', '.bz2', '.7z',  # archives
-        '.exe', '.dll', '.so', '.bin', '.obj', '.class', '.pkl',  # binaries
-        '.pdf'  # documents
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".bmp",
+        ".tiff",
+        ".webp",
+        ".drawio",  # images
+        ".mp4",
+        ".mov",
+        ".avi",
+        ".mkv",
+        ".flv",
+        ".wmv",
+        ".webm",  # videos
+        ".csv",
+        ".tsv",
+        ".parquet",
+        ".json",
+        ".xml",
+        ".xls",
+        ".xlsx",  # data files
+        ".zip",
+        ".tar",
+        ".gz",
+        ".bz2",
+        ".7z",  # archives
+        ".exe",
+        ".dll",
+        ".so",
+        ".bin",
+        ".obj",
+        ".class",
+        ".pkl",  # binaries
+        ".pdf",  # documents
     }
 
     lines = []

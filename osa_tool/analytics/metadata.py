@@ -12,6 +12,7 @@ class RepositoryMetadata:
     """
     Dataclass to store GitHub repository metadata.
     """
+
     name: str
     full_name: str
     owner: str
@@ -104,7 +105,7 @@ def load_data_metadata(repo_url: str) -> RepositoryMetadata | None:
     try:
         headers = {
             "Authorization": f"token {os.getenv('GIT_TOKEN')}",
-            "Accept": "application/vnd.github.v3+json"
+            "Accept": "application/vnd.github.v3+json",
         }
         base_url = get_base_repo_url(repo_url)
         url = f"https://api.github.com/repos/{base_url}"
