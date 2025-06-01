@@ -82,9 +82,7 @@ setup(
 )
 """,
 )
-@patch(
-    "osa_tool.readmegen.context.dependencies.find_in_repo_tree", return_value="setup.py"
-)
+@patch("osa_tool.readmegen.context.dependencies.find_in_repo_tree", return_value="setup.py")
 def test_extract_from_setup(mock_find, mock_file, extractor):
     # Act
     techs = extractor._extract_from_setup()

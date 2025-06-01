@@ -6,9 +6,7 @@ from osa_tool.docs_generator.docs_run import generate_documentation
 @mock.patch("osa_tool.docs_generator.docs_run.CommunityTemplateBuilder")
 @mock.patch("osa_tool.docs_generator.docs_run.ContributingBuilder")
 @mock.patch("osa_tool.docs_generator.docs_run.logger")
-def test_generate_documentation(
-    mock_logger, mock_contributing_builder, mock_community_builder, config_loader
-):
+def test_generate_documentation(mock_logger, mock_contributing_builder, mock_community_builder, config_loader):
     # Arrange
     # Create mocks for the configuration and all builders
     mock_contributing = mock.MagicMock()
@@ -38,6 +36,4 @@ def test_generate_documentation(
 
     # Check that the logs contain the correct call
     mock_logger.info.assert_any_call("Starting generating additional documentation.")
-    mock_logger.info.assert_any_call(
-        "All additional documentation successfully generated."
-    )
+    mock_logger.info.assert_any_call("All additional documentation successfully generated.")

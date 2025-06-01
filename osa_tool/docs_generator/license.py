@@ -28,18 +28,14 @@ def compile_license_file(sourcerank: SourceRank, ensure_license):
         else:
             logger.info("LICENSE was not resolved, compiling started...")
             metadata = load_data_metadata(sourcerank.repo_url)
-            license_template_path = os.path.join(
-                osa_project_root(), "docs", "templates", "licenses.toml"
-            )
+            license_template_path = os.path.join(osa_project_root(), "docs", "templates", "licenses.toml")
             with open(license_template_path, "rb") as f:
                 license_template = tomli.load(f)
             license_type = ensure_license
             year = metadata.created_at[:4]
             author = metadata.owner
             try:
-                license_text = license_template[license_type]["template"].format(
-                    year=year, author=author
-                )
+                license_text = license_template[license_type]["template"].format(year=year, author=author)
                 license_output_path = os.path.join(sourcerank.repo_path, "LICENSE")
                 with open(license_output_path, "w") as f:
                     f.write(license_text)

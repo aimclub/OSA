@@ -44,9 +44,7 @@ class AboutGenerator:
         Generates content for About section.
         """
         if self._content is not None:
-            logger.warning(
-                "About section content already generated. Skipping generation."
-            )
+            logger.warning("About section content already generated. Skipping generation.")
             return
         logger.info("Generating 'About' section...")
         self._content = {
@@ -92,18 +90,14 @@ class AboutGenerator:
         """
         logger.info("Generating repository description...")
         if self.metadata and self.metadata.description:
-            logger.warning(
-                "Description already exists in metadata. Skipping generation."
-            )
+            logger.warning("Description already exists in metadata. Skipping generation.")
             return self.metadata.description
 
         if not self.readme_content:
             logger.warning("No README content found. Cannot generate description.")
             return ""
 
-        formatted_prompt = self.prompts.description.format(
-            readme_content=self.readme_content
-        )
+        formatted_prompt = self.prompts.description.format(readme_content=self.readme_content)
 
         try:
             description = self.model_handler.send_request(formatted_prompt)
@@ -131,9 +125,7 @@ class AboutGenerator:
                 logger.critical("Maximum amount of topics is 20.")
                 return existing_topics
             if len(existing_topics) >= amount:
-                logger.warning(
-                    f"{amount} topics already exist in the metadata. Skipping generation."
-                )
+                logger.warning(f"{amount} topics already exist in the metadata. Skipping generation.")
                 return existing_topics
 
         formatted_prompt = self.prompts.topics.format(
@@ -144,11 +136,7 @@ class AboutGenerator:
 
         try:
             response = self.model_handler.send_request(formatted_prompt)
-            topics = [
-                topic.strip().lower().replace(" ", "-")
-                for topic in response.split(",")
-                if topic.strip()
-            ]
+            topics = [topic.strip().lower().replace(" ", "-") for topic in response.split(",") if topic.strip()]
             logger.debug(f"Generated topics from LLM: {topics}")
             validated_topics = self._validate_github_topics(topics)
             return list(set([*existing_topics, *validated_topics]))
@@ -182,16 +170,12 @@ class AboutGenerator:
                     if (total := data.get("total_count", 0)) > 0:
                         if total == 1:
                             valid_topic = data.get("items")[0].get("name")
-                            logger.debug(
-                                f"Applied transformation for topic: '{topic} -> {valid_topic}'"
-                            )
+                            logger.debug(f"Applied transformation for topic: '{topic} -> {valid_topic}'")
                         else:
                             valid_topic = topic
                         validated_topics.append(valid_topic)
                     else:
-                        logger.debug(
-                            f"Generated topic '{topic}' is not valid, skipping"
-                        )
+                        logger.debug(f"Generated topic '{topic}' is not valid, skipping")
                 elif response.status_code == 403:
                     logger.warning("Rate limit exceeded, waiting 60 seconds")
                     time.sleep(60)
@@ -246,9 +230,7 @@ class AboutGenerator:
     def _analyze_urls(self, urls: List[str]) -> List[str]:
         """Generates LLM prompt for URL analysis"""
         logger.info(f"Analyzing {len(urls)} project URLs...")
-        formatted_prompt = self.prompts.analyze_urls.format(
-            project_url=self.repo_url, urls=", ".join(urls)
-        )
+        formatted_prompt = self.prompts.analyze_urls.format(project_url=self.repo_url, urls=", ".join(urls))
         response = self.model_handler.send_request(formatted_prompt)
         if not response:
             return []

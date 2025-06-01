@@ -32,9 +32,7 @@ def example_core_features():
 
 
 def example_getting_started():
-    return json.dumps(
-        {"getting_started": "To get started, install the package and run `main.py`."}
-    )
+    return json.dumps({"getting_started": "To get started, install the package and run `main.py`."})
 
 
 @pytest.fixture

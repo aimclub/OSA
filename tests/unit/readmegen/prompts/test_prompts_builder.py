@@ -44,15 +44,9 @@ def patch_dependencies(mock_metadata):
             "osa_tool.readmegen.prompts.prompts_builder.parse_folder_name",
             return_value="repo",
         ),
-        patch(
-            "osa_tool.readmegen.prompts.prompts_builder.SourceRank"
-        ) as mock_sourcerank,
-        patch(
-            "osa_tool.readmegen.prompts.prompts_builder.PromptLoader.load_prompts"
-        ) as mock_prompt_loader,
-        patch(
-            "osa_tool.readmegen.prompts.prompts_builder.PromptArticleLoader.load_prompts"
-        ) as mock_article_loader,
+        patch("osa_tool.readmegen.prompts.prompts_builder.SourceRank") as mock_sourcerank,
+        patch("osa_tool.readmegen.prompts.prompts_builder.PromptLoader.load_prompts") as mock_prompt_loader,
+        patch("osa_tool.readmegen.prompts.prompts_builder.PromptArticleLoader.load_prompts") as mock_article_loader,
     ):
         mock_sourcerank.return_value.tree = "repo/tree"
 

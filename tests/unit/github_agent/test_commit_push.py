@@ -5,9 +5,7 @@ from unittest.mock import patch, MagicMock
 def test_commit_and_push_changes_success(github_agent):
     # Arrange
     with (
-        patch.object(
-            github_agent, "_get_auth_url", return_value="https://auth-url.com"
-        ) as mock_auth_url,
+        patch.object(github_agent, "_get_auth_url", return_value="https://auth-url.com") as mock_auth_url,
         patch("osa_tool.github_agent.github_agent.logger") as mock_logger,
     ):
         github_agent.repo.git.add = MagicMock()
@@ -24,9 +22,7 @@ def test_commit_and_push_changes_success(github_agent):
     )
     mock_logger.info.assert_any_call("Committing changes...")
     mock_logger.info.assert_any_call("Commit completed.")
-    mock_logger.info.assert_any_call(
-        "Pushing changes to branch feature-branch in fork..."
-    )
+    mock_logger.info.assert_any_call("Pushing changes to branch feature-branch in fork...")
     mock_logger.info.assert_any_call("Push completed.")
 
 
@@ -34,7 +30,5 @@ def test_commit_and_push_changes_no_fork_url(github_agent):
     # Arrange
     github_agent.fork_url = None
     # Assert
-    with pytest.raises(
-        ValueError, match="Fork URL is not set. Please create a fork first."
-    ):
+    with pytest.raises(ValueError, match="Fork URL is not set. Please create a fork first."):
         github_agent.commit_and_push_changes()

@@ -58,9 +58,7 @@ def test_open_file(mock_file, osa_tree_sitter):
     "osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter.open_file",
     return_value="def test(): pass",
 )
-def test_parse_source_code(
-    mock_open_file, mock_parser_build, mock_parser, osa_tree_sitter
-):
+def test_parse_source_code(mock_open_file, mock_parser_build, mock_parser, osa_tree_sitter):
     """Test _parse_source_code returns a parsed tree."""
     # Arrange
     mock_parser_build.return_value = mock_parser
@@ -113,15 +111,11 @@ def test_extract_structure(
     mock_parse_source_code.return_value = (mock_tree, "def test(): pass")
 
     def function_parser_side_effect(structure: dict, source_code, node, dec_list=[]):
-        structure["structure"].append(
-            f"mock_function_structure_{len(structure['structure'])}"
-        )
+        structure["structure"].append(f"mock_function_structure_{len(structure['structure'])}")
         return structure
 
     def class_parser_side_effect(structure: dict, source_code, node, dec_list=[]):
-        structure["structure"].append(
-            f"mock_class_structure_{len(structure['structure'])}"
-        )
+        structure["structure"].append(f"mock_class_structure_{len(structure['structure'])}")
         return structure
 
     mock_function_parser.side_effect = function_parser_side_effect
@@ -219,9 +213,7 @@ def test_resolve_import_with_function(osa_tree_sitter):
 
 
 def test_resolve_import_class_method_chain(osa_tree_sitter):
-    imports = {
-        "mod": {"module": "pkg.module", "class": "MyClass", "path": "/module.py"}
-    }
+    imports = {"mod": {"module": "pkg.module", "class": "MyClass", "path": "/module.py"}}
     result = osa_tree_sitter._resolve_import("mod.MyClass().run", "mod", imports)
     assert result["class"] == "MyClass"
     assert result["function"] == "MyClass().run"

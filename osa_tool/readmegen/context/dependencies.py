@@ -56,9 +56,7 @@ class DependencyExtractor:
                     return version.strip()
 
                 # Poetry format
-                poetry_info = (
-                    data.get("tool", {}).get("poetry", {}).get("dependencies", {})
-                )
+                poetry_info = data.get("tool", {}).get("poetry", {}).get("dependencies", {})
                 if "python" in poetry_info:
                     python_spec = poetry_info["python"]
                     return python_spec.strip() if isinstance(python_spec, str) else None
@@ -131,9 +129,7 @@ class DependencyExtractor:
                 techs.update(self._normalize_dependency(dep) for dep in deps)
 
                 # Poetry
-                poetry_deps = (
-                    data.get("tool", {}).get("poetry", {}).get("dependencies", {})
-                )
+                poetry_deps = data.get("tool", {}).get("poetry", {}).get("dependencies", {})
                 techs.update(name.lower() for name in poetry_deps.keys())
 
             except tomli.TOMLDecodeError:

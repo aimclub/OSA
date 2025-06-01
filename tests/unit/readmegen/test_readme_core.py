@@ -18,9 +18,7 @@ def config_loader():
 @patch("osa_tool.readmegen.readme_core.save_sections")
 @patch("osa_tool.readmegen.readme_core.MarkdownBuilder")
 @patch("osa_tool.readmegen.readme_core.LLMClient")
-def test_readme_agent_without_article(
-    mock_llm, mock_builder, mock_save, mock_clean, config_loader
-):
+def test_readme_agent_without_article(mock_llm, mock_builder, mock_save, mock_clean, config_loader):
     # Arrange
     mock_llm.return_value.get_responses.return_value = (
         "core_features_text",
@@ -33,9 +31,7 @@ def test_readme_agent_without_article(
     readme_agent(config_loader, article=None)
     # Assert
     mock_llm.return_value.get_responses.assert_called_once()
-    mock_builder.assert_called_once_with(
-        config_loader, "overview_text", "core_features_text", "getting_started_text"
-    )
+    mock_builder.assert_called_once_with(config_loader, "overview_text", "core_features_text", "getting_started_text")
     mock_builder.return_value.build.assert_called_once()
     mock_save.assert_called_once()
     mock_clean.assert_called_once()
@@ -45,9 +41,7 @@ def test_readme_agent_without_article(
 @patch("osa_tool.readmegen.readme_core.save_sections")
 @patch("osa_tool.readmegen.readme_core.MarkdownBuilderArticle")
 @patch("osa_tool.readmegen.readme_core.LLMClient")
-def test_readme_agent_with_article(
-    mock_llm, mock_builder_article, mock_save, mock_clean, config_loader
-):
+def test_readme_agent_with_article(mock_llm, mock_builder_article, mock_save, mock_clean, config_loader):
     # Arrange
     article_path = "/path/to/article.pdf"
     mock_llm.return_value.get_responses_article.return_value = (

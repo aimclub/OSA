@@ -25,12 +25,8 @@ def mock_config_loader():
 @patch("osa_tool.analytics.metadata.load_data_metadata", return_value={})
 @patch("osa_tool.utils.osa_project_root", return_value="/mock/path")
 @patch("osa_tool.utils.parse_folder_name", return_value="testrepo")
-@patch(
-    "osa_tool.utils.get_repo_tree", return_value=(None, "README.md LICENSE tests", None)
-)
-def source_rank(
-    mock_ingest, mock_parse, mock_project_root, mock_metadata, mock_config_loader
-):
+@patch("osa_tool.utils.get_repo_tree", return_value=(None, "README.md LICENSE tests", None))
+def source_rank(mock_ingest, mock_parse, mock_project_root, mock_metadata, mock_config_loader):
     """Returns a mocked SourceRank instance with pre-defined repository structure."""
     return SourceRank(mock_config_loader)
 
@@ -81,9 +77,7 @@ def custom_report():
 @pytest.fixture
 @patch("osa_tool.analytics.metadata.load_data_metadata")
 @patch("osa_tool.models.models.ModelHandlerFactory.build")
-def report_generator(
-    mock_model, mock_load_data_metadata, mock_config_loader, source_rank
-):
+def report_generator(mock_model, mock_load_data_metadata, mock_config_loader, source_rank):
     """Return a ReportGenerator instance with mocked dependencies."""
     mock_model.return_value.send_request.return_value = json.dumps({})
 

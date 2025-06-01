@@ -17,12 +17,7 @@ from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 from osa_tool.readmegen.readme_core import readme_agent
 from osa_tool.scheduler.scheduler import ModeScheduler
 from osa_tool.translation.dir_translator import DirectoryTranslator
-from osa_tool.utils import (
-    delete_repository,
-    logger,
-    parse_folder_name,
-    rich_section
-)
+from osa_tool.utils import delete_repository, logger, parse_folder_name, rich_section
 
 
 def main():
@@ -174,10 +169,10 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
 
 
 def load_configuration(
-        repo_url: str,
-        api: str,
-        base_url: str,
-        model_name: str,
+    repo_url: str,
+    api: str,
+    base_url: str,
+    model_name: str,
 ) -> ConfigLoader:
     """
     Loads configuration for osa_tool.

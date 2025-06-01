@@ -89,9 +89,7 @@ class PromptBuilder:
     def get_prompt_pdf_summary(self, pdf_content: str) -> str:
         """Builds a PDF summary prompt using the provided PDF content."""
         try:
-            formatted_prompt = self.prompts_article["pdf_summary"].format(
-                pdf_content=pdf_content
-            )
+            formatted_prompt = self.prompts_article["pdf_summary"].format(pdf_content=pdf_content)
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build PDF summary prompt: {e}")
@@ -110,9 +108,7 @@ class PromptBuilder:
             logger.error(f"Failed to build overview prompt: {e}")
             raise
 
-    def get_prompt_content_article(
-        self, key_files: list[FileContext], pdf_summary: str
-    ) -> str:
+    def get_prompt_content_article(self, key_files: list[FileContext], pdf_summary: str) -> str:
         """Builds a content article prompt using metadata, key file content, and PDF summary."""
         try:
             formatted_prompt = self.prompts_article["content"].format(
@@ -125,9 +121,7 @@ class PromptBuilder:
             logger.error(f"Failed to build content prompt: {e}")
             raise
 
-    def get_prompt_algorithms_article(
-        self, files_summary: str, pdf_summary: str
-    ) -> str:
+    def get_prompt_algorithms_article(self, files_summary: str, pdf_summary: str) -> str:
         """Builds an algorithms article prompt using metadata, file summary, and PDF summary."""
         try:
             formatted_prompt = self.prompts_article["algorithms"].format(

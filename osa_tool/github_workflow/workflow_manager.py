@@ -22,11 +22,9 @@ def generate_github_workflows(config_loader: ConfigLoader) -> None:
         # Get the workflow settings from the config
         workflow_settings = config_loader.config.workflows
         repo_url = config_loader.config.git.repository
-        output_dir = os.path.join(os.getcwd(), parse_folder_name(
-            repo_url), workflow_settings.output_dir)
+        output_dir = os.path.join(os.getcwd(), parse_folder_name(repo_url), workflow_settings.output_dir)
 
-        created_files = generate_workflows_from_settings(
-            workflow_settings, output_dir)
+        created_files = generate_workflows_from_settings(workflow_settings, output_dir)
 
         if created_files:
             formatted_files = "\n".join(f" - {file}" for file in created_files)
@@ -35,5 +33,4 @@ def generate_github_workflows(config_loader: ConfigLoader) -> None:
             logger.info("No workflow files were generated.")
 
     except Exception as e:
-        logger.error("Error while generating GitHub workflows: %s",
-                     repr(e), exc_info=True)
+        logger.error("Error while generating GitHub workflows: %s", repr(e), exc_info=True)

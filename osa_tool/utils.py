@@ -18,6 +18,7 @@ logger = logging.getLogger("rich")
 
 console = Console()
 
+
 def rich_section(title: str):
     console.print("")
     console.rule(f"[bold cyan]{title}[/bold cyan]", style="cyan")

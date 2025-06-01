@@ -15,7 +15,8 @@ def get_cli_args():
         required=True,
     )
     parser.add_argument(
-        "-m", "--mode",
+        "-m",
+        "--mode",
         type=str,
         help=(
             "Select the operation mode for repository processing:\n"
@@ -26,7 +27,7 @@ def get_cli_args():
         nargs="?",
         choices=["basic", "auto", "advanced"],
         const="advanced",
-        default="advanced"
+        default="advanced",
     )
     parser.add_argument(
         "-b",
@@ -93,8 +94,7 @@ def get_cli_args():
     parser.add_argument(
         "--delete-dir",
         action="store_true",
-        help="Enable deleting the downloaded repository after processing. ("
-        "Linux only)",
+        help="Enable deleting the downloaded repository after processing. (" "Linux only)",
     )
     parser.add_argument(
         "--ensure-license",
@@ -117,22 +117,18 @@ def get_cli_args():
     parser.add_argument(
         "--docstring",
         action="store_true",
-        help="Automatically generate docstrings for all Python files in the repository."
+        help="Automatically generate docstrings for all Python files in the repository.",
     )
     parser.add_argument(
-        "--report",
-        action="store_true",
-        help="Analyze the repository and generate a PDF report with project insights."
+        "--report", action="store_true", help="Analyze the repository and generate a PDF report with project insights."
     )
     parser.add_argument(
-        "--readme",
-        action="store_true",
-        help="Generate a README.md file based on repository content and metadata."
+        "--readme", action="store_true", help="Generate a README.md file based on repository content and metadata."
     )
     parser.add_argument(
         "--organize",
         action="store_true",
-        help="Organize the repository structure by adding standard 'tests' and 'examples' directories if missing."
+        help="Organize the repository structure by adding standard 'tests' and 'examples' directories if missing.",
     )
     parser.add_argument(
         "--about",
@@ -234,7 +230,7 @@ def get_cli_args():
 def get_workflow_keys(parser):
     workflow_keys = []
     for group in parser._action_groups:
-        if group.title == 'GitHub workflow generator arguments':
+        if group.title == "GitHub workflow generator arguments":
             for action in group._group_actions:
                 workflow_keys.append(action.dest)
     return workflow_keys

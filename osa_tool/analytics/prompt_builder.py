@@ -23,9 +23,7 @@ class RepositoryStructure(BaseModel):
 
 
 class ReadmeEvaluation(BaseModel):
-    readme_quality: str = Field(
-        "Unknown", description="Assessment of the README quality with a brief comment"
-    )
+    readme_quality: str = Field("Unknown", description="Assessment of the README quality with a brief comment")
     project_description: YesNoPartial = YesNoPartial.UNKNOWN
     installation: YesNoPartial = YesNoPartial.UNKNOWN
     usage_examples: YesNoPartial = YesNoPartial.UNKNOWN

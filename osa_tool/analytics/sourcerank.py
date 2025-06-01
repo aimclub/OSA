@@ -30,9 +30,7 @@ class SourceRank:
         return bool(pattern.search(self.tree))
 
     def tests_presence(self) -> bool:
-        pattern = re.compile(
-            r"\b(tests?|testcases?|unittest|test_suite)\b", re.IGNORECASE
-        )
+        pattern = re.compile(r"\b(tests?|testcases?|unittest|test_suite)\b", re.IGNORECASE)
         return bool(pattern.search(self.tree))
 
     def citation_presence(self) -> bool:

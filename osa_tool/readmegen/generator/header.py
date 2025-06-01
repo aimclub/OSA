@@ -19,9 +19,7 @@ class HeaderBuilder:
         self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.tree = SourceRank(self.config_loader).tree
         self.metadata = load_data_metadata(self.repo_url)
-        self.template_path = os.path.join(
-            osa_project_root(), "config", "templates", "template.toml"
-        )
+        self.template_path = os.path.join(osa_project_root(), "config", "templates", "template.toml")
         self.icons_tech_path = os.path.join(
             osa_project_root(),
             "readmegen",
@@ -88,14 +86,10 @@ class HeaderBuilder:
         badges = []
 
         if name and version:
-            badges.append(
-                f"[![PyPi](https://badge.fury.io/py/{name}.svg)](https://badge.fury.io/py/{name})"
-            )
+            badges.append(f"[![PyPi](https://badge.fury.io/py/{name}.svg)](https://badge.fury.io/py/{name})")
 
         if name and downloads is not None:
-            badges.append(
-                f"[![Downloads](https://static.pepy.tech/badge/{name})](https://pepy.tech/project/{name})"
-            )
+            badges.append(f"[![Downloads](https://static.pepy.tech/badge/{name})](https://pepy.tech/project/{name})")
 
         return "\n".join(badges)
 

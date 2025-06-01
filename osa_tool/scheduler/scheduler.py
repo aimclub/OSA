@@ -21,12 +21,9 @@ from rich import box
 
 console = Console()
 
+
 class ModeScheduler:
-    def __init__(self,
-                 config: ConfigLoader,
-                 sourcerank: SourceRank,
-                 args,
-                 workflow_keys: list):
+    def __init__(self, config: ConfigLoader, sourcerank: SourceRank, args, workflow_keys: list):
         self.mode = args.mode
         self.args = args
         self.workflow_keys = workflow_keys
@@ -35,20 +32,9 @@ class ModeScheduler:
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.repo_url = self.config.git.repository
         self.metadata = load_data_metadata(self.repo_url)
-        self.base_path = os.path.join(
-            os.getcwd(),
-            parse_folder_name(self.repo_url)
-        )
+        self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.prompts = PromptLoader().prompts
-        self.info_keys = [
-            "repository",
-            "mode",
-            "api",
-            "base_url",
-            "model",
-            "branch",
-            "not_publish_results"
-        ]
+        self.info_keys = ["repository", "mode", "api", "base_url", "model", "branch", "not_publish_results"]
 
         self.plan = self._select_plan()
 
@@ -111,7 +97,7 @@ class ModeScheduler:
             confirm = Prompt.ask(
                 "[bold yellow]Do you want to proceed with these actions?[/bold yellow]",
                 choices=["y", "n", "custom"],
-                default="y"
+                default="y",
             )
             if confirm == "y":
                 return plan
@@ -168,8 +154,9 @@ class ModeScheduler:
                     plan[key_to_edit] = self.convert_input_value(new_value)
 
             elif isinstance(current_value, list):
-                new_value = Prompt.ask(f"Enter comma-separated values for {key_to_edit} (or leave blank to skip)",
-                                       default="")
+                new_value = Prompt.ask(
+                    f"Enter comma-separated values for {key_to_edit} (or leave blank to skip)", default=""
+                )
                 if new_value != "":
                     plan[key_to_edit] = [item.strip() for item in new_value.split(",")]
 
@@ -246,4 +233,3 @@ class ModeScheduler:
         if value.strip().lower() == "none":
             return None
         return value
-
