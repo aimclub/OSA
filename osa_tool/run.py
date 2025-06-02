@@ -10,12 +10,12 @@ from osa_tool.convertion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.docs_generator.license import compile_license_file
 from osa_tool.github_agent.github_agent import GithubAgent
-from osa_tool.github_workflow.workflow_manager import generate_github_workflows
 from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 from osa_tool.readmegen.readme_core import readme_agent
 from osa_tool.scheduler.scheduler import ModeScheduler
+from osa_tool.scheduler.workflow_manager import generate_github_workflows, update_workflow_config
 from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.utils import delete_repository, logger, parse_folder_name, rich_section
 
@@ -32,9 +32,6 @@ def main():
     args = parser.parse_args()
     workflow_keys = get_workflow_keys(parser)
     publish_results = not args.not_publish_results
-
-    # Extract workflow-related arguments
-    generate_workflows = args.generate_workflows
 
     try:
         # Load configurations and update
@@ -108,8 +105,9 @@ def main():
                 github_agent.update_about_section(about_gen.get_about_content())
 
         # Generate GitHub workflows
-        if generate_workflows:
+        if plan.get("generate_workflows"):
             rich_section("Workflows generator")
+            update_workflow_config(config, plan, workflow_keys)
             generate_github_workflows(config)
 
         # Organize repository by adding 'tests' and 'examples' directories if they aren't exist

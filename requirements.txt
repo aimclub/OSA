@@ -29,6 +29,7 @@ openai==1.58.1
 packaging==24.2
 pdfminer.six==20231228
 pluggy==1.5.0
+prompt_toolkit==3.0.51
 propcache==0.2.1
 pydantic>=2.9.0,<2.11.0
 pydantic-extra-types==2.9.0

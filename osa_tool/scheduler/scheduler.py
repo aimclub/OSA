@@ -2,7 +2,13 @@ import json
 import os
 import sys
 
+from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import WordCompleter
 from pydantic import ValidationError
+from rich import box
+from rich.console import Console
+from rich.prompt import Prompt
+from rich.table import Table
 
 from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.analytics.sourcerank import SourceRank
@@ -10,14 +16,8 @@ from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandlerFactory, ModelHandler
 from osa_tool.readmegen.postprocessor.response_cleaner import process_text
 from osa_tool.scheduler.prompts import PromptLoader, PromptConfig
+from osa_tool.scheduler.workflow_manager import WorkflowManager
 from osa_tool.utils import logger, parse_folder_name, extract_readme_content
-
-from prompt_toolkit import PromptSession
-from prompt_toolkit.completion import WordCompleter
-from rich.console import Console
-from rich.prompt import Prompt
-from rich.table import Table
-from rich import box
 
 console = Console()
 
@@ -35,7 +35,7 @@ class ModeScheduler:
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.prompts = PromptLoader().prompts
         self.info_keys = ["repository", "mode", "api", "base_url", "model", "branch", "not_publish_results"]
-
+        self.workflows_plan = {key: value for key, value in vars(self.args).items() if key in self.workflow_keys}
         self.plan = self._select_plan()
 
     @staticmethod
@@ -63,6 +63,18 @@ class ModeScheduler:
         elif self.mode == "auto":
             logger.info("Auto mode selected for task scheduler.")
             auto_plan = self._make_request_for_auto_mode()
+
+            workflow_manager = WorkflowManager(
+                base_path=self.base_path,
+                sourcerank=self.sourcerank,
+                metadata=self.metadata,
+                workflows_plan=self.workflows_plan,
+            )
+
+            actual_workflows_plan = workflow_manager.build_actual_plan()
+
+            for key, value in actual_workflows_plan.items():
+                auto_plan[key] = value
 
             for key, value in auto_plan.items():
                 plan[key] = value
@@ -151,7 +163,7 @@ class ModeScheduler:
             elif isinstance(current_value, str) or current_value is None:
                 new_value = Prompt.ask(f"Enter new value for {key_to_edit} (or leave blank to skip)", default="")
                 if new_value != "":
-                    plan[key_to_edit] = self.convert_input_value(new_value)
+                    plan[key_to_edit] = self._convert_input_value(new_value)
 
             elif isinstance(current_value, list):
                 new_value = Prompt.ask(
@@ -208,28 +220,45 @@ class ModeScheduler:
         console.print(inactive_table)
 
     def _append_workflow_section(self, table: Table, plan: dict, active: bool) -> None:
-        if active:
-            has_items = any(plan.get(k) and plan.get(k) not in [None, [], ""] for k in self.workflow_keys)
+        if plan.get("generate_workflows"):
+            has_items = any(
+                (
+                    (plan.get(k) and plan.get(k) not in [None, [], ""])
+                    if active
+                    else (not plan.get(k) or plan.get(k) in [None, [], ""])
+                )
+                for k in self.workflow_keys
+            )
+            if not has_items:
+                return
+
+            table.add_row("", "")
+            table.add_row("[bold]GitHub Workflows actions[/bold]", "")
+
+            for key in self.workflow_keys:
+                value = plan.get(key)
+                if active:
+                    if value and value not in [None, [], ""]:
+                        table.add_row(key, str(value))
+                else:
+                    if not value or value in [None, [], ""]:
+                        table.add_row(key, str(value))
         else:
-            has_items = any(not plan.get(k) or plan.get(k) == [] for k in self.workflow_keys)
-
-        if not has_items:
-            return
-
-        table.add_row("", "")
-        table.add_row("[bold]GitHub Workflows actions[/bold]", "")
-
-        for key in self.workflow_keys:
-            value = plan.get(key)
             if active:
-                if value and value not in [None, [], ""]:
-                    table.add_row(key, str(value))
-            else:
-                if not value or value == []:
-                    table.add_row(key, str(value))
+                return
+
+            if not self.workflow_keys:
+                return
+
+            table.add_row("", "")
+            table.add_row("[bold]GitHub Workflows actions[/bold]", "")
+
+            for key in self.workflow_keys:
+                value = plan.get(key)
+                table.add_row(key, str(value))
 
     @staticmethod
-    def convert_input_value(value: str) -> str | None:
+    def _convert_input_value(value: str) -> str | None:
         if value.strip().lower() == "none":
             return None
         return value
