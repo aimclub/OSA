@@ -1,6 +1,7 @@
 from unittest.mock import call, patch
 
 import pytest
+from git import GitCommandError
 
 
 def test_upload_report_success(github_agent):
@@ -34,6 +35,22 @@ def test_upload_report_success(github_agent):
         f"\nGenerated report - [{report_filename}]({expected_report_url})\n"
     )
     assert github_agent.pr_report_body == expected_pr_body
+
+
+def test_upload_report_commit_push_error(github_agent):
+    # Arrange
+    report_filename = "test_report.pdf"
+    report_filepath = "test/filepath"
+    github_agent.commit_and_push_changes = lambda **kwargs: exec(
+        'raise GitCommandError("push", "error")'
+    )
+
+    # Act
+    github_agent.upload_report(report_filename, report_filepath)
+
+    # Assert
+    github_agent.repo.git.checkout.assert_called_with("-b", github_agent.branch_name)
+    assert github_agent.pr_report_body == ""
 
 
 def test_upload_report_custom_branch_and_message(github_agent):
