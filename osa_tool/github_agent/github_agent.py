@@ -266,6 +266,7 @@ class GithubAgent:
             report_branch: Name of the branch for storing reports. Defaults to "osa_tool_attachments".
             commit_message: Commit message for the report upload. Defaults to "upload pdf report".
         """
+        logger.info("Uploading report...")
         try:
             self.create_and_checkout_branch(report_branch)
         except GitCommandError:
@@ -279,11 +280,17 @@ class GithubAgent:
                 f.write(preserved_content)
             logger.info(f"Sucessfuly moved PDF report to {report_branch} branch.")
 
-        self.commit_and_push_changes(
-            branch=report_branch, commit_message=commit_message, force=True
-        )
-
-        self.create_and_checkout_branch()  # Return to original branch
+        try:
+            self.commit_and_push_changes(
+                branch=report_branch, commit_message=commit_message, force=True
+            )
+        except GitCommandError:
+            logger.error(
+                "Commit failed! PDF extension is listed in the .gitignore file of the repository."
+            )
+            return
+        finally:
+            self.create_and_checkout_branch()  # Return to original branch
 
         report_url = f"{self.fork_url}/blob/{report_branch}/{report_filename}"
         self.pr_report_body = f"\nGenerated report - [{report_filename}]({report_url})\n"
