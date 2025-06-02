@@ -296,7 +296,7 @@ class GithubAgent:
             self.repo.git.checkout("-f", report_branch)
             with open(report_filepath, "wb") as f:
                 f.write(preserved_content)
-            logger.info(f"Sucessfuly moved PDF report to {report_branch} branch.")
+            logger.info(f"Successfully moved PDF report to {report_branch} branch.")
 
         try:
             self.commit_and_push_changes(
