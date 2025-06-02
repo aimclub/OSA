@@ -6,11 +6,12 @@ import pytest
 def test_upload_report_success(github_agent):
     # Arrange
     report_filename = "test_report.pdf"
+    report_filepath = "test/filepath"
     default_report_branch = "osa_tool_attachments"
     default_message = "upload pdf report"
 
     # Act
-    github_agent.upload_report(report_filename)
+    github_agent.upload_report(report_filename, report_filepath)
 
     # Assert
     github_agent.repo.git.checkout.assert_has_calls(
@@ -19,7 +20,11 @@ def test_upload_report_success(github_agent):
     github_agent.repo.git.add.assert_called_once_with(".")
     github_agent.repo.git.commit.assert_called_once_with("-m", default_message)
     github_agent.repo.git.push.assert_called_once_with(
-        "--set-upstream", "origin", default_report_branch, force_with_lease=True
+        "--set-upstream",
+        "origin",
+        default_report_branch,
+        force_with_lease=False,
+        force=True,
     )
 
     expected_report_url = (
@@ -34,12 +39,16 @@ def test_upload_report_success(github_agent):
 def test_upload_report_custom_branch_and_message(github_agent):
     # Arrange
     report_filename = "custom_report.pdf"
+    report_filepath = "test/filepath"
     custom_branch = "custom_branch"
     custom_message = "custom message"
 
     # Act
     github_agent.upload_report(
-        report_filename, report_branch=custom_branch, commit_message=custom_message
+        report_filename,
+        report_filepath,
+        report_branch=custom_branch,
+        commit_message=custom_message,
     )
 
     # Assert
@@ -49,7 +58,7 @@ def test_upload_report_custom_branch_and_message(github_agent):
     github_agent.repo.git.add.assert_called_once_with(".")
     github_agent.repo.git.commit.assert_called_once_with("-m", custom_message)
     github_agent.repo.git.push.assert_called_once_with(
-        "--set-upstream", "origin", custom_branch, force_with_lease=True
+        "--set-upstream", "origin", custom_branch, force_with_lease=False, force=True
     )
 
     expected_report_url = (
@@ -64,12 +73,13 @@ def test_upload_report_custom_branch_and_message(github_agent):
 def test_upload_report_existing_branch(github_agent):
     # Arrange
     report_filename = "test_report.pdf"
+    report_filepath = "test/filepath"
     default_report_branch = "osa_tool_attachments"
     github_agent.repo.heads = {default_report_branch: None}
     default_message = "upload pdf report"
 
     # Act
-    github_agent.upload_report(report_filename)
+    github_agent.upload_report(report_filename, report_filepath)
 
     # Assert
     github_agent.repo.git.checkout.assert_has_calls(
@@ -78,5 +88,9 @@ def test_upload_report_existing_branch(github_agent):
     github_agent.repo.git.add.assert_called_once_with(".")
     github_agent.repo.git.commit.assert_called_once_with("-m", default_message)
     github_agent.repo.git.push.assert_called_once_with(
-        "--set-upstream", "origin", default_report_branch, force_with_lease=True
+        "--set-upstream",
+        "origin",
+        default_report_branch,
+        force_with_lease=False,
+        force=True,
     )
