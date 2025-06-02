@@ -165,7 +165,12 @@ class GithubAgent:
             self.repo.git.checkout('-b', branch)
             logger.info(f"Switched to branch {branch}.")
 
-    def commit_and_push_changes(self, branch: str = None, commit_message: str = "osa_tool recommendations") -> bool:
+    def commit_and_push_changes(
+        self,
+        branch: str = None,
+        commit_message: str = "osa_tool recommendations",
+        force: bool = False,
+    ) -> bool:
         """Commits and pushes changes to the forked repository.
 
         Args:
@@ -185,8 +190,13 @@ class GithubAgent:
         logger.info(f"Pushing changes to branch {branch} in fork...")
         self.repo.git.remote('set-url', 'origin', self._get_auth_url(self.fork_url))
         try:
-            self.repo.git.push('--set-upstream', 'origin',
-                               branch, force_with_lease=True)
+            self.repo.git.push(
+                "--set-upstream",
+                "origin",
+                branch,
+                force_with_lease=not force,
+                force=force,
+            )
             logger.info("Push completed.")
             return True
         except GitCommandError:
@@ -269,21 +279,9 @@ class GithubAgent:
                 f.write(preserved_content)
             logger.info(f"Sucessfuly moved PDF report to {report_branch} branch.")
 
-        if not self.commit_and_push_changes(report_branch, commit_message):
-            logger.info("Handling failed push. Comparing last commit message...")
-            last_commit = self.repo.refs[report_branch].commit
-            if last_commit.message == "upload pdf report\n":
-                logger.warning(
-                    f"Commit matches. Force pushing new PDF report to {report_branch} branch of the fork."
-                )
-                self.repo.git.push(
-                    "--set-upstream", "origin", report_branch, force=True
-                )
-                logger.info("Push completed.")
-            else:
-                logger.error(
-                    "Commit does not match the default, aborting upload report."
-                )
+        self.commit_and_push_changes(
+            branch=report_branch, commit_message=commit_message, force=True
+        )
 
         self.create_and_checkout_branch()  # Return to original branch
 
