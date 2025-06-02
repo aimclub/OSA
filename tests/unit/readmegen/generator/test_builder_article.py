@@ -23,7 +23,7 @@ def markdown_builder(config_loader):
         config_loader=config_loader,
         overview=example_overview(),
         content=example_content(),
-        algorithms=example_algorithms()
+        algorithms=example_algorithms(),
     )
 
 

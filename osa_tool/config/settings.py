@@ -14,7 +14,7 @@ from pydantic import (
     Field,
     model_validator,
     NonNegativeFloat,
-    PositiveInt
+    PositiveInt,
 )
 
 from osa_tool.utils import osa_project_root, parse_git_url
@@ -62,22 +62,53 @@ class ModelSettings(BaseModel):
 
 class WorkflowSettings(BaseModel):
     """GitHub Actions workflow generation settings."""
-    generate_workflows: bool = Field(default=False, description="Flag indicating whether to generate GitHub workflows.")
-    output_dir: str = Field(default=".github/workflows", description="Directory to save workflow files.")
-    include_tests: bool = Field(default=True, description="Include unit tests workflow.")
-    include_black: bool = Field(default=True, description="Include Black formatter workflow.")
-    include_pep8: bool = Field(default=True, description="Include PEP 8 compliance workflow.")
-    include_autopep8: bool = Field(default=False, description="Include autopep8 formatter workflow.")
-    include_fix_pep8: bool = Field(default=False, description="Include fix-pep8 command workflow.")
-    include_pypi: bool = Field(default=False, description="Include PyPI publish workflow.")
-    python_versions: List[str] = Field(default_factory=lambda: ["3.9", "3.10"],
-                                       description="Python versions for workflows.")
-    pep8_tool: Literal["flake8", "pylint"] = Field(default="flake8", description="Tool for PEP 8 checking.")
-    use_poetry: bool = Field(default=False, description="Use Poetry for packaging in PyPI workflow.")
-    branches: List[str] = Field(default_factory=lambda: ["main", "master"],
-                                description="Branches to trigger workflows on.")
-    codecov_token: bool = Field(default=False, description="Use Codecov token for coverage upload.")
-    include_codecov: bool = Field(default=True, description="Include Codecov coverage step in a unit tests workflow.")
+
+    generate_workflows: bool = Field(
+        default=False,
+        description="Flag indicating whether to generate GitHub workflows.",
+    )
+    output_dir: str = Field(
+        default=".github/workflows", description="Directory to save workflow files."
+    )
+    include_tests: bool = Field(
+        default=True, description="Include unit tests workflow."
+    )
+    include_black: bool = Field(
+        default=True, description="Include Black formatter workflow."
+    )
+    include_pep8: bool = Field(
+        default=True, description="Include PEP 8 compliance workflow."
+    )
+    include_autopep8: bool = Field(
+        default=False, description="Include autopep8 formatter workflow."
+    )
+    include_fix_pep8: bool = Field(
+        default=False, description="Include fix-pep8 command workflow."
+    )
+    include_pypi: bool = Field(
+        default=False, description="Include PyPI publish workflow."
+    )
+    python_versions: List[str] = Field(
+        default_factory=lambda: ["3.9", "3.10"],
+        description="Python versions for workflows.",
+    )
+    pep8_tool: Literal["flake8", "pylint"] = Field(
+        default="flake8", description="Tool for PEP 8 checking."
+    )
+    use_poetry: bool = Field(
+        default=False, description="Use Poetry for packaging in PyPI workflow."
+    )
+    branches: List[str] = Field(
+        default_factory=lambda: ["main", "master"],
+        description="Branches to trigger workflows on.",
+    )
+    codecov_token: bool = Field(
+        default=False, description="Use Codecov token for coverage upload."
+    )
+    include_codecov: bool = Field(
+        default=True,
+        description="Include Codecov coverage step in a unit tests workflow.",
+    )
 
 
 class Settings(BaseModel):
@@ -119,14 +150,10 @@ class ConfigLoader:
         looking outside the package.
         """
         file_path = os.path.join(
-            osa_project_root(),
-            "config",
-            "settings",
-            "config.toml"
+            osa_project_root(), "config", "settings", "config.toml"
         )
         if not os.path.exists(file_path):
-            raise FileNotFoundError(
-                f"Configuration file {file_path} not found.")
+            raise FileNotFoundError(f"Configuration file {file_path} not found.")
         return str(file_path)
 
     @staticmethod

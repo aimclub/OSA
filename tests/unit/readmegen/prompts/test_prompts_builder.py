@@ -25,25 +25,42 @@ def mock_metadata():
 def file_contexts():
     return [
         FileContext(name="file1.py", path="src/file1.py", content="print('hello')"),
-        FileContext(name="file2.py", path="src/file2.py", content="print('world')")
+        FileContext(name="file2.py", path="src/file2.py", content="print('world')"),
     ]
 
 
 @pytest.fixture(autouse=True)
 def patch_dependencies(mock_metadata):
-    with patch("osa_tool.readmegen.prompts.prompts_builder.load_data_metadata", return_value=mock_metadata), \
-            patch("osa_tool.readmegen.prompts.prompts_builder.extract_readme_content", return_value="README content"), \
-            patch("osa_tool.readmegen.prompts.prompts_builder.parse_folder_name", return_value="repo"), \
-            patch("osa_tool.readmegen.prompts.prompts_builder.SourceRank") as mock_sourcerank, \
-            patch("osa_tool.readmegen.prompts.prompts_builder.PromptLoader") as mock_prompt_loader, \
-            patch("osa_tool.readmegen.prompts.prompts_builder.PromptArticleLoader") as mock_article_loader:
+    with (
+        patch(
+            "osa_tool.readmegen.prompts.prompts_builder.load_data_metadata",
+            return_value=mock_metadata,
+        ),
+        patch(
+            "osa_tool.readmegen.prompts.prompts_builder.extract_readme_content",
+            return_value="README content",
+        ),
+        patch(
+            "osa_tool.readmegen.prompts.prompts_builder.parse_folder_name",
+            return_value="repo",
+        ),
+        patch(
+            "osa_tool.readmegen.prompts.prompts_builder.SourceRank"
+        ) as mock_sourcerank,
+        patch(
+            "osa_tool.readmegen.prompts.prompts_builder.PromptLoader"
+        ) as mock_prompt_loader,
+        patch(
+            "osa_tool.readmegen.prompts.prompts_builder.PromptArticleLoader"
+        ) as mock_article_loader,
+    ):
         mock_sourcerank.return_value.tree = "repo/tree"
 
         mock_prompt_loader.return_value.prompts = MagicMock(
             preanalysis="Tree: {repository_tree} | Readme: {readme_content}",
             core_features="Project: {project_name}, Meta: {metadata}, Readme: {readme_content}, Keys: {key_files_content}",
             overview="Name: {project_name}, Desc: {description}, Readme: {readme_content}, Features: {core_features}",
-            getting_started="Proj: {project_name}, Readme: {readme_content}, Examples: {examples_files_content}"
+            getting_started="Proj: {project_name}, Readme: {readme_content}, Examples: {examples_files_content}",
         )
 
         mock_article_loader.return_value.prompts = MagicMock(
@@ -51,7 +68,7 @@ def patch_dependencies(mock_metadata):
             pdf_summary="PDF: {pdf_content}",
             overview="Article for {project_name} | Files: {files_summary} | PDF: {pdf_summary}",
             content="Article content: {project_name}, {files_content}, {pdf_summary}",
-            algorithms="Algo: {project_name} | {file_summary} | {pdf_summary}"
+            algorithms="Algo: {project_name} | {file_summary} | {pdf_summary}",
         )
 
         yield

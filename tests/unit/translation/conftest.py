@@ -13,7 +13,7 @@ def mock_walk_data():
     return [
         (os.path.normpath("/repo"), [], ["file.py", "data.txt"]),
         (os.path.normpath("/repo"), ["subdir"], ["subdir/module.py", "readme.md"]),
-        (os.path.normpath("/repo"), ["subdir2"], [])
+        (os.path.normpath("/repo"), ["subdir2"], []),
     ]
 
 
@@ -25,5 +25,7 @@ def translator():
     mock_config_loader.config.llm.api = "llama"
 
     translator = DirectoryTranslator(mock_config_loader)
-    translator.model_handler = MagicMock(spec=ModelHandlerFactory.build(mock_config_loader.config))
+    translator.model_handler = MagicMock(
+        spec=ModelHandlerFactory.build(mock_config_loader.config)
+    )
     return translator

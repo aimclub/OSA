@@ -75,7 +75,10 @@ def test_parse_source_code(
 @patch("osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._class_parser")
 @patch("osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._function_parser")
 @patch("osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._parse_source_code")
-@patch("osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._extract_imports", return_value={})
+@patch(
+    "osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._extract_imports",
+    return_value={},
+)
 @patch(
     "osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._get_decorators",
     return_value=["mock_decorator"],
@@ -110,11 +113,15 @@ def test_extract_structure(
     mock_parse_source_code.return_value = (mock_tree, "def test(): pass")
 
     def function_parser_side_effect(structure: dict, source_code, node, dec_list=[]):
-        structure["structure"].append(f"mock_function_structure_{len(structure['structure'])}")
+        structure["structure"].append(
+            f"mock_function_structure_{len(structure['structure'])}"
+        )
         return structure
 
     def class_parser_side_effect(structure: dict, source_code, node, dec_list=[]):
-        structure["structure"].append(f"mock_class_structure_{len(structure['structure'])}")
+        structure["structure"].append(
+            f"mock_class_structure_{len(structure['structure'])}"
+        )
         return structure
 
     mock_function_parser.side_effect = function_parser_side_effect
@@ -126,9 +133,9 @@ def test_extract_structure(
         "structure": [
             "mock_function_structure_0",
             "mock_class_structure_1",
-            "mock_function_structure_2"
+            "mock_function_structure_2",
         ],
-        "imports": {}
+        "imports": {},
     }
 
     mock_parse_source_code.assert_called_with("script.py")
@@ -149,6 +156,7 @@ def test_analyze_directory(mock_extract_structure, mock_files_list, osa_tree_sit
     # Assert
     assert "script.py" in result
     assert result["script.py"] == [{"type": "function", "name": "test"}]
+
 
 def test_resolve_import_path_from_import(osa_tree_sitter, tmp_path):
     file = tmp_path / "utils.py"
@@ -196,7 +204,7 @@ def test_extract_imports_parses_nodes(osa_tree_sitter):
     with patch.object(osa_tree_sitter, "_resolve_import_path") as mock_resolve:
         mock_resolve.side_effect = [
             {"os": {"module": "os", "path": "/fake/os.py"}},
-            {"sqrt": {"module": "math", "class": "sqrt", "path": "/fake/math.py"}}
+            {"sqrt": {"module": "math", "class": "sqrt", "path": "/fake/math.py"}},
         ]
         result = osa_tree_sitter._extract_imports(root_node)
 
@@ -211,7 +219,9 @@ def test_resolve_import_with_function(osa_tree_sitter):
 
 
 def test_resolve_import_class_method_chain(osa_tree_sitter):
-    imports = {"mod": {"module": "pkg.module", "class": "MyClass", "path": "/module.py"}}
+    imports = {
+        "mod": {"module": "pkg.module", "class": "MyClass", "path": "/module.py"}
+    }
     result = osa_tree_sitter._resolve_import("mod.MyClass().run", "mod", imports)
     assert result["class"] == "MyClass"
     assert result["function"] == "MyClass().run"

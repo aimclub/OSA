@@ -12,19 +12,18 @@ class MarkdownBuilderArticle:
     """
     Builds each section of the README Markdown file.
     """
-    def __init__(self,
-                 config_loader: ConfigLoader,
-                 overview: str = None,
-                 content: str = None,
-                 algorithms: str = None
-                 ):
+
+    def __init__(
+        self,
+        config_loader: ConfigLoader,
+        overview: str = None,
+        content: str = None,
+        algorithms: str = None,
+    ):
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.template_path = os.path.join(
-            osa_project_root(),
-            "config",
-            "templates",
-            "template_article.toml"
+            osa_project_root(), "config", "templates", "template_article.toml"
         )
 
         self._overview_json = overview
@@ -44,8 +43,7 @@ class MarkdownBuilderArticle:
     @property
     def header(self):
         return self._template["headers"].format(
-            project_name=self.config.git.name,
-            info_badges=self.header_badges
+            project_name=self.config.git.name, info_badges=self.header_badges
         )
 
     @property
@@ -74,13 +72,6 @@ class MarkdownBuilderArticle:
 
     def build(self):
         """Builds each section of the README.md file."""
-        readme_contents = [
-            self.header,
-            self.overview,
-            self.content,
-            self.algorithms
-        ]
+        readme_contents = [self.header, self.overview, self.content, self.algorithms]
 
         return "\n".join(readme_contents)
-
-

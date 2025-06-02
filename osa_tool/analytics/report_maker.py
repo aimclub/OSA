@@ -7,8 +7,15 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfgen.canvas import Canvas
 
-from reportlab.platypus import (ListFlowable, ListItem, Paragraph,
-                                SimpleDocTemplate, Spacer, Table, TableStyle)
+from reportlab.platypus import (
+    ListFlowable,
+    ListItem,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.analytics.report_generator import TextGenerator
@@ -18,10 +25,12 @@ from osa_tool.utils import logger, osa_project_root
 
 
 class ReportGenerator:
-    def __init__(self,
-                 config_loader: ConfigLoader,
-                 sourcerank: SourceRank,
-                 output_path: str = None):
+    def __init__(
+        self,
+        config_loader: ConfigLoader,
+        sourcerank: SourceRank,
+        output_path: str = None,
+    ):
         self.config = config_loader.config
         self.sourcerank = sourcerank
         self.text_generator = TextGenerator(config_loader, self.sourcerank)
@@ -30,24 +39,18 @@ class ReportGenerator:
         self.metadata = load_data_metadata(self.repo_url)
 
         self.logo_path = os.path.join(
-            osa_project_root(),
-            "docs",
-            "images",
-            "osa_logo.PNG"
+            osa_project_root(), "docs", "images", "osa_logo.PNG"
         )
 
         self.filename = f"{self.metadata.name}_report.pdf"
-        self.output_path = os.path.join(
-            output_path or os.getcwd(),
-            self.filename
-        )
+        self.output_path = os.path.join(output_path or os.getcwd(), self.filename)
 
     @staticmethod
     def table_builder(
-            data: list,
-            w_first_col: int,
-            w_second_col: int,
-            coloring: bool = False,
+        data: list,
+        w_first_col: int,
+        w_second_col: int,
+        coloring: bool = False,
     ) -> Table:
         """
         Builds a styled table with customizable column widths and optional row coloring.
@@ -77,8 +80,7 @@ class ReportGenerator:
             for row_idx, row in enumerate(data[1:], start=1):
                 value = row[1]
                 bg_color = colors.lightgreen if value == "✓" else colors.lightcoral
-                style.append(
-                    ("BACKGROUND", (1, row_idx), (1, row_idx), bg_color))
+                style.append(("BACKGROUND", (1, row_idx), (1, row_idx), bg_color))
 
         table.setStyle(TableStyle(style))
         return table
@@ -96,9 +98,7 @@ class ReportGenerator:
         return qr_path
 
     def draw_images_and_tables(
-            self,
-            canvas_obj: Canvas,
-            doc: SimpleDocTemplate
+        self, canvas_obj: Canvas, doc: SimpleDocTemplate
     ) -> None:
         """
         Draws images, a QR code, lines, and tables on the given PDF canvas.
@@ -153,7 +153,8 @@ class ReportGenerator:
         title_line1 = Paragraph(f"Repository Analysis Report", title_style)
         title_line2 = Paragraph(
             f"for <a href='{self.repo_url}' color='#00008B'>{self.metadata.name}</a>",
-            title_style)
+            title_style,
+        )
 
         elements = [title_line1, title_line2]
         return elements
@@ -176,27 +177,25 @@ class ReportGenerator:
             alignment=1,
         )
         data1 = [
-            [Paragraph("<b>Statistics</b>", normal_style),
-             Paragraph("<b>Values</b>", normal_style)],
+            [
+                Paragraph("<b>Statistics</b>", normal_style),
+                Paragraph("<b>Values</b>", normal_style),
+            ],
             ["Stars Count", str(self.metadata.stars_count)],
             ["Forks Count", str(self.metadata.forks_count)],
             ["Issues Count", str(self.metadata.open_issues_count)],
         ]
         data2 = [
-            [Paragraph("<b>Metric</b>", normal_style),
-             Paragraph("<b>Values</b>", normal_style)],
-            ["README Presence",
-             "✓" if self.sourcerank.readme_presence() else "✗"],
-            ["License Presence",
-             "✓" if self.sourcerank.license_presence() else "✗"],
-            ["Documentation Presence",
-             "✓" if self.sourcerank.docs_presence() else "✗"],
-            ["Examples Presence",
-             "✓" if self.sourcerank.examples_presence() else "✗"],
-            ["Tests Presence",
-             "✓" if self.sourcerank.tests_presence() else "✗"],
-            ["Description Presence",
-             "✓" if self.metadata.description else "✗"],
+            [
+                Paragraph("<b>Metric</b>", normal_style),
+                Paragraph("<b>Values</b>", normal_style),
+            ],
+            ["README Presence", "✓" if self.sourcerank.readme_presence() else "✗"],
+            ["License Presence", "✓" if self.sourcerank.license_presence() else "✗"],
+            ["Documentation Presence", "✓" if self.sourcerank.docs_presence() else "✗"],
+            ["Examples Presence", "✓" if self.sourcerank.examples_presence() else "✗"],
+            ["Tests Presence", "✓" if self.sourcerank.tests_presence() else "✗"],
+            ["Description Presence", "✓" if self.metadata.description else "✗"],
         ]
         table1 = self.table_builder(data1, 120, 76)
         table2 = self.table_builder(data2, 160, 76, True)
@@ -222,13 +221,16 @@ class ReportGenerator:
         )
         repo_link = Paragraph(
             f"Repository Name: <a href='{self.repo_url}' color='#00008B'>{self.metadata.name}</a>",
-            normal_style)
+            normal_style,
+        )
         owner_link = Paragraph(
             f"Owner: <a href='{self.metadata.owner_url}' color='#00008B'>{self.metadata.owner}</a>",
-            normal_style)
+            normal_style,
+        )
         created_at = Paragraph(
             f"Created at: {datetime.strptime(self.metadata.created_at, '%Y-%m-%dT%H:%M:%SZ').strftime('%d.%m.%Y %H:%M')}",
-            normal_style)
+            normal_style,
+        )
 
         bullet_list = ListFlowable(
             [
@@ -236,7 +238,7 @@ class ReportGenerator:
                 ListItem(owner_link, leftIndent=-20),
                 ListItem(created_at, leftIndent=-20),
             ],
-            bulletType="bullet"
+            bulletType="bullet",
         )
         return bullet_list
 
@@ -271,39 +273,56 @@ class ReportGenerator:
         # Repository Structure
         story.append(Paragraph("<b>Repository Structure:</b>", custom_style))
         story.append(
-            Paragraph(f"• Compliance: {parsed_report.structure.compliance}",
-                      normal_style))
+            Paragraph(
+                f"• Compliance: {parsed_report.structure.compliance}", normal_style
+            )
+        )
         if parsed_report.structure.missing_files:
             missing_files = ", ".join(parsed_report.structure.missing_files)
-            story.append(
-                Paragraph(f"• Missing files: {missing_files}", normal_style))
-        story.append(Paragraph(
-            f"• Organization: {parsed_report.structure.organization}",
-            normal_style))
+            story.append(Paragraph(f"• Missing files: {missing_files}", normal_style))
+        story.append(
+            Paragraph(
+                f"• Organization: {parsed_report.structure.organization}", normal_style
+            )
+        )
 
         # README Analysis
         story.append(Paragraph("<b>README Analysis:</b>", custom_style))
-        story.append(Paragraph(f"• Quality: {parsed_report.readme.readme_quality}", normal_style))
+        story.append(
+            Paragraph(f"• Quality: {parsed_report.readme.readme_quality}", normal_style)
+        )
 
         for field_name, value in parsed_report.readme.model_dump().items():
             if field_name == "readme_quality":
                 continue
 
-            story.append(Paragraph(
-                f"• {field_name.replace('_', ' ').capitalize()}: {value.value}",
-                normal_style))
+            story.append(
+                Paragraph(
+                    f"• {field_name.replace('_', ' ').capitalize()}: {value.value}",
+                    normal_style,
+                )
+            )
 
         # Documentation
         story.append(Paragraph("<b>Documentation:</b>", custom_style))
-        story.append(Paragraph(
-            f"• Tests present: {parsed_report.documentation.tests_present.value}",
-            normal_style))
-        story.append(Paragraph(
-            f"• Documentation quality: {parsed_report.documentation.docs_quality}",
-            normal_style))
-        story.append(Paragraph(
-            f"• Outdated content: {'Yes' if parsed_report.documentation.outdated_content else 'No'}",
-            normal_style))
+        story.append(
+            Paragraph(
+                f"• Tests present: {parsed_report.documentation.tests_present.value}",
+                normal_style,
+            )
+        )
+        story.append(
+            Paragraph(
+                f"• Documentation quality: {parsed_report.documentation.docs_quality}",
+                normal_style,
+            )
+        )
+        story.append(
+            Paragraph(
+                f"• Outdated content: {'Yes' if parsed_report.documentation.outdated_content else 'No'}",
+                normal_style,
+            )
+        )
 
         if parsed_report.assessment.key_shortcomings:
             story.append(Paragraph("<b>Key Shortcomings:</b>", custom_style))
@@ -331,16 +350,16 @@ class ReportGenerator:
         Raises:
             Exception: If there is an error during the PDF creation process.
         """
-        logger.info(
-            f"Starting analysis for repository {self.metadata.full_name}")
+        logger.info(f"Starting analysis for repository {self.metadata.full_name}")
 
         try:
-            doc = SimpleDocTemplate(self.output_path,
-                                    pagesize=A4,
-                                    topMargin=50,
-                                    bottomMargin=40,
-                                    leftMaring=10
-                                    )
+            doc = SimpleDocTemplate(
+                self.output_path,
+                pagesize=A4,
+                topMargin=50,
+                bottomMargin=40,
+                leftMaring=10,
+            )
             doc.build(
                 [
                     *self.header(),
@@ -351,8 +370,6 @@ class ReportGenerator:
                 ],
                 onFirstPage=self.draw_images_and_tables,
             )
-            logger.info(
-                f"PDF report successfully created in {self.output_path}")
+            logger.info(f"PDF report successfully created in {self.output_path}")
         except Exception as e:
-            logger.error("Error while building PDF report, %s", e,
-                         exc_info=True)
+            logger.error("Error while building PDF report, %s", e, exc_info=True)

@@ -7,32 +7,22 @@ from osa_tool.utils import osa_project_root
 
 
 class PromptConfig(BaseModel):
-    """
-    Model for validating the structure of prompts loaded from prompts.toml.
-    """
+    """Model for validating the structure of prompts loaded from prompts_about_section.toml."""
 
-    preanalysis: str = Field(
-        ...,
-        description="Template for highlighting key files based on structure and README.",
+    description: str = Field(
+        ..., description="Template for generating a project description."
     )
-    core_features: str = Field(
-        ..., description="Template for extracting core features of the project."
-    )
-    overview: str = Field(
-        ..., description="Template for generating a concise project overview."
-    )
-    getting_started: str = Field(
-        ..., description="Template for generating a Getting Started section"
-    )
+    topics: str = Field(..., description="Template for generating project topics.")
+    analyze_urls: str = Field(..., description="Template for analyzing project urls.")
 
 
-class PromptLoader:
+class PromptAboutLoader:
     def __init__(self):
         self.prompts = self.load_prompts()
 
     def load_prompts(self) -> PromptConfig:
         """
-        Load and validate prompts from prompts.toml file.
+        Load and validate prompts from prompts_about_section.toml file.
         """
         with open(self._get_prompts_path(), "rb") as file:
             prompts = tomli.load(file)
@@ -46,7 +36,7 @@ class PromptLoader:
         looking outside the package.
         """
         file_path = os.path.join(
-            osa_project_root(), "config", "settings", "prompts.toml"
+            osa_project_root(), "config", "settings", "prompts_about_section.toml"
         )
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Prompts file {file_path} not found.")

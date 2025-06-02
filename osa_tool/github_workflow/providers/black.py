@@ -13,7 +13,7 @@ def generate_black_formatter_workflow(
     use_pyproject: bool = False,
     version: Optional[str] = None,
     jupyter: bool = False,
-    python_version: Optional[str] = None  # E.g., "3.11" or "3.13"
+    python_version: Optional[str] = None,  # E.g., "3.11" or "3.13"
 ) -> dict:
     """
     Generate a GitHub Actions workflow for running the Black code formatter using the official Black action.
@@ -32,23 +32,19 @@ def generate_black_formatter_workflow(
     Returns:
     - dict: A dictionary representing the GitHub Actions workflow configuration.
     """
-    steps = [
-        {"name": "Checkout repo", "uses": "actions/checkout@v4"}
-    ]
+    steps = [{"name": "Checkout repo", "uses": "actions/checkout@v4"}]
     if use_pyproject or python_version:
-        steps.append({
-            "name": "Set up Python",
-            "uses": "actions/setup-python@v5",
-            "with": {"python-version": python_version or "3.11"},
-        })
+        steps.append(
+            {
+                "name": "Set up Python",
+                "uses": "actions/setup-python@v5",
+                "with": {"python-version": python_version or "3.11"},
+            }
+        )
     black_step = {
         "name": "Run Black",
         "uses": "psf/black@stable",
-        "with": {
-            "options": black_options,
-            "src": src,
-            "jupyter": str(jupyter).lower()
-        }
+        "with": {"options": black_options, "src": src, "jupyter": str(jupyter).lower()},
     }
     if use_pyproject:
         black_step["with"]["use_pyproject"] = "true"
@@ -60,7 +56,7 @@ def generate_black_formatter_workflow(
     if branches:
         on_section = {
             "push": {"branches": branches},
-            "pull_request": {"branches": branches}
+            "pull_request": {"branches": branches},
         }
     else:
         on_section = ["push", "pull_request"]
@@ -69,11 +65,7 @@ def generate_black_formatter_workflow(
         "name": name,
         "on": on_section,
         "jobs": {
-            "lint": {
-                "name": job_name,
-                "runs-on": "ubuntu-latest",
-                "steps": steps
-            }
-        }
+            "lint": {"name": job_name, "runs-on": "ubuntu-latest", "steps": steps}
+        },
     }
     return workflow

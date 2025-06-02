@@ -11,27 +11,24 @@ from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.postprocessor.response_cleaner import process_text
-from osa_tool.utils import extract_readme_content, logger, osa_project_root, parse_folder_name
+from osa_tool.utils import (
+    extract_readme_content,
+    logger,
+    osa_project_root,
+    parse_folder_name,
+)
 
 
 class TextGenerator:
-    def __init__(self,
-                 config_loader: ConfigLoader,
-                 sourcerank: SourceRank):
+    def __init__(self, config_loader: ConfigLoader, sourcerank: SourceRank):
         self.config = config_loader.config
         self.sourcerank = sourcerank
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.repo_url = self.config.git.repository
         self.metadata = load_data_metadata(self.repo_url)
-        self.base_path = os.path.join(
-            os.getcwd(),
-            parse_folder_name(self.repo_url)
-        )
+        self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.prompt_path = os.path.join(
-            osa_project_root(),
-            "config",
-            "settings",
-            "prompt_for_analysis.toml"
+            osa_project_root(), "config", "settings", "prompt_for_analysis.toml"
         )
 
     def make_request(self) -> RepositoryReport:
@@ -70,7 +67,7 @@ class TextGenerator:
             metadata=self.metadata,
             repository_tree=self.sourcerank.tree,
             presence_files=self._extract_presence_files(),
-            readme_content=extract_readme_content(self.base_path)
+            readme_content=extract_readme_content(self.base_path),
         )
         return prompt
 

@@ -12,7 +12,9 @@ def converter():
 
 def create_test_notebook():
     nb = nbformat.v4.new_notebook()
-    nb.cells.append(nbformat.v4.new_code_cell("""
+    nb.cells.append(
+        nbformat.v4.new_code_cell(
+            """
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -21,7 +23,9 @@ df.head()
 
 plt.plot([1, 2, 3], [4, 5, 6])
 plt.show()
-"""))
+"""
+        )
+    )
     return nb
 
 
@@ -81,20 +85,26 @@ def test_convert_notebook_invalid(mock_logger):
     with patch("builtins.open", mock_open(read_data="invalid")):
         converter.convert_notebook("invalid.ipynb")
         # Assert
-        mock_logger.assert_called_with("Failed to convert notebook %s: %s", "invalid.ipynb", mock_logger.call_args[0][2])
+        mock_logger.assert_called_with(
+            "Failed to convert notebook %s: %s",
+            "invalid.ipynb",
+            mock_logger.call_args[0][2],
+        )
 
 
-@pytest.mark.parametrize("input_code,expected", [
-    (
-        "plt.show()",
-        "import os\nos.makedirs('test_figures', exist_ok=True)\nplt.savefig(os.path.join('test_figures', f'figure_line3.png'))\nplt.close()\n"
-    ),
-
-    (
-        "    plt.show()",
-        "import os\nos.makedirs('test_figures', exist_ok=True)\n    plt.savefig(os.path.join('test_figures', f'figure_line3.png'))\n    plt.close()\n"
-    )
-])
+@pytest.mark.parametrize(
+    "input_code,expected",
+    [
+        (
+            "plt.show()",
+            "import os\nos.makedirs('test_figures', exist_ok=True)\nplt.savefig(os.path.join('test_figures', f'figure_line3.png'))\nplt.close()\n",
+        ),
+        (
+            "    plt.show()",
+            "import os\nos.makedirs('test_figures', exist_ok=True)\n    plt.savefig(os.path.join('test_figures', f'figure_line3.png'))\n    plt.close()\n",
+        ),
+    ],
+)
 def test_process_visualizations(converter, input_code, expected):
     # Act
     processed = converter.process_visualizations("test", input_code)

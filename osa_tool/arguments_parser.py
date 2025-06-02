@@ -64,8 +64,7 @@ def get_cli_args():
     parser.add_argument(
         "--translate-dirs",
         action="store_true",
-        help=(
-            "Enable automatic translation of the directory name into English.")
+        help=("Enable automatic translation of the directory name into English."),
     )
     parser.add_argument(
         "--convert-notebooks",
@@ -75,119 +74,119 @@ def get_cli_args():
             "You can provide one or multiple paths to files or directories.\n"
             "If no paths are provided, the repo directory will be used."
         ),
-        nargs='*',
+        nargs="*",
     )
     parser.add_argument(
         "--delete-dir",
         action="store_true",
         help="Enable deleting the downloaded repository after processing. ("
-             "Linux only)"
+        "Linux only)",
     )
     parser.add_argument(
         "--ensure-license",
-        nargs='?',
+        nargs="?",
         const="bsd-3",
         default=None,
         help="Enable LICENSE file compilation.",
-        choices=["bsd-3", "mit", "ap2"]
+        choices=["bsd-3", "mit", "ap2"],
     )
     parser.add_argument(
         "--not-publish-results",
         action="store_true",
-        help="Create public fork and PR the target repository."
+        help="Create public fork and PR the target repository.",
     )
     parser.add_argument(
         "--community-docs",
         action="store_true",
-        help="Generate community-related documentation files, such as Code of Conduct and Contributing guidelines."
+        help="Generate community-related documentation files, such as Code of Conduct and Contributing guidelines.",
     )
 
     # Create a group for GitHub workflow generator arguments
-    workflow_group = parser.add_argument_group('GitHub workflow generator arguments')
+    workflow_group = parser.add_argument_group("GitHub workflow generator arguments")
     workflow_group.add_argument(
         "--generate-workflows",
         action="store_true",
-        help="Generate GitHub Action workflows for the repository"
+        help="Generate GitHub Action workflows for the repository",
     )
     workflow_group.add_argument(
         "--workflows-output-dir",
         type=str,
         default=".github/workflows",
-        help="Directory where the workflow files will be saved"
+        help="Directory where the workflow files will be saved",
     )
     workflow_group.add_argument(
         "--include-tests",
         action="store_true",
         default=True,
-        help="Include unit tests workflow"
+        help="Include unit tests workflow",
     )
     workflow_group.add_argument(
         "--include-black",
         action="store_true",
         default=True,
-        help="Include Black formatter workflow"
+        help="Include Black formatter workflow",
     )
     workflow_group.add_argument(
         "--include-pep8",
         action="store_true",
         default=True,
-        help="Include PEP 8 compliance workflow"
+        help="Include PEP 8 compliance workflow",
     )
     workflow_group.add_argument(
         "--include-autopep8",
         action="store_true",
         default=False,
-        help="Include autopep8 formatter workflow"
+        help="Include autopep8 formatter workflow",
     )
     workflow_group.add_argument(
         "--include-fix-pep8",
         action="store_true",
         default=False,
-        help="Include fix-pep8 command workflow"
+        help="Include fix-pep8 command workflow",
     )
     workflow_group.add_argument(
         "--include-pypi",
         action="store_true",
         default=False,
-        help="Include PyPI publish workflow"
+        help="Include PyPI publish workflow",
     )
     workflow_group.add_argument(
         "--python-versions",
         type=str,
         nargs="+",
         default=["3.9", "3.10"],
-        help="Python versions to test against"
+        help="Python versions to test against",
     )
     workflow_group.add_argument(
         "--pep8-tool",
         type=str,
         choices=["flake8", "pylint"],
         default="flake8",
-        help="Tool to use for PEP 8 checking"
+        help="Tool to use for PEP 8 checking",
     )
     workflow_group.add_argument(
         "--use-poetry",
         action="store_true",
         default=False,
-        help="Use Poetry for packaging"
+        help="Use Poetry for packaging",
     )
     workflow_group.add_argument(
         "--branches",
         type=str,
         nargs="+",
         default=[],
-        help="Branches to trigger the workflows on"
+        help="Branches to trigger the workflows on",
     )
     workflow_group.add_argument(
         "--codecov-token",
         action="store_true",
         default=False,
-        help="Use Codecov token for uploading coverage"
+        help="Use Codecov token for uploading coverage",
     )
     workflow_group.add_argument(
         "--include-codecov",
         action="store_true",
         default=True,
-        help="Include Codecov coverage step in a unit tests workflow."
+        help="Include Codecov coverage step in a unit tests workflow.",
     )
     return parser.parse_args()

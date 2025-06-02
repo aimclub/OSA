@@ -16,9 +16,15 @@ def mock_llm_client():
     mock_config.git = mock_git_config
     mock_config_loader.config = mock_config
 
-    with patch('osa_tool.models.models.ModelHandlerFactory.build') as mock_model_handler_factory, \
-         patch('osa_tool.readmegen.models.llm_service.SourceRank') as mock_source_rank, \
-         patch('osa_tool.readmegen.models.llm_service.PromptBuilder') as mock_prompt_builder:
+    with (
+        patch(
+            "osa_tool.models.models.ModelHandlerFactory.build"
+        ) as mock_model_handler_factory,
+        patch("osa_tool.readmegen.models.llm_service.SourceRank") as mock_source_rank,
+        patch(
+            "osa_tool.readmegen.models.llm_service.PromptBuilder"
+        ) as mock_prompt_builder,
+    ):
         # ModelHandler
         mock_model_handler = MagicMock(ModelHandler)
         mock_model_handler.send_request.return_value = "mock_response"
@@ -29,10 +35,18 @@ def mock_llm_client():
         mock_source_rank.return_value = mock_source_rank_instance
         # PromptBuilder
         mock_prompt_builder_instance = MagicMock()
-        mock_prompt_builder_instance.get_prompt_core_features.return_value = "mock_prompt_core_features"
-        mock_prompt_builder_instance.get_prompt_overview.return_value = "mock_prompt_overview"
-        mock_prompt_builder_instance.get_prompt_getting_started.return_value = "mock_prompt_getting_started"
-        mock_prompt_builder_instance.get_prompt_preanalysis.return_value = "mock_prompt_preanalysis"
+        mock_prompt_builder_instance.get_prompt_core_features.return_value = (
+            "mock_prompt_core_features"
+        )
+        mock_prompt_builder_instance.get_prompt_overview.return_value = (
+            "mock_prompt_overview"
+        )
+        mock_prompt_builder_instance.get_prompt_getting_started.return_value = (
+            "mock_prompt_getting_started"
+        )
+        mock_prompt_builder_instance.get_prompt_preanalysis.return_value = (
+            "mock_prompt_preanalysis"
+        )
         mock_prompt_builder.return_value = mock_prompt_builder_instance
 
         return LLMClient(mock_config_loader)
@@ -55,4 +69,4 @@ def test_get_key_files(mock_llm_client):
     # Act
     key_files = mock_llm_client.get_key_files()
     # Assert
-    assert key_files == ['mock_key_files_response']
+    assert key_files == ["mock_key_files_response"]

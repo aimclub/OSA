@@ -7,8 +7,7 @@ from osa_tool.utils import delete_repository
 
 @pytest.fixture
 def mock_os():
-    with patch("os.path.exists") as mock_exists, \
-            patch("shutil.rmtree") as mock_rmtree:
+    with patch("os.path.exists") as mock_exists, patch("shutil.rmtree") as mock_rmtree:
         yield mock_exists, mock_rmtree
 
 
@@ -44,4 +43,6 @@ def test_delete_repository_failure(mock_os, repo_url):
     # Assert
     mock_logger.error.assert_called_with(
         "Failed to delete directory {}: Deletion failed".format(
-            os.path.join(os.getcwd(), "repo-name")))
+            os.path.join(os.getcwd(), "repo-name")
+        )
+    )

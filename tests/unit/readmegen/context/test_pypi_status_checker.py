@@ -22,7 +22,7 @@ def inspector():
     return PyPiPackageInspector(tree="mock_tree", base_path="mock_base_path")
 
 
-@patch('requests.get')
+@patch("requests.get")
 def test_get_package_version_from_pypi(mock_get, inspector):
     # Arrange
     mock_package_name = "test-package"
@@ -37,7 +37,7 @@ def test_get_package_version_from_pypi(mock_get, inspector):
     assert version == mock_version
 
 
-@patch('requests.get')
+@patch("requests.get")
 def test_get_package_version_from_pypi_failure(mock_get, inspector):
     # Arrange
     mock_package_name = "test-package"
@@ -50,7 +50,7 @@ def test_get_package_version_from_pypi_failure(mock_get, inspector):
     assert version is None
 
 
-@patch('requests.get')
+@patch("requests.get")
 def test_get_downloads_from_pepy(mock_get, inspector):
     # Arrange
     mock_package_name = "test-package"
@@ -65,7 +65,7 @@ def test_get_downloads_from_pepy(mock_get, inspector):
     assert downloads == mock_downloads
 
 
-@patch('requests.get')
+@patch("requests.get")
 def test_get_downloads_from_pepy_failure(mock_get, inspector):
     # Arrange
     mock_package_name = "test-package"
@@ -78,7 +78,7 @@ def test_get_downloads_from_pepy_failure(mock_get, inspector):
     assert downloads is None
 
 
-@patch('requests.get')
+@patch("requests.get")
 def test_is_published_on_pypi_success(mock_get, inspector):
     # Arrange
     mock_package_name = "test-package"
@@ -91,7 +91,7 @@ def test_is_published_on_pypi_success(mock_get, inspector):
     assert is_published is True
 
 
-@patch('requests.get')
+@patch("requests.get")
 def test_is_published_on_pypi_failure(mock_get, inspector):
     # Arrange
     mock_package_name = "test-package"

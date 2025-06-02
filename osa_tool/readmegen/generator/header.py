@@ -20,17 +20,14 @@ class HeaderBuilder:
         self.tree = SourceRank(self.config_loader).tree
         self.metadata = load_data_metadata(self.repo_url)
         self.template_path = os.path.join(
-            osa_project_root(),
-            "config",
-            "templates",
-            "template.toml"
+            osa_project_root(), "config", "templates", "template.toml"
         )
         self.icons_tech_path = os.path.join(
             osa_project_root(),
             "readmegen",
             "generator",
             "icons",
-            "shieldsio_icons.json"
+            "shieldsio_icons.json",
         )
         self.max_tech_badges = 7
         self._template = self.load_template()
@@ -65,7 +62,7 @@ class HeaderBuilder:
         return self._template["headers"].format(
             project_name=self.config.git.name,
             info_badges=self.build_information_section,
-            tech_badges=self.build_technology_section
+            tech_badges=self.build_technology_section,
         )
 
     @property
@@ -109,8 +106,10 @@ class HeaderBuilder:
         badge_style = "flat"
         badge_color = "blue"
 
-        badge_url = (f"https://img.shields.io/{self.config.git.host}/license/{self.config.git.full_name}"
-                     f"?style={badge_style}&logo=opensourceinitiative&logoColor=white&color={badge_color}")
+        badge_url = (
+            f"https://img.shields.io/{self.config.git.host}/license/{self.config.git.full_name}"
+            f"?style={badge_style}&logo=opensourceinitiative&logoColor=white&color={badge_color}"
+        )
         badge_html = f"\n![License]({badge_url})"
         return badge_html
 

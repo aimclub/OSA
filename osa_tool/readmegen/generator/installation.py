@@ -20,14 +20,13 @@ class InstallationSectionBuilder:
         self.metadata = load_data_metadata(self.repo_url)
         self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.template_path = os.path.join(
-            osa_project_root(),
-            "config",
-            "templates",
-            "template.toml"
+            osa_project_root(), "config", "templates", "template.toml"
         )
         self._template = self.load_template()
         self.info = PyPiPackageInspector(self.tree, self.repo_path).get_info()
-        self.version = DependencyExtractor(self.tree, self.repo_path).extract_python_version_requirement()
+        self.version = DependencyExtractor(
+            self.tree, self.repo_path
+        ).extract_python_version_requirement()
 
     def load_template(self) -> dict:
         """Loads and parses the TOML template file."""
@@ -57,15 +56,19 @@ class InstallationSectionBuilder:
         if self.info:
             return f"**Using PyPi:**\n\n```sh\npip install {self.info.get('name')}\n```"
 
-        steps = (f"**Build from source:**\n\n"
-                 f"1. Clone the {self.config.git.name} repository:\n"
-                 f"```sh\ngit clone {self.repo_url}\n```\n\n"
-                 f"2. Navigate to the project directory:\n"
-                 f"```sh\ncd {parse_folder_name(self.repo_url)}\n```\n\n")
+        steps = (
+            f"**Build from source:**\n\n"
+            f"1. Clone the {self.config.git.name} repository:\n"
+            f"```sh\ngit clone {self.repo_url}\n```\n\n"
+            f"2. Navigate to the project directory:\n"
+            f"```sh\ncd {parse_folder_name(self.repo_url)}\n```\n\n"
+        )
 
         req_path = find_in_repo_tree(self.tree, r"requirements\.txt")
         if req_path:
-            steps += ("3. Install the project dependencies:\n\n"
-                      "```sh\npip install -r requirements.txt\n```")
+            steps += (
+                "3. Install the project dependencies:\n\n"
+                "```sh\npip install -r requirements.txt\n```"
+            )
 
         return steps

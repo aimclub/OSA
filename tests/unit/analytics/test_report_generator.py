@@ -3,12 +3,18 @@ from unittest.mock import MagicMock, patch
 
 def test_text_generator_initialization(text_generator):
     # Assert
-    assert text_generator.config.git.repository == "https://github.com/testuser/testrepo.git"
+    assert (
+        text_generator.config.git.repository
+        == "https://github.com/testuser/testrepo.git"
+    )
     assert isinstance(text_generator.model_handler, MagicMock)
 
 
 @patch("json.loads", return_value={})
-@patch("osa_tool.analytics.prompt_builder.RepositoryReport.model_validate", return_value=MagicMock())
+@patch(
+    "osa_tool.analytics.prompt_builder.RepositoryReport.model_validate",
+    return_value=MagicMock(),
+)
 def test_make_request(mock_parse_obj, mock_json_loads, text_generator):
     # Act
     report = text_generator.make_request()
@@ -17,7 +23,10 @@ def test_make_request(mock_parse_obj, mock_json_loads, text_generator):
 
 
 @patch("builtins.open", new_callable=MagicMock)
-@patch("osa_tool.analytics.report_generator.tomllib.load", return_value={"prompt": {"main_prompt": "Prompt"}})
+@patch(
+    "osa_tool.analytics.report_generator.tomllib.load",
+    return_value={"prompt": {"main_prompt": "Prompt"}},
+)
 def test_build_prompt(mock_tomllib_load, mock_open, text_generator):
     # Act
     prompt = text_generator._build_prompt()

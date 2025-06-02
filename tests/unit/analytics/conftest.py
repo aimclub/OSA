@@ -25,14 +25,11 @@ def mock_config_loader():
 @patch("osa_tool.analytics.metadata.load_data_metadata", return_value={})
 @patch("osa_tool.utils.osa_project_root", return_value="/mock/path")
 @patch("osa_tool.utils.parse_folder_name", return_value="testrepo")
-@patch("osa_tool.utils.get_repo_tree",
-       return_value=(None, "README.md LICENSE tests", None))
+@patch(
+    "osa_tool.utils.get_repo_tree", return_value=(None, "README.md LICENSE tests", None)
+)
 def source_rank(
-        mock_ingest,
-        mock_parse,
-        mock_project_root,
-        mock_metadata,
-        mock_config_loader
+    mock_ingest, mock_parse, mock_project_root, mock_metadata, mock_config_loader
 ):
     """Returns a mocked SourceRank instance with pre-defined repository structure."""
     return SourceRank(mock_config_loader)
@@ -41,8 +38,13 @@ def source_rank(
 @pytest.fixture
 def text_generator(mock_config_loader, source_rank):
     """Returns a TextGenerator instance with mocked dependencies."""
-    with patch("osa_tool.analytics.metadata.load_data_metadata", return_value=MagicMock(name="testrepo")), \
-         patch("osa_tool.models.models.ModelHandlerFactory.build") as mock_model:
+    with (
+        patch(
+            "osa_tool.analytics.metadata.load_data_metadata",
+            return_value=MagicMock(name="testrepo"),
+        ),
+        patch("osa_tool.models.models.ModelHandlerFactory.build") as mock_model,
+    ):
 
         mock_model.return_value.send_request.return_value = json.dumps({})
         return TextGenerator(mock_config_loader, source_rank)
@@ -58,18 +60,30 @@ def default_report():
 def custom_report():
     """Returns a RepositoryReport with custom-defined values."""
     return RepositoryReport(
-        structure={"compliance": "Good", "missing_files": ["setup.py"], "organization": "Well structured"},
+        structure={
+            "compliance": "Good",
+            "missing_files": ["setup.py"],
+            "organization": "Well structured",
+        },
         readme={"readme_quality": "Good", "project_description": YesNoPartial.YES},
-        documentation={"tests_present": YesNoPartial.YES, "docs_quality": "High", "outdated_content": True},
-        assessment={"key_shortcomings": ["No CI/CD"], "recommendations": ["Add GitHub Actions"]}
+        documentation={
+            "tests_present": YesNoPartial.YES,
+            "docs_quality": "High",
+            "outdated_content": True,
+        },
+        assessment={
+            "key_shortcomings": ["No CI/CD"],
+            "recommendations": ["Add GitHub Actions"],
+        },
     )
-
 
 
 @pytest.fixture
 @patch("osa_tool.analytics.metadata.load_data_metadata")
 @patch("osa_tool.models.models.ModelHandlerFactory.build")
-def report_generator(mock_model, mock_load_data_metadata, mock_config_loader, source_rank):
+def report_generator(
+    mock_model, mock_load_data_metadata, mock_config_loader, source_rank
+):
     """Return a ReportGenerator instance with mocked dependencies."""
     mock_model.return_value.send_request.return_value = json.dumps({})
 

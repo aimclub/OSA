@@ -13,12 +13,15 @@ def test_parse_git_url_valid(repo_url):
     assert full_name == "username/repo-name"
 
 
-@pytest.mark.parametrize("invalid_url", [
-    "ftp://github.com/user/repo",
-    "git@github.com:user/repo.git",
-    "://github.com/user/repo",
-    "https:/github.com/user/repo"
-])
+@pytest.mark.parametrize(
+    "invalid_url",
+    [
+        "ftp://github.com/user/repo",
+        "git@github.com:user/repo.git",
+        "://github.com/user/repo",
+        "https:/github.com/user/repo",
+    ],
+)
 def test_parse_git_url_invalid_scheme(invalid_url):
     # Assert
     with pytest.raises(ValueError):
