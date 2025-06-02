@@ -469,7 +469,7 @@ class DocGen(object):
         index_path.write_text(index_content, encoding="utf-8")
 
         mkdocs_config = f"""
-site_name: AutoDocs
+site_name: OSADocs
 theme:
     name: material
 plugins:
@@ -509,7 +509,7 @@ nav:
             else:
                 logger.error("MkDocs build failed.")
             shutil.rmtree(mkdocs_dir)
-        logger.info(f"Documentation successfully built at: {docs_output_path}")
+        logger.info(f"MKDocs configuration successfully built at: {mkdocs_dir}")
 
     # It seems to better place it in the osa_tool/github_workflow
     def create_mkdocs_github_workflow(
@@ -563,13 +563,7 @@ nav:
                         },
                         {
                             "name": "[OSA] MkDocs documentation deploying",
-                            "run": "git config --global user.email 'github-actions[bot]@users.noreply.github.com'"
-                                   + "\n"
-                                   + "git config --global user.name 'github-actions[bot]'"
-                                   + "\n"
-                                   + "git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}" + f"@{clear_repo_name}"
-                                   + "\n"
-                                   + "mkdocs gh-deploy --force --config-file mkdocs_temp/mkdocs.yml",
+                            "run": "mkdocs gh-deploy --force --config-file mkdocs_temp/mkdocs.yml",
                             "env": {
                                 "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
                             }
@@ -584,8 +578,12 @@ nav:
         if not os.path.exists(workflows_path):
             os.makedirs(workflows_path)
 
+        # Disable anchors use to run action
+        yaml.Dumper.ignore_aliases = lambda self, data: True
+
         with open(f"{workflows_path}/{filename}.yml", mode="w") as actions:
-             yaml.dump(data=_workflow, stream=actions, sort_keys=False)
+            yaml.dump(data=_workflow, stream=actions, Dumper=yaml.Dumper, sort_keys=False)
+        logger.info(f"In order to perform the documentation deployment automatically, please make sure that\n1. At {repository_url}/settings/actions following permission are enabled:\n\t1) 'Read and write permissions'\n\t2) 'Allow GitHub Actions to create and approve pull requests'\n2. 'gh-pages' branch is chosen as the source at 'Build and deployment' section at {repository_url}/settings/pages .")
 
     @staticmethod
     def _sanitize_name(name: str) -> str:
