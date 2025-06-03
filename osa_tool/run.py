@@ -59,12 +59,12 @@ def main():
 
         # .ipynb to .py convertion
         if plan.get("convert_notebooks"):
-            rich_section("Jupyter notebooks converter")
+            rich_section("Jupyter notebooks convertion")
             convert_notebooks(args.repository, plan.get("convert_notebooks"))
 
         # Repository Analysis Report generation
         if plan.get("report"):
-            rich_section("Report generator")
+            rich_section("Report generation")
             analytics = ReportGenerator(config, sourcerank, github_agent.clone_dir)
             analytics.build_pdf()
             if publish_results:
@@ -72,33 +72,34 @@ def main():
 
         # Auto translating names of directories
         if plan.get("translate_dirs"):
-            rich_section("Directory and file translator")
+            rich_section("Directory and file translation")
             translation = DirectoryTranslator(config)
             translation.rename_directories_and_files()
 
         # Docstring generation
         if plan.get("docstring"):
-            rich_section("Docstrings generator")
+            rich_section("Docstrings generation")
             generate_docstrings(config)
 
         # License compiling
         if plan.get("ensure_license"):
-            rich_section("License generator")
+            rich_section("License generation")
             compile_license_file(sourcerank, plan.get("ensure_license"))
 
         # Generate community documentation
         if plan.get("community_docs"):
-            rich_section("Community docs generator")
+            rich_section("Community docs generation")
             generate_documentation(config)
 
         # Readme generation
         if plan.get("readme"):
-            rich_section("README generator")
+            rich_section("README generation")
             readme_agent(config, plan.get("article"))
 
         # About section generation
         about_gen = None
         if plan.get("about"):
+            rich_section("About Section generation")
             about_gen = AboutGenerator(config)
             about_gen.generate_about_content()
             if publish_results:
@@ -106,21 +107,23 @@ def main():
 
         # Generate GitHub workflows
         if plan.get("generate_workflows"):
-            rich_section("Workflows generator")
+            rich_section("Workflows generation")
             update_workflow_config(config, plan, workflow_keys)
             generate_github_workflows(config)
 
         # Organize repository by adding 'tests' and 'examples' directories if they aren't exist
         if plan.get("organize"):
-            rich_section("Repository Organizer")
+            rich_section("Repository organization")
             organizer = RepoOrganizer(os.path.join(os.getcwd(), parse_folder_name(args.repository)))
             organizer.organize()
 
         if publish_results:
+            rich_section("Publishing changes")
             github_agent.commit_and_push_changes()
             github_agent.create_pull_request(body=about_gen.get_about_section_message())
 
         if plan.get("delete_dir"):
+            rich_section("Repository deletion")
             delete_repository(args.repository)
 
         logger.info("All operations completed successfully.")
