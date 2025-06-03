@@ -9,7 +9,7 @@ from osa_tool.utils import osa_project_root
 
 class PromptConfig(BaseModel):
     """
-    Model for validating the structure of prompts loaded from prompts.toml.
+    Model for validating the structure of prompts loaded from prompt_for_scheduler.toml.
     """
 
     report: bool = Field(

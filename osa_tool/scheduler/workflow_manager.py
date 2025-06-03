@@ -10,6 +10,11 @@ from osa_tool.utils import parse_folder_name, logger
 
 
 class WorkflowManager:
+    """
+    Manages GitHub Actions workflows for a given repository.
+    Detects existing jobs, builds a plan for workflow generation.
+    """
+
     def __init__(self, base_path: str, sourcerank: SourceRank, metadata: RepositoryMetadata, workflows_plan: dict):
         self.base_path = base_path
         self.sourcerank = sourcerank
@@ -29,13 +34,21 @@ class WorkflowManager:
         }
 
     def _find_workflows_directory(self) -> str | None:
+        """Locate the '.github/workflows' directory if it exists."""
         workflows_dir = os.path.join(self.base_path, ".github", "workflows")
         return workflows_dir if os.path.exists(workflows_dir) and os.path.isdir(workflows_dir) else None
 
     def _has_python_code(self) -> bool:
+        """Check whether the repository contains Python code."""
         return "Python" in self.metadata.language
 
     def _get_existing_jobs(self) -> set[str]:
+        """
+        Collect the names of all existing jobs from workflow YAML files.
+
+        Returns:
+            set[str]: Set of job names defined in existing workflow files.
+        """
         existing_jobs = set()
         if not self.workflows_dir:
             return existing_jobs
@@ -59,6 +72,12 @@ class WorkflowManager:
         return existing_jobs
 
     def build_actual_plan(self) -> dict:
+        """
+        Build an actual workflow plan based on detected jobs and repository features.
+
+        Returns:
+            dict: A dictionary with final workflow plan.
+        """
         if not self._has_python_code():
             return {key: False for key in self.workflows_plan}
 
@@ -87,14 +106,22 @@ class WorkflowManager:
             else:
                 result_plan[key] = default_value
 
+        # Set generate_workflows flag if any relevant workflow key is enabled
         generate = any(key not in self.excluded_keys and value is True for key, value in result_plan.items())
-
         result_plan["generate_workflows"] = generate
 
         return result_plan
 
 
 def update_workflow_config(config_loader, plan: dict, workflow_keys: list) -> None:
+    """
+    Update workflow configuration in the config loader based on the actual plan.
+
+    Args:
+        config_loader: Configuration loader object which contains workflow settings
+        plan: Workflow plan dictionary.
+        workflow_keys: List of workflow keys to update.
+    """
     workflow_settings = {}
     for key in workflow_keys:
         workflow_settings[key] = plan.get(key)
@@ -105,6 +132,7 @@ def update_workflow_config(config_loader, plan: dict, workflow_keys: list) -> No
 def generate_github_workflows(config_loader: ConfigLoader) -> None:
     """
     Generate GitHub Action workflows based on configuration settings.
+
     Args:
         config_loader: Configuration loader object which contains workflow settings
     """

@@ -20,7 +20,7 @@ def get_cli_args():
         type=str,
         help=(
             "Select the operation mode for repository processing:\n"
-            "  basic     — run a minimal predefined set of tasks (Report, README and Community docs, Organize).\n"
+            "  basic     — run a minimal predefined set of tasks (Report,README, Community docs, About Section, Organize Repository).\n"
             "  auto      — automatically determine necessary actions based on repository analysis.\n"
             "  advanced  — run all enabled features based on provided flags (default)."
         ),
@@ -228,6 +228,15 @@ def get_cli_args():
 
 
 def get_workflow_keys(parser):
+    """
+    Extract workflow-related argument keys from a specific argument group in the parser.
+
+    Args:
+        parser: The argument parser instance containing defined argument groups.
+
+    Returns:
+        list: A list of argument keys (dest values) related to GitHub workflow generation.
+    """
     workflow_keys = []
     for group in parser._action_groups:
         if group.title == "GitHub workflow generator arguments":

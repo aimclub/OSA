@@ -23,6 +23,11 @@ console = Console()
 
 
 class ModeScheduler:
+    """
+    Task scheduling module that determines which actions should be performed
+    based on repository analysis, configuration, and selected execution mode.
+    """
+
     def __init__(self, config: ConfigLoader, sourcerank: SourceRank, args, workflow_keys: list):
         self.mode = args.mode
         self.args = args
@@ -40,6 +45,7 @@ class ModeScheduler:
 
     @staticmethod
     def _basic_plan() -> dict:
+        """Return default plan for 'basic' mode."""
         plan = {
             "report": True,
             "community_docs": True,
@@ -50,6 +56,12 @@ class ModeScheduler:
         return plan
 
     def _select_plan(self) -> dict:
+        """
+        Build a task plan based on the selected mode.
+
+        Returns:
+            dict: Prepared plan dictionary.
+        """
         plan = dict(vars(self.args))
         if self.mode == "basic":
             logger.info("Basic mode selected for task scheduler.")
@@ -84,6 +96,12 @@ class ModeScheduler:
         return self._confirm_action(plan)
 
     def _make_request_for_auto_mode(self) -> dict:
+        """
+        Send prompt to model and parse JSON response to build auto mode plan.
+
+        Returns:
+            dict: Plan parsed from model response.
+        """
         main_prompt = self.prompts.get("main_prompt")
         formatted_prompt = main_prompt.format(
             license_presence=self.sourcerank.license_presence(),
@@ -103,6 +121,12 @@ class ModeScheduler:
             raise ValueError(f"JSON parsing error: {e}")
 
     def _confirm_action(self, plan: dict) -> dict:
+        """
+        Display and optionally let the user confirm or edit the generated plan.
+
+        Returns:
+            dict: Final confirmed plan.
+        """
         self._print_plan_tables(plan)
 
         while True:
@@ -127,6 +151,12 @@ class ModeScheduler:
         return plan
 
     def _manual_plan_edit(self, plan: dict) -> dict:
+        """
+        Allow the user to manually edit plan values in interactive mode.
+
+        Returns:
+            dict: Edited plan.
+        """
         console.print("\n[bold magenta]Manual plan editing mode[/bold magenta]")
 
         editable_keys = [k for k in plan.keys() if k not in self.info_keys]
@@ -137,6 +167,7 @@ class ModeScheduler:
         completer = WordCompleter(editable_keys, ignore_case=True)
         session = PromptSession()
 
+        # Update plan value based on type
         while True:
             key_to_edit = session.prompt(
                 "\nEnter the key you want to edit (or 'done' to finish): ", completer=completer
@@ -178,6 +209,8 @@ class ModeScheduler:
         return plan
 
     def _print_plan_tables(self, plan: dict) -> None:
+        """Display the plan as structured tables in the console."""
+
         # Info section in console output
         console.print("\n[bold cyan]Repository and environment info:[/bold cyan]")
         info_table = Table(show_header=True, header_style="bold magenta", box=box.SIMPLE)
@@ -220,6 +253,14 @@ class ModeScheduler:
         console.print(inactive_table)
 
     def _append_workflow_section(self, table: Table, plan: dict, active: bool) -> None:
+        """
+        Append a GitHub Workflows section to a table if workflows are enabled.
+
+        Args:
+            table: Rich table object.
+            plan: The current plan.
+            active: Whether to append active or inactive items.
+        """
         if plan.get("generate_workflows"):
             has_items = any(
                 (
@@ -259,6 +300,15 @@ class ModeScheduler:
 
     @staticmethod
     def _convert_input_value(value: str) -> str | None:
+        """
+        Convert string input into a proper type (str or None).
+
+        Args:
+            value: User-provided value.
+
+        Returns:
+            str | None: Converted value.
+        """
         if value.strip().lower() == "none":
             return None
         return value
