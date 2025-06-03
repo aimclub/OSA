@@ -190,6 +190,7 @@ class GithubAgent:
         Args:
             branch: The name of the branch to push changes to. Defaults to `branch_name`.
             commit_message: The commit message. Defaults to "osa_tool recommendations".
+            force: Option to force push the commit. Defaults to `False`
         """
         if not self.fork_url:
             raise ValueError("Fork URL is not set. Please create a fork first.")
@@ -280,7 +281,8 @@ class GithubAgent:
         """Uploads the generated PDF report to a separate branch.
 
         Args:
-            report_filename: The name of the report file.
+            report_filename: Name of the report file.
+            report_filepath: Path to the repoft file.
             report_branch: Name of the branch for storing reports. Defaults to "osa_tool_attachments".
             commit_message: Commit message for the report upload. Defaults to "upload pdf report".
         """
