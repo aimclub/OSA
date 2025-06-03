@@ -42,7 +42,5 @@ def test_delete_repository_failure(mock_os, repo_url):
         delete_repository(repo_url)
     # Assert
     mock_logger.error.assert_called_with(
-        "Failed to delete directory {}: Deletion failed".format(
-            os.path.join(os.getcwd(), "repo-name")
-        )
+        "Failed to delete directory {}: Deletion failed".format(os.path.join(os.getcwd(), "repo-name"))
     )

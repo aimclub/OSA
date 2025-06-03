@@ -12,9 +12,7 @@ def test_readme_presence(source_rank, tree, expected):
     assert source_rank.readme_presence() == expected
 
 
-@pytest.mark.parametrize(
-    "tree, expected", [("LICENSE", True), ("Licence.txt", True), ("README.md", False)]
-)
+@pytest.mark.parametrize("tree, expected", [("LICENSE", True), ("Licence.txt", True), ("README.md", False)])
 def test_license_presence(source_rank, tree, expected):
     # Arrange
     source_rank.tree = tree
@@ -44,9 +42,7 @@ def test_docs_presence(source_rank, tree, expected):
     assert source_rank.docs_presence() == expected
 
 
-@pytest.mark.parametrize(
-    "tree, expected", [("tests/", True), ("unittest/", True), ("code/main.py", False)]
-)
+@pytest.mark.parametrize("tree, expected", [("tests/", True), ("unittest/", True), ("code/main.py", False)])
 def test_tests_presence(source_rank, tree, expected):
     # Arrange
     source_rank.tree = tree

@@ -9,9 +9,7 @@ def test_create_and_checkout_branch_exists(mock_logger, github_agent):
     github_agent.create_and_checkout_branch()
     # Assert
     github_agent.repo.git.checkout.assert_called_with("feature-branch")
-    mock_logger.info.assert_called_with(
-        "Branch feature-branch already exists. Switching to it..."
-    )
+    mock_logger.info.assert_called_with("Branch feature-branch already exists. Switching to it...")
 
 
 @patch("osa_tool.github_agent.github_agent.logger")

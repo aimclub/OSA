@@ -28,12 +28,8 @@ def test_upload_report_success(github_agent):
         force=True,
     )
 
-    expected_report_url = (
-        f"{github_agent.fork_url}/blob/{default_report_branch}/{report_filename}"
-    )
-    expected_pr_body = (
-        f"\nGenerated report - [{report_filename}]({expected_report_url})\n"
-    )
+    expected_report_url = f"{github_agent.fork_url}/blob/{default_report_branch}/{report_filename}"
+    expected_pr_body = f"\nGenerated report - [{report_filename}]({expected_report_url})\n"
     assert github_agent.pr_report_body == expected_pr_body
 
 
@@ -41,9 +37,7 @@ def test_upload_report_commit_push_error(github_agent):
     # Arrange
     report_filename = "test_report.pdf"
     report_filepath = "test/filepath"
-    github_agent.commit_and_push_changes = lambda **kwargs: exec(
-        'raise GitCommandError("push", "error")'
-    )
+    github_agent.commit_and_push_changes = lambda **kwargs: exec('raise GitCommandError("push", "error")')
 
     # Act
     github_agent.upload_report(report_filename, report_filepath)
@@ -69,21 +63,15 @@ def test_upload_report_custom_branch_and_message(github_agent):
     )
 
     # Assert
-    github_agent.repo.git.checkout.assert_has_calls(
-        [call("-b", custom_branch), call("-b", github_agent.branch_name)]
-    )
+    github_agent.repo.git.checkout.assert_has_calls([call("-b", custom_branch), call("-b", github_agent.branch_name)])
     github_agent.repo.git.add.assert_called_once_with(".")
     github_agent.repo.git.commit.assert_called_once_with("-m", custom_message)
     github_agent.repo.git.push.assert_called_once_with(
         "--set-upstream", "origin", custom_branch, force_with_lease=False, force=True
     )
 
-    expected_report_url = (
-        f"{github_agent.fork_url}/blob/{custom_branch}/{report_filename}"
-    )
-    expected_pr_body = (
-        f"\nGenerated report - [{report_filename}]({expected_report_url})\n"
-    )
+    expected_report_url = f"{github_agent.fork_url}/blob/{custom_branch}/{report_filename}"
+    expected_pr_body = f"\nGenerated report - [{report_filename}]({expected_report_url})\n"
     assert github_agent.pr_report_body == expected_pr_body
 
 
@@ -99,9 +87,7 @@ def test_upload_report_existing_branch(github_agent):
     github_agent.upload_report(report_filename, report_filepath)
 
     # Assert
-    github_agent.repo.git.checkout.assert_has_calls(
-        [call(default_report_branch), call("-b", github_agent.branch_name)]
-    )
+    github_agent.repo.git.checkout.assert_has_calls([call(default_report_branch), call("-b", github_agent.branch_name)])
     github_agent.repo.git.add.assert_called_once_with(".")
     github_agent.repo.git.commit.assert_called_once_with("-m", default_message)
     github_agent.repo.git.push.assert_called_once_with(

@@ -10,18 +10,14 @@ def test_clone_repository_already_initialized(mock_logger, mock_repo, github_age
     # Act
     github_agent.clone_repository()
     # Assert
-    mock_logger.warning.assert_called_once_with(
-        f"Repository is already initialized ({github_agent.repo_url})"
-    )
+    mock_logger.warning.assert_called_once_with(f"Repository is already initialized ({github_agent.repo_url})")
     mock_repo.assert_not_called()
 
 
 @patch("osa_tool.github_agent.github_agent.Repo")
 @patch("osa_tool.github_agent.github_agent.logger")
 @patch("osa_tool.github_agent.github_agent.os.path.exists")
-def test_clone_repository_directory_exists_invalid_repo(
-    mock_exists, mock_logger, mock_repo, github_agent
-):
+def test_clone_repository_directory_exists_invalid_repo(mock_exists, mock_logger, mock_repo, github_agent):
     # Arrange
     github_agent.repo = None
     mock_exists.return_value = True
@@ -38,9 +34,7 @@ def test_clone_repository_directory_exists_invalid_repo(
 @patch("osa_tool.github_agent.github_agent.Repo")
 @patch("osa_tool.github_agent.github_agent.logger")
 @patch("osa_tool.github_agent.github_agent.os.path.exists")
-def test_clone_repository_clone_new_repo(
-    mock_exists, mock_logger, mock_repo, github_agent
-):
+def test_clone_repository_clone_new_repo(mock_exists, mock_logger, mock_repo, github_agent):
     # Arrange
     github_agent.repo = None
     mock_exists.return_value = False
@@ -62,9 +56,7 @@ def test_clone_repository_clone_new_repo(
 @patch("osa_tool.github_agent.github_agent.Repo")
 @patch("osa_tool.github_agent.github_agent.logger")
 @patch("osa_tool.github_agent.github_agent.os.path.exists")
-def test_clone_repository_clone_error(
-    mock_exists, mock_logger, mock_repo, github_agent
-):
+def test_clone_repository_clone_error(mock_exists, mock_logger, mock_repo, github_agent):
     # Arrange
     github_agent.repo = None
     mock_exists.return_value = False
@@ -73,6 +65,4 @@ def test_clone_repository_clone_error(
     with pytest.raises(GitCommandError):
         github_agent.clone_repository()
     # Assert
-    mock_logger.error.assert_called_once_with(
-        "Cloning failed: GitCommandError('Cloning failed', 'git')"
-    )
+    mock_logger.error.assert_called_once_with("Cloning failed: GitCommandError('Cloning failed', 'git')")

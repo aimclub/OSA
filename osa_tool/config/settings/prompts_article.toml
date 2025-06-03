@@ -14,7 +14,7 @@ Purpose: The overall goal and intended function of the codebase.
 Architecture: The structure of the codebase and its key components.
 Functionality: What the code achieves and the main algorithms or approaches it implements.
 Connection to the context: How the code reflects or supports the methodology, key ideas, or results described in the article.
-Ensure your summary is clear, concise, and om3its technical implementation details. Focus on high-level insights that help understand the codebase.
+Ensure your summary is clear, concise, and omits technical implementation details. Focus on high-level insights that help understand the codebase.
 
 Generate a JSON response following this exact structure:
 

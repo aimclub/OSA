@@ -7,9 +7,7 @@ from unittest.mock import patch
 def test_create_pull_request_success(mock_logger, mock_post, github_agent):
     # Arrange
     mock_post.return_value.status_code = 201
-    mock_post.return_value.json.return_value = {
-        "html_url": "https://github.com/testuser/testrepo/pull/1"
-    }
+    mock_post.return_value.json.return_value = {"html_url": "https://github.com/testuser/testrepo/pull/1"}
     # Act
     github_agent.create_pull_request()
     # Assert
@@ -42,9 +40,7 @@ def test_create_pull_request_error(mock_logger, mock_post, github_agent):
     with pytest.raises(ValueError, match="Failed to create pull request."):
         github_agent.create_pull_request()
     # Assert
-    mock_logger.error.assert_called_once_with(
-        "Failed to create pull request: 400 - Bad Request"
-    )
+    mock_logger.error.assert_called_once_with("Failed to create pull request: 400 - Bad Request")
 
 
 @patch("osa_tool.github_agent.github_agent.requests.post")
@@ -56,6 +52,4 @@ def test_create_pull_request_already_exists(mock_logger, mock_post, github_agent
     # Act
     github_agent.create_pull_request()
     #  Assert
-    mock_logger.error.assert_called_once_with(
-        "Failed to create pull request: 422 - pull request already exists"
-    )
+    mock_logger.error.assert_called_once_with("Failed to create pull request: 422 - pull request already exists")

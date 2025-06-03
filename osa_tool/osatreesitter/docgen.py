@@ -169,9 +169,7 @@ class DocGen(object):
 
         return self.model_handler.send_request(prompt)
 
-    def generate_method_documentation(
-        self, method_details: dict, context_code: str = None
-    ) -> str:
+    def generate_method_documentation(self, method_details: dict, context_code: str = None) -> str:
         """
         Generate documentation for a single method.
         """
@@ -209,20 +207,14 @@ class DocGen(object):
 
         if match:
             triple_quotes = match.group(1)  # Keep the triple quotes (""" or """)
-            extracted_docstring = match.group(
-                2
-            )  # Extract only the content inside the docstring
-            cleaned_content = re.sub(
-                r"^\s*def\s+\w+\(.*?\):\s*", "", extracted_docstring, flags=re.MULTILINE
-            )
+            extracted_docstring = match.group(2)  # Extract only the content inside the docstring
+            cleaned_content = re.sub(r"^\s*def\s+\w+\(.*?\):\s*", "", extracted_docstring, flags=re.MULTILINE)
 
             return f"{triple_quotes}\n{cleaned_content}{triple_quotes}"
 
         return '"""No valid docstring found."""'  # Return a placeholder if no docstring was found
 
-    def insert_docstring_in_code(
-        self, source_code: str, method_details: dict, generated_docstring: str
-    ) -> str:
+    def insert_docstring_in_code(self, source_code: str, method_details: dict, generated_docstring: str) -> str:
         """
         This method inserts a generated docstring into the specified location in the source code.
 
@@ -262,15 +254,11 @@ class DocGen(object):
         """
 
         docstring_with_format = self.extract_pure_docstring(generated_docstring)
-        updated_code = re.sub(
-            method_pattern, rf"\1\3{docstring_with_format}\n\3", source_code, count=1
-        )
+        updated_code = re.sub(method_pattern, rf"\1\3{docstring_with_format}\n\3", source_code, count=1)
 
         return updated_code
 
-    def insert_cls_docstring_in_code(
-        self, source_code: str, class_name: str, generated_docstring: str
-    ) -> str:
+    def insert_cls_docstring_in_code(self, source_code: str, class_name: str, generated_docstring: str) -> str:
         """
         Inserts a generated class docstring into the class definition.
 
@@ -286,16 +274,12 @@ class DocGen(object):
 
         # Matches a class definition with the given name,
         # including optional parentheses. Ensures no docstring follows.
-        class_pattern = (
-            rf"(class\s+{class_name}\s*(\([^)]*\))?\s*:\n)(\s*)(?!\s*\"\"\")"
-        )
+        class_pattern = rf"(class\s+{class_name}\s*(\([^)]*\))?\s*:\n)(\s*)(?!\s*\"\"\")"
 
         # Ensure we keep only the extracted docstring
         docstring_with_format = self.extract_pure_docstring(generated_docstring)
 
-        updated_code = re.sub(
-            class_pattern, rf"\1\3{docstring_with_format}\n\3", source_code, count=1
-        )
+        updated_code = re.sub(class_pattern, rf"\1\3{docstring_with_format}\n\3", source_code, count=1)
 
         return updated_code
 
@@ -333,10 +317,7 @@ class DocGen(object):
             return method["method_name"] == "__init__" and call["function"] is None
 
         def is_target_function(item, call):
-            return (
-                item["type"] == "function"
-                and item["details"]["method_name"] == call["class"]
-            )
+            return item["type"] == "function" and item["details"]["method_name"] == call["class"]
 
         context = []
 
@@ -348,21 +329,13 @@ class DocGen(object):
             for item in file_data.get("structure", []):
                 if is_target_class(item, call):
                     for method in item.get("methods", []):
-                        if is_target_method(method, call) or is_constructor(
-                            method, call
-                        ):
-                            method_name = (
-                                call["function"] if call["function"] else "__init__"
-                            )
+                        if is_target_method(method, call) or is_constructor(method, call):
+                            method_name = call["function"] if call["function"] else "__init__"
                             context.append(
-                                f"# Method {method_name} in class {call['class']}\n"
-                                + method.get("source_code", "")
+                                f"# Method {method_name} in class {call['class']}\n" + method.get("source_code", "")
                             )
                 elif is_target_function(item, call):
-                    context.append(
-                        f"# Function {call['class']}\n"
-                        + item["details"].get("source_code", "")
-                    )
+                    context.append(f"# Function {call['class']}\n" + item["details"].get("source_code", ""))
 
         return "\n".join(context)
 
@@ -412,31 +385,17 @@ class DocGen(object):
                             logger.info(
                                 f"Generating docstring for method: {method['method_name']} in class {item['name']} at {filename}"
                             )
-                            method_context = self.context_extractor(
-                                method, parsed_structure
-                            )
-                            generated_docstring = self.generate_method_documentation(
-                                method, method_context
-                            )
+                            method_context = self.context_extractor(method, parsed_structure)
+                            generated_docstring = self.generate_method_documentation(method, method_context)
                             if item["docstring"] == None:
-                                method["docstring"] = self.extract_pure_docstring(
-                                    generated_docstring
-                                )
-                            source_code = self.insert_docstring_in_code(
-                                source_code, method, generated_docstring
-                            )
+                                method["docstring"] = self.extract_pure_docstring(generated_docstring)
+                            source_code = self.insert_docstring_in_code(source_code, method, generated_docstring)
                 if item["type"] == "function":
                     func_details = item["details"]
                     if func_details["docstring"] == None:
-                        logger.info(
-                            f"Generating docstring for a function: {func_details['method_name']} at {filename}"
-                        )
-                        generated_docstring = self.generate_method_documentation(
-                            func_details
-                        )
-                        source_code = self.insert_docstring_in_code(
-                            source_code, func_details, generated_docstring
-                        )
+                        logger.info(f"Generating docstring for a function: {func_details['method_name']} at {filename}")
+                        generated_docstring = self.generate_method_documentation(func_details)
+                        source_code = self.insert_docstring_in_code(source_code, func_details, generated_docstring)
 
             for item in structure["structure"]:
                 if item["type"] == "class" and item["docstring"] == None:
@@ -451,15 +410,9 @@ class DocGen(object):
                                 "docstring": method["docstring"],
                             }
                         )
-                    logger.info(
-                        f"Generating docstring for class: {item['name']} in class at {filename}"
-                    )
-                    generated_cls_docstring = self.generate_class_documentation(
-                        cls_structure
-                    )
-                    source_code = self.insert_cls_docstring_in_code(
-                        source_code, class_name, generated_cls_docstring
-                    )
+                    logger.info(f"Generating docstring for class: {item['name']} in class at {filename}")
+                    generated_cls_docstring = self.generate_class_documentation(cls_structure)
+                    source_code = self.insert_cls_docstring_in_code(source_code, class_name, generated_cls_docstring)
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(source_code)
             self.format_with_black(filename)
@@ -540,15 +493,9 @@ class DocGen(object):
         """Generates documentation for a method or function."""
         doc_type = "Function" if is_function else "Method"
         try:
-            logger.info(
-                f"{doc_type} {method_details['method_name']}'s docstring is generating"
-            )
-            method_doc = self.generate_method_documentation_md(
-                method_details=method_details
-            )
-            return (
-                f"### {doc_type}: {method_details['method_name']}\n\n{method_doc}\n\n"
-            )
+            logger.info(f"{doc_type} {method_details['method_name']}'s docstring is generating")
+            method_doc = self.generate_method_documentation_md(method_details=method_details)
+            return f"### {doc_type}: {method_details['method_name']}\n\n{method_doc}\n\n"
         except Exception as e:
             logger.error(e, exc_info=True)
             return f"### {doc_type}: {method_details['method_name']}\n\nFailed to generate documentation.\n\n"

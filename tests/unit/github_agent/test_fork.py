@@ -7,9 +7,7 @@ def test_create_fork_success(mock_post, github_agent):
     # Arrange
     github_agent.token = "test_token"
     mock_post.return_value.status_code = 202
-    mock_post.return_value.json.return_value = {
-        "html_url": "https://github.com/testuser/testrepo-fork"
-    }
+    mock_post.return_value.json.return_value = {"html_url": "https://github.com/testuser/testrepo-fork"}
     # Act
     github_agent.create_fork()
     # Assert

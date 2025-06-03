@@ -28,12 +28,11 @@ def test_prompt_loader_reads_mock_file(monkeypatch, mock_prompts_file):
         "_get_prompts_path",
         staticmethod(lambda: str(mock_prompts_file)),
     )
-    loader = PromptArticleLoader()
     # Act
-    prompts = loader.prompts
+    prompts = PromptArticleLoader().prompts
     # Assert
-    assert prompts.file_summary == "Test file summary"
-    assert prompts.pdf_summary == "Test PDF summary"
-    assert prompts.overview == "Test overview"
-    assert prompts.content == "Test content"
-    assert prompts.algorithms == "Test algorithms"
+    assert prompts["file_summary"] == "Test file summary"
+    assert prompts["pdf_summary"] == "Test PDF summary"
+    assert prompts["overview"] == "Test overview"
+    assert prompts["content"] == "Test content"
+    assert prompts["algorithms"] == "Test algorithms"

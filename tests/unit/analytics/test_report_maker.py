@@ -101,9 +101,7 @@ def test_body_second_part(report_generator):
             license_specified=YesNoPartial.NO,
             badges_present=YesNoPartial.PARTIAL,
         ),
-        documentation=CodeDocumentation(
-            tests_present=YesNoPartial.YES, docs_quality="Good", outdated_content=False
-        ),
+        documentation=CodeDocumentation(tests_present=YesNoPartial.YES, docs_quality="Good", outdated_content=False),
         assessment=OverallAssessment(
             key_shortcomings=["Missing tests", "No documentation"],
             recommendations=["Improve tests", "Update docs"],

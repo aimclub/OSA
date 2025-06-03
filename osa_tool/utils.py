@@ -4,6 +4,7 @@ import shutil
 from pathlib import Path
 from urllib.parse import urlparse
 
+from rich.console import Console
 from rich.logging import RichHandler
 
 logging.basicConfig(
@@ -14,6 +15,19 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("rich")
+
+console = Console()
+
+
+def rich_section(title: str):
+    """
+    Print a styled section header in the console to visually separate log sections.
+
+    Args:
+        title: Title text for the section header.
+    """
+    console.print("")
+    console.rule(f"[bold cyan]{title}[/bold cyan]", style="cyan")
 
 
 def parse_folder_name(repo_url: str) -> str:

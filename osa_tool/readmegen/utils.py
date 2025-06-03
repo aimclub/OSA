@@ -60,9 +60,7 @@ def read_ipynb_file(file_path: str) -> str:
                 lines.append("\n")
         return "\n".join(lines)
     except Exception as e:
-        logger.error(
-            f"Failed to read notebook: {file_path}. Returning empty string. Error: {e}."
-        )
+        logger.error(f"Failed to read notebook: {file_path}. Returning empty string. Error: {e}.")
         return ""
 
 

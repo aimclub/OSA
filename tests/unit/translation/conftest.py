@@ -25,7 +25,5 @@ def translator():
     mock_config_loader.config.llm.api = "llama"
 
     translator = DirectoryTranslator(mock_config_loader)
-    translator.model_handler = MagicMock(
-        spec=ModelHandlerFactory.build(mock_config_loader.config)
-    )
+    translator.model_handler = MagicMock(spec=ModelHandlerFactory.build(mock_config_loader.config))
     return translator

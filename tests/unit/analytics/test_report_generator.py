@@ -3,10 +3,7 @@ from unittest.mock import MagicMock, patch
 
 def test_text_generator_initialization(text_generator):
     # Assert
-    assert (
-        text_generator.config.git.repository
-        == "https://github.com/testuser/testrepo.git"
-    )
+    assert text_generator.config.git.repository == "https://github.com/testuser/testrepo.git"
     assert isinstance(text_generator.model_handler, MagicMock)
 
 

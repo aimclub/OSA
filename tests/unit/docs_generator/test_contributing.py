@@ -9,9 +9,7 @@ from osa_tool.docs_generator.contributing import ContributingBuilder
 def builder(config_loader):
     with (
         mock.patch("osa_tool.docs_generator.contributing.SourceRank") as MockSourceRank,
-        mock.patch(
-            "osa_tool.docs_generator.contributing.load_data_metadata"
-        ) as mock_metadata,
+        mock.patch("osa_tool.docs_generator.contributing.load_data_metadata") as mock_metadata,
     ):
         mock_rank = MockSourceRank.return_value
         mock_rank.docs_presence.return_value = True
@@ -19,9 +17,7 @@ def builder(config_loader):
         mock_rank.tests_presence.return_value = True
         mock_rank.tree = "docs/CONTRIBUTING.md\nREADME.md\ntests/"
 
-        mock_metadata.return_value = mock.Mock(
-            default_branch="main", name="TestProject", homepage_url=None
-        )
+        mock_metadata.return_value = mock.Mock(default_branch="main", name="TestProject", homepage_url=None)
 
         return ContributingBuilder(config_loader)
 
@@ -30,9 +26,7 @@ def builder(config_loader):
 @mock.patch("osa_tool.docs_generator.contributing.logger")
 @mock.patch("osa_tool.docs_generator.contributing.os.makedirs")
 @mock.patch("osa_tool.docs_generator.contributing.remove_extra_blank_lines")
-def test_build_contributing(
-    mock_remove_blank_lines, mock_makedirs, mock_logger, mock_save, builder
-):
+def test_build_contributing(mock_remove_blank_lines, mock_makedirs, mock_logger, mock_save, builder):
     # Arrange
     expected_content = "\n".join(
         [
@@ -48,9 +42,7 @@ def test_build_contributing(
     # Assert
     mock_save.assert_called_once_with(expected_content, builder.file_to_save)
     mock_makedirs.assert_called_once_with(builder.repo_path)
-    mock_logger.info.assert_called_once_with(
-        f"CONTRIBUTING.md successfully generated in folder {builder.repo_path}"
-    )
+    mock_logger.info.assert_called_once_with(f"CONTRIBUTING.md successfully generated in folder {builder.repo_path}")
 
 
 def test_introduction_content(builder):

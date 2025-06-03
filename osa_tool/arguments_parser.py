@@ -8,15 +8,30 @@ def get_cli_args():
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
-        "-r",
         "--repository",
+        "-r",
         type=str,
         help="URL of the GitHub repository",
         required=True,
     )
     parser.add_argument(
-        "-b",
+        "--mode",
+        "-m",
+        type=str,
+        help=(
+            "Select the operation mode for repository processing:\n"
+            "  basic     — run a minimal predefined set of tasks (Report,README, Community docs, About Section, Organize Repository).\n"
+            "  auto      — automatically determine necessary actions based on repository analysis.\n"
+            "  advanced  — run all enabled features based on provided flags (default)."
+        ),
+        nargs="?",
+        choices=["basic", "auto", "advanced"],
+        const="advanced",
+        default="advanced",
+    )
+    parser.add_argument(
         "--branch",
+        "-b",
         type=str,
         help="Branch name of the GitHub repository",
         required=False,
@@ -64,7 +79,7 @@ def get_cli_args():
     parser.add_argument(
         "--translate-dirs",
         action="store_true",
-        help=("Enable automatic translation of the directory name into English."),
+        help="Enable automatic translation of the directory name into English.",
     )
     parser.add_argument(
         "--convert-notebooks",
@@ -79,8 +94,7 @@ def get_cli_args():
     parser.add_argument(
         "--delete-dir",
         action="store_true",
-        help="Enable deleting the downloaded repository after processing. ("
-        "Linux only)",
+        help="Enable deleting the downloaded repository after processing. (" "Linux only)",
     )
     parser.add_argument(
         "--ensure-license",
@@ -99,6 +113,27 @@ def get_cli_args():
         "--community-docs",
         action="store_true",
         help="Generate community-related documentation files, such as Code of Conduct and Contributing guidelines.",
+    )
+    parser.add_argument(
+        "--docstring",
+        action="store_true",
+        help="Automatically generate docstrings for all Python files in the repository.",
+    )
+    parser.add_argument(
+        "--report", action="store_true", help="Analyze the repository and generate a PDF report with project insights."
+    )
+    parser.add_argument(
+        "--readme", action="store_true", help="Generate a README.md file based on repository content and metadata."
+    )
+    parser.add_argument(
+        "--organize",
+        action="store_true",
+        help="Organize the repository structure by adding standard 'tests' and 'examples' directories if missing.",
+    )
+    parser.add_argument(
+        "--about",
+        action="store_true",
+        help="Generate About section with tags.",
     )
 
     # Create a group for GitHub workflow generator arguments
@@ -189,4 +224,22 @@ def get_cli_args():
         default=True,
         help="Include Codecov coverage step in a unit tests workflow.",
     )
-    return parser.parse_args()
+    return parser
+
+
+def get_workflow_keys(parser):
+    """
+    Extract workflow-related argument keys from a specific argument group in the parser.
+
+    Args:
+        parser: The argument parser instance containing defined argument groups.
+
+    Returns:
+        list: A list of argument keys (dest values) related to GitHub workflow generation.
+    """
+    workflow_keys = []
+    for group in parser._action_groups:
+        if group.title == "GitHub workflow generator arguments":
+            for action in group._group_actions:
+                workflow_keys.append(action.dest)
+    return workflow_keys

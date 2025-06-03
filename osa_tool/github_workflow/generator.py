@@ -245,9 +245,7 @@ class GitHubWorkflowGenerator:
                             "uses": "actions/checkout@v4",
                             "with": {
                                 "token": (
-                                    "${{ secrets.REPO_ACCESS_TOKEN }}"
-                                    if repo_access_token
-                                    else "${{ github.token }}"
+                                    "${{ secrets.REPO_ACCESS_TOKEN }}" if repo_access_token else "${{ github.token }}"
                                 ),
                                 "repository": "${{ github.event.client_payload.pull_request.head.repo.full_name }}",
                                 "ref": "${{ github.event.client_payload.pull_request.head.ref }}",
@@ -349,9 +347,7 @@ class GitHubWorkflowGenerator:
             on["workflow_dispatch"] = {}
 
         if not on:
-            raise ValueError(
-                "At least one of trigger_on_tags or trigger_on_release must be True"
-            )
+            raise ValueError("At least one of trigger_on_tags or trigger_on_release must be True")
 
         # Define the steps based on whether we're using Poetry or not
         if use_poetry:
@@ -423,9 +419,7 @@ class GitHubWorkflowGenerator:
 
         return self._write_workflow("pypi-publish.yml", workflow)
 
-    def generate_complete_workflow(
-        self, settings: WorkflowSettings  # Use the imported settings object
-    ) -> List[str]:
+    def generate_complete_workflow(self, settings: WorkflowSettings) -> List[str]:  # Use the imported settings object
         """
         Generate a complete set of workflows.
 
@@ -487,9 +481,7 @@ class GitHubWorkflowGenerator:
         return created_files
 
 
-def generate_workflows_from_settings(
-    settings: WorkflowSettings, output_dir: str
-) -> List[str]:
+def generate_workflows_from_settings(settings: WorkflowSettings, output_dir: str) -> List[str]:
     """
     Generate workflows based on a WorkflowSettings object.
 

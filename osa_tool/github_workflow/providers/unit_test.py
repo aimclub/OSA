@@ -48,9 +48,7 @@ def generate_unit_test_workflow(
                 "name": "Run Tests",
                 "runs-on": "${{ matrix.os }}",
                 "timeout-minutes": timeout_minutes,
-                "strategy": {
-                    "matrix": {"os": os_list, "python-version": python_versions}
-                },
+                "strategy": {"matrix": {"os": os_list, "python-version": python_versions}},
                 "steps": [
                     {"name": "Checkout repo", "uses": "actions/checkout@v4"},
                     {
@@ -60,8 +58,7 @@ def generate_unit_test_workflow(
                     },
                     {
                         "name": "Install dependencies",
-                        "run": dependencies_command
-                        + " && pip install pytest pytest-cov",
+                        "run": dependencies_command + " && pip install pytest pytest-cov",
                     },
                     {"name": "Run tests", "run": test_command + " --cov=."},
                 ],
