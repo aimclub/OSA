@@ -78,7 +78,7 @@ In custom mode:
     - If it's a string or list, a new value can be provided, left empty to skip, or the word `None` can be entered to
       explicitly disable this action.
 
-Once the user type `done` or `finish`
+Once the user type `done`:
 
 - The updated tables with planned actions and inactive actions will be displayed again.
 - The program will prompt the user one more time to confirm the updated plan
