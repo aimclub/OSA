@@ -513,11 +513,11 @@ nav:
 
     # It seems to better place it in the osa_tool/github_workflow
     def create_mkdocs_github_workflow(
-            self,
-            repository_url: str,
-            path: str,
-            filename: str = "osa_mkdocs",
-            branches: list[str] = None,
+        self,
+        repository_url: str,
+        path: str,
+        filename: str = "osa_mkdocs",
+        branches: list[str] = None,
     ) -> None:
         """
         Generates GitHub workflow .yaml for MkDocs documentation for a Python project.
@@ -533,13 +533,14 @@ nav:
         """
         clear_repo_name = re.sub(pattern="https://", repl="", string=repository_url)
 
-        if not branches: branches = ["main", "master"]
+        if not branches:
+            branches = ["main", "master"]
 
         _workflow = {
             "name": "MkDocs workflow",
             "on": {
                 "push": {"branches": branches},
-                "pull_request": {"branches": branches}
+                "pull_request": {"branches": branches},
             },
             "jobs": {
                 "mkdocs_deployment": {
@@ -548,29 +549,25 @@ nav:
                     "steps": [
                         {
                             "name": "[OSA] Checking-out repository",
-                            "uses": "actions/checkout@v4"
+                            "uses": "actions/checkout@v4",
                         },
                         {
                             "name": "[OSA] Installing Python",
                             "uses": "actions/setup-python@v4",
-                            "with": {
-                                "python-version": "3.10"
-                            }
+                            "with": {"python-version": "3.10"},
                         },
                         {
                             "name": "[OSA] Installing MkDocs dependencies",
-                            "run": "pip install mkdocs mkdocs-material mkdocstrings[python]"
+                            "run": "pip install mkdocs mkdocs-material mkdocstrings[python]",
                         },
                         {
                             "name": "[OSA] MkDocs documentation deploying",
                             "run": "mkdocs gh-deploy --force --config-file mkdocs_temp/mkdocs.yml",
-                            "env": {
-                                "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
-                            }
-                        }
-                    ]
+                            "env": {"GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"},
+                        },
+                    ],
                 }
-            }
+            },
         }
 
         workflows_path = f"{path}/.github/workflows"
@@ -582,8 +579,12 @@ nav:
         yaml.Dumper.ignore_aliases = lambda self, data: True
 
         with open(f"{workflows_path}/{filename}.yml", mode="w") as actions:
-            yaml.dump(data=_workflow, stream=actions, Dumper=yaml.Dumper, sort_keys=False)
-        logger.info(f"In order to perform the documentation deployment automatically, please make sure that\n1. At {repository_url}/settings/actions following permission are enabled:\n\t1) 'Read and write permissions'\n\t2) 'Allow GitHub Actions to create and approve pull requests'\n2. 'gh-pages' branch is chosen as the source at 'Build and deployment' section at {repository_url}/settings/pages .")
+            yaml.dump(
+                data=_workflow, stream=actions, Dumper=yaml.Dumper, sort_keys=False
+            )
+        logger.info(
+            f"In order to perform the documentation deployment automatically, please make sure that\n1. At {repository_url}/settings/actions following permission are enabled:\n\t1) 'Read and write permissions'\n\t2) 'Allow GitHub Actions to create and approve pull requests'\n2. 'gh-pages' branch is chosen as the source at 'Build and deployment' section at {repository_url}/settings/pages ."
+        )
 
     @staticmethod
     def _sanitize_name(name: str) -> str:
