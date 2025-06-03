@@ -1,5 +1,6 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 
 def test_commit_and_push_changes_success(github_agent):
@@ -20,7 +21,7 @@ def test_commit_and_push_changes_success(github_agent):
     github_agent.repo.git.add.assert_called_once_with(".")
     github_agent.repo.git.commit.assert_called_once_with("-m", "Test commit")
     github_agent.repo.git.push.assert_called_once_with(
-        "--set-upstream", "origin", "feature-branch", force_with_lease=True
+        "--set-upstream", "origin", "feature-branch", force_with_lease=True, force=False
     )
     mock_logger.info.assert_any_call("Committing changes...")
     mock_logger.info.assert_any_call("Commit completed.")
