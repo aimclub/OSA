@@ -200,6 +200,8 @@ class ModeScheduler:
                 new_value = Prompt.ask(
                     f"Enter comma-separated values for {key_to_edit} (or leave blank to skip)", default=""
                 )
+                if new_value.lower() == "none":
+                    plan[key_to_edit] = None
                 if new_value != "":
                     plan[key_to_edit] = [item.strip() for item in new_value.split(",")]
 
