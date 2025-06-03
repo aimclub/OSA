@@ -72,7 +72,7 @@ Do you want to proceed with these actions? [y/n/custom] (y)
 In custom mode:
 
 - A list of editable actions will be displayed.
-- The user can enter the name of the action to modify, or type `done` to `finish` editing.
+- The user can enter the name of the action to modify, or type `done` to finish editing.
 - For each selected action:
     - If it's a **boolean value** (enabled/disabled), you'll be asked to set it to `y`, `n`, or `skip`.
     - If it's a string or list, a new value can be provided, left empty to skip, or the word `None` can be entered to
