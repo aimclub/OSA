@@ -173,7 +173,6 @@ class GithubAgent:
         commit_message: str = "osa_tool recommendations",
         force: bool = False,
     ) -> bool:
-
         """Commits and pushes changes to the forked repository.
 
         Args:
@@ -201,7 +200,7 @@ class GithubAgent:
                 force_with_lease=not force,
                 force=force,
             )
-            
+
             logger.info("Push completed.")
             return True
         except GitCommandError:
@@ -276,9 +275,7 @@ class GithubAgent:
         try:
             self.create_and_checkout_branch(report_branch)
         except GitCommandError:
-            logger.warning(
-                f"PDF report located in the {self.branch_name} branch, moving it."
-            )
+            logger.warning(f"PDF report located in the {self.branch_name} branch, moving it.")
             with open(report_filepath, "rb") as f:
                 preserved_content = f.read()
             self.repo.git.checkout("-f", report_branch)
@@ -287,13 +284,9 @@ class GithubAgent:
             logger.info(f"Successfully moved PDF report to {report_branch} branch.")
 
         try:
-            self.commit_and_push_changes(
-                branch=report_branch, commit_message=commit_message, force=True
-            )
+            self.commit_and_push_changes(branch=report_branch, commit_message=commit_message, force=True)
         except GitCommandError:
-            logger.error(
-                "Commit failed! PDF extension is listed in the .gitignore file of the repository."
-            )
+            logger.error("Commit failed! PDF extension is listed in the .gitignore file of the repository.")
             return
         finally:
             self.create_and_checkout_branch()  # Return to original branch

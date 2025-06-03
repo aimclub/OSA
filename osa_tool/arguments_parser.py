@@ -8,15 +8,15 @@ def get_cli_args():
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
-        "-r",
         "--repository",
+        "-r",
         type=str,
         help="URL of the GitHub repository",
         required=True,
     )
     parser.add_argument(
-        "-m",
         "--mode",
+        "-m",
         type=str,
         help=(
             "Select the operation mode for repository processing:\n"
@@ -30,8 +30,8 @@ def get_cli_args():
         default="advanced",
     )
     parser.add_argument(
-        "-b",
         "--branch",
+        "-b",
         type=str,
         help="Branch name of the GitHub repository",
         required=False,

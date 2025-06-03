@@ -37,9 +37,7 @@ def test_upload_report_commit_push_error(github_agent):
     # Arrange
     report_filename = "test_report.pdf"
     report_filepath = "test/filepath"
-    github_agent.commit_and_push_changes = lambda **kwargs: exec(
-        'raise GitCommandError("push", "error")'
-    )
+    github_agent.commit_and_push_changes = lambda **kwargs: exec('raise GitCommandError("push", "error")')
 
     # Act
     github_agent.upload_report(report_filename, report_filepath)
