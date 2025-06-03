@@ -167,12 +167,19 @@ class GithubAgent:
             self.repo.git.checkout("-b", branch)
             logger.info(f"Switched to branch {branch}.")
 
-    def commit_and_push_changes(self, branch: str = None, commit_message: str = "osa_tool recommendations") -> bool:
+    def commit_and_push_changes(
+        self,
+        branch: str = None,
+        commit_message: str = "osa_tool recommendations",
+        force: bool = False,
+    ) -> bool:
+
         """Commits and pushes changes to the forked repository.
 
         Args:
             branch: The name of the branch to push changes to. Defaults to `branch_name`.
             commit_message: The commit message. Defaults to "osa_tool recommendations".
+            force: Option to force push the commit. Defaults to `False`
         """
         if not self.fork_url:
             raise ValueError("Fork URL is not set. Please create a fork first.")
@@ -187,10 +194,17 @@ class GithubAgent:
         logger.info(f"Pushing changes to branch {branch} in fork...")
         self.repo.git.remote("set-url", "origin", self._get_auth_url(self.fork_url))
         try:
-            self.repo.git.push("--set-upstream", "origin", branch, force_with_lease=True)
+            self.repo.git.push(
+                "--set-upstream",
+                "origin",
+                branch,
+                force_with_lease=not force,
+                force=force,
+            )
+            
             logger.info("Push completed.")
             return True
-        except GitCommandError as e:
+        except GitCommandError:
             logger.error(
                 f"""Push failed: Branch '{branch}' already exists in the fork.
              To resolve this, please either:
@@ -246,19 +260,43 @@ class GithubAgent:
     def upload_report(
         self,
         report_filename: str,
+        report_filepath: str,
         report_branch: str = "osa_tool_attachments",
         commit_message: str = "upload pdf report",
     ) -> None:
         """Uploads the generated PDF report to a separate branch.
 
         Args:
-            report_filename: The name of the report file.
+            report_filename: Name of the report file.
+            report_filepath: Path to the repoft file.
             report_branch: Name of the branch for storing reports. Defaults to "osa_tool_attachments".
             commit_message: Commit message for the report upload. Defaults to "upload pdf report".
         """
-        self.create_and_checkout_branch(report_branch)
-        self.commit_and_push_changes(report_branch, commit_message)
-        self.create_and_checkout_branch()  # Return to original branch
+        logger.info("Uploading report...")
+        try:
+            self.create_and_checkout_branch(report_branch)
+        except GitCommandError:
+            logger.warning(
+                f"PDF report located in the {self.branch_name} branch, moving it."
+            )
+            with open(report_filepath, "rb") as f:
+                preserved_content = f.read()
+            self.repo.git.checkout("-f", report_branch)
+            with open(report_filepath, "wb") as f:
+                f.write(preserved_content)
+            logger.info(f"Successfully moved PDF report to {report_branch} branch.")
+
+        try:
+            self.commit_and_push_changes(
+                branch=report_branch, commit_message=commit_message, force=True
+            )
+        except GitCommandError:
+            logger.error(
+                "Commit failed! PDF extension is listed in the .gitignore file of the repository."
+            )
+            return
+        finally:
+            self.create_and_checkout_branch()  # Return to original branch
 
         report_url = f"{self.fork_url}/blob/{report_branch}/{report_filename}"
         self.pr_report_body = f"\nGenerated report - [{report_filename}]({report_url})\n"

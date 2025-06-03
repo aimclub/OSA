@@ -68,7 +68,7 @@ def main():
             analytics = ReportGenerator(config, sourcerank, github_agent.clone_dir)
             analytics.build_pdf()
             if publish_results:
-                github_agent.upload_report(analytics.filename)
+                github_agent.upload_report(analytics.filename, analytics.output_path)
 
         # Auto translating names of directories
         if plan.get("translate_dirs"):
