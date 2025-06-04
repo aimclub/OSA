@@ -1,13 +1,7 @@
 import os
 from pathlib import Path
 
-try:
-    import aspose.pdf as ap
-except Exception as ex:
-    print(
-        f"Can not use aspose lib: {ex}. Please note that it can be MacOS-specific issue."
-    )
-
+import pdfplumber
 from pdfminer.high_level import extract_pages
 from pdfminer.layout import LTLine, LTTextContainer
 
@@ -27,7 +21,7 @@ class PdfParser:
         path_obj = Path(self.path)
         pages_text = []
         extracted_data = ""
-        doc = ap.Document(self.path)
+        doc = pdfplumber.open(self.path)
         standard_tables = self.extract_table_bboxes(doc)
 
         for pagenum, page in enumerate(extract_pages(self.path)):
@@ -69,15 +63,14 @@ class PdfParser:
 
     @staticmethod
     def extract_table_bboxes(doc) -> dict[int, list[tuple[float, float, float, float]]]:
-        """Extract standard table bounding boxes using Aspose."""
+        """Extract standard table bounding boxes using pdfplumber."""
         table_bboxes: dict[int, list[tuple[float, float, float, float]]] = {}
+        table_settings = {"horizontal_strategy": "lines", "vertical_strategy": "lines"}
         for page_num, page in enumerate(doc.pages):
-            absorber = ap.text.TableAbsorber()
-            absorber.visit(page)
             boxes = []
-            for table in absorber.table_list:
-                rect = table.rectangle
-                boxes.append((rect.llx, rect.lly, rect.urx, rect.ury))
+            tables = page.find_tables(table_settings=table_settings)
+            for table in tables:
+                boxes.append(table.bbox)
             if boxes:
                 table_bboxes[page_num] = boxes
         return table_bboxes
@@ -139,7 +132,7 @@ class PdfParser:
         table_boxes: list[tuple[float, float, float, float]],
         tol: float = 2.0,
     ) -> bool:
-        """Check table membership using Aspose standard table boxes"""
+        """Check table membership using pdfplumber standard table boxes"""
         x0, y0, x1, y1 = element.bbox
         cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
         for box in table_boxes:
