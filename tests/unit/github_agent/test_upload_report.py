@@ -1,10 +1,11 @@
-from unittest.mock import call, patch
+from unittest.mock import call, mock_open, patch
 
 import pytest
 from git import GitCommandError
 
 
-def test_upload_report_success(github_agent):
+@patch("builtins.open", new_callable=mock_open, read_data=b"test content")
+def test_upload_report_success(mock_file, github_agent):
     # Arrange
     report_filename = "test_report.pdf"
     report_filepath = "test/filepath"
@@ -15,6 +16,7 @@ def test_upload_report_success(github_agent):
     github_agent.upload_report(report_filename, report_filepath)
 
     # Assert
+    mock_file.assert_any_call(report_filepath, "rb")
     github_agent.repo.git.checkout.assert_has_calls(
         [call("-b", default_report_branch), call("-b", github_agent.branch_name)]
     )
@@ -37,10 +39,12 @@ def test_upload_report_success(github_agent):
     assert github_agent.pr_report_body == expected_pr_body
 
 
-def test_upload_report_commit_push_error(github_agent):
+@patch("builtins.open", new_callable=mock_open, read_data=b"test content")
+def test_upload_report_commit_push_error(mock_file, github_agent):
     # Arrange
     report_filename = "test_report.pdf"
     report_filepath = "test/filepath"
+    default_report_branch = "osa_tool_attachments"
     github_agent.commit_and_push_changes = lambda **kwargs: exec(
         'raise GitCommandError("push", "error")'
     )
@@ -49,11 +53,15 @@ def test_upload_report_commit_push_error(github_agent):
     github_agent.upload_report(report_filename, report_filepath)
 
     # Assert
-    github_agent.repo.git.checkout.assert_called_with("-b", github_agent.branch_name)
+    mock_file.assert_any_call(report_filepath, "rb")
+    github_agent.repo.git.checkout.assert_has_calls(
+        [call("-b", default_report_branch), call("-b", github_agent.branch_name)]
+    )
     assert github_agent.pr_report_body == ""
 
 
-def test_upload_report_custom_branch_and_message(github_agent):
+@patch("builtins.open", new_callable=mock_open, read_data=b"test content")
+def test_upload_report_custom_branch_and_message(mock_file, github_agent):
     # Arrange
     report_filename = "custom_report.pdf"
     report_filepath = "test/filepath"
@@ -69,6 +77,7 @@ def test_upload_report_custom_branch_and_message(github_agent):
     )
 
     # Assert
+    mock_file.assert_any_call(report_filepath, "rb")
     github_agent.repo.git.checkout.assert_has_calls(
         [call("-b", custom_branch), call("-b", github_agent.branch_name)]
     )
@@ -87,7 +96,8 @@ def test_upload_report_custom_branch_and_message(github_agent):
     assert github_agent.pr_report_body == expected_pr_body
 
 
-def test_upload_report_existing_branch(github_agent):
+@patch("builtins.open", new_callable=mock_open, read_data=b"test content")
+def test_upload_report_existing_branch(mock_file, github_agent):
     # Arrange
     report_filename = "test_report.pdf"
     report_filepath = "test/filepath"
@@ -99,6 +109,7 @@ def test_upload_report_existing_branch(github_agent):
     github_agent.upload_report(report_filename, report_filepath)
 
     # Assert
+    mock_file.assert_any_call(report_filepath, "rb")
     github_agent.repo.git.checkout.assert_has_calls(
         [call(default_report_branch), call("-b", github_agent.branch_name)]
     )
