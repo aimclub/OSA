@@ -11,7 +11,7 @@ import yaml
 
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
-from osa_tool.utils import logger
+from osa_tool.utils import logger, osa_project_root
 
 dotenv.load_dotenv()
 
@@ -432,12 +432,12 @@ class DocGen(object):
         Returns:
             None. The method generates MkDocs documentation for the project.
         """
+        local = False
         repo_path = Path(path)
         mkdocs_dir = repo_path / "mkdocs_temp"
         docs_output_path = repo_path / "site"
-        local = False
 
-        if docs_output_path.exists():
+        if docs_output_path.exists() and local:
             shutil.rmtree(docs_output_path)
         if local:
             docs_output_path.mkdir()
@@ -468,28 +468,9 @@ class DocGen(object):
 
         index_path.write_text(index_content, encoding="utf-8")
 
-        mkdocs_config = f"""
-site_name: OSADocs
-theme:
-    name: material
-plugins:
-    - search
-    - mkdocstrings:
-        default_handler: python
-        handlers:
-            python:
-                paths: [..]
-                options:
-                    members_order: alphabetical
-                    show_source: true
-                    docstring_style: google
-                    filters:
-                    - ""
-nav:
-    - Home: index.md
-            """
+        mkdocs_config = osa_project_root() / "docs" / "templates" / "mkdocs.yml"
         mkdocs_yml = mkdocs_dir / "mkdocs.yml"
-        mkdocs_yml.write_text(mkdocs_config.strip(), encoding="utf-8")
+        shutil.copy(mkdocs_config, mkdocs_yml)
 
         if local:
             result = subprocess.run(
@@ -671,3 +652,24 @@ nav:
             init_path: Path = folder / "__init__.py"
             if not init_path.exists():
                 init_path.touch()
+
+    @staticmethod
+    def _purge_temp_files(path: str):
+        """
+        Remove temporary files from the specified directory.
+
+            This method deletes the 'mkdocs_temp' directory located within
+            the given path if it exists. This is typically used to clean up
+            temporary files if runtime error occured.
+
+            Args:
+                path: The path to the repository where the 'mkdocs_temp'
+                        directory is located.
+
+            Returns:
+                None
+        """
+        repo_path = Path(path)
+        mkdocs_dir = repo_path / "mkdocs_temp"
+        if mkdocs_dir.exists():
+            shutil.rmtree(mkdocs_dir)

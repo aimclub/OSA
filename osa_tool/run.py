@@ -169,7 +169,8 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
         dg.create_mkdocs_github_workflow(repo_url, repo_path)
 
     except Exception as e:
-        logger.error("Error while docstring generation: %s", repr(e), exc_info=True)
+        dg._purge_temp_files(repo_path)
+        logger.error("Error while generating codebase documentaion: %s", repr(e), exc_info=True)
 
 
 def load_configuration(
