@@ -287,14 +287,15 @@ class GithubAgent:
             commit_message: Commit message for the report upload. Defaults to "upload pdf report".
         """
         logger.info("Uploading report...")
+        with open(report_filepath, "rb") as f:
+            preserved_content = f.read()
+
         try:
             self.create_and_checkout_branch(report_branch)
         except GitCommandError:
             logger.warning(
                 f"PDF report located in the {self.branch_name} branch, moving it."
             )
-            with open(report_filepath, "rb") as f:
-                preserved_content = f.read()
             self.repo.git.checkout("-f", report_branch)
             with open(report_filepath, "wb") as f:
                 f.write(preserved_content)
@@ -311,6 +312,8 @@ class GithubAgent:
             return
         finally:
             self.create_and_checkout_branch()  # Return to original branch
+            with open(report_filepath, "wb") as f:
+                f.write(preserved_content)
 
         report_url = f"{self.fork_url}/blob/{report_branch}/{report_filename}"
         self.pr_report_body = (
