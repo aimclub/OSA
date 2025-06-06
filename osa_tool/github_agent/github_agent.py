@@ -290,60 +290,19 @@ class GithubAgent:
 
         with open(report_filepath, "rb") as f:
             report_content = f.read()
+        self.create_and_checkout_branch(report_branch)
 
-        original_branch = self.branch_name
-        try:
-            self._switch_to_report_branch(
-                report_branch, report_filepath, report_content
-            )
-            self._push_report(report_filename, report_branch, commit_message)
-        finally:
-            self._restore_original_state(
-                original_branch, report_filepath, report_content
-            )
+        with open(os.path.join(self.clone_dir, report_filename), "wb") as f:
+            f.write(report_content)
+        self.commit_and_push_changes(
+            branch=report_branch, commit_message=commit_message, force=True
+        )
 
-    def _switch_to_report_branch(
-        self, report_branch: str, report_filepath: str, content: bytes
-    ) -> None:
-        """Switches to report branch and saves report content."""
-        try:
-            self.create_and_checkout_branch(report_branch)
-        except GitCommandError:
-            logger.warning(
-                f"PDF report located in the {self.branch_name} branch, moving it."
-            )
-            self.repo.git.checkout("-f", report_branch)
-            self._write_report_content(report_filepath, content)
-            logger.info(f"Successfully moved PDF report to {report_branch} branch.")
-
-    def _push_report(
-        self, report_filename: str, report_branch: str, commit_message: str
-    ) -> None:
-        """Commits and pushes the report to the remote repository."""
-        try:
-            self.commit_and_push_changes(
-                branch=report_branch, commit_message=commit_message, force=True
-            )
-            report_url = f"{self.fork_url}/blob/{report_branch}/{report_filename}"
-            self.pr_report_body = (
-                f"\nGenerated report - [{report_filename}]({report_url})\n"
-            )
-        except GitCommandError:
-            logger.error(
-                "Commit failed! PDF extension is listed in the .gitignore file of the repository."
-            )
-
-    def _write_report_content(self, report_filepath: str, content: bytes) -> None:
-        """Writes report content to file."""
-        with open(report_filepath, "wb") as f:
-            f.write(content)
-
-    def _restore_original_state(
-        self, original_branch: str, report_filepath: str, content: bytes
-    ) -> None:
-        """Restores the original branch and report content."""
-        self.create_and_checkout_branch(original_branch)
-        self._write_report_content(report_filepath, content)
+        self.create_and_checkout_branch(self.branch_name)
+        report_url = f"{self.fork_url}/blob/{report_branch}/{report_filename}"
+        self.pr_report_body = (
+            f"\nGenerated report - [{report_filename}]({report_url})\n"
+        )
 
     def update_about_section(self, about_content: dict) -> None:
         """Tries to update the 'About' section of the base and fork repository with the provided content.

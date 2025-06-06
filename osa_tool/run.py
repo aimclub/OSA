@@ -93,7 +93,7 @@ def main():
 
         # Repository Analysis Report generation
         sourcerank = SourceRank(config)
-        analytics = ReportGenerator(config, sourcerank, github_agent.clone_dir)
+        analytics = ReportGenerator(config, sourcerank)
         analytics.build_pdf()
         if publish_results:
             github_agent.upload_report(analytics.filename, analytics.output_path)
