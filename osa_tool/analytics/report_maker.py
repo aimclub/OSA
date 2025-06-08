@@ -6,7 +6,6 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfgen.canvas import Canvas
-
 from reportlab.platypus import (
     ListFlowable,
     ListItem,
@@ -25,11 +24,11 @@ from osa_tool.utils import logger, osa_project_root
 
 
 class ReportGenerator:
+
     def __init__(
         self,
         config_loader: ConfigLoader,
         sourcerank: SourceRank,
-        output_path: str = None,
     ):
         self.config = config_loader.config
         self.sourcerank = sourcerank
@@ -41,7 +40,7 @@ class ReportGenerator:
         self.logo_path = os.path.join(osa_project_root(), "docs", "images", "osa_logo.PNG")
 
         self.filename = f"{self.metadata.name}_report.pdf"
-        self.output_path = os.path.join(output_path or os.getcwd(), self.filename)
+        self.output_path = os.path.join(os.getcwd(), self.filename)
 
     @staticmethod
     def table_builder(

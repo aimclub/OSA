@@ -28,6 +28,7 @@ nbformat>=5.0
 openai==1.58.1
 packaging==24.2
 pdfminer.six==20231228
+pdfplumber==0.11.5
 pluggy==1.5.0
 prompt_toolkit==3.0.51
 propcache==0.2.1
@@ -57,5 +58,3 @@ urllib3==2.3.0
 yarl==1.18.3
 
 protollm>=0.1.3
-
-aspose-pdf==25.1.0; sys_platform != 'darwin'

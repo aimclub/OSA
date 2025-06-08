@@ -267,30 +267,23 @@ class GithubAgent:
 
         Args:
             report_filename: Name of the report file.
-            report_filepath: Path to the repoft file.
+            report_filepath: Path to the report file.
             report_branch: Name of the branch for storing reports. Defaults to "osa_tool_attachments".
             commit_message: Commit message for the report upload. Defaults to "upload pdf report".
         """
         logger.info("Uploading report...")
-        try:
-            self.create_and_checkout_branch(report_branch)
-        except GitCommandError:
-            logger.warning(f"PDF report located in the {self.branch_name} branch, moving it.")
-            with open(report_filepath, "rb") as f:
-                preserved_content = f.read()
-            self.repo.git.checkout("-f", report_branch)
-            with open(report_filepath, "wb") as f:
-                f.write(preserved_content)
-            logger.info(f"Successfully moved PDF report to {report_branch} branch.")
+        
+        with open(report_filepath, "rb") as f:
+            report_content = f.read()
+        self.create_and_checkout_branch(report_branch)
 
-        try:
-            self.commit_and_push_changes(branch=report_branch, commit_message=commit_message, force=True)
-        except GitCommandError:
-            logger.error("Commit failed! PDF extension is listed in the .gitignore file of the repository.")
-            return
-        finally:
-            self.create_and_checkout_branch()  # Return to original branch
+        with open(os.path.join(self.clone_dir, report_filename), "wb") as f:
+            f.write(report_content)
+        self.commit_and_push_changes(
+            branch=report_branch, commit_message=commit_message, force=True
+        )
 
+        self.create_and_checkout_branch(self.branch_name)
         report_url = f"{self.fork_url}/blob/{report_branch}/{report_filename}"
         self.pr_report_body = f"\nGenerated report - [{report_filename}]({report_url})\n"
 
