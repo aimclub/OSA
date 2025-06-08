@@ -28,18 +28,14 @@ def test_data_extractor_filters_table_text(parser):
     mock_doc = MagicMock()
     mock_doc.pages = [mock_page]
 
-    with patch(
-        "osa_tool.readmegen.context.article_content.pdfplumber.open"
-    ) as mock_pdf_open:
+    with patch("osa_tool.readmegen.context.article_content.pdfplumber.open") as mock_pdf_open:
         mock_pdf_open.return_value.__enter__.return_value = mock_doc
 
         mock_element = MagicMock()
         mock_element.get_text.return_value = "In table"
         mock_element.bbox = (100, 100, 200, 200)
 
-        with patch(
-            "osa_tool.readmegen.context.article_content.extract_pages"
-        ) as mock_extract_pages:
+        with patch("osa_tool.readmegen.context.article_content.extract_pages") as mock_extract_pages:
             mock_extract_pages.return_value = [[mock_element]]
             # Act
             result = parser.data_extractor()

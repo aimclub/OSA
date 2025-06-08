@@ -77,9 +77,7 @@ def test_upload_report_existing_branch(mock_file, github_agent):
 
     # Assert
     mock_file.assert_any_call(report_filepath, "rb")
-    github_agent.repo.git.checkout.assert_has_calls(
-        [call(default_report_branch), call("-b", github_agent.branch_name)]
-    )
+    github_agent.repo.git.checkout.assert_has_calls([call(default_report_branch), call("-b", github_agent.branch_name)])
     github_agent.repo.git.add.assert_called_once_with(".")
     github_agent.repo.git.commit.assert_called_once_with("-m", default_message)
     github_agent.repo.git.push.assert_called_once_with(

@@ -272,16 +272,14 @@ class GithubAgent:
             commit_message: Commit message for the report upload. Defaults to "upload pdf report".
         """
         logger.info("Uploading report...")
-        
+
         with open(report_filepath, "rb") as f:
             report_content = f.read()
         self.create_and_checkout_branch(report_branch)
 
         with open(os.path.join(self.clone_dir, report_filename), "wb") as f:
             f.write(report_content)
-        self.commit_and_push_changes(
-            branch=report_branch, commit_message=commit_message, force=True
-        )
+        self.commit_and_push_changes(branch=report_branch, commit_message=commit_message, force=True)
 
         self.create_and_checkout_branch(self.branch_name)
         report_url = f"{self.fork_url}/blob/{report_branch}/{report_filename}"
