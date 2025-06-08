@@ -48,6 +48,11 @@ def osa_project_root() -> Path:
     return Path(__file__).parent
 
 
+def build_arguments_path() -> str:
+    """Returns arguments.yaml for CLI parser."""
+    return os.path.join(osa_project_root(), "config", "settings", "arguments.yaml")
+
+
 def get_base_repo_url(repo_url: str) -> str:
     """
     Extracts the base repository URL path from a given GitHub URL.

@@ -4,7 +4,7 @@ from typing import List
 from osa_tool.aboutgen.about_generator import AboutGenerator
 from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.arguments_parser import get_cli_args, get_workflow_keys
+from osa_tool.arguments_parser import build_parser_from_yaml, get_keys_from_group_in_yaml
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.convertion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
@@ -17,7 +17,7 @@ from osa_tool.readmegen.readme_core import readme_agent
 from osa_tool.scheduler.scheduler import ModeScheduler
 from osa_tool.scheduler.workflow_manager import generate_github_workflows, update_workflow_config
 from osa_tool.translation.dir_translator import DirectoryTranslator
-from osa_tool.utils import delete_repository, logger, parse_folder_name, rich_section
+from osa_tool.utils import delete_repository, logger, parse_folder_name, rich_section, build_arguments_path
 
 
 def main():
@@ -28,9 +28,9 @@ def main():
     """
 
     # Create a command line argument parser
-    parser = get_cli_args()
+    parser = build_parser_from_yaml(build_arguments_path())
     args = parser.parse_args()
-    workflow_keys = get_workflow_keys(parser)
+    workflow_keys = get_keys_from_group_in_yaml(build_arguments_path(), "workflow")
     publish_results = not args.not_publish_results
 
     try:
