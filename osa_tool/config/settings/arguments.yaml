@@ -16,6 +16,14 @@ mode:
   choices: [ "basic", "auto", "advanced" ]
   default: "auto"
 
+web_mode:
+  aliases: [ "--web-mode" ]
+  type: flag
+  description: |
+    Enable web interface mode. When set, the tool will generate the task plan
+    without launching the interactive CLI editor.
+  default: false
+
 branch:
   aliases: [ "-b", "--branch" ]
   type: str

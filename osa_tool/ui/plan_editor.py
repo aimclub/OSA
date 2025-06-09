@@ -19,7 +19,7 @@ console = Console()
 class PlanEditor:
     def __init__(self, workflow_keys: list):
         self.workflow_keys = workflow_keys
-        self.info_keys = ["repository", "mode", "api", "base_url", "model", "branch", "not_publish_results"]
+        self.info_keys = ["repository", "mode", "web_mode", "api", "base_url", "model", "branch", "not_publish_results"]
         self.arguments_metadata = read_arguments_file_flat(build_arguments_path())
         self.modified_keys = set()
 

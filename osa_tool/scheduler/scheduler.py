@@ -11,6 +11,7 @@ from osa_tool.readmegen.postprocessor.response_cleaner import process_text
 from osa_tool.scheduler.prompts import PromptLoader, PromptConfig
 from osa_tool.scheduler.workflow_manager import WorkflowManager
 from osa_tool.ui.plan_editor import PlanEditor
+from osa_tool.ui.web_plan_editor import WebPlanEditor
 from osa_tool.utils import logger, parse_folder_name, extract_readme_content
 
 
@@ -54,9 +55,9 @@ class ModeScheduler:
             dict: Prepared plan dictionary.
         """
         plan = dict(vars(self.args))
+
         if self.mode == "basic":
             logger.info("Basic mode selected for task scheduler.")
-
             for key, value in self._basic_plan().items():
                 plan[key] = value
 
@@ -83,6 +84,17 @@ class ModeScheduler:
                 plan[key] = value
         else:
             raise ValueError(f"Unsupported mode: {self.mode}")
+
+        if self.args.web_mode:
+            logger.info("Web mode enabled, returning plan for web interface.")
+            if self.mode in ["basic", "advanced"]:
+                return plan
+
+            web_plan_handler = WebPlanEditor(plan)
+            logger.info(f"Plan saved for web at {web_plan_handler.get_plan_path()}")
+
+            updated_plan = web_plan_handler.get_updated_plan()
+            return updated_plan
 
         return PlanEditor(self.workflow_keys).confirm_action(plan)
 
