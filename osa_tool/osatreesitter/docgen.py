@@ -560,9 +560,7 @@ class DocGen(object):
         yaml.Dumper.ignore_aliases = lambda self, data: True
 
         with open(f"{workflows_path}/{filename}.yml", mode="w") as actions:
-            yaml.dump(
-                data=_workflow, stream=actions, Dumper=yaml.Dumper, sort_keys=False
-            )
+            yaml.dump(data=_workflow, stream=actions, Dumper=yaml.Dumper, sort_keys=False)
         logger.info(
             f"In order to perform the documentation deployment automatically, please make sure that\n1. At {repository_url}/settings/actions following permission are enabled:\n\t1) 'Read and write permissions'\n\t2) 'Allow GitHub Actions to create and approve pull requests'\n2. 'gh-pages' branch is chosen as the source at 'Build and deployment' section at {repository_url}/settings/pages ."
         )

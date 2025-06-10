@@ -170,9 +170,7 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
 
     except Exception as e:
         dg._purge_temp_files(repo_path)
-        logger.error(
-            "Error while generating codebase documentaion: %s", repr(e), exc_info=True
-        )
+        logger.error("Error while generating codebase documentaion: %s", repr(e), exc_info=True)
 
 
 def load_configuration(
