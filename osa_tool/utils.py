@@ -4,6 +4,7 @@ import shutil
 from pathlib import Path
 from urllib.parse import urlparse
 
+from rich.console import Console
 from rich.logging import RichHandler
 
 logging.basicConfig(
@@ -14,6 +15,19 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("rich")
+
+console = Console()
+
+
+def rich_section(title: str):
+    """
+    Print a styled section header in the console to visually separate log sections.
+
+    Args:
+        title: Title text for the section header.
+    """
+    console.print("")
+    console.rule(f"[bold cyan]{title}[/bold cyan]", style="cyan")
 
 
 def parse_folder_name(repo_url: str) -> str:
@@ -32,6 +46,11 @@ def parse_folder_name(repo_url: str) -> str:
 def osa_project_root() -> Path:
     """Returns osa_tool project root folder."""
     return Path(__file__).parent
+
+
+def build_arguments_path() -> str:
+    """Returns arguments.yaml for CLI parser."""
+    return os.path.join(osa_project_root(), "config", "settings", "arguments.yaml")
 
 
 def get_base_repo_url(repo_url: str) -> str:

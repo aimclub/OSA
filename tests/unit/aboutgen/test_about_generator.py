@@ -37,18 +37,14 @@ def test_generate_description_from_metadata(about_generator, mock_metadata):
     assert result == "Existing description"
 
 
-def test_generate_description_from_readme(
-    about_generator, sample_readme_content, mocker
-):
+def test_generate_description_from_readme(about_generator, sample_readme_content, mocker):
     about_generator.metadata = mocker.Mock()
     about_generator.metadata.description = None
 
     about_generator.readme_content = sample_readme_content
 
     mock_response = "Generated description"
-    mocker.patch.object(
-        about_generator.model_handler, "send_request", return_value=mock_response
-    )
+    mocker.patch.object(about_generator.model_handler, "send_request", return_value=mock_response)
 
     result = about_generator.generate_description()
 
@@ -69,19 +65,13 @@ def test_generate_topics_new(about_generator, mocker):
     about_generator.metadata.topics = []
     mock_response = "python,testing,automation"
 
-    mocker.patch.object(
-        about_generator.model_handler, "send_request", return_value=mock_response
-    )
-    mocker.patch.object(
-        about_generator, "_validate_github_topics", return_value=["python", "testing"]
-    )
+    mocker.patch.object(about_generator.model_handler, "send_request", return_value=mock_response)
+    mocker.patch.object(about_generator, "_validate_github_topics", return_value=["python", "testing"])
     result = about_generator.generate_topics()
 
     assert set(result) == {"python", "testing"}
     about_generator.model_handler.send_request.assert_called_once()
-    about_generator._validate_github_topics.assert_called_once_with(
-        ["python", "testing", "automation"]
-    )
+    about_generator._validate_github_topics.assert_called_once_with(["python", "testing", "automation"])
 
 
 def test_detect_homepage_from_metadata(about_generator, mock_metadata):

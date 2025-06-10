@@ -27,16 +27,12 @@ def readme_agent(config_loader, article: str | None) -> None:
             responses = LLMClient(config_loader).get_responses()
             (core_features, overview, getting_started) = responses
 
-            readme_content = MarkdownBuilder(
-                config_loader, overview, core_features, getting_started
-            ).build()
+            readme_content = MarkdownBuilder(config_loader, overview, core_features, getting_started).build()
         else:
             responses = LLMClient(config_loader).get_responses_article(article)
             (overview, content, algorithms) = responses
 
-            readme_content = MarkdownBuilderArticle(
-                config_loader, overview, content, algorithms
-            ).build()
+            readme_content = MarkdownBuilderArticle(config_loader, overview, content, algorithms).build()
 
         save_sections(readme_content, file_to_save)
         remove_extra_blank_lines(file_to_save)

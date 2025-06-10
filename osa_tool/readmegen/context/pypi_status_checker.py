@@ -156,9 +156,7 @@ class PyPiPackageInspector:
                 data = response.json()
                 return data.get("total_downloads")
             else:
-                logger.error(
-                    f"Request failed for {package_name}. Status code: {response.status_code}. URL: {url}"
-                )
+                logger.error(f"Request failed for {package_name}. Status code: {response.status_code}. URL: {url}")
         except requests.RequestException as e:
             logger.error(f"Failed to fetch download stats from pepy.tech: {e}")
         return None

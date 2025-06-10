@@ -58,14 +58,8 @@ def test_generate_info_badges(header_builder):
     # Act
     badges = header_builder.generate_info_badges()
     # Assert
-    assert (
-        "[![PyPi](https://badge.fury.io/py/TestPackage.svg)](https://badge.fury.io/py/TestPackage)"
-        in badges
-    )
-    assert (
-        "[![Downloads](https://static.pepy.tech/badge/TestPackage)](https://pepy.tech/project/TestPackage)"
-        in badges
-    )
+    assert "[![PyPi](https://badge.fury.io/py/TestPackage.svg)](https://badge.fury.io/py/TestPackage)" in badges
+    assert "[![Downloads](https://static.pepy.tech/badge/TestPackage)](https://pepy.tech/project/TestPackage)" in badges
 
 
 def test_generate_license_badge(header_builder):

@@ -2,9 +2,7 @@ import pytest
 from unittest.mock import mock_open, patch
 
 
-@patch(
-    "builtins.open", new_callable=mock_open, read_data="import os\nos.path.join('test')"
-)
+@patch("builtins.open", new_callable=mock_open, read_data="import os\nos.path.join('test')")
 @patch("os.path.exists", return_value=False)
 def test_update_code(mock_open, translator):
     # Act

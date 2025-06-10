@@ -34,9 +34,7 @@ class TestWorkflowGeneration(unittest.TestCase):
     def test_generate_unit_test_workflow(self):
         expected_path = Path(self.temp_dir) / "unit-tests.yml"
         unit_test_workflow = generate_unit_test_workflow()
-        generated_path = self.generator._write_workflow(
-            "unit-tests.yml", unit_test_workflow
-        )
+        generated_path = self.generator._write_workflow("unit-tests.yml", unit_test_workflow)
         self.assertEqual(generated_path, str(expected_path))
         self.assertTrue(expected_path.exists())
 

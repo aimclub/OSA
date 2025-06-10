@@ -84,9 +84,7 @@ class NotebookConverter:
         Returns:
             The modified code without printing visualizations and tables.
         """
-        init_code = (
-            f"import os\n" f"os.makedirs('{figures_dir}_figures', exist_ok=True)\n\n"
-        )
+        init_code = f"import os\n" f"os.makedirs('{figures_dir}_figures', exist_ok=True)\n\n"
 
         pattern_1 = r"(\s*)(plt|sns)\.show\(\)"
         if re.search(pattern_1, code):
@@ -95,8 +93,7 @@ class NotebookConverter:
         def replacement(match):
             indent = match.group(1)
             return (
-                f"{indent}plt.savefig(os.path.join('{figures_dir}_figures', f'figure.png'))\n"
-                f"{indent}plt.close()\n"
+                f"{indent}plt.savefig(os.path.join('{figures_dir}_figures', f'figure.png'))\n" f"{indent}plt.close()\n"
             )
 
         code = re.sub(pattern_1, replacement, code)

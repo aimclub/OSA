@@ -29,9 +29,7 @@ class GithubAgent:
         "\n_OSA just makes your open source project better!_"
     )
 
-    def __init__(
-        self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool"
-    ):
+    def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool"):
         """Initializes the GithubAgent with the repository URL and branch name.
 
         Args:
@@ -72,9 +70,7 @@ class GithubAgent:
             self.fork_url = response.json()["html_url"]
             logger.info(f"Fork created successfully: {self.fork_url}")
         else:
-            logger.error(
-                f"Failed to create fork: {response.status_code} - {response.text}"
-            )
+            logger.error(f"Failed to create fork: {response.status_code} - {response.text}")
             raise ValueError("Failed to create fork.")
 
     def star_repository(self) -> None:
@@ -100,9 +96,7 @@ class GithubAgent:
             logger.info(f"Repository {base_repo} is already starred.")
             return
         elif response_check.status_code != 404:
-            logger.error(
-                f"Failed to check star status: {response_check.status_code} - {response_check.text}"
-            )
+            logger.error(f"Failed to check star status: {response_check.status_code} - {response_check.text}")
             raise ValueError("Failed to check star status.")
 
         # Star the repository
@@ -112,9 +106,7 @@ class GithubAgent:
         if response_star.status_code == 204:
             logger.info(f"Repository {base_repo} has been starred successfully.")
         else:
-            logger.error(
-                f"Failed to star repository: {response_star.status_code} - {response_star.text}"
-            )
+            logger.error(f"Failed to star repository: {response_star.status_code} - {response_star.text}")
             raise ValueError("Failed to star repository.")
 
     def clone_repository(self) -> None:
@@ -133,15 +125,11 @@ class GithubAgent:
 
         if os.path.exists(self.clone_dir):
             try:
-                logger.info(
-                    f"Repository already exists at {self.clone_dir}. Initializing..."
-                )
+                logger.info(f"Repository already exists at {self.clone_dir}. Initializing...")
                 self.repo = Repo(self.clone_dir)
                 logger.info("Repository initialized from existing directory")
             except InvalidGitRepositoryError:
-                logger.error(
-                    f"Directory {self.clone_dir} exists but is not a valid Git repository"
-                )
+                logger.error(f"Directory {self.clone_dir} exists but is not a valid Git repository")
                 raise
         else:
             try:
@@ -212,6 +200,7 @@ class GithubAgent:
                 force_with_lease=not force,
                 force=force,
             )
+
             logger.info("Push completed.")
             return True
         except GitCommandError:
@@ -261,13 +250,9 @@ class GithubAgent:
         response = requests.post(url, json=pr_data, headers=headers)
 
         if response.status_code == 201:
-            logger.info(
-                f"Pull request created successfully: {response.json()['html_url']}"
-            )
+            logger.info(f"Pull request created successfully: {response.json()['html_url']}")
         else:
-            logger.error(
-                f"Failed to create pull request: {response.status_code} - {response.text}"
-            )
+            logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
             if not "pull request already exists" in response.text:
                 raise ValueError("Failed to create pull request.")
 
@@ -294,15 +279,11 @@ class GithubAgent:
 
         with open(os.path.join(self.clone_dir, report_filename), "wb") as f:
             f.write(report_content)
-        self.commit_and_push_changes(
-            branch=report_branch, commit_message=commit_message, force=True
-        )
+        self.commit_and_push_changes(branch=report_branch, commit_message=commit_message, force=True)
 
         self.create_and_checkout_branch(self.branch_name)
         report_url = f"{self.fork_url}/blob/{report_branch}/{report_filename}"
-        self.pr_report_body = (
-            f"\nGenerated report - [{report_filename}]({report_url})\n"
-        )
+        self.pr_report_body = f"\nGenerated report - [{report_filename}]({report_url})\n"
 
     def update_about_section(self, about_content: dict) -> None:
         """Tries to update the 'About' section of the base and fork repository with the provided content.
@@ -311,9 +292,7 @@ class GithubAgent:
             about_section: Dictionary containing the metadata to update about section.
         """
         if not self.token:
-            raise ValueError(
-                "GitHub token is required to fill repository's 'About' section."
-            )
+            raise ValueError("GitHub token is required to fill repository's 'About' section.")
         if not self.fork_url:
             raise ValueError("Fork URL is not set. Please create a fork first.")
 
@@ -344,9 +323,7 @@ class GithubAgent:
         if response.status_code in {200, 201}:
             logger.info(f"Successfully updated repository description and homepage.")
         else:
-            logger.error(
-                f"{response.status_code} - Failed to update description and homepage for {repo_url}."
-            )
+            logger.error(f"{response.status_code} - Failed to update description and homepage for {repo_url}.")
 
     def _update_topics(self, repo_url: str, about_content: dict):
         url = f"https://api.github.com/repos/{repo_url}/topics"
@@ -362,9 +339,7 @@ class GithubAgent:
         if response.status_code in {200, 201}:
             logger.info(f"Successfully updated repository topics.")
         else:
-            logger.error(
-                f"{response.status_code} - Failed to update topics for {repo_url}."
-            )
+            logger.error(f"{response.status_code} - Failed to update topics for {repo_url}.")
 
     def _get_auth_url(self, url: str = None) -> str:
         """Converts the repository URL by adding a token for authentication.

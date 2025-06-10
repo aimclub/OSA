@@ -105,9 +105,7 @@ class OSA_TreeSitter(object):
         source_code: str = self.open_file(filename)
         return (parser.parse(source_code.encode("utf-8")), source_code)
 
-    def _traverse_expression(
-        self, class_attributes: list, expr_node: tree_sitter.Node
-    ) -> list:
+    def _traverse_expression(self, class_attributes: list, expr_node: tree_sitter.Node) -> list:
         """
         Traverses an expression node and appends any identifiers found in assignment nodes to the class attributes list.
 
@@ -126,9 +124,7 @@ class OSA_TreeSitter(object):
                         class_attributes.append(child.text.decode("utf-8"))
         return class_attributes
 
-    def _get_attributes(
-        self, class_attributes: list, block_node: tree_sitter.Node
-    ) -> list:
+    def _get_attributes(self, class_attributes: list, block_node: tree_sitter.Node) -> list:
         """
         Gets the attributes of a class.
 
@@ -177,15 +173,11 @@ class OSA_TreeSitter(object):
             if child.type == "block":
                 class_attributes = self._get_attributes(class_attributes, child)
                 docstring = self._get_docstring(child)
-                method_details = self._traverse_block(
-                    child, source_code, structure["imports"]
-                )
+                method_details = self._traverse_block(child, source_code, structure["imports"])
                 class_methods.extend(method_details)
 
             if child.type == "function_definition":
-                method_details = self._extract_function_details(
-                    child, source_code, structure["imports"]
-                )
+                method_details = self._extract_function_details(child, source_code, structure["imports"])
                 class_methods.append(method_details)
 
         structure["structure"].append(
@@ -220,9 +212,7 @@ class OSA_TreeSitter(object):
         Returns:
             A list containing the updated structure with the function details added.
         """
-        method_details = self._extract_function_details(
-            node, source_code, structure["imports"], dec_list
-        )
+        method_details = self._extract_function_details(node, source_code, structure["imports"], dec_list)
         start_line = node.start_point[0] + 1  # convert 0-based to 1-based indexing
         structure["structure"].append(
             {
@@ -275,9 +265,7 @@ class OSA_TreeSitter(object):
                     return import_mapping
 
                 module_name = from_part.replace("from", "").strip()
-                imported_entities = [
-                    entity.strip() for entity in import_part.split(",")
-                ]
+                imported_entities = [entity.strip() for entity in import_part.split(",")]
 
                 module_path = None
                 possible_path = os.path.join(self.cwd, *module_name.split(".")) + ".py"
@@ -286,9 +274,7 @@ class OSA_TreeSitter(object):
 
                 for entity in imported_entities:
                     if " as " in entity:
-                        imported_name, alias_name = [
-                            e.strip() for e in entity.split(" as ", 1)
-                        ]
+                        imported_name, alias_name = [e.strip() for e in entity.split(" as ", 1)]
                     else:
                         imported_name = entity
                         alias_name = imported_name
@@ -341,9 +327,7 @@ class OSA_TreeSitter(object):
                 import_map.update(resolved_imports)
         return import_map
 
-    def _resolve_import(
-        self, call_text: str, call_alias: str, imports: dict, incantations: dict = None
-    ) -> dict:
+    def _resolve_import(self, call_text: str, call_alias: str, imports: dict, incantations: dict = None) -> dict:
         """
         Resolves an import call to retrieve module/class information based on provided imports and aliases.
 
@@ -395,9 +379,7 @@ class OSA_TreeSitter(object):
                 resolved_import["class"] = class_name
 
                 if len(parts) > 1:
-                    resolved_import["function"] = parts[
-                        1
-                    ]  # Get method name after class
+                    resolved_import["function"] = parts[1]  # Get method name after class
             else:
                 resolved_import["function"] = parts[0]  # Direct function call
 
@@ -407,9 +389,7 @@ class OSA_TreeSitter(object):
 
         return resolved_import
 
-    def _resolve_method_calls(
-        self, function_node: tree_sitter.Node, source_code: str, imports: dict
-    ) -> list:
+    def _resolve_method_calls(self, function_node: tree_sitter.Node, source_code: str, imports: dict) -> list:
         """
         Resolve method calls in the given function node and return a list of resolved method calls.
 
@@ -434,9 +414,7 @@ class OSA_TreeSitter(object):
             if resolved_call:
                 method_calls.append(resolved_call)
 
-        block_node = next(
-            (child for child in function_node.children if child.type == "block"), None
-        )
+        block_node = next((child for child in function_node.children if child.type == "block"), None)
         if not block_node:
             return []
 
@@ -490,9 +468,7 @@ class OSA_TreeSitter(object):
                         self._class_parser(structure, source_code, dec_node, dec_list)
 
                     elif dec_node.type == "function_definition":
-                        self._function_parser(
-                            structure, source_code, dec_node, dec_list
-                        )
+                        self._function_parser(structure, source_code, dec_node, dec_list)
 
             elif node.type == "function_definition":
                 self._function_parser(structure, source_code, node)
@@ -519,9 +495,7 @@ class OSA_TreeSitter(object):
                         docstring = c_c.text.decode("utf-8")
         return docstring
 
-    def _traverse_block(
-        self, block_node: tree_sitter.Node, source_code: bytes, imports: dict
-    ) -> list:
+    def _traverse_block(self, block_node: tree_sitter.Node, source_code: bytes, imports: dict) -> list:
         """Inner method traverses occuring in file's tree structure "block" node.
 
         Args:
@@ -540,15 +514,11 @@ class OSA_TreeSitter(object):
                         dec_list = self._get_decorators(dec_list, dec_child)
 
                     if dec_child.type == "function_definition":
-                        method_details = self._extract_function_details(
-                            dec_child, source_code, imports, dec_list
-                        )
+                        method_details = self._extract_function_details(dec_child, source_code, imports, dec_list)
                         methods.append(method_details)
 
             if child.type == "function_definition":
-                method_details = self._extract_function_details(
-                    child, source_code, imports
-                )
+                method_details = self._extract_function_details(child, source_code, imports)
                 methods.append(method_details)
         return methods
 
@@ -644,9 +614,7 @@ class OSA_TreeSitter(object):
             logging.info(f"File: {filename}")
             for item in structures["structure"]:
                 if item["type"] == "class":
-                    logging.info(
-                        f"  - Class: {item['name']}, line {item['start_line']}"
-                    )
+                    logging.info(f"  - Class: {item['name']}, line {item['start_line']}")
                     if item["docstring"]:
                         logging.info(f"      Docstring: {item['docstring']}")
                     for method in item["methods"]:
@@ -654,9 +622,7 @@ class OSA_TreeSitter(object):
                             f"      - Method: {method['method_name']}, Args: {method['arguments']}, Return: {method['return_type']}, line {method['start_line']}"
                         )
                         if method["docstring"]:
-                            logging.info(
-                                f"          Docstring:\n        {method['docstring']}"
-                            )
+                            logging.info(f"          Docstring:\n        {method['docstring']}")
                         logging.info(f"        Source:\n{method['source_code']}")
                 elif item["type"] == "function":
                     details = item["details"]
@@ -664,9 +630,7 @@ class OSA_TreeSitter(object):
                         f"  - Function: {details['method_name']}, Args: {details['arguments']}, Return: {details['return_type']}, line {details['start_line']}"
                     )
                     if details["docstring"]:
-                        logging.info(
-                            f"          Docstring:\n    {details['docstring']}"
-                        )
+                        logging.info(f"          Docstring:\n    {details['docstring']}")
                     logging.info(f"        Source:\n{details['source_code']}")
 
     def log_results(self, results: dict) -> None:
@@ -682,9 +646,7 @@ class OSA_TreeSitter(object):
                 f.write(f"File: {filename}\n")
                 for item in structures:
                     if item["type"] == "class":
-                        f.write(
-                            f"----Class: {item['name']}, line {item['start_line']}\n"
-                        )
+                        f.write(f"----Class: {item['name']}, line {item['start_line']}\n")
                         if item["docstring"]:
                             f.write(f"    Docstring:\n    {item['docstring']}\n")
                         for method in item["methods"]:
@@ -692,9 +654,7 @@ class OSA_TreeSitter(object):
                                 f"--------Method: {method['method_name']}, Args: {method['arguments']}, Return: {method['return_type']}, line {method['start_line']}\n"
                             )
                             if method["docstring"]:
-                                f.write(
-                                    f"        Docstring:\n        {method['docstring']}\n"
-                                )
+                                f.write(f"        Docstring:\n        {method['docstring']}\n")
                             f.write(f"        Source:\n    {method['source_code']}\n")
                     elif item["type"] == "function":
                         details = item["details"]

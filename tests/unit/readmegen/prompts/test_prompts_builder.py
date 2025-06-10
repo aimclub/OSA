@@ -44,32 +44,26 @@ def patch_dependencies(mock_metadata):
             "osa_tool.readmegen.prompts.prompts_builder.parse_folder_name",
             return_value="repo",
         ),
-        patch(
-            "osa_tool.readmegen.prompts.prompts_builder.SourceRank"
-        ) as mock_sourcerank,
-        patch(
-            "osa_tool.readmegen.prompts.prompts_builder.PromptLoader"
-        ) as mock_prompt_loader,
-        patch(
-            "osa_tool.readmegen.prompts.prompts_builder.PromptArticleLoader"
-        ) as mock_article_loader,
+        patch("osa_tool.readmegen.prompts.prompts_builder.SourceRank") as mock_sourcerank,
+        patch("osa_tool.readmegen.prompts.prompts_builder.PromptLoader.load_prompts") as mock_prompt_loader,
+        patch("osa_tool.readmegen.prompts.prompts_builder.PromptArticleLoader.load_prompts") as mock_article_loader,
     ):
         mock_sourcerank.return_value.tree = "repo/tree"
 
-        mock_prompt_loader.return_value.prompts = MagicMock(
-            preanalysis="Tree: {repository_tree} | Readme: {readme_content}",
-            core_features="Project: {project_name}, Meta: {metadata}, Readme: {readme_content}, Keys: {key_files_content}",
-            overview="Name: {project_name}, Desc: {description}, Readme: {readme_content}, Features: {core_features}",
-            getting_started="Proj: {project_name}, Readme: {readme_content}, Examples: {examples_files_content}",
-        )
+        mock_prompt_loader.return_value = {
+            "preanalysis": "Tree: {repository_tree} | Readme: {readme_content}",
+            "core_features": "Project: {project_name}, Meta: {metadata}, Readme: {readme_content}, Keys: {key_files_content}",
+            "overview": "Name: {project_name}, Desc: {description}, Readme: {readme_content}, Features: {core_features}",
+            "getting_started": "Proj: {project_name}, Readme: {readme_content}, Examples: {examples_files_content}",
+        }
 
-        mock_article_loader.return_value.prompts = MagicMock(
-            file_summary="Files: {files_content}",
-            pdf_summary="PDF: {pdf_content}",
-            overview="Article for {project_name} | Files: {files_summary} | PDF: {pdf_summary}",
-            content="Article content: {project_name}, {files_content}, {pdf_summary}",
-            algorithms="Algo: {project_name} | {file_summary} | {pdf_summary}",
-        )
+        mock_article_loader.return_value = {
+            "file_summary": "Files: {files_content}",
+            "pdf_summary": "PDF: {pdf_content}",
+            "overview": "Article for {project_name} | Files: {files_summary} | PDF: {pdf_summary}",
+            "content": "Article content: {project_name}, {files_content}, {pdf_summary}",
+            "algorithms": "Algo: {project_name} | {file_summary} | {pdf_summary}",
+        }
 
         yield
 
