@@ -47,8 +47,8 @@ class LLMClient:
         overview = process_text(overview)
 
         getting_started = None
-        if self.sourcerank.examples_presence():
-            logger.info("Examples detected. Attempting to generate Getting Started section...")
+        if self.sourcerank.examples_presence() or self.sourcerank.docs_presence():
+            logger.info("Examples/Documentation detected. Attempting to generate Getting Started section...")
             examples_files = extract_example_paths(self.tree)
             if examples_files:
                 examples_content = FileProcessor(self.config_loader, examples_files).process_files()

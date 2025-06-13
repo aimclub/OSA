@@ -77,9 +77,21 @@ class PyPiPackageInspector:
         """
         try:
             data = tomli.loads(content)
-            return data.get("project", {}).get("name")
         except tomli.TOMLDecodeError:
             logger.error("Failed to decode pyproject.toml")
+            return None
+
+        # Try PEP 621-style [project]
+        name = data.get("project", {}).get("name")
+        if name:
+            return name
+
+        # Try Poetry-style [tool.poetry]
+        name = data.get("tool", {}).get("poetry", {}).get("name")
+        if name:
+            return name
+
+        logger.warning("Package name not found in pyproject.toml")
         return None
 
     def _extract_package_name_from_setup(self, content: str) -> str | None:
