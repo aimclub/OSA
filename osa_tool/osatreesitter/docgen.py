@@ -433,7 +433,7 @@ class DocGen(object):
             None. The method generates MkDocs documentation for the project.
         """
         local = False
-        repo_path = Path(path)
+        repo_path = Path(path).resolve()
         mkdocs_dir = repo_path / "mkdocs_temp"
         docs_output_path = repo_path / "site"
 
@@ -468,7 +468,7 @@ class DocGen(object):
 
         index_path.write_text(index_content, encoding="utf-8")
 
-        mkdocs_config = osa_project_root() / "docs" / "templates" / "mkdocs.yml"
+        mkdocs_config = osa_project_root().resolve() / "docs" / "templates" / "mkdocs.yml"
         mkdocs_yml = mkdocs_dir / "mkdocs.yml"
         shutil.copy(mkdocs_config, mkdocs_yml)
 
@@ -551,7 +551,7 @@ class DocGen(object):
             },
         }
 
-        workflows_path = f"{path}/.github/workflows"
+        workflows_path = f"{Path(path).resolve()}/.github/workflows"
 
         if not os.path.exists(workflows_path):
             os.makedirs(workflows_path)
