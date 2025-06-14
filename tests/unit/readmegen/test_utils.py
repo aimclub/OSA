@@ -22,7 +22,7 @@ def sample_tree():
         "tutorials/intro.ipynb\n"
         "src/__init__.py\n"
         "examples/__init__.py\n"
-        "notebooks/tutorials/overview.ipynb\n"
+        "notebooks/overview.ipynb\n"
         "docs/README.md\n"
         ".git/config"
     )

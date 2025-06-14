@@ -18,7 +18,6 @@ def read_file(file_path: str) -> str:
     if file_path.endswith(".ipynb"):
         return read_ipynb_file(file_path)
 
-    encodings_to_try = ["utf-8", "utf-16", "latin-1"]
     if not os.path.isfile(file_path):
         logger.warning(f"File not found: {file_path}")
         return ""
@@ -126,16 +125,18 @@ def extract_example_paths(tree: str):
     Returns:
         list[str]: A list of matched paths excluding __init__.py files.
     """
-    pattern = r"\b(tutorials?|examples)\b"
+    pattern = re.compile(r"\b(tutorials?|examples|docs?|documentation|wiki|manuals?)\b", re.IGNORECASE)
     result = []
 
     for line in tree.splitlines():
         line = line.strip()
-        if line.endswith("__init__.py"):
+        if not line or line.endswith("__init__.py"):
             continue
-        parts = line.split("/")
-        if len(parts) == 2 and re.search(pattern, parts[0]):
+        if "." not in line.split("/")[-1]:
+            continue
+        if pattern.search(line):
             result.append(line)
+
     return result
 
 
