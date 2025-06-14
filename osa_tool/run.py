@@ -17,7 +17,7 @@ from osa_tool.readmegen.readme_core import readme_agent
 from osa_tool.scheduler.scheduler import ModeScheduler
 from osa_tool.scheduler.workflow_manager import generate_github_workflows, update_workflow_config
 from osa_tool.translation.dir_translator import DirectoryTranslator
-from osa_tool.utils import delete_repository, logger, parse_folder_name, rich_section, build_arguments_path
+from osa_tool.utils import build_arguments_path, delete_repository, logger, parse_folder_name, rich_section
 
 
 def main():
@@ -126,7 +126,7 @@ def main():
             rich_section("Repository deletion")
             delete_repository(args.repository)
 
-        logger.info("All operations completed successfully.")
+        rich_section("All operations completed successfully")
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
 
