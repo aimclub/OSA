@@ -93,10 +93,16 @@ ensure_license:
   default: null
   const: "bsd-3"
 
-not_publish_results:
-  aliases: [ "--not-publish-results" ]
+no_fork:
+  aliases: [ "--no-fork" ]
   type: flag
-  description: "Create public fork and PR the target repository."
+  description: "Do not create a public fork to the target repository."
+  default: false
+
+no_pull_request:
+  aliases: [ "--no-pull-request" ]
+  type: flag
+  description: "Do not create a pull request to the target repository."
   default: false
 
 community_docs:

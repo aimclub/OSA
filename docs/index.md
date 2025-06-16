@@ -147,7 +147,8 @@ The --article option enables you to choose a README template for a repository ba
 | `--article`          | Link to the pdf file of the article                                         | `None`                      |
 | `--translate-dirs`   | Enable automatic translation of the directory name into English             | `disabled`                  |
 | `--delete-dir`       | Enable deleting the downloaded repository after processing (**Linux only**) | `disabled`                  |
-| `--not-publish-results`       | Avoid create fork and pull request for target repository           | `False`                     |
+| `--no-fork`          | Avoid create fork for target repository                                     | `False`                     |
+| `--no-pull-request`  | Avoid create pull request for target repository                             | `False`                     |
 
 ---
 
