@@ -206,6 +206,21 @@ class DocGen(object):
         Returns:
             The properly formatted docstring including triple quotes.
         """
+
+        # Try to recover if closing triple-quote was replaced with ```
+        triple_quote_pos = gpt_response.find('"""')
+        if triple_quote_pos != -1:
+            # Look for closing triple-quote
+            closing_pos = gpt_response.find('"""', triple_quote_pos + 3)
+            if closing_pos == -1:
+                # Try to find a ``` after opening """
+                broken_close_pos = gpt_response.find('```', triple_quote_pos + 3)
+                if broken_close_pos != -1:
+                    # Replace only this incorrect closing ``` with """
+                    gpt_response = (
+                        gpt_response[:broken_close_pos] + '"""' + gpt_response[broken_close_pos + 3:]
+                    )
+
         # Regex to capture the full docstring with triple quotes
         match = re.search(r'("""+)\n?(.*?)\n?\1', gpt_response, re.DOTALL)
 
