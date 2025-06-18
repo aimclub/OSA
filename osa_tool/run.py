@@ -130,7 +130,7 @@ def main():
             organizer = RepoOrganizer(os.path.join(os.getcwd(), parse_folder_name(args.repository)))
             organizer.organize()
 
-        if create_pull_request:
+        if create_fork and create_pull_request:
             rich_section("Publishing changes")
             github_agent.commit_and_push_changes()
             github_agent.create_pull_request(body=about_gen.get_about_section_message())
