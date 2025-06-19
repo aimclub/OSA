@@ -24,7 +24,6 @@ RULES:
 - Choose the most important files that define the project’s core logic.
 - Exclude files related to tests, configuration, or assets unless they are central to the business logic.
 - Exclude README files.
-
 """
 
 core_features = """
@@ -63,7 +62,6 @@ RULES:
 - Be sure to generate multiple core features, each describing a different aspect of the project.
 - The 'feature_name' should describe a key aspect.
 - The 'feature_description' should be a detailed but short explanation of the feature.
-
 """
 
 overview = """
@@ -95,7 +93,6 @@ RULES:
 - Focus on the project's core purpose and its value proposition without mentioning specific technical aspects.
 - Avoid technical jargon, code snippets, or any implementation details.
 - The overview should be no more than 60 words.
-
 """
 
 getting_started = """
@@ -140,6 +137,51 @@ RULES:
 - If no meaningful example files are found and no helpful images or gifs are available, return `"getting_started": null`
 - Do not add a "## Getting Started" heading — only the content for that section.
 - Output valid JSON, strictly following the given structure.
+"""
 
+deduplicate_sections = """
+INPUT DATA:
+
+1. INSTALLATION SECTION CONTENT:
+
+{installation}
+
+2. GETTING STARTED SECTION CONTENT:
+
+{getting_started}
+
+TASK:
+You are cleaning up and reorganizing the "Installation" and "Getting Started" sections for a project's README file.
+Your goal is to eliminate duplicated or overlapping information between the two sections while preserving their logical separation:
+
+- The "Installation" section should only contain information about how to install the project (package managers, dependencies, environment setup, etc.).
+- The "Getting Started" section should only contain information about how to start using the project after it’s installed (running the program, example commands, usage demos, etc.).
+
+
+PROCESS:
+
+- Carefully review the content of both sections.
+- Identify and remove any duplicated or redundant information that appears in both sections.
+- If a piece of information belongs logically to the "Installation" section (like `pip install` commands or dependency instructions), move or leave it there.
+- If a piece of information belongs to the "Getting Started" section (like how to run the project or a first example command), move or leave it there.
+- Do not invent or modify any instructions — rely solely on the provided content.
+- Preserve markdown formatting (including code blocks and image links) as they appear in the input.
+
+RESPONSE FORMAT:
+Return a JSON object in the following format:
+
+{{
+    "installation": "cleaned installation section text, or null if empty",
+    "getting_started": "cleaned getting started section text, or null if empty"
+}}
+
+RULES:
+
+- Remove duplicated lines or paragraphs that appear in both sections.
+- Ensure each section contains only relevant, logically appropriate information.
+- If a section ends up empty after deduplication, return null for that section.
+- Add section header for "## Installation".
+- Don't add section header for "## Getting Started".
+- Output valid JSON, strictly following the given structure.
 """
 

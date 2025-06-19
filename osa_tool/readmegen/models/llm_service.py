@@ -97,14 +97,23 @@ class LLMClient:
         logger.info("Article-style summary generation completed.")
         return overview, content, algorithms
 
-    def run_request(self, prompt: str):
+    def run_request(self, prompt: str) -> str:
         """Sends a prompt to the model and returns the response."""
         response = self.model_handler.send_request(prompt)
         return response
 
-    def get_key_files(self):
+    def get_key_files(self) -> list:
         """Identifies key files from the project repository using model analysis."""
         key_files_string = self.run_request(self.prompts.get_prompt_preanalysis())
         key_files_cleaned = process_text(key_files_string)
         key_files = extract_relative_paths(key_files_cleaned)
         return key_files
+
+    def deduplicate_sections(self, installation: str, getting_started: str) -> str:
+        """Deduplicates information in Installation and Getting Started sections."""
+        logger.info("Deduplicating sections Installation and Getting Started...")
+        response = self.run_request(
+            self.prompts.get_prompt_deduplicated_install_and_start(installation, getting_started)
+        )
+        response = process_text(response)
+        return response

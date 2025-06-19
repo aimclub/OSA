@@ -10,7 +10,8 @@ from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.generator.header import HeaderBuilder
 from osa_tool.readmegen.generator.installation import InstallationSectionBuilder
-from osa_tool.readmegen.utils import find_in_repo_tree
+from osa_tool.readmegen.models.llm_service import LLMClient
+from osa_tool.readmegen.utils import find_in_repo_tree, clean_code_block_indents
 from osa_tool.utils import osa_project_root
 
 
@@ -49,6 +50,26 @@ class MarkdownBuilder:
         """
         with open(self.template_path, "rb") as file:
             return tomli.load(file)
+
+    def deduplicate_sections(self):
+        """Deduplicates Installation and Getting Started sections via LLM if both are present."""
+        if not self.installation or not self._getting_started_json:
+            return
+
+        getting_started_text = json.loads(self._getting_started_json)
+        if not getting_started_text["getting_started"]:
+            return
+
+        llm_client = LLMClient(self.config_loader)
+        response = llm_client.deduplicate_sections(self.installation, getting_started_text["getting_started"])
+        response = json.loads(response)
+
+        self.installation = clean_code_block_indents(response["installation"] or "")
+        new_getting_started = clean_code_block_indents(response["getting_started"])
+        if new_getting_started is not None:
+            self._getting_started_json = json.dumps({"getting_started": new_getting_started})
+        else:
+            self._getting_started_json = json.dumps({"getting_started": None})
 
     @staticmethod
     def _check_url(url):

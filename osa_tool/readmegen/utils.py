@@ -140,6 +140,19 @@ def extract_example_paths(tree: str):
     return result
 
 
+def clean_code_block_indents(markdown_text: str) -> str:
+    """
+    Removes leading spaces before opening and closing fenced code blocks in markdown text.
+    """
+    opening_pattern = re.compile(r"^[ \t]+(```\w*)", re.MULTILINE)
+    markdown_text = opening_pattern.sub(r"\1", markdown_text)
+
+    closing_pattern = re.compile(r"^[ \t]+(```)$", re.MULTILINE)
+    markdown_text = closing_pattern.sub(r"\1", markdown_text)
+
+    return markdown_text
+
+
 def remove_extra_blank_lines(path: str) -> None:
     """
     Cleans up extra blank lines from a file, leaving only single empty lines between content blocks.
