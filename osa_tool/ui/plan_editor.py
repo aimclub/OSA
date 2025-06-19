@@ -3,7 +3,12 @@ import sys
 from typing import Iterable
 
 from prompt_toolkit import PromptSession
-from prompt_toolkit.completion import WordCompleter, Completer, CompleteEvent, Completion
+from prompt_toolkit.completion import (
+    CompleteEvent,
+    Completer,
+    Completion,
+    WordCompleter,
+)
 from prompt_toolkit.document import Document
 from rich import box
 from rich.console import Console
@@ -11,7 +16,7 @@ from rich.prompt import Prompt
 from rich.table import Table
 
 from osa_tool.arguments_parser import read_arguments_file_flat
-from osa_tool.utils import logger, build_arguments_path
+from osa_tool.utils import build_arguments_path, logger
 
 console = Console()
 
@@ -19,7 +24,17 @@ console = Console()
 class PlanEditor:
     def __init__(self, workflow_keys: list):
         self.workflow_keys = workflow_keys
-        self.info_keys = ["repository", "mode", "web_mode", "api", "base_url", "model", "branch", "not_publish_results"]
+        self.info_keys = [
+            "repository",
+            "mode",
+            "web_mode",
+            "api",
+            "base_url",
+            "model",
+            "branch",
+            "no_fork",
+            "no_pull_request",
+        ]
         self.arguments_metadata = read_arguments_file_flat(build_arguments_path())
         self.modified_keys = set()
 
