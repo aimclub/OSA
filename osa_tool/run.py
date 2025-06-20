@@ -4,7 +4,10 @@ from typing import List
 from osa_tool.aboutgen.about_generator import AboutGenerator
 from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.arguments_parser import build_parser_from_yaml, get_keys_from_group_in_yaml
+from osa_tool.arguments_parser import (
+    build_parser_from_yaml,
+    get_keys_from_group_in_yaml,
+)
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.convertion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
@@ -15,7 +18,10 @@ from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 from osa_tool.readmegen.readme_core import readme_agent
 from osa_tool.scheduler.scheduler import ModeScheduler
-from osa_tool.scheduler.workflow_manager import generate_github_workflows, update_workflow_config
+from osa_tool.scheduler.workflow_manager import (
+    generate_github_workflows,
+    update_workflow_config,
+)
 from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.utils import build_arguments_path, delete_repository, logger, parse_folder_name, rich_section
 
@@ -31,7 +37,8 @@ def main():
     parser = build_parser_from_yaml(build_arguments_path())
     args = parser.parse_args()
     workflow_keys = get_keys_from_group_in_yaml(build_arguments_path(), "workflow")
-    publish_results = not args.not_publish_results
+    create_fork = not args.no_fork
+    create_pull_request = not args.no_pull_request
 
     try:
         # Load configurations and update
@@ -45,7 +52,7 @@ def main():
 
         # Initialize GitHub agent and perform operations
         github_agent = GithubAgent(args.repository, args.branch)
-        if publish_results:
+        if create_fork:
             github_agent.star_repository()
             github_agent.create_fork()
         github_agent.clone_repository()
@@ -54,7 +61,7 @@ def main():
         scheduler = ModeScheduler(config, sourcerank, args, workflow_keys)
         plan = scheduler.plan
 
-        if publish_results:
+        if create_fork:
             github_agent.create_and_checkout_branch()
 
         # .ipynb to .py convertion
@@ -67,7 +74,7 @@ def main():
             rich_section("Report generation")
             analytics = ReportGenerator(config, sourcerank)
             analytics.build_pdf()
-            if publish_results:
+            if create_fork:
                 github_agent.upload_report(analytics.filename, analytics.output_path)
 
         # Auto translating names of directories
@@ -102,7 +109,7 @@ def main():
             rich_section("About Section generation")
             about_gen = AboutGenerator(config)
             about_gen.generate_about_content()
-            if publish_results:
+            if create_fork:
                 github_agent.update_about_section(about_gen.get_about_content())
 
         # Generate GitHub workflows
@@ -117,7 +124,7 @@ def main():
             organizer = RepoOrganizer(os.path.join(os.getcwd(), parse_folder_name(args.repository)))
             organizer.organize()
 
-        if publish_results:
+        if create_fork and create_pull_request:
             rich_section("Publishing changes")
             github_agent.commit_and_push_changes()
             github_agent.create_pull_request(body=about_gen.get_about_section_message())
@@ -160,13 +167,17 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
     """
     try:
         repo_url = config_loader.config.git.repository
-        ts = OSA_TreeSitter(parse_folder_name(repo_url))
+        repo_path = parse_folder_name(repo_url)
+        ts = OSA_TreeSitter(repo_path)
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen(config_loader)
         dg.process_python_file(res)
+        dg.generate_documentation_mkdocs(repo_path)
+        dg.create_mkdocs_github_workflow(repo_url, repo_path)
 
     except Exception as e:
-        logger.error("Error while docstring generation: %s", repr(e), exc_info=True)
+        dg._purge_temp_files(repo_path)
+        logger.error("Error while generating codebase documentaion: %s", repr(e), exc_info=True)
 
 
 def load_configuration(

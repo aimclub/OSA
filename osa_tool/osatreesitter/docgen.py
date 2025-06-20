@@ -1,13 +1,17 @@
+import os
 import re
 import black
 from pathlib import Path
+import shutil
+import subprocess
 
 import dotenv
 import tiktoken
+import yaml
 
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
-from osa_tool.utils import logger
+from osa_tool.utils import logger, osa_project_root
 
 dotenv.load_dotenv()
 
@@ -202,6 +206,19 @@ class DocGen(object):
         Returns:
             The properly formatted docstring including triple quotes.
         """
+
+        # Try to recover if closing triple-quote was replaced with ```
+        triple_quote_pos = gpt_response.find('"""')
+        if triple_quote_pos != -1:
+            # Look for closing triple-quote
+            closing_pos = gpt_response.find('"""', triple_quote_pos + 3)
+            if closing_pos == -1:
+                # Try to find a ``` after opening """
+                broken_close_pos = gpt_response.find("```", triple_quote_pos + 3)
+                if broken_close_pos != -1:
+                    # Replace only this incorrect closing ``` with """
+                    gpt_response = gpt_response[:broken_close_pos] + '"""' + gpt_response[broken_close_pos + 3 :]
+
         # Regex to capture the full docstring with triple quotes
         match = re.search(r'("""+)\n?(.*?)\n?\1', gpt_response, re.DOTALL)
 
@@ -418,84 +435,252 @@ class DocGen(object):
             self.format_with_black(filename)
             logger.info(f"Updated file: {filename}")
 
-    def generate_method_documentation_md(self, method_details: dict) -> str:
+    def generate_documentation_mkdocs(self, path: str) -> None:
         """
-        Generate documentation for a single method using OpenAI GPT.
-        """
-        prompt = f"""
-        Generate detailed documentation for the following Python method. Include:
-        - Method name.
-        - Arguments and their purposes.
-        - Return type and its purpose.
-        - A high-level explanation of what the method does.
-        - Include the provided source code in the documentation.
+        Generates MkDocs documentation for a Python project based on provided path.
 
-        Method Details:
-        - Method Name: {method_details["method_name"]}
-        - Arguments: {method_details["arguments"]}
-        - Return Type: {method_details["return_type"]}
-        - Docstring: {method_details["docstring"]}
-        - Source Code:
-        ```
-        {method_details["source_code"]}
-        ```
-        """
-
-        return self.model_handler.send_request(prompt)
-
-    def generate_documentation_openai(self, file_structure: dict) -> str:
-        """
-        Generates the documentation for a given file structure using OpenAI's API.
-
-        This method traverses the given file structure and for each class or standalone function, it generates
-        its documentation. If the documentation is not available, it attempts to generate it using the OpenAI's API.
-        The generated documentation is returned as a string.
-
-        Args:
-            self: The instance of the class where this method is defined.
-            file_structure: A dictionary where keys are filenames and values are lists of dictionaries.
-                Each dictionary represents a class or a standalone function in the file and contains information
-                like its name, type (class or function), docstring, and methods (in case of a class).
+        Parameters:
+            path: str - The path to the root directory of the Python project.
 
         Returns:
-            The final documentation as a string.
+            None. The method generates MkDocs documentation for the project.
         """
-        final_documentation = ""
+        local = False
+        repo_path = Path(path).resolve()
+        mkdocs_dir = repo_path / "mkdocs_temp"
+        docs_output_path = repo_path / "site"
 
-        for filename, structure in file_structure.items():
-            final_documentation += self._format_file_header(filename)
+        if docs_output_path.exists() and local:
+            shutil.rmtree(docs_output_path)
+        if local:
+            docs_output_path.mkdir()
+        if mkdocs_dir.exists():
+            shutil.rmtree(mkdocs_dir)
+        mkdocs_dir.mkdir()
 
-            for item in structure:
-                if item["type"] == "class":
-                    final_documentation += self._format_class_doc(item)
-                elif item["type"] == "function":
-                    final_documentation += self._format_function_doc(item)
+        self._rename_invalid_dirs(repo_path)
 
-        return final_documentation
+        docs_dir = mkdocs_dir / "docs"
+        docs_dir.mkdir()
 
-    def _format_file_header(self, filename: str) -> str:
-        """Formats the header for a file in documentation."""
-        return f"# Documentation for {filename}\n\n"
+        self._add_init_files(repo_path)
 
-    def _format_class_doc(self, item: dict) -> str:
-        """Formats documentation for a class."""
-        class_doc = f"## Class: {item['name']}\n\n{item['docstring'] or 'No docstring provided'}\n\n"
-        for method in item["methods"]:
-            class_doc += self._generate_method_doc(method)
-        return class_doc
+        index_path = docs_dir / "index.md"
+        index_content = "# Project Documentation\n\n"
 
-    def _format_function_doc(self, item: dict) -> str:
-        """Formats documentation for a standalone function."""
-        function_details = item["details"]
-        return self._generate_method_doc(function_details, is_function=True)
+        def is_valid_module_path(parts: tuple[str, ...]):
+            return all(part.isidentifier() for part in parts)
 
-    def _generate_method_doc(self, method_details: dict, is_function=False) -> str:
-        """Generates documentation for a method or function."""
-        doc_type = "Function" if is_function else "Method"
-        try:
-            logger.info(f"{doc_type} {method_details['method_name']}'s docstring is generating")
-            method_doc = self.generate_method_documentation_md(method_details=method_details)
-            return f"### {doc_type}: {method_details['method_name']}\n\n{method_doc}\n\n"
-        except Exception as e:
-            logger.error(e, exc_info=True)
-            return f"### {doc_type}: {method_details['method_name']}\n\nFailed to generate documentation.\n\n"
+        for py_file in repo_path.rglob("*.py"):
+            rel_path = py_file.relative_to(repo_path)
+            parts = rel_path.with_suffix("").parts
+            if py_file.name == "__init__.py" or not is_valid_module_path(parts):
+                continue
+            module_path = ".".join(parts)
+            index_content += f"## `{module_path}`\n\n::: {module_path}\n\n"
+
+        index_path.write_text(index_content, encoding="utf-8")
+
+        mkdocs_config = osa_project_root().resolve() / "docs" / "templates" / "mkdocs.yml"
+        mkdocs_yml = mkdocs_dir / "mkdocs.yml"
+        shutil.copy(mkdocs_config, mkdocs_yml)
+
+        if local:
+            result = subprocess.run(
+                ["mkdocs", "build", "--config-file", str(mkdocs_yml)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            if result.stdout:
+                logger.info(result.stdout)
+
+            if result.stderr:
+                logger.info(result.stderr)
+
+            if result.returncode == 0:
+                logger.info("MkDocs build completed successfully.")
+            else:
+                logger.error("MkDocs build failed.")
+            shutil.rmtree(mkdocs_dir)
+        logger.info(f"MKDocs configuration successfully built at: {mkdocs_dir}")
+
+    # It seems to better place it in the osa_tool/github_workflow
+    def create_mkdocs_github_workflow(
+        self,
+        repository_url: str,
+        path: str,
+        filename: str = "osa_mkdocs",
+        branches: list[str] = None,
+    ) -> None:
+        """
+        Generates GitHub workflow .yaml for MkDocs documentation for a Python project.
+
+        Parameters:
+            repository_url: str - URI of the Python project's repository on GitHub.
+            path: str - The path to the root directory of the Python project.
+            filename: str - The name of the .yaml file that contains GitHub workflow for mkdocs deploying.
+            branches: list[str] - List of branches to trigger the MkDocs workflow on
+
+        Returns:
+            None. The method generates GitHub workflow for MkDocs documentation of a current project.
+        """
+        clear_repo_name = re.sub(pattern="https://", repl="", string=repository_url)
+
+        if not branches:
+            branches = ["main", "master"]
+
+        _workflow = {
+            "name": "MkDocs workflow",
+            "on": {
+                "push": {"branches": branches},
+                "pull_request": {"branches": branches},
+            },
+            "jobs": {
+                "mkdocs_deployment": {
+                    "name": "[OSA] Deploying MkDocs",
+                    "runs-on": "ubuntu-latest",
+                    "steps": [
+                        {
+                            "name": "[OSA] Checking-out repository",
+                            "uses": "actions/checkout@v4",
+                        },
+                        {
+                            "name": "[OSA] Installing Python",
+                            "uses": "actions/setup-python@v4",
+                            "with": {"python-version": "3.10"},
+                        },
+                        {
+                            "name": "[OSA] Installing MkDocs dependencies",
+                            "run": "pip install mkdocs mkdocs-material mkdocstrings[python]",
+                        },
+                        {
+                            "name": "[OSA] MkDocs documentation deploying",
+                            "run": "mkdocs gh-deploy --force --config-file mkdocs_temp/mkdocs.yml",
+                            "env": {"GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"},
+                        },
+                    ],
+                }
+            },
+        }
+
+        workflows_path = f"{Path(path).resolve()}/.github/workflows"
+
+        if not os.path.exists(workflows_path):
+            os.makedirs(workflows_path)
+
+        # Disable anchors use to run action
+        yaml.Dumper.ignore_aliases = lambda self, data: True
+
+        with open(f"{workflows_path}/{filename}.yml", mode="w") as actions:
+            yaml.dump(data=_workflow, stream=actions, Dumper=yaml.Dumper, sort_keys=False)
+        logger.info(
+            f"In order to perform the documentation deployment automatically, please make sure that\n1. At {repository_url}/settings/actions following permission are enabled:\n\t1) 'Read and write permissions'\n\t2) 'Allow GitHub Actions to create and approve pull requests'\n2. 'gh-pages' branch is chosen as the source at 'Build and deployment' section at {repository_url}/settings/pages ."
+        )
+
+    @staticmethod
+    def _sanitize_name(name: str) -> str:
+        """
+        Sanitize a given name for use as an identifier.
+
+        This method replaces any periods in the name with underscores
+        and ensures that the name starts with an alphabetic character.
+        If the name does not start with an alphabetic character, it
+        prepends a 'v' to the name.
+
+        Args:
+            name: The name string to sanitize.
+
+        Returns:
+            The sanitized name as a string.
+        """
+        name = name.replace(".", "_")
+        if not name[0].isalpha():
+            name = "v" + name
+        return name
+
+    def _rename_invalid_dirs(self, repo_path: Path):
+        """
+        Renames directories within a specified path that have invalid names.
+
+            This method recursively searches for directories within the given repository path,
+            identifies those whose names are not valid Python identifiers or start with a dot,
+            and renames them to valid names using a sanitization process. The method maintains a
+            mapping of the original directory names to their new names.
+
+            Args:
+                repo_path: The path to the repository where directories will be checked and renamed.
+
+            Returns:
+                None.
+        """
+
+        all_dirs = sorted(
+            [p for p in repo_path.rglob("*") if p.is_dir()],
+            key=lambda p: len(p.parts),
+            reverse=True,  # Rename from nested to parents'
+        )
+
+        for dir_path in all_dirs:
+            if dir_path.name.startswith("."):
+                continue
+            if not dir_path.name.isidentifier():
+                new_name = self._sanitize_name(dir_path.name)
+                new_path = dir_path.parent / new_name
+
+                if new_path.exists():
+                    continue  # To avoid overwriting
+
+                dir_path.rename(new_path)
+
+    @staticmethod
+    def _add_init_files(repo_path: Path):
+        """
+        Creates __init__.py files in all parent directories of Python files.
+
+            This static method searches through the given repository path to find all
+            Python files and adds an empty __init__.py file to each of their parent
+            directories, excluding the directory containing the repository itself. This
+            is useful for treating directories as Python packages.
+
+            Args:
+                repo_path: The path to the repository where the Python files are located.
+
+            Returns:
+                None
+        """
+        py_dirs = set()
+        for py_file in repo_path.rglob("*.py"):
+            if py_file.name != "__init__.py":
+                parent = py_file.parent
+                while parent != repo_path.parent:
+                    py_dirs.add(parent)
+                    if parent == repo_path:
+                        break
+                    parent = parent.parent
+
+        for folder in py_dirs:
+            init_path: Path = folder / "__init__.py"
+            if not init_path.exists():
+                init_path.touch()
+
+    @staticmethod
+    def _purge_temp_files(path: str):
+        """
+        Remove temporary files from the specified directory.
+
+            This method deletes the 'mkdocs_temp' directory located within
+            the given path if it exists. This is typically used to clean up
+            temporary files if runtime error occured.
+
+            Args:
+                path: The path to the repository where the 'mkdocs_temp'
+                        directory is located.
+
+            Returns:
+                None
+        """
+        repo_path = Path(path)
+        mkdocs_dir = repo_path / "mkdocs_temp"
+        if mkdocs_dir.exists():
+            shutil.rmtree(mkdocs_dir)

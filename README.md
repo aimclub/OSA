@@ -17,12 +17,12 @@
 
 <p>Built with:</p>
 <p>
-	<img src="https://img.shields.io/badge/Python-3776AB.svg?style=BadgeStyleOptions.DEFAULT&logo=Python&logoColor=white" alt="Python">
-	<img src="https://img.shields.io/badge/Docker-2496ED.svg?style=BadgeStyleOptions.DEFAULT&logo=Docker&logoColor=white" alt="Docker">
-	<img src="https://img.shields.io/badge/GitHub%20Actions-2088FF.svg?style=BadgeStyleOptions.DEFAULT&logo=GitHub-Actions&logoColor=white" alt="GitHub%20Actions">
-	<img src="https://img.shields.io/badge/AIOHTTP-2C5BB4.svg?style=BadgeStyleOptions.DEFAULT&logo=AIOHTTP&logoColor=white" alt="AIOHTTP">
-	<img src="https://img.shields.io/badge/OpenAI-412991.svg?style=BadgeStyleOptions.DEFAULT&logo=OpenAI&logoColor=white" alt="OpenAI">
-	<img src="https://img.shields.io/badge/Pydantic-E92063.svg?style=BadgeStyleOptions.DEFAULT&logo=Pydantic&logoColor=white" alt="Pydantic">
+ <img src="https://img.shields.io/badge/Python-3776AB.svg?style=BadgeStyleOptions.DEFAULT&logo=Python&logoColor=white" alt="Python">
+ <img src="https://img.shields.io/badge/Docker-2496ED.svg?style=BadgeStyleOptions.DEFAULT&logo=Docker&logoColor=white" alt="Docker">
+ <img src="https://img.shields.io/badge/GitHub%20Actions-2088FF.svg?style=BadgeStyleOptions.DEFAULT&logo=GitHub-Actions&logoColor=white" alt="GitHub%20Actions">
+ <img src="https://img.shields.io/badge/AIOHTTP-2C5BB4.svg?style=BadgeStyleOptions.DEFAULT&logo=AIOHTTP&logoColor=white" alt="AIOHTTP">
+ <img src="https://img.shields.io/badge/OpenAI-412991.svg?style=BadgeStyleOptions.DEFAULT&logo=OpenAI&logoColor=white" alt="OpenAI">
+ <img src="https://img.shields.io/badge/Pydantic-E92063.svg?style=BadgeStyleOptions.DEFAULT&logo=Pydantic&logoColor=white" alt="Pydantic">
 </p>
 
 ---
@@ -188,7 +188,8 @@ documentation, see the [GitHub Action Workflow Generator README](./osa_tool/gith
 | `--model`               | Specific LLM model to use                                                           | `gpt-3.5-turbo`             |
 | `-m`, `--mode`          | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`. | `auto`                      |
 | `--delete-dir`          | Enable deleting the downloaded repository after processing (**Linux only**)         | `disabled`                  |
-| `--not-publish-results` | Avoid create fork and pull request for target repository                            | `False`                     |
+| `--no-fork`             | Avoid create fork for target repository                                             | `False`                     |
+| `--no-pull-request`     | Avoid create pull request for target repository                                     | `False`                     |
 
 To learn how to work with the interactive CLI and view descriptions of all available keys, visit
 the [CLI usage guide](./osa_tool/scheduler/README.md).
@@ -283,11 +284,11 @@ for their code that we used as a foundation for our own version of README genera
 
 If you use this software, please cite it as below.
 
-### APA format:
+### APA format
 
     ITMO, NSS Lab (2025). Open-Source-Advisor repository [Computer software]. https://github.com/aimclub/OSA
 
-### BibTeX format:
+### BibTeX format
 
     @misc{Open-Source-Advisor,
 

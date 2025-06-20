@@ -1,0 +1,18 @@
+site_name: OSADocs
+theme:
+    name: material
+plugins:
+    - search
+    - mkdocstrings:
+        default_handler: python
+        handlers:
+            python:
+                paths: [..]
+                options:
+                    members_order: alphabetical
+                    show_source: true
+                    docstring_style: google
+                    filters:
+                    - ""
+nav:
+    - Home: index.md
