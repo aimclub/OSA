@@ -18,7 +18,6 @@ def read_file(file_path: str) -> str:
     if file_path.endswith(".ipynb"):
         return read_ipynb_file(file_path)
 
-    encodings_to_try = ["utf-8", "utf-16", "latin-1"]
     if not os.path.isfile(file_path):
         logger.warning(f"File not found: {file_path}")
         return ""
@@ -126,17 +125,32 @@ def extract_example_paths(tree: str):
     Returns:
         list[str]: A list of matched paths excluding __init__.py files.
     """
-    pattern = r"\b(tutorials?|examples)\b"
+    pattern = re.compile(r"\b(tutorials?|examples|docs?|documentation|wiki|manuals?)\b", re.IGNORECASE)
     result = []
 
     for line in tree.splitlines():
         line = line.strip()
-        if line.endswith("__init__.py"):
+        if not line or line.endswith("__init__.py"):
             continue
-        parts = line.split("/")
-        if len(parts) == 2 and re.search(pattern, parts[0]):
+        if "." not in line.split("/")[-1]:
+            continue
+        if pattern.search(line):
             result.append(line)
+
     return result
+
+
+def clean_code_block_indents(markdown_text: str) -> str:
+    """
+    Removes leading spaces before opening and closing fenced code blocks in markdown text.
+    """
+    opening_pattern = re.compile(r"^[ \t]+(```\w*)", re.MULTILINE)
+    markdown_text = opening_pattern.sub(r"\1", markdown_text)
+
+    closing_pattern = re.compile(r"^[ \t]+(```)$", re.MULTILINE)
+    markdown_text = closing_pattern.sub(r"\1", markdown_text)
+
+    return markdown_text
 
 
 def remove_extra_blank_lines(path: str) -> None:

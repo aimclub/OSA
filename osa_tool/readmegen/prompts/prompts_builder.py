@@ -75,6 +75,18 @@ class PromptBuilder:
             logger.error(f"Failed to build getting started prompt: {e}")
             raise
 
+    def get_prompt_deduplicated_install_and_start(self, installation: str, getting_started: str) -> str:
+        """Builds a deduplicating prompt using Installation and Getting Started sections of README."""
+        try:
+            formatted_prompt = self.prompts["deduplicate_sections"].format(
+                installation=installation,
+                getting_started=getting_started,
+            )
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build deduplicating prompt: {e}")
+            raise
+
     def get_prompt_files_summary(self, files_content: list[FileContext]) -> str:
         """Builds a files summary prompt using serialized file contents."""
         try:

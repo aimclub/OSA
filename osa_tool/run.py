@@ -23,13 +23,7 @@ from osa_tool.scheduler.workflow_manager import (
     update_workflow_config,
 )
 from osa_tool.translation.dir_translator import DirectoryTranslator
-from osa_tool.utils import (
-    build_arguments_path,
-    delete_repository,
-    logger,
-    parse_folder_name,
-    rich_section,
-)
+from osa_tool.utils import build_arguments_path, delete_repository, logger, parse_folder_name, rich_section
 
 
 def main():
@@ -139,7 +133,7 @@ def main():
             rich_section("Repository deletion")
             delete_repository(args.repository)
 
-        logger.info("All operations completed successfully.")
+        rich_section("All operations completed successfully")
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
 

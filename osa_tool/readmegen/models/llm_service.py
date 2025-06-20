@@ -46,14 +46,11 @@ class LLMClient:
         core_features = process_text(core_features)
         overview = process_text(overview)
 
-        getting_started = None
-        if self.sourcerank.examples_presence():
-            logger.info("Examples detected. Attempting to generate Getting Started section...")
-            examples_files = extract_example_paths(self.tree)
-            if examples_files:
-                examples_content = FileProcessor(self.config_loader, examples_files).process_files()
-                getting_started = self.run_request(self.prompts.get_prompt_getting_started(examples_content))
-                getting_started = process_text(getting_started)
+        logger.info("Attempting to generate Getting Started section...")
+        examples_files = extract_example_paths(self.tree)
+        examples_content = FileProcessor(self.config_loader, examples_files).process_files()
+        getting_started = self.run_request(self.prompts.get_prompt_getting_started(examples_content))
+        getting_started = process_text(getting_started)
 
         logger.info("README-style summary generation completed.")
         return core_features, overview, getting_started
@@ -100,14 +97,23 @@ class LLMClient:
         logger.info("Article-style summary generation completed.")
         return overview, content, algorithms
 
-    def run_request(self, prompt: str):
+    def run_request(self, prompt: str) -> str:
         """Sends a prompt to the model and returns the response."""
         response = self.model_handler.send_request(prompt)
         return response
 
-    def get_key_files(self):
+    def get_key_files(self) -> list:
         """Identifies key files from the project repository using model analysis."""
         key_files_string = self.run_request(self.prompts.get_prompt_preanalysis())
         key_files_cleaned = process_text(key_files_string)
         key_files = extract_relative_paths(key_files_cleaned)
         return key_files
+
+    def deduplicate_sections(self, installation: str, getting_started: str) -> str:
+        """Deduplicates information in Installation and Getting Started sections."""
+        logger.info("Deduplicating sections Installation and Getting Started...")
+        response = self.run_request(
+            self.prompts.get_prompt_deduplicated_install_and_start(installation, getting_started)
+        )
+        response = process_text(response)
+        return response

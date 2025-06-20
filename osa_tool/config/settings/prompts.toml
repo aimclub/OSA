@@ -24,7 +24,6 @@ RULES:
 - Choose the most important files that define the project’s core logic.
 - Exclude files related to tests, configuration, or assets unless they are central to the business logic.
 - Exclude README files.
-
 """
 
 core_features = """
@@ -63,7 +62,6 @@ RULES:
 - Be sure to generate multiple core features, each describing a different aspect of the project.
 - The 'feature_name' should describe a key aspect.
 - The 'feature_description' should be a detailed but short explanation of the feature.
-
 """
 
 overview = """
@@ -95,7 +93,6 @@ RULES:
 - Focus on the project's core purpose and its value proposition without mentioning specific technical aspects.
 - Avoid technical jargon, code snippets, or any implementation details.
 - The overview should be no more than 60 words.
-
 """
 
 getting_started = """
@@ -103,7 +100,7 @@ INPUT DATA:
 
 1. PROJECT NAME: {project_name}
 
-3. README CONTENT:
+2. README CONTENT:
 
 {readme_content}
 
@@ -113,12 +110,16 @@ INPUT DATA:
 
 TASK:
 You are generating the "Getting Started" section for the README file of the project above.
-Your goal is to help a new user understand how to start using the project by analyzing the provided example files.
+Your goal is to help a new user understand how to start using the project by analyzing the provided example files and any relevant assets (such as images or gifs) from the README.
 
-If you find a clear entrypoint or demonstration of how to run or integrate the project — use that information to generate a concise, helpful section.
+PROCESS:
 
-If the example files are empty, contain only boilerplate code (e.g., import statements or data definitions), or do not provide any meaningful insight on how to use the project — return `null` in JSON instead of a section.
+- Carefully review the example files to identify clear entrypoints, demos, or code snippets showing how to run or integrate the project.
+- If any meaningful examples exist, use them to generate a concise, beginner-friendly Getting Started section with code snippets formatted in markdown code blocks.
+- Additionally, review the provided README content to check for relevant images or gifs (e.g., usage demos, screenshots, or diagrams) that could enhance the Getting Started section.
+- If suitable images or gifs are found, include them in the section using proper markdown syntax (`![alt text](path)`), preserving the original paths exactly as they appear in the provided README content.
 
+RESPONSE FORMAT:
 Generate a JSON response following this exact structure:
 
 {{
@@ -127,12 +128,60 @@ Generate a JSON response following this exact structure:
 
 RULES:
 
-- Be concise and beginner-friendly.
-- Use markdown formatting with code blocks if needed.
-- Prefer actual code found in the examples over assumptions.
-- DO NOT make up usage instructions — rely only on provided content.
-- If unsure or examples are not helpful, return "getting_started": null
-- Don't add ## Getting Started at the beginning
+- Be concise, clear, and beginner-friendly.
+- Use markdown formatting, including code blocks if relevant.
+- Include actual code from the example files if available.
+- Include relevant images or gifs from the README if they help clarify how to start using the project.
+- DO NOT make up usage instructions — rely only on the provided content.
+- DO NOT invent or modify image paths — use them exactly as found in the provided README content.
+- If no meaningful example files are found and no helpful images or gifs are available, return `"getting_started": null`
+- Do not add a "## Getting Started" heading — only the content for that section.
+- Output valid JSON, strictly following the given structure.
+"""
 
+deduplicate_sections = """
+INPUT DATA:
+
+1. INSTALLATION SECTION CONTENT:
+
+{installation}
+
+2. GETTING STARTED SECTION CONTENT:
+
+{getting_started}
+
+TASK:
+You are cleaning up and reorganizing the "Installation" and "Getting Started" sections for a project's README file.
+Your goal is to eliminate duplicated or overlapping information between the two sections while preserving their logical separation:
+
+- The "Installation" section should only contain information about how to install the project (package managers, dependencies, environment setup, etc.).
+- The "Getting Started" section should only contain information about how to start using the project after it’s installed (running the program, example commands, usage demos, etc.).
+
+
+PROCESS:
+
+- Carefully review the content of both sections.
+- Identify and remove any duplicated or redundant information that appears in both sections.
+- If a piece of information belongs logically to the "Installation" section (like `pip install` commands or dependency instructions), move or leave it there.
+- If a piece of information belongs to the "Getting Started" section (like how to run the project or a first example command), move or leave it there.
+- Do not invent or modify any instructions — rely solely on the provided content.
+- Preserve markdown formatting (including code blocks and image links) as they appear in the input.
+
+RESPONSE FORMAT:
+Return a JSON object in the following format:
+
+{{
+    "installation": "cleaned installation section text, or null if empty",
+    "getting_started": "cleaned getting started section text, or null if empty"
+}}
+
+RULES:
+
+- Remove duplicated lines or paragraphs that appear in both sections.
+- Ensure each section contains only relevant, logically appropriate information.
+- If a section ends up empty after deduplication, return null for that section.
+- Add section header for "## Installation".
+- Don't add section header for "## Getting Started".
+- Output valid JSON, strictly following the given structure.
 """
 
