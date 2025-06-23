@@ -217,7 +217,7 @@ class DocGen(object):
                 broken_close_pos = gpt_response.find("```", triple_quote_pos + 3)
                 if broken_close_pos != -1:
                     # Replace only this incorrect closing ``` with """
-                    gpt_response = gpt_response[:broken_close_pos] + '"""' + gpt_response[broken_close_pos + 3 :]
+                    gpt_response = gpt_response[:broken_close_pos] + '"""' + gpt_response[broken_close_pos + 3:]
 
         # Regex to capture the full docstring with triple quotes
         match = re.search(r'("""+)\n?(.*?)\n?\1', gpt_response, re.DOTALL)
@@ -447,42 +447,12 @@ class DocGen(object):
         """
         local = False
         repo_path = Path(path).resolve()
-        mkdocs_dir = repo_path / "mkdocs_temp"
-        docs_output_path = repo_path / "site"
-
-        if docs_output_path.exists() and local:
-            shutil.rmtree(docs_output_path)
-        if local:
-            docs_output_path.mkdir()
-        if mkdocs_dir.exists():
-            shutil.rmtree(mkdocs_dir)
-        mkdocs_dir.mkdir()
-
+        mkdocs_dir = repo_path
         self._rename_invalid_dirs(repo_path)
-
-        docs_dir = mkdocs_dir / "docs"
-        docs_dir.mkdir()
-
         self._add_init_files(repo_path)
 
-        index_path = docs_dir / "index.md"
-        index_content = "# Project Documentation\n\n"
-
-        def is_valid_module_path(parts: tuple[str, ...]):
-            return all(part.isidentifier() for part in parts)
-
-        for py_file in repo_path.rglob("*.py"):
-            rel_path = py_file.relative_to(repo_path)
-            parts = rel_path.with_suffix("").parts
-            if py_file.name == "__init__.py" or not is_valid_module_path(parts):
-                continue
-            module_path = ".".join(parts)
-            index_content += f"## `{module_path}`\n\n::: {module_path}\n\n"
-
-        index_path.write_text(index_content, encoding="utf-8")
-
         mkdocs_config = osa_project_root().resolve() / "docs" / "templates" / "mkdocs.yml"
-        mkdocs_yml = mkdocs_dir / "mkdocs.yml"
+        mkdocs_yml = mkdocs_dir / "osa_mkdocs.yml"
         shutil.copy(mkdocs_config, mkdocs_yml)
 
         if local:
@@ -507,11 +477,11 @@ class DocGen(object):
 
     # It seems to better place it in the osa_tool/github_workflow
     def create_mkdocs_github_workflow(
-        self,
-        repository_url: str,
-        path: str,
-        filename: str = "osa_mkdocs",
-        branches: list[str] = None,
+            self,
+            repository_url: str,
+            path: str,
+            filename: str = "osa_mkdocs",
+            branches: list[str] = None,
     ) -> None:
         """
         Generates GitHub workflow .yaml for MkDocs documentation for a Python project.
@@ -540,6 +510,8 @@ class DocGen(object):
                 "mkdocs_deployment": {
                     "name": "[OSA] Deploying MkDocs",
                     "runs-on": "ubuntu-latest",
+                    "permissions":
+                        {"contents": "write"},
                     "steps": [
                         {
                             "name": "[OSA] Checking-out repository",
@@ -556,7 +528,7 @@ class DocGen(object):
                         },
                         {
                             "name": "[OSA] MkDocs documentation deploying",
-                            "run": "mkdocs gh-deploy --force --config-file mkdocs_temp/mkdocs.yml",
+                            "run": "mkdocs gh-deploy --force --config-file osa_mkdocs.yml",
                             "env": {"GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"},
                         },
                     ],

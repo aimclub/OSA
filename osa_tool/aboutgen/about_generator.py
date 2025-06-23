@@ -13,7 +13,7 @@ from osa_tool.utils import extract_readme_content, logger, parse_folder_name
 
 HOMEPAGE_KEYS = [
     "documentation",
-    "doc",
+    "docs",
     "docs",
     "about",
     "homepage",

@@ -8,7 +8,7 @@ from osa_tool.utils import extract_readme_content
     [
         ("README.md", "# Hello"),
         ("README.rst", "Project description"),
-        ("README_en.rst", "English doc"),
+        ("README_en.rst", "English docs"),
     ],
 )
 def test_extract_readme_content_found(tmp_path, readme_name, expected_content):

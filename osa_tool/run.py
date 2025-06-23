@@ -12,6 +12,7 @@ from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.convertion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.docs_generator.license import compile_license_file
+from osa_tool.docs_generator.repoagent.main import run_outside_cli
 from osa_tool.github_agent.github_agent import GithubAgent
 from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
@@ -165,19 +166,30 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
         config_loader: The configuration object which contains settings for osa_tool.
 
     """
-    try:
-        repo_url = config_loader.config.git.repository
-        repo_path = parse_folder_name(repo_url)
-        ts = OSA_TreeSitter(repo_path)
-        res = ts.analyze_directory(ts.cwd)
-        dg = DocGen(config_loader)
-        dg.process_python_file(res)
-        dg.generate_documentation_mkdocs(repo_path)
-        dg.create_mkdocs_github_workflow(repo_url, repo_path)
+    # try:
+    repo_url = config_loader.config.git.repository
+    repo_path = parse_folder_name(repo_url)
+    dg = DocGen(config_loader)
+    run_outside_cli(model=config_loader.config.llm.model,
+                    temperature=config_loader.config.llm.temperature,
+                    request_timeout=180,
+                    base_url=config_loader.config.llm.url,
+                    hierarchy_path='.project_doc_record',
+                    target_repo_path=repo_path,
+                    markdown_docs_path="osa_docs",
+                    ignore_list=".venv,tests,deployment,examples,alembic,docs,tests,test,projects,benchmarks,cmake,csrc,docs,examples,tests,tools,scripts",
+                    max_thread_count=6,
+                    log_level="INFO",
+                    print_hierarchy=True,
+                    language='English',
+                    parse_references=False,
+                    secondary_docstring_generation=False)
+    dg.generate_documentation_mkdocs(repo_path)
+    dg.create_mkdocs_github_workflow(repo_url, repo_path)
 
-    except Exception as e:
-        dg._purge_temp_files(repo_path)
-        logger.error("Error while generating codebase documentaion: %s", repr(e), exc_info=True)
+    # except Exception as e:
+    #     dg._purge_temp_files(repo_path)
+    #     logger.error("Error while generating codebase documentaion: %s", repr(e), exc_info=True)
 
 
 def load_configuration(
