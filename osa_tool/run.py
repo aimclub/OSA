@@ -12,7 +12,7 @@ from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.convertion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.docs_generator.license import compile_license_file
-from osa_tool.github_agent.github_agent import GithubAgent
+from osa_tool.git_agent.git_agent import GitAgent
 from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
@@ -27,7 +27,7 @@ from osa_tool.utils import build_arguments_path, delete_repository, logger, pars
 
 
 def main():
-    """Main function to generate a README.md file for a GitHub repository.
+    """Main function to generate a README.md file for a Git repository.
 
     Handles command-line arguments, clones the repository, creates and checks out a branch,
     generates the README.md file, and commits and pushes the changes.
@@ -50,19 +50,19 @@ def main():
         )
         sourcerank = SourceRank(config)
 
-        # Initialize GitHub agent and perform operations
-        github_agent = GithubAgent(args.repository, args.branch)
+        # Initialize Git agent and perform operations
+        git_agent = GitAgent(args.repository, args.branch)
         if create_fork:
-            github_agent.star_repository()
-            github_agent.create_fork()
-        github_agent.clone_repository()
+            git_agent.star_repository()
+            git_agent.create_fork()
+        git_agent.clone_repository()
 
         # Initialize ModeScheduler
         scheduler = ModeScheduler(config, sourcerank, args, workflow_keys)
         plan = scheduler.plan
 
         if create_fork:
-            github_agent.create_and_checkout_branch()
+            git_agent.create_and_checkout_branch()
 
         # .ipynb to .py convertion
         if plan.get("convert_notebooks"):
@@ -75,7 +75,7 @@ def main():
             analytics = ReportGenerator(config, sourcerank)
             analytics.build_pdf()
             if create_fork:
-                github_agent.upload_report(analytics.filename, analytics.output_path)
+                git_agent.upload_report(analytics.filename, analytics.output_path)
 
         # Auto translating names of directories
         if plan.get("translate_dirs"):
@@ -110,7 +110,7 @@ def main():
             about_gen = AboutGenerator(config)
             about_gen.generate_about_content()
             if create_fork:
-                github_agent.update_about_section(about_gen.get_about_content())
+                git_agent.update_about_section(about_gen.get_about_content())
 
         # Generate GitHub workflows
         if plan.get("generate_workflows"):
@@ -126,14 +126,14 @@ def main():
 
         if create_fork and create_pull_request:
             rich_section("Publishing changes")
-            github_agent.commit_and_push_changes()
-            github_agent.create_pull_request(body=about_gen.get_about_section_message())
+            git_agent.commit_and_push_changes()
+            git_agent.create_pull_request(body=about_gen.get_about_section_message())
 
         if plan.get("delete_dir"):
             rich_section("Repository deletion")
             delete_repository(args.repository)
 
-        rich_section("All operations completed successfully")
+        logger.info("All operations completed successfully.")
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
 
