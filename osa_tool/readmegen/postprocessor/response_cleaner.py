@@ -1,55 +1,28 @@
-import re
-
-
-def process_text(response: str) -> str:
-    """Cleans LLM response by removing formatting quotes and unwanted prefixes."""
-
-    # Remove leading and trailing quotes (single, double, backticks) using regex
-    text = clean_llm_response(response)
-
-    # Remove the 'json' prefix
-    text = remove_json_prefix(text)
-
-    # Remove the 'plaintext' prefix
-    text = remove_plaintext_prefix(text)
-
-    return text
-
-
-def clean_llm_response(response: str) -> str:
+def process_text(text: str) -> str:
     """
-    Cleans the LLM response by removing leading and trailing quotes (single, double, or backticks)
-    from the response, if they exist. The function removes multiple occurrences of quotes at the
-    beginning or end of the response.
+    Extracts JSON content from the given text by locating the first opening JSON bracket
+    ('{' or '[') and the last corresponding closing bracket ('}' or ']'),
+    then returning the substring between them (inclusive).
 
     Args:
-        response: The response from the LLM that may have surrounding triple quotes.
+        text: The input string potentially containing JSON content.
 
     Returns:
-        str: The cleaned response without the surrounding triple quotes.
+        str: Extracted JSON content or raises ValueError if JSON block not detected.
     """
-    if not response:
-        return response
+    start_obj = text.find("{")
+    start_arr = text.find("[")
 
-    cleaned_response = re.sub(r"^[\'\"`]+", "", response)  # remove leading quotes
-    cleaned_response = re.sub(r"[\'\"`]+$", "", cleaned_response)
+    candidates = [pos for pos in [start_obj, start_arr] if pos != -1]
+    if not candidates:
+        raise ValueError("No JSON start bracket found in the input text.")
+    start = min(candidates)
 
-    return cleaned_response
+    open_char = text[start]
+    close_char = "}" if open_char == "{" else "]"
 
+    end = text.rfind(close_char)
+    if end == -1 or end < start:
+        raise ValueError("No valid JSON end bracket found in the input text.")
 
-def remove_plaintext_prefix(response: str) -> str:
-    """
-    Removes the 'plaintext' prefix from the beginning of the response, if present.
-    """
-    if response.startswith("plaintext"):
-        return response[len("plaintext") :].strip()
-    return response.strip()
-
-
-def remove_json_prefix(response: str) -> str:
-    """
-    Removes the 'json' prefix from the beginning of the response, if present.
-    """
-    if response.startswith("json"):
-        return response[len("json") :].strip()
-    return response.strip()
+    return text[start : end + 1]

@@ -1,3 +1,5 @@
+import json
+
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
@@ -104,9 +106,19 @@ class LLMClient:
 
     def get_key_files(self) -> list:
         """Identifies key files from the project repository using model analysis."""
-        key_files_string = self.run_request(self.prompts.get_prompt_preanalysis())
-        key_files_cleaned = process_text(key_files_string)
-        key_files = extract_relative_paths(key_files_cleaned)
+        key_files_response = self.run_request(self.prompts.get_prompt_preanalysis())
+        key_files_cleaned = process_text(key_files_response)
+
+        try:
+            response_json = json.loads(key_files_cleaned)
+            key_files = response_json.get("key_files", [])
+            if not isinstance(key_files, list):
+                raise ValueError("Invalid format: 'key_files' must be a list.")
+
+        except (json.JSONDecodeError, ValueError) as e:
+            raise ValueError(f"Failed to parse JSON response: {e}") from e
+
+        key_files = extract_relative_paths(key_files)
         return key_files
 
     def deduplicate_sections(self, installation: str, getting_started: str) -> str:

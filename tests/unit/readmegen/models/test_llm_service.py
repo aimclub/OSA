@@ -40,21 +40,34 @@ def mock_llm_client():
         return LLMClient(mock_config_loader)
 
 
+@pytest.fixture
+def mock_response_json():
+    return """
+    {
+        "key_files": [
+            "src/main.py",
+            "src/api/handlers.py"
+        ]
+    }
+    """
+
+
 def test_get_responses(mock_llm_client):
     # Arrange
-    mock_llm_client.run_request = MagicMock(side_effect=lambda prompt: "mock_response")
+    mock_response = '{"text": "mock_response"}'
+    mock_llm_client.run_request = MagicMock(side_effect=lambda prompt: mock_response)
     # Act
     core_features, overview, getting_started = mock_llm_client.get_responses()
     # Assert
-    assert core_features == "mock_response"
-    assert overview == "mock_response"
-    assert getting_started == "mock_response"
+    assert core_features == '{"text": "mock_response"}'
+    assert overview == '{"text": "mock_response"}'
+    assert getting_started == '{"text": "mock_response"}'
 
 
-def test_get_key_files(mock_llm_client):
+def test_get_key_files(mock_llm_client, mock_response_json):
     # Arrange
-    mock_llm_client.run_request = MagicMock(return_value="mock_key_files_response")
+    mock_llm_client.run_request = MagicMock(return_value=mock_response_json)
     # Act
     key_files = mock_llm_client.get_key_files()
     # Assert
-    assert key_files == ["mock_key_files_response"]
+    assert key_files == ["src/main.py", "src/api/handlers.py"]

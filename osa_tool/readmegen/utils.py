@@ -75,22 +75,18 @@ def save_sections(sections: str, path: str) -> None:
         file.write(sections)
 
 
-def extract_relative_paths(paths_string: str) -> list[str]:
+def extract_relative_paths(paths: list[str]) -> list[str]:
     """
-    Converts a newline-separated string of paths into a list of normalized paths.
+    Converts a list of file or directory paths into a list of normalized relative paths.
 
     Args:
-        paths_string: A string containing newline-separated file or directory paths.
+        paths: A list of file or directory paths.
 
     Returns:
-        list[str]: A list of normalized paths.
+        list[str]: A list of normalized relative paths.
     """
     try:
-        return [
-            os.path.normpath(line.strip()).replace("\\", "/")
-            for line in paths_string.strip().splitlines()
-            if line.strip()
-        ]
+        return [os.path.normpath(path.strip()).replace("\\", "/") for path in paths if path.strip()]
     except Exception as e:
         logger.error(f"Failed to extract relative paths from model response: {e}")
         raise

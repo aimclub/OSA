@@ -1,62 +1,18 @@
 import pytest
 
-from osa_tool.readmegen.postprocessor.response_cleaner import (
-    clean_llm_response,
-    process_text,
-    remove_json_prefix,
-    remove_plaintext_prefix,
-)
+from osa_tool.readmegen.postprocessor.response_cleaner import process_text
 
 
 @pytest.mark.parametrize(
     "input_text, expected_output",
     [
-        ('"""Some text"""', "Some text"),
-        ("'''Some text'''", "Some text"),
-        ('"Some text"', "Some text"),
-        ("'Some text'", "Some text"),
-        ("`Some text`", "Some text"),
-        ("", ""),
-        ("Some text", "Some text"),
+        ('```json\n{"a": 1, "b": 2}```', '{"a": 1, "b": 2}'),
+        ('json   {"foo": "bar"}   ', '{"foo": "bar"}'),
+        ('```json plaintext {"nested": "test"}```', '{"nested": "test"}'),
+        ('Some text before\n{"valid": "json"}\nSome text after', '{"valid": "json"}'),
+        ('\n\nplaintext\n\n{"multi": "line"}\n\n', '{"multi": "line"}'),
+        ('{"clean": "data"}', '{"clean": "data"}'),
     ],
 )
-def test_clean_llm_response(input_text, expected_output):
-    assert clean_llm_response(input_text) == expected_output
-
-
-@pytest.mark.parametrize(
-    "input_text, expected_output",
-    [
-        ("plaintext This is a response", "This is a response"),
-        ("plaintext", ""),
-        ("no-prefix", "no-prefix"),
-    ],
-)
-def test_remove_plaintext_prefix(input_text, expected_output):
-    assert remove_plaintext_prefix(input_text) == expected_output
-
-
-@pytest.mark.parametrize(
-    "input_text, expected_output",
-    [
-        ('json {"key": "value"}', '{"key": "value"}'),
-        ("json", ""),
-        ("no-prefix", "no-prefix"),
-    ],
-)
-def test_remove_json_prefix(input_text, expected_output):
-    assert remove_json_prefix(input_text) == expected_output
-
-
-@pytest.mark.parametrize(
-    "input_text, expected_output",
-    [
-        ('"""plaintext This is a simple response"""', "This is a simple response"),
-        ('"""json {"key": "value"}"""', '{"key": "value"}'),
-        ('"""json plaintext This is mixed prefix"""', "This is mixed prefix"),
-        ('"""Some normal text"""', "Some normal text"),
-        ('json {"key": "value"}', '{"key": "value"}'),
-    ],
-)
-def test_process_text(input_text, expected_output):
+def test_process_text_json_cases(input_text, expected_output):
     assert process_text(input_text) == expected_output
