@@ -82,7 +82,7 @@ def test_save_sections(tmp_path):
 
 def test_extract_relative_paths():
     # Arrange
-    input_str = "folder/file.py\nfolder2/test.py\n\n"
+    input_str = ["folder\\file.py\n", "folder2/test.py"]
     expected = ["folder/file.py", "folder2/test.py"]
     # Act
     result = extract_relative_paths(input_str)

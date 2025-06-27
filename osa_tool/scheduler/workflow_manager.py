@@ -40,6 +40,8 @@ class WorkflowManager:
 
     def _has_python_code(self) -> bool:
         """Check whether the repository contains Python code."""
+        if not self.metadata.language:
+            return False
         return "Python" in self.metadata.language
 
     def _get_existing_jobs(self) -> set[str]:

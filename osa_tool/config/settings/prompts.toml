@@ -15,15 +15,25 @@ INPUT DATA:
 TASK:
 
 Based on the provided data about the files and the README content,
-your task is to identify and return the paths to 3-5 key files that
+your task is to identify and return the paths to 4-6 key files that
 contain the main business logic or project description.
+
+Generate a JSON response following this exact structure:
+
+{{
+    "key_files": [
+        "path/to/file1",
+        "path/to/file2"
+    ]
+}}
 
 RULES:
 
-- Return one path per line.
-- Choose the most important files that define the project’s core logic.
+- The value of "key_files" must be a JSON array (list) of strings, each string representing the relative path to one important file.
+- Include only the most important files that define the project’s core logic.
 - Exclude files related to tests, configuration, or assets unless they are central to the business logic.
 - Exclude README files.
+- Return only valid JSON without additional explanations or formatting.
 """
 
 core_features = """
