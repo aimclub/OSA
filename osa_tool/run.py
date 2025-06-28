@@ -12,7 +12,6 @@ from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.convertion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.docs_generator.license import compile_license_file
-from osa_tool.docs_generator.repoagent.main import run_outside_cli
 from osa_tool.github_agent.github_agent import GithubAgent
 from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
@@ -41,6 +40,8 @@ def main():
     create_fork = not args.no_fork
     create_pull_request = not args.no_pull_request
 
+
+
     try:
         # Load configurations and update
         config = load_configuration(
@@ -64,6 +65,8 @@ def main():
 
         if create_fork:
             github_agent.create_and_checkout_branch()
+
+        #generate_docstrings(config)
 
         # .ipynb to .py convertion
         if plan.get("convert_notebooks"):
@@ -169,22 +172,14 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
     # try:
     repo_url = config_loader.config.git.repository
     repo_path = parse_folder_name(repo_url)
+    ts = OSA_TreeSitter(repo_path)
+    res = ts.analyze_directory(ts.cwd)
     dg = DocGen(config_loader)
-    run_outside_cli(model=config_loader.config.llm.model,
-                    temperature=config_loader.config.llm.temperature,
-                    request_timeout=180,
-                    base_url=config_loader.config.llm.url,
-                    hierarchy_path='.project_doc_record',
-                    target_repo_path=repo_path,
-                    markdown_docs_path="osa_docs",
-                    ignore_list=".venv,tests,deployment,examples,alembic,docs,tests,test,projects,benchmarks,cmake,csrc,docs,examples,tests,tools,scripts",
-                    max_thread_count=6,
-                    log_level="INFO",
-                    print_hierarchy=True,
-                    language='English',
-                    parse_references=False,
-                    secondary_docstring_generation=False)
-    dg.generate_documentation_mkdocs(repo_path)
+    dg.process_python_file(res)
+    dg.generate_the_main_idea(res)
+    dg.process_python_file(res)
+    modules_summaries = dg.summarize_submodules(res)
+    dg.generate_documentation_mkdocs(repo_path, res, modules_summaries)
     dg.create_mkdocs_github_workflow(repo_url, repo_path)
 
     # except Exception as e:

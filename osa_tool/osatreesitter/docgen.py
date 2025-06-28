@@ -1,5 +1,9 @@
+import multiprocessing.pool
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Dict, Any
+
 import black
 from pathlib import Path
 import shutil
@@ -68,6 +72,7 @@ class DocGen(object):
         """
         self.config = config_loader.config
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
+        self.main_idea = None
 
     @staticmethod
     def format_structure_openai(structure: dict) -> str:
@@ -101,6 +106,22 @@ class DocGen(object):
         return formatted_structure
 
     @staticmethod
+    def format_structure_openai_short(filename: str, structure: dict) -> str:
+        formatted_structure = "The following is the structure of the Python file:\n\n"
+
+        structures = structure["structure"]
+        if not structures:
+            return ""
+        formatted_structure += f"File: {filename}\n"
+        for item in structures:
+            if item["type"] == "class":
+                formatted_structure += DocGen._format_class_short(item)
+            elif item["type"] == "function":
+                formatted_structure += DocGen._format_function_short(item)
+
+        return formatted_structure
+
+    @staticmethod
     def _format_class(item: dict) -> str:
         """Formats class details."""
         class_str = f"  - Class: {item['name']}, line {item['start_line']}\n"
@@ -129,6 +150,29 @@ class DocGen(object):
         function_str += f"        Source:\n{details['source_code']}\n"
         return function_str
 
+    @staticmethod
+    def _format_class_short(item: dict) -> str:
+        """Formats class details."""
+        class_str = f"  - Class: {item['name']}\n"
+        if item["docstring"]:
+            try:
+                class_str += f"          Docstring:   {item['docstring'].split('\n\n')[0].strip("\"\n ")}\n"
+            except:
+                class_str += f"          Docstring:  {item['docstring']}\n"
+        return class_str
+
+    @staticmethod
+    def _format_function_short(item: dict) -> str:
+        """Formats function details."""
+        details = item["details"]
+        function_str = f"  - Function: {details['method_name']}\n"
+        if details["docstring"]:
+            try:
+                function_str += f"          Docstring:\n    {details['docstring'].split('\n\n')[0].strip("\"\n ")}\n"
+            except:
+                function_str += f"          Docstring:\n    {details['docstring']}\n"
+        return function_str
+
     def count_tokens(self, prompt: str) -> int:
         """
         Counts the number of tokens in a given prompt using a specified model.
@@ -154,47 +198,106 @@ class DocGen(object):
             The generated class docstring.
         """
         # Construct a structured prompt
-        prompt = f"""
-        Generate a single Python docstring for the following class {class_details[0]}. The docstring should follow Google-style format and include:
-        - A short summary of what the class does.
-        - A list of its methods without details if class has them otherwise do not mention a list of methods.
-        - A list of its attributes without types if class has them otherwise do not mention a list of attributes.
-        - A brief summary of what its methods and attributes do if one has them for.
-        """
+        prompt = (
+            f"""Generate a single Python docstring for the following class {class_details[0]}. The docstring should follow Google-style format and include:\n"""
+            "- A short summary of what the class does.\n"
+            "- A list of its methods without details if class has them otherwise do not mention a list of methods.\n"
+            "- A list of its attributes without types if class has them otherwise do not mention a list of attributes.\n"
+            "- A brief summary of what its methods and attributes do if one has them for.\n\n"
+            "Return only docstring without any quotation. Follow such format:\n <triple_quotes>\ncontent\n<triple_quotes>")
+
         if len(class_details[1]) > 0:
             prompt += f"\nClass Attributes:\n"
             for attr in class_details[1]:
                 prompt += f"- {attr}\n"
 
-        if len(class_details[2:]) > 0:
+        if len(class_details[2:-1]) > 0:
             prompt += f"\nClass Methods:\n"
-            for method in class_details[2:]:
+            for method in class_details[2:-1]:
                 prompt += f"- {method['method_name']}: {method['docstring']}\n"
 
         return self.model_handler.send_request(prompt)
+
+    def update_class_documentation(self, class_details: dict) -> str:
+        """
+        Generate documentation for a class.
+
+        Args:
+            class_details: A list of dictionaries containing method names and their docstrings.
+
+        Returns:
+            The generated class docstring.
+        """
+        # Construct a structured prompt
+        try:
+            desc, other = class_details[-1].split("\n\n", maxsplit=1)
+            desc = desc.replace("\"", "")
+        except:
+            return class_details[-1]
+        prompt = (
+            f"""Update the provided description for the following Python class {class_details[0]} using provided main idea of the project.\n"""
+            """Do not pay too much attention to the provided main idea - try not to mention it explicitly.\n"""
+            f"""The main idea: {self.main_idea}\n"""
+            f"""Old docstring description part: {desc.strip("\"\n ")}\n\n"""
+            """Return only pure changed description - without any code, other parts of docs, any quotations)""")
+        new_desc = self.model_handler.send_request(prompt)
+        return "\n\n".join(["\"\"\"\n" + new_desc, other])
 
     def generate_method_documentation(self, method_details: dict, context_code: str = None) -> str:
         """
         Generate documentation for a single method.
         """
-        prompt = f"""
-        Generate a Python docstring for the following method. The docstring should follow Google-style format and include:
-        - A short summary of what the method does.
-        - A description of its parameters without types.
-        - The return type and description.
-        {"- Use provided source code of imported methods, functions to describe their usage." if context_code else ""}
+        prompt = (
+            "Generate a Python docstring for the following method. The docstring should follow Google-style format and include:\n"
+            "- A short summary of what the method does\n."
+            "- A description of its parameters without types.\n"
+            "- The return type and description.\n"
+            f"""{"- Use provided source code of imported methods, functions to describe their usage." if context_code else ""}\n"""
+            "Method Details:\n"
+            f"- Method Name: {method_details["method_name"]}\n"
+            f"- Method decorators: {method_details["decorators"]}\n"
+            "- Source Code:\n"
+            "```\n"
+            f"""{method_details["source_code"]}\n"""
+            "```\n"
+            f"""{"- Imported methods source code:" if context_code else ""}\n"""
+            f"""{context_code if context_code else ""}\n\n"""
+            "Note: DO NOT count parameters which are not listed in the parameters list. DO NOT lose any parameter."
+            "Return only docstring without any quotation. Follow such format:\n <triple_quotes>\ncontent\n<triple_quotes>")
 
-        Method Details:
-        - Method Name: {method_details["method_name"]}
-        - Method decorators: {method_details["decorators"]}
-        - Source Code:
-        ```
-        {method_details["source_code"]}
-        ```
-        {"- Imported methods source code:" if context_code else ""}
-        {context_code if context_code else ""}
-        """
         return self.model_handler.send_request(prompt)
+
+    def update_method_documentation(self, method_details: dict, context_code: str = None,
+                                    class_name: str = None) -> str:
+        """
+        Generate documentation for a single method.
+        """
+        try:
+            desc, other = method_details["docstring"].split("\n\n", maxsplit=1)
+        except:
+            return method_details["docstring"]
+        prompt = (
+            """Update the provided description for the following Python method using the main idea of the project.\n"""
+            """Do not pay too much attention to the provided main idea - try not to mention it explicitly\n"""
+            f"""{"- Use provided source code of imported methods, functions to understand their usage." if context_code else ""}\n"""
+            """Method Details:\n"""
+            f"""- Method Name: {method_details["method_name"]} {("located inside " + class_name + " class") if class_name else ""}\n"""
+            f"""- Method decorators: {method_details["decorators"]}\n"""
+            "- Source Code:\n"
+            "```\n"
+            f"""{method_details["source_code"]}\n"""
+            "```\n"
+            f"""{"- Imported methods source code:" if context_code else ""}\n"""
+            f"""{context_code if context_code else ""}\n\n"""
+
+            "The main idea: {self.main_idea}\n"
+
+            f"""Old docstring description part: {desc.strip("\"\n ")}\n\n"""
+
+            "Return only pure changed description - without any code, other parts of docs, any quotations")
+        new_desc = self.model_handler.send_request(prompt)
+
+        return "\n\n".join(["\"\"\"\n" + new_desc, other])
 
     def extract_pure_docstring(self, gpt_response: str) -> str:
         """
@@ -226,7 +329,6 @@ class DocGen(object):
             triple_quotes = match.group(1)  # Keep the triple quotes (""" or """)
             extracted_docstring = match.group(2)  # Extract only the content inside the docstring
             cleaned_content = re.sub(r"^\s*def\s+\w+\(.*?\):\s*", "", extracted_docstring, flags=re.MULTILINE)
-
             return f"{triple_quotes}\n{cleaned_content}{triple_quotes}"
 
         return '"""No valid docstring found."""'  # Return a placeholder if no docstring was found
@@ -246,7 +348,7 @@ class DocGen(object):
         """
         # Matches a method definition with the given name,
         # including an optional return type. Ensures no docstring follows.
-        method_pattern = rf"((?:@\w+(?:\([^)]*\))?\s*\n)*\s*(?:async\s+)?def\s+{method_details['method_name']}\s*\((?:[^)(]|\((?:[^)(]*|\([^)(]*\))*\))*\)\s*(->\s*[a-zA-Z0-9_\[\],. |]+)?\s*:\n)(\s*)(?!\s*\"\"\")"
+        method_pattern = rf"((?:@\w+(?:\([^)]*\))?\s*\n)*\s*(?:async\s+)?def\s+{method_details['method_name']}\s*\((?:[^)(]|\((?:[^)(]*|\([^)(]*\))*\))*\)\s*(->\s*[a-zA-Z0-9_\[\],. |]+)?\s*:\n)(\s*)" + r"(\"{3}[\s\S]*?\"{3}|\'{3}[\s\S]*?\'{3})?"
         """
         (
             (?:@\w+(?:\([^)]*\))?\s*\n)*                # Optional decorators: e.g. @decorator or @decorator(args), each followed by newline
@@ -271,7 +373,18 @@ class DocGen(object):
         """
 
         docstring_with_format = self.extract_pure_docstring(generated_docstring)
-        updated_code = re.sub(method_pattern, rf"\1\3{docstring_with_format}\n\3", source_code, count=1)
+        matches = list(re.finditer(method_pattern, source_code))
+        if matches:
+            last_match = matches[-1]
+            start, end = last_match.span()
+            updated_code = source_code[:start] + re.sub(method_pattern,
+                                                        rf"\1\3{docstring_with_format}\n\3",
+                                                        source_code[start:end],
+                                                        count=1) + source_code[end:]
+
+        else:
+            updated_code = source_code
+        # updated_code = re.sub(method_pattern, rf"\1\3{docstring_with_format}\n\3", source_code, count=1)
 
         return updated_code
 
@@ -291,7 +404,7 @@ class DocGen(object):
 
         # Matches a class definition with the given name,
         # including optional parentheses. Ensures no docstring follows.
-        class_pattern = rf"(class\s+{class_name}\s*(\([^)]*\))?\s*:\n)(\s*)(?!\s*\"\"\")"
+        class_pattern = rf"(class\s+{class_name}\s*(\([^)]*\))?\s*:\n)(\s*)(?!\s*\"\"\")" + r"(\"{3}[\s\S]*?\"{3}|\'{3}[\s\S]*?\'{3})?"
 
         # Ensure we keep only the extracted docstring
         docstring_with_format = self.extract_pure_docstring(generated_docstring)
@@ -391,51 +504,179 @@ class DocGen(object):
         Returns:
             None
         """
-        for filename, structure in parsed_structure.items():
-            self.format_with_black(filename)
-            with open(filename, "r", encoding="utf-8") as f:
-                source_code = f.read()
-            for item in structure["structure"]:
-                if item["type"] == "class":
-                    for method in item["methods"]:
-                        if method["docstring"] == None:  # If docstring is missing
-                            logger.info(
-                                f"Generating docstring for method: {method['method_name']} in class {item['name']} at {filename}"
-                            )
-                            method_context = self.context_extractor(method, parsed_structure)
-                            generated_docstring = self.generate_method_documentation(method, method_context)
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            # Convert items to list since executor.map needs to know the length
+            items = list(parsed_structure.items())
+            # Using lambda to handle the instance method call
+            list(executor.map(lambda item: self._process_one_file(*item, parsed_structure), items))
+        # for filename, structure in parsed_structure.items():  # 35 min
+        #     self._process_one_file(filename, structure, project_structure=parsed_structure)
+
+    def _process_one_file(self, filename, file_structure, project_structure):
+        self.format_with_black(filename)
+        with open(filename, "r", encoding="utf-8") as f:
+            source_code = f.read()
+        for item in file_structure["structure"]:
+            if item["type"] == "class":
+                for method in item["methods"]:
+                    if method["docstring"] == None or self.main_idea:  # If docstring is missing
+                        logger.info(
+                            f"Generating docstring for method: {method['method_name']} in class {item['name']} at {filename}"
+                        )
+                        method_context = self.context_extractor(method, project_structure)
+                        generated_docstring = (self.generate_method_documentation(method, method_context)
+                                               if self.main_idea is None
+                                               else self.update_method_documentation(method, method_context,
+                                                                                     class_name=item['name']))
+                        if generated_docstring:
                             if item["docstring"] == None:
                                 method["docstring"] = self.extract_pure_docstring(generated_docstring)
                             source_code = self.insert_docstring_in_code(source_code, method, generated_docstring)
-                if item["type"] == "function":
-                    func_details = item["details"]
-                    if func_details["docstring"] == None:
-                        logger.info(f"Generating docstring for a function: {func_details['method_name']} at {filename}")
-                        generated_docstring = self.generate_method_documentation(func_details)
+            if item["type"] == "function":
+                func_details = item["details"]
+                if func_details["docstring"] == None or self.main_idea:
+                    logger.info(f"Generating docstring for a function: {func_details['method_name']} at {filename}")
+                    generated_docstring = self.generate_method_documentation(
+                        func_details) if self.main_idea is None else self.update_method_documentation(func_details)
+                    if generated_docstring:
                         source_code = self.insert_docstring_in_code(source_code, func_details, generated_docstring)
 
-            for item in structure["structure"]:
-                if item["type"] == "class" and item["docstring"] == None:
-                    class_name = item["name"]
-                    cls_structure = []
-                    cls_structure.append(class_name)
-                    cls_structure.append(item["attributes"])
-                    for method in item["methods"]:
-                        cls_structure.append(
-                            {
-                                "method_name": method["method_name"],
-                                "docstring": method["docstring"],
-                            }
-                        )
-                    logger.info(f"Generating docstring for class: {item['name']} in class at {filename}")
-                    generated_cls_docstring = self.generate_class_documentation(cls_structure)
-                    source_code = self.insert_cls_docstring_in_code(source_code, class_name, generated_cls_docstring)
-            with open(filename, "w", encoding="utf-8") as f:
-                f.write(source_code)
-            self.format_with_black(filename)
-            logger.info(f"Updated file: {filename}")
+        for item in file_structure["structure"]:
+            if item["type"] == "class" and (item["docstring"] == None or self.main_idea):
+                class_name = item["name"]
+                cls_structure = []
+                cls_structure.append(class_name)
+                cls_structure.append(item["attributes"])
 
-    def generate_documentation_mkdocs(self, path: str) -> None:
+                for method in item["methods"]:
+                    cls_structure.append(
+                        {
+                            "method_name": method["method_name"],
+                            "docstring": method["docstring"],
+                        }
+                    )
+                cls_structure.append(item["docstring"])
+                logger.info(f"Generating docstring for class: {item['name']} in class at {filename}")
+                generated_cls_docstring = (self.generate_class_documentation(cls_structure)
+                                           if self.main_idea is None
+                                           else self.update_class_documentation(cls_structure))
+                if generated_cls_docstring:
+                    source_code = self.insert_cls_docstring_in_code(source_code, class_name, generated_cls_docstring)
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(source_code)
+        self.format_with_black(filename)
+        logger.info(f"Updated file: {filename}")
+
+    def generate_the_main_idea(self, parsed_structure: dict) -> None:
+        prompt = (
+            "You are an AI documentation assistant, and your task is to deduce the main idea of the project and formulate for which purpose it was written."
+            "You are given with the list of the main components (classes and functions) with it's short description and location in project hierarchy:\n"
+            "{components}\n\n"
+            "Formulate only main idea without describing components. DO NOT list components, just return overview of the project and it's purpose."
+            "Format you answer in a way you're writing markdown README file\n"
+            "Use such format for result:\n"
+            "# Name of the project\n"
+            "## Overview\n"
+            "## Purpose\n"
+            "Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know "
+            "you're provided with any information. AVOID ANY SPECULATION and inaccurate descriptions! Now, provide the summarized idea of the project based on it's components"
+        )
+        structure = []
+        for file in parsed_structure:
+            for component in parsed_structure[file]['structure']:
+                t = component['type']
+                if t == "class":
+                    docstring = component['docstring'].split("\n\n")[0].strip("\"\n ") if component['docstring'] else ""
+                else:
+                    docstring = component['details']['docstring'] if component['details']['docstring'] else ""
+                structure.append(
+                    f"""{t.capitalize()} name: {component['name'] if t == "class" else component['details']['method_name']}
+                Component description: {docstring}
+                Component place in hierarchy: {file}
+                Component importance score: {len(parsed_structure[file]['imports'])}
+                """
+                )
+        self.main_idea = self.model_handler.send_request(prompt.format(components="\n\n".join(structure)))
+
+    def summarize_submodules(self, project_structure):
+        summaries = {}
+
+        def summarize_directory(name: str, file_summaries: List[str],
+                                submodule_summaries: List[str]) -> str:
+            prompt = (
+                "You are an AI documentation assistant, and your task is to sujmmarize the module of project and formulate for which purpose it was written."
+                "You are given with the list of the components (classes and functions or submodules) with it's short description:\n\n"
+                "{components}\n\n"
+                "Also you have the snippet from README file of project from this module has came describing the main idea of the whole project:\n\n"
+                "{main_idea}\n\n"
+                "You should generate markdown-formatted documentation page describing this module using description of all files and all submodules.\n"
+                "Do not too generalize overview and purpose parts using main idea, but try to explicit which part of main functionality does this module. Concentrate on local module features were infered previously.\n"
+                "Format you answer in a way you're writing README file for the module. Use such template:\n\n"
+                "# Name\n"
+                "## Overview\n"
+                "## Purpose\n"
+                "Do not mention or describe any submodule or files! Rename snake_case names on meaningful names."
+                "Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know "
+                "you're provided with any information. AVOID ANY SPECULATION and inaccurate descriptions! Now, provide the summarized idea of the module based on it's components")
+
+            components = [
+                (f"Module name: {name}",
+                 "\n## Files Summary:\n\n- "
+                 + "\n- ".join(file_summaries)
+                 .replace("#", "##")
+                 .replace("##", "###") +
+                 "\n\n## Submodules Summary:\n"
+                 + "\n- ".join(submodule_summaries).replace("#", "##"))
+            ]
+
+            result = self.model_handler.send_request(prompt.format(components=components, main_idea=self.main_idea))
+            return result
+
+        def traverse_and_summarize(path: Path, project_structure: Dict[str, Any]) -> str:
+            dirs_summaries = []
+            files_summaries = []
+
+            dirs = [i for i in os.listdir(path) if
+                    os.path.isdir(Path(path, i)) and i not in ['.git', '.github', 'test', 'tests']]
+            files = [i for i in os.listdir(path) if not os.path.isdir(Path(path, i))]
+
+            for dir_name in dirs:
+                dir_path = Path(path, dir_name)
+                dir_summary = traverse_and_summarize(dir_path, project_structure)
+                if dir_summary:
+                    dirs_summaries.append(dir_summary)
+
+            for file_name in files:
+                file_path = Path(path, file_name)
+                if str(file_path) in project_structure:
+                    files_summaries.append(self.format_structure_openai_short(filename=file_path.name,
+                                                                              structure=project_structure[
+                                                                                  str(file_path)]))
+            if files_summaries or dirs_summaries:
+                if path == self.config.git.name:  # main page of the repo
+                    summary = self.main_idea
+
+                else:
+                    summary = summarize_directory(Path(path).name, files_summaries, dirs_summaries)
+                summaries[str(path)] = summary
+                return summary
+
+        traverse_and_summarize(self.config.git.name, project_structure=project_structure)
+        return summaries
+
+    def convert_path_to_dot_notation(self, path: str, class_: str):
+        path_obj = Path(path) if isinstance(path, str) else path
+        processed_parts = []
+        for part in path_obj.parts:
+            if part.endswith(".py"):
+                part = part[:-3]
+            if part == "__init__":
+                continue
+            processed_parts.append(part)
+        dot_path = ".".join(processed_parts)
+        return f"::: {dot_path}.{class_}"
+
+    def generate_documentation_mkdocs(self, path: str, files_info, modules_info) -> None:
         """
         Generates MkDocs documentation for a Python project based on provided path.
 
@@ -450,6 +691,27 @@ class DocGen(object):
         mkdocs_dir = repo_path
         self._rename_invalid_dirs(repo_path)
         self._add_init_files(repo_path)
+
+        init_doc_path = Path(repo_path, "osa_docs")
+        init_doc_path.mkdir(parents=True, exist_ok=True)
+        for file in files_info:
+            if files_info[file]['structure']:
+                parent_dir = Path(file).parent
+                file_name = Path(file).name
+                relative_path = Path(*Path(file).parts[1::])
+                new_path = Path(init_doc_path, Path(*Path(parent_dir).parts[1::]))
+                new_path.mkdir(parents=True, exist_ok=True)
+                text = (f"# {file_name.strip('.py').replace('_', ' ').title()}\n\n" + "\n\n".join(
+                    [f"{self.convert_path_to_dot_notation(relative_path, item['name'] if item['type'] == "class"
+                    else item['details']['method_name'])}" for item in files_info[file]['structure']]))
+                new_file = Path(new_path, file_name.replace(".py", ".md"))
+                new_file.write_text(text)
+
+        for module in modules_info:
+            new_file = Path(init_doc_path, Path(*Path(module).parts[1::]))
+            new_file.mkdir(parents=True, exist_ok=True)
+            text = modules_info[module]
+            Path(new_file, "index.md").write_text(text)
 
         mkdocs_config = osa_project_root().resolve() / "docs" / "templates" / "mkdocs.yml"
         mkdocs_yml = mkdocs_dir / "osa_mkdocs.yml"
@@ -475,7 +737,6 @@ class DocGen(object):
             shutil.rmtree(mkdocs_dir)
         logger.info(f"MKDocs configuration successfully built at: {mkdocs_dir}")
 
-    # It seems to better place it in the osa_tool/github_workflow
     def create_mkdocs_github_workflow(
             self,
             repository_url: str,

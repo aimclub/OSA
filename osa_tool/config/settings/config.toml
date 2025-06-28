@@ -17,17 +17,17 @@ skill_icons = "skill_icons.json"
 
 # Git Repository Settings
 [git]
-repository = "https://github.com/aimclub/FEDOT"
+repository = "https://github.com/valer1435/RepoAgent"
 
 # Language Model API Settings
 [llm]
-api = "openai"
-url = "https://api.openai.com/v1"
+api = "llama"
+url = "http://10.32.15.21:6672/generate"
 context_window = 4096
 encoder = "cl100k_base"
-host_name = "https://api.openai.com/v1"
+host_name = "http://10.32.15.21:6672/"
 localhost = "http://localhost:11434/"
-model = "gpt-3.5-turbo"
+model = "llama"
 path = "generate"
 temperature = 0.05
 tokens = 4096
