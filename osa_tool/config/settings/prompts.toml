@@ -195,3 +195,67 @@ RULES:
 - Output valid JSON, strictly following the given structure.
 """
 
+refine = """
+INPUT DATA:
+
+1. ORIGINAL README CONTENT:
+
+{old_readme}
+
+2. GENERATED README SECTIONS (as JSON):
+
+{new_readme_sections}
+
+TASK:
+You are refining and restructuring the generated README by combining it with the original project's README content.
+
+Your goal is to improve the generated README by:
+- Preserving valuable information from the original README that is missing in the generated one.
+- Removing redundant or outdated parts.
+- Ensuring clean, consistent, and logically ordered sections.
+- Keeping markdown formatting intact.
+- Maintaining or expanding useful content structure when appropriate.
+
+PROCESS:
+
+- Use the generated README sections as the base structure.
+- Carefully review both the original README content and the generated README sections.
+- Integrate missing relevant content from the original README where appropriate.
+- Remove duplicate, obsolete, or irrelevant content.
+- Do not invent or make up new content — only use the provided data.
+- Preserve markdown formatting as in the input.
+- If you find meaningful sections in the original README that are not present in the generated one, you may add them as new sections in the final README **only if their content does not duplicate existing sections**.
+- If new sections are added, update the Table of Contents (if present) to reflect the final list of sections using their exact titles (except for "badges" and "Overview" — these are never listed in the Table of Contents).
+
+IMPORTANT:
+- All content in the README **before the first '## '** markdown header is considered a special 'badges' section.
+- The 'badges' section includes the project title, badges, and any description placed before the first '## ' header in the markdown.
+
+FINAL OUTPUT STRUCTURE:
+
+Return a JSON object where:
+- Each key represents a section name (string).
+  Example: "Overview", "Installation", "API Reference", etc.
+- The "badges" section should contain all markdown content before the first '##' header.
+- The value for each key should be the final cleaned content of that section (markdown text).
+- The order of keys in the JSON should reflect the desired order of sections in the final README.
+- If a section ends up empty, omit it from the output.
+
+Example:
+
+{{
+    "badges": "project title, badges, description...",
+    "Overview": "overview text...",
+    "Installation": "installation instructions...",
+    "Usage": "how to use..."
+}}
+
+RULES:
+
+- Always output valid JSON as shown in the example.
+- Do not add extra explanation or comments.
+- Preserve markdown formatting.
+- Remove duplicate sections or overlapping information.
+- The JSON keys order determines the final README order.
+- Table of Contents must reflect the final list of section keys (excluding 'badges' and 'Overview').
+"""
