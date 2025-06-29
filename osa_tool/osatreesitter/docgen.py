@@ -1,7 +1,8 @@
 import multiprocessing.pool
 import os
 import re
-from concurrent.futures import ThreadPoolExecutor
+import textwrap
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from typing import List, Dict, Any
 
 import black
@@ -299,6 +300,7 @@ class DocGen(object):
 
         return "\n\n".join(["\"\"\"\n" + new_desc, other])
 
+
     def extract_pure_docstring(self, gpt_response: str) -> str:
         """
         Extracts only the docstring from the GPT-4 response while keeping triple quotes.
@@ -311,6 +313,8 @@ class DocGen(object):
         """
 
         # Try to recover if closing triple-quote was replaced with ```
+        if gpt_response is None:
+            return '"""No valid docstring found."""'
         triple_quote_pos = gpt_response.find('"""')
         if triple_quote_pos != -1:
             # Look for closing triple-quote
@@ -328,8 +332,15 @@ class DocGen(object):
         if match:
             triple_quotes = match.group(1)  # Keep the triple quotes (""" or """)
             extracted_docstring = match.group(2)  # Extract only the content inside the docstring
-            cleaned_content = re.sub(r"^\s*def\s+\w+\(.*?\):\s*", "", extracted_docstring, flags=re.MULTILINE)
-            return f"{triple_quotes}\n{cleaned_content}{triple_quotes}"
+            cleaned_content = re.sub(r"^\s*def\s+\w+\(.*?\):\s*", "", extracted_docstring, flags=re.MULTILINE).strip("\"\' ")
+            # very silly approach to correct indentation (calculate spaces before 'Args' literals)
+            if "Args" in cleaned_content:
+                spaces = re.findall("\n([^\S\r\n]*)Args", cleaned_content)
+                if spaces:
+                    spaces = spaces[0]
+                    cleaned_content = cleaned_content.replace("\n"+spaces, "\n")  # shift content left
+
+            return f"{triple_quotes}\n{cleaned_content}\n{triple_quotes}"
 
         return '"""No valid docstring found."""'  # Return a placeholder if no docstring was found
 
@@ -384,8 +395,6 @@ class DocGen(object):
 
         else:
             updated_code = source_code
-        # updated_code = re.sub(method_pattern, rf"\1\3{docstring_with_format}\n\3", source_code, count=1)
-
         return updated_code
 
     def insert_cls_docstring_in_code(self, source_code: str, class_name: str, generated_docstring: str) -> str:
@@ -504,13 +513,9 @@ class DocGen(object):
         Returns:
             None
         """
-        with ThreadPoolExecutor(max_workers=6) as executor:
-            # Convert items to list since executor.map needs to know the length
-            items = list(parsed_structure.items())
-            # Using lambda to handle the instance method call
-            list(executor.map(lambda item: self._process_one_file(*item, parsed_structure), items))
-        # for filename, structure in parsed_structure.items():  # 35 min
-        #     self._process_one_file(filename, structure, project_structure=parsed_structure)
+
+        for filename, structure in parsed_structure.items():
+            self._process_one_file(filename, structure, project_structure=parsed_structure)
 
     def _process_one_file(self, filename, file_structure, project_structure):
         self.format_with_black(filename)
@@ -521,23 +526,24 @@ class DocGen(object):
                 for method in item["methods"]:
                     if method["docstring"] == None or self.main_idea:  # If docstring is missing
                         logger.info(
-                            f"Generating docstring for method: {method['method_name']} in class {item['name']} at {filename}"
+                            f"""{"Generating" if self.main_idea else "Updating"} docstring for method: {method['method_name']} in class {item['name']} at {filename}"""
                         )
                         method_context = self.context_extractor(method, project_structure)
                         generated_docstring = (self.generate_method_documentation(method, method_context)
                                                if self.main_idea is None
                                                else self.update_method_documentation(method, method_context,
                                                                                      class_name=item['name']))
+                        generated_docstring = self.extract_pure_docstring(generated_docstring)
                         if generated_docstring:
-                            if item["docstring"] == None:
-                                method["docstring"] = self.extract_pure_docstring(generated_docstring)
+                            method["docstring"] = generated_docstring
                             source_code = self.insert_docstring_in_code(source_code, method, generated_docstring)
             if item["type"] == "function":
                 func_details = item["details"]
                 if func_details["docstring"] == None or self.main_idea:
-                    logger.info(f"Generating docstring for a function: {func_details['method_name']} at {filename}")
+                    logger.info(f"""{"Generating" if self.main_idea else "Updating"} docstring for a function: {func_details['method_name']} at {filename}""")
                     generated_docstring = self.generate_method_documentation(
                         func_details) if self.main_idea is None else self.update_method_documentation(func_details)
+                    generated_docstring = self.extract_pure_docstring(generated_docstring)
                     if generated_docstring:
                         source_code = self.insert_docstring_in_code(source_code, func_details, generated_docstring)
 
@@ -556,7 +562,7 @@ class DocGen(object):
                         }
                     )
                 cls_structure.append(item["docstring"])
-                logger.info(f"Generating docstring for class: {item['name']} in class at {filename}")
+                logger.info(f"""{"Generating" if self.main_idea else "Updating"} docstring for class: {item['name']} in class at {filename}""")
                 generated_cls_docstring = (self.generate_class_documentation(cls_structure)
                                            if self.main_idea is None
                                            else self.update_class_documentation(cls_structure))
@@ -596,6 +602,7 @@ class DocGen(object):
                 Component importance score: {len(parsed_structure[file]['imports'])}
                 """
                 )
+        logger.info(f"Generating the main idea of the project...")
         self.main_idea = self.model_handler.send_request(prompt.format(components="\n\n".join(structure)))
 
     def summarize_submodules(self, project_structure):
@@ -628,7 +635,7 @@ class DocGen(object):
                  "\n\n## Submodules Summary:\n"
                  + "\n- ".join(submodule_summaries).replace("#", "##"))
             ]
-
+            logger.info(f"Generating summary for the module {name}")
             result = self.model_handler.send_request(prompt.format(components=components, main_idea=self.main_idea))
             return result
 
@@ -664,7 +671,7 @@ class DocGen(object):
         traverse_and_summarize(self.config.git.name, project_structure=project_structure)
         return summaries
 
-    def convert_path_to_dot_notation(self, path: str, class_: str):
+    def convert_path_to_dot_notation(self, path):
         path_obj = Path(path) if isinstance(path, str) else path
         processed_parts = []
         for part in path_obj.parts:
@@ -674,7 +681,7 @@ class DocGen(object):
                 continue
             processed_parts.append(part)
         dot_path = ".".join(processed_parts)
-        return f"::: {dot_path}.{class_}"
+        return f"::: {dot_path}"
 
     def generate_documentation_mkdocs(self, path: str, files_info, modules_info) -> None:
         """
@@ -695,17 +702,18 @@ class DocGen(object):
         init_doc_path = Path(repo_path, "osa_docs")
         init_doc_path.mkdir(parents=True, exist_ok=True)
         for file in files_info:
-            if files_info[file]['structure']:
-                parent_dir = Path(file).parent
-                file_name = Path(file).name
-                relative_path = Path(*Path(file).parts[1::])
-                new_path = Path(init_doc_path, Path(*Path(parent_dir).parts[1::]))
-                new_path.mkdir(parents=True, exist_ok=True)
-                text = (f"# {file_name.strip('.py').replace('_', ' ').title()}\n\n" + "\n\n".join(
-                    [f"{self.convert_path_to_dot_notation(relative_path, item['name'] if item['type'] == "class"
-                    else item['details']['method_name'])}" for item in files_info[file]['structure']]))
-                new_file = Path(new_path, file_name.replace(".py", ".md"))
-                new_file.write_text(text)
+            if not files_info[file]['structure']:
+                continue
+            parent_dir = Path(file).parent
+            file_name = Path(file).name
+            relative_path = Path(*Path(file).parts[1::])
+            new_path = Path(init_doc_path, Path(*Path(parent_dir).parts[1::]))
+            new_path.mkdir(parents=True, exist_ok=True)
+            text = (f"# {file_name.strip('.py').replace('_', ' ').title()}\n\n"
+                    + "\n\n"
+                    + f"{self.convert_path_to_dot_notation(relative_path)}")
+            new_file = Path(new_path, file_name.replace(".py", ".md"))
+            new_file.write_text(text)
 
         for module in modules_info:
             new_file = Path(init_doc_path, Path(*Path(module).parts[1::]))
@@ -781,7 +789,7 @@ class DocGen(object):
                         {
                             "name": "[OSA] Installing Python",
                             "uses": "actions/setup-python@v4",
-                            "with": {"python-version": "3.10"},
+                            "with": {"python-version": "3.12"},
                         },
                         {
                             "name": "[OSA] Installing MkDocs dependencies",
