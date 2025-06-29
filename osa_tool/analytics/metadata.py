@@ -110,7 +110,7 @@ def load_data_metadata(repo_url: str) -> RepositoryMetadata | None:
         base_url = get_base_repo_url(repo_url)
         url = f"https://api.github.com/repos/{base_url}"
 
-        response = requests.get(url=url, headers=headers)
+        response = requests.get(url=url, headers=headers, verify=False)
 
         metadata = response.json()
         logger.info(f"Successfully fetched metadata for repository: {repo_url}")
