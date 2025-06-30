@@ -229,7 +229,7 @@ PROCESS:
 
 IMPORTANT:
 - All content in the README **before the first '## '** markdown header is considered a special 'badges' section.
-- The 'badges' section includes the project title, badges, and any description placed before the first '## ' header in the markdown.
+- The 'badges' section includes the project title and badges.
 
 FINAL OUTPUT STRUCTURE:
 
@@ -244,7 +244,7 @@ Return a JSON object where:
 Example:
 
 {{
-    "badges": "project title, badges, description...",
+    "badges": "project title, badges...",
     "Overview": "overview text...",
     "Installation": "installation instructions...",
     "Usage": "how to use..."
@@ -254,6 +254,7 @@ RULES:
 
 - Always output valid JSON as shown in the example.
 - Do not add extra explanation or comments.
+- Do not dublicate information.
 - Preserve markdown formatting.
 - Remove duplicate sections or overlapping information.
 - The JSON keys order determines the final README order.

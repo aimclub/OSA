@@ -101,7 +101,7 @@ def main():
         # Readme generation
         if plan.get("readme"):
             rich_section("README generation")
-            readme_agent(config, plan.get("article"))
+            readme_agent(config, plan.get("article"), plan.get("refine_readme"))
 
         # About section generation
         about_gen = None
