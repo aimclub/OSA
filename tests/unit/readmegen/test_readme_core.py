@@ -30,7 +30,7 @@ def test_readme_agent_without_article(mock_refine, mock_llm, mock_builder, mock_
     mock_refine.return_value.refine.return_value = "Refined README content"
 
     # Act
-    readme_agent(config_loader, article=None)
+    readme_agent(config_loader, article=None, refine_readme=True)
 
     # Assert
     mock_llm.return_value.get_responses.assert_called_once()
@@ -57,7 +57,7 @@ def test_readme_agent_with_article(mock_llm, mock_builder_article, mock_save, mo
 
     mock_builder_article.return_value.build.return_value = "README from article"
     # Act
-    readme_agent(config_loader, article=article_path)
+    readme_agent(config_loader, article=article_path, refine_readme=False)
     # Assert
     mock_llm.return_value.get_responses_article.assert_called_once_with(article_path)
     mock_builder_article.assert_called_once_with(
