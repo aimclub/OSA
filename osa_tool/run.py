@@ -23,7 +23,13 @@ from osa_tool.scheduler.workflow_manager import (
     update_workflow_config,
 )
 from osa_tool.translation.dir_translator import DirectoryTranslator
-from osa_tool.utils import build_arguments_path, delete_repository, logger, parse_folder_name, rich_section
+from osa_tool.utils import (
+    build_arguments_path,
+    delete_repository,
+    logger,
+    parse_folder_name,
+    rich_section,
+)
 
 
 def main():
@@ -127,7 +133,7 @@ def main():
         if create_fork and create_pull_request:
             rich_section("Publishing changes")
             github_agent.commit_and_push_changes()
-            github_agent.create_pull_request(body=about_gen.get_about_section_message())
+            github_agent.create_pull_request(body=about_gen.get_about_section_message() if about_gen else "")
 
         if plan.get("delete_dir"):
             rich_section("Repository deletion")
