@@ -184,10 +184,10 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
 
 
 def load_configuration(
-        repo_url: str,
-        api: str,
-        base_url: str,
-        model_name: str,
+    repo_url: str,
+    api: str,
+    base_url: str,
+    model_name: str,
 ) -> ConfigLoader:
     """
     Loads configuration for osa_tool.
