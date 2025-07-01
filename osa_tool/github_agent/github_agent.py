@@ -214,7 +214,7 @@ class GithubAgent:
             )
             return False
 
-    def create_pull_request(self, title: str = None, body: str = None) -> None:
+    def create_pull_request(self, title: str = "", body: str = "") -> None:
         """Creates a pull request from the forked repository to the original repository.
 
         Args:
