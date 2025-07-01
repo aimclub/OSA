@@ -40,8 +40,6 @@ def main():
     create_fork = not args.no_fork
     create_pull_request = not args.no_pull_request
 
-
-
     try:
         # Load configurations and update
         config = load_configuration(
@@ -65,8 +63,6 @@ def main():
 
         if create_fork:
             github_agent.create_and_checkout_branch()
-
-        #generate_docstrings(config)
 
         # .ipynb to .py convertion
         if plan.get("convert_notebooks"):
@@ -169,29 +165,29 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
         config_loader: The configuration object which contains settings for osa_tool.
 
     """
-    # try:
-    repo_url = config_loader.config.git.repository
-    repo_path = parse_folder_name(repo_url)
-    ts = OSA_TreeSitter(repo_path)
-    res = ts.analyze_directory(ts.cwd)
-    dg = DocGen(config_loader)
-    dg.process_python_file(res)
-    dg.generate_the_main_idea(res)
-    dg.process_python_file(res)
-    modules_summaries = dg.summarize_submodules(res)
-    dg.generate_documentation_mkdocs(repo_path, res, modules_summaries)
-    dg.create_mkdocs_github_workflow(repo_url, repo_path)
+    try:
+        repo_url = config_loader.config.git.repository
+        repo_path = parse_folder_name(repo_url)
+        ts = OSA_TreeSitter(repo_path)
+        res = ts.analyze_directory(ts.cwd)
+        dg = DocGen(config_loader)
+        dg.process_python_file(res)
+        dg.generate_the_main_idea(res)
+        dg.process_python_file(res)
+        modules_summaries = dg.summarize_submodules(res)
+        dg.generate_documentation_mkdocs(repo_path, res, modules_summaries)
+        dg.create_mkdocs_github_workflow(repo_url, repo_path)
 
-    # except Exception as e:
-    #     dg._purge_temp_files(repo_path)
-    #     logger.error("Error while generating codebase documentaion: %s", repr(e), exc_info=True)
+    except Exception as e:
+        dg._purge_temp_files(repo_path)
+        logger.error("Error while generating codebase documentaion: %s", repr(e), exc_info=True)
 
 
 def load_configuration(
-    repo_url: str,
-    api: str,
-    base_url: str,
-    model_name: str,
+        repo_url: str,
+        api: str,
+        base_url: str,
+        model_name: str,
 ) -> ConfigLoader:
     """
     Loads configuration for osa_tool.

@@ -157,7 +157,8 @@ class DocGen(object):
         class_str = f"  - Class: {item['name']}\n"
         if item["docstring"]:
             try:
-                class_str += f"          Docstring:   {item['docstring'].split('\n\n')[0].strip("\"\n ")}\n"
+                doc = item['docstring'].split('\n\n')[0].strip("\"\n ")
+                class_str += f"          Docstring:   {doc}\n"
             except:
                 class_str += f"          Docstring:  {item['docstring']}\n"
         return class_str
@@ -169,7 +170,8 @@ class DocGen(object):
         function_str = f"  - Function: {details['method_name']}\n"
         if details["docstring"]:
             try:
-                function_str += f"          Docstring:\n    {details['docstring'].split('\n\n')[0].strip("\"\n ")}\n"
+                doc = details['docstring'].split('\n\n')[0].strip("\"\n ")
+                function_str += f"          Docstring:\n    {doc}\n"
             except:
                 function_str += f"          Docstring:\n    {details['docstring']}\n"
         return function_str
@@ -235,11 +237,13 @@ class DocGen(object):
             desc = desc.replace("\"", "")
         except:
             return class_details[-1]
+
+        old_desc = desc.strip("\"\n ")
         prompt = (
             f"""Update the provided description for the following Python class {class_details[0]} using provided main idea of the project.\n"""
             """Do not pay too much attention to the provided main idea - try not to mention it explicitly.\n"""
             f"""The main idea: {self.main_idea}\n"""
-            f"""Old docstring description part: {desc.strip("\"\n ")}\n\n"""
+            f"""Old docstring description part: {old_desc}\n\n"""
             """Return only pure changed description - without any code, other parts of docs, any quotations)""")
         new_desc = self.model_handler.send_request(prompt)
         return "\n\n".join(["\"\"\"\n" + new_desc, other])
@@ -255,11 +259,11 @@ class DocGen(object):
             "- The return type and description.\n"
             f"""{"- Use provided source code of imported methods, functions to describe their usage." if context_code else ""}\n"""
             "Method Details:\n"
-            f"- Method Name: {method_details["method_name"]}\n"
-            f"- Method decorators: {method_details["decorators"]}\n"
+            f"- Method Name: {method_details['method_name']}\n"
+            f"- Method decorators: {method_details['decorators']}\n"
             "- Source Code:\n"
             "```\n"
-            f"""{method_details["source_code"]}\n"""
+            f"""{method_details['source_code']}\n"""
             "```\n"
             f"""{"- Imported methods source code:" if context_code else ""}\n"""
             f"""{context_code if context_code else ""}\n\n"""
@@ -277,6 +281,7 @@ class DocGen(object):
             desc, other = method_details["docstring"].split("\n\n", maxsplit=1)
         except:
             return method_details["docstring"]
+        old_desc = desc.strip("\"\n ")
         prompt = (
             """Update the provided description for the following Python method using the main idea of the project.\n"""
             """Do not pay too much attention to the provided main idea - try not to mention it explicitly\n"""
@@ -293,7 +298,7 @@ class DocGen(object):
 
             "The main idea: {self.main_idea}\n"
 
-            f"""Old docstring description part: {desc.strip("\"\n ")}\n\n"""
+            f"""Old docstring description part: {old_desc}\n\n"""
 
             "Return only pure changed description - without any code, other parts of docs, any quotations")
         new_desc = self.model_handler.send_request(prompt)
@@ -607,6 +612,7 @@ class DocGen(object):
 
     def summarize_submodules(self, project_structure):
         summaries = {}
+        self._rename_invalid_dirs(self.config.git.name)
 
         def summarize_directory(name: str, file_summaries: List[str],
                                 submodule_summaries: List[str]) -> str:

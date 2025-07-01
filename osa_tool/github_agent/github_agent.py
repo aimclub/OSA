@@ -64,7 +64,7 @@ class GithubAgent:
         }
 
         url = f"https://api.github.com/repos/{base_repo}/forks"
-        response = requests.post(url, headers=headers, verify=False)
+        response = requests.post(url, headers=headers)
 
         if response.status_code in {200, 202}:
             self.fork_url = response.json()["html_url"]
@@ -90,7 +90,7 @@ class GithubAgent:
 
         # Check if the repository is already starred
         url_check = f"https://api.github.com/user/starred/{base_repo}"
-        response_check = requests.get(url_check, headers=headers, verify=False)
+        response_check = requests.get(url_check, headers=headers)
 
         if response_check.status_code == 204:
             logger.info(f"Repository {base_repo} is already starred.")
@@ -101,7 +101,7 @@ class GithubAgent:
 
         # Star the repository
         url_star = f"https://api.github.com/user/starred/{base_repo}"
-        response_star = requests.put(url_star, headers=headers, verify=False)
+        response_star = requests.put(url_star, headers=headers)
 
         if response_star.status_code == 204:
             logger.info(f"Repository {base_repo} has been starred successfully.")
@@ -247,7 +247,7 @@ class GithubAgent:
             "Accept": "application/vnd.github.v3+json",
         }
         url = f"https://api.github.com/repos/{base_repo}/pulls"
-        response = requests.post(url, json=pr_data, headers=headers, verify=False)
+        response = requests.post(url, json=pr_data, headers=headers)
         if response.status_code == 201:
             logger.info(f"Pull request created successfully: {response.json()['html_url']}")
         else:
@@ -317,7 +317,7 @@ class GithubAgent:
             "description": about_content["description"],
             "homepage": about_content["homepage"],
         }
-        response = requests.patch(url, headers=headers, json=about_data, verify=False)
+        response = requests.patch(url, headers=headers, json=about_data)
 
         if response.status_code in {200, 201}:
             logger.info(f"Successfully updated repository description and homepage.")
@@ -333,7 +333,7 @@ class GithubAgent:
             "Content-Type": "application/json",
         }
         topics_data = {"names": about_content["topics"]}
-        response = requests.put(url, headers=headers, json=topics_data, verify=False)
+        response = requests.put(url, headers=headers, json=topics_data)
 
         if response.status_code in {200, 201}:
             logger.info(f"Successfully updated repository topics.")
