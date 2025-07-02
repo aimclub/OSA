@@ -118,7 +118,7 @@ class ModeScheduler:
 
         try:
             parsed_json = json.loads(cleaned_response)
-            validated_data = PromptConfig.model_validate(parsed_json)
+            validated_data = PromptConfig.safe_validate(parsed_json)
             return validated_data.model_dump()
         except (ValidationError, json.JSONDecodeError) as e:
             raise ValueError(f"JSON parsing error: {e}")
