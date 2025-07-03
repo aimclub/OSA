@@ -29,7 +29,9 @@ multidict==6.1.0
 nbconvert>=6.0
 nbformat>=5.0
 openai==1.58.1
+openpyxl==3.1.5
 packaging==24.2
+pandas==2.2.3
 pdfminer.six==20231228
 pdfplumber==0.11.5
 pluggy==1.5.0
