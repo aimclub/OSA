@@ -2,7 +2,7 @@ import os
 from typing import Optional
 
 import tomli
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError, TypeAdapter
 
 from osa_tool.utils import osa_project_root
 
@@ -38,8 +38,23 @@ class PromptConfig(BaseModel):
     )
     about: bool = Field(False, description="Generate About section for the repository if it is missing.")
 
-    class Config:
-        extra = "ignore"
+    model_config = {"extra": "ignore"}
+
+    @classmethod
+    def safe_validate(cls, data: dict) -> "PromptConfig":
+        """Validate data with fallback to default values for invalid or missing fields."""
+        validated_data = {}
+
+        for field_name, field in cls.model_fields.items():
+            value = data.get(field_name, field.default)
+            adapter = TypeAdapter(field.annotation)
+            try:
+                validated_value = adapter.validate_python(value)
+            except ValidationError:
+                validated_value = field.default
+            validated_data[field_name] = validated_value
+
+        return cls(**validated_data)
 
 
 class PromptLoader:

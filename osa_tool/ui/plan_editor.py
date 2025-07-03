@@ -378,7 +378,11 @@ class PlanEditor:
         self.modified_keys.add(key)
 
         if key == "generate_workflows" and plan["generate_workflows"] is False:
-            self._disable_all_workflow_flags(plan)
+            self._manual_disable_generate_workflows = True
+
+        if key != "generate_workflows" and plan.get("generate_workflows") is False:
+            if key in self._workflow_boolean_keys(plan) and plan.get(key) is True:
+                self._manual_disable_generate_workflows = False
 
         self._sync_generate_workflows_flag(plan)
 
@@ -386,17 +390,19 @@ class PlanEditor:
         """Automatically enable/disable generate_workflows based on workflow keys."""
         bool_keys = self._workflow_boolean_keys(plan, exclude={"generate_workflows"})
         any_enabled = any(plan.get(k) is True for k in bool_keys)
-        plan["generate_workflows"] = any_enabled
+
+        if plan.get("generate_workflows"):
+            if not any_enabled:
+                plan["generate_workflows"] = False
+                self._manual_disable_generate_workflows = False
+        else:
+            if any_enabled and not getattr(self, "_manual_disable_generate_workflows", False):
+                plan["generate_workflows"] = True
 
     def _workflow_boolean_keys(self, plan: dict, exclude: set[str] = None) -> list[str]:
         """Return workflow keys with boolean values only."""
         exclude = exclude or set()
         return [k for k in self.workflow_keys if isinstance(plan.get(k), bool) and k not in exclude]
-
-    def _disable_all_workflow_flags(self, plan: dict) -> None:
-        """Disable all boolean workflow keys."""
-        for k in self._workflow_boolean_keys(plan):
-            plan[k] = False
 
     def _format_key_label(self, key: str) -> str:
         return f"{key} *" if key in self.modified_keys else key

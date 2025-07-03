@@ -54,7 +54,6 @@ def main():
             base_url=args.base_url,
             model_name=args.model,
         )
-        sourcerank = SourceRank(config)
 
         # Initialize GitHub agent and perform operations
         github_agent = GithubAgent(args.repository, args.branch)
@@ -64,6 +63,7 @@ def main():
         github_agent.clone_repository()
 
         # Initialize ModeScheduler
+        sourcerank = SourceRank(config)
         scheduler = ModeScheduler(config, sourcerank, args, workflow_keys)
         plan = scheduler.plan
 
