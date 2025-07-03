@@ -203,7 +203,7 @@ class GithubAgent:
 
             logger.info("Push completed.")
             return True
-        except GitCommandError:
+        except GitCommandError as e:
             logger.error(
                 f"""Push failed: Branch '{branch}' already exists in the fork.
              To resolve this, please either:
@@ -248,7 +248,6 @@ class GithubAgent:
         }
         url = f"https://api.github.com/repos/{base_repo}/pulls"
         response = requests.post(url, json=pr_data, headers=headers)
-
         if response.status_code == 201:
             logger.info(f"Pull request created successfully: {response.json()['html_url']}")
         else:
