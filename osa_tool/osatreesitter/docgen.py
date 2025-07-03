@@ -10,6 +10,7 @@ from pathlib import Path
 import shutil
 import subprocess
 
+import black.report
 import dotenv
 import tiktoken
 import yaml
@@ -289,6 +290,7 @@ class DocGen(object):
         prompt = (
             """Update the provided description for the following Python method using the main idea of the project.\n"""
             """Do not pay too much attention to the provided main idea - try not to mention it explicitly\n"""
+            """Based on the provided context and main idea give an answer to the question WHY method doing what it is doing"""
             f"""{"- Use provided source code of imported methods, functions to understand their usage." if context_code else ""}\n"""
             """Method Details:\n"""
             f"""- Method Name: {method_details["method_name"]} {("located inside " + class_name + " class") if class_name else ""}\n"""
@@ -299,11 +301,12 @@ class DocGen(object):
             "```\n"
             f"""{"- Imported methods source code:" if context_code else ""}\n"""
             f"""{context_code if context_code else ""}\n\n"""
-            "The main idea: {self.main_idea}\n"
+            f"The main idea: {self.main_idea}\n"
             f"""Old docstring description part: {old_desc}\n\n"""
             "Return only pure changed description - without any code, other parts of docs, any quotations"
         )
         new_desc = self.model_handler.send_request(prompt)
+        logger.info(f"UPDATE DESC: {prompt}")
 
         return "\n\n".join(['"""\n' + new_desc, other])
 
@@ -319,6 +322,7 @@ class DocGen(object):
         """
 
         # Try to recover if closing triple-quote was replaced with ```
+        logger.info(f"{gpt_response}")
         if gpt_response is None:
             return '"""No valid docstring found."""'
         triple_quote_pos = gpt_response.find('"""')
@@ -365,48 +369,66 @@ class DocGen(object):
         Returns:
             None
         """
-        # Matches a method definition with the given name,
-        # including an optional return type. Ensures no docstring follows.
+        def extract_full_signature(source: str) -> str:
+            lines = source.strip().splitlines()
+            signature_lines = []
+            for line in lines:
+                signature_lines.append(line)
+                if line.strip().endswith(":"):
+                    break
+            return "\n".join(signature_lines)
+        
+        def build_signature_pattern(signature: str) -> str:
+            lines = signature.strip().splitlines()
+            escaped = [re.escape(line.strip()) for line in lines]
+            return r"\s*".join(escaped)  # allows flexability with spaces and newlines
+        
+        def indent_docstring(docstring: str, indent: str) -> str:
+            lines = docstring.strip().splitlines()
+            if not lines:
+                return f'"""\n{indent}"""'
+            
+            first = lines[0]  # """ without indent
+            rest = [indent + line if line.strip() else indent for line in lines[1:-1]]  # methods body
+            last = indent + lines[-1]  # closing """
+            
+            return "\n".join([first] + rest + [last])
+
+        signature = extract_full_signature(method_details["source_code"])
+        pattern_signature = build_signature_pattern(signature)
+
         method_pattern = (
-            rf"((?:@\w+(?:\([^)]*\))?\s*\n)*\s*(?:async\s+)?def\s+{method_details['method_name']}\s*\((?:[^)(]|\((?:[^)(]*|\([^)(]*\))*\))*\)\s*(->\s*[a-zA-Z0-9_\[\],. |]+)?\s*:\n)(\s*)"
-            + r"(\"{3}[\s\S]*?\"{3}|\'{3}[\s\S]*?\'{3})?"
+            rf"({pattern_signature}\s*\n)([ \t]*)(\"{{3}}[\s\S]*?\"{{3}}|\'{{3}}[\s\S]*?\'{{3}})?\n?"
         )
-        """
-        (
-            (?:@\w+(?:\([^)]*\))?\s*\n)*                # Optional decorators: e.g. @decorator or @decorator(args), each followed by newline
-            \s*                                         # Optional whitespace before function definition
-            (?:async\s+)?                               # Optional 'async' keyword followed by whitespace
-            def\s+{method_details['method_name']}\s*    # 'def' keyword followed by the specific method name and optional spaces
-            \(                                          # Opening parenthesis for the parameter list
-                (?:                                     # Non-capturing group to match parameters inside parentheses
-                    [^)(]                               # Match any character except parentheses (simple parameter)
-                    |                                   # OR
-                    \(                                  # Opening a nested parenthesis
-                        (?:[^)(]*|\([^)(]*\))*          # Recursively match nested parentheses content
-                    \)                                  # Closing the nested parenthesis
-                )*                                      # Repeat zero or more times (all parameters)
-            \)                                          # Closing parenthesis of the parameter list
-            \s*                                         # Optional whitespace after parameters
-            (->\s*[a-zA-Z0-9_\[\],. |]+)?               # Optional return type annotation (e.g. -> int, -> dict[str, Any])
-            \s*:\n                                      # Colon ending the function header followed by newline
-        )
-        (\s*)                                          # Capture indentation (spaces/tabs) of the next line (function body)
-        (?!\s*\"\"\")                                  # Negative lookahead: ensure the next non-space characters are NOT triple quotes (no docstring yet)
-        """
 
         docstring_with_format = self.extract_pure_docstring(generated_docstring)
         matches = list(re.finditer(method_pattern, source_code))
         if matches:
             last_match = matches[-1]
             start, end = last_match.span()
-            updated_code = (
-                source_code[:start]
-                + re.sub(method_pattern, rf"\1\3{docstring_with_format}\n\3", source_code[start:end], count=1)
-                + source_code[end:]
-            )
+            indent = last_match.group(2)
+            existing_docstring = last_match.group(3)
 
+            indented_docstring = indent_docstring(docstring_with_format, indent)
+
+            if existing_docstring:
+                # replace existing docstring
+                logger.info(f"EXISTING ONE: {existing_docstring}")
+                updated_code = (
+                    source_code[:start]
+                    + re.sub(method_pattern, rf"\1\2{indented_docstring}\n", source_code[start:end], count=1) #}\n\2
+                    + source_code[end:]
+                )
+            else:
+                # insert docstring
+                updated_code = (
+                    source_code[:start]
+                    + re.sub(method_pattern, rf"\1\2{indented_docstring}\n\2", source_code[start:end], count=1) #}\n\2
+                    + source_code[end:]
+                )
         else:
             updated_code = source_code
+
         return updated_code
 
     def insert_cls_docstring_in_code(self, source_code: str, class_name: str, generated_docstring: str) -> str:
@@ -533,7 +555,11 @@ class DocGen(object):
             self._process_one_file(filename, structure, project_structure=parsed_structure)
 
     def _process_one_file(self, filename, file_structure, project_structure):
-        self.format_with_black(filename)
+        try:
+            logger.info(f"Formatting {filename}")
+            self.format_with_black(filename)
+        except Exception as e:
+            logger.info("black %s", repr(e) ,exc_info=True)
         with open(filename, "r", encoding="utf-8") as f:
             source_code = f.read()
         for item in file_structure["structure"]:
@@ -544,6 +570,7 @@ class DocGen(object):
                             f"""{"Generating" if self.main_idea else "Updating"} docstring for method: {method['method_name']} in class {item['name']} at {filename}"""
                         )
                         method_context = self.context_extractor(method, project_structure)
+                        logger.info(f"METHOD CONTEXT: {method_context}")
                         generated_docstring = (
                             self.generate_method_documentation(method, method_context)
                             if self.main_idea is None
@@ -595,6 +622,7 @@ class DocGen(object):
                     source_code = self.insert_cls_docstring_in_code(source_code, class_name, generated_cls_docstring)
         with open(filename, "w", encoding="utf-8") as f:
             f.write(source_code)
+        logger.info(f"Postformatting {filename}")
         self.format_with_black(filename)
         logger.info(f"Updated file: {filename}")
 
@@ -628,7 +656,9 @@ class DocGen(object):
                 """
                 )
         logger.info(f"Generating the main idea of the project...")
+        logger.info(f"PROMPT: {prompt}")
         self.main_idea = self.model_handler.send_request(prompt.format(components="\n\n".join(structure)))
+        logger.info(f"MAIN IDEA: {self.main_idea}")
 
     def summarize_submodules(self, project_structure):
         summaries = {}
