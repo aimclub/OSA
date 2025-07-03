@@ -1,20 +1,22 @@
 import os
 
+import tomli
+
 from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.context.files_contents import FileContext
-from osa_tool.readmegen.prompts.prompts_article_config import PromptArticleLoader
-from osa_tool.readmegen.prompts.prompts_config import PromptLoader
-from osa_tool.utils import extract_readme_content, logger, parse_folder_name
+from osa_tool.utils import extract_readme_content, logger, parse_folder_name, osa_project_root
 
 
 class PromptBuilder:
     def __init__(self, config_loader: ConfigLoader):
         self.config_loader = config_loader
         self.config = self.config_loader.config
-        self.prompts = PromptLoader().prompts
-        self.prompts_article = PromptArticleLoader().prompts
+        self.readme_prompt_path = os.path.join(osa_project_root(), "config", "settings", "prompts.toml")
+        self.article_readme_prompt_path = os.path.join(osa_project_root(), "config", "settings", "prompts_article.toml")
+        self.prompts = self.load_prompts(self.readme_prompt_path)
+        self.prompts_article = self.load_prompts(self.article_readme_prompt_path)
         self.sourcerank = SourceRank(config_loader)
         self.tree = self.sourcerank.tree
 
@@ -159,3 +161,38 @@ class PromptBuilder:
                 Each section includes the file's name, path, and content.
         """
         return "\n\n".join(f"### {f.name} ({f.path})\n{f.content}" for f in files)
+
+    def get_prompt_refine_readme(self, new_readme_sections: dict) -> str:
+        try:
+            formatted_prompt = self.prompts["refine"].format(
+                old_readme=extract_readme_content(self.base_path), new_readme_sections=new_readme_sections
+            )
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build refine readme prompt: {e}")
+            raise
+
+    @staticmethod
+    def load_prompts(path: str, section: str = "prompts") -> dict:
+        """
+        Load prompts from a TOML file and return the specified section as a dictionary.
+
+        Args:
+            path (str): Path to the TOML file.
+            section (str): Section inside the TOML to extract (default: "prompts").
+
+        Returns:
+            dict: Dictionary with prompts from the specified section.
+        """
+        if not os.path.exists(path):
+            logger.error(f"Prompts file {path} not found.")
+            raise FileNotFoundError(f"Prompts file {path} not found.")
+
+        with open(path, "rb") as f:
+            toml_data = tomli.load(f)
+
+        if section not in toml_data:
+            logger.error(f"Section '{section}' not found in {path}.")
+            raise KeyError(f"Section '{section}' not found in {path}.")
+
+        return toml_data[section]

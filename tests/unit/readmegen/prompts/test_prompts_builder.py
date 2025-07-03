@@ -45,25 +45,30 @@ def patch_dependencies(mock_metadata):
             return_value="repo",
         ),
         patch("osa_tool.readmegen.prompts.prompts_builder.SourceRank") as mock_sourcerank,
-        patch("osa_tool.readmegen.prompts.prompts_builder.PromptLoader.load_prompts") as mock_prompt_loader,
-        patch("osa_tool.readmegen.prompts.prompts_builder.PromptArticleLoader.load_prompts") as mock_article_loader,
+        patch("osa_tool.readmegen.prompts.prompts_builder.PromptBuilder.load_prompts") as mock_load_prompts,
     ):
         mock_sourcerank.return_value.tree = "repo/tree"
 
-        mock_prompt_loader.return_value = {
-            "preanalysis": "Tree: {repository_tree} | Readme: {readme_content}",
-            "core_features": "Project: {project_name}, Meta: {metadata}, Readme: {readme_content}, Keys: {key_files_content}",
-            "overview": "Name: {project_name}, Desc: {description}, Readme: {readme_content}, Features: {core_features}",
-            "getting_started": "Proj: {project_name}, Readme: {readme_content}, Examples: {examples_files_content}",
-        }
+        def side_effect(path):
+            if "prompts.toml" in path:
+                return {
+                    "preanalysis": "Tree: {repository_tree} | Readme: {readme_content}",
+                    "core_features": "Project: {project_name}, Meta: {metadata}, Readme: {readme_content}, Keys: {key_files_content}",
+                    "overview": "Name: {project_name}, Desc: {description}, Readme: {readme_content}, Features: {core_features}",
+                    "getting_started": "Proj: {project_name}, Readme: {readme_content}, Examples: {examples_files_content}",
+                }
+            elif "prompts_article.toml" in path:
+                return {
+                    "file_summary": "Files: {files_content}",
+                    "pdf_summary": "PDF: {pdf_content}",
+                    "overview": "Article for {project_name} | Files: {files_summary} | PDF: {pdf_summary}",
+                    "content": "Article content: {project_name}, {files_content}, {pdf_summary}",
+                    "algorithms": "Algo: {project_name} | {file_summary} | {pdf_summary}",
+                }
+            else:
+                return {}
 
-        mock_article_loader.return_value = {
-            "file_summary": "Files: {files_content}",
-            "pdf_summary": "PDF: {pdf_content}",
-            "overview": "Article for {project_name} | Files: {files_summary} | PDF: {pdf_summary}",
-            "content": "Article content: {project_name}, {files_content}, {pdf_summary}",
-            "algorithms": "Algo: {project_name} | {file_summary} | {pdf_summary}",
-        }
+        mock_load_prompts.side_effect = side_effect
 
         yield
 
