@@ -662,7 +662,7 @@ class DocGen(object):
 
     def summarize_submodules(self, project_structure):
         summaries = {}
-        self._rename_invalid_dirs(self.config.git.name)
+        self._rename_invalid_dirs(Path(self.config.git.name).resolve())
 
         def summarize_directory(name: str, file_summaries: List[str], submodule_summaries: List[str]) -> str:
             prompt = (
