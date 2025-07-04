@@ -147,6 +147,7 @@ def get_repo_tree(repo_path: str) -> str:
     """
     repo_path = Path(repo_path)
     excluded_extensions = {
+        # Images
         ".png",
         ".jpg",
         ".jpeg",
@@ -154,34 +155,78 @@ def get_repo_tree(repo_path: str) -> str:
         ".bmp",
         ".tiff",
         ".webp",
-        ".drawio",  # images
+        ".drawio",
+        ".svg",
+        ".ico",
+        # Videos
         ".mp4",
         ".mov",
         ".avi",
         ".mkv",
         ".flv",
         ".wmv",
-        ".webm",  # videos
+        ".webm",
+        # Data files
         ".csv",
         ".tsv",
         ".parquet",
         ".json",
         ".xml",
         ".xls",
-        ".xlsx",  # data files
+        ".xlsx",
+        ".db",
+        ".sqlite",
+        # Archives
         ".zip",
         ".tar",
         ".gz",
         ".bz2",
-        ".7z",  # archives
+        ".7z",
+        ".rar",
+        # Binary / compiled artifacts
         ".exe",
         ".dll",
         ".so",
         ".bin",
         ".obj",
         ".class",
-        ".pkl",  # binaries
-        ".pdf",  # documents
+        ".pkl",
+        ".dylib",
+        ".o",
+        ".a",
+        ".lib",
+        ".lo",
+        ".mod",
+        ".pyc",
+        ".pyo",
+        ".pyd",
+        ".egg",
+        ".whl",
+        # Documents
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".odt",
+        ".rtf",
+        # Test or unused code artifacts
+        ".gold",
+        ".h",
+        ".hpp",
+        ".inl",
+        ".S",
+        # Temporary, system, and service files
+        ".DS_Store",
+        ".log",
+        ".tmp",
+        ".bak",
+        ".swp",
+        ".swo",
+        # Project files (optional, depends on your context)
+        ".csproj",
+        ".sln",
+        ".vcxproj",
+        ".vcproj",
+        ".dSYM",
     }
 
     lines = []
