@@ -179,17 +179,17 @@ documentation, see the [GitHub Action Workflow Generator README](./osa_tool/gith
 
 ### Configuration
 
-| Flag                    | Description                                                                         | Default                     |
-|-------------------------|-------------------------------------------------------------------------------------|-----------------------------|
-| `-r`, `--repository`    | URL of the GitHub repository (**Mandatory**)                                        |                             |
-| `-b`, `--branch`        | Branch name of the GitHub repository                                                | Default branch              |
-| `--api`                 | LLM API service provider                                                            | `llama`                     |
-| `--base-url`            | URL of the provider compatible with API OpenAI                                      | `https://api.openai.com/v1` |
-| `--model`               | Specific LLM model to use                                                           | `gpt-3.5-turbo`             |
-| `-m`, `--mode`          | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`. | `auto`                      |
-| `--delete-dir`          | Enable deleting the downloaded repository after processing (**Linux only**)         | `disabled`                  |
-| `--no-fork`             | Avoid create fork for target repository                                             | `False`                     |
-| `--no-pull-request`     | Avoid create pull request for target repository                                     | `False`                     |
+| Flag                 | Description                                                                         | Default                     |
+|----------------------|-------------------------------------------------------------------------------------|-----------------------------|
+| `-r`, `--repository` | URL of the GitHub repository (**Mandatory**)                                        |                             |
+| `-b`, `--branch`     | Branch name of the GitHub repository                                                | Default branch              |
+| `--api`              | LLM API service provider                                                            | `llama`                     |
+| `--base-url`         | URL of the provider compatible with API OpenAI                                      | `https://api.openai.com/v1` |
+| `--model`            | Specific LLM model to use                                                           | `gpt-3.5-turbo`             |
+| `-m`, `--mode`       | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`. | `auto`                      |
+| `--delete-dir`       | Enable deleting the downloaded repository after processing (**Linux only**)         | `disabled`                  |
+| `--no-fork`          | Avoid create fork for target repository                                             | `False`                     |
+| `--no-pull-request`  | Avoid create pull request for target repository                                     | `False`                     |
 
 To learn how to work with the interactive CLI and view descriptions of all available keys, visit
 the [CLI usage guide](./osa_tool/scheduler/README.md).
@@ -237,7 +237,7 @@ python -m osa_tool.run -r https://github.com/aimclub/OSA --api ollama --base-url
 
 ## Documentation
 
-Detailed description of OSA API is available [here](https://itmo-nss-team.github.io/Open-Source-Advisor/).
+Detailed description of OSA API is available [here](https://aimclub.github.io/OSA/).
 
 ---
 
