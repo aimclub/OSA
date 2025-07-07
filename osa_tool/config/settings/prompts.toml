@@ -207,39 +207,35 @@ INPUT DATA:
 {new_readme_sections}
 
 TASK:
-You are refining and restructuring the generated README by combining it with the original project's README content.
+You are refining the generated README by combining it with the original README content.
 
-Your goal is to improve the generated README by:
-- Preserving valuable information from the original README that is missing in the generated one.
-- Removing redundant or outdated parts.
-- Ensuring clean, consistent, and logically ordered sections.
-- Keeping markdown formatting intact.
-- Maintaining or expanding useful content structure when appropriate.
+GOAL:
+Improve the generated README by:
+- Preserving valuable content from the original README that is missing in the generated one.
+- Removing outdated, redundant, or duplicated content.
+- Ensuring clear, consistent, and well-structured markdown formatting.
 
 PROCESS:
 
 - Use the generated README sections as the base structure.
-- Carefully review both the original README content and the generated README sections.
-- Integrate missing relevant content from the original README where appropriate.
-- Remove duplicate, obsolete, or irrelevant content.
-- Do not invent or make up new content — only use the provided data.
-- Preserve markdown formatting as in the input.
-- If you find meaningful sections in the original README that are not present in the generated one, you may add them as new sections in the final README **only if their content does not duplicate existing sections**.
-- If new sections are added, update the Table of Contents (if present) to reflect the final list of sections using their exact titles (except for "badges" and "Overview" — these are never listed in the Table of Contents).
+- Review both the original README and the generated sections.
+- If useful information from the original README is missing in the generated one, integrate it into the appropriate section.
+- Avoid duplicate or conflicting content.
+- Keep markdown formatting clean and consistent.
+- If there’s valuable content in the original README not present in the generated one, you may create new sections, but only if it doesn’t overlap with existing ones.
 
-IMPORTANT:
-- All content in the README **before the first '## '** markdown header is considered a special 'badges' section.
-- The 'badges' section includes the project title and badges.
+TABLE OF CONTENTS:
 
-FINAL OUTPUT STRUCTURE:
+- If a Table of Contents exists, update it to reflect the final list of section names, using the exact section titles.
+- Exclude `badges` and `Overview` from the Table of Contents.
 
-Return a JSON object where:
-- Each key represents a section name (string).
-  Example: "Overview", "Installation", "API Reference", etc.
-- The "badges" section should contain all markdown content before the first '##' header.
-- The value for each key should be the final cleaned content of that section (markdown text).
-- The order of keys in the JSON should reflect the desired order of sections in the final README.
-- If a section ends up empty, omit it from the output.
+FINAL OUTPUT:
+
+Return a valid JSON object where:
+- Each key is a section title (e.g., "badges", "Overview", "Installation").
+- The value is the cleaned, final markdown content for that section.
+- The order of keys determines the order of sections in the final README.
+- Omit any empty sections.
 
 Example:
 
@@ -252,11 +248,14 @@ Example:
 
 RULES:
 
-- Always output valid JSON as shown in the example.
-- Do not add extra explanation or comments.
-- Do not dublicate information.
+- No extra explanations or comments.
+- No content duplication.
 - Preserve markdown formatting.
-- Remove duplicate sections or overlapping information.
-- The JSON keys order determines the final README order.
-- Table of Contents must reflect the final list of section keys (excluding 'badges' and 'Overview').
+- JSON keys order defines README order.
+
+SPECIAL RULES:
+
+- All content before the first meaningful markdown header (starting with `## `) in the original README should go to the `badges` section **only if it contains the project title, logos, or status badges**.
+- Textual descriptions, images, or code examples before the first `## ` header should be evaluated and placed into the appropriate sections (like "Overview", "Usage", or "Installation").
+- Avoid placing unrelated text or images in `badges`.
 """
