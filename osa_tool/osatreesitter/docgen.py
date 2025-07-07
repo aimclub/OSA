@@ -282,15 +282,22 @@ class DocGen(object):
         """
         Generate documentation for a single method.
         """
-        try:
-            desc, other = method_details["docstring"].split("\n\n", maxsplit=1)
-        except:
-            return method_details["docstring"]
+        #try:
+        #    desc, other = method_details["docstring"].split("\n\n", maxsplit=1)
+        #except:
+        #    return method_details["docstring"]
+        docstring = method_details["docstring"].strip().strip('"""').strip("'''")
+        parts = docstring.split("\n\n", maxsplit=1)
+        desc = parts[0].strip()
+        other = parts[1].strip() if len(parts) > 1 else None
+        
         old_desc = desc.strip('"\n ')
+        logger.info(f"old desc {old_desc}")
         prompt = (
-            """Update the provided description for the following Python method using the main idea of the project.\n"""
+            """Update the provided docstring description for the following Python method using the main idea of the project.\n"""
             """Do not pay too much attention to the provided main idea - try not to mention it explicitly\n"""
-            """Based on the provided context and main idea give an answer to the question WHY method doing what it is doing"""
+            """Based on the provided context and main idea give an answer to the question WHY method doing what it is doing\n"""
+            """If original docstring provides only description update it with Args and Return sections based on provided source code as well\n"""
             f"""{"- Use provided source code of imported methods, functions to understand their usage." if context_code else ""}\n"""
             """Method Details:\n"""
             f"""- Method Name: {method_details["method_name"]} {("located inside " + class_name + " class") if class_name else ""}\n"""
@@ -302,13 +309,14 @@ class DocGen(object):
             f"""{"- Imported methods source code:" if context_code else ""}\n"""
             f"""{context_code if context_code else ""}\n\n"""
             f"The main idea: {self.main_idea}\n"
-            f"""Old docstring description part: {old_desc}\n\n"""
-            "Return only pure changed description - without any code, other parts of docs, any quotations"
+            f"""Old docstring part: {old_desc}\n\n"""
+            "Return only pure changed docstring - without any code, other parts of docs, any quotations"
         )
         new_desc = self.model_handler.send_request(prompt)
-        logger.info(f"UPDATE DESC: {prompt}")
+        logger.info(f"UPDATE DESC: {new_desc}")
 
-        return "\n\n".join(['"""\n' + new_desc, other])
+        return "\n\n".join(['"""\n' + new_desc])
+        #return "\n\n".join(['"""\n' + new_desc, other]) if other else "\n\n".join(['"""\n' + new_desc])
 
     def extract_pure_docstring(self, gpt_response: str) -> str:
         """
@@ -322,39 +330,78 @@ class DocGen(object):
         """
 
         # Try to recover if closing triple-quote was replaced with ```
-        logger.info(f"{gpt_response}")
-        if gpt_response is None:
+
+        if not gpt_response:
             return '"""No valid docstring found."""'
-        triple_quote_pos = gpt_response.find('"""')
+
+        response = gpt_response.strip()
+
+        # Delete Markdown-block ```python ... ```
+        if response.startswith("```"):
+            response = re.sub(r"^```(?:python)?", "", response, flags=re.IGNORECASE).strip()
+        if response.endswith("```"):
+            response = response[:-3].strip()
+
+        # 1 — Normalize Markdown/code block wrappers
+        response = response.replace("<triple quotes>", '"""')
+        if response.startswith("```"):
+            response = re.sub(r"^```(?:python)?\s*", "", response, flags=re.IGNORECASE).strip()
+        if response.endswith("```"):
+            response = response[:-3].strip()
+
+        # 2 — Fix case: opening """ exists, but closing replaced by ```
+        triple_quote_pos = response.find('"""')
         if triple_quote_pos != -1:
-            # Look for closing triple-quote
-            closing_pos = gpt_response.find('"""', triple_quote_pos + 3)
+            closing_pos = response.find('"""', triple_quote_pos + 3)
             if closing_pos == -1:
-                # Try to find a ``` after opening """
-                broken_close_pos = gpt_response.find("```", triple_quote_pos + 3)
+                broken_close_pos = response.find("```", triple_quote_pos + 3)
                 if broken_close_pos != -1:
-                    # Replace only this incorrect closing ``` with """
-                    gpt_response = gpt_response[:broken_close_pos] + '"""' + gpt_response[broken_close_pos + 3 :]
+                    response = response[:broken_close_pos] + '"""' + response[broken_close_pos + 3:]
 
-        # Regex to capture the full docstring with triple quotes
-        match = re.search(r'("""+)\n?(.*?)\n?\1', gpt_response, re.DOTALL)
-
+        # 3 — Try to extract triple-quoted block
+        match = re.search(r'("""|\'\'\')\n?(.*?)\n?\1', response, re.DOTALL)
         if match:
-            triple_quotes = match.group(1)  # Keep the triple quotes (""" or """)
-            extracted_docstring = match.group(2)  # Extract only the content inside the docstring
-            cleaned_content = re.sub(r"^\s*def\s+\w+\(.*?\):\s*", "", extracted_docstring, flags=re.MULTILINE).strip(
-                "\"' "
-            )
-            # very silly approach to correct indentation (calculate spaces before 'Args' literals)
-            if "Args" in cleaned_content:
-                spaces = re.findall("\n([^\S\r\n]*)Args", cleaned_content)
+            quote = match.group(1)
+            content = match.group(2).strip()
+
+            # Clean up leading 'def ...' leak
+            content = re.sub(r"^\s*def\s+\w+\(.*?\):\s*", "", content, flags=re.MULTILINE).strip()
+
+            # Fix over-indented "Args" sections
+            if "Args" in content:
+                spaces = re.findall(r"\n([^\S\r\n]*)Args", content)
                 if spaces:
-                    spaces = spaces[0]
-                    cleaned_content = cleaned_content.replace("\n" + spaces, "\n")  # shift content left
+                    indent = spaces[0]
+                    content = content.replace("\n" + indent, "\n")
 
-            return f"{triple_quotes}\n{cleaned_content}\n{triple_quotes}"
+            return f'{quote}\n{content}\n{quote}'
 
-        return '"""No valid docstring found."""'  # Return a placeholder if no docstring was found
+        # 4 — If there's only opening triple-quote
+        if response.startswith(('"""', "'''")) and not response.endswith(('"""', "'''")):
+            quote = response[:3]
+            body = response[3:].strip()
+            return f'{quote}\n{body}\n{quote}'
+
+        # 5 — Fallback: if it looks like valid free text
+        cleaned = response.strip("\"'` \n")
+        if len(cleaned.split()) > 3:
+            return f'"""\n{cleaned}\n"""'
+        
+        # 6 — Markdown fallback: extract contents inside ```...``` and wrap it
+        markdown_match = re.search(r"```[a-z]*\n([\s\S]+?)\n```", gpt_response, re.IGNORECASE)
+        if markdown_match:
+            block = markdown_match.group(1).strip()
+            if len(block.split()) > 3:
+                return f'"""\n{block}\n"""'
+            
+        # 7 — only opening triple quote, but no closure
+        open_pos = response.find('"""')
+        if open_pos != -1 and response.count('"""') == 1:
+            body = response[open_pos + 3:].strip()
+            if len(body.split()) > 3:
+                return f'"""\n{body}\n"""'
+
+        return '"""No valid docstring found."""'
 
     def insert_docstring_in_code(self, source_code: str, method_details: dict, generated_docstring: str) -> str:
         """
@@ -369,6 +416,7 @@ class DocGen(object):
         Returns:
             None
         """
+        logger.info(f"gen doc {generated_docstring}")
         def extract_full_signature(source: str) -> str:
             lines = source.strip().splitlines()
             signature_lines = []
@@ -377,56 +425,51 @@ class DocGen(object):
                 if line.strip().endswith(":"):
                     break
             return "\n".join(signature_lines)
-        
+
         def build_signature_pattern(signature: str) -> str:
             lines = signature.strip().splitlines()
             escaped = [re.escape(line.strip()) for line in lines]
-            return r"\s*".join(escaped)  # allows flexability with spaces and newlines
-        
+            return r"\s*".join(escaped)
+
         def indent_docstring(docstring: str, indent: str) -> str:
             lines = docstring.strip().splitlines()
             if not lines:
-                return f'"""\n{indent}"""'
-            
-            first = lines[0]  # """ without indent
-            rest = [indent + line if line.strip() else indent for line in lines[1:-1]]  # methods body
-            last = indent + lines[-1]  # closing """
-            
-            return "\n".join([first] + rest + [last])
+                return f'{indent}""" """'
+            return "\n".join([indent + line if line.strip() else indent for line in lines])
 
         signature = extract_full_signature(method_details["source_code"])
         pattern_signature = build_signature_pattern(signature)
 
         method_pattern = (
-            rf"({pattern_signature}\s*\n)([ \t]*)(\"{{3}}[\s\S]*?\"{{3}}|\'{{3}}[\s\S]*?\'{{3}})?\n?"
-        )
+                            rf"((?:@[^\n]+\n)*)"                          # group 1: decorators (могут отсутствовать)
+                            rf"((?:async\s+)?def\s+{method_details['method_name']}"  # group 2: def + имя
+                            rf"\s*\((?:[^)(]*|\((?:[^)(]*|\([^)(]*\))*\))*\)\s*"
+                            rf"(?:->\s*[a-zA-Z0-9_\[\],. |]+)?\s*:\s*\n)"  # сигнатура метода
+                            rf"([ \t]*)"                                   # group 3: отступ
+                            rf"(\"\"\"[\s\S]*?\"\"\"|\'\'\'[\s\S]*?\'\'\')?"  # group 4: docstring
+                        )
 
         docstring_with_format = self.extract_pure_docstring(generated_docstring)
         matches = list(re.finditer(method_pattern, source_code))
-        if matches:
-            last_match = matches[-1]
-            start, end = last_match.span()
-            indent = last_match.group(2)
-            existing_docstring = last_match.group(3)
+        target_match = matches[-1] if matches else None
 
+        if target_match:
+            decorators = target_match.group(1)
+            signature = target_match.group(2)
+            indent = target_match.group(3)
+            existing_docstring = target_match.group(4)
             indented_docstring = indent_docstring(docstring_with_format, indent)
 
-            if existing_docstring:
-                # replace existing docstring
-                logger.info(f"EXISTING ONE: {existing_docstring}")
-                updated_code = (
-                    source_code[:start]
-                    + re.sub(method_pattern, rf"\1\2{indented_docstring}\n", source_code[start:end], count=1) #}\n\2
-                    + source_code[end:]
-                )
-            else:
-                # insert docstring
-                updated_code = (
-                    source_code[:start]
-                    + re.sub(method_pattern, rf"\1\2{indented_docstring}\n\2", source_code[start:end], count=1) #}\n\2
-                    + source_code[end:]
-                )
+            insertion = signature + indented_docstring + "\n" + indent
+            updated_code = (
+                source_code[:target_match.start()] +
+                decorators +
+                insertion +
+                source_code[target_match.end():]
+            )
+            logger.info(f"upd code {indented_docstring}")
         else:
+            logger.warning(f"[!] Could not find target match for method: {method_details['method_name']}")
             updated_code = source_code
 
         return updated_code
@@ -570,7 +613,6 @@ class DocGen(object):
                             f"""{"Generating" if self.main_idea else "Updating"} docstring for method: {method['method_name']} in class {item['name']} at {filename}"""
                         )
                         method_context = self.context_extractor(method, project_structure)
-                        logger.info(f"METHOD CONTEXT: {method_context}")
                         generated_docstring = (
                             self.generate_method_documentation(method, method_context)
                             if self.main_idea is None
@@ -622,7 +664,6 @@ class DocGen(object):
                     source_code = self.insert_cls_docstring_in_code(source_code, class_name, generated_cls_docstring)
         with open(filename, "w", encoding="utf-8") as f:
             f.write(source_code)
-        logger.info(f"Postformatting {filename}")
         self.format_with_black(filename)
         logger.info(f"Updated file: {filename}")
 
@@ -656,7 +697,6 @@ class DocGen(object):
                 """
                 )
         logger.info(f"Generating the main idea of the project...")
-        logger.info(f"PROMPT: {prompt}")
         self.main_idea = self.model_handler.send_request(prompt.format(components="\n\n".join(structure)))
         logger.info(f"MAIN IDEA: {self.main_idea}")
 
