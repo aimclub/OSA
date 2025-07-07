@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+import stat
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -76,6 +77,7 @@ def get_base_repo_url(repo_url: str) -> str:
 def delete_repository(repo_url: str) -> None:
     """
     Deletes the local directory of the downloaded repository based on its URL.
+    Works reliably on Windows and Unix-like systems.
 
     Args:
         repo_url (str): The URL of the repository to be deleted.
@@ -84,9 +86,18 @@ def delete_repository(repo_url: str) -> None:
         Exception: Logs an error message if deletion fails.
     """
     repo_path = os.path.join(os.getcwd(), parse_folder_name(repo_url))
+
+    def on_rm_error(func, path, exc_info):
+        """Force-remove read-only files and log the issue."""
+        try:
+            os.chmod(path, stat.S_IWRITE)
+            func(path)
+        except Exception as e:
+            logger.error(f"Failed to forcibly remove {path}: {e}")
+
     try:
         if os.path.exists(repo_path):
-            shutil.rmtree(repo_path)
+            shutil.rmtree(repo_path, onerror=on_rm_error)
             logger.info(f"Directory {repo_path} has been deleted.")
         else:
             logger.info(f"Directory {repo_path} does not exist.")
@@ -136,6 +147,7 @@ def get_repo_tree(repo_path: str) -> str:
     """
     repo_path = Path(repo_path)
     excluded_extensions = {
+        # Images
         ".png",
         ".jpg",
         ".jpeg",
@@ -143,34 +155,78 @@ def get_repo_tree(repo_path: str) -> str:
         ".bmp",
         ".tiff",
         ".webp",
-        ".drawio",  # images
+        ".drawio",
+        ".svg",
+        ".ico",
+        # Videos
         ".mp4",
         ".mov",
         ".avi",
         ".mkv",
         ".flv",
         ".wmv",
-        ".webm",  # videos
+        ".webm",
+        # Data files
         ".csv",
         ".tsv",
         ".parquet",
         ".json",
         ".xml",
         ".xls",
-        ".xlsx",  # data files
+        ".xlsx",
+        ".db",
+        ".sqlite",
+        # Archives
         ".zip",
         ".tar",
         ".gz",
         ".bz2",
-        ".7z",  # archives
+        ".7z",
+        ".rar",
+        # Binary / compiled artifacts
         ".exe",
         ".dll",
         ".so",
         ".bin",
         ".obj",
         ".class",
-        ".pkl",  # binaries
-        ".pdf",  # documents
+        ".pkl",
+        ".dylib",
+        ".o",
+        ".a",
+        ".lib",
+        ".lo",
+        ".mod",
+        ".pyc",
+        ".pyo",
+        ".pyd",
+        ".egg",
+        ".whl",
+        # Documents
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".odt",
+        ".rtf",
+        # Test or unused code artifacts
+        ".gold",
+        ".h",
+        ".hpp",
+        ".inl",
+        ".S",
+        # Temporary, system, and service files
+        ".DS_Store",
+        ".log",
+        ".tmp",
+        ".bak",
+        ".swp",
+        ".swo",
+        # Project files (optional, depends on your context)
+        ".csproj",
+        ".sln",
+        ".vcxproj",
+        ".vcproj",
+        ".dSYM",
     }
 
     lines = []
