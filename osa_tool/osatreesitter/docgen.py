@@ -206,7 +206,7 @@ class DocGen(object):
             f"""Generate a single Python docstring for the following class {class_details[0]}. The docstring should follow Google-style format and include:\n"""
             "- A short summary of what the class does.\n"
             "- A list of its methods without details if class has them otherwise do not mention a list of methods.\n"
-            "- A list of its attributes without types if class has them otherwise do not mention a list of attributes.\n"
+            "- A list of its attributes that explicitly mentioned at the constructor method's docstring (can be adressed as attributes, properties, class fields, etc.), without types if class or constructor method has them otherwise do not mention a list of attributes.\n"
             "- A brief summary of what its methods and attributes do if one has them for.\n\n"
             "Return only docstring without any quotation. Follow such format:\n <triple_quotes>\ncontent\n<triple_quotes>"
         )
@@ -259,18 +259,19 @@ class DocGen(object):
             "Generate a Python docstring for the following method. The docstring should follow Google-style format and include:\n"
             "- A short summary of what the method does\n."
             "- A description of its parameters without types.\n"
+            "- If the method is a class constructor, explicitly list all class fields (object properties) that are initialized, including their names and purposes. These fields should match the attributes assigned within the constructor (e.g., this.field = ..., self.field = ...). This information will be used to generate the class-level documentation.\n"
             "- The return type and description.\n"
-            f"""{"- Use provided source code of imported methods, functions to describe their usage." if context_code else ""}\n"""
-            "Method Details:\n"
-            f"- Method Name: {method_details['method_name']}\n"
-            f"- Method decorators: {method_details['decorators']}\n"
             "- Source Code:\n"
             "```\n"
             f"""{method_details['source_code']}\n"""
             "```\n"
+            f"""{"- Use provided source code of imported methods, functions to describe their usage." if context_code else ""}\n"""
+            "Method Details:\n"
+            f"- Method Name: {method_details['method_name']}\n"
+            f"- Method decorators: {method_details['decorators']}\n"
             f"""{"- Imported methods source code:" if context_code else ""}\n"""
             f"""{context_code if context_code else ""}\n\n"""
-            "Note: DO NOT count parameters which are not listed in the parameters list. DO NOT lose any parameter."
+            "Note: DO NOT count parameters which are not listed in the parameters list. DO NOT lose any parameter. DO NOT wrap any sections of the docstring into <any_tag> clear those parts out."
             "Return only docstring without any quotation. Follow such format:\n <triple_quotes>\ncontent\n<triple_quotes>"
         )
 
@@ -320,86 +321,56 @@ class DocGen(object):
 
     def extract_pure_docstring(self, gpt_response: str) -> str:
         """
-        Extracts only the docstring from the GPT-4 response while keeping triple quotes.
+        Extracts only the docstring from the GPT response while keeping triple quotes.
+        Handles common formatting issues like Markdown blocks, extra indentation, and missing closing quotes.
 
         Args:
-            gpt_response: The full response from GPT-4.
+            gpt_response: Full response string from LLM.
 
         Returns:
-            The properly formatted docstring including triple quotes.
+            A properly formatted Python docstring string with triple quotes.
         """
-
-        # Try to recover if closing triple-quote was replaced with ```
-
         if not gpt_response:
-            return '"""No valid docstring found."""'
+            return '"""No response from LLM."""'
 
-        response = gpt_response.strip()
+        response = gpt_response.strip().replace("<triple quotes>", '"""')
 
-        # Delete Markdown-block ```python ... ```
-        if response.startswith("```"):
-            response = re.sub(r"^```(?:python)?", "", response, flags=re.IGNORECASE).strip()
-        if response.endswith("```"):
-            response = response[:-3].strip()
+        # 1 — Strip Markdown-style code block
+        markdown_match = re.search(r"```[a-z]*\n([\s\S]+?)\n```", response, re.IGNORECASE)
+        if markdown_match:
+            response = markdown_match.group(1).strip()
 
-        # 1 — Normalize Markdown/code block wrappers
-        response = response.replace("<triple quotes>", '"""')
-        if response.startswith("```"):
-            response = re.sub(r"^```(?:python)?\s*", "", response, flags=re.IGNORECASE).strip()
-        if response.endswith("```"):
-            response = response[:-3].strip()
+        # 2 — Fix case: opening triple quote but no closure
+        if response.count('"""') == 1:
+            pos = response.find('"""')
+            body = response[pos + 3:].strip()
+            if len(body.split()) > 3:
+                return f'"""\n{body}\n"""'
 
-        # 2 — Fix case: opening """ exists, but closing replaced by ```
-        triple_quote_pos = response.find('"""')
-        if triple_quote_pos != -1:
-            closing_pos = response.find('"""', triple_quote_pos + 3)
-            if closing_pos == -1:
-                broken_close_pos = response.find("```", triple_quote_pos + 3)
-                if broken_close_pos != -1:
-                    response = response[:broken_close_pos] + '"""' + response[broken_close_pos + 3:]
-
-        # 3 — Try to extract triple-quoted block
+        # 3 — Try to extract proper triple-quoted block
         match = re.search(r'("""|\'\'\')\n?(.*?)\n?\1', response, re.DOTALL)
         if match:
             quote = match.group(1)
             content = match.group(2).strip()
 
-            # Clean up leading 'def ...' leak
+            # Remove accidental leaked `def ...():`
             content = re.sub(r"^\s*def\s+\w+\(.*?\):\s*", "", content, flags=re.MULTILINE).strip()
 
-            # Fix over-indented "Args" sections
+            # De-indent "Args" section
             if "Args" in content:
                 spaces = re.findall(r"\n([^\S\r\n]*)Args", content)
                 if spaces:
                     indent = spaces[0]
                     content = content.replace("\n" + indent, "\n")
 
-            return f'{quote}\n{content}\n{quote}'
+            return f"{quote}\n{content}\n{quote}"
 
-        # 4 — If there's only opening triple-quote
-        if response.startswith(('"""', "'''")) and not response.endswith(('"""', "'''")):
-            quote = response[:3]
-            body = response[3:].strip()
-            return f'{quote}\n{body}\n{quote}'
-
-        # 5 — Fallback: if it looks like valid free text
-        cleaned = response.strip("\"'` \n")
+        # 4 — fallback: treat entire content as docstring if long enough
+        if response.startswith("'''") and response.endswith("'''"):
+            response = f'"""{response[3:-3].strip()}"""'
+        cleaned = response.strip("`'\" \n")
         if len(cleaned.split()) > 3:
             return f'"""\n{cleaned}\n"""'
-        
-        # 6 — Markdown fallback: extract contents inside ```...``` and wrap it
-        markdown_match = re.search(r"```[a-z]*\n([\s\S]+?)\n```", gpt_response, re.IGNORECASE)
-        if markdown_match:
-            block = markdown_match.group(1).strip()
-            if len(block.split()) > 3:
-                return f'"""\n{block}\n"""'
-            
-        # 7 — only opening triple quote, but no closure
-        open_pos = response.find('"""')
-        if open_pos != -1 and response.count('"""') == 1:
-            body = response[open_pos + 3:].strip()
-            if len(body.split()) > 3:
-                return f'"""\n{body}\n"""'
 
         return '"""No valid docstring found."""'
 
@@ -417,28 +388,12 @@ class DocGen(object):
             None
         """
         logger.info(f"gen doc {generated_docstring}")
-        def extract_full_signature(source: str) -> str:
-            lines = source.strip().splitlines()
-            signature_lines = []
-            for line in lines:
-                signature_lines.append(line)
-                if line.strip().endswith(":"):
-                    break
-            return "\n".join(signature_lines)
-
-        def build_signature_pattern(signature: str) -> str:
-            lines = signature.strip().splitlines()
-            escaped = [re.escape(line.strip()) for line in lines]
-            return r"\s*".join(escaped)
-
+        
         def indent_docstring(docstring: str, indent: str) -> str:
             lines = docstring.strip().splitlines()
             if not lines:
                 return f'{indent}""" """'
             return "\n".join([indent + line if line.strip() else indent for line in lines])
-
-        signature = extract_full_signature(method_details["source_code"])
-        pattern_signature = build_signature_pattern(signature)
 
         method_pattern = (
                             rf"((?:@[^\n]+\n)*)"                          # group 1: decorators (могут отсутствовать)
@@ -476,29 +431,48 @@ class DocGen(object):
 
     def insert_cls_docstring_in_code(self, source_code: str, class_name: str, generated_docstring: str) -> str:
         """
-        Inserts a generated class docstring into the class definition.
+        Inserts or replaces a class-level docstring for a given class name.
 
         Args:
-
-            source_code: The source code where the docstring should be inserted.
-            class_name: Class name.
-            generated_docstring: The docstring that should be inserted.
+            source_code: The full source code string.
+            class_name: Name of the class to update.
+            generated_docstring: The new docstring (raw response from LLM).
 
         Returns:
-            The updated source code with the class docstring inserted.
+            Updated source code with the inserted or replaced class docstring.
         """
-
-        # Matches a class definition with the given name,
-        # including optional parentheses. Ensures no docstring follows.
         class_pattern = (
-            rf"(class\s+{class_name}\s*(\([^)]*\))?\s*:\n)(\s*)(?!\s*\"\"\")"
-            + r"(\"{3}[\s\S]*?\"{3}|\'{3}[\s\S]*?\'{3})?"
+            rf"(class\s+{class_name}\s*(\([^)]*\))?\s*:\n)"  # group 1: class signature
+            rf"([ \t]*)"                                     # group 3: indentation (for docstring)
+            rf"(\"\"\"[\s\S]*?\"\"\"|\'\'\'[\s\S]*?\'\'\')?"  # group 4: existing docstring (optional)
         )
 
-        # Ensure we keep only the extracted docstring
-        docstring_with_format = self.extract_pure_docstring(generated_docstring)
+        match = re.search(class_pattern, source_code)
+        if not match:
+            return source_code  # класс не найден
 
-        updated_code = re.sub(class_pattern, rf"\1\3{docstring_with_format}\n\3", source_code, count=1)
+        signature = match.group(1)
+        indent = match.group(3) or "    "
+        existing_docstring = match.group(4)
+
+        docstring = self.extract_pure_docstring(generated_docstring)
+
+        # Добавляем нужный отступ ко всем строкам докстринга
+        indented_lines = [
+            indent + line if line.strip() else indent
+            for line in docstring.strip().splitlines()
+        ]
+        indented_docstring = "\n".join(indented_lines) + "\n"
+
+        start, end = match.span()
+
+        if existing_docstring:
+            # Заменяем существующий докстринг
+            updated_code = source_code[:start] + signature + indented_docstring + source_code[end:]
+        else:
+            # Вставляем новый докстринг
+            insert_point = source_code.find('\n', start) + 1
+            updated_code = source_code[:insert_point] + indented_docstring + source_code[insert_point:]
 
         return updated_code
 
@@ -600,7 +574,7 @@ class DocGen(object):
     def _process_one_file(self, filename, file_structure, project_structure):
         try:
             logger.info(f"Formatting {filename}")
-            self.format_with_black(filename)
+            #self.format_with_black(filename)
         except Exception as e:
             logger.info("black %s", repr(e) ,exc_info=True)
         with open(filename, "r", encoding="utf-8") as f:
@@ -664,7 +638,7 @@ class DocGen(object):
                     source_code = self.insert_cls_docstring_in_code(source_code, class_name, generated_cls_docstring)
         with open(filename, "w", encoding="utf-8") as f:
             f.write(source_code)
-        self.format_with_black(filename)
+        #self.format_with_black(filename)
         logger.info(f"Updated file: {filename}")
 
     def generate_the_main_idea(self, parsed_structure: dict) -> None:
