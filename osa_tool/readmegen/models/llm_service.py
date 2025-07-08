@@ -129,3 +129,9 @@ class LLMClient:
         )
         response = process_text(response)
         return response
+
+    def refine_readme(self, new_readme_sections: dict) -> str:
+        logger.info("Refining README files...")
+        response = self.run_request(self.prompts.get_prompt_refine_readme(new_readme_sections))
+        response = process_text(response)
+        return response
