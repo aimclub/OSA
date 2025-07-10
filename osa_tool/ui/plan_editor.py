@@ -35,7 +35,7 @@ class PlanEditor:
             "no_fork",
             "no_pull_request",
         ]
-        self.special_keys = ["article", "convert_notebooks"]
+        self.special_keys = ["convert_notebooks"]
         self.arguments_metadata = read_arguments_file_flat(build_arguments_path())
         self.modified_keys = set()
 
@@ -150,28 +150,8 @@ class PlanEditor:
             console.print(f"\n[cyan]{key_to_edit}[/cyan] (current value: [green]{current_value}[/green])")
             self._print_key_info(key_to_edit)
 
-            if key_to_edit in ["article", "convert_notebooks"]:
-                if key_to_edit == "article":
-                    console.print(
-                        "[bold]Options:[/bold]\n"
-                        "[1] Enter path or URL\n"
-                        "[2] Clear value (None)\n"
-                        '[3] Set to empty string ("")\n'
-                        "[4] Keep current"
-                    )
-                    choice = Prompt.ask(
-                        "Select an option", choices=["1", "2", "3", "4"], default="4", show_choices=True
-                    )
-                    if choice == "1":
-                        new_value = Prompt.ask("Enter path or URL")
-                        plan[key_to_edit] = new_value
-                    elif choice == "2":
-                        plan[key_to_edit] = None
-                    elif choice == "3":
-                        plan[key_to_edit] = ""
-                    # 4 - skip
-
-                elif key_to_edit == "convert_notebooks":
+            if key_to_edit in self.special_keys:
+                if key_to_edit == "convert_notebooks":
                     console.print(
                         "[bold]Options:[/bold]\n"
                         "[1] Enter comma-separated paths\n"
@@ -263,7 +243,7 @@ class PlanEditor:
             if key in self.info_keys or key in self.workflow_keys:
                 continue
 
-            if key in self.special_keys and value in [[], ""]:
+            if key in self.special_keys and value in [[]]:
                 label = self._format_key_label(key)
                 actions_table.add_row(label, "Search inside repository")
                 continue
