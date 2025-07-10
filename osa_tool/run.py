@@ -71,7 +71,7 @@ def main():
             github_agent.create_and_checkout_branch()
 
         # .ipynb to .py convertion
-        if not plan.get("convert_notebooks") is None:
+        if plan["convert_notebooks"] is not None:
             rich_section("Jupyter notebooks convertion")
             convert_notebooks(args.repository, plan.get("convert_notebooks"))
 
