@@ -1,12 +1,12 @@
 import pytest
 from unittest.mock import MagicMock
 from git import Repo
-from osa_tool.github_agent.github_agent import GithubAgent
+from osa_tool.git_agent.git_agent import GitAgent
 
 
 @pytest.fixture
 def github_agent():
-    agent = GithubAgent(repo_url="https://github.com/testuser/testrepo")
+    agent = GitAgent(repo_url="https://github.com/testuser/testrepo")
     agent.repo = MagicMock(Repo)
     agent.token = "test_token"
     agent.base_branch = "main"

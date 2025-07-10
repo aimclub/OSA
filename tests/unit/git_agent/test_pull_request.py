@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import patch
 
 
-@patch("osa_tool.github_agent.github_agent.requests.post")
-@patch("osa_tool.github_agent.github_agent.logger")
+@patch("osa_tool.git_agent.git_agent.requests.post")
+@patch("osa_tool.git_agent.git_agent.logger")
 def test_create_pull_request_success(mock_logger, mock_post, github_agent):
     # Arrange
     mock_post.return_value.status_code = 201
@@ -30,8 +30,8 @@ def test_create_pull_request_success(mock_logger, mock_post, github_agent):
     )
 
 
-@patch("osa_tool.github_agent.github_agent.requests.post")
-@patch("osa_tool.github_agent.github_agent.logger")
+@patch("osa_tool.git_agent.git_agent.requests.post")
+@patch("osa_tool.git_agent.git_agent.logger")
 def test_create_pull_request_error(mock_logger, mock_post, github_agent):
     # Arrange
     mock_post.return_value.status_code = 400
@@ -43,8 +43,8 @@ def test_create_pull_request_error(mock_logger, mock_post, github_agent):
     mock_logger.error.assert_called_once_with("Failed to create pull request: 400 - Bad Request")
 
 
-@patch("osa_tool.github_agent.github_agent.requests.post")
-@patch("osa_tool.github_agent.github_agent.logger")
+@patch("osa_tool.git_agent.git_agent.requests.post")
+@patch("osa_tool.git_agent.git_agent.logger")
 def test_create_pull_request_already_exists(mock_logger, mock_post, github_agent):
     # Arrange
     mock_post.return_value.status_code = 422
