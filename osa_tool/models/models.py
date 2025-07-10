@@ -309,6 +309,15 @@ class ProtollmHandler(ModelHandler):
     """
 
     def __init__(self, config: Settings):
+        """
+        Initializes the instance with the provided configuration settings.
+        This method sets up the instance by assigning the provided configuration settings to the instance's config attribute.
+        It also retrieves the API from the configuration settings and passes it to the _configure_api method.
+        Args:
+            config: The configuration settings to be used for setting up the instance.
+        Returns:
+            None
+        """
         self.config = config
         self.local_url = "http://10.32.15.21:6672"
         self._configure_api(config.llm.api, model_name=config.llm.model)
