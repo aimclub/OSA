@@ -562,9 +562,11 @@ class OSA_TreeSitter(object):
                 if param_node.type == "identifier":
                     arguments.append(param_node.text.decode("utf-8"))
 
-        source_code_start = function_node.start_byte
-        source_code_end = function_node.end_byte
-        source = source_code[source_code_start:source_code_end]
+        #source_code_start = function_node.start_byte
+        #source_code_end = function_node.end_byte
+        #source = source_code[source_code_start:source_code_end]
+        source_bytes = source_code.encode("utf-8")
+        source = source_bytes[node.start_byte:node.end_byte].decode("utf-8")
 
         return_node = function_node.child_by_field_name("return_type")
         return_type = None
@@ -644,7 +646,7 @@ class OSA_TreeSitter(object):
             f.write(f"The provided path: '{self.cwd}'\n")
             for filename, structures in results.items():
                 f.write(f"File: {filename}\n")
-                for item in structures:
+                for item in structures["structure"]:
                     if item["type"] == "class":
                         f.write(f"----Class: {item['name']}, line {item['start_line']}\n")
                         if item["docstring"]:

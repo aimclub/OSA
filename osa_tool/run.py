@@ -55,6 +55,8 @@ def main():
             model_name=args.model,
         )
         sourcerank = SourceRank(config)
+        create_fork = False
+        create_pull_request = False
 
         # Initialize GitHub agent and perform operations
         github_agent = GithubAgent(args.repository, args.branch)
@@ -64,8 +66,9 @@ def main():
         github_agent.clone_repository()
 
         # Initialize ModeScheduler
-        scheduler = ModeScheduler(config, sourcerank, args, workflow_keys)
-        plan = scheduler.plan
+        #scheduler = ModeScheduler(config, sourcerank, args, workflow_keys)
+        #plan = scheduler.plan
+        plan = {'docstring': True}
 
         if create_fork:
             github_agent.create_and_checkout_branch()
@@ -176,13 +179,15 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
         repo_path = parse_folder_name(repo_url)
         ts = OSA_TreeSitter(repo_path)
         res = ts.analyze_directory(ts.cwd)
+        ts.log_results(res)
         dg = DocGen(config_loader)
         dg.process_python_file(res)
         dg.generate_the_main_idea(res)
+        res = ts.analyze_directory(ts.cwd)
         dg.process_python_file(res)
-        modules_summaries = dg.summarize_submodules(res)
-        dg.generate_documentation_mkdocs(repo_path, res, modules_summaries)
-        dg.create_mkdocs_github_workflow(repo_url, repo_path)
+        #modules_summaries = dg.summarize_submodules(res)
+        #dg.generate_documentation_mkdocs(repo_path, res, modules_summaries)
+        #dg.create_mkdocs_github_workflow(repo_url, repo_path)
 
     except Exception as e:
         dg._purge_temp_files(repo_path)
