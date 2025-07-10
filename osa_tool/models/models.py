@@ -6,7 +6,7 @@ import dotenv
 import openai
 import requests
 from protollm.connectors import create_llm_connector
-
+from langchain.schema import SystemMessage
 from osa_tool.config.settings import Settings
 from osa_tool.utils import logger
 
@@ -90,10 +90,7 @@ class PayloadFactory:
         self.tokens_limit = config.llm.tokens
         self.prompt = prompt
         self.roles = [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant for analyzing open-source repositories.",
-            },
+            SystemMessage(content="You are a helpful assistant for analyzing open-source repositories."),
             {"role": "user", "content": prompt},
         ]
 
@@ -147,51 +144,6 @@ class PayloadFactory:
             },
             "messages": self.roles,
         }
-
-
-# TODO remove after all fixes to protollm
-class LlamaHandler(ModelHandler):
-    """
-    Class: llamaHandler
-
-    This class handles the interaction with a specified URL. It initializes the instance with a provided configuration and sends requests to the URL.
-
-    Methods:
-         __init__:
-            Initializes the instance with the provided configuration. This method sets the url and config attributes of the instance using the provided Settings object.
-
-         send_request:
-            Sends a request to a specified URL with a payload initialized with a given prompt. This method initializes a payload with the provided prompt and configuration, sends a POST request to a specified URL with this payload, and logs the response.
-    """
-
-    def __init__(self, config: Settings):
-        """
-        Initializes the instance with the provided configuration.
-
-        This method sets the url and config attributes of the instance using the provided Settings object.
-
-        Args:
-            config: The configuration settings to be used for initializing the instance.
-
-        Returns:
-            None
-        """
-        self.url = "http://10.32.15.21:6672/chat_completion"
-        self.config = config
-
-    def send_request(self, prompt) -> str:
-        """
-        Sends a request to a specified URL.
-
-        This method sends a request to a specified URL and returns the response.
-
-        Returns:
-            str: The response received from the request.
-        """
-        self.initialize_payload(self.config, prompt)
-        response = requests.post(url=self.url, json=self.payload)
-        logger.info(response)
-        return response.json()["content"]
 
 
 class OpenaiHandler(ModelHandler):
@@ -357,19 +309,8 @@ class ProtollmHandler(ModelHandler):
     """
 
     def __init__(self, config: Settings):
-        """
-        Initializes the instance with the provided configuration settings.
-
-        This method sets up the instance by assigning the provided configuration settings to the instance's config attribute.
-        It also retrieves the API from the configuration settings and passes it to the _configure_api method.
-
-        Args:
-            config: The configuration settings to be used for setting up the instance.
-
-        Returns:
-            None
-        """
         self.config = config
+        self.local_url = "http://10.32.15.21:6672"
         self._configure_api(config.llm.api, model_name=config.llm.model)
 
     def send_request(self, prompt: str) -> str:
@@ -390,6 +331,26 @@ class ProtollmHandler(ModelHandler):
         response = self.client.invoke(messages)
         return response.content
 
+    def _build_model_url(self) -> str:
+        """Builds the model URL based on the LLM API type."""
+        url_templates = {
+            "llama": f"self_hosted;{self.local_url};{self.config.llm.model}"
+        }
+        return url_templates.get(
+            self.config.llm.api,
+            f"{self.config.llm.url};{self.config.llm.model}"
+        )
+
+    def _get_llm_params(self):
+        """Extract LLM parameters from config"""
+        llm_params = ["temperature", "max_tokens", "top_p"]
+
+        return {
+            name: getattr(self.config.llm, name)
+            for name in llm_params
+            if getattr(self.config.llm, name, None) is not None
+        }
+
     def _configure_api(self, api: str, model_name: str) -> None:
         """
         Configures the API for the instance based on the provided API name.
@@ -405,11 +366,11 @@ class ProtollmHandler(ModelHandler):
         """
         dotenv.load_dotenv()
         connector_creator = create_llm_connector
-        url = self.config.llm.url
-        model_url = f"{url};{self.config.llm.model}"
-        # TODO add additional parametes such as max tokens.
-        self.client = connector_creator(model_url)
 
+        model_url = self._build_model_url()
+        llm_params = self._get_llm_params()
+
+        self.client = connector_creator(model_url, **llm_params)
 
 class ModelHandlerFactory:
     """
@@ -465,7 +426,7 @@ class ModelHandlerFactory:
         # TODO remove this, after llama rework.
         api = config.llm.api
         constructors = {
-            "llama": LlamaHandler,
+            "llama": ProtollmHandler,
             "openai": ProtollmHandler,
             "ollama": OllamaHandler,
         }
