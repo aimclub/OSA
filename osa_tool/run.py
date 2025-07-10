@@ -49,7 +49,7 @@ def main():
             model_name=args.model,
             temperature=args.temperature,
             max_tokens=args.max_tokens,
-            top_p=args.top_p
+            top_p=args.top_p,
         )
         sourcerank = SourceRank(config)
 
@@ -190,7 +190,7 @@ def load_configuration(
     model_name: str,
     temperature: Optional[str] = None,
     max_tokens: Optional[str] = None,
-    top_p: Optional[str] = None
+    top_p: Optional[str] = None,
 ) -> ConfigLoader:
     """
     Loads configuration for osa_tool.
@@ -217,7 +217,7 @@ def load_configuration(
             "model": model_name,
             "temperature": temperature,
             "max_tokens": max_tokens,
-            "top_p": top_p
+            "top_p": top_p,
         }
     )
     logger.info("Config successfully updated and loaded")

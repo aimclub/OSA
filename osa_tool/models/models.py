@@ -333,13 +333,8 @@ class ProtollmHandler(ModelHandler):
 
     def _build_model_url(self) -> str:
         """Builds the model URL based on the LLM API type."""
-        url_templates = {
-            "llama": f"self_hosted;{self.local_url};{self.config.llm.model}"
-        }
-        return url_templates.get(
-            self.config.llm.api,
-            f"{self.config.llm.url};{self.config.llm.model}"
-        )
+        url_templates = {"llama": f"self_hosted;{self.local_url};{self.config.llm.model}"}
+        return url_templates.get(self.config.llm.api, f"{self.config.llm.url};{self.config.llm.model}")
 
     def _get_llm_params(self):
         """Extract LLM parameters from config"""
@@ -371,6 +366,7 @@ class ProtollmHandler(ModelHandler):
         llm_params = self._get_llm_params()
 
         self.client = connector_creator(model_url, **llm_params)
+
 
 class ModelHandlerFactory:
     """
