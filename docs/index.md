@@ -1,15 +1,18 @@
 # OSA: OPEN-SOURCE ADVISOR
 
 ---
+
 ## Overview
 
-OSA (Open-Source-Advisor) is a LLM-based tool for improving the quality of scientific open source projects and helping create them from scratch. 
-It automates the generation of README, different levels of documentation, CI/CD scripts, etc. 
+OSA (Open-Source-Advisor) is a LLM-based tool for improving the quality of scientific open source projects and helping
+create them from scratch.
+It automates the generation of README, different levels of documentation, CI/CD scripts, etc.
 It also generates advices and recommendations for the repository.
 
 OSA is currently under development, so not all features are implemented.
 
 ---
+
 ## How it works?
 
 Here is a short demo:
@@ -34,13 +37,16 @@ Here is a short demo:
 
 ## Core features
 
-1. **README file generation**: Automates the creation of a clear and structured README file for a repository, including projects based on research papers.
+1. **README file generation**: Automates the creation of a clear and structured README file for a repository, including
+   projects based on research papers.
 
 2. **Documentation generation**: Automatically generates docstrings for Python code.
 
-3. **Automatic implementation of changes**: Clones the repository, creates a branch, commits and pushes changes, and creates a pull request with proposed changes.
+3. **Automatic implementation of changes**: Clones the repository, creates a branch, commits and pushes changes, and
+   creates a pull request with proposed changes.
 
-4. **Various LLMs**: Use OSA with an LLM accessible via API (e.g., OpenAI, VseGPT, Ollama), a local server, or try an [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
+4. **Various LLMs**: Use OSA with an LLM accessible via API (e.g., OpenAI, VseGPT, Ollama), a local server, or try
+   an [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
 
 ---
 
@@ -57,11 +63,13 @@ pip install osa_tool
 **Build from source:**
 
 1. Clone the Open-Source-Advisor repository:
+
 ```sh
 git clone https://github.com/aimclub/OSA
 ```
 
 2. Navigate to the project directory:
+
 ```sh
 cd Open-Source-Advisor
 ```
@@ -115,7 +123,6 @@ export GIT_TOKEN=<your_git_token>
 | `VSE_GPT_KEY`    | API key for [vsegpt](https://vsegpt.ru/Docs/API) LLM provider compatible with OpenAI's API format.                 | No        |
 | `X-API-Key`      | API key for the [pepy.tech](https://pepy.tech/pepy-api) REST API, used to fetch Python package download statistics | No        |
 
-
 ### Usage
 
 Run Open-Source-Advisor using the following command:
@@ -134,7 +141,10 @@ python -m osa_tool.run -r {repository} [--api {api}] [--base-url {base_url}] [--
 docker run --env-file .env {image-name} -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--article {article}]
 ```
 
-The --article option enables you to choose a README template for a repository based on an article. You can provide either a link to a PDF file of the article or a path to a local PDF file after the --article option. If you are using Docker, ensure that you upload the PDF file to the OSA folder before building the image, then, specify the path as /app/OSA/... or just use volume mounting to access the file.
+The --article option enables you to choose a README template for a repository based on an article. You can provide
+either a link to a PDF file of the article or a path to a local PDF file after the --article option. If you are using
+Docker, ensure that you upload the PDF file to the OSA folder before building the image, then, specify the path as
+/app/OSA/... or just use volume mounting to access the file.
 
 ### Configuration
 
@@ -156,26 +166,35 @@ The --article option enables you to choose a README template for a repository ba
 
 Examples of generated README files are available in [examples](https://github.com/aimclub/OSA/tree/main/examples).
 
-URL of the GitHub repository, LLM API service provider (*optional*) and Specific LLM model to use (*optional*) are required to use the generator.
+URL of the GitHub repository, LLM API service provider (*optional*) and Specific LLM model to use (*optional*) are
+required to use the generator.
 
 To see available models go there:
+
 1. [VseGpt](https://vsegpt.ru/Docs/Models)
 2. [OpenAI](https://platform.openai.com/docs/models)
 3. [Ollama](https://ollama.com/library)
 
 Local Llama ITMO:
+
 ```sh
 python -m osa_tool.run -r https://github.com/aimclub/OSA
 ```  
+
 OpenAI:
+
 ```sh
 python -m osa_tool.run -r https://github.com/aimclub/OSA --api openai
 ```
+
 VseGPT:
+
 ```sh
 python -m osa_tool.run -r https://github.com/aimclub/OSA --api openai --base-url https://api.vsegpt.ru/v1 --model openai/gpt-3.5-turbo
 ```
+
 Ollama:
+
 ```sh
 python -m osa_tool.run -r https://github.com/aimclub/OSA --api ollama --base-url http://[YOUR_OLLAMA_IP]:11434 --model gemma3:27b
 ```
@@ -184,19 +203,21 @@ python -m osa_tool.run -r https://github.com/aimclub/OSA --api ollama --base-url
 
 ## Documentation
 
-Detailed description of OSA API is available [here](https://itmo-nss-team.github.io/Open-Source-Advisor/).
+Detailed description of OSA API is available [here](https://aimclub.github.io/OSA/).
 
 ---
 
 ## Contributing
 
-- **[Report Issues](https://github.com/aimclub/OSA/issues )**: Submit bugs found or log feature requests for the Open-Source-Advisor project.
+- **[Report Issues](https://github.com/aimclub/OSA/issues )**: Submit bugs found or log feature requests for the
+  Open-Source-Advisor project.
 
 ---
 
 ## License
 
-This project is protected under the BSD 3-Clause "New" or "Revised" License. For more details, refer to the [LICENSE](https://github.com/aimclub/OSA/blob/main/LICENSE) file.
+This project is protected under the BSD 3-Clause "New" or "Revised" License. For more details, refer to
+the [LICENSE](https://github.com/aimclub/OSA/blob/main/LICENSE) file.
 
 ---
 
@@ -204,10 +225,11 @@ This project is protected under the BSD 3-Clause "New" or "Revised" License. For
 
 The project is supported as ITMO University Research Project in AI Initiative (RPAII).
 
-OSA is tested by the members of [ITMO OpenSource](https://t.me/scientific_opensource) community. Useful content from community 
+OSA is tested by the members of [ITMO OpenSource](https://t.me/scientific_opensource) community. Useful content from
+community
 is available in [**Open-source-ops**](https://github.com/aimclub/open-source-ops)
 
-Also, we thank [**Readme-ai**](https://github.com/eli64s/readme-ai) 
+Also, we thank [**Readme-ai**](https://github.com/eli64s/readme-ai)
 for their code that we used as a foundation for our own version of README generator.
 
 ---

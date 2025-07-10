@@ -7,6 +7,7 @@ import pandas as pd
 from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.github_agent.github_agent import GithubAgent
+from osa_tool.readmegen.context.pypi_status_checker import PyPiPackageInspector
 from osa_tool.run import load_configuration
 from osa_tool.utils import logger, rich_section, delete_repository
 
@@ -47,7 +48,7 @@ def main():
         logger.error("Table must contain a 'repository' column.")
 
     # Ensure necessary columns exist; add if missing
-    for col in ["name", "forks", "stars", "processed"]:
+    for col in ["name", "forks", "stars", "downloads", "processed"]:
         if col not in df.columns:
             if col == "processed":
                 df[col] = False
@@ -86,10 +87,15 @@ def main():
         analytics.output_path = os.path.join(reports_dir, f"{analytics.metadata.name}_report.pdf")
         analytics.build_pdf()
 
+        # Get downloads from pepy.tech if exists
+        info = PyPiPackageInspector(sourcerank.tree, sourcerank.repo_path).get_info()
+        downloads_count = info.get("downloads") if info else ""
+
         # Update dataframe with repository metadata
         df.loc[df["repository"] == repo_url, "name"] = analytics.metadata.name
         df.loc[df["repository"] == repo_url, "forks"] = analytics.metadata.forks_count
         df.loc[df["repository"] == repo_url, "stars"] = analytics.metadata.stars_count
+        df.loc[df["repository"] == repo_url, "downloads"] = downloads_count
         df.loc[df["repository"] == repo_url, "processed"] = True
 
         # Save updated table after processing each repository

@@ -377,14 +377,14 @@ class PlanEditor:
         """Mark a key as manually changed and update workflows flag if needed."""
         self.modified_keys.add(key)
 
-        if key == "generate_workflows" and plan["generate_workflows"] is False:
-            self._manual_disable_generate_workflows = True
-
-        if key != "generate_workflows" and plan.get("generate_workflows") is False:
-            if key in self._workflow_boolean_keys(plan) and plan.get(key) is True:
+        if key == "generate_workflows":
+            if plan["generate_workflows"] is False:
+                self._manual_disable_generate_workflows = True
+            self._sync_generate_workflows_flag(plan)
+        elif key in self._workflow_boolean_keys(plan):
+            if plan.get("generate_workflows") is False and plan.get(key) is True:
                 self._manual_disable_generate_workflows = False
-
-        self._sync_generate_workflows_flag(plan)
+            self._sync_generate_workflows_flag(plan)
 
     def _sync_generate_workflows_flag(self, plan: dict) -> None:
         """Automatically enable/disable generate_workflows based on workflow keys."""
