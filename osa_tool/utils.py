@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import shutil
 import stat
 from pathlib import Path
@@ -36,12 +37,25 @@ def parse_folder_name(repo_url: str) -> str:
     Parses the repository URL to extract the folder name.
 
     Args:
-        repo_url: The URL of the GitHub repository.
+        repo_url: The URL of the Git repository.
 
     Returns:
         The name of the folder where the repository will be cloned.
     """
-    return repo_url.rstrip("/").split("/")[-1]
+    patterns = [
+        (r'github\.com/([^/]+/[^/]+)', 'github'),
+        (r'gitlab[^/]+/([^/]+/[^/]+)', 'gitlab'),
+        (r'gitverse\.ru/([^/]+/[^/]+)', 'gitverse')
+    ]
+    for pattern, _ in patterns:
+        match = re.search(pattern, repo_url)
+        if match:
+            folder_name = match.group(1).replace("/", "_")
+            logger.debug(f"Parsed folder name '{folder_name}' from repo URL '{repo_url}'")
+            return folder_name
+    folder_name = re.sub(r'[:/]', '_', repo_url.rstrip("/"))
+    logger.debug(f"Parsed folder name '{folder_name}' from repo URL '{repo_url}'")
+    return folder_name
 
 
 def osa_project_root() -> Path:
@@ -56,22 +70,28 @@ def build_arguments_path() -> str:
 
 def get_base_repo_url(repo_url: str) -> str:
     """
-    Extracts the base repository URL path from a given GitHub URL.
+    Extracts the base repository URL path from a given Git URL.
 
     Args:
-        repo_url (str, optional): The GitHub repository URL. If not provided,
+        repo_url (str, optional): The Git repository URL. If not provided,
             the instance's `repo_url` attribute is used. Defaults to None.
 
     Returns:
         str: The base repository path (e.g., 'username/repo-name').
 
     Raises:
-        ValueError: If the provided URL does not start with 'https://github.com/'.
+        ValueError: If the provided URL has unsupported format.
     """
-    if repo_url.startswith("https://github.com/"):
-        return repo_url[len("https://github.com/") :].rstrip("/")
-    else:
-        raise ValueError("Unsupported repository URL format.")
+    patterns = [
+        r'https?://github\.com/([^/]+/[^/]+)',
+        r'https?://[^/]*gitlab[^/]*/(.+)',
+        r'https?://gitverse\.ru/([^/]+/[^/]+)'
+    ]
+    for pattern in patterns:
+        match = re.match(pattern, repo_url)
+        if match:
+            return match.group(1).rstrip("/")
+    raise ValueError(f"Unsupported repository URL format: {repo_url}")
 
 
 def delete_repository(repo_url: str) -> None:
