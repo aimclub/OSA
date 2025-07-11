@@ -285,17 +285,7 @@ class DocGen(object):
         """
         Generate documentation for a single method.
         """
-        #try:
-        #    desc, other = method_details["docstring"].split("\n\n", maxsplit=1)
-        #except:
-        #    return method_details["docstring"]
-        docstring = method_details["docstring"]#.strip().strip('"""').strip("'''")
-        #parts = docstring.split("\n\n", maxsplit=1)
-        #desc = parts[0].strip()
-        #other = parts[1].strip() if len(parts) > 1 else None
-        
-        #old_desc = desc.strip('"\n ')
-        logger.info(f"old desc {docstring}")
+        docstring = method_details["docstring"]
         prompt = (
             """Update the provided docstring description for the following Python method using the main idea of the project.\n"""
             """Do not pay too much attention to the provided main idea - try not to mention it explicitly\n"""
@@ -308,7 +298,7 @@ class DocGen(object):
             f"""- Method decorators: {method_details["decorators"]}\n"""
             "- Source Code:\n"
             "```\n"
-            f"""{method_details["source_code"]}\n"""
+            f"""{self.strip_docstring_from_body(method_details["source_code"])}\n"""
             "```\n"
             f"""{"- Imported methods source code:" if context_code else ""}\n"""
             f"""{context_code if context_code else ""}\n\n"""
@@ -316,10 +306,8 @@ class DocGen(object):
             "Return only pure changed docstring - DO NOT RETURN ANY CODE, DO NOT RETURN other parts of docs"
         )
         new_desc = self.model_handler.send_request(prompt)
-        logger.info(f"UPDATE DESC: {new_desc}")
 
-        return new_desc#"\n\n".join(['"""\n' + new_desc])
-        #return "\n\n".join(['"""\n' + new_desc, other]) if other else "\n\n".join(['"""\n' + new_desc])
+        return new_desc
 
     def extract_pure_docstring(self, gpt_response: str) -> str:
         """
@@ -376,6 +364,24 @@ class DocGen(object):
 
         return '"""No valid docstring found."""'
 
+    @staticmethod
+    def strip_docstring_from_body(body: str) -> str:
+        lines = body.strip().splitlines()
+        if len(lines) < 1:
+            return body
+
+        first_line = lines[0].strip()
+        if first_line.startswith(('"""', "'''")):
+            closing = first_line[:3]
+            # Однострочный докстринг
+            if first_line.count(closing) == 2:
+                return "\n".join(lines[1:]).lstrip()
+            # Многострочный докстринг
+            for i in range(1, len(lines)):
+                if closing in lines[i]:
+                    return "\n".join(lines[i+1:]).lstrip()
+        return body
+    
     def insert_docstring_in_code(
         self,
         source_code: str,
@@ -389,24 +395,7 @@ class DocGen(object):
         Handles multi-line signatures, decorators, async definitions, and existing docstrings.
         """
 
-        def strip_docstring_from_body(body: str) -> str:
-            lines = body.strip().splitlines()
-            if len(lines) < 1:
-                return body
-
-            first_line = lines[0].strip()
-            if first_line.startswith(('"""', "'''")):
-                closing = first_line[:3]
-                # Однострочный докстринг
-                if first_line.count(closing) == 2:
-                    return "\n".join(lines[1:]).lstrip()
-                # Многострочный докстринг
-                for i in range(1, len(lines)):
-                    if closing in lines[i]:
-                        return "\n".join(lines[i+1:]).lstrip()
-            return body
-
-        method_body = strip_docstring_from_body(method_details["source_code"].strip())
+        method_body = self.strip_docstring_from_body(method_details["source_code"].strip())
         method_name = method_details["method_name"]
         docstring_clean = self.extract_pure_docstring(generated_docstring)
         logger.info(f"docstring_clean {docstring_clean}")
@@ -419,32 +408,11 @@ class DocGen(object):
             return source_code  # method body not found
         body_start = match.start()
 
-        #lines = source_code.splitlines(keepends=True)
-        #approx_start_line = method_details.get("start_line")
-        #window = 50
-
-        #if approx_start_line is not None:
-        #    start_line = max(0, approx_start_line - window)
-        #    end_line = min(len(lines), approx_start_line + window)
-        #    local_block = ''.join(lines[start_line:end_line])
-        #    #if method_name == "__exit__":
-        #        #logger.info(local_block)
-        #    match = re.search(re.escape(method_body), local_block)
-        #    if not match:
-        #        return source_code
-        #    body_start = sum(len(line) for line in lines[:start_line]) + match.start()
-        #else:
-        #    match = re.search(re.escape(method_body), source_code)
-        #    if not match:
-        #        return source_code
-        #    body_start = match.start()
-
         # Walk backwards from method body to find 'def' or 'async def'
         def_start = source_code.rfind(f"def {method_name}(", 0, body_start)
         async_def_start = source_code.rfind(f"async def {method_name}(", 0, body_start)
-        #decorators_start = source_code.rfind("@", 0, body_start)
 
-        start_candidates = [p for p in [def_start, async_def_start] if p != -1]#, decorators_start] if p != -1]
+        start_candidates = [p for p in [def_start, async_def_start] if p != -1]
         if not start_candidates:
             return source_code
 
@@ -457,12 +425,6 @@ class DocGen(object):
         method_block = source_code[start:end]
         method_lines = method_block.splitlines(keepends=True)
 
-        # Determine indentation
-        #for line in method_lines:
-        #    if line.strip().startswith("def ") or line.strip().startswith("async def "):
-        #        indent = line[:len(line) - len(line.lstrip())]
-        #        break
-        #else:
         indent = "        " if class_method else "    "
 
         def indent_docstring(docstring: str) -> str:
@@ -472,7 +434,6 @@ class DocGen(object):
             indented = [f'{indent}' + lines[0]]
             for line in lines[1:]:
                 indented.append(f"{indent}{line}")
-            #indented[-1] += '"""'
             return "\n".join(indented) + "\n"
 
         # Check for existing docstring right after signature
@@ -634,7 +595,7 @@ class DocGen(object):
             write_back=black.WriteBack.YES,
         )
 
-    def process_python_file(self, parsed_structure: dict) -> None:
+    def process_python_file(self, parsed_structure: dict, dump: dict) -> None:
         """
         Processes a Python file by generating and inserting missing docstrings.
 
@@ -652,23 +613,18 @@ class DocGen(object):
         """
 
         for filename, structure in parsed_structure.items():
-            self._process_one_file(filename, structure, project_structure=parsed_structure)
+            dump = self._process_one_file(filename, structure, dump, project_structure=parsed_structure)
+        return dump
 
-    def _process_one_file(self, filename, file_structure, project_structure):
-        try:
-            logger.info(f"Formatting {filename}")
-            #self.format_with_black(filename)
-        except Exception as e:
-            logger.info("black %s", repr(e) ,exc_info=True)
-        with open(filename, "r", encoding="utf-8") as f:
-            source_code = f.read()
-        for item in file_structure["structure"]:
+    def _process_one_file(self, filename, file_structure, dump, project_structure):
+        for ids, item in enumerate(file_structure["structure"]):
             if item["type"] == "class":
-                for method in item["methods"]:
-                    if method["docstring"] == None or self.main_idea:  # If docstring is missing
+                for idx, method in enumerate(item["methods"]):
+                    if method["docstring"] is not None or self.main_idea:
                         logger.info(
-                            f"""{"Generating" if self.main_idea else "Updating"} docstring for method: {method['method_name']} in class {item['name']} at {filename}"""
+                            f"""{"Generating based on main idea" if self.main_idea else "Updating"} docstring for method: {method['method_name']} in class {item['name']} at {filename}"""
                         )
+                        dump[filename][ids]["methods"][idx]["source_code"] = self.strip_docstring_from_body(method["source_code"])
                         method_context = self.context_extractor(method, project_structure)
                         generated_docstring = (
                             self.generate_method_documentation(method, method_context)
@@ -677,14 +633,22 @@ class DocGen(object):
                         )
                         generated_docstring = self.extract_pure_docstring(generated_docstring)
                         if generated_docstring:
-                            method["docstring"] = generated_docstring
-                            source_code = self.insert_docstring_in_code(source_code, method, generated_docstring, class_method=True)
+                            if not self.main_idea:
+                                logger.info(f"Original docstring: {method['docstring']}")
+                                method["docstring"] = generated_docstring
+                                logger.info(f"First run docstring: {generated_docstring}")
+                                dump[filename][ids]["methods"][idx]["first_doc"] = generated_docstring
+                            else:
+                                logger.info(f"Second run docstring: {generated_docstring}")
+                                dump[filename][ids]["methods"][idx]["second_doc"] = generated_docstring
             if item["type"] == "function":
                 func_details = item["details"]
-                if func_details["docstring"] == None or self.main_idea:
+                if func_details["docstring"] is not None or self.main_idea:
                     logger.info(
-                        f"""{"Generating" if self.main_idea else "Updating"} docstring for a function: {func_details['method_name']} at {filename}"""
+                        f"""{"Generating based on main idea" if self.main_idea else "Updating"} docstring for a function: {func_details['method_name']} at {filename}"""
                     )
+                    func_details["source_code"] = self.strip_docstring_from_body(func_details["source_code"])
+                    dump[filename][ids]["details"]["source_code"] = func_details["source_code"]
                     generated_docstring = (
                         self.generate_method_documentation(func_details)
                         if self.main_idea is None
@@ -692,37 +656,15 @@ class DocGen(object):
                     )
                     generated_docstring = self.extract_pure_docstring(generated_docstring)
                     if generated_docstring:
-                        source_code = self.insert_docstring_in_code(source_code, func_details, generated_docstring)
-
-        for item in file_structure["structure"]:
-            if item["type"] == "class" and (item["docstring"] == None or self.main_idea):
-                class_name = item["name"]
-                cls_structure = []
-                cls_structure.append(class_name)
-                cls_structure.append(item["attributes"])
-
-                for method in item["methods"]:
-                    cls_structure.append(
-                        {
-                            "method_name": method["method_name"],
-                            "docstring": method["docstring"],
-                        }
-                    )
-                cls_structure.append(item["docstring"])
-                logger.info(
-                    f"""{"Generating" if self.main_idea else "Updating"} docstring for class: {item['name']} in class at {filename}"""
-                )
-                generated_cls_docstring = (
-                    self.generate_class_documentation(cls_structure)
-                    if self.main_idea is None
-                    else self.update_class_documentation(cls_structure)
-                )
-                if generated_cls_docstring:
-                    source_code = self.insert_cls_docstring_in_code(source_code, class_name, generated_cls_docstring)
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(source_code)
-        #self.format_with_black(filename)
-        logger.info(f"Updated file: {filename}")
+                        if not self.main_idea:
+                            func_details['docstring'] = generated_docstring
+                            logger.info(f"Original docstring: {func_details['docstring']}")
+                            logger.info(f"First run docstring: {generated_docstring}")
+                            dump[filename][ids]["details"]["first_doc"] = generated_docstring
+                        else:
+                            logger.info(f"Second run docstring: {generated_docstring}")
+                            dump[filename][ids]["details"]["second_doc"] = generated_docstring
+        return dump
 
     def generate_the_main_idea(self, parsed_structure: dict) -> None:
         prompt = (

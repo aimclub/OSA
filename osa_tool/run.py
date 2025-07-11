@@ -30,7 +30,8 @@ from osa_tool.utils import (
     parse_folder_name,
     rich_section,
 )
-
+from pprint import pprint
+import json
 
 def main():
     """Main function to generate a README.md file for a GitHub repository.
@@ -179,12 +180,16 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
         repo_path = parse_folder_name(repo_url)
         ts = OSA_TreeSitter(repo_path)
         res = ts.analyze_directory(ts.cwd)
-        ts.log_results(res)
+        copy_res = ts.analyze_directory(ts.cwd)
+        #ts.log_results(res)
+        copy = copy_res_parts(copy_res)
         dg = DocGen(config_loader)
-        dg.process_python_file(res)
+        copy = dg.process_python_file(res, copy)
         dg.generate_the_main_idea(res)
-        res = ts.analyze_directory(ts.cwd)
-        dg.process_python_file(res)
+        #res = ts.analyze_directory(ts.cwd)
+        copy = dg.process_python_file(res, copy)
+        with open(f'{repo_path}/docs_experiment.json', 'w') as fp:
+            json.dump(copy, fp, sort_keys=True, indent=4)
         #modules_summaries = dg.summarize_submodules(res)
         #dg.generate_documentation_mkdocs(repo_path, res, modules_summaries)
         #dg.create_mkdocs_github_workflow(repo_url, repo_path)
@@ -192,6 +197,27 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
     except Exception as e:
         dg._purge_temp_files(repo_path)
         logger.error("Error while generating codebase documentaion: %s", repr(e), exc_info=True)
+
+def copy_res_parts(res: dict) -> dict:
+    trimmed_res = {}
+    for filename, structs in res.items():
+        del res[filename]['imports']
+        for ids, _ in enumerate(structs['structure']):
+            if res[filename]['structure'][ids]['type'] == 'class':
+                for class_char in ['docstring', 'start_line', 'attributes', 'decorators']:
+                    del res[filename]['structure'][ids][class_char]
+                for idx, char in enumerate(res[filename]['structure'][ids]['methods']):
+                    for char in ['return_type', 'arguments', 'start_line', 'decorators', 'method_calls']:
+                        del res[filename]['structure'][ids]['methods'][idx][char]
+            if res[filename]['structure'][ids]['type'] == 'function':
+                for func_char in ['start_line']:
+                    del res[filename]['structure'][ids][func_char]
+                for char in ['return_type', 'arguments', 'start_line', 'decorators', 'method_calls']:
+                    del res[filename]['structure'][ids]['details'][char]
+
+    for filename, struct in res.items():        
+        trimmed_res[filename] = struct['structure']
+    return trimmed_res
 
 
 def load_configuration(
