@@ -139,7 +139,7 @@ def test_citation_section(markdown_builder):
 
 def test_table_of_contents(markdown_builder):
     # Act
-    toc = markdown_builder.table_of_contents
+    toc = markdown_builder.toc
     # Assert
     assert "Table of Contents" in toc
     assert "- [Core features](#core-features)" in toc

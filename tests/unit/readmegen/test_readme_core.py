@@ -53,6 +53,7 @@ def test_readme_agent_with_article(mock_llm, mock_builder_article, mock_save, mo
         "overview_from_article",
         "content_from_article",
         "algorithms_from_article",
+        "getting_started_from_article",
     )
 
     mock_builder_article.return_value.build.return_value = "README from article"
@@ -65,6 +66,7 @@ def test_readme_agent_with_article(mock_llm, mock_builder_article, mock_save, mo
         "overview_from_article",
         "content_from_article",
         "algorithms_from_article",
+        "getting_started_from_article",
     )
     mock_builder_article.return_value.build.assert_called_once()
     mock_save.assert_called_once()
