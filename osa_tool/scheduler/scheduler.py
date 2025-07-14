@@ -6,13 +6,13 @@ from pydantic import ValidationError
 from osa_tool.analytics.metadata import load_data_metadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.models.models import ModelHandlerFactory, ModelHandler
+from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.postprocessor.response_cleaner import process_text
-from osa_tool.scheduler.prompts import PromptLoader, PromptConfig
+from osa_tool.scheduler.prompts import PromptConfig, PromptLoader
 from osa_tool.scheduler.workflow_manager import WorkflowManager
 from osa_tool.ui.plan_editor import PlanEditor
 from osa_tool.ui.web_plan_editor import WebPlanEditor
-from osa_tool.utils import logger, parse_folder_name, extract_readme_content
+from osa_tool.utils import extract_readme_content, logger, parse_folder_name
 
 
 class ModeScheduler:
@@ -39,11 +39,12 @@ class ModeScheduler:
     def _basic_plan() -> dict:
         """Return default plan for 'basic' mode."""
         plan = {
-            "report": True,
-            "community_docs": True,
-            "readme": True,
-            "organize": True,
             "about": True,
+            "community_docs": True,
+            "organize": True,
+            "readme": True,
+            "report": True,
+            "requirements": True,
         }
         return plan
 
