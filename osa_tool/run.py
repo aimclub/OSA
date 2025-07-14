@@ -1,4 +1,5 @@
 import os
+import subprocess
 from typing import List
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
@@ -109,6 +110,11 @@ def main():
             rich_section("README generation")
             readme_agent(config, plan.get("article"), plan.get("refine_readme"))
 
+        # Requirements generation
+        if plan.get("requirements"):
+            rich_section("Reqirements generation")
+            generate_requirements(args.repository)
+
         # About section generation
         about_gen = None
         if plan.get("about"):
@@ -162,6 +168,22 @@ def convert_notebooks(repo_url: str, notebook_paths: List[str] | None = None) ->
 
     except Exception as e:
         logger.error("Error while converting notebooks: %s", repr(e), exc_info=True)
+
+
+def generate_requirements(repo_url):
+    logger.info(f"Starting the generation of requirements")
+    repo_path = parse_folder_name(repo_url)
+    try:
+        result = subprocess.run(
+            ["pipreqs", "--scan-notebooks", "--force", "--encoding", " utf-8", repo_path],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        logger.info(f"Requirements generated successfully at: {repo_path}")
+        logger.debug(result)
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Error while generating project's requirements: {e.stderr}")
 
 
 def generate_docstrings(config_loader: ConfigLoader) -> None:
