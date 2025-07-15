@@ -7,7 +7,7 @@ from osa_tool.git_agent.git_agent import GitAgent
 
 @pytest.fixture
 def github_agent():
-    agent = GitAgent("https://github.com/username/repo")
+    agent = GitAgent("https://github.com/username/repo", repo_branch_name = "main")
     agent.token = "dummy_token"
     agent.fork_url = "https://github.com/fork/repo"
     return agent

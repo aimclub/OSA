@@ -43,14 +43,14 @@ def parse_folder_name(repo_url: str) -> str:
         The name of the folder where the repository will be cloned.
     """
     patterns = [
-        (r'github\.com/([^/]+/[^/]+)', 'github'),
-        (r'gitlab[^/]+/([^/]+/[^/]+)', 'gitlab'),
-        (r'gitverse\.ru/([^/]+/[^/]+)', 'gitverse')
+        r'github\.com/[^/]+/([^/]+)',
+        r'gitlab[^/]+/[^/]+/([^/]+)',
+        r'gitverse\.ru/[^/]+/([^/]+)'
     ]
-    for pattern, _ in patterns:
+    for pattern in patterns:
         match = re.search(pattern, repo_url)
         if match:
-            folder_name = match.group(1).replace("/", "_")
+            folder_name = match.group(1)
             logger.debug(f"Parsed folder name '{folder_name}' from repo URL '{repo_url}'")
             return folder_name
     folder_name = re.sub(r'[:/]', '_', repo_url.rstrip("/"))
