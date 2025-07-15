@@ -112,7 +112,7 @@ def main():
 
         # Requirements generation
         if plan.get("requirements"):
-            rich_section("Reqirements generation")
+            rich_section("Requirements generation")
             generate_requirements(args.repository)
 
         # About section generation
