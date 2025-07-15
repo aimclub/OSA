@@ -1,7 +1,7 @@
 import os
 import re
-import requests
 
+import requests
 from dotenv import load_dotenv
 from git import GitCommandError, InvalidGitRepositoryError, Repo
 
@@ -56,40 +56,40 @@ class GitAgent:
 
     def _get_platform_token(self) -> str:
         """Get appropriate token for the detected platform.
-        
+
         Returns:
             GitHub / GitLab / Gitverse token.
         """
-        if self.platform == 'github':
-            return os.getenv('GIT_TOKEN', os.getenv('GITHUB_TOKEN', ''))
-        elif self.platform == 'gitlab':
-            return os.getenv('GITLAB_TOKEN', os.getenv('GIT_TOKEN', ''))
-        elif self.platform == 'gitverse':
-            return os.getenv('GITVERSE_TOKEN', os.getenv('GIT_TOKEN', ''))
+        if self.platform == "github":
+            return os.getenv("GIT_TOKEN", os.getenv("GITHUB_TOKEN", ""))
+        elif self.platform == "gitlab":
+            return os.getenv("GITLAB_TOKEN", os.getenv("GIT_TOKEN", ""))
+        elif self.platform == "gitverse":
+            return os.getenv("GITVERSE_TOKEN", os.getenv("GIT_TOKEN", ""))
         else:
-            return os.getenv('GIT_TOKEN', '')
+            return os.getenv("GIT_TOKEN", "")
 
     def create_fork(self) -> None:
         """Creates a fork of the repository.
-        
+
         Raises:
             ValueError: If the Git token is not set or inappropriate platform used.
         """
         if not self.token:
             raise ValueError(f"{self.platform.title()} token is required to create a fork.")
 
-        if self.platform == 'github':
+        if self.platform == "github":
             self._create_github_fork()
-        elif self.platform == 'gitlab':
+        elif self.platform == "gitlab":
             self._create_gitlab_fork()
-        elif self.platform == 'gitverse':
+        elif self.platform == "gitverse":
             self._create_gitverse_fork()
         else:
             raise ValueError(f"Fork creation not supported for platform: {self.platform}")
 
     def _create_github_fork(self) -> None:
         """Create a fork on GitHub.
-        
+
         Raises:
             ValueError: If the API request fails.
         """
@@ -111,14 +111,14 @@ class GitAgent:
 
     def _create_gitlab_fork(self) -> None:
         """Create a fork on GitLab.
-        
+
         Raises:
             ValueError: If the API request fails.
         """
-        gitlab_instance = re.match(r'(https?://[^/]*gitlab[^/]*)', self.repo_url).group(1)
+        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
         base_repo = get_base_repo_url(self.repo_url)
-        project_path = base_repo.replace('/', '%2F')
-        
+        project_path = base_repo.replace("/", "%2F")
+
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
@@ -137,7 +137,7 @@ class GitAgent:
 
     def _create_gitverse_fork(self) -> None:
         """Create a fork on Gitverse.
-        
+
         Raises:
             ValueError: If the API request fails.
         """
@@ -158,28 +158,27 @@ class GitAgent:
             logger.error(f"Failed to create Gitverse fork: {response.status_code} - {response.text}")
             raise ValueError("Failed to create fork.")
 
-
     def star_repository(self) -> None:
         """Stars the repository on the appropriate platform.
-        
+
         Raises:
             ValueError: If the Git token is not set or inappropriate platform used.
         """
         if not self.token:
             raise ValueError(f"{self.platform.title()} token is required to star the repository.")
 
-        if self.platform == 'github':
+        if self.platform == "github":
             self._star_github_repository()
-        elif self.platform == 'gitlab':
+        elif self.platform == "gitlab":
             self._star_gitlab_repository()
-        elif self.platform == 'gitverse':
+        elif self.platform == "gitverse":
             self._star_gitverse_repository()
         else:
             logger.warning(f"Starring not implemented for platform: {self.platform}")
 
     def _star_github_repository(self) -> None:
         """Star a repository on GitHub.
-        
+
         Raises:
             ValueError: If the API request fails.
         """
@@ -194,6 +193,7 @@ class GitAgent:
 
         if response_check.status_code == 204:
             logger.info(f"GitHub repository {base_repo} is already starred.")
+            return
         elif response_check.status_code != 404:
             logger.error(f"Failed to check star status: {response_check.status_code} - {response_check.text}")
             raise ValueError("Failed to check star status.")
@@ -209,14 +209,14 @@ class GitAgent:
 
     def _star_gitlab_repository(self) -> None:
         """Star a repository on GitLab.
-        
+
         Raises:
             ValueError: If the API request fails.
         """
-        gitlab_instance = re.match(r'(https?://[^/]*gitlab[^/]*)', self.repo_url).group(1)
+        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
         base_repo = get_base_repo_url(self.repo_url)
-        project_path = base_repo.replace('/', '%2F')
-        
+        project_path = base_repo.replace("/", "%2F")
+
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
@@ -227,12 +227,13 @@ class GitAgent:
 
         if response.status_code in {200, 201, 304}:  # 304 = already starred
             logger.info(f"GitLab repository {base_repo} has been starred successfully.")
+            return
         else:
             logger.error(f"Failed to star GitLab repository: {response.status_code} - {response.text}")
 
     def _star_gitverse_repository(self) -> None:
         """Star a repository on Gitverse.
-        
+
         Raises:
             ValueError: If the API request fails.
         """
@@ -247,13 +248,13 @@ class GitAgent:
 
         if response.status_code in {200, 204}:
             logger.info(f"Gitverse repository {base_repo} has been starred successfully.")
+            return
         else:
             logger.error(f"Failed to star Gitverse repository: {response.status_code} - {response.text}")
 
-
     def clone_repository(self) -> None:
         """Clones the repository into the specified directory.
-        
+
         If the repository already exists locally, it initializes the repository.
         If the directory exists but is not a valid Git repository, an error is raised.
 
@@ -358,7 +359,7 @@ class GitAgent:
 
     def create_pull_request(self, title: str = None, body: str = None) -> None:
         """Creates a pull request from the forked repository to the original repository.
-        
+
         Args:
             title: The title of the PR. If None, the commit message will be used.
             body: The body/description of the PR. If None, the commit message with agent signature will be used.
@@ -369,18 +370,18 @@ class GitAgent:
         if not self.token:
             raise ValueError(f"{self.platform.title()} token is required to create a pull request.")
 
-        if self.platform == 'github':
+        if self.platform == "github":
             self._create_github_pull_request(title, body)
-        elif self.platform == 'gitlab':
+        elif self.platform == "gitlab":
             self._create_gitlab_merge_request(title, body)
-        elif self.platform == 'gitverse':
+        elif self.platform == "gitverse":
             self._create_gitverse_pull_request(title, body)
         else:
             raise ValueError(f"Pull request creation not supported for platform: {self.platform}")
 
     def _create_github_pull_request(self, title: str = None, body: str = None) -> None:
         """Create a pull request on GitHub.
-        
+
         Args:
             title: The title of the PR. If None, the commit message will be used.
             body: The body/description of the PR. If None, the commit message with agent signature will be used.
@@ -419,7 +420,7 @@ class GitAgent:
 
     def _create_gitlab_merge_request(self, title: str = None, body: str = None) -> None:
         """Create a merge request on GitLab.
-        
+
         Args:
             title: The title of the PR. If None, the commit message will be used.
             body: The body/description of the PR. If None, the commit message with agent signature will be used.
@@ -427,11 +428,11 @@ class GitAgent:
         Raises:
             ValueError: If the API request fails.
         """
-        gitlab_instance = re.match(r'(https?://[^/]*gitlab[^/]*)', self.repo_url).group(1)
+        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
         base_repo = get_base_repo_url(self.repo_url)
-        source_project_path = get_base_repo_url(self.fork_url).replace('/', '%2F')
-        target_project_path = base_repo.replace('/', '%2F')
-        
+        source_project_path = get_base_repo_url(self.fork_url).replace("/", "%2F")
+        target_project_path = base_repo.replace("/", "%2F")
+
         last_commit = self.repo.head.commit
         mr_title = title if title else last_commit.message
         mr_body = body if body else last_commit.message
@@ -451,7 +452,7 @@ class GitAgent:
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
         }
-        
+
         url = f"{gitlab_instance}/api/v4/projects/{source_project_path}/merge_requests"
         response = requests.post(url, json=mr_data, headers=headers)
 
@@ -464,7 +465,7 @@ class GitAgent:
 
     def _create_gitverse_pull_request(self, title: str = None, body: str = None) -> None:
         """Create a pull request on Gitverse.
-        
+
         Args:
             title: The title of the PR. If None, the commit message will be used.
             body: The body/description of the PR. If None, the commit message with agent signature will be used.
@@ -491,7 +492,7 @@ class GitAgent:
             "Accept": "application/vnd.gitverse.object+json;version=1",
             "Content-Type": "application/json",
         }
-        
+
         url = f"https://api.gitverse.ru/repos/{base_repo}/pulls"
         response = requests.post(url, json=pr_data, headers=headers)
 
@@ -536,7 +537,7 @@ class GitAgent:
 
         Args:
             about_content: Dictionary containing the metadata to update about section.
-        
+
         Raises:
              ValueError: If the GitHub token is not set or inappropriate platform used.
         """
@@ -547,19 +548,19 @@ class GitAgent:
 
         base_repo = get_base_repo_url(self.repo_url)
         logger.info(f"Updating 'About' section for base repository - {self.repo_url}")
-        
-        if self.platform == 'github':
+
+        if self.platform == "github":
             self._update_github_about_section(base_repo, about_content)
             fork_repo = get_base_repo_url(self.fork_url)
             self._update_github_about_section(fork_repo, about_content)
-        elif self.platform == 'gitlab':
+        elif self.platform == "gitlab":
             self._update_gitlab_about_section(base_repo, about_content)
-        elif self.platform == 'gitverse':
+        elif self.platform == "gitverse":
             self._update_gitverse_about_section(base_repo, about_content)
 
     def _update_github_about_section(self, repo_path: str, about_content: dict):
         """Update GitHub repository about section.
-        
+
         Args:
             repo_path: The base repository path (e.g., 'username/repo-name').
             about_content: Dictionary containing the metadata to update about section.
@@ -593,25 +594,25 @@ class GitAgent:
 
     def _update_gitlab_about_section(self, repo_path: str, about_content: dict):
         """Update GitLab repository about section.
-        
+
         Args:
             repo_path: The base repository path (e.g., 'username/repo-name').
             about_content: Dictionary containing the metadata to update about section.
         """
-        gitlab_instance = re.match(r'(https?://[^/]*gitlab[^/]*)', self.repo_url).group(1)
-        project_path = repo_path.replace('/', '%2F')
-        
+        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
+        project_path = repo_path.replace("/", "%2F")
+
         url = f"{gitlab_instance}/api/v4/projects/{project_path}"
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
         }
-        
+
         about_data = {
             "description": about_content["description"],
             "tag_list": about_content["topics"],
         }
-        
+
         response = requests.put(url, headers=headers, json=about_data)
 
         if response.status_code in {200, 201}:
@@ -621,7 +622,7 @@ class GitAgent:
 
     def _update_gitverse_about_section(self, repo_path: str, about_content: dict):
         """Update Gitverse repository about section.
-        
+
         Args:
             repo_path: The base repository path (e.g., 'username/repo-name').
             about_content: Dictionary containing the metadata to update about section.
@@ -632,13 +633,13 @@ class GitAgent:
             "Accept": "application/vnd.gitverse.object+json;version=1",
             "Content-Type": "application/json",
         }
-        
+
         about_data = {
             "description": about_content["description"],
             "homepage": about_content["homepage"],
             "topics": about_content["topics"],
         }
-        
+
         response = requests.patch(url, headers=headers, json=about_data)
 
         if response.status_code in {200, 201}:
@@ -662,23 +663,23 @@ class GitAgent:
             raise ValueError("Token not found in environment variables.")
 
         repo_url = url if url else self.repo_url
-        
-        if self.platform == 'github':
+
+        if self.platform == "github":
             if repo_url.startswith("https://github.com/"):
-                repo_path = repo_url[len("https://github.com/"):]
+                repo_path = repo_url[len("https://github.com/") :]
                 auth_url = f"https://{self.token}@github.com/{repo_path}.git"
                 return auth_url
-        elif self.platform == 'gitlab':
-            gitlab_match = re.match(r'https?://([^/]*gitlab[^/]*)/(.+)', repo_url)
+        elif self.platform == "gitlab":
+            gitlab_match = re.match(r"https?://([^/]*gitlab[^/]*)/(.+)", repo_url)
             if gitlab_match:
                 gitlab_host = gitlab_match.group(1)
                 repo_path = gitlab_match.group(2)
                 auth_url = f"https://oauth2:{self.token}@{gitlab_host}/{repo_path}.git"
                 return auth_url
-        elif self.platform == 'gitverse':
+        elif self.platform == "gitverse":
             if repo_url.startswith("https://gitverse.ru/"):
-                repo_path = repo_url[len("https://gitverse.ru/"):]
+                repo_path = repo_url[len("https://gitverse.ru/") :]
                 auth_url = f"https://{self.token}@gitverse.ru/{repo_path}.git"
                 return auth_url
-        
+
         raise ValueError(f"Unsupported repository URL format for platform {self.platform}: {repo_url}")

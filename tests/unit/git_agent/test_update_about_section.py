@@ -37,7 +37,7 @@ def test_update_about_section_success(github_agent, about_content):
 
 def test_update_about_section_no_token(github_agent, about_content):
     github_agent.token = None
-    with pytest.raises(ValueError, match="GitHub token is required"):
+    with pytest.raises(ValueError, match="Github token is required to update repository's 'About' section."):
         github_agent.update_about_section(about_content)
 
 

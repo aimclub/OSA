@@ -36,7 +36,7 @@ class AboutGenerator:
         self.platform = detect_platform(self.repo_url)
         self.prompts = PromptAboutLoader().prompts
 
-        self._content: dict | None
+        self._content: dict | None = None
 
     def generate_about_content(self) -> None:
         """
@@ -145,18 +145,18 @@ class AboutGenerator:
 
     def _validate_topics(self, topics: List[str]) -> List[str]:
         """Validates topics against platform-specific APIs.
-        
+
         Args:
             topics (List[str]): List of potential topics to validate
 
         Returns:
             List[str]: List of validated topics that exist on platform
         """
-        if self.platform == 'github':
+        if self.platform == "github":
             return self._validate_github_topics(topics)
-        elif self.platform == 'gitlab':
+        elif self.platform == "gitlab":
             return self._validate_gitlab_topics(topics)
-        elif self.platform == 'gitverse':
+        elif self.platform == "gitverse":
             return self._validate_gitverse_topics(topics)
         else:
             logger.warning(f"Topic validation not implemented for platform: {self.platform}")
@@ -164,7 +164,7 @@ class AboutGenerator:
 
     def _validate_github_topics(self, topics: List[str]) -> List[str]:
         """Validates topics against GitHub Topics API.
-        
+
         Args:
             topics (List[str]): List of potential topics to validate
 
@@ -208,7 +208,7 @@ class AboutGenerator:
 
     def _validate_gitlab_topics(self, topics: List[str]) -> List[str]:
         """Validates topics against GitLab Topics API.
-        
+
         Args:
             topics (List[str]): List of potential topics to validate
 
@@ -245,10 +245,9 @@ class AboutGenerator:
         logger.info(f"Validated {len(validated_topics)} topics out of {len(topics)}")
         return validated_topics
 
-
     def _validate_gitverse_topics(self, topics: List[str]) -> List[str]:
         """Validates topics for Gitverse platform.
-        
+
         Args:
             topics (List[str]): List of potential topics to validate
 
