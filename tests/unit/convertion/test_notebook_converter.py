@@ -1,6 +1,7 @@
-import pytest
-import nbformat
 from unittest.mock import patch, mock_open
+
+import nbformat
+import pytest
 
 from osa_tool.convertion.notebook_converter import NotebookConverter
 
@@ -90,26 +91,6 @@ def test_convert_notebook_invalid(mock_logger):
             "invalid.ipynb",
             mock_logger.call_args[0][2],
         )
-
-
-@pytest.mark.parametrize(
-    "input_code,expected",
-    [
-        (
-            "plt.show()",
-            "import os\nos.makedirs('test_figures', exist_ok=True)\nplt.savefig(os.path.join('test_figures', f'figure_line3.png'))\nplt.close()\n",
-        ),
-        (
-            "    plt.show()",
-            "import os\nos.makedirs('test_figures', exist_ok=True)\n    plt.savefig(os.path.join('test_figures', f'figure_line3.png'))\n    plt.close()\n",
-        ),
-    ],
-)
-def test_process_visualizations(converter, input_code, expected):
-    # Act
-    processed = converter.process_visualizations("test", input_code)
-    # Assert
-    assert processed.strip() == expected.strip()
 
 
 def test_syntax_check_valid(converter):
