@@ -60,7 +60,7 @@ class NotebookConverter:
             (body, _) = self.exporter.from_notebook_node(notebook_content)
 
             notebook_name = os.path.splitext(os.path.basename(notebook_path))[0]
-            body = self.process_visualizations(notebook_name, body)
+            body = self.process_code(notebook_name, body)
 
             if self.is_syntax_correct(body):
                 script_name = os.path.splitext(notebook_path)[0] + ".py"
@@ -74,8 +74,8 @@ class NotebookConverter:
             logger.error("Failed to convert notebook %s: %s", notebook_path, repr(e))
 
     @staticmethod
-    def process_visualizations(figures_dir: str, code: str) -> str:
-        """Change code for visualizations.
+    def process_code(figures_dir: str, code: str) -> str:
+        """Change code for visualizations and delete pip install.
 
         Args:
             figures_dir: Path to save a figure
@@ -102,9 +102,10 @@ class NotebookConverter:
             ^\s*
             (
                 \w+\.(info|head|tail|describe)\(.*\)
-                | \w+\s*$
+                | (?!continue$)(?!break$)\w+\s*$
                 | display\(.*\)
                 | \#\s*In\[.*?\]\s*:?
+                | (?:!|%)?pip\s+install\s+[^\n]+
             )
         """
         code = re.sub(pattern_2, "", code, flags=re.MULTILINE)
@@ -115,6 +116,21 @@ class NotebookConverter:
         for i, line in enumerate(lines):
             lines[i] = re.sub(pattern_3, f"figure_line{i+1}.png", line)
         code = "\n".join(lines)
+
+        pattern_4 = re.compile(
+            r"""(?x)
+            ^(\s*(if|elif|else)[^\n]*:\n)
+            (
+                (?:\s* \#.*\n
+                | \s*\n
+                )+
+            )
+            """, 
+            re.MULTILINE
+        )
+
+        while re.search(pattern_4, code):
+            code = re.sub(pattern_4, "", code)
 
         return code
 
