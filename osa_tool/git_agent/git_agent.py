@@ -194,6 +194,7 @@ class GitAgent:
 
         if response_check.status_code == 204:
             logger.info(f"GitHub repository {base_repo} is already starred.")
+            return
         elif response_check.status_code != 404:
             logger.error(f"Failed to check star status: {response_check.status_code} - {response_check.text}")
             raise ValueError("Failed to check star status.")

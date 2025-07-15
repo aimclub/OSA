@@ -26,7 +26,7 @@ def test_create_pull_request_success(mock_logger, mock_post, github_agent):
         },
     )
     mock_logger.info.assert_called_once_with(
-        "Pull request created successfully: https://github.com/testuser/testrepo/pull/1"
+        "GitHub pull request created successfully: https://github.com/testuser/testrepo/pull/1"
     )
 
 

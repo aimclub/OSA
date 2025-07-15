@@ -36,7 +36,7 @@ class AboutGenerator:
         self.platform = detect_platform(self.repo_url)
         self.prompts = PromptAboutLoader().prompts
 
-        self._content: dict | None
+        self._content: dict | None = None
 
     def generate_about_content(self) -> None:
         """
