@@ -36,7 +36,7 @@ class PlanEditor:
             "no_pull_request",
             "temperature",
             "max_tokens",
-            "top_p"
+            "top_p",
         ]
         self.arguments_metadata = read_arguments_file_flat(build_arguments_path())
         self.modified_keys = set()
