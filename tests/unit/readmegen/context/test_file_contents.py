@@ -23,7 +23,7 @@ def test_file_processor_initialization(mock_config_loader, mock_core_files):
     processor = FileProcessor(config_loader=mock_config_loader, core_files=mock_core_files)
     # Assert
     assert processor.config.git.repository == "https://github.com/user/repo"
-    assert processor.repo_path == os.path.join(os.getcwd(), "user_repo")
+    assert processor.repo_path == os.path.join(os.getcwd(), "repo")
 
 
 def test_process_files(mock_config_loader, mock_core_files):
