@@ -125,8 +125,8 @@ class NotebookConverter:
                 | \s*\n
                 )+
             )
-            """, 
-            re.MULTILINE
+            """,
+            re.MULTILINE,
         )
 
         while re.search(pattern_4, code):

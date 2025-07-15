@@ -42,18 +42,14 @@ def parse_folder_name(repo_url: str) -> str:
     Returns:
         The name of the folder where the repository will be cloned.
     """
-    patterns = [
-        r'github\.com/[^/]+/([^/]+)',
-        r'gitlab[^/]+/[^/]+/([^/]+)',
-        r'gitverse\.ru/[^/]+/([^/]+)'
-    ]
+    patterns = [r"github\.com/[^/]+/([^/]+)", r"gitlab[^/]+/[^/]+/([^/]+)", r"gitverse\.ru/[^/]+/([^/]+)"]
     for pattern in patterns:
         match = re.search(pattern, repo_url)
         if match:
             folder_name = match.group(1)
             logger.debug(f"Parsed folder name '{folder_name}' from repo URL '{repo_url}'")
             return folder_name
-    folder_name = re.sub(r'[:/]', '_', repo_url.rstrip("/"))
+    folder_name = re.sub(r"[:/]", "_", repo_url.rstrip("/"))
     logger.debug(f"Parsed folder name '{folder_name}' from repo URL '{repo_url}'")
     return folder_name
 
@@ -83,9 +79,9 @@ def get_base_repo_url(repo_url: str) -> str:
         ValueError: If the provided URL has unsupported format.
     """
     patterns = [
-        r'https?://github\.com/([^/]+/[^/]+)',
-        r'https?://[^/]*gitlab[^/]*/(.+)',
-        r'https?://gitverse\.ru/([^/]+/[^/]+)'
+        r"https?://github\.com/([^/]+/[^/]+)",
+        r"https?://[^/]*gitlab[^/]*/(.+)",
+        r"https?://gitverse\.ru/([^/]+/[^/]+)",
     ]
     for pattern in patterns:
         match = re.match(pattern, repo_url)

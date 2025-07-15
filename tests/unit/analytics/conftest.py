@@ -94,6 +94,6 @@ def report_generator(mock_config_loader, source_rank):
         ),
         patch("osa_tool.models.models.ModelHandlerFactory.build") as mock_model,
     ):
-        
+
         mock_model.return_value.send_request.return_value = json.dumps({})
         return ReportGenerator(mock_config_loader, source_rank)

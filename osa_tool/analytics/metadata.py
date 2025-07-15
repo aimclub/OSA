@@ -57,27 +57,29 @@ class RepositoryMetadata:
     license_name: str | None
     license_url: str | None
 
-    #Platform
+    # Platform
     platform: str
+
 
 def detect_platform(repo_url: str) -> str:
     """Detect which platform the repository is hosted on.
-    
+
     Args:
         repo_url: The URL of the Git repository.
 
     Raises:
         ValueError: If inappropriate platform used.
     """
-    if 'github.com' in repo_url:
-        return 'github'
-    elif 'gitlab' in repo_url:
-        return 'gitlab'
-    elif 'gitverse.ru' in repo_url:
+    if "github.com" in repo_url:
+        return "github"
+    elif "gitlab" in repo_url:
+        return "gitlab"
+    elif "gitverse.ru" in repo_url:
         raise ValueError("Gitverse platform is temporarily unsupported")
-        #return 'gitverse'
+        # return 'gitverse'
     else:
         raise ValueError(f"Unsupported platform for URL: {repo_url}")
+
 
 def _parse_repository_metadata_github(repo_data: dict) -> RepositoryMetadata:
     """Parse GitHub API response into RepositoryMetadata."""
@@ -115,7 +117,7 @@ def _parse_repository_metadata_github(repo_data: dict) -> RepositoryMetadata:
         homepage_url=repo_data.get("homepage", ""),
         license_name=license_info.get("name", ""),
         license_url=license_info.get("url", ""),
-        platform="github"
+        platform="github",
     )
 
 
@@ -125,8 +127,10 @@ def _parse_repository_metadata_gitlab(repo_data: dict) -> RepositoryMetadata:
     namespace = repo_data.get("namespace", {}) or {}
 
     # Converting to a unified view with GitHub
-    created_time = datetime.strptime(repo_data.get("created_at", "").split('.')[0], '%Y-%m-%dT%H:%M:%S').strftime('%Y-%m-%dT%H:%M:%SZ')
-    
+    created_time = datetime.strptime(repo_data.get("created_at", "").split(".")[0], "%Y-%m-%dT%H:%M:%S").strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+
     return RepositoryMetadata(
         name=repo_data.get("name", ""),
         full_name=repo_data.get("path_with_namespace", ""),
@@ -144,9 +148,9 @@ def _parse_repository_metadata_gitlab(repo_data: dict) -> RepositoryMetadata:
         size_kb=repo_data.get("repository_size", 0) // 1024,  # Convert bytes to KB
         clone_url_http=repo_data.get("http_url_to_repo", ""),
         clone_url_ssh=repo_data.get("ssh_url_to_repo", ""),
-        contributors_url=f"{repo_data.get('web_url', '')}/contributors" if repo_data.get('web_url') else None,
-        languages_url=f"{repo_data.get('web_url', '')}/languages" if repo_data.get('web_url') else "",
-        issues_url=f"{repo_data.get('web_url', '')}/issues" if repo_data.get('web_url') else None,
+        contributors_url=f"{repo_data.get('web_url', '')}/contributors" if repo_data.get("web_url") else None,
+        languages_url=f"{repo_data.get('web_url', '')}/languages" if repo_data.get("web_url") else "",
+        issues_url=f"{repo_data.get('web_url', '')}/issues" if repo_data.get("web_url") else None,
         language="",  # GitLab API doesn't provide primary language in basic response
         languages=[],
         topics=repo_data.get("tag_list", []),
@@ -157,14 +161,14 @@ def _parse_repository_metadata_gitlab(repo_data: dict) -> RepositoryMetadata:
         homepage_url="",
         license_name="",
         license_url="",
-        platform="gitlab"
+        platform="gitlab",
     )
 
 
 def _parse_repository_metadata_gitverse(repo_data: dict) -> RepositoryMetadata:
     """Parse Gitverse API response into RepositoryMetadata."""
     owner_info = repo_data.get("owner", {}) or {}
-    
+
     return RepositoryMetadata(
         name=repo_data.get("name", ""),
         full_name=repo_data.get("full_name", ""),
@@ -195,7 +199,7 @@ def _parse_repository_metadata_gitverse(repo_data: dict) -> RepositoryMetadata:
         homepage_url=repo_data.get("homepage", ""),
         license_name=repo_data.get("license", {}).get("name", ""),
         license_url=repo_data.get("license", {}).get("url", ""),
-        platform="gitverse"
+        platform="gitverse",
     )
 
 
@@ -205,14 +209,14 @@ def load_data_metadata(repo_url: str) -> RepositoryMetadata | None:
     try:
         platform = detect_platform(repo_url)
         base_url = get_base_repo_url(repo_url)
-        
-        if platform == 'github':
+
+        if platform == "github":
             return _load_github_metadata(base_url)
-        elif platform == 'gitlab':
+        elif platform == "gitlab":
             return _load_gitlab_metadata(repo_url, base_url)
         else:
             return _load_gitverse_metadata(base_url)
-            
+
     except Exception as exc:
         logger.error(f"Error while fetching repository metadata: {exc}")
         return None
@@ -225,10 +229,10 @@ def _load_github_metadata(base_url: str) -> RepositoryMetadata:
         "Accept": "application/vnd.github.v3+json",
     }
     url = f"https://api.github.com/repos/{base_url}"
-    
+
     response = requests.get(url=url, headers=headers)
     response.raise_for_status()
-    
+
     metadata = response.json()
     logger.info(f"Successfully fetched GitHub metadata for repository: {base_url}")
     return _parse_repository_metadata_github(metadata)
@@ -236,19 +240,19 @@ def _load_github_metadata(base_url: str) -> RepositoryMetadata:
 
 def _load_gitlab_metadata(repo_url: str, base_url: str) -> RepositoryMetadata:
     """Load metadata from GitLab API."""
-    gitlab_instance = re.match(r'(https?://[^/]*gitlab[^/]*)', repo_url).group(1)
-    
+    gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", repo_url).group(1)
+
     headers = {
         "Authorization": f"Bearer {os.getenv('GITLAB_TOKEN', os.getenv('GIT_TOKEN'))}",
         "Content-Type": "application/json",
     }
-    
-    project_path = base_url.replace('/', '%2F')
+
+    project_path = base_url.replace("/", "%2F")
     url = f"{gitlab_instance}/api/v4/projects/{project_path}"
-    
+
     response = requests.get(url=url, headers=headers)
     response.raise_for_status()
-    
+
     metadata = response.json()
     logger.info(f"Successfully fetched GitLab metadata for repository: {base_url}")
     return _parse_repository_metadata_gitlab(metadata)
@@ -261,12 +265,12 @@ def _load_gitverse_metadata(base_url: str) -> RepositoryMetadata:
         "Accept": "application/vnd.gitverse.object+json;version=1",
         "Content-Type": "application/json",
     }
-    
+
     url = f"https://api.gitverse.ru/repos/{base_url}"
 
     response = requests.get(url=url, headers=headers)
     response.raise_for_status()
-    
+
     metadata = response.json()
     logger.info(f"Successfully fetched Gitverse metadata for repository: {base_url}")
     return _parse_repository_metadata_gitverse(metadata)
