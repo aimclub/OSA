@@ -44,7 +44,6 @@ class ModeScheduler:
             "organize": True,
             "readme": True,
             "report": True,
-            "requirements": True,
         }
         return plan
 
