@@ -1,5 +1,6 @@
 import os
 import subprocess
+from pathlib import Path
 from typing import List
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
@@ -172,10 +173,10 @@ def convert_notebooks(repo_url: str, notebook_paths: List[str] | None = None) ->
 
 def generate_requirements(repo_url):
     logger.info(f"Starting the generation of requirements")
-    repo_path = parse_folder_name(repo_url)
+    repo_path = Path(parse_folder_name(repo_url)).resolve()
     try:
         result = subprocess.run(
-            ["pipreqs", "--scan-notebooks", "--force", "--encoding", " utf-8", repo_path],
+            ["pipreqs", "--scan-notebooks", "--force", "--encoding", "utf-8", repo_path],
             capture_output=True,
             text=True,
             check=True,
