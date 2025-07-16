@@ -139,7 +139,7 @@ def main():
 
         if create_fork and create_pull_request:
             rich_section("Publishing changes")
-            github_agent.commit_and_push_changes()
+            github_agent.commit_and_push_changes(force=True)
             github_agent.create_pull_request(body=about_gen.get_about_section_message() if about_gen else "")
 
         if plan.get("delete_dir"):
