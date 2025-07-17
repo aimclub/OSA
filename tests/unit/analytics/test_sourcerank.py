@@ -48,3 +48,11 @@ def test_tests_presence(source_rank, tree, expected):
     source_rank.tree = tree
     # Assert
     assert source_rank.tests_presence() == expected
+
+
+@pytest.mark.parametrize("tree, expected", [("requirements.txt", True), ("reqs.txt", False)])
+def test_requirements_presence(source_rank, tree, expected):
+    # Arrange
+    source_rank.tree = tree
+    # Assert
+    assert source_rank.requirements_presence() == expected

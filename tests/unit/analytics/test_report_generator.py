@@ -37,11 +37,13 @@ def test_extract_presence_files(text_generator):
     text_generator.sourcerank.license_presence = MagicMock(return_value=False)
     text_generator.sourcerank.examples_presence = MagicMock(return_value="Partial")
     text_generator.sourcerank.docs_presence = MagicMock(return_value=True)
+    text_generator.sourcerank.requirements_presence = MagicMock(return_value=True)
     expected = [
         "README presence is True",
         "LICENSE presence is False",
         "Examples presence is Partial",
         "Documentation presence is True",
+        "Requirements presence is True",
     ]
     # Act
     result = text_generator._extract_presence_files()
