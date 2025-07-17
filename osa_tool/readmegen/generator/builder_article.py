@@ -1,16 +1,12 @@
 import json
-import os
-
-import tomli
 
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.readmegen.generator.header import HeaderBuilder
-from osa_tool.utils import osa_project_root
+from osa_tool.readmegen.generator.base_builder import MarkdownBuilderBase
 
 
-class MarkdownBuilderArticle:
+class MarkdownBuilderArticle(MarkdownBuilderBase):
     """
-    Builds each section of the README Markdown file.
+    Builds each section of the README Markdown file for article-like repositories.
     """
 
     def __init__(
@@ -19,36 +15,11 @@ class MarkdownBuilderArticle:
         overview: str = None,
         content: str = None,
         algorithms: str = None,
+        getting_started: str = None,
     ):
-        self.config_loader = config_loader
-        self.config = self.config_loader.config
-        self.template_path = os.path.join(osa_project_root(), "config", "templates", "template_article.toml")
-
-        self._overview_json = overview
+        super().__init__(config_loader, overview=overview, getting_started=getting_started)
         self._content_json = content
         self._algorithms_json = algorithms
-        self.header_badges = HeaderBuilder(self.config_loader).build_information_section
-
-        self._template = self.load_template()
-
-    def load_template(self) -> dict:
-        """
-        Loads a TOML template file and returns its sections as a dictionary.
-        """
-        with open(self.template_path, "rb") as file:
-            return tomli.load(file)
-
-    @property
-    def header(self):
-        return self._template["headers"].format(project_name=self.config.git.name, info_badges=self.header_badges)
-
-    @property
-    def overview(self) -> str:
-        """Generates the README Overview section"""
-        if not self._overview_json:
-            return ""
-        overview_data = json.loads(self._overview_json)
-        return self._template["overview"].format(overview_data["overview"])
 
     @property
     def content(self) -> str:
@@ -66,8 +37,32 @@ class MarkdownBuilderArticle:
         algorithms_data = json.loads(self._algorithms_json)
         return self._template["algorithms"].format(algorithms_data["algorithms"])
 
+    @property
+    def toc(self) -> str:
+        sections = {
+            "Content": self.content,
+            "Algorithms": self.algorithms,
+            "Installation": self.installation,
+            "Getting Started": self.getting_started,
+            "License": self.license,
+            "Citation": self.citation,
+        }
+        return self.table_of_contents(sections)
+
     def build(self):
         """Builds each section of the README.md file."""
-        readme_contents = [self.header, self.overview, self.content, self.algorithms]
+        readme_contents = [
+            self.header,
+            self.overview,
+            self.toc,
+            self.content,
+            self.algorithms,
+            self.installation,
+            self.getting_started,
+            self.examples,
+            self.documentation,
+            self.license,
+            self.citation,
+        ]
 
         return "\n".join(readme_contents)

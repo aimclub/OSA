@@ -148,3 +148,23 @@ If you use this software, please cite it as below.
 
 ---
 """
+
+# -- ARTICLE-README SECTIONS----------------------------------------------------
+
+# -- Repository Contents Section -----------------------------------------------
+content = """
+## Content
+
+{0}
+
+---
+"""
+
+# -- Used Algorithms Section ---------------------------------------------------
+algorithms = """
+## Algorithms
+
+{0}
+
+---
+"""

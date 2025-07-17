@@ -93,7 +93,8 @@ class PromptBuilder:
         """Builds a files summary prompt using serialized file contents."""
         try:
             formatted_prompt = self.prompts_article["file_summary"].format(
-                files_content=self.serialize_file_contexts(files_content)
+                files_content=self.serialize_file_contexts(files_content),
+                readme_content=extract_readme_content(self.base_path),
             )
             return formatted_prompt
         except Exception as e:
@@ -116,32 +117,35 @@ class PromptBuilder:
                 project_name=self.metadata.name,
                 files_summary=files_summary,
                 pdf_summary=pdf_summary,
+                readme_content=extract_readme_content(self.base_path),
             )
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build overview prompt: {e}")
             raise
 
-    def get_prompt_content_article(self, key_files: list[FileContext], pdf_summary: str) -> str:
+    def get_prompt_content_article(self, files_summary: str, pdf_summary: str) -> str:
         """Builds a content article prompt using metadata, key file content, and PDF summary."""
         try:
             formatted_prompt = self.prompts_article["content"].format(
                 project_name=self.metadata.name,
-                files_content=key_files,
+                files_summary=files_summary,
                 pdf_summary=pdf_summary,
+                readme_content=extract_readme_content(self.base_path),
             )
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build content prompt: {e}")
             raise
 
-    def get_prompt_algorithms_article(self, files_summary: str, pdf_summary: str) -> str:
+    def get_prompt_algorithms_article(self, key_files: list[FileContext], pdf_summary: str) -> str:
         """Builds an algorithms article prompt using metadata, file summary, and PDF summary."""
         try:
             formatted_prompt = self.prompts_article["algorithms"].format(
                 project_name=self.metadata.name,
-                file_summary=files_summary,
+                files_content=key_files,
                 pdf_summary=pdf_summary,
+                readme_content=extract_readme_content(self.base_path),
             )
             return formatted_prompt
         except Exception as e:
