@@ -68,6 +68,9 @@ class ModeScheduler:
             logger.info("Auto mode selected for task scheduler.")
             auto_plan = self._make_request_for_auto_mode()
 
+            if not self.sourcerank.requirements_presence():
+                auto_plan["requirements"] = True
+
             workflow_manager = WorkflowManager(
                 base_path=self.base_path,
                 sourcerank=self.sourcerank,
