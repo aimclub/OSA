@@ -79,6 +79,6 @@ class TextGenerator:
             f"LICENSE presence is {self.sourcerank.license_presence()}",
             f"Examples presence is {self.sourcerank.examples_presence()}",
             f"Documentation presence is {self.sourcerank.docs_presence()}",
-            f"Requirements presence is {self.sourcerank.requirements_presence()}"
+            f"Requirements presence is {self.sourcerank.requirements_presence()}",
         ]
         return contents
