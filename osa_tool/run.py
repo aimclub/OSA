@@ -1,4 +1,6 @@
 import os
+import subprocess
+from pathlib import Path
 from typing import List
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
@@ -104,6 +106,11 @@ def main():
             rich_section("Community docs generation")
             generate_documentation(config)
 
+        # Requirements generation
+        if plan.get("requirements"):
+            rich_section("Requirements generation")
+            generate_requirements(args.repository)
+
         # Readme generation
         if plan.get("readme"):
             rich_section("README generation")
@@ -132,7 +139,7 @@ def main():
 
         if create_fork and create_pull_request:
             rich_section("Publishing changes")
-            github_agent.commit_and_push_changes()
+            github_agent.commit_and_push_changes(force=True)
             github_agent.create_pull_request(body=about_gen.get_about_section_message() if about_gen else "")
 
         if plan.get("delete_dir"):
@@ -162,6 +169,22 @@ def convert_notebooks(repo_url: str, notebook_paths: List[str] | None = None) ->
 
     except Exception as e:
         logger.error("Error while converting notebooks: %s", repr(e), exc_info=True)
+
+
+def generate_requirements(repo_url):
+    logger.info(f"Starting the generation of requirements")
+    repo_path = Path(parse_folder_name(repo_url)).resolve()
+    try:
+        result = subprocess.run(
+            ["pipreqs", "--scan-notebooks", "--force", "--encoding", "utf-8", repo_path],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        logger.info(f"Requirements generated successfully at: {repo_path}")
+        logger.debug(result)
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Error while generating project's requirements: {e.stderr}")
 
 
 def generate_docstrings(config_loader: ConfigLoader) -> None:

@@ -61,5 +61,6 @@ tree-sitter-python==0.23.4
 typing_extensions==4.12.2
 urllib3==2.3.0
 yarl==1.18.3
+pipreqs==0.5.0
 
 protollm>=0.1.3

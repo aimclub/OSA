@@ -194,6 +194,7 @@ class ReportGenerator:
             ["License Presence", "✓" if self.sourcerank.license_presence() else "✗"],
             ["Documentation Presence", "✓" if self.sourcerank.docs_presence() else "✗"],
             ["Examples Presence", "✓" if self.sourcerank.examples_presence() else "✗"],
+            ["Requirements Presence", "✓" if self.sourcerank.requirements_presence() else "✗"],
             ["Tests Presence", "✓" if self.sourcerank.tests_presence() else "✗"],
             ["Description Presence", "✓" if self.metadata.description else "✗"],
         ]
