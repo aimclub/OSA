@@ -40,10 +40,10 @@ def test_delete_repository_failure(mock_os, repo_url):
     mock_exists, mock_rmtree = mock_os
     mock_exists.return_value = True
     mock_rmtree.side_effect = Exception("Deletion failed")
+    expected_folder_name = parse_folder_name(repo_url)
+    expected_path = os.path.join(os.getcwd(), expected_folder_name)
     # Act
     with patch("osa_tool.utils.logger") as mock_logger:
         delete_repository(repo_url)
     # Assert
-    mock_logger.error.assert_called_with(
-        "Failed to delete directory {}: Deletion failed".format(os.path.join(os.getcwd(), "repo-name"))
-    )
+    mock_logger.error.assert_called_with(f"Failed to delete directory {expected_path}: Deletion failed")

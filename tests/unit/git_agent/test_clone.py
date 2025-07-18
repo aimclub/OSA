@@ -4,8 +4,8 @@ import pytest
 from git import GitCommandError, InvalidGitRepositoryError
 
 
-@patch("osa_tool.github_agent.github_agent.Repo")
-@patch("osa_tool.github_agent.github_agent.logger")
+@patch("osa_tool.git_agent.git_agent.Repo")
+@patch("osa_tool.git_agent.git_agent.logger")
 def test_clone_repository_already_initialized(mock_logger, mock_repo, github_agent):
     # Act
     github_agent.clone_repository()
@@ -14,9 +14,9 @@ def test_clone_repository_already_initialized(mock_logger, mock_repo, github_age
     mock_repo.assert_not_called()
 
 
-@patch("osa_tool.github_agent.github_agent.Repo")
-@patch("osa_tool.github_agent.github_agent.logger")
-@patch("osa_tool.github_agent.github_agent.os.path.exists")
+@patch("osa_tool.git_agent.git_agent.Repo")
+@patch("osa_tool.git_agent.git_agent.logger")
+@patch("osa_tool.git_agent.git_agent.os.path.exists")
 def test_clone_repository_directory_exists_invalid_repo(mock_exists, mock_logger, mock_repo, github_agent):
     # Arrange
     github_agent.repo = None
@@ -31,9 +31,9 @@ def test_clone_repository_directory_exists_invalid_repo(mock_exists, mock_logger
     )
 
 
-@patch("osa_tool.github_agent.github_agent.Repo")
-@patch("osa_tool.github_agent.github_agent.logger")
-@patch("osa_tool.github_agent.github_agent.os.path.exists")
+@patch("osa_tool.git_agent.git_agent.Repo")
+@patch("osa_tool.git_agent.git_agent.logger")
+@patch("osa_tool.git_agent.git_agent.os.path.exists")
 def test_clone_repository_clone_new_repo(mock_exists, mock_logger, mock_repo, github_agent):
     # Arrange
     github_agent.repo = None
@@ -53,9 +53,9 @@ def test_clone_repository_clone_new_repo(mock_exists, mock_logger, mock_repo, gi
     )
 
 
-@patch("osa_tool.github_agent.github_agent.Repo")
-@patch("osa_tool.github_agent.github_agent.logger")
-@patch("osa_tool.github_agent.github_agent.os.path.exists")
+@patch("osa_tool.git_agent.git_agent.Repo")
+@patch("osa_tool.git_agent.git_agent.logger")
+@patch("osa_tool.git_agent.git_agent.os.path.exists")
 def test_clone_repository_clone_error(mock_exists, mock_logger, mock_repo, github_agent):
     # Arrange
     github_agent.repo = None

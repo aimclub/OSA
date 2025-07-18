@@ -36,7 +36,7 @@ def example_getting_started():
 
 
 @pytest.fixture
-def markdown_builder(config_loader):
+def markdown_builder(config_loader, mock_load_data_metadata):
     return MarkdownBuilder(
         config_loader=config_loader,
         overview=example_overview(),

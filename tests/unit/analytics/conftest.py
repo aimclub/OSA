@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import Mock, MagicMock, patch
 
 import pytest
 
@@ -22,7 +22,7 @@ def mock_config_loader():
 
 
 @pytest.fixture
-@patch("osa_tool.analytics.metadata.load_data_metadata", return_value={})
+@patch("osa_tool.analytics.metadata.load_data_metadata")
 @patch("osa_tool.utils.osa_project_root", return_value="/mock/path")
 @patch("osa_tool.utils.parse_folder_name", return_value="testrepo")
 @patch("osa_tool.utils.get_repo_tree", return_value=(None, "README.md LICENSE tests", None))
@@ -40,7 +40,17 @@ def text_generator(mock_config_loader, source_rank):
             return_value=MagicMock(name="testrepo"),
         ),
         patch("osa_tool.models.models.ModelHandlerFactory.build") as mock_model,
+        patch("osa_tool.analytics.metadata.requests.get") as mock_get,
     ):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "name": "testrepo",
+            "description": "A test repository",
+            "full_name": "user/testrepo",
+        }
+        mock_response.raise_for_status = MagicMock()
+
+        mock_get.return_value = mock_response
 
         mock_model.return_value.send_request.return_value = json.dumps({})
         return TextGenerator(mock_config_loader, source_rank)
@@ -75,10 +85,15 @@ def custom_report():
 
 
 @pytest.fixture
-@patch("osa_tool.analytics.metadata.load_data_metadata")
-@patch("osa_tool.models.models.ModelHandlerFactory.build")
-def report_generator(mock_model, mock_load_data_metadata, mock_config_loader, source_rank):
+def report_generator(mock_config_loader, source_rank):
     """Return a ReportGenerator instance with mocked dependencies."""
-    mock_model.return_value.send_request.return_value = json.dumps({})
+    with (
+        patch(
+            "osa_tool.analytics.metadata.load_data_metadata",
+            return_value=MagicMock(name="testrepo"),
+        ),
+        patch("osa_tool.models.models.ModelHandlerFactory.build") as mock_model,
+    ):
 
-    return ReportGenerator(mock_config_loader, source_rank)
+        mock_model.return_value.send_request.return_value = json.dumps({})
+        return ReportGenerator(mock_config_loader, source_rank)

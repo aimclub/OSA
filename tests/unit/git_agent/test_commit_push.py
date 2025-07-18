@@ -7,7 +7,7 @@ def test_commit_and_push_changes_success(github_agent):
     # Arrange
     with (
         patch.object(github_agent, "_get_auth_url", return_value="https://auth-url.com") as mock_auth_url,
-        patch("osa_tool.github_agent.github_agent.logger") as mock_logger,
+        patch("osa_tool.git_agent.git_agent.logger") as mock_logger,
     ):
         github_agent.repo.git.add = MagicMock()
         github_agent.repo.git.commit = MagicMock()

@@ -21,9 +21,9 @@ def test_get_auth_url_invalid_url_format(github_agent):
 @pytest.mark.parametrize(
     "method, exception_message",
     [
-        ("create_fork", "GitHub token is required to create a fork."),
-        ("star_repository", "GitHub token is required to star the repository."),
-        ("create_pull_request", "GitHub token is required to create a pull request."),
+        ("create_fork", "Github token is required to create a fork."),
+        ("star_repository", "Github token is required to star the repository."),
+        ("create_pull_request", "Github token is required to create a pull request."),
         ("_get_auth_url", "Token not found in environment variables."),
     ],
 )

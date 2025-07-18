@@ -2,12 +2,12 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from osa_tool.github_agent.github_agent import GithubAgent
+from osa_tool.git_agent.git_agent import GitAgent
 
 
 @pytest.fixture
 def github_agent():
-    agent = GithubAgent("https://github.com/username/repo")
+    agent = GitAgent("https://github.com/username/repo", repo_branch_name="main")
     agent.token = "dummy_token"
     agent.fork_url = "https://github.com/fork/repo"
     return agent
@@ -37,7 +37,7 @@ def test_update_about_section_success(github_agent, about_content):
 
 def test_update_about_section_no_token(github_agent, about_content):
     github_agent.token = None
-    with pytest.raises(ValueError, match="GitHub token is required"):
+    with pytest.raises(ValueError, match="Github token is required to update repository's 'About' section."):
         github_agent.update_about_section(about_content)
 
 

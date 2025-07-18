@@ -18,7 +18,7 @@ def example_algorithms():
 
 
 @pytest.fixture
-def markdown_builder(config_loader):
+def markdown_builder(config_loader, mock_load_data_metadata):
     return MarkdownBuilderArticle(
         config_loader=config_loader,
         overview=example_overview(),

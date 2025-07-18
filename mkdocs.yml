@@ -15,9 +15,9 @@ plugins:
 
 nav:
   - User Guide:
-    - index.md
+      - index.md
   - API Reference:
-      - Github Agent: core/github_agent/github_agent.md
+      - Git Agent: core/git_agent/git_agent.md
       - Model Handler: core/models/models.md
       - OSA Tree Sitter:
           - core/osatreesitter/osatreesitter.md
