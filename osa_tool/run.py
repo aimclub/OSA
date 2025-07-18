@@ -106,15 +106,15 @@ def main():
             rich_section("Community docs generation")
             generate_documentation(config)
 
-        # Readme generation
-        if plan.get("readme"):
-            rich_section("README generation")
-            readme_agent(config, plan.get("article"), plan.get("refine_readme"))
-
         # Requirements generation
         if plan.get("requirements"):
             rich_section("Requirements generation")
             generate_requirements(args.repository)
+
+        # Readme generation
+        if plan.get("readme"):
+            rich_section("README generation")
+            readme_agent(config, plan.get("article"), plan.get("refine_readme"))
 
         # About section generation
         about_gen = None
