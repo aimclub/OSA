@@ -203,10 +203,10 @@ class GitAgent:
                 return
 
         fork_url = f"https://api.gitverse.ru/repos/{base_repo}/forks"
-        fork_response = requests.post(fork_url, json=body , headers=headers)
+        fork_response = requests.post(fork_url, json=body, headers=headers)
 
         if fork_response.status_code in {200, 201}:
-            self.fork_url = 'https://gitverse.ru/' + fork_response.json()["full_name"]
+            self.fork_url = "https://gitverse.ru/" + fork_response.json()["full_name"]
             logger.info(f"Gitverse fork created successfully: {self.fork_url}")
         else:
             logger.error(f"Failed to create Gitverse fork: {fork_response.status_code} - {fork_response.text}")
@@ -502,7 +502,7 @@ class GitAgent:
         base_repo = get_base_repo_url(self.repo_url)
         source_project_path = get_base_repo_url(self.fork_url).replace("/", "%2F")
         target_project_path = base_repo.replace("/", "%2F")
-        
+
         project_url = f"{gitlab_instance}/api/v4/projects/{target_project_path}"
         response = requests.get(project_url, headers=headers)
         if response.status_code == 200:

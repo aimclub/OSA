@@ -1,12 +1,15 @@
 import os
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from functools import lru_cache
 
-import re
 import requests
+from dotenv import load_dotenv
 
 from osa_tool.utils import get_base_repo_url, logger
+
+load_dotenv()
 
 
 @dataclass
@@ -75,7 +78,7 @@ def detect_platform(repo_url: str) -> str:
     elif "gitlab" in repo_url:
         return "gitlab"
     elif "gitverse.ru" in repo_url:
-        return 'gitverse'
+        return "gitverse"
     else:
         raise ValueError(f"Unsupported platform for URL: {repo_url}")
 
@@ -224,7 +227,7 @@ def load_data_metadata(repo_url: str) -> RepositoryMetadata | None:
 def _load_github_metadata(base_url: str) -> RepositoryMetadata:
     """Load metadata from GitHub API."""
     headers = {
-        "Authorization": f"token {os.getenv('GIT_TOKEN')}",
+        "Authorization": f"token {os.getenv('GIT_TOKEN', os.getenv('GITHUB_TOKEN', ''))}",
         "Accept": "application/vnd.github.v3+json",
     }
     url = f"https://api.github.com/repos/{base_url}"
