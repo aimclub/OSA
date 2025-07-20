@@ -30,13 +30,14 @@ def readme_agent(config_loader, article: str | None, refine_readme: bool) -> Non
             (core_features, overview, getting_started) = responses
 
             builder = MarkdownBuilder(config_loader, overview, core_features, getting_started)
-            builder.deduplicate_sections()
-            readme_content = builder.build()
         else:
             responses = LLMClient(config_loader).get_responses_article(article)
-            (overview, content, algorithms) = responses
+            (overview, content, algorithms, getting_started) = responses
 
-            readme_content = MarkdownBuilderArticle(config_loader, overview, content, algorithms).build()
+            builder = MarkdownBuilderArticle(config_loader, overview, content, algorithms, getting_started)
+
+        builder.deduplicate_sections()
+        readme_content = builder.build()
 
         if refine_readme:
             readme_content = ReadmeRefiner(config_loader, readme_content).refine()

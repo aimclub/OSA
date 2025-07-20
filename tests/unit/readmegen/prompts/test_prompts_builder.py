@@ -61,9 +61,9 @@ def patch_dependencies(mock_metadata):
                 return {
                     "file_summary": "Files: {files_content}",
                     "pdf_summary": "PDF: {pdf_content}",
-                    "overview": "Article for {project_name} | Files: {files_summary} | PDF: {pdf_summary}",
-                    "content": "Article content: {project_name}, {files_content}, {pdf_summary}",
-                    "algorithms": "Algo: {project_name} | {file_summary} | {pdf_summary}",
+                    "overview": "Article for {project_name} | Files: {files_summary} | PDF: {pdf_summary} | Readme: {readme_content}",
+                    "content": "Article content: {project_name}, {files_summary}, {pdf_summary} | Readme: {readme_content}",
+                    "algorithms": "Algo: {project_name} | {files_content} | {pdf_summary} | Readme: {readme_content}",
                 }
             else:
                 return {}
@@ -146,22 +146,24 @@ def test_get_prompt_overview_article(mock_config_loader):
     assert "PDF: PDF B" in prompt
 
 
-def test_get_prompt_content_article(mock_config_loader, file_contexts):
+def test_get_prompt_content_article(mock_config_loader):
     # Arrange
     builder = PromptBuilder(mock_config_loader)
+    print(builder.prompts_article["content"])
     # Act
-    prompt = builder.get_prompt_content_article(file_contexts, "PDF Summary")
+    prompt = builder.get_prompt_content_article("FS", "PDF Summary")
     # Assert
-    assert "file1.py" in prompt
+    assert "FS" in prompt
     assert "PDF Summary" in prompt
 
 
-def test_get_prompt_algorithms_article(mock_config_loader):
+def test_get_prompt_algorithms_article(mock_config_loader, file_contexts):
     # Arrange
     builder = PromptBuilder(mock_config_loader)
     # Act
-    prompt = builder.get_prompt_algorithms_article("FS", "PDF SUM")
+    prompt = builder.get_prompt_algorithms_article(file_contexts, "PDF SUM")
     # Assert
     assert "Algo: TestProject" in prompt
-    assert "FS" in prompt
+    assert "file1.py" in prompt
+    assert "print('hello')" in prompt
     assert "PDF SUM" in prompt

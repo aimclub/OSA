@@ -56,7 +56,7 @@ def test_content_section(markdown_builder):
     section = markdown_builder.content
     # Assert
     assert isinstance(section, str)
-    assert section.startswith("## Repository content")
+    assert section.startswith("## Content")
     assert "This is the content section." in section
 
 
@@ -65,7 +65,7 @@ def test_algorithms_section(markdown_builder):
     section = markdown_builder.algorithms
     # Assert
     assert isinstance(section, str)
-    assert section.startswith("## Used algorithms")
+    assert section.startswith("## Algorithms")
     assert "This is the algorithms section." in section
 
 
@@ -75,6 +75,6 @@ def test_build_readme(markdown_builder):
     # Assert
     assert isinstance(readme, str)
     assert "## Overview" in readme
-    assert "## Repository content" in readme
-    assert "## Used algorithms" in readme
+    assert "## Content" in readme
+    assert "## Algorithms" in readme
     assert "TestProject" in readme
