@@ -124,15 +124,43 @@ class GitAgent:
             "Content-Type": "application/json",
         }
 
-        url = f"{gitlab_instance}/api/v4/projects/{project_path}/fork"
-        response = requests.post(url, headers=headers)
+        user_url = f"{gitlab_instance}/api/v4/user"
+        user_response = requests.get(user_url, headers=headers)
+        if user_response.status_code != 200:
+            logger.error(f"Failed to get user info: {user_response.status_code} - {user_response.text}")
+            raise ValueError("Failed to get user information.")
+        current_username = user_response.json().get("username", "")
 
-        if response.status_code in {200, 201}:
-            fork_data = response.json()
+        if current_username == self.metadata.owner:
+            self.fork_url = self.repo_url
+            logger.info(f"User '{current_username}' already owns the repository. Using original URL: {self.fork_url}")
+            return
+
+        forks_url = f"{gitlab_instance}/api/v4/projects/{project_path}/forks"
+        forks_response = requests.get(forks_url, headers=headers)
+
+        if forks_response.status_code != 200:
+            logger.error(f"Failed to get forks: {forks_response.status_code} - {forks_response.text}")
+            raise ValueError("Failed to get forks list.")
+
+        forks = forks_response.json()
+        for fork in forks:
+            namespace = fork.get("namespace", {})
+            fork_owner = namespace.get("name") or namespace.get("path") or ""
+            if fork_owner == current_username:
+                self.fork_url = fork["web_url"]
+                logger.info(f"Fork already exists: {self.fork_url}")
+                return
+
+        fork_url = f"{gitlab_instance}/api/v4/projects/{project_path}/fork"
+        fork_response = requests.post(fork_url, headers=headers)
+
+        if fork_response.status_code in {200, 201}:
+            fork_data = fork_response.json()
             self.fork_url = fork_data["web_url"]
             logger.info(f"GitLab fork created successfully: {self.fork_url}")
         else:
-            logger.error(f"Failed to create GitLab fork: {response.status_code} - {response.text}")
+            logger.error(f"Failed to create GitLab fork: {fork_response.status_code} - {fork_response.text}")
             raise ValueError("Failed to create fork.")
 
     def _create_gitverse_fork(self) -> None:
@@ -142,20 +170,46 @@ class GitAgent:
             ValueError: If the API request fails.
         """
         base_repo = get_base_repo_url(self.repo_url)
+        body = {
+            "name": f"{self.metadata.name}",
+            "description": "osa fork",
+        }
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.gitverse.object+json;version=1",
             "Content-Type": "application/json",
         }
 
-        url = f"https://api.gitverse.ru/repos/{base_repo}/forks"
-        response = requests.post(url, headers=headers)
+        user_url = "https://api.gitverse.ru/user"
+        user_response = requests.get(user_url, headers=headers)
+        if user_response.status_code != 200:
+            logger.error(f"Failed to get user info: {user_response.status_code} - {user_response.text}")
+            raise ValueError("Failed to get user information.")
+        current_login = user_response.json().get("login", "")
 
-        if response.status_code in {200, 201}:
-            self.fork_url = response.json()["html_url"]
+        if current_login == self.metadata.owner:
+            self.fork_url = self.repo_url
+            logger.info(f"User '{current_login}' already owns the repository. Using original URL: {self.fork_url}")
+            return
+
+        fork_check_url = f"https://api.gitverse.ru/repos/{current_login}/{self.metadata.name}"
+        fork_check_response = requests.get(fork_check_url, headers=headers)
+
+        if fork_check_response.status_code == 200:
+            fork_data = fork_check_response.json()
+            if fork_data.get("fork") and fork_data.get("parent", {}).get("full_name") == base_repo:
+                self.fork_url = f'https://gitverse.ru/{fork_data["full_name"]}'
+                logger.info(f"Fork already exists: {self.fork_url}")
+                return
+
+        fork_url = f"https://api.gitverse.ru/repos/{base_repo}/forks"
+        fork_response = requests.post(fork_url, json=body , headers=headers)
+
+        if fork_response.status_code in {200, 201}:
+            self.fork_url = 'https://gitverse.ru/' + fork_response.json()["full_name"]
             logger.info(f"Gitverse fork created successfully: {self.fork_url}")
         else:
-            logger.error(f"Failed to create Gitverse fork: {response.status_code} - {response.text}")
+            logger.error(f"Failed to create Gitverse fork: {fork_response.status_code} - {fork_response.text}")
             raise ValueError("Failed to create fork.")
 
     def star_repository(self) -> None:
@@ -188,8 +242,8 @@ class GitAgent:
             "Accept": "application/vnd.github.v3+json",
         }
 
-        url_check = f"https://api.github.com/user/starred/{base_repo}"
-        response_check = requests.get(url_check, headers=headers)
+        url = f"https://api.github.com/user/starred/{base_repo}"
+        response_check = requests.get(url, headers=headers)
 
         if response_check.status_code == 204:
             logger.info(f"GitHub repository {base_repo} is already starred.")
@@ -198,8 +252,7 @@ class GitAgent:
             logger.error(f"Failed to check star status: {response_check.status_code} - {response_check.text}")
             raise ValueError("Failed to check star status.")
 
-        url_star = f"https://api.github.com/user/starred/{base_repo}"
-        response_star = requests.put(url_star, headers=headers)
+        response_star = requests.put(url, headers=headers)
 
         if response_star.status_code == 204:
             logger.info(f"GitHub repository {base_repo} has been starred successfully.")
@@ -225,7 +278,10 @@ class GitAgent:
         url = f"{gitlab_instance}/api/v4/projects/{project_path}/star"
         response = requests.post(url, headers=headers)
 
-        if response.status_code in {200, 201, 304}:  # 304 = already starred
+        if response.status_code == 304:
+            logger.info(f"GitLab repository {base_repo} is already starred.")
+            return
+        elif response.status_code == 201:
             logger.info(f"GitLab repository {base_repo} has been starred successfully.")
             return
         else:
@@ -243,14 +299,23 @@ class GitAgent:
             "Accept": "application/vnd.gitverse.object+json;version=1",
         }
 
-        url = f"https://api.gitverse.ru/repos/{base_repo}/star"
-        response = requests.put(url, headers=headers)
+        url = f"https://api.gitverse.ru/user/starred/{base_repo}"
+        response_check = requests.get(url, headers=headers)
 
-        if response.status_code in {200, 204}:
+        if response_check.status_code == 204:
+            logger.info(f"Gitverse repository {base_repo} is already starred.")
+            return
+        elif response_check.status_code != 404:
+            logger.error(f"Failed to check star status: {response_check.status_code} - {response_check.text}")
+            raise ValueError("Failed to check star status.")
+
+        response_star = requests.put(url, headers=headers)
+
+        if response_star.status_code == 204:
             logger.info(f"Gitverse repository {base_repo} has been starred successfully.")
             return
         else:
-            logger.error(f"Failed to star Gitverse repository: {response.status_code} - {response.text}")
+            logger.error(f"Failed to star Gitverse repository: {response_star.status_code} - {response_star.text}")
 
     def clone_repository(self) -> None:
         """Clones the repository into the specified directory.
@@ -428,10 +493,23 @@ class GitAgent:
         Raises:
             ValueError: If the API request fails.
         """
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json",
+        }
+
         gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
         base_repo = get_base_repo_url(self.repo_url)
         source_project_path = get_base_repo_url(self.fork_url).replace("/", "%2F")
         target_project_path = base_repo.replace("/", "%2F")
+        
+        project_url = f"{gitlab_instance}/api/v4/projects/{target_project_path}"
+        response = requests.get(project_url, headers=headers)
+        if response.status_code == 200:
+            project_info = response.json()
+            target_project_id = project_info["id"]
+        else:
+            raise ValueError(f"Failed to get project info: {response.status_code} - {response.text}")
 
         last_commit = self.repo.head.commit
         mr_title = title if title else last_commit.message
@@ -443,14 +521,9 @@ class GitAgent:
             "title": mr_title,
             "source_branch": self.branch_name,
             "target_branch": self.base_branch,
-            "target_project_id": target_project_path,
+            "target_project_id": target_project_id,
             "description": mr_body,
             "allow_collaboration": True,
-        }
-
-        headers = {
-            "Authorization": f"Bearer {self.token}",
-            "Content-Type": "application/json",
         }
 
         url = f"{gitlab_instance}/api/v4/projects/{source_project_path}/merge_requests"
@@ -482,7 +555,7 @@ class GitAgent:
 
         pr_data = {
             "title": pr_title,
-            "head": f"{self.fork_url.split('/')[-2]}:{self.branch_name}",
+            "head": self.branch_name,
             "base": self.base_branch,
             "body": pr_body,
         }

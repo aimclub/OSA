@@ -75,8 +75,7 @@ def detect_platform(repo_url: str) -> str:
     elif "gitlab" in repo_url:
         return "gitlab"
     elif "gitverse.ru" in repo_url:
-        raise ValueError("Gitverse platform is temporarily unsupported")
-        # return 'gitverse'
+        return 'gitverse'
     else:
         raise ValueError(f"Unsupported platform for URL: {repo_url}")
 

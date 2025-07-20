@@ -226,7 +226,6 @@ class AboutGenerator:
                 response = requests.get(base_url, headers=headers, params=params)
                 if response.status_code == 200:
                     data = response.json()
-                    # Проверяем, есть ли среди найденных топиков точное совпадение по имени
                     for entry in data:
                         if entry.get("name") == topic:
                             validated_topics.append(topic)
