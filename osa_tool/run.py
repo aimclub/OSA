@@ -1,5 +1,4 @@
 import os
-from typing import List
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
 from osa_tool.analytics.report_maker import ReportGenerator
@@ -144,7 +143,7 @@ def main():
         logger.error("Error: %s", e, exc_info=True)
 
 
-def convert_notebooks(repo_url: str, notebook_paths: List[str] | None = None) -> None:
+def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) -> None:
     """Converts Jupyter notebooks to Python scripts based on provided paths.
 
     Args:
@@ -186,7 +185,7 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
 
     except Exception as e:
         dg._purge_temp_files(repo_path)
-        logger.error("Error while generating codebase documentaion: %s", repr(e), exc_info=True)
+        logger.error("Error while generating codebase documentation: %s", repr(e), exc_info=True)
 
 
 def load_configuration(
