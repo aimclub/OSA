@@ -137,7 +137,7 @@ class AboutGenerator:
             response = self.model_handler.send_request(formatted_prompt)
             topics = [topic.strip().lower().replace(" ", "-") for topic in response.split(",") if topic.strip()]
             logger.debug(f"Generated topics from LLM: {topics}")
-            validated_topics = self._validate_github_topics(topics)
+            validated_topics = self._validate_topics(topics)
             return list(set([*existing_topics, *validated_topics]))
         except Exception as e:
             logger.error(f"Error generating topics: {e}")
