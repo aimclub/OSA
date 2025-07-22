@@ -1,0 +1,6 @@
+repo,json_file,mean_flesch,mean_bert,mean_concise,num_pairs
+albumentations_repoagent,/root/work/itmo/OSA/albumentations_repoagent/docs_experiment.json,53.21992437991531,0.524337500333786,0.18077616044758427,2
+code2flow_repoagent,/root/work/itmo/OSA/code2flow_repoagent/docs_experiment.json,0.0,0.0,0.0,0
+flask_repoagent,/root/work/itmo/OSA/flask_repoagent/docs_experiment.json,44.965082405253625,0.5401398527125517,0.2399202845599207,72
+greenlet_repoagent,/root/work/itmo/OSA/greenlet_repoagent/docs_experiment.json,0.0,0.0,0.0,0
+simdjson_repoagent,/root/work/itmo/OSA/simdjson_repoagent/docs_experiment.json,0.0,0.0,0.0,0

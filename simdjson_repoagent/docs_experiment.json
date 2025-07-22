@@ -1,0 +1,52 @@
+{
+    "tools/release.py": [],
+    "style/run-clang-format.py": [
+        {
+            "type": "class",
+            "name": "ExitStatus",
+            "methods": []
+        },
+        {
+            "type": "class",
+            "name": "DiffError",
+            "methods": [
+                {
+                    "method_name": "__init__",
+                    "source_code": "def __init__(self, message, errs=None):\n    super(DiffError, self).__init__(message)\n    self.errs = errs or []",
+                    "first_doc": "**__init__**: The function of __init__ is to initialize a new instance of the DiffError class with a specified error message and an optional list of error details.\n\n**parameters**: The parameters of this Function.\n· message: The main error message to be associated with the DiffError instance.\n· errs: An optional parameter representing a list of error details. If not provided, it defaults to an empty list.\n\n**Code Description**:  \nThis constructor method sets up a DiffError object by first calling the base Exception class’s __init__ method with the provided message, ensuring that the error message is properly stored and accessible through standard exception handling mechanisms. It then assigns the errs attribute to the provided errs list if it exists; otherwise, it initializes errs as an empty list. This allows the DiffError instance to carry both a primary error message and a collection of additional error details, which can be useful for reporting multiple related errors together.\n\n**Note**:  \nWhen creating a DiffError instance, if no errs parameter is supplied, the errs attribute will always be an empty list. This ensures that the errs attribute is always a list, simplifying downstream error handling and inspection."
+                }
+            ]
+        },
+        {
+            "type": "class",
+            "name": "UnexpectedError",
+            "methods": [
+                {
+                    "method_name": "__init__",
+                    "source_code": "def __init__(self, message, exc=None):\n    super(UnexpectedError, self).__init__(message)\n    self.formatted_traceback = traceback.format_exc()\n    self.exc = exc",
+                    "first_doc": "**__init__**: The function of __init__ is to initialize a new instance of the UnexpectedError exception with a message and an optional exception object.\n\n**parameters**: The parameters of this Function.\n· message: The error message to be associated with the UnexpectedError instance.\n· exc: An optional exception object that can be attached to the UnexpectedError instance for further context (default is None).\n\n**Code Description**:  \nThis constructor initializes the UnexpectedError exception by first calling the base Exception class's __init__ method with the provided message. It then captures the current formatted traceback using traceback.format_exc(), storing it in the instance attribute formatted_traceback. This allows the traceback information at the point of exception creation to be preserved for later inspection or logging. The optional exc parameter allows an existing exception object to be attached to the UnexpectedError instance, providing additional context about the underlying cause of the error.\n\n**Note**:  \nWhen creating an UnexpectedError instance, ensure that the message parameter clearly describes the error. The formatted_traceback will only contain meaningful information if an exception is currently being handled when this constructor is called. If exc is not provided, it defaults to None, and only the message and traceback will be stored."
+                },
+                {
+                    "method_name": "bold",
+                    "source_code": "def bold(s):\n    return '\\x1b[1m' + s + '\\x1b[0m'",
+                    "first_doc": "**bold**: The function of bold is to apply ANSI escape codes to a string so that it appears in bold text when printed in a terminal that supports ANSI formatting.\n\n**parameters**: The parameters of this Function.\n· s: A string that will be wrapped with ANSI escape codes to display as bold text.\n\n**Code Description**:  \nThis function takes a single string argument s and returns a new string that is wrapped with ANSI escape codes for bold formatting. Specifically, it prepends the escape code '\\x1b[1m' to the input string, which instructs the terminal to start bold formatting. It then appends the escape code '\\x1b[0m', which resets the formatting back to normal. As a result, when the returned string is printed to a compatible terminal, the text appears in bold.\n\n**Note**:  \n- This function only affects the appearance of text in terminals that support ANSI escape codes. If the output is redirected to a file or a terminal that does not support ANSI codes, the escape sequences will be visible as raw characters.\n- The input parameter s should be a string. Passing non-string types may result in a TypeError or unintended behavior.\n\n**Output Example**:  \nIf the function is called as bold(\"Hello, World!\"), the return value will be:\n'\\x1b[1mHello, World!\\x1b[0m'\n\nWhen printed in a compatible terminal, this will display:  \nHello, World!  \nin bold text."
+                },
+                {
+                    "method_name": "cyan",
+                    "source_code": "def cyan(s):\n    return '\\x1b[36m' + s + '\\x1b[0m'",
+                    "first_doc": "**cyan**: The function of cyan is to wrap a given string with ANSI escape codes to display the text in cyan color in terminal outputs.\n\n**parameters**: The parameters of this Function.\n· s: The string to be colorized in cyan.\n\n**Code Description**:  \nThis function takes a single string argument s and returns a new string that is prefixed with the ANSI escape code '\\x1b[36m', which sets the text color to cyan in most terminal emulators. The original string s is then appended, followed by the ANSI reset code '\\x1b[0m', which returns the terminal text color to its default setting. This ensures that only the provided string appears in cyan, and subsequent terminal output is unaffected.\n\n**Note**:  \n- This function is intended for use in terminal environments that support ANSI color codes. If used in environments that do not support these codes (such as some Windows command prompts or text editors), the escape sequences may be displayed as raw text.\n- The input parameter s should be a string. Passing non-string types may result in a TypeError or unintended behavior.\n\n**Output Example**:  \nIf called as cyan(\"Hello, World!\"), the return value will be:\n'\\x1b[36mHello, World!\\x1b[0m'  \nWhen printed in a compatible terminal, \"Hello, World!\" will appear in cyan color."
+                },
+                {
+                    "method_name": "green",
+                    "source_code": "def green(s):\n    return '\\x1b[32m' + s + '\\x1b[0m'",
+                    "first_doc": "**green**: The function of green is to wrap a given string with ANSI escape codes to display the text in green color in terminal outputs.\n\n**parameters**: The parameters of this Function.\n· s: A string that will be colorized in green.\n\n**Code Description**:  \nThis function takes a single string argument s and returns a new string that is surrounded by ANSI escape codes for green text color. Specifically, it prepends the ANSI code '\\x1b[32m' to the input string, which instructs the terminal to switch to green text color, and appends '\\x1b[0m', which resets the terminal formatting back to default. This ensures that only the provided string appears in green, and subsequent terminal output is unaffected.\n\n**Note**:  \n- This function is intended for use in terminal environments that support ANSI escape codes. If used in environments that do not support these codes (such as some Windows command prompts or text editors), the output may display the raw escape sequences instead of colored text.\n- The input parameter s should be a string. Passing non-string types may result in a TypeError or unintended behavior.\n\n**Output Example**:  \nIf the input is \"Success\", the return value will be:\n'\\x1b[32mSuccess\\x1b[0m'\n\nWhen printed to a compatible terminal, this will display the word Success in green."
+                },
+                {
+                    "method_name": "red",
+                    "source_code": "def red(s):\n    return '\\x1b[31m' + s + '\\x1b[0m'",
+                    "first_doc": "**red**: The function of red is to return a string wrapped in ANSI escape codes that display the text in red color when printed to a terminal.\n\n**parameters**: The parameters of this Function.\n· s: A string that will be colorized in red.\n\n**Code Description**:  \nThis function takes a single string argument, s, and returns a new string that is prefixed with the ANSI escape code '\\x1b[31m' and suffixed with the reset code '\\x1b[0m'. The prefix '\\x1b[31m' instructs compatible terminals to render the following text in red. The suffix '\\x1b[0m' resets the terminal formatting to default, ensuring that only the intended text appears in red and subsequent output is unaffected. This approach is commonly used for colorizing terminal output in command-line tools and scripts.\n\n**Note**:  \n- This function is intended for use in environments that support ANSI escape codes, such as most Unix-like terminal emulators.  \n- If used in environments that do not support ANSI codes (such as some Windows command prompts or text editors), the output may display the raw escape sequences instead of colored text.\n\n**Output Example**:  \nIf called as red(\"Error\"), the returned string will be:\n'\\x1b[31mError\\x1b[0m'\nWhen printed in a compatible terminal, this will display the word Error in red."
+                }
+            ]
+        }
+    ]
+}

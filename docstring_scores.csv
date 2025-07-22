@@ -1,0 +1,6 @@
+repo,json_file,mean_flesch,mean_bert,mean_concise,num_pairs
+albumentations,/root/work/itmo/OSA/albumentations/docs_experiment.json,40.15410865751399,0.6208003069927444,0.5175064310672436,67
+code2flow,/root/work/itmo/OSA/code2flow/docs_experiment.json,44.77432722463489,0.5322001961798504,0.35481833692502796,58
+flask,/root/work/itmo/OSA/flask/docs_experiment.json,39.51351805791364,0.5928216878051463,0.5797642296576913,259
+greenlet,/root/work/itmo/OSA/greenlet/docs_experiment.json,38.17912120556775,0.575481136639913,0.5554108580779236,3
+PyTorch-GAN,/root/work/itmo/OSA/PyTorch-GAN/docs_experiment.json,44.411845112164734,0.5537213052020353,0.2532789189689239,34

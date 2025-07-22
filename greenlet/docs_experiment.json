@@ -1,0 +1,787 @@
+{
+    "greenlet/appveyor/run_pip.py": [],
+    "greenlet/benchmarks/chain.py": [
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "link",
+                "second_doc": "\"\"\"\nTransfers control back and forth between the current and next greenlets, incrementing a value in the process. This facilitates manual management of coroutine execution flow by explicitly switching contexts and passing data between them.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                "source_code": "value = greenlet.getcurrent().parent.switch()\n    next_greenlet.switch(value + 1)"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "chain",
+                "second_doc": "\"\"\"\nCreates a sequence of greenlets, switching control through each in turn to manage execution order.\n\nArgs:\n    n (int): The number of greenlets to create and chain together.\n    link (callable): The function to be executed within each greenlet.\n\nReturns:\n    Any: The result of the final switch operation, as determined by the execution flow through the greenlet chain.\n\nWhy:\n    This method orchestrates explicit context switching among multiple greenlets to control the flow of execution in a cooperative multitasking environment.\n\"\"\"",
+                "source_code": "start_node = greenlet.getcurrent()\n    for i in xrange(n):\n        g = greenlet.greenlet(link)\n        g.switch(start_node)\n        start_node = g\n    return start_node.switch(0)"
+            },
+            "type": "function"
+        }
+    ],
+    "greenlet/conftest.py": [
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "pytest_configure",
+                "second_doc": "\"\"\"\nPrepares the testing environment by ensuring that all C extension modules are freshly built before running tests.\n\nThis method changes the working directory to the source location, invokes the build process for extension modules, and ensures that test-specific extensions are built. This setup guarantees that tests run against the latest compiled code, helping to catch integration or build-related issues early.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                "source_code": "os.chdir(os.path.dirname(__file__))\n    cmd = [sys.executable, \"setup.py\", \"-q\", \"build_ext\", \"-q\", \"-i\"]\n    spawn(cmd, search_path=0)\n\n    from tests import build_test_extensions\n    build_test_extensions()"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "pytest_report_header",
+                "second_doc": "\"\"\"\nDisplays version and installation path information for the greenlet library in the pytest report header to help users confirm the runtime environment and diagnose issues related to concurrency support.\n\nReturns:\n    str: A string containing the greenlet version and the file path from which it is loaded.\n\"\"\"",
+                "source_code": "import greenlet\n    return \"greenlet %s from %s\" % (greenlet.__version__, greenlet.__file__)"
+            },
+            "type": "function"
+        }
+    ],
+    "greenlet/doc/conf.py": [],
+    "greenlet/my_build_ext.py": [
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "symlink_or_copy",
+                "second_doc": "\"\"\"\nCreate a symbolic link from 'src' to 'dst' if possible, otherwise fall back to copying the file.\n\nThis method ensures that a destination file is always available with the contents of the source file, either by creating a symlink or performing a file copy. This flexibility increases robustness and compatibility with various operating systems and permission settings.\n\nArgs:\n    src (str): Path to the source file.\n    dst (str): Path for the symlink or copied file to be created.\n\nReturns:\n    None\n\"\"\"",
+                "source_code": "if hasattr(os, 'symlink'):\n        try:\n            os.symlink(src, dst)\n            return\n        except OSError:  # symbolic link privilege not held??\n            pass\n        except NotImplementedError:  # running on XP/'CreateSymbolicLinkW not found'\n            pass\n\n    shutil.copyfile(src, dst)"
+            },
+            "type": "function"
+        },
+        {
+            "methods": [
+                {
+                    "docstring": null,
+                    "method_name": "initialize_options",
+                    "second_doc": "\"\"\"\nInitializes the build_ext extension command's options, setting up internal state for the build process.\n\nThis method sets a custom option to its default value and prepares the object for further configuration by invoking the base class's initialization logic. This ensures that all necessary build parameters are correctly initialized before the extension module build steps proceed.\n\nArgs:\n    self: The instance of the build_ext class.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "self.my_inplace = None\n        _build_ext.initialize_options(self)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "finalize_options",
+                    "second_doc": "\"\"\"\nFinalize the build extension options, ensuring that any custom 'inplace' configuration is preserved before invoking the standard behavior.\n\nArgs:\n    self: The build_ext instance whose options are being finalized.\n\nReturns:\n    None\n\nThis method temporarily overrides the 'inplace' build setting to guarantee that extensions are correctly built in the targeted location, preventing conflicts or misplacement during the build process. This ensures reliability when configuring and building extension modules that interact closely with coroutine and context-switching mechanisms.\n\"\"\"",
+                    "source_code": "if self.my_inplace is None:\n            self.my_inplace = self.inplace\n            self.inplace = 0\n        _build_ext.finalize_options(self)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "build_extension",
+                    "second_doc": "\"\"\"\nBuilds a single extension module and ensures it is correctly placed for use, handling both standard and in-place builds to allow immediate access to the built module. When building in-place, it manages symbolic links or copies to synchronize build outputs with the expected source directory, facilitating seamless development and testing.\n\nArgs:\n    ext: The extension module to build.\n\nReturns:\n    None. Modifies the build environment or links/copies the built extension as a side effect, ensuring the built extension is importable.\n\"\"\"",
+                    "source_code": "_build_ext.build_extension(self, ext)\n        if not self.my_inplace:\n            build_lib = os.path.abspath(self.build_lib)\n            if build_lib not in sys.path:\n                sys.path.insert(0, build_lib)\n            return\n        filename = self.get_ext_filename(ext.name)\n        build_path = os.path.abspath(os.path.join(self.build_lib, filename))\n        src_path = os.path.abspath(filename)\n        if build_path != src_path:\n            try:\n                os.unlink(src_path)\n            except OSError:\n                pass\n\n            if self.verbose:\n                sys.stderr.write('Linking %s to %s\\n' % (build_path, src_path))\n\n            symlink_or_copy(build_path, src_path)"
+                }
+            ],
+            "name": "build_ext",
+            "type": "class"
+        }
+    ],
+    "greenlet/run-tests.py": [
+        {
+            "details": {
+                "docstring": "\"\"\"determine if running on a 32 bit or 64 bit platform\n    \"\"\"",
+                "first_doc": "\"\"\"\nReturns the number of bits used to represent a pointer on the current platform.\n\nReturns:\n    int: The pointer size in bits.\n\"\"\"",
+                "method_name": "bits",
+                "second_doc": "\"\"\"\nDetermines the number of bits required to store a pointer on the current Python runtime's platform architecture. This information helps ensure compatibility and proper memory handling across different systems.\n\nReturns:\n    int: The size of a pointer in bits on the current platform.\n\"\"\"",
+                "source_code": "return struct.calcsize(\"P\") * 8"
+            },
+            "type": "function"
+        }
+    ],
+    "greenlet/setup.py": [
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "readfile",
+                "second_doc": "\"\"\"\nReads the entire contents of a file specified by filename and returns it as a string.\n\nThis method ensures that the file is properly closed after reading, even if an error occurs. Reliable file reading is crucial for loading resources and data needed for program execution and coordination.\n\nArgs:\n    filename (str): The path to the file to be read.\n\nReturns:\n    str: The contents of the file as a single string.\n\"\"\"",
+                "source_code": "f = open(filename)\n    try:\n        return f.read()\n    finally:\n        f.close()"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "_find_platform_headers",
+                "second_doc": "\"\"\"\nSearches for and returns all header files in the 'platform' directory that match the 'switch_*.h' pattern. \n\nThis is necessary to dynamically locate platform-specific header files, which may be needed for compiling or extending functionality to accommodate different system environments.\n\nReturns:\n    list: A list of file paths to 'switch_*.h' headers found in the 'platform' directory.\n\"\"\"",
+                "source_code": "return glob.glob(\"platform/switch_*.h\")"
+            },
+            "type": "function"
+        }
+    ],
+    "greenlet/tests/__init__.py": [
+        {
+            "details": {
+                "docstring": "\"\"\"Collect all tests under the tests directory and return a\n    unittest.TestSuite\n    \"\"\"",
+                "first_doc": "\"\"\"\nCollects and loads all available test modules as a unified test suite.\n\nThis method searches for test modules in the designated tests directory, filters them as necessary, and aggregates them into a single test suite using the unittest framework.\n\nReturns:\n    TestSuite: A test suite containing all discovered test cases from the test modules.\n\"\"\"",
+                "method_name": "test_collector",
+                "second_doc": "\"\"\"\nAggregates all relevant Python test modules into a single unified test suite for streamlined execution and validation.\n\nBy dynamically identifying and compiling available test files, this method ensures only suitable tests (such as excluding those requiring unavailable extensions) are executed together, enabling thorough and consistent evaluation of the codebase.\n\nArgs:\n    build_base (str): The build directory base path used for test extension configuration.\n\nReturns:\n    unittest.TestSuite: A test suite comprising all test cases discovered in the appropriate test modules.\n\"\"\"",
+                "source_code": "build_test_extensions(build_base)\n    tests_dir = os.path.realpath(os.path.dirname(__file__))\n    test_module_list = [\n        'tests.%s' % os.path.splitext(os.path.basename(t))[0]\n        for t in glob.glob(os.path.join(tests_dir, 'test_*.py'))]\n    if not TEST_EXTENSIONS_CPP:\n        test_module_list.remove('tests.test_cpp')\n    return unittest.TestLoader().loadTestsFromNames(test_module_list)"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": "\"\"\"Because distutils sucks, it just copies the entire contents of the build\n    results dir (e.g. build/lib.linux-i686-2.6) during installation. That means\n    that we can't put any files there that we don't want to distribute.\n\n    To deal with it, this code will compile test extensions in a separate\n    directory, prepending it to sys.path afterwards. This way testing with\n    multiple Python release and pydebug versions works and test extensions\n    are not distributed.\n    \"\"\"",
+                "first_doc": "\"\"\"\nBuilds the test extension modules for the project.\n\nThis method configures and invokes the build process for test extension modules, including both regular and C++ extensions. It adjusts the build directory if none is specified and applies necessary build options.\n\nReturns:\n    None: This method does not return a value.\n\"\"\"",
+                "method_name": "build_test_extensions",
+                "second_doc": "\"\"\"\nCompiles the project's test extension modules, including both Python and C++ components, to ensure the testing environment reflects actual build scenarios and features. This process is essential for validating compatibility, correctness, and integration of extensions within the test suite.\n\nArgs:\n    build_base (str, optional): The directory where build output should be placed. If not specified, defaults to 'build/tests'.\n\nReturns:\n    None: Performs actions as a side effect without returning a value.\n\"\"\"",
+                "source_code": "if build_base is None:\n        build_base = os.path.join('build', 'tests')\n    from my_build_ext import build_ext\n    setup(\n        options={\n            'build': {'build_base': build_base},\n        },\n        cmdclass=dict(build_ext=build_ext),\n        script_args=['-q', 'build_ext', '-q'],\n        ext_modules=TEST_EXTENSIONS + TEST_EXTENSIONS_CPP)"
+            },
+            "type": "function"
+        }
+    ],
+    "greenlet/tests/test_cpp.py": [
+        {
+            "methods": [
+                {
+                    "docstring": null,
+                    "method_name": "test_exception_switch",
+                    "second_doc": "\"\"\"\nTests the ability of greenlets to correctly handle context switches that involve exceptions. This ensures predictable stack and state restoration when switching between lightweight coroutines, improving the robustness and reliability of concurrent code.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "greenlets = []\n        for i in range(4):\n            g = greenlet.greenlet(_test_extension_cpp.test_exception_switch)\n            g.switch(i)\n            greenlets.append(g)\n        for i, g in enumerate(greenlets):\n            self.assertEqual(g.switch(), i)"
+                }
+            ],
+            "name": "CPPTests",
+            "type": "class"
+        }
+    ],
+    "greenlet/tests/test_extension_interface.py": [
+        {
+            "methods": [
+                {
+                    "docstring": null,
+                    "method_name": "test_switch",
+                    "second_doc": "\"\"\"\nTests that switching execution to a new coroutine using greenlet results in the expected value, ensuring correct behavior of context switching primitives.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "self.assertEqual(\n            50, _test_extension.test_switch(greenlet.greenlet(lambda: 50)))"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_switch_kwargs",
+                    "second_doc": "\"\"\"\nTests that arguments can be passed as keyword arguments when switching to a greenlet, verifying correct transfer of input values during greenlet execution.\n\nArgs:\n    self: Instance of the test class.\n\nReturns:\n    None. Asserts within the method validate expected behavior.\n\"\"\"",
+                    "source_code": "def foo(x, y):\n            return x * y\n        g = greenlet.greenlet(foo)\n        self.assertEqual(6, _test_extension.test_switch_kwargs(g, x=3, y=2))"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_setparent",
+                    "second_doc": "\"\"\"\nTest the behavior of switching greenlet parents to ensure correct control flow in greenlet-based coroutines.\n\nThis method verifies that reparenting a greenlet alters the execution flow as expected, and asserts that the greenlet returns control to the appropriate context without reaching unintended code paths. This helps guarantee robust management of execution contexts and proper handling of cooperative multitasking.\n\nArgs:\n    self: The test case instance.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "def foo():\n            def bar():\n                greenlet.getcurrent().parent.switch()\n\n                # This final switch should go back to the main greenlet, since\n                # the test_setparent() function in the C extension should have\n                # reparented this greenlet.\n                greenlet.getcurrent().parent.switch()\n                raise AssertionError(\"Should never have reached this code\")\n            child = greenlet.greenlet(bar)\n            child.switch()\n            greenlet.getcurrent().parent.switch(child)\n            greenlet.getcurrent().parent.throw(\n                AssertionError(\"Should never reach this code\"))\n        foo_child = greenlet.greenlet(foo).switch()\n        self.assertEqual(None, _test_extension.test_setparent(foo_child))"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_getcurrent",
+                    "second_doc": "\"\"\"\nTests the retrieval of the currently executing lightweight cooperative thread within the current context. This ensures correct tracking and management of execution state during concurrent operations.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "_test_extension.test_getcurrent()"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_new_greenlet",
+                    "second_doc": "\"\"\"\nTests that a new greenlet can be created and correctly returns the expected value when executed.\n\nThis method verifies the proper functioning of greenlet creation and result retrieval, ensuring that context switching and execution within a greenlet behave as intended.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "self.assertEqual(-15, _test_extension.test_new_greenlet(lambda: -15))"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_raise_greenlet_dead",
+                    "second_doc": "\"\"\"\nTests that invoking a specific function results in a greenlet.GreenletExit exception, ensuring correct exception signaling when the execution of a greenlet ends unexpectedly.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "self.assertRaises(\n            greenlet.GreenletExit, _test_extension.test_raise_dead_greenlet)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_raise_greenlet_error",
+                    "second_doc": "\"\"\"\nVerifies that calling the underlying extension's error-raising method correctly triggers a greenlet-specific exception. This ensures that error signaling and exception propagation mechanisms within greenlet integrations function as expected.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "self.assertRaises(\n            greenlet.error, _test_extension.test_raise_greenlet_error)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_throw",
+                    "second_doc": "\"\"\"\nTests that an exception thrown into a running greenlet is correctly propagated, caught, and handled within the target greenlet.\n\nArgs:\n    self: The test case instance.\n\nReturns:\n    None. Asserts correct exception capture and message handling within the test.\n\"\"\"",
+                    "source_code": "seen = []\n\n        def foo():\n            try:\n                greenlet.getcurrent().parent.switch()\n            except ValueError:\n                seen.append(sys.exc_info()[1])\n            except greenlet.GreenletExit:\n                raise AssertionError\n        g = greenlet.greenlet(foo)\n        g.switch()\n        _test_extension.test_throw(g)\n        self.assertEqual(len(seen), 1)\n        self.assertTrue(\n            isinstance(seen[0], ValueError),\n            \"ValueError was not raised in foo()\")\n        self.assertEqual(\n            str(seen[0]),\n            'take that sucka!',\n            \"message doesn't match\")"
+                }
+            ],
+            "name": "CAPITests",
+            "type": "class"
+        }
+    ],
+    "greenlet/tests/test_gc.py": [
+        {
+            "methods": [
+                {
+                    "docstring": null,
+                    "method_name": "test_dead_circular_ref",
+                    "second_doc": "\"\"\"\nTests that greenlet objects with dead circular references are properly collected by the garbage collector.\n\nThis ensures that no memory leaks occur due to uncollectable greenlet cycles, verifying that the garbage collector and weak references interact as expected when greenlets are no longer reachable.\n\nArgs:\n    self: An instance of the GCTests class.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "o = weakref.ref(greenlet.greenlet(greenlet.getcurrent).switch())\n        gc.collect()\n        self.assertTrue(o() is None)\n        self.assertFalse(gc.garbage, gc.garbage)"
+                }
+            ],
+            "name": "GCTests",
+            "type": "class"
+        }
+    ],
+    "greenlet/tests/test_generator.py": [
+        {
+            "methods": [
+                {
+                    "docstring": null,
+                    "method_name": "__init__",
+                    "second_doc": "\"\"\"\nInitializes a genlet instance by storing the provided positional and keyword arguments, allowing for customized context or execution state for coroutine-like behavior.\n\nArgs:\n    args: Positional arguments to be associated with the genlet.\n    kwds: Keyword arguments to be associated with the genlet.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "self.args = args\n        self.kwds = kwds"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "run",
+                    "second_doc": "\"\"\"\nInvokes the stored function with its arguments and keyword arguments, triggering the execution context associated with this object. This enables manual switching of program flow for cooperative multitasking.\n\nArgs:\n    None (uses instance attributes: fn, args, kwds)\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "fn, = self.fn\n        fn(*self.args, **self.kwds)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "__iter__",
+                    "second_doc": "\"\"\"\nEnables the object to be iterable, supporting use in iteration contexts such as loops and comprehensions. This allows objects to participate in Python's iteration protocol, facilitating seamless integration with language constructs that expect an iterable.\n\nReturns:\n    self: The object itself, as it manages its own iteration state.\n\"\"\"",
+                    "source_code": "return self"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "__next__",
+                    "second_doc": "\"\"\"\nAdvances the greenlet to its next state by switching execution context and yielding the produced result. This method enables cooperative multitasking by allowing the greenlet to resume operation until completion or exhaustion.\n\nReturns:\n    The result produced by the most recent switch to the greenlet.\n\nRaises:\n    StopIteration: If the greenlet has finished executing and there are no further results.\n\"\"\"",
+                    "source_code": "self.parent = greenlet.getcurrent()\n        result = self.switch()\n        if self:\n            return result\n        else:\n            raise StopIteration"
+                }
+            ],
+            "name": "genlet",
+            "type": "class"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "Yield",
+                "second_doc": "\"\"\"\nYields execution from the current greenlet back to its parent, transferring control and optionally a value.\n\nThis method ensures that yielding occurs within a valid cooperative multitasking context by searching for the appropriate parent greenlet and raises an error if called outside such a context. This mechanism enables coordinated transfer of execution flow between lightweight coroutines.\n\nArgs:\n    value: Optional. The value to send to the parent greenlet upon switching context.\n\nReturns:\n    None. The method transfers control rather than returning a value.\n\nRaises:\n    RuntimeError: If called outside a managed greenlet context.\n\"\"\"",
+                "source_code": "g = greenlet.getcurrent()\n    while not isinstance(g, genlet):\n        if g is None:\n            raise RuntimeError('yield outside a genlet')\n        g = g.parent\n    g.parent.switch(value)"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "generator",
+                "second_doc": "\"\"\"\nCreates a new subclass of genlet and assigns the provided function as an attribute, enabling the encapsulation and management of execution flow in a lightweight cooperative multitasking context.\n\nArgs:\n    func (callable): The function to be associated with the generated subclass, representing the execution logic.\n\nReturns:\n    type: A new generator class inheriting from genlet, with the provided function set for use in coroutine execution and management.\n\"\"\"",
+                "source_code": "class generator(genlet):\n        fn = (func,)\n    return generator"
+            },
+            "type": "function"
+        },
+        {
+            "methods": [
+                {
+                    "docstring": null,
+                    "method_name": "test_generator",
+                    "second_doc": "\"\"\"\nTests the behavior of the custom generator function when invoked multiple times, ensuring the values yielded and side effects occur in the expected sequence.  \nThis method sequentially tracks values passed through the generator with a side effect and then asserts the combined sequence, verifying correct execution and adherence to generator semantics.\n\nArgs:\n    self: Instance of the GeneratorTests class.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "seen = []\n\n        def g(n):\n            for i in range(n):\n                seen.append(i)\n                Yield(i)\n        g = generator(g)\n        for k in range(3):\n            for j in g(5):\n                seen.append(j)\n        self.assertEqual(seen, 3 * [0, 0, 1, 1, 2, 2, 3, 3, 4, 4])"
+                }
+            ],
+            "name": "GeneratorTests",
+            "type": "class"
+        }
+    ],
+    "greenlet/tests/test_generator_nested.py": [
+        {
+            "methods": [
+                {
+                    "docstring": null,
+                    "method_name": "__init__",
+                    "second_doc": "\"\"\"\nInitializes a genlet instance with the provided arguments and keyword arguments, and sets up internal state for later coroutine management.\n\nArgs:\n    args: Positional arguments to be used for coroutine execution.\n    kwds: Keyword arguments to be used for coroutine execution.\n\nReturns:\n    None\n\nWhy:\n    Setting up the initial arguments and internal state is necessary to enable flexible creation and management of coroutine-like objects, allowing for efficient switching and execution of concurrent execution flows within a single thread.\n\"\"\"",
+                    "source_code": "self.args = args\n        self.kwds = kwds\n        self.child = None"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "run",
+                    "second_doc": "\"\"\"\nExecutes the stored target function with the provided arguments and keyword arguments.\n\nThis method is called to initiate the execution context for a lightweight micro-thread. By invoking the stored function, it allows the micro-thread to perform its designated task as part of cooperative multitasking.\n\nArgs:\n    None. Uses instance attributes set at initialization: `fn` (tuple containing the function), `args` (positional arguments), and `kwds` (keyword arguments).\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "fn, = self.fn\n        fn(*self.args, **self.kwds)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "__iter__",
+                    "second_doc": "\"\"\"\nEnables instances of the class to be used as their own iterators in iteration contexts, facilitating compatibility with standard Python iteration protocols.\n\nReturns:\n    self: Returns the instance itself, allowing it to function as an iterator.\n\"\"\"",
+                    "source_code": "return self"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "set_child",
+                    "second_doc": "\"\"\"\nAssigns the provided object as the child of the current instance, establishing a relationship needed for managing the execution flow between related coroutines.\n\nArgs:\n    child: The object to be set as the child of the current instance, typically another coroutine or context.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "self.child = child"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "__next__",
+                    "second_doc": "\"\"\"\nRetrieve the next value produced by the greenlet, resuming execution or switching contexts as needed to progress the coroutine's state machine.\n\nThis method unwinds the child greenlet chain to resume execution at the deepest nested context, or, if no child is present, begins execution from the current point. It raises StopIteration when the greenlet has completed its work, signaling that there are no further values to generate.\n\nArgs:\n    None\n\nReturns:\n    Any: The value produced by the greenlet's current execution step.\n\nRaises:\n    StopIteration: If the greenlet has finished execution and there are no more values to yield.\n\"\"\"",
+                    "source_code": "if self.child:\n            child = self.child\n            while child.child:\n                tmp = child\n                child = child.child\n                tmp.child = None\n\n            result = child.switch()\n        else:\n            self.parent = greenlet.getcurrent()\n            result = self.switch()\n\n        if self:\n            return result\n        else:\n            raise StopIteration"
+                }
+            ],
+            "name": "genlet",
+            "type": "class"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "Yield",
+                "second_doc": "\"\"\"\nTransfers execution and a value back to an appropriate parent greenlet, traversing up the greenlet hierarchy by the specified level. This allows for cooperative multitasking by pausing the current execution context and resuming another, supporting structured task handoff between coroutines.\n\nArgs:\n    value: The value to pass back during the context switch.\n    level (int): The number of parent greenlets to traverse before switching.\n\nReturns:\n    None. Execution is transferred to the parent greenlet, along with the provided value.\n\nRaises:\n    RuntimeError: If the function is invoked outside of a valid greenlet context.\n\"\"\"",
+                "source_code": "g = greenlet.getcurrent()\n\n    while level != 0:\n        if not isinstance(g, genlet):\n            raise RuntimeError('yield outside a genlet')\n        if level > 1:\n            g.parent.set_child(g)\n        g = g.parent\n        level -= 1\n\n    g.switch(value)"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "Genlet",
+                "second_doc": "\"\"\"\nCreates a new class derived from the given base and associates a function with it to enable customized coroutine behaviors. \n\nArgs:\n    func (callable): The function to associate with the generated class for greenlet management.\n\nReturns:\n    type: A dynamically created class derived from the given base with the specified function attached.\n    \nThis allows for flexible construction of concurrent control flows by binding specific callable logic to greenlet-powered classes.\n\"\"\"",
+                "source_code": "class Genlet(genlet):\n        fn = (func,)\n    return Genlet"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "g1",
+                "second_doc": "\"\"\"\nYields a sequence of integers from 0 to n-1, appending each incremented value to the provided list.\n\nThis method maintains a record of generated values while yielding them one by one, which can be useful for managing and tracking execution flow during cooperative multitasking scenarios.\n\nArgs:\n    n (int): The number of iterations to generate.\n    seen (list): A list to which each generated value (incremented by 1) is appended.\n\nYields:\n    int: The next integer in the sequence from 0 to n-1.\n\"\"\"",
+                "source_code": "for i in range(n):\n        seen.append(i + 1)\n        yield i"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "g2",
+                "second_doc": "\"\"\"\nIterates from 0 to n - 1, appending each index plus one to the seen list and yielding the index.\n\nThis method is designed to sequentially record a range of values and yield each step, facilitating stepwise processing or cooperative scheduling tasks.\n\nArgs:\n    n (int): The exclusive upper limit of the iteration range.\n    seen (list): The list to which the incremented indices are appended.\n\nYields:\n    int: The current index in the iteration.\n\"\"\"",
+                "source_code": "for i in range(n):\n        seen.append(i + 1)\n        Yield(i)"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "nested",
+                "second_doc": "\"\"\"\nYields the current value of the variable 'i' in the execution flow, allowing cooperative multitasking and context switching within coroutines.\n\nArgs:\n    i: The current value to be yielded to the calling context.\n\nReturns:\n    Yields the value of 'i' for processing or transfer of execution control.\n\"\"\"",
+                "source_code": "Yield(i)"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "g3",
+                "second_doc": "\"\"\"\nIterates from 0 to n - 1, appending each incremented integer to the 'seen' list and invoking the 'nested' function with the current index.\n\nThis method systematically tracks processed elements and triggers further processing for each, ensuring every step in the sequence is both recorded and handled.\n\nArgs:\n    n (int): The upper bound for the iteration; determines how many times the loop runs.\n    seen (list): The list to which the incremented indices are appended.\n    nested (callable): A function that is executed with the current index as its argument.\n\nReturns:\n    None\n\"\"\"",
+                "source_code": "for i in range(n):\n        seen.append(i + 1)\n        nested(i)"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "a",
+                "second_doc": "\"\"\"\nRecursively generates a sequence of values from 1 up to n, yielding each value in ascending order.  \nThis approach allows controlled processing of items in a specific order, potentially facilitating cooperative task scheduling or flow management in sequential operations.\n\nArgs:\n    n (int): The maximum integer up to which the sequence is generated.\n\nYields:\n    int: The next integer in the sequence from 1 to n.\n\"\"\"",
+                "source_code": "if n == 0:\n        return\n    for ii in ax(n - 1):\n        Yield(ii)\n    Yield(n)"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "perms",
+                "second_doc": "\"\"\"\nGenerates all possible permutations of the given list.\n\nThis function recursively yields each permutation by iteratively selecting an element and computing permutations of the remaining elements. It helps explore every possible ordering of the input list, which is useful for exhaustive search, scheduling, and combinatorial tasks where all arrangements must be considered.\n\nArgs:\n    l (list): The list of items to permute.\n\nReturns:\n    generator: A generator that yields lists, each representing a unique permutation of the input.\n\"\"\"",
+                "source_code": "if len(l) > 1:\n        for e in l:\n            # No syntactical sugar for generator expressions\n            [Yield([e] + p) for p in perms([x for x in l if x != e])]\n    else:\n        Yield(l)"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "gr1",
+                "second_doc": "\"\"\"\nGenerator that yields a sequence of numbers and their squares for use in scheduling or cooperative multitasking loops.\n\nArgs:\n    n (int): The exclusive upper limit of the range of numbers to generate.\n\nYields:\n    int: The next number in the sequence.\n    tuple: A tuple containing the square of the number and the integer 2.\n\nThis supports controlled transfer or management of execution flow in coroutine-like constructs by producing values for stepwise processing.\n\"\"\"",
+                "source_code": "for ii in range(1, n):\n        Yield(ii)\n        Yield(ii * ii, 2)"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "gr2",
+                "second_doc": "\"\"\"\nIterates over the results of the gr1 function and adds each item to the seen list.\n\nThis allows the method to collect all values produced by gr1, making them available for later inspection, processing, or tracking during program execution.\n\nArgs:\n    n: An input argument passed to gr1, which determines the values to be generated.\n    seen (list): The list to which each item produced by gr1(n) will be appended.\n\nReturns:\n    None\n\"\"\"",
+                "source_code": "for ii in gr1(n):\n        seen.append(ii)"
+            },
+            "type": "function"
+        },
+        {
+            "methods": [
+                {
+                    "docstring": null,
+                    "method_name": "test_layered_genlets",
+                    "second_doc": "\"\"\"\nTests the behavior of a generator function that interacts with a shared list, assessing how values are progressively generated and appended as the generator yields results.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "seen = []\n        for ii in gr2(5, seen):\n            seen.append(ii)\n        self.assertEqual(seen, [1, 1, 2, 4, 3, 9, 4, 16])"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_permutations",
+                    "second_doc": "\"\"\"\nTest the correctness and generator behavior of the perms function by validating produced permutations and their use in parallel iteration.\n\nArgs:\n    self: The test case instance.\n\nReturns:\n    None\n\nWhy:\n    This method ensures that the perms function yields all possible permutations as expected and supports generator-style consumption, which is crucial for verifying both functional accuracy and memory efficiency in iterative computation scenarios.\n\"\"\"",
+                    "source_code": "gen_perms = perms(list(range(4)))\n        permutations = list(gen_perms)\n        self.assertEqual(len(permutations), 4 * 3 * 2 * 1)\n        self.assertTrue([0, 1, 2, 3] in permutations)\n        self.assertTrue([3, 2, 1, 0] in permutations)\n        res = []\n        for ii in zip(perms(list(range(4))), perms(list(range(3)))):\n            res.append(ii)\n        self.assertEqual(\n            res,\n            [([0, 1, 2, 3], [0, 1, 2]), ([0, 1, 3, 2], [0, 2, 1]),\n             ([0, 2, 1, 3], [1, 0, 2]), ([0, 2, 3, 1], [1, 2, 0]),\n             ([0, 3, 1, 2], [2, 0, 1]), ([0, 3, 2, 1], [2, 1, 0])])\n        # XXX Test to make sure we are working as a generator expression"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_genlet_simple",
+                    "second_doc": "\"\"\"\nTests the behavior of different generator functions when repeatedly invoked and their outputs accumulated.\n\nArgs:\n    None\n\nReturns:\n    None\n\nThis method validates consistent generator behavior by collecting and comparing yielded values over multiple runs. The accumulation and assertion ensure that context switching and yielding mechanisms work as intended when generators are invoked in nested or concurrent scenarios.\n\"\"\"",
+                    "source_code": "for g in [g1, g2, g3]:\n            seen = []\n            for k in range(3):\n                for j in g(5, seen):\n                    seen.append(j)\n            self.assertEqual(seen, 3 * [1, 0, 2, 1, 3, 2, 4, 3, 5, 4])"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_genlet_bad",
+                    "second_doc": "\"\"\"\nTests that calling Yield outside of a valid greenlet context raises a RuntimeError, ensuring that the system correctly enforces context constraints for coroutine operations.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "try:\n            Yield(10)\n        except RuntimeError:\n            pass"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_nested_genlets",
+                    "second_doc": "\"\"\"\nTests the behavior of nested generators (genlets) within a shared execution context to verify correct sequencing of values yielded. This helps ensure that context switching and flow control between generator instances operate as expected for building cooperative multitasking constructs.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "seen = []\n        for ii in ax(5):\n            seen.append(ii)"
+                }
+            ],
+            "name": "NestedGeneratorTests",
+            "type": "class"
+        }
+    ],
+    "greenlet/tests/test_greenlet.py": [
+        {
+            "methods": [],
+            "name": "SomeError",
+            "type": "class"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "fmain",
+                "second_doc": "\"\"\"\nAttempts to switch back to the parent greenlet, handling any exceptions that occur during the process. If switching fails, the encountered exception type is recorded and re-raised; otherwise, raises a designated error to signal abnormal flow interruption.\n\nArgs:\n    None\n\nReturns:\n    None\n\nRaises:\n    Exception: Re-raises any exception encountered during the switch.\n    SomeError: Raised if the switch operation completes without error.\n\"\"\"",
+                "source_code": "try:\n        greenlet.getcurrent().parent.switch()\n    except:\n        seen.append(sys.exc_info()[0])\n        raise\n    raise SomeError"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "send_exception",
+                "second_doc": "\"\"\"\nRaises the given exception inside a newly created greenlet that shares its parent with the current greenlet, transferring control to this new greenlet.\n\nArgs:\n    exc (Exception): The exception instance to be raised in the new greenlet.\n\nReturns:\n    None\n\nThis approach enables fine-grained management of control flow and error propagation within concurrent tasks, allowing exceptions to be deliberately triggered and handled in separate execution contexts.\n\"\"\"",
+                "source_code": "def crasher(exc):\n        raise exc\n    g1 = greenlet(crasher, parent=g)\n    g1.switch(exc)"
+            },
+            "type": "function"
+        },
+        {
+            "methods": [
+                {
+                    "docstring": null,
+                    "method_name": "test_simple",
+                    "second_doc": "\"\"\"\nTests the execution order and context switching logic of greenlets by switching between the main flow and a greenlet, and recording the sequence of events to verify proper control transfer.\n\nArgs:\n    self: The test case instance.\n\nReturns:\n    None. Asserts that the recorded list matches the expected execution sequence.\n    \nWhy:\n    The method validates that context switches between greenlets and the main program follow the intended flow, ensuring reliability and predictability in cooperative multitasking scenarios.\n\"\"\"",
+                    "source_code": "lst = []\n\n        def f():\n            lst.append(1)\n            greenlet.getcurrent().parent.switch()\n            lst.append(3)\n        g = greenlet(f)\n        lst.append(0)\n        g.switch()\n        lst.append(2)\n        g.switch()\n        lst.append(4)\n        self.assertEqual(lst, list(range(5)))"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_parent_equals_None",
+                    "second_doc": "\"\"\"\nTests the creation of a greenlet with no parent specified, ensuring proper handling of greenlet initialization when the parent argument is set to None.\n\nThis method verifies that the greenlet system can support explicit root greenlet creation without inheriting context, thus enabling the foundational behavior expected for context management and coroutine structures.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "g = greenlet(parent=None)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_run_equals_None",
+                    "second_doc": "\"\"\"\nTests the behavior of creating a greenlet instance with run=None, verifying that the greenlet can be instantiated without specifying an entry point. This ensures the library gracefully handles cases where no run function is provided, which is important for robustness and flexibility when building concurrent execution flows.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "g = greenlet(run=None)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_two_children",
+                    "second_doc": "\"\"\"\nTests how multiple greenlets, each with their own execution state, independently yield control and resume to modify shared state in a controlled manner.\n\nThis method helps ensure that greenlets can be interleaved and their execution can be coordinated, thereby verifying correct context switching and lifecycle management.\n\nArgs:\n    self: The instance of the GreenletTests class.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "lst = []\n\n        def f():\n            lst.append(1)\n            greenlet.getcurrent().parent.switch()\n            lst.extend([1, 1])\n        g = greenlet(f)\n        h = greenlet(f)\n        g.switch()\n        self.assertEqual(len(lst), 1)\n        h.switch()\n        self.assertEqual(len(lst), 2)\n        h.switch()\n        self.assertEqual(len(lst), 4)\n        self.assertEqual(h.dead, True)\n        g.switch()\n        self.assertEqual(len(lst), 6)\n        self.assertEqual(g.dead, True)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_two_recursive_children",
+                    "second_doc": "\"\"\"\nTests that creating and switching between multiple greenlets, each invoking child greenlets recursively, properly maintains greenlet state and reference counts.\n\nThis method verifies that multiple greenlets can be created and switched between in sequence, and ensures proper tracking of execution steps and resource management by examining modifications to a shared list and reference count behavior.\n\nArgs:\n    self: The test case instance.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "lst = []\n\n        def f():\n            lst.append(1)\n            greenlet.getcurrent().parent.switch()\n\n        def g():\n            lst.append(1)\n            g = greenlet(f)\n            g.switch()\n            lst.append(1)\n        g = greenlet(g)\n        g.switch()\n        self.assertEqual(len(lst), 3)\n        self.assertEqual(sys.getrefcount(g), 2)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_threads",
+                    "second_doc": "\"\"\"\nTests the ability to run greenlet-based code concurrently across multiple system threads by executing a simple greenlet operation in parallel threads and verifying their successful completion.\n\nArgs:\n    None\n\nReturns:\n    None\n\nWhy:\n    This method ensures that the fundamental greenlet functionality can operate correctly and reliably when invoked from several system threads, validating its robustness in multithreaded environments.\n\"\"\"",
+                    "source_code": "success = []\n\n        def f():\n            self.test_simple()\n            success.append(True)\n        ths = [threading.Thread(target=f) for i in range(10)]\n        for th in ths:\n            th.start()\n        for th in ths:\n            th.join()\n        self.assertEqual(len(success), len(ths))"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_exception",
+                    "second_doc": "\"\"\"\nTests the propagation and handling of exceptions when switching between greenlets, particularly after modifying their parent relationships. This ensures that exceptions are correctly communicated and managed between coroutines, maintaining consistent state and error visibility across context switches.\n\nArgs:\n    self: Instance of the GreenletTests class.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "seen = []\n        g1 = greenlet(fmain)\n        g2 = greenlet(fmain)\n        g1.switch(seen)\n        g2.switch(seen)\n        g2.parent = g1\n        self.assertEqual(seen, [])\n        self.assertRaises(SomeError, g2.switch)\n        self.assertEqual(seen, [SomeError])\n        g2.switch()\n        self.assertEqual(seen, [SomeError])"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_send_exception",
+                    "second_doc": "\"\"\"\nTests that injecting an exception into a greenlet causes the greenlet to handle the exception as expected.\n\nArgs:\n    self: The test instance.\n\nReturns:\n    None\n\nWhy:\n    This test ensures that exceptions can be programmatically delivered to a running greenlet, demonstrating controlled interruption and exception management within the cooperative multitasking model provided by greenlet's coroutines. This capability is critical for gracefully handling errors or altering execution flow in complex concurrent programs.\n\"\"\"",
+                    "source_code": "seen = []\n        g1 = greenlet(fmain)\n        g1.switch(seen)\n        self.assertRaises(KeyError, send_exception, g1, KeyError)\n        self.assertEqual(seen, [KeyError])"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_dealloc",
+                    "second_doc": "\"\"\"\nTests that deallocating greenlet objects triggers expected cleanup behavior and resource release, ensuring their finalizers are called appropriately by the garbage collector.\n\nArgs:\n    self: Instance of the GreenletTests test case.\n\nReturns:\n    None. Uses assertions to validate that cleanup hooks are invoked upon greenlet deallocation.\n\"\"\"",
+                    "source_code": "seen = []\n        g1 = greenlet(fmain)\n        g2 = greenlet(fmain)\n        g1.switch(seen)\n        g2.switch(seen)\n        self.assertEqual(seen, [])\n        del g1\n        gc.collect()\n        self.assertEqual(seen, [greenlet.GreenletExit])\n        del g2\n        gc.collect()\n        self.assertEqual(seen, [greenlet.GreenletExit, greenlet.GreenletExit])"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_dealloc_other_thread",
+                    "second_doc": "\"\"\"\nTest that deallocating a greenlet created in one thread from another thread does not immediately trigger its finalization, ensuring proper synchronization and resource cleanup across threads.\n\nArgs:\n    self: Instance of the GreenletTests class.\n\nReturns:\n    None\n\nWhy:\n    This method verifies the thread-safety guarantees of greenlet objects by ensuring that greenlet cleanup and resource release occur correctly when deallocated from a different thread, helping to prevent premature resource reclamation and subtle concurrency bugs.\n\"\"\"",
+                    "source_code": "seen = []\n        someref = []\n        lock = threading.Lock()\n        lock.acquire()\n        lock2 = threading.Lock()\n        lock2.acquire()\n\n        def f():\n            g1 = greenlet(fmain)\n            g1.switch(seen)\n            someref.append(g1)\n            del g1\n            gc.collect()\n            lock.release()\n            lock2.acquire()\n            greenlet()   # trigger release\n            lock.release()\n            lock2.acquire()\n        t = threading.Thread(target=f)\n        t.start()\n        lock.acquire()\n        self.assertEqual(seen, [])\n        self.assertEqual(len(someref), 1)\n        del someref[:]\n        gc.collect()\n        # g1 is not released immediately because it's from another thread\n        self.assertEqual(seen, [])\n        lock2.release()\n        lock.acquire()\n        self.assertEqual(seen, [greenlet.GreenletExit])\n        lock2.release()\n        t.join()"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_frame",
+                    "second_doc": "\"\"\"\nTests that the execution frame associated with a greenlet is managed and updated correctly during context switches.\n\nArgs:\n    None\n\nReturns:\n    None\n\nWhy:\n    Ensuring correct handling of the execution frame is essential to maintain reliable and predictable coroutine switching and lifecycle management within cooperative multitasking constructs.\n\"\"\"",
+                    "source_code": "def f1():\n            f = sys._getframe(0)\n            self.assertEqual(f.f_back, None)\n            greenlet.getcurrent().parent.switch(f)\n            return \"meaning of life\"\n        g = greenlet(f1)\n        frame = g.switch()\n        self.assertTrue(frame is g.gr_frame)\n        self.assertTrue(g)\n        next = g.switch()\n        self.assertFalse(g)\n        self.assertEqual(next, 'meaning of life')\n        self.assertEqual(g.gr_frame, None)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_thread_bug",
+                    "second_doc": "\"\"\"\nTests that multiple threads can independently create and switch to greenlets running sleep operations without interference. This ensures thread safety and proper context management when integrating greenlets with standard threading.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "def runner(x):\n            g = greenlet(lambda: time.sleep(x))\n            g.switch()\n        t1 = threading.Thread(target=runner, args=(0.2,))\n        t2 = threading.Thread(target=runner, args=(0.3,))\n        t1.start()\n        t2.start()\n        t1.join()\n        t2.join()"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_switch_kwargs",
+                    "second_doc": "\"\"\"\nTests that a greenlet can be switched to using keyword arguments, verifying that the arguments are passed correctly to the target function.\n\nArgs:\n    None\n\nReturns:\n    None\n\nWhy:\nEnsures the mechanism for passing named arguments during a greenlet context switch works as expected, which is important for the reliable transfer of data between coroutines.\n\"\"\"",
+                    "source_code": "def foo(a, b):\n            self.assertEqual(a, 4)\n            self.assertEqual(b, 2)\n        greenlet(foo).switch(a=4, b=2)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_switch_kwargs_to_parent",
+                    "second_doc": "\"\"\"\nTests the correct handling and forwarding of keyword arguments when switching control between greenlets and their parents. This ensures that context switches maintain both positional and keyword argument integrity across coroutine boundaries.\n\nArgs:\n    self: The test instance (GreenletTests).\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "def foo(x):\n            greenlet.getcurrent().parent.switch(x=x)\n            greenlet.getcurrent().parent.switch(2, x=3)\n            return x, x ** 2\n        g = greenlet(foo)\n        self.assertEqual({'x': 3}, g.switch(3))\n        self.assertEqual(((2,), {'x': 3}), g.switch())\n        self.assertEqual((3, 9), g.switch())"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_switch_to_another_thread",
+                    "second_doc": "\"\"\"\nTests that attempting to switch to a greenlet created in a different OS thread raises a greenlet.error exception.\n\nArgs:\n    None\n\nReturns:\n    None\n\nRaises:\n    AssertionError: If the expected greenlet.error is not raised when switching between threads.\n    \nWhy:\n    This behavior is enforced to maintain the integrity and safety of execution contexts by ensuring greenlets cannot be switched between different operating system threads.\n\"\"\"",
+                    "source_code": "data = {}\n        error = None\n        created_event = threading.Event()\n        done_event = threading.Event()\n\n        def foo():\n            data['g'] = greenlet(lambda: None)\n            created_event.set()\n            done_event.wait()\n        thread = threading.Thread(target=foo)\n        thread.start()\n        created_event.wait()\n        try:\n            data['g'].switch()\n        except greenlet.error:\n            error = sys.exc_info()[1]\n        self.assertTrue(error != None, \"greenlet.error was not raised!\")\n        done_event.set()\n        thread.join()"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_exc_state",
+                    "second_doc": "\"\"\"\nTests the preservation and isolation of exception states when switching between greenlets during an active exception block.\n\nThis method ensures that context switching does not unintentionally leak or alter the current exception information between coroutines, thereby maintaining the integrity of exception handling across greenlet boundaries.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "def f():\n            try:\n                raise ValueError('fun')\n            except:\n                exc_info = sys.exc_info()\n                greenlet(h).switch()\n                self.assertEqual(exc_info, sys.exc_info())\n\n        def h():\n            self.assertEqual(sys.exc_info(), (None, None, None))\n\n        greenlet(f).switch()"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_instance_dict",
+                    "second_doc": "\"\"\"\nTests manipulation of greenlet instance dictionaries to ensure that attributes can be set and accessed, that the dictionary behaves as expected, and to verify that attempts to delete or reassign the instance dictionary are handled correctly.\n\nThis is done to validate the integrity and rules regarding instance attribute storage for greenlet objects, maintaining operational reliability and correct object behavior.\n\nArgs:\n    self: The test case instance.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "def f():\n            greenlet.getcurrent().test = 42\n        def deldict(g):\n            del g.__dict__\n        def setdict(g, value):\n            g.__dict__ = value\n        g = greenlet(f)\n        self.assertEqual(g.__dict__, {})\n        g.switch()\n        self.assertEqual(g.test, 42)\n        self.assertEqual(g.__dict__, {'test': 42})\n        g.__dict__ = g.__dict__\n        self.assertEqual(g.__dict__, {'test': 42})\n        self.assertRaises(TypeError, deldict, g)\n        self.assertRaises(TypeError, setdict, g, 42)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_threaded_reparent",
+                    "second_doc": "\"\"\"\nTests that attempting to reparent a greenlet to one created in a different thread raises a ValueError, ensuring proper thread safety and enforcement of greenlet ownership rules.\n\nArgs:\n    self: The test case instance.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "data = {}\n        created_event = threading.Event()\n        done_event = threading.Event()\n\n        def foo():\n            data['g'] = greenlet(lambda: None)\n            created_event.set()\n            done_event.wait()\n\n        def blank():\n            greenlet.getcurrent().parent.switch()\n\n        def setparent(g, value):\n            g.parent = value\n\n        thread = threading.Thread(target=foo)\n        thread.start()\n        created_event.wait()\n        g = greenlet(blank)\n        g.switch()\n        self.assertRaises(ValueError, setparent, g, data['g'])\n        done_event.set()\n        thread.join()"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_deepcopy",
+                    "second_doc": "\"\"\"\nTests that attempting to copy or deepcopy a greenlet object raises a TypeError. This ensures greenlet objects cannot be shallow- or deep-copied, preserving their unique execution state and context isolation.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "import copy\n        self.assertRaises(TypeError, copy.copy, greenlet())\n        self.assertRaises(TypeError, copy.deepcopy, greenlet())"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_parent_restored_on_kill",
+                    "second_doc": "\"\"\"\nTests that when a greenlet is killed, its parent reference is properly restored, ensuring correct context management after a forced exit.\n\nArgs:\n    self: The GreenletTests instance.\n\nReturns:\n    None. Asserts that the greenlet's parent and current references are as expected after resuming from a GreenletExit.\n\nWhy:\n    Ensures that greenlets cleanly maintain their parent relationships even when terminated, preventing resource leaks or broken control flow.\n\"\"\"",
+                    "source_code": "hub = greenlet(lambda: None)\n        main = greenlet.getcurrent()\n        result = []\n        def worker():\n            try:\n                # Wait to be killed\n                main.switch()\n            except greenlet.GreenletExit:\n                # Resurrect and switch to parent\n                result.append(greenlet.getcurrent().parent)\n                result.append(greenlet.getcurrent())\n                hub.switch()\n        g = greenlet(worker, parent=hub)\n        g.switch()\n        del g\n        self.assertTrue(result)\n        self.assertEqual(result[0], main)\n        self.assertEqual(result[1].parent, hub)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_parent_return_failure",
+                    "second_doc": "\"\"\"\nTests that when a greenlet with an explicit parent is switched to, and its body attempts to return control to the parent incorrectly, an AttributeError is raised and not swallowed. \n\nThis ensures error propagation behaves correctly when improper parent-child greenlet relationships occur, maintaining robustness in control flow management.\n\nArgs:\n    self: Instance of the GreenletTests class.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "g1 = greenlet()\n        # Greenlet that implicitly switches to parent\n        g2 = greenlet(lambda: None, parent=g1)\n        # AttributeError should propagate to us, no fatal errors\n        self.assertRaises(AttributeError, g2.switch)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_throw_exception_not_lost",
+                    "second_doc": "\"\"\"\nTests that exceptions thrown into a greenlet are not suppressed or lost even if attributes access internally raises and handles an exception. This ensures robust exception propagation during greenlet operations.\n\nArgs:\n    self: The test case instance.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "class mygreenlet(greenlet):\n            def __getattribute__(self, name):\n                try:\n                    raise Exception()\n                except:\n                    pass\n                return greenlet.__getattribute__(self, name)\n        g = mygreenlet(lambda: None)\n        self.assertRaises(SomeError, g.throw, SomeError())"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_throw_doesnt_crash",
+                    "second_doc": "\"\"\"\nTests that throwing an exception into a greenlet created and switched from a separate thread raises the expected error, ensuring robust handling of cross-thread coroutine operations.\n\nThis safeguards correct greenlet behavior and stability when exceptions are introduced from outside their originating context.\n\nArgs:\n    self: The test case instance.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "result = []\n        def worker():\n            greenlet.getcurrent().parent.switch()\n        def creator():\n            g = greenlet(worker)\n            g.switch()\n            result.append(g)\n        t = threading.Thread(target=creator)\n        t.start()\n        t.join()\n        self.assertRaises(greenlet.error, result[0].throw, SomeError())"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_recursive_startup",
+                    "second_doc": "\"\"\"\nTests the behavior of greenlet attribute access and recursive context switching by defining a custom greenlet that triggers a switch during retrieval of its 'run' method. This approach validates that attribute access can interact safely with greenlet context switches and return expected values.\n\nArgs:\n    self: The test case instance.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "class convoluted(greenlet):\n            def __init__(self):\n                greenlet.__init__(self)\n                self.count = 0\n            def __getattribute__(self, name):\n                if name == 'run' and self.count == 0:\n                    self.count = 1\n                    self.switch(43)\n                return greenlet.__getattribute__(self, name)\n            def run(self, value):\n                while True:\n                    self.parent.switch(value)\n        g = convoluted()\n        self.assertEqual(g.switch(42), 43)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_unexpected_reparenting",
+                    "second_doc": "\"\"\"\nTests that reparenting a greenlet in an unexpected way (changing its parent at a critical moment) triggers the appropriate error.\n\nThis ensures greenlet's integrity by verifying that improper manipulation of greenlet parent relationships, particularly across threads, is safely detected and does not lead to undefined behavior.\n\nArgs:\n    self: The test case instance.\n\nReturns:\n    None. Raises an AssertionError if the expected exception is not raised.\n\"\"\"",
+                    "source_code": "another = []\n        def worker():\n            g = greenlet(lambda: None)\n            another.append(g)\n            g.switch()\n        t = threading.Thread(target=worker)\n        t.start()\n        t.join()\n        class convoluted(greenlet):\n            def __getattribute__(self, name):\n                if name == 'run':\n                    self.parent = another[0]\n                return greenlet.__getattribute__(self, name)\n        g = convoluted(lambda: None)\n        self.assertRaises(greenlet.error, g.switch)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_threaded_updatecurrent",
+                    "second_doc": "\"\"\"\nTests proper handling and deallocation of greenlet objects when thread-local state is transferred between threads during context switching. Ensures that object finalization does not lead to unsafe re-entrancy or crashes, particularly when one thread interacts with greenlet state owned by another.\n\nArgs:\n    self: The GreenletTests instance.\n\nReturns:\n    None\n\nWhy:\n    This test simulates a complex and timing-sensitive edge case to verify that thread-local state transitions and object deallocation in greenlet are robust, preventing potential crashes from simultaneous access in multithreaded scenarios.\n\"\"\"",
+                    "source_code": "lock1 = threading.Lock()\n        lock1.acquire()\n        # released when another thread should execute\n        lock2 = threading.Lock()\n        lock2.acquire()\n        class finalized(object):\n            def __del__(self):\n                # happens while in green_updatecurrent() in main greenlet\n                # should be very careful not to accidentally call it again\n                # at the same time we must make sure another thread executes\n                lock2.release()\n                lock1.acquire()\n                # now ts_current belongs to another thread\n        def deallocator():\n            greenlet.getcurrent().parent.switch()\n        def fthread():\n            lock2.acquire()\n            greenlet.getcurrent()\n            del g[0]\n            lock1.release()\n            lock2.acquire()\n            greenlet.getcurrent()\n            lock1.release()\n        main = greenlet.getcurrent()\n        g = [greenlet(deallocator)]\n        g[0].bomb = finalized()\n        g[0].switch()\n        t = threading.Thread(target=fthread)\n        t.start()\n        # let another thread grab ts_current and deallocate g[0]\n        lock2.release()\n        lock1.acquire()\n        # this is the corner stone\n        # getcurrent() will notice that ts_current belongs to another thread\n        # and start the update process, which would notice that g[0] should\n        # be deallocated, and that will execute an object's finalizer. Now,\n        # that object will let another thread run so it can grab ts_current\n        # again, which would likely crash the interpreter if there's no\n        # check for this case at the end of green_updatecurrent(). This test\n        # passes if getcurrent() returns correct result, but it's likely\n        # to randomly crash if it's not anyway.\n        self.assertEqual(greenlet.getcurrent(), main)\n        # wait for another thread to complete, just in case\n        t.join()"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_dealloc_switch_args_not_lost",
+                    "second_doc": "\"\"\"\nTests that switching between greenlets does not result in lost arguments or data, even when references are deleted during execution. This ensures the integrity of value passing and lifecycle management when greenlets are deallocated.\n\nArgs:\n    self: Instance of the test class.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "seen = []\n        def worker():\n            # wait for the value\n            value = greenlet.getcurrent().parent.switch()\n            # delete all references to ourself\n            del worker[0]\n            initiator.parent = greenlet.getcurrent().parent\n            # switch to main with the value, but because\n            # ts_current is the last reference to us we\n            # return immediately\n            try:\n                greenlet.getcurrent().parent.switch(value)\n            finally:\n                seen.append(greenlet.getcurrent())\n        def initiator():\n            return 42 # implicitly falls thru to parent\n        worker = [greenlet(worker)]\n        worker[0].switch() # prime worker\n        initiator = greenlet(initiator, worker[0])\n        value = initiator.switch()\n        self.assertTrue(seen)\n        self.assertEqual(value, 42)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_implicit_parent_with_threads",
+                    "second_doc": "\"\"\"\nTests that newly created greenlets in a multi-threaded environment correctly inherit their parent when garbage collection occurs and objects are recycled. This ensures that greenlet object management and context switching operate safely and predictably when triggered by interactions with Python's garbage collector and concurrent threads.\n\nArgs:\n    self: The test case instance.\n\nReturns:\n    None. The test uses assertions to verify proper behavior.\n\"\"\"",
+                    "source_code": "if not gc.isenabled():\n            return # cannot test with disabled gc\n        N = gc.get_threshold()[0]\n        if N < 50:\n            return # cannot test with such a small N\n        def attempt():\n            lock1 = threading.Lock()\n            lock1.acquire()\n            lock2 = threading.Lock()\n            lock2.acquire()\n            recycled = [False]\n            def another_thread():\n                lock1.acquire() # wait for gc\n                greenlet.getcurrent() # update ts_current\n                lock2.release() # release gc\n            t = threading.Thread(target=another_thread)\n            t.start()\n            class gc_callback(object):\n                def __del__(self):\n                    lock1.release()\n                    lock2.acquire()\n                    recycled[0] = True\n            class garbage(object):\n                def __init__(self):\n                    self.cycle = self\n                    self.callback = gc_callback()\n            l = []\n            x = range(N*2)\n            current = greenlet.getcurrent()\n            g = garbage()\n            for i in x:\n                g = None # lose reference to garbage\n                if recycled[0]:\n                    # gc callback called prematurely\n                    t.join()\n                    return False\n                last = greenlet()\n                if recycled[0]:\n                    break # yes! gc called in green_new\n                l.append(last) # increase allocation counter\n            else:\n                # gc callback not called when expected\n                gc.collect()\n                if recycled[0]:\n                    t.join()\n                return False\n            self.assertEqual(last.parent, current)\n            for g in l:\n                self.assertEqual(g.parent, current)\n            return True\n        for i in range(5):\n            if attempt():\n                break"
+                }
+            ],
+            "name": "GreenletTests",
+            "type": "class"
+        }
+    ],
+    "greenlet/tests/test_leaks.py": [
+        {
+            "methods": [
+                {
+                    "docstring": null,
+                    "method_name": "test_arg_refs",
+                    "second_doc": "\"\"\"\nTests that switching arguments between greenlets does not alter the reference count of the argument tuple across multiple switches. This ensures that greenlet operations do not inadvertently create reference cycles or memory leaks when repeatedly passing arguments.\n\nArgs:\n    self: The instance of the test case.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "args = ('a', 'b', 'c')\n        refcount_before = sys.getrefcount(args)\n        g = greenlet.greenlet(\n            lambda *args: greenlet.getcurrent().parent.switch(*args))\n        for i in range(100):\n            g.switch(*args)\n        self.assertEqual(sys.getrefcount(args), refcount_before)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_kwarg_refs",
+                    "second_doc": "\"\"\"\nTests that switching greenlets with keyword arguments does not cause unintended reference count increases for the dictionary of keyword arguments.\n\nArgs:\n    self: The test instance.\n\nReturns:\n    None\n\nWhy:\n    Ensuring keyword arguments passed repeatedly between greenlets do not accumulate reference counts helps prevent subtle memory leaks and confirms correct resource management when context-switching micro-threads.\n\"\"\"",
+                    "source_code": "kwargs = {}\n        g = greenlet.greenlet(\n            lambda **kwargs: greenlet.getcurrent().parent.switch(**kwargs))\n        for i in range(100):\n            g.switch(**kwargs)\n        self.assertEqual(sys.getrefcount(kwargs), 2)"
+                }
+            ],
+            "name": "ArgRefcountTests",
+            "type": "class"
+        }
+    ],
+    "greenlet/tests/test_stack_saved.py": [
+        {
+            "methods": [
+                {
+                    "docstring": null,
+                    "method_name": "test_stack_saved",
+                    "second_doc": "\"\"\"\nTests the internal _stack_saved state of greenlet objects to verify correct stack management during greenlet switching.\n\nBy switching control between coroutines, it ensures that stack-saving and restoring mechanisms work as expected\u2014critical for maintaining coroutine execution state and safe context switching.\n\nArgs:\n    self: The test case instance.\n\nReturns:\n    None. Assertions are used to validate greenlet stack management behavior.\n\"\"\"",
+                    "source_code": "main = greenlet.getcurrent()\n        self.assertEqual(main._stack_saved, 0)\n\n        def func():\n            main.switch(main._stack_saved)\n\n        g = greenlet.greenlet(func)\n        x = g.switch()\n        assert x > 0, x\n        assert g._stack_saved > 0, g._stack_saved\n        g.switch()\n        assert g._stack_saved == 0, g._stack_saved"
+                }
+            ],
+            "name": "Test",
+            "type": "class"
+        }
+    ],
+    "greenlet/tests/test_throw.py": [
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "switch",
+                "second_doc": "\"\"\"\nTransfers control from the current coroutine to its parent coroutine, allowing cooperative context switching between execution contexts.\n\nArgs:\n    *args: Variable length argument list to pass to the parent coroutine upon switching.\n\nReturns:\n    Any: The value returned by the parent coroutine upon resuming execution.\n    \nWhy:\n    This method enables seamless transfer of execution flow between coroutines, facilitating cooperative multitasking and fine-grained scheduling within the same thread context.\n\"\"\"",
+                "source_code": "return greenlet.getcurrent().parent.switch(*args)"
+            },
+            "type": "function"
+        },
+        {
+            "methods": [
+                {
+                    "docstring": null,
+                    "method_name": "test_class",
+                    "second_doc": "\"\"\"\nTests the behavior of a greenlet when an exception is thrown into it, ensuring that the greenlet properly handles the exception and resumes execution as expected.\n\nArgs:\n    None\n\nReturns:\n    None\n\nWhy:\n    This method validates the correctness of control flow and exception handling in greenlets, confirming that exceptions can be injected and managed within suspended execution contexts, which is essential for robust coroutine coordination.\n\"\"\"",
+                    "source_code": "def f():\n            try:\n                switch(\"ok\")\n            except RuntimeError:\n                switch(\"ok\")\n                return\n            switch(\"fail\")\n        g = greenlet(f)\n        res = g.switch()\n        self.assertEqual(res, \"ok\")\n        res = g.throw(RuntimeError)\n        self.assertEqual(res, \"ok\")"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_val",
+                    "second_doc": "\"\"\"\nTests the behavior of greenlets when exceptions are thrown into their execution context and verifies correct exception handling and value passing during greenlet context switches.\n\nArgs:\n    None\n\nReturns:\n    None\n\nThis method ensures that throwing exceptions into a suspended greenlet results in the expected flow control and output values, validating greenlet's ability to manage asynchronous exception handling.\n\"\"\"",
+                    "source_code": "def f():\n            try:\n                switch(\"ok\")\n            except RuntimeError:\n                val = sys.exc_info()[1]\n                if str(val) == \"ciao\":\n                    switch(\"ok\")\n                    return\n            switch(\"fail\")\n\n        g = greenlet(f)\n        res = g.switch()\n        self.assertEqual(res, \"ok\")\n        res = g.throw(RuntimeError(\"ciao\"))\n        self.assertEqual(res, \"ok\")\n\n        g = greenlet(f)\n        res = g.switch()\n        self.assertEqual(res, \"ok\")\n        res = g.throw(RuntimeError, \"ciao\")\n        self.assertEqual(res, \"ok\")"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_kill",
+                    "second_doc": "\"\"\"\nTests the behavior of forcibly terminating an active greenlet and its response to repeated termination requests.\n\nArgs:\n    self: The test case instance (implicitly passed).\n\nReturns:\n    None\n\nThis method ensures that once a greenlet is terminated using throw(), it returns a GreenletExit exception and is marked as dead. Repeated attempts to terminate the already-dead greenlet are handled gracefully, indicating robust management of greenlet lifecycle and resource cleanup.\n\"\"\"",
+                    "source_code": "def f():\n            switch(\"ok\")\n            switch(\"fail\")\n        g = greenlet(f)\n        res = g.switch()\n        self.assertEqual(res, \"ok\")\n        res = g.throw()\n        self.assertTrue(isinstance(res, greenlet.GreenletExit))\n        self.assertTrue(g.dead)\n        res = g.throw()    # immediately eaten by the already-dead greenlet\n        self.assertTrue(isinstance(res, greenlet.GreenletExit))"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_throw_goes_to_original_parent",
+                    "second_doc": "\"\"\"\nTests that exceptions thrown into a greenlet are correctly propagated to its original parent for handling, ensuring predictable control flow and resource cleanup in coroutine-based workflows.\n\nArgs:\n    self: Instance of the ThrowTests test class.\n\nReturns:\n    None. Uses assertions to verify exception handling and lifecycle of the involved greenlets.\n\"\"\"",
+                    "source_code": "main = greenlet.getcurrent()\n\n        def f1():\n            try:\n                main.switch(\"f1 ready to catch\")\n            except IndexError:\n                return \"caught\"\n            else:\n                return \"normal exit\"\n\n        def f2():\n            main.switch(\"from f2\")\n\n        g1 = greenlet(f1)\n        g2 = greenlet(f2, parent=g1)\n        self.assertRaises(IndexError, g2.throw, IndexError)\n        self.assertTrue(g2.dead)\n        self.assertTrue(g1.dead)\n\n        g1 = greenlet(f1)\n        g2 = greenlet(f2, parent=g1)\n        res = g1.switch()\n        self.assertEqual(res, \"f1 ready to catch\")\n        res = g2.throw(IndexError)\n        self.assertEqual(res, \"caught\")\n        self.assertTrue(g2.dead)\n        self.assertTrue(g1.dead)\n\n        g1 = greenlet(f1)\n        g2 = greenlet(f2, parent=g1)\n        res = g1.switch()\n        self.assertEqual(res, \"f1 ready to catch\")\n        res = g2.switch()\n        self.assertEqual(res, \"from f2\")\n        res = g2.throw(IndexError)\n        self.assertEqual(res, \"caught\")\n        self.assertTrue(g2.dead)\n        self.assertTrue(g1.dead)"
+                }
+            ],
+            "name": "ThrowTests",
+            "type": "class"
+        }
+    ],
+    "greenlet/tests/test_tracing.py": [
+        {
+            "methods": [],
+            "name": "SomeError",
+            "type": "class"
+        },
+        {
+            "methods": [],
+            "name": "TracingTests",
+            "type": "class"
+        }
+    ],
+    "greenlet/tests/test_version.py": [
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "readclose",
+                "second_doc": "\"\"\"\nReads the entire contents of a file-like object and ensures the resource is properly closed afterward, even if an error occurs during reading.\n\nArgs:\n    f: A file-like object opened for reading.\n\nReturns:\n    The contents of the file as a string or bytes, depending on the mode in which the file was opened.\n\nWhy:\n    Safely managing file resources helps prevent resource leaks and ensures reliable access to file data, supporting predictable and efficient execution within concurrent or cooperative multitasking contexts.\n\"\"\"",
+                "source_code": "try:\n        return f.read()\n    finally:\n        f.close()"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "readfile",
+                "second_doc": "\"\"\"\nReads the contents of a file by opening it and then automatically closing it after reading, ensuring proper resource management.\n\nArgs:\n    filename (str): The path to the file to be read.\n\nReturns:\n    str: The full contents of the file as a string.\n\nWhy:\n    This method encapsulates the process of safely reading an entire file, ensuring that the file is properly closed afterwards to prevent resource leaks and potential issues with concurrent execution or context switching in the broader system.\n\"\"\"",
+                "source_code": "return readclose(open(filename))"
+            },
+            "type": "function"
+        },
+        {
+            "methods": [
+                {
+                    "docstring": null,
+                    "method_name": "test_version",
+                    "second_doc": "\"\"\"\nVerifies that the library's version information is consistent across the source header file, the setup script, and the Python package itself.\n\nThis check ensures reliable version tracking and avoids potential issues caused by mismatched version identifiers.\n\nArgs:\n    self: The test class instance.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "upfile = lambda p: os.path.join(os.path.dirname(__file__), \"..\", p)\n        hversion, = re.findall('GREENLET_VERSION \"(.*)\"', readfile(upfile(\"greenlet.h\")))\n        sversion = readclose(os.popen(\"%s %s --version\" % (sys.executable, upfile(\"setup.py\")))).strip()\n        self.assertFalse(sversion != hversion)\n        self.assertFalse(sversion != greenlet.__version__)"
+                }
+            ],
+            "name": "VersionTests",
+            "type": "class"
+        }
+    ],
+    "greenlet/tests/test_weakref.py": [
+        {
+            "methods": [
+                {
+                    "docstring": null,
+                    "method_name": "test_dead_weakref",
+                    "second_doc": "\"\"\"\nTests that a weak reference to a greenlet is cleared after the greenlet has finished execution and has been garbage collected. This ensures proper memory management and that finished greenlets do not persist unintentionally.\n\nArgs:\n    self: The WeakRefTests instance.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "def _dead_greenlet():\n            g = greenlet.greenlet(lambda: None)\n            g.switch()\n            return g\n        o = weakref.ref(_dead_greenlet())\n        gc.collect()\n        self.assertEqual(o(), None)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_inactive_weakref",
+                    "second_doc": "\"\"\"\nTests that a weak reference to a greenlet object returns None after the object has been garbage collected.\n\nThis confirms that greenlet instances are correctly cleaned up and that weak references do not prevent their collection.\n\nArgs:\n    None\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "o = weakref.ref(greenlet.greenlet())\n        gc.collect()\n        self.assertEqual(o(), None)"
+                },
+                {
+                    "docstring": null,
+                    "method_name": "test_dealloc_weakref",
+                    "second_doc": "\"\"\"\nTests that greenlet objects are properly deallocated when only weak references remain, confirming that resources are released and finalization code is executed as expected.\n\nArgs:\n    self: The test case instance.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "seen = []\n        def worker():\n            try:\n                greenlet.getcurrent().parent.switch()\n            finally:\n                seen.append(g())\n        g = greenlet.greenlet(worker)\n        g.switch()\n        g2 = greenlet.greenlet(lambda: None, g)\n        g = weakref.ref(g2)\n        g2 = None\n        self.assertEqual(seen, [None])"
+                }
+            ],
+            "name": "WeakRefTests",
+            "type": "class"
+        }
+    ]
+}

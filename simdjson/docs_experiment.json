@@ -1,0 +1,143 @@
+{
+    "simdjson/style/run-clang-format.py": [
+        {
+            "methods": [],
+            "name": "ExitStatus",
+            "type": "class"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "list_files",
+                "second_doc": "\"\"\"\nCollects files matching specified extensions from a list of provided paths, optionally traversing directories recursively and filtering out excluded patterns.\n\nArgs:\n    files (list): List of file or directory paths to search.\n    extensions (list, optional): List of file extensions to include (without the dot). Defaults to [].\n    exclude (list, optional): List of filename patterns to exclude from results. Defaults to [].\n    recursive (bool, optional): If True, directories are searched recursively. Defaults to False.\n\nReturns:\n    list: List of file paths that match the given extensions and do not match excluded patterns.\n\nWhy:\n    This method ensures that only relevant files are considered for further processing by filtering out unnecessary files and directories and focusing on those that align with specific criteria, making downstream operations more efficient and reliable.\n\"\"\"",
+                "source_code": "if extensions is None:\n        extensions = []\n    if exclude is None:\n        exclude = []\n\n    out = []\n    for file in files:\n        if recursive and os.path.isdir(file):\n            for dirpath, dnames, fnames in os.walk(file):\n                fpaths = [os.path.join(dirpath, fname) for fname in fnames]\n                for pattern in exclude:\n                    # os.walk() supports trimming down the dnames list\n                    # by modifying it in-place,\n                    # to avoid unnecessary directory listings.\n                    dnames[:] = [\n                        x for x in dnames\n                        if\n                        not fnmatch.fnmatch(os.path.join(dirpath, x), pattern)\n                    ]\n                    fpaths = [\n                        x for x in fpaths if not fnmatch.fnmatch(x, pattern)\n                    ]\n                for f in fpaths:\n                    ext = os.path.splitext(f)[1][1:]\n                    if ext in extensions:\n                        out.append(f)\n        else:\n            out.append(file)\n    return out"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "make_diff",
+                "second_doc": "\"\"\"\nGenerate a unified diff between the original and reformatted versions of a file, highlighting the changes made during code transformation.\n\nArgs:\n    original (list of str): The lines from the original file content.\n    reformatted (list of str): The lines from the reformatted file content.\n    file (str): The name of the file being compared.\n\nReturns:\n    list of str: The unified diff output representing differences between the original and reformatted code.\n\nThis method enables clear visualization of changes to support code review and maintain consistent formatting standards.\n\"\"\"",
+                "source_code": "return list(\n        difflib.unified_diff(\n            original,\n            reformatted,\n            fromfile='{}\\t(original)'.format(file),\n            tofile='{}\\t(reformatted)'.format(file),\n            n=3))"
+            },
+            "type": "function"
+        },
+        {
+            "methods": [
+                {
+                    "docstring": null,
+                    "method_name": "__init__",
+                    "second_doc": "\"\"\"\nInitializes a DiffError instance with a specified error message and an optional list of error details.\n\nArgs:\n    message (str): The error message describing the nature of the difference or issue encountered.\n    errs (list, optional): A list of specific errors or issues that contributed to the overall error. Defaults to an empty list if not provided.\n\nReturns:\n    None\n\nRaises:\n    Inherits from Exception; can be caught as a standard exception.\n\nWhy:\n    This method captures both a general error message and specific discrepancies encountered, allowing for detailed tracking and reporting of issues during structured processing or validation operations.\n\"\"\"",
+                    "source_code": "super(DiffError, self).__init__(message)\n        self.errs = errs or []"
+                }
+            ],
+            "name": "DiffError",
+            "type": "class"
+        },
+        {
+            "methods": [
+                {
+                    "docstring": null,
+                    "method_name": "__init__",
+                    "second_doc": "\"\"\"\nInitializes an UnexpectedError instance to capture and report errors that occur during execution, preserving both the error message and the associated stack trace for debugging.\n\nArgs:\n    message (str): The error message describing the unexpected condition.\n    exc (Exception): The original exception instance that was raised.\n\nReturns:\n    None\n\"\"\"",
+                    "source_code": "super(UnexpectedError, self).__init__(message)\n        self.formatted_traceback = traceback.format_exc()\n        self.exc = exc"
+                }
+            ],
+            "name": "UnexpectedError",
+            "type": "class"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "run_clang_format_diff_wrapper",
+                "second_doc": "\"\"\"\nExecutes the code formatting process for the specified file and handles errors encountered during the operation. This method ensures that any issues during formatting are categorized and reported with meaningful error information, enabling robust tooling integration and consistent development workflows.\n\nArgs:\n    args: Arguments to be passed to the code formatting tool.\n    file: The file path to be formatted.\n\nReturns:\n    The result of the formatting operation as returned by the underlying formatting tool.\n\nRaises:\n    DiffError: If a specific difference-related error occurs during formatting.\n    UnexpectedError: If any other unexpected exception occurs, it is raised with additional diagnostic information.\n\"\"\"",
+                "source_code": "try:\n        ret = run_clang_format_diff(args, file)\n        return ret\n    except DiffError:\n        raise\n    except Exception as e:\n        raise UnexpectedError('{}: {}: {}'.format(file, e.__class__.__name__,\n                                                  e), e)"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "run_clang_format_diff",
+                "second_doc": "\"\"\"\nRuns the clang-format tool on the specified source file and computes the formatting differences between the file's current and properly formatted state. This method invokes an external process to perform code style enforcement and returns any identified discrepancies, helping prevent inconsistencies in coding style and formatting errors.\n\nArgs:\n    file (str): Path to the source file to be checked and diffed.\n    args (Namespace): Parsed command-line arguments, expected to provide the path to the clang-format executable.\n\nReturns:\n    tuple: A tuple (diff_output, stderr_output), where diff_output contains line-based differences between the original and formatted files, and stderr_output contains any diagnostic messages generated during formatting.\n\nRaises:\n    DiffError: If the file cannot be read, the clang-format process cannot be started, or if clang-format exits with a nonzero status.\n\"\"\"",
+                "source_code": "try:\n        with io.open(file, 'r', encoding='utf-8') as f:\n            original = f.readlines()\n    except IOError as exc:\n        raise DiffError(str(exc))\n    invocation = [args.clang_format_executable, file]\n\n    # Use of utf-8 to decode the process output.\n    #\n    # Hopefully, this is the correct thing to do.\n    #\n    # It's done due to the following assumptions (which may be incorrect):\n    # - clang-format will returns the bytes read from the files as-is,\n    #   without conversion, and it is already assumed that the files use utf-8.\n    # - if the diagnostics were internationalized, they would use utf-8:\n    #   > Adding Translations to Clang\n    #   >\n    #   > Not possible yet!\n    #   > Diagnostic strings should be written in UTF-8,\n    #   > the client can translate to the relevant code page if needed.\n    #   > Each translation completely replaces the format string\n    #   > for the diagnostic.\n    #   > -- http://clang.llvm.org/docs/InternalsManual.html#internals-diag-translation\n    #\n    # It's not pretty, due to Python 2 & 3 compatibility.\n    encoding_py3 = {}\n    if sys.version_info[0] >= 3:\n        encoding_py3['encoding'] = 'utf-8'\n\n    try:\n        proc = subprocess.Popen(\n            invocation,\n            stdout=subprocess.PIPE,\n            stderr=subprocess.PIPE,\n            universal_newlines=True,\n            **encoding_py3)\n    except OSError as exc:\n        raise DiffError(str(exc))\n    proc_stdout = proc.stdout\n    proc_stderr = proc.stderr\n    if sys.version_info[0] < 3:\n        # make the pipes compatible with Python 3,\n        # reading lines should output unicode\n        encoding = 'utf-8'\n        proc_stdout = codecs.getreader(encoding)(proc_stdout)\n        proc_stderr = codecs.getreader(encoding)(proc_stderr)\n    # hopefully the stderr pipe won't get full and block the process\n    outs = list(proc_stdout.readlines())\n    errs = list(proc_stderr.readlines())\n    proc.wait()\n    if proc.returncode:\n        raise DiffError(\"clang-format exited with status {}: '{}'\".format(\n            proc.returncode, file), errs)\n    return make_diff(file, original, outs), errs"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "bold_red",
+                "second_doc": "\"\"\"\nFormats the given string with bold red ANSI escape codes to enhance its visibility in terminal outputs.\n\nArgs:\n    s (str): The string to be formatted.\n\nReturns:\n    str: The input string wrapped in ANSI codes for bold red styling.\n\"\"\"",
+                "source_code": "return '\\x1b[1m\\x1b[31m' + s + '\\x1b[0m'"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "colorize",
+                "second_doc": "\"\"\"\nGenerates colorized versions of diff lines to enhance readability and clarity when reviewing code differences.\n\nArgs:\n    diff_lines (iterable of str): Lines of a diff output to be colorized.\n\nYields:\n    str: Colorized lines, with formatting based on diff line type (such as changes, additions, or deletions).\n\nWhy:\n    By visually distinguishing different parts of code changes, this method helps users quickly identify modifications, making the process of reviewing or debugging code more efficient and less error-prone.\n\"\"\"",
+                "source_code": "def bold(s):\n        return '\\x1b[1m' + s + '\\x1b[0m'\n\n    def cyan(s):\n        return '\\x1b[36m' + s + '\\x1b[0m'\n\n    def green(s):\n        return '\\x1b[32m' + s + '\\x1b[0m'\n\n    def red(s):\n        return '\\x1b[31m' + s + '\\x1b[0m'\n\n    for line in diff_lines:\n        if line[:4] in ['--- ', '+++ ']:\n            yield bold(line)\n        elif line.startswith('@@ '):\n            yield cyan(line)\n        elif line.startswith('+'):\n            yield green(line)\n        elif line.startswith('-'):\n            yield red(line)\n        else:\n            yield line"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "print_diff",
+                "second_doc": "\"\"\"\nPrints lines representing the differences between data sets to the console, applying colorization if enabled and handling Unicode encoding compatibility for different Python versions.\n\nArgs:\n    diff_lines (list of str): The lines displaying the differences to be output.\n    use_color (bool): Whether to apply color highlights to the diff output.\n\nReturns:\n    None\n\nWhy:\n    This method ensures that visual representations of differences are accessible and clearly formatted for both modern and legacy Python environments, supporting user workflows that involve reviewing data or code changes.\n\"\"\"",
+                "source_code": "if use_color:\n        diff_lines = colorize(diff_lines)\n    if sys.version_info[0] < 3:\n        sys.stdout.writelines((l.encode('utf-8') for l in diff_lines))\n    else:\n        sys.stdout.writelines(diff_lines)"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "print_trouble",
+                "second_doc": "\"\"\"\nPrints a formatted error message to standard error, optionally using colored output for emphasis.\n\nArgs:\n    prog (str): The name of the program or command reporting the error.\n    message (str): The error message to display.\n    use_colors (bool): Whether to display the message in colored text for greater visibility.\n\nReturns:\n    None\n\nWhy:\n    This method standardizes how error messages are reported to aid users and developers in quickly identifying and responding to issues during development, testing, or execution workflows.\n\"\"\"",
+                "source_code": "error_text = 'error:'\n    if use_colors:\n        error_text = bold_red(error_text)\n    print(\"{}: {} {}\".format(prog, error_text, message), file=sys.stderr)"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "main",
+                "second_doc": "\"\"\"\nParses command-line arguments, discovers source files based on provided options, and applies formatting checks in parallel, reporting diffs and errors as needed.\n\nThis function coordinates file selection, parallel job management, output coloring, and error reporting to ensure source files adhere to specified formatting standards, helping maintain consistent code quality across the codebase.\n\nArgs:\n    None. Parses options directly from sys.argv.\n\nReturns:\n    int: Exit status indicating the formatting outcome or error condition.\n\"\"\"",
+                "source_code": "parser = argparse.ArgumentParser(description=__doc__)\n    parser.add_argument(\n        '--clang-format-executable',\n        metavar='EXECUTABLE',\n        help='path to the clang-format executable',\n        default='clang-format')\n    parser.add_argument(\n        '--extensions',\n        help='comma separated list of file extensions (default: {})'.format(\n            DEFAULT_EXTENSIONS),\n        default=DEFAULT_EXTENSIONS)\n    parser.add_argument(\n        '-r',\n        '--recursive',\n        action='store_true',\n        help='run recursively over directories')\n    parser.add_argument('files', metavar='file', nargs='+')\n    parser.add_argument(\n        '-q',\n        '--quiet',\n        action='store_true')\n    parser.add_argument(\n        '-j',\n        metavar='N',\n        type=int,\n        default=0,\n        help='run N clang-format jobs in parallel'\n        ' (default number of cpus + 1)')\n    parser.add_argument(\n        '--color',\n        default='auto',\n        choices=['auto', 'always', 'never'],\n        help='show colored diff (default: auto)')\n    parser.add_argument(\n        '-e',\n        '--exclude',\n        metavar='PATTERN',\n        action='append',\n        default=[],\n        help='exclude paths matching the given glob-like pattern(s)'\n        ' from recursive search')\n\n    args = parser.parse_args()\n\n    # use default signal handling, like diff return SIGINT value on ^C\n    # https://bugs.python.org/issue14229#msg156446\n    signal.signal(signal.SIGINT, signal.SIG_DFL)\n    try:\n        signal.SIGPIPE\n    except AttributeError:\n        # compatibility, SIGPIPE does not exist on Windows\n        pass\n    else:\n        signal.signal(signal.SIGPIPE, signal.SIG_DFL)\n\n    colored_stdout = False\n    colored_stderr = False\n    if args.color == 'always':\n        colored_stdout = True\n        colored_stderr = True\n    elif args.color == 'auto':\n        colored_stdout = sys.stdout.isatty()\n        colored_stderr = sys.stderr.isatty()\n\n    retcode = ExitStatus.SUCCESS\n    files = list_files(\n        args.files,\n        recursive=args.recursive,\n        exclude=args.exclude,\n        extensions=args.extensions.split(','))\n\n    if not files:\n        return\n\n    njobs = args.j\n    if njobs == 0:\n        njobs = multiprocessing.cpu_count() + 1\n    njobs = min(len(files), njobs)\n\n    if njobs == 1:\n        # execute directly instead of in a pool,\n        # less overhead, simpler stacktraces\n        it = (run_clang_format_diff_wrapper(args, file) for file in files)\n        pool = None\n    else:\n        pool = multiprocessing.Pool(njobs)\n        it = pool.imap_unordered(\n            partial(run_clang_format_diff_wrapper, args), files)\n    while True:\n        try:\n            outs, errs = next(it)\n        except StopIteration:\n            break\n        except DiffError as e:\n            print_trouble(parser.prog, str(e), use_colors=colored_stderr)\n            retcode = ExitStatus.TROUBLE\n            sys.stderr.writelines(e.errs)\n        except UnexpectedError as e:\n            print_trouble(parser.prog, str(e), use_colors=colored_stderr)\n            sys.stderr.write(e.formatted_traceback)\n            retcode = ExitStatus.TROUBLE\n            # stop at the first unexpected error,\n            # something could be very wrong,\n            # don't process all files unnecessarily\n            if pool:\n                pool.terminate()\n            break\n        else:\n            sys.stderr.writelines(errs)\n            if outs == []:\n                continue\n            if not args.quiet:\n                print_diff(outs, use_color=colored_stdout)\n            if retcode == ExitStatus.SUCCESS:\n                retcode = ExitStatus.DIFF\n    return retcode"
+            },
+            "type": "function"
+        }
+    ],
+    "simdjson/tools/release.py": [
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "extractnumbers",
+                "second_doc": "\"\"\"\nExtracts three sequential numeric components (such as version numbers) from the input string and returns them as a tuple of integers.\n\nThis is useful for standardizing and comparing structured numeric information commonly embedded in strings, such as semantic versioning data.\n\nArgs:\n    s (str): The input string potentially containing numeric version components separated by dots.\n\nReturns:\n    tuple: A tuple of three integers representing the extracted numeric components.\n\"\"\"",
+                "source_code": "return tuple(map(int,re.findall(\"(\\d+)\\.(\\d+)\\.(\\d+)\",str(s))[0]))"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "toversionstring",
+                "second_doc": "\"\"\"\nConverts the major, minor, and revision version components into a human-readable version string in the format 'major.minor.rev'.\n\nThis method helps maintain clarity and consistency when displaying or logging software version numbers, which is crucial for tracking releases and ensuring compatibility across different versions.\n\nArgs:\n    major (int): The major version number.\n    minor (int): The minor version number.\n    rev (int): The revision or patch version number.\n\nReturns:\n    str: The string representation of the version in 'major.minor.rev' format.\n\"\"\"",
+                "source_code": "return str(major)+\".\"+str(minor)+\".\"+str(rev)"
+            },
+            "type": "function"
+        },
+        {
+            "details": {
+                "docstring": null,
+                "method_name": "topaddedversionstring",
+                "second_doc": "\"\"\"\nGenerates a standardized version string by concatenating the major, minor, and revision numbers, with minor and revision numbers zero-padded to three digits each. This format provides a consistent and sortable representation of version identifiers.\n\nArgs:\n    major (int): The major version number.\n    minor (int): The minor version number.\n    rev (int): The revision number.\n\nReturns:\n    str: A string combining the version components in a fixed-width, numeric format.\n\"\"\"",
+                "source_code": "return str(major)+str(minor).zfill(3)+str(rev).zfill(3)"
+            },
+            "type": "function"
+        }
+    ]
+}
