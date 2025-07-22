@@ -133,7 +133,7 @@ docker build --build-arg GIT_USER_NAME="your-user-name" --build-arg GIT_USER_EMA
 
 OSA requires Python 3.10 or higher.
 
-File `.env` is required to specify GitHub token (GIT_TOKEN) and LLM API key (OPENAI_API_KEY or VSE_GPT_KEY)
+File `.env` is required to specify GitHub/GitLab/Gitverse token (GIT_TOKEN) and LLM API key (OPENAI_API_KEY or VSE_GPT_KEY)
 
 When running `osa-tool` from CLI, you need to set the GIT_TOKEN and API key first:
 
@@ -146,7 +146,7 @@ export GIT_TOKEN=<your_git_token>
 
 | Token name       | Description                                                                                                        | Mandatory |
 |------------------|--------------------------------------------------------------------------------------------------------------------|-----------|
-| `GIT_TOKEN`      | Personal GitHub/GitLab token used to clone private repositories, access metadata, and interact with the GitHub/GitLab API.       | Yes       |
+| `GIT_TOKEN`      | Personal GitHub/GitLab/Gitverse token used to clone private repositories, access metadata, and interact with it's API.       | Yes       |
 | `OPENAI_API_KEY` | API key for accessing [OpenAI](https://platform.openai.com/docs/api-reference/introduction)'s language models.     | No        |
 | `VSE_GPT_KEY`    | API key for [vsegpt](https://vsegpt.ru/Docs/API) LLM provider compatible with OpenAI's API format.                 | No        |
 | `X-API-Key`      | API key for the [pepy.tech](https://pepy.tech/pepy-api) REST API, used to fetch Python package download statistics | No        |
@@ -181,8 +181,8 @@ documentation, see the [GitHub Action Workflow Generator README](./osa_tool/gith
 
 | Flag                 | Description                                                                         | Default                     |
 |----------------------|-------------------------------------------------------------------------------------|-----------------------------|
-| `-r`, `--repository` | URL of the GitHub repository (**Mandatory**)                                        |                             |
-| `-b`, `--branch`     | Branch name of the GitHub repository                                                | Default branch              |
+| `-r`, `--repository` | URL of the GitHub/GitLab/Gitverse repository (**Mandatory**)                        |                             |
+| `-b`, `--branch`     | Branch name of the repository                                                       | Default branch              |
 | `--api`              | LLM API service provider                                                            | `llama`                     |
 | `--base-url`         | URL of the provider compatible with API OpenAI                                      | `https://api.openai.com/v1` |
 | `--model`            | Specific LLM model to use                                                           | `gpt-3.5-turbo`             |
@@ -200,7 +200,7 @@ the [CLI usage guide](./osa_tool/scheduler/README.md).
 
 Examples of generated README files are available in [examples](https://github.com/aimclub/OSA/tree/main/examples).
 
-URL of the GitHub repository, LLM API service provider (*optional*) and Specific LLM model to use (*optional*) are
+URL of the GitHub/GitLab/Gitverse repository, LLM API service provider (*optional*) and Specific LLM model to use (*optional*) are
 required to use the generator.
 
 To see available models go there:
