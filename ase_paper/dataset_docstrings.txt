@@ -1,0 +1,7 @@
+The following repositories were used in experimental studies:
+
+https://github.com/albumentations-team/albumentations/tree/8dfecfe86fa07cf11a58be7ca15e6473c9d6c537
+https://github.com/python-greenlet/greenlet/tree/a389d7153b3aa7d5f7e694f82b4eb18c52559042
+https://github.com/eriklindernoren/PyTorch-GAN/tree/36d3c77e5ff20ebe0aeefd322326a134a279b93e
+https://github.com/pallets/flask/tree/9075da126c9a983917b9779dbc826841813eee3c
+https://github.com/scottrogowski/code2flow/tree/258952d7123f946d320a83de3af75e7b96ea1a45

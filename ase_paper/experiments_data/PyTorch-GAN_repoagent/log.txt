@@ -1,0 +1,51 @@
+(.venv) [andrey@andrey RepoAgent]$ python -m repo_agent.main run -tp PyTorch-GAN -m gpt-4.1
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+2025-07-21 18:09:53.093 | SUCCESS  | repo_agent.log:set_logger_level_from_config:88 - Log level set to INFO!
+Initializing MetaInfo: from PyTorch-GAN
+generating repo structure: implementations/dualgan/datasets.py: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 60/60 [00:00<00:00, 200.77it/s]
+parsing parent relationship: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 60/60 [00:00<00:00, 12780.37it/s]
+MetaInfo is Refreshed and Saved
+MetaInfo is Refreshed and Saved
+parsing bidirectional reference:   0%|                                                                                                                                                                       | 0/60 [00:00<?, ?it/s]2025-07-21 18:09:54.078 | INFO     | repo_agent.runner:first_generate:105 - Starting to generate documentation
+parsing bidirectional reference:  53%|████████████████████████████████████████████████████████████████████████████████████▎                                                                         | 32/60 [00:13<00:11,  2.43it/s]
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/andrey/PycharmProjects/RepoAgent/repo_agent/main.py", line 243, in <module>
+    cli()
+    ~~~^^
+  File "/home/andrey/PycharmProjects/RepoAgent/.venv/lib/python3.13/site-packages/click/core.py", line 1161, in __call__
+    return self.main(*args, **kwargs)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/andrey/PycharmProjects/RepoAgent/.venv/lib/python3.13/site-packages/click/core.py", line 1082, in main
+    rv = self.invoke(ctx)
+  File "/home/andrey/PycharmProjects/RepoAgent/.venv/lib/python3.13/site-packages/click/core.py", line 1697, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+                           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/andrey/PycharmProjects/RepoAgent/.venv/lib/python3.13/site-packages/click/core.py", line 1443, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/andrey/PycharmProjects/RepoAgent/.venv/lib/python3.13/site-packages/click/core.py", line 788, in invoke
+    return __callback(*args, **kwargs)
+  File "/home/andrey/PycharmProjects/RepoAgent/repo_agent/main.py", line 177, in run
+    runner.run()
+    ~~~~~~~~~~^^
+  File "/home/andrey/PycharmProjects/RepoAgent/repo_agent/runner.py", line 271, in run
+    self.first_generate()  # 如果是第一次做文档生成任务，就通过first_generate生成所有文档
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "/home/andrey/PycharmProjects/RepoAgent/repo_agent/runner.py", line 109, in first_generate
+    task_manager = self.meta_info.get_topology(check_task_available_func)
+  File "/home/andrey/PycharmProjects/RepoAgent/repo_agent/doc_meta_info.py", line 700, in get_topology
+    self.parse_reference()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/andrey/PycharmProjects/RepoAgent/repo_agent/doc_meta_info.py", line 614, in parse_reference
+    walk_file(child)
+    ~~~~~~~~~^^^^^^^
+  File "/home/andrey/PycharmProjects/RepoAgent/repo_agent/doc_meta_info.py", line 595, in walk_file
+    if now_obj not in referencer_node.reference_who:
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 29, in __eq__
+  File "<string>", line 29, in __eq__
+  File "<string>", line 29, in __eq__
+  [Previous line repeated 2851 more times]
+RecursionError: maximum recursion depth exceeded in comparison
