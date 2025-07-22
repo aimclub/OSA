@@ -1,14 +1,10 @@
-import os
 from abc import ABC, abstractmethod
 from uuid import uuid4
 
 import dotenv
-import openai
-import requests
 from protollm.connectors import create_llm_connector
 from langchain.schema import SystemMessage
 from osa_tool.config.settings import Settings
-from osa_tool.utils import logger
 
 
 class ModelHandler(ABC):
@@ -146,144 +142,6 @@ class PayloadFactory:
         }
 
 
-class OpenaiHandler(ModelHandler):
-    """
-    This class, openaiHandler, is designed to handle interactions with the OpenAI API. It is initialized with configuration settings and can send requests to the API.
-
-    Methods:
-        __init__:
-            Initializes the instance with the provided configuration settings. This method sets up the instance by assigning the provided configuration settings to the instance's config attribute. It also retrieves the API from the configuration settings and passes it to the _configure_api method.
-
-        send_request:
-            Sends a request to Sam Altman and initializes the payload with the given prompt. This method sends a request to Sam Altman, initializes the payload with the given prompt, and creates a chat completion with the specified model, messages, max tokens, and temperature from the configuration. It then returns the content of the first choice from the response.
-
-        _configure_api:
-            Configures the API for the instance based on the provided base_url. It loads environment variables, determines the appropriate API key based on the base URL, and initializes the OpenAI client.
-    """
-
-    def __init__(self, config: Settings):
-        """
-        Initializes the instance with the provided configuration settings.
-
-        This method sets up the instance by assigning the provided configuration settings to the instance's config attribute.
-        It also retrieves the API from the configuration settings and passes it to the _configure_api method.
-
-        Args:
-            config: The configuration settings to be used for setting up the instance.
-
-        Returns:
-            None
-        """
-        self.config = config
-        self.url = self.config.llm.url
-        self._configure_api()
-
-    def send_request(self, prompt: str) -> str:
-        """
-        Sends a request to a specified URL with a payload initialized with a given prompt.
-
-        This method initializes a payload with the provided prompt and configuration,
-        sends a POST request to a specified URL with this payload, and logs the response.
-
-        Args:
-            prompt: The prompt to initialize the payload with.
-
-        Returns:
-            str: The response received from the request.
-        """
-        self.initialize_payload(self.config, prompt)
-        messages = self.payload["messages"]
-        response = self.client.chat.completions.create(
-            model=self.config.llm.model,
-            messages=messages,
-            max_tokens=self.config.llm.tokens,
-            temperature=self.config.llm.temperature,
-        )
-        return response.choices[0].message.content
-
-    def _configure_api(self) -> None:
-        """
-        Configures the API for the instance based on the provided base_url.
-
-        This method loads environment variables, determines the API key based on the base URL,
-        and initializes the OpenAI client.
-
-        Returns:
-            None
-        """
-        dotenv.load_dotenv()
-        if self.url == "https://api.vsegpt.ru/v1":
-            self.key = os.getenv("VSE_GPT_KEY")
-        else:
-            self.key = os.getenv("OPENAI_API_KEY")
-            self.config.llm.tokens = 1500
-
-        self.client = openai.OpenAI(base_url=self.url, api_key=self.key)
-
-
-class OllamaHandler(ModelHandler):
-    """
-    Handles interactions with Ollama models. Initializes with configuration settings
-    and sends requests to the Ollama API endpoint.
-
-    Methods:
-        __init__:
-            Initializes the instance with Ollama configuration settings including URL and model name.
-        _configure_api:
-            Configures the HTTP client with appropriate headers for API communication.
-        send_request:
-            Sends a chat request to Ollama API with the specified prompt and returns the response.
-    """
-
-    def __init__(self, config: Settings):
-        """
-        Initializes the instance with Ollama configuration settings.
-
-        Args:
-            config: Configuration settings containing Ollama URL and model name.
-        """
-        self.config = config
-        if not config.llm.url:
-            self.base_url = "http://localhost:11434"
-        else:
-            self.base_url = config.llm.url
-        self.model = config.llm.model
-        self._configure_api()
-
-    def _configure_api(self) -> requests.Session:
-        """Configures a requests session with Ollama headers."""
-        session = requests.Session()
-        session.headers.update({"Content-Type": "application/json"})
-        self.client = session
-
-    def send_request(self, prompt: str) -> str:
-        """
-        Sends a chat request to Ollama API with the specified prompt.
-
-        Args:
-            prompt: Input text to send to the model.
-
-        Returns:
-            str: Generated response content from the model.
-        """
-
-        self.initialize_payload(self.config, prompt)
-
-        self.payload["model"] = self.model
-        self.payload["stream"] = False
-        self.payload["options"] = {
-            "temperature": self.payload["meta"]["temperature"],
-            "max_tokens": self.payload["meta"]["tokens_limit"],
-        }
-
-        try:
-            response = self.client.post(f"{self.base_url}/api/chat", json=self.payload)
-            response.raise_for_status()
-            return response.json()["message"]["content"]
-        except requests.exceptions.RequestException as e:
-            raise RuntimeError(f"Ollama API request failed: {str(e)}") from e
-
-
 class ProtollmHandler(ModelHandler):
     """
     This class is designed to handle interactions with the different LLMs using ProtoLLM connector.
@@ -319,7 +177,7 @@ class ProtollmHandler(ModelHandler):
             None
         """
         self.config = config
-        self.local_url = "http://10.32.15.21:6672"
+        self.local_url = config.llm.local_url
         self._configure_api(config.llm.api, model_name=config.llm.model)
 
     def send_request(self, prompt: str) -> str:
@@ -342,7 +200,10 @@ class ProtollmHandler(ModelHandler):
 
     def _build_model_url(self) -> str:
         """Builds the model URL based on the LLM API type."""
-        url_templates = {"llama": f"self_hosted;{self.local_url};{self.config.llm.model}"}
+        url_templates = {
+            "llama": f"self_hosted;{self.local_url};{self.config.llm.model}",
+            "ollama": f"ollama;{self.config.llm.localhost};{self.config.llm.model}",
+        }
         return url_templates.get(self.config.llm.api, f"{self.config.llm.url};{self.config.llm.model}")
 
     def _get_llm_params(self):
@@ -385,14 +246,7 @@ class ModelHandlerFactory:
 
     Methods:
      build:
-        This method retrieves the configuration from the class
-        and then creates and returns a handler using the configuration. The class from which the configuration is
-        retrieved is passed as an argument.
-
-     create_handler:
-        This method uses the model specified in the configuration to create a handler. It supports three types of
-        models: 'llama', 'openai', and 'gpt-4'. For 'llama', it creates a llamaHandler, and for 'openai' and 'gpt-4',
-        it creates an openaiHandler. The configuration object which contains the model information is passed as an argument.
+        Builds and returns a model handler instance based on the given configuration.
     """
 
     @classmethod
@@ -408,31 +262,6 @@ class ModelHandlerFactory:
             cls: The class from which the configuration is retrieved.
 
         Returns:
-            None: This method does not return anything.
+            ModelHandler: An instance of the appropriate model handler.
         """
-        return cls.create_handler(config)
-
-    @staticmethod
-    def create_handler(config: Settings) -> ModelHandler:
-        """
-        Creates a handler based on the model specified in the configuration.
-
-        This method uses the model specified in the configuration to create a handler.
-        It supports three types of models: 'llama', 'ollama', 'openai', and 'vsegpt'.
-        For 'llama', it creates a llamaHandler, 'ollama' - ollamaHandler, and for 'openai' and 'vsegpt',
-        it creates an openaiHandler.
-
-        Args:
-            config: The configuration object which contains the model information.
-
-        Returns:
-            None: This method does not return anything.
-        """
-        # TODO remove this, after llama rework.
-        api = config.llm.api
-        constructors = {
-            "llama": ProtollmHandler,
-            "openai": ProtollmHandler,
-            "ollama": OllamaHandler,
-        }
-        return constructors[api](config)
+        return ProtollmHandler(config)

@@ -66,7 +66,7 @@ tokens:
   aliases: [ "--max-tokens" ]
   type: str
   description: "Maximum number of tokens the model can generate in a single response."
-  default: null
+  default: 1500
   example: 256, 1024
 
 top_p:

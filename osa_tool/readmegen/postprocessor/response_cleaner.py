@@ -1,3 +1,6 @@
+import re
+
+
 def process_text(text: str) -> str:
     """
     Extracts JSON content from the given text by locating the first opening JSON bracket
@@ -10,6 +13,13 @@ def process_text(text: str) -> str:
     Returns:
         str: Extracted JSON content or raises ValueError if JSON block not detected.
     """
+    replacements = {"None": "null", "True": "true", "False": "false"}
+
+    for key, value in replacements.items():
+        text = text.replace(key, value)
+
+    text = re.sub(r",\s*([}\]])", r"\1", text)
+
     start_obj = text.find("{")
     start_arr = text.find("[")
 
