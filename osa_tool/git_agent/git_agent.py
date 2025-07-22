@@ -709,7 +709,6 @@ class GitAgent:
 
         about_data = {
             "description": about_content["description"],
-            "homepage": about_content["homepage"],
             "topics": about_content["topics"],
         }
 
