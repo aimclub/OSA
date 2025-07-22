@@ -69,7 +69,7 @@ class TextGenerator:
         Extracts information about the presence of key files in the repository.
 
         This method generates a list of strings indicating whether key files like
-        README, LICENSE, documentation, examples, and tests are present in the repository.
+        README, LICENSE, documentation, examples, requirements and tests are present in the repository.
 
         Returns:
             list[str]: A list of strings summarizing the presence of key files in the repository.
@@ -79,5 +79,6 @@ class TextGenerator:
             f"LICENSE presence is {self.sourcerank.license_presence()}",
             f"Examples presence is {self.sourcerank.examples_presence()}",
             f"Documentation presence is {self.sourcerank.docs_presence()}",
+            f"Requirements presence is {self.sourcerank.requirements_presence()}",
         ]
         return contents

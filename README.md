@@ -146,7 +146,7 @@ export GIT_TOKEN=<your_git_token>
 
 | Token name       | Description                                                                                                        | Mandatory |
 |------------------|--------------------------------------------------------------------------------------------------------------------|-----------|
-| `GIT_TOKEN`      | Personal GitHub token used to clone private repositories, access metadata, and interact with the GitHub API.       | Yes       |
+| `GIT_TOKEN`      | Personal GitHub/GitLab token used to clone private repositories, access metadata, and interact with the GitHub/GitLab API.       | Yes       |
 | `OPENAI_API_KEY` | API key for accessing [OpenAI](https://platform.openai.com/docs/api-reference/introduction)'s language models.     | No        |
 | `VSE_GPT_KEY`    | API key for [vsegpt](https://vsegpt.ru/Docs/API) LLM provider compatible with OpenAI's API format.                 | No        |
 | `X-API-Key`      | API key for the [pepy.tech](https://pepy.tech/pepy-api) REST API, used to fetch Python package download statistics | No        |
@@ -191,8 +191,8 @@ documentation, see the [GitHub Action Workflow Generator README](./osa_tool/gith
 | `--no-fork`          | Avoid create fork for target repository                                             | `False`                     |
 | `--no-pull-request`  | Avoid create pull request for target repository                                     | `False`                     |
 | `--top_p`            | Nucleus sampling probability                                                        | `null`                      |
-| `--temperature`      | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).   | `null`                     |
-| `--max_tokens`       | Maximum number of tokens the model can generate in a single response                | `null`                     |
+| `--temperature`      | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).   | `null`                      |
+| `--max_tokens`       | Maximum number of tokens the model can generate in a single response                | `null`                      |
 
 To learn how to work with the interactive CLI and view descriptions of all available keys, visit
 the [CLI usage guide](./osa_tool/scheduler/README.md).
@@ -240,7 +240,7 @@ python -m osa_tool.run -r https://github.com/aimclub/OSA --api ollama --base-url
 
 ## Documentation
 
-Detailed description of OSA API is available [here](https://itmo-nss-team.github.io/Open-Source-Advisor/).
+Detailed description of OSA API is available [here](https://aimclub.github.io/OSA/).
 
 ---
 

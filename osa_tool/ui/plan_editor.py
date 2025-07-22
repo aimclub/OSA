@@ -38,6 +38,7 @@ class PlanEditor:
             "max_tokens",
             "top_p",
         ]
+        self.special_keys = ["convert_notebooks"]
         self.arguments_metadata = read_arguments_file_flat(build_arguments_path())
         self.modified_keys = set()
 
@@ -152,6 +153,33 @@ class PlanEditor:
             console.print(f"\n[cyan]{key_to_edit}[/cyan] (current value: [green]{current_value}[/green])")
             self._print_key_info(key_to_edit)
 
+            if key_to_edit in self.special_keys:
+                if key_to_edit == "convert_notebooks":
+                    console.print(
+                        "[bold]Options:[/bold]\n"
+                        "[1] Enter comma-separated paths\n"
+                        "[2] Clear value (None)\n"
+                        "[3] Set to empty list ([])\n"
+                        "[4] Keep current"
+                    )
+                    choice = Prompt.ask(
+                        "Select an option", choices=["1", "2", "3", "4"], default="4", show_choices=True
+                    )
+                    if choice == "1":
+                        paths_input = Prompt.ask("Enter comma-separated paths").strip()
+                        new_value = [p.strip() for p in paths_input.split(",") if p.strip()]
+                        plan[key_to_edit] = new_value
+                    elif choice == "2":
+                        plan[key_to_edit] = None
+                    elif choice == "3":
+                        plan[key_to_edit] = []
+                    # 4 -skip
+
+                if plan[key_to_edit] != current_value:
+                    self._mark_key_as_changed(key_to_edit, plan)
+
+                continue
+
             if isinstance(current_value, bool):
                 new_value = Prompt.ask(
                     f"Set {key_to_edit} to (y = True / n = False / skip = no change)",
@@ -217,6 +245,12 @@ class PlanEditor:
         for key, value in plan.items():
             if key in self.info_keys or key in self.workflow_keys:
                 continue
+
+            if key in self.special_keys and value in [[]]:
+                label = self._format_key_label(key)
+                actions_table.add_row(label, "Search inside repository")
+                continue
+
             if value and value not in [None, [], ""]:
                 label = self._format_key_label(key)
                 actions_table.add_row(label, str(value))
@@ -233,6 +267,12 @@ class PlanEditor:
         for key, value in plan.items():
             if key in self.info_keys or key in self.workflow_keys:
                 continue
+
+            if key in self.special_keys and value is None:
+                label = self._format_key_label(key)
+                inactive_table.add_row(label, str(value))
+                continue
+
             if not value or value == []:
                 label = self._format_key_label(key)
                 inactive_table.add_row(label, str(value))
@@ -380,26 +420,32 @@ class PlanEditor:
         """Mark a key as manually changed and update workflows flag if needed."""
         self.modified_keys.add(key)
 
-        if key == "generate_workflows" and plan["generate_workflows"] is False:
-            self._disable_all_workflow_flags(plan)
-
-        self._sync_generate_workflows_flag(plan)
+        if key == "generate_workflows":
+            if plan["generate_workflows"] is False:
+                self._manual_disable_generate_workflows = True
+            self._sync_generate_workflows_flag(plan)
+        elif key in self._workflow_boolean_keys(plan):
+            if plan.get("generate_workflows") is False and plan.get(key) is True:
+                self._manual_disable_generate_workflows = False
+            self._sync_generate_workflows_flag(plan)
 
     def _sync_generate_workflows_flag(self, plan: dict) -> None:
         """Automatically enable/disable generate_workflows based on workflow keys."""
         bool_keys = self._workflow_boolean_keys(plan, exclude={"generate_workflows"})
         any_enabled = any(plan.get(k) is True for k in bool_keys)
-        plan["generate_workflows"] = any_enabled
+
+        if plan.get("generate_workflows"):
+            if not any_enabled:
+                plan["generate_workflows"] = False
+                self._manual_disable_generate_workflows = False
+        else:
+            if any_enabled and not getattr(self, "_manual_disable_generate_workflows", False):
+                plan["generate_workflows"] = True
 
     def _workflow_boolean_keys(self, plan: dict, exclude: set[str] = None) -> list[str]:
         """Return workflow keys with boolean values only."""
         exclude = exclude or set()
         return [k for k in self.workflow_keys if isinstance(plan.get(k), bool) and k not in exclude]
-
-    def _disable_all_workflow_flags(self, plan: dict) -> None:
-        """Disable all boolean workflow keys."""
-        for k in self._workflow_boolean_keys(plan):
-            plan[k] = False
 
     def _format_key_label(self, key: str) -> str:
         return f"{key} *" if key in self.modified_keys else key

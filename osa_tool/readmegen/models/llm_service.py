@@ -57,7 +57,7 @@ class LLMClient:
         logger.info("README-style summary generation completed.")
         return core_features, overview, getting_started
 
-    def get_responses_article(self, article: str) -> tuple[str, str, str]:
+    def get_responses_article(self, article: str) -> tuple[str, str, str, str]:
         """
         Generates an article-style summary of the repository based on key files and associated PDF documentation.
 
@@ -87,17 +87,23 @@ class LLMClient:
         overview = self.run_request(self.prompts.get_prompt_overview_article(files_summary, pdf_summary))
 
         logger.info("Generating content section...")
-        content = self.run_request(self.prompts.get_prompt_content_article(key_files_content, pdf_summary))
+        content = self.run_request(self.prompts.get_prompt_content_article(files_summary, pdf_summary))
 
         logger.info("Generating algorithm description...")
-        algorithms = self.run_request(self.prompts.get_prompt_algorithms_article(files_summary, pdf_summary))
+        algorithms = self.run_request(self.prompts.get_prompt_algorithms_article(key_files_content, pdf_summary))
+
+        logger.info("Attempting to generate Getting Started section...")
+        examples_files = extract_example_paths(self.tree)
+        examples_content = FileProcessor(self.config_loader, examples_files).process_files()
+        getting_started = self.run_request(self.prompts.get_prompt_getting_started(examples_content))
 
         overview = process_text(overview)
         content = process_text(content)
         algorithms = process_text(algorithms)
+        getting_started = process_text(getting_started)
 
         logger.info("Article-style summary generation completed.")
-        return overview, content, algorithms
+        return overview, content, algorithms, getting_started
 
     def run_request(self, prompt: str) -> str:
         """Sends a prompt to the model and returns the response."""
@@ -127,5 +133,11 @@ class LLMClient:
         response = self.run_request(
             self.prompts.get_prompt_deduplicated_install_and_start(installation, getting_started)
         )
+        response = process_text(response)
+        return response
+
+    def refine_readme(self, new_readme_sections: dict) -> str:
+        logger.info("Refining README files...")
+        response = self.run_request(self.prompts.get_prompt_refine_readme(new_readme_sections))
         response = process_text(response)
         return response

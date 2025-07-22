@@ -13,8 +13,8 @@ class PyPiPackageInspector:
         self.tree = tree
         self.base_path = base_path
         self.api_key = os.getenv("X-API-Key")
-        self.pattern_for_file = r"(pyproject\.toml|setup\.py)"
-        self.pattern_for_setup = r"name\s*=\s*['\"]([^'\"]+)['\"]"
+        self.patterns_for_file = [r"pyproject\.toml", r"setup\.py"]
+        self.pattern_for_setup = r"(?i)(?:^|\s)name\s*=\s*['\"]([^'\"]+)['\"]"
         self.pypi_url_template = "https://pypi.org/pypi/{package}/json"
         self.pepy_url_template = "https://api.pepy.tech/api/v2/projects/{package}"
 
@@ -41,26 +41,27 @@ class PyPiPackageInspector:
         Returns:
             str | None: The name of the published package, if found and published. Otherwise, None.
         """
-        file = find_in_repo_tree(self.tree, self.pattern_for_file)
-        if not file:
-            return None
+        for pattern in self.patterns_for_file:
+            file = find_in_repo_tree(self.tree, pattern)
 
-        file_path = os.path.join(self.base_path, file)
-        try:
-            content = read_file(file_path)
-        except Exception as e:
-            logger.error(f"Error while reading {file_path}: {e}")
-            return None
+            if not file:
+                continue
 
-        if file_path.endswith("pyproject.toml"):
-            package_name = self._extract_package_name_from_pyproject(content)
-        elif file_path.endswith("setup.py"):
-            package_name = self._extract_package_name_from_setup(content)
-        else:
+            file_path = os.path.join(self.base_path, file)
+            try:
+                content = read_file(file_path)
+            except Exception as e:
+                logger.error(f"Error while reading {file_path}: {e}")
+                continue
+
             package_name = None
+            if file_path.endswith("pyproject.toml"):
+                package_name = self._extract_package_name_from_pyproject(content)
+            elif file_path.endswith("setup.py"):
+                package_name = self._extract_package_name_from_setup(content)
 
-        if package_name and self._is_published_on_pypi(package_name):
-            return package_name
+            if package_name and self._is_published_on_pypi(package_name):
+                return package_name
 
         return None
 
@@ -108,7 +109,7 @@ class PyPiPackageInspector:
         if match:
             return match.group(1)
         else:
-            logger.error("Failed to extract package name from setup.py")
+            logger.warning("Package name not found in setup.py")
             return None
 
     def _is_published_on_pypi(self, package_name: str) -> bool:

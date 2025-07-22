@@ -7,7 +7,7 @@ INPUT DATA:
 1. README content: {readme_content}
 
 TASK:
-Create a technical, concise GitHub repository description (120 chars) from README content.
+Create a technical, concise Git repository description (120 chars) from README content.
 Return only the final description text with no commentary.
 
 RULES:
@@ -73,7 +73,7 @@ e) Technical USP: Quantifiable differentiators (benchmarks, unique combinations)
 - Compare against existing topics to avoid duplication
 - Reject broad domains - require technical specificity (e.g., "cnn-model-pruning" not "deep-learning")
 
-Generate up to {amount} GitHub topics meeting these requirements:
+Generate up to {amount} Git topics meeting these requirements:
 
 RULES:
 - Use compound terms only when README shows combined usage
@@ -91,7 +91,7 @@ INPUT DATA:
 2. URLs: {urls}
 
 TASK:
-Analyze input URLs and return a comma-separated list of valid homepages/documentation sources ranked by relevance excluding any github url. 
+Analyze input URLs and return a comma-separated list of valid homepages/documentation sources ranked by relevance excluding any git url. 
 Return empty string if none qualify with no commentary or explanations.
 
 RULES:

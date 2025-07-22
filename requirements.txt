@@ -29,7 +29,9 @@ multidict==6.1.0
 nbconvert>=6.0
 nbformat>=5.0
 openai==1.58.1
+openpyxl==3.1.5
 packaging==24.2
+pandas==2.2.3
 pdfminer.six==20231228
 pdfplumber==0.11.5
 pluggy==1.5.0
@@ -59,5 +61,6 @@ tree-sitter-python==0.23.4
 typing_extensions==4.12.2
 urllib3==2.3.0
 yarl==1.18.3
+pipreqs==0.5.0
 
 protollm>=0.1.3

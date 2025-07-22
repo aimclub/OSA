@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import patch
 
 
-@patch("osa_tool.github_agent.github_agent.requests.get")
-@patch("osa_tool.github_agent.github_agent.requests.put")
+@patch("osa_tool.git_agent.git_agent.requests.get")
+@patch("osa_tool.git_agent.git_agent.requests.put")
 def test_star_repository_already_stars(mock_put, mock_get, github_agent):
     # Arrange
     github_agent.token = "test_token"
@@ -14,8 +14,8 @@ def test_star_repository_already_stars(mock_put, mock_get, github_agent):
     mock_put.assert_not_called()
 
 
-@patch("osa_tool.github_agent.github_agent.requests.get")
-@patch("osa_tool.github_agent.github_agent.requests.put")
+@patch("osa_tool.git_agent.git_agent.requests.get")
+@patch("osa_tool.git_agent.git_agent.requests.put")
 def test_star_repository_adds_star(mock_put, mock_get, github_agent):
     # Arrange
     github_agent.token = "test_token"
@@ -27,8 +27,8 @@ def test_star_repository_adds_star(mock_put, mock_get, github_agent):
     mock_put.assert_called_once()
 
 
-@patch("osa_tool.github_agent.github_agent.requests.get")
-@patch("osa_tool.github_agent.github_agent.requests.put")
+@patch("osa_tool.git_agent.git_agent.requests.get")
+@patch("osa_tool.git_agent.git_agent.requests.put")
 def test_star_repository_error(mock_put, mock_get, github_agent):
     # Arrange
     github_agent.token = "test_token"
@@ -39,7 +39,7 @@ def test_star_repository_error(mock_put, mock_get, github_agent):
         github_agent.star_repository()
 
 
-@patch("osa_tool.github_agent.github_agent.requests.get")
+@patch("osa_tool.git_agent.git_agent.requests.get")
 def test_star_repository_request_error(mock_get, github_agent):
     # Arrange
     github_agent.token = "test_token"

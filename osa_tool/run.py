@@ -1,4 +1,5 @@
 import os
+import subprocess
 from typing import List, Optional
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
@@ -12,7 +13,7 @@ from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.convertion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.docs_generator.license import compile_license_file
-from osa_tool.github_agent.github_agent import GithubAgent
+from osa_tool.git_agent.git_agent import GitAgent
 from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
@@ -23,11 +24,17 @@ from osa_tool.scheduler.workflow_manager import (
     update_workflow_config,
 )
 from osa_tool.translation.dir_translator import DirectoryTranslator
-from osa_tool.utils import build_arguments_path, delete_repository, logger, parse_folder_name, rich_section
+from osa_tool.utils import (
+    build_arguments_path,
+    delete_repository,
+    logger,
+    parse_folder_name,
+    rich_section,
+)
 
 
 def main():
-    """Main function to generate a README.md file for a GitHub repository.
+    """Main function to generate a README.md file for a Git repository.
 
     Handles command-line arguments, clones the repository, creates and checks out a branch,
     generates the README.md file, and commits and pushes the changes.
@@ -51,24 +58,24 @@ def main():
             max_tokens=args.max_tokens,
             top_p=args.top_p,
         )
-        sourcerank = SourceRank(config)
 
-        # Initialize GitHub agent and perform operations
-        github_agent = GithubAgent(args.repository, args.branch)
+        # Initialize Git agent and perform operations
+        git_agent = GitAgent(args.repository, args.branch)
         if create_fork:
-            github_agent.star_repository()
-            github_agent.create_fork()
-        github_agent.clone_repository()
+            git_agent.star_repository()
+            git_agent.create_fork()
+        git_agent.clone_repository()
 
         # Initialize ModeScheduler
+        sourcerank = SourceRank(config)
         scheduler = ModeScheduler(config, sourcerank, args, workflow_keys)
         plan = scheduler.plan
 
         if create_fork:
-            github_agent.create_and_checkout_branch()
+            git_agent.create_and_checkout_branch()
 
         # .ipynb to .py convertion
-        if plan.get("convert_notebooks"):
+        if plan["convert_notebooks"] is not None:
             rich_section("Jupyter notebooks convertion")
             convert_notebooks(args.repository, plan.get("convert_notebooks"))
 
@@ -78,7 +85,7 @@ def main():
             analytics = ReportGenerator(config, sourcerank)
             analytics.build_pdf()
             if create_fork:
-                github_agent.upload_report(analytics.filename, analytics.output_path)
+                git_agent.upload_report(analytics.filename, analytics.output_path)
 
         # Auto translating names of directories
         if plan.get("translate_dirs"):
@@ -101,10 +108,15 @@ def main():
             rich_section("Community docs generation")
             generate_documentation(config)
 
+        # Requirements generation
+        if plan.get("requirements"):
+            rich_section("Requirements generation")
+            generate_requirements(args.repository)
+
         # Readme generation
         if plan.get("readme"):
             rich_section("README generation")
-            readme_agent(config, plan.get("article"))
+            readme_agent(config, plan.get("article"), plan.get("refine_readme"))
 
         # About section generation
         about_gen = None
@@ -113,7 +125,7 @@ def main():
             about_gen = AboutGenerator(config)
             about_gen.generate_about_content()
             if create_fork:
-                github_agent.update_about_section(about_gen.get_about_content())
+                git_agent.update_about_section(about_gen.get_about_content())
 
         # Generate GitHub workflows
         if plan.get("generate_workflows"):
@@ -129,8 +141,8 @@ def main():
 
         if create_fork and create_pull_request:
             rich_section("Publishing changes")
-            github_agent.commit_and_push_changes()
-            github_agent.create_pull_request(body=about_gen.get_about_section_message())
+            git_agent.commit_and_push_changes(force=True)
+            git_agent.create_pull_request(body=about_gen.get_about_section_message() if about_gen else "")
 
         if plan.get("delete_dir"):
             rich_section("Repository deletion")
@@ -141,7 +153,7 @@ def main():
         logger.error("Error: %s", e, exc_info=True)
 
 
-def convert_notebooks(repo_url: str, notebook_paths: List[str] | None = None) -> None:
+def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) -> None:
     """Converts Jupyter notebooks to Python scripts based on provided paths.
 
     Args:
@@ -161,6 +173,22 @@ def convert_notebooks(repo_url: str, notebook_paths: List[str] | None = None) ->
         logger.error("Error while converting notebooks: %s", repr(e), exc_info=True)
 
 
+def generate_requirements(repo_url):
+    logger.info(f"Starting the generation of requirements")
+    repo_path = Path(parse_folder_name(repo_url)).resolve()
+    try:
+        result = subprocess.run(
+            ["pipreqs", "--scan-notebooks", "--force", "--encoding", "utf-8", repo_path],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        logger.info(f"Requirements generated successfully at: {repo_path}")
+        logger.debug(result)
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Error while generating project's requirements: {e.stderr}")
+
+
 def generate_docstrings(config_loader: ConfigLoader) -> None:
     """Generates a docstrings for .py's classes and methods of the provided repository.
 
@@ -175,12 +203,15 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen(config_loader)
         dg.process_python_file(res)
-        dg.generate_documentation_mkdocs(repo_path)
+        dg.generate_the_main_idea(res)
+        dg.process_python_file(res)
+        modules_summaries = dg.summarize_submodules(res)
+        dg.generate_documentation_mkdocs(repo_path, res, modules_summaries)
         dg.create_mkdocs_github_workflow(repo_url, repo_path)
 
     except Exception as e:
         dg._purge_temp_files(repo_path)
-        logger.error("Error while generating codebase documentaion: %s", repr(e), exc_info=True)
+        logger.error("Error while generating codebase documentation: %s", repr(e), exc_info=True)
 
 
 def load_configuration(

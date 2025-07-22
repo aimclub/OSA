@@ -1,6 +1,8 @@
 import logging
 import os
+import re
 import shutil
+import stat
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -35,12 +37,21 @@ def parse_folder_name(repo_url: str) -> str:
     Parses the repository URL to extract the folder name.
 
     Args:
-        repo_url: The URL of the GitHub repository.
+        repo_url: The URL of the Git repository.
 
     Returns:
         The name of the folder where the repository will be cloned.
     """
-    return repo_url.rstrip("/").split("/")[-1]
+    patterns = [r"github\.com/[^/]+/([^/]+)", r"gitlab[^/]+/[^/]+/([^/]+)", r"gitverse\.ru/[^/]+/([^/]+)"]
+    for pattern in patterns:
+        match = re.search(pattern, repo_url)
+        if match:
+            folder_name = match.group(1)
+            logger.debug(f"Parsed folder name '{folder_name}' from repo URL '{repo_url}'")
+            return folder_name
+    folder_name = re.sub(r"[:/]", "_", repo_url.rstrip("/"))
+    logger.debug(f"Parsed folder name '{folder_name}' from repo URL '{repo_url}'")
+    return folder_name
 
 
 def osa_project_root() -> Path:
@@ -55,27 +66,34 @@ def build_arguments_path() -> str:
 
 def get_base_repo_url(repo_url: str) -> str:
     """
-    Extracts the base repository URL path from a given GitHub URL.
+    Extracts the base repository URL path from a given Git URL.
 
     Args:
-        repo_url (str, optional): The GitHub repository URL. If not provided,
+        repo_url (str, optional): The Git repository URL. If not provided,
             the instance's `repo_url` attribute is used. Defaults to None.
 
     Returns:
         str: The base repository path (e.g., 'username/repo-name').
 
     Raises:
-        ValueError: If the provided URL does not start with 'https://github.com/'.
+        ValueError: If the provided URL has unsupported format.
     """
-    if repo_url.startswith("https://github.com/"):
-        return repo_url[len("https://github.com/") :].rstrip("/")
-    else:
-        raise ValueError("Unsupported repository URL format.")
+    patterns = [
+        r"https?://github\.com/([^/]+/[^/]+)",
+        r"https?://[^/]*gitlab[^/]*/(.+)",
+        r"https?://gitverse\.ru/([^/]+/[^/]+)",
+    ]
+    for pattern in patterns:
+        match = re.match(pattern, repo_url)
+        if match:
+            return match.group(1).rstrip("/")
+    raise ValueError(f"Unsupported repository URL format: {repo_url}")
 
 
 def delete_repository(repo_url: str) -> None:
     """
     Deletes the local directory of the downloaded repository based on its URL.
+    Works reliably on Windows and Unix-like systems.
 
     Args:
         repo_url (str): The URL of the repository to be deleted.
@@ -84,9 +102,18 @@ def delete_repository(repo_url: str) -> None:
         Exception: Logs an error message if deletion fails.
     """
     repo_path = os.path.join(os.getcwd(), parse_folder_name(repo_url))
+
+    def on_rm_error(func, path, exc_info):
+        """Force-remove read-only files and log the issue."""
+        try:
+            os.chmod(path, stat.S_IWRITE)
+            func(path)
+        except Exception as e:
+            logger.error(f"Failed to forcibly remove {path}: {e}")
+
     try:
         if os.path.exists(repo_path):
-            shutil.rmtree(repo_path)
+            shutil.rmtree(repo_path, onerror=on_rm_error)
             logger.info(f"Directory {repo_path} has been deleted.")
         else:
             logger.info(f"Directory {repo_path} does not exist.")
@@ -136,6 +163,7 @@ def get_repo_tree(repo_path: str) -> str:
     """
     repo_path = Path(repo_path)
     excluded_extensions = {
+        # Images
         ".png",
         ".jpg",
         ".jpeg",
@@ -143,34 +171,78 @@ def get_repo_tree(repo_path: str) -> str:
         ".bmp",
         ".tiff",
         ".webp",
-        ".drawio",  # images
+        ".drawio",
+        ".svg",
+        ".ico",
+        # Videos
         ".mp4",
         ".mov",
         ".avi",
         ".mkv",
         ".flv",
         ".wmv",
-        ".webm",  # videos
+        ".webm",
+        # Data files
         ".csv",
         ".tsv",
         ".parquet",
         ".json",
         ".xml",
         ".xls",
-        ".xlsx",  # data files
+        ".xlsx",
+        ".db",
+        ".sqlite",
+        # Archives
         ".zip",
         ".tar",
         ".gz",
         ".bz2",
-        ".7z",  # archives
+        ".7z",
+        ".rar",
+        # Binary / compiled artifacts
         ".exe",
         ".dll",
         ".so",
         ".bin",
         ".obj",
         ".class",
-        ".pkl",  # binaries
-        ".pdf",  # documents
+        ".pkl",
+        ".dylib",
+        ".o",
+        ".a",
+        ".lib",
+        ".lo",
+        ".mod",
+        ".pyc",
+        ".pyo",
+        ".pyd",
+        ".egg",
+        ".whl",
+        # Documents
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".odt",
+        ".rtf",
+        # Test or unused code artifacts
+        ".gold",
+        ".h",
+        ".hpp",
+        ".inl",
+        ".S",
+        # Temporary, system, and service files
+        ".DS_Store",
+        ".log",
+        ".tmp",
+        ".bak",
+        ".swp",
+        ".swo",
+        # Project files (optional, depends on your context)
+        ".csproj",
+        ".sln",
+        ".vcxproj",
+        ".vcproj",
+        ".dSYM",
     }
 
     lines = []

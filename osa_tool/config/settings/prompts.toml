@@ -195,3 +195,67 @@ RULES:
 - Output valid JSON, strictly following the given structure.
 """
 
+refine = """
+INPUT DATA:
+
+1. ORIGINAL README CONTENT:
+
+{old_readme}
+
+2. GENERATED README SECTIONS (as JSON):
+
+{new_readme_sections}
+
+TASK:
+You are refining the generated README by combining it with the original README content.
+
+GOAL:
+Improve the generated README by:
+- Preserving valuable content from the original README that is missing in the generated one.
+- Removing outdated, redundant, or duplicated content.
+- Ensuring clear, consistent, and well-structured markdown formatting.
+
+PROCESS:
+
+- Use the generated README sections as the base structure.
+- Review both the original README and the generated sections.
+- If useful information from the original README is missing in the generated one, integrate it into the appropriate section.
+- Avoid duplicate or conflicting content.
+- Keep markdown formatting clean and consistent.
+- If there’s valuable content in the original README not present in the generated one, you may create new sections, but only if it doesn’t overlap with existing ones.
+
+TABLE OF CONTENTS:
+
+- If a Table of Contents exists, update it to reflect the final list of section names, using the exact section titles.
+- Exclude `badges` and `Overview` from the Table of Contents.
+
+FINAL OUTPUT:
+
+Return a valid JSON object where:
+- Each key is a section title (e.g., "badges", "Overview", "Installation").
+- The value is the cleaned, final markdown content for that section.
+- The order of keys determines the order of sections in the final README.
+- Omit any empty sections.
+
+Example:
+
+{{
+    "badges": "project title, badges...",
+    "Overview": "overview text...",
+    "Installation": "installation instructions...",
+    "Usage": "how to use..."
+}}
+
+RULES:
+
+- No extra explanations or comments.
+- No content duplication.
+- Preserve markdown formatting.
+- JSON keys order defines README order.
+
+SPECIAL RULES:
+
+- All content before the first meaningful markdown header (starting with `## `) in the original README should go to the `badges` section **only if it contains the project title, logos, or status badges**.
+- Textual descriptions, images, or code examples before the first `## ` header should be evaluated and placed into the appropriate sections (like "Overview", "Usage", or "Installation").
+- Avoid placing unrelated text or images in `badges`.
+"""

@@ -146,8 +146,13 @@ class ReportGenerator:
             leftIndent=-20,
         )
         title_line1 = Paragraph(f"Repository Analysis Report", title_style)
+
+        name = self.metadata.name
+        if len(self.metadata.name) > 20:
+            name = self.metadata.name[:20] + "..."
+
         title_line2 = Paragraph(
-            f"for <a href='{self.repo_url}' color='#00008B'>{self.metadata.name}</a>",
+            f"for <a href='{self.repo_url}' color='#00008B'>{name}</a>",
             title_style,
         )
 
@@ -189,6 +194,7 @@ class ReportGenerator:
             ["License Presence", "✓" if self.sourcerank.license_presence() else "✗"],
             ["Documentation Presence", "✓" if self.sourcerank.docs_presence() else "✗"],
             ["Examples Presence", "✓" if self.sourcerank.examples_presence() else "✗"],
+            ["Requirements Presence", "✓" if self.sourcerank.requirements_presence() else "✗"],
             ["Tests Presence", "✓" if self.sourcerank.tests_presence() else "✗"],
             ["Description Presence", "✓" if self.metadata.description else "✗"],
         ]
@@ -214,8 +220,12 @@ class ReportGenerator:
             leading=16,
             alignment=0,
         )
+        name = self.metadata.name
+        if len(self.metadata.name) > 16:
+            name = self.metadata.name[:16] + "..."
+
         repo_link = Paragraph(
-            f"Repository Name: <a href='{self.repo_url}' color='#00008B'>{self.metadata.name}</a>",
+            f"Repository Name: <a href='{self.repo_url}' color='#00008B'>{name}</a>",
             normal_style,
         )
         owner_link = Paragraph(
