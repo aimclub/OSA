@@ -1,12 +1,12 @@
 import os
 import re
 import time
-from typing import List, Optional
+from typing import List
 
 import requests
 
 from osa_tool.aboutgen.prompts_about_config import PromptAboutLoader
-from osa_tool.analytics.metadata import load_data_metadata
+from osa_tool.analytics.metadata import detect_platform, load_data_metadata
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.utils import extract_readme_content, logger, parse_folder_name
@@ -18,15 +18,13 @@ HOMEPAGE_KEYS = [
     "about",
     "homepage",
     "wiki",
-    "gh-pages",
     "readthedocs",
     "netlify",
-    "github.io",
 ]
 
 
 class AboutGenerator:
-    """Generates GitHub repository About section content."""
+    """Generates Git repository About section content."""
 
     def __init__(self, config_loader: ConfigLoader):
         self.config = config_loader.config
@@ -35,9 +33,10 @@ class AboutGenerator:
         self.metadata = load_data_metadata(self.repo_url)
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.readme_content = extract_readme_content(self.base_path)
+        self.platform = detect_platform(self.repo_url)
         self.prompts = PromptAboutLoader().prompts
 
-        self._content: Optional[dict] = None
+        self._content: dict | None = None
 
     def generate_about_content(self) -> None:
         """
@@ -63,14 +62,14 @@ class AboutGenerator:
 
     def get_about_section_message(self) -> str:
         """
-        Returns a formatted message for the GitHub About section.
+        Returns a formatted message for the Git About section.
         """
         logger.info("Started generating About section content.")
         if self._content is None:
             self.generate_about_content()
 
         about_section_content = (
-            "You can add the following information to the `About` section of your GitHub repository:\n"
+            "You can add the following information to the `About` section of your Git repository:\n"
             f"- Description: {self._content['description']}\n"
             f"- Homepage: {self._content['homepage']}\n"
             f"- Topics: {', '.join(f'`{topic}`' for topic in self._content['topics'])}\n"
@@ -109,7 +108,7 @@ class AboutGenerator:
 
     def generate_topics(self, amount: int = 7) -> List[str]:
         """
-        Generates GitHub repository topics based on README content.
+        Generates Git repository topics based on README content.
 
         Args:
             amount (int): Maximum number of topics to return (default 7, max 20).
@@ -138,15 +137,33 @@ class AboutGenerator:
             response = self.model_handler.send_request(formatted_prompt)
             topics = [topic.strip().lower().replace(" ", "-") for topic in response.split(",") if topic.strip()]
             logger.debug(f"Generated topics from LLM: {topics}")
-            validated_topics = self._validate_github_topics(topics)
+            validated_topics = self._validate_topics(topics)
             return list(set([*existing_topics, *validated_topics]))
         except Exception as e:
             logger.error(f"Error generating topics: {e}")
             return []
 
-    def _validate_github_topics(self, topics: List[str]) -> List[str]:
+    def _validate_topics(self, topics: List[str]) -> List[str]:
+        """Validates topics against platform-specific APIs.
+
+        Args:
+            topics (List[str]): List of potential topics to validate
+
+        Returns:
+            List[str]: List of validated topics that exist on platform
         """
-        Validates topics against GitHub Topics API to ensure they exist.
+        if self.platform == "github":
+            return self._validate_github_topics(topics)
+        elif self.platform == "gitlab":
+            return self._validate_gitlab_topics(topics)
+        elif self.platform == "gitverse":
+            return self._validate_gitverse_topics(topics)
+        else:
+            logger.warning(f"Topic validation not implemented for platform: {self.platform}")
+            return topics
+
+    def _validate_github_topics(self, topics: List[str]) -> List[str]:
+        """Validates topics against GitHub Topics API.
 
         Args:
             topics (List[str]): List of potential topics to validate
@@ -188,6 +205,56 @@ class AboutGenerator:
 
         logger.info(f"Validated {len(validated_topics)} topics out of {len(topics)}")
         return validated_topics
+
+    def _validate_gitlab_topics(self, topics: List[str]) -> List[str]:
+        """Validates topics against GitLab Topics API.
+
+        Args:
+            topics (List[str]): List of potential topics to validate
+
+        Returns:
+            List[str]: List of validated topics that exist on GitLab
+        """
+        logger.info("Validating topics against GitLab Topics API...")
+        validated_topics = []
+        base_url = "https://gitlab.com/api/v4/topics"
+        headers = {"Accept": "application/json"}
+
+        for topic in topics:
+            try:
+                params = {"search": topic}
+                response = requests.get(base_url, headers=headers, params=params)
+                if response.status_code == 200:
+                    data = response.json()
+                    for entry in data:
+                        if entry.get("name") == topic:
+                            validated_topics.append(topic)
+                            logger.debug(f"Validated GitLab topic: {topic}")
+                            break
+                    else:
+                        logger.debug(f"Topic '{topic}' not found on GitLab, skipping")
+                elif response.status_code == 403:
+                    logger.warning("Rate limit exceeded, waiting 60 seconds")
+                    time.sleep(60)
+                time.sleep(1)
+            except Exception as e:
+                logger.error(f"Error validating topic '{topic}': {e}")
+                continue
+
+        logger.info(f"Validated {len(validated_topics)} topics out of {len(topics)}")
+        return validated_topics
+
+    def _validate_gitverse_topics(self, topics: List[str]) -> List[str]:
+        """Validates topics for Gitverse platform.
+
+        Args:
+            topics (List[str]): List of potential topics to validate
+
+        Returns:
+            List[str]: List of topics (no validation performed)
+        """
+        logger.warning("Topic validation is not implemented for Gitverse. Returning original topics list.")
+        return topics
 
     def detect_homepage(self) -> str:
         """

@@ -57,11 +57,11 @@ class RepoOrganizer:
 
     def move_files_by_patterns(self, target_dir: str, patterns: List[str]) -> None:
         """
-        Move files matching patterns to the target directory.
+        Move files matching patterns to the target directory, excluding files already inside target_dir or its subdirectories.
 
         Args:
-            target_dir (str): Directory to move files into.
-            patterns (List[str]): Patterns to match files.
+            target_dir: Directory to move files into.
+            patterns: Patterns to match files.
         """
         excluded_dirs = {
             ".git",
@@ -72,15 +72,22 @@ class RepoOrganizer:
             ".vscode",
         }
 
+        target_dir_abs = os.path.abspath(target_dir)
+
         for root, dirs, files in os.walk(self.repo_path):
             dirs[:] = [d for d in dirs if d not in excluded_dirs]
 
             for file in files:
                 if self.match_patterns(file, patterns):
                     src = os.path.join(root, file)
+                    src_abs = os.path.abspath(src)
+
+                    if src_abs.startswith(target_dir_abs + os.sep):
+                        continue
+
                     dst = os.path.join(target_dir, file)
                     try:
-                        if os.path.abspath(src) != os.path.abspath(dst):
+                        if src_abs != os.path.abspath(dst):
                             shutil.move(src, dst)
                             logger.info(f"Moved '{src}' to '{dst}'")
                     except Exception as e:
