@@ -103,7 +103,7 @@ convert_notebooks:
 delete_dir:
   aliases: [ "--delete-dir" ]
   type: flag
-  description: "Enable deleting the downloaded repository after processing. (Linux only)"
+  description: "Enable deleting the downloaded repository after processing."
   default: false
 
 ensure_license:
