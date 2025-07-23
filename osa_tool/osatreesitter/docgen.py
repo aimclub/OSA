@@ -285,17 +285,7 @@ class DocGen(object):
         """
         Generate documentation for a single method.
         """
-        #try:
-        #    desc, other = method_details["docstring"].split("\n\n", maxsplit=1)
-        #except:
-        #    return method_details["docstring"]
-        docstring = method_details["docstring"]#.strip().strip('"""').strip("'''")
-        #parts = docstring.split("\n\n", maxsplit=1)
-        #desc = parts[0].strip()
-        #other = parts[1].strip() if len(parts) > 1 else None
-        
-        #old_desc = desc.strip('"\n ')
-        logger.info(f"old desc {docstring}")
+        docstring = method_details["docstring"]
         prompt = (
             """Update the provided docstring description for the following Python method using the main idea of the project.\n"""
             """Do not pay too much attention to the provided main idea - try not to mention it explicitly\n"""
@@ -316,10 +306,8 @@ class DocGen(object):
             "Return only pure changed docstring - DO NOT RETURN ANY CODE, DO NOT RETURN other parts of docs"
         )
         new_desc = self.model_handler.send_request(prompt)
-        logger.info(f"UPDATE DESC: {new_desc}")
 
-        return new_desc#"\n\n".join(['"""\n' + new_desc])
-        #return "\n\n".join(['"""\n' + new_desc, other]) if other else "\n\n".join(['"""\n' + new_desc])
+        return new_desc
 
     def extract_pure_docstring(self, gpt_response: str) -> str:
         """
@@ -345,7 +333,7 @@ class DocGen(object):
         # 2 — Fix case: opening triple quote but no closure
         if response.count('"""') == 1:
             pos = response.find('"""')
-            body = response[pos + 3:].strip()
+            body = response[pos + 3 :].strip()
             if len(body.split()) > 3:
                 return f'"""\n{body}\n"""'
 
@@ -375,41 +363,38 @@ class DocGen(object):
             return f'"""\n{cleaned}\n"""'
 
         return '"""No valid docstring found."""'
+    
+    @staticmethod
+    def strip_docstring_from_body(body: str) -> str:
+        """
+        Method to trimm method's body from docstring
+        """
+        lines = body.strip().splitlines()
+        if len(lines) < 1:
+            return body
 
-    def insert_docstring_in_code(
-        self,
-        source_code: str,
-        method_details: dict,
-        generated_docstring: str,
-        class_method: bool = False
+        first_line = lines[0].strip()
+        if first_line.startswith(('"""', "'''")):
+            closing = first_line[:3]
+            # Oneliner docstring
+            if first_line.count(closing) == 2:
+                return "\n".join(lines[1:]).lstrip()
+            # Multyline docstring
+            for i in range(1, len(lines)):
+                if closing in lines[i]:
+                    return "\n".join(lines[i + 1 :]).lstrip()
+        return body
+
+    def insert_docstring_in_code(self, source_code: str, method_details: dict, generated_docstring: str, class_method: bool = False
     ) -> str:
         """
         Inserts or replaces a method-level docstring in the provided source code,
         using the method's body from method_details['source_code'] to locate the method.
         Handles multi-line signatures, decorators, async definitions, and existing docstrings.
         """
-
-        def strip_docstring_from_body(body: str) -> str:
-            lines = body.strip().splitlines()
-            if len(lines) < 1:
-                return body
-
-            first_line = lines[0].strip()
-            if first_line.startswith(('"""', "'''")):
-                closing = first_line[:3]
-                # Однострочный докстринг
-                if first_line.count(closing) == 2:
-                    return "\n".join(lines[1:]).lstrip()
-                # Многострочный докстринг
-                for i in range(1, len(lines)):
-                    if closing in lines[i]:
-                        return "\n".join(lines[i+1:]).lstrip()
-            return body
-
-        method_body = strip_docstring_from_body(method_details["source_code"].strip())
+        method_body = self.strip_docstring_from_body(method_details["source_code"].strip())
         method_name = method_details["method_name"]
         docstring_clean = self.extract_pure_docstring(generated_docstring)
-        logger.info(f"docstring_clean {docstring_clean}")
 
         # Determine indentation from the body
         match = re.search(re.escape(method_body), source_code)
@@ -419,32 +404,11 @@ class DocGen(object):
             return source_code  # method body not found
         body_start = match.start()
 
-        #lines = source_code.splitlines(keepends=True)
-        #approx_start_line = method_details.get("start_line")
-        #window = 50
-
-        #if approx_start_line is not None:
-        #    start_line = max(0, approx_start_line - window)
-        #    end_line = min(len(lines), approx_start_line + window)
-        #    local_block = ''.join(lines[start_line:end_line])
-        #    #if method_name == "__exit__":
-        #        #logger.info(local_block)
-        #    match = re.search(re.escape(method_body), local_block)
-        #    if not match:
-        #        return source_code
-        #    body_start = sum(len(line) for line in lines[:start_line]) + match.start()
-        #else:
-        #    match = re.search(re.escape(method_body), source_code)
-        #    if not match:
-        #        return source_code
-        #    body_start = match.start()
-
         # Walk backwards from method body to find 'def' or 'async def'
         def_start = source_code.rfind(f"def {method_name}(", 0, body_start)
         async_def_start = source_code.rfind(f"async def {method_name}(", 0, body_start)
-        #decorators_start = source_code.rfind("@", 0, body_start)
 
-        start_candidates = [p for p in [def_start, async_def_start] if p != -1]#, decorators_start] if p != -1]
+        start_candidates = [p for p in [def_start, async_def_start] if p != -1]
         if not start_candidates:
             return source_code
 
@@ -457,22 +421,15 @@ class DocGen(object):
         method_block = source_code[start:end]
         method_lines = method_block.splitlines(keepends=True)
 
-        # Determine indentation
-        #for line in method_lines:
-        #    if line.strip().startswith("def ") or line.strip().startswith("async def "):
-        #        indent = line[:len(line) - len(line.lstrip())]
-        #        break
-        #else:
         indent = "        " if class_method else "    "
 
         def indent_docstring(docstring: str) -> str:
             lines = docstring.strip().splitlines()
             if len(lines) == 1:
                 return f'{indent}"""{lines[0]}"""'
-            indented = [f'{indent}' + lines[0]]
+            indented = [f"{indent}" + lines[0]]
             for line in lines[1:]:
                 indented.append(f"{indent}{line}")
-            #indented[-1] += '"""'
             return "\n".join(indented) + "\n"
 
         # Check for existing docstring right after signature
@@ -489,8 +446,7 @@ class DocGen(object):
             while next_line_index < len(method_lines) and method_lines[next_line_index].strip() == "":
                 next_line_index += 1
 
-            if (next_line_index < len(method_lines) and
-                    method_lines[next_line_index].strip().startswith(('"""', "'''"))):
+            if next_line_index < len(method_lines) and method_lines[next_line_index].strip().startswith(('"""', "'''")):
                 # Replace old docstring
                 closing = method_lines[next_line_index].strip()[:3]
                 end_doc_idx = next_line_index
@@ -498,11 +454,7 @@ class DocGen(object):
                     if closing in method_lines[j]:
                         end_doc_idx = j
                         break
-                method_lines = (
-                    method_lines[:next_line_index] +
-                    [docstring_inserted] +
-                    method_lines[end_doc_idx + 1:]
-                )
+                method_lines = method_lines[:next_line_index] + [docstring_inserted] + method_lines[end_doc_idx + 1 :]
             else:
                 # Insert new docstring
                 method_lines.insert(signature_end_index + 1, docstring_inserted)
@@ -526,13 +478,13 @@ class DocGen(object):
         """
         class_pattern = (
             rf"(class\s+{class_name}\s*(\([^)]*\))?\s*:\n)"  # group 1: class signature
-            rf"([ \t]*)"                                     # group 3: indentation (for docstring)
+            rf"([ \t]*)"  # group 3: indentation (for docstring)
             rf"(\"\"\"[\s\S]*?\"\"\"|\'\'\'[\s\S]*?\'\'\')?"  # group 4: existing docstring (optional)
         )
 
         match = re.search(class_pattern, source_code)
         if not match:
-            return source_code  # класс не найден
+            return source_code  # Class not found
 
         signature = match.group(1)
         indent = match.group(3) or "    "
@@ -540,21 +492,18 @@ class DocGen(object):
 
         docstring = self.extract_pure_docstring(generated_docstring)
 
-        # Добавляем нужный отступ ко всем строкам докстринга
-        indented_lines = [
-            indent + line if line.strip() else indent
-            for line in docstring.strip().splitlines()
-        ]
+        # Applying indentation to all docstring lines
+        indented_lines = [indent + line if line.strip() else indent for line in docstring.strip().splitlines()]
         indented_docstring = "\n".join(indented_lines) + "\n"
 
         start, end = match.span()
 
         if existing_docstring:
-            # Заменяем существующий докстринг
+            # Substituting an existing docstring
             updated_code = source_code[:start] + signature + indented_docstring + source_code[end:]
         else:
-            # Вставляем новый докстринг
-            insert_point = source_code.find('\n', start) + 1
+            # Inserting new docstring
+            insert_point = source_code.find("\n", start) + 1
             updated_code = source_code[:insert_point] + indented_docstring + source_code[insert_point:]
 
         return updated_code
@@ -657,7 +606,6 @@ class DocGen(object):
     def _process_one_file(self, filename, file_structure, project_structure):
         try:
             logger.info(f"Formatting {filename}")
-            #self.format_with_black(filename)
         except Exception as e:
             logger.info("black %s", repr(e) ,exc_info=True)
         with open(filename, "r", encoding="utf-8") as f:
@@ -678,7 +626,9 @@ class DocGen(object):
                         generated_docstring = self.extract_pure_docstring(generated_docstring)
                         if generated_docstring:
                             method["docstring"] = generated_docstring
-                            source_code = self.insert_docstring_in_code(source_code, method, generated_docstring, class_method=True)
+                            source_code = self.insert_docstring_in_code(
+                                source_code, method, generated_docstring, class_method=True
+                            )
             if item["type"] == "function":
                 func_details = item["details"]
                 if func_details["docstring"] == None or self.main_idea:
@@ -721,7 +671,6 @@ class DocGen(object):
                     source_code = self.insert_cls_docstring_in_code(source_code, class_name, generated_cls_docstring)
         with open(filename, "w", encoding="utf-8") as f:
             f.write(source_code)
-        #self.format_with_black(filename)
         logger.info(f"Updated file: {filename}")
 
     def generate_the_main_idea(self, parsed_structure: dict) -> None:
@@ -755,7 +704,6 @@ class DocGen(object):
                 )
         logger.info(f"Generating the main idea of the project...")
         self.main_idea = self.model_handler.send_request(prompt.format(components="\n\n".join(structure)))
-        logger.info(f"MAIN IDEA: {self.main_idea}")
 
     def summarize_submodules(self, project_structure):
         summaries = {}

@@ -562,9 +562,6 @@ class OSA_TreeSitter(object):
                 if param_node.type == "identifier":
                     arguments.append(param_node.text.decode("utf-8"))
 
-        #source_code_start = function_node.start_byte
-        #source_code_end = function_node.end_byte
-        #source = source_code[source_code_start:source_code_end]
         source_bytes = source_code.encode("utf-8")
         source = source_bytes[node.start_byte:node.end_byte].decode("utf-8")
 
