@@ -363,7 +363,7 @@ class DocGen(object):
             return f'"""\n{cleaned}\n"""'
 
         return '"""No valid docstring found."""'
-    
+
     @staticmethod
     def strip_docstring_from_body(body: str) -> str:
         """
@@ -385,7 +385,8 @@ class DocGen(object):
                     return "\n".join(lines[i + 1 :]).lstrip()
         return body
 
-    def insert_docstring_in_code(self, source_code: str, method_details: dict, generated_docstring: str, class_method: bool = False
+    def insert_docstring_in_code(
+        self, source_code: str, method_details: dict, generated_docstring: str, class_method: bool = False
     ) -> str:
         """
         Inserts or replaces a method-level docstring in the provided source code,
@@ -604,10 +605,6 @@ class DocGen(object):
             self._process_one_file(filename, structure, project_structure=parsed_structure)
 
     def _process_one_file(self, filename, file_structure, project_structure):
-        try:
-            logger.info(f"Formatting {filename}")
-        except Exception as e:
-            logger.info("black %s", repr(e) ,exc_info=True)
         with open(filename, "r", encoding="utf-8") as f:
             source_code = f.read()
         for item in file_structure["structure"]:
