@@ -1,5 +1,6 @@
 import os
 import subprocess
+from pathlib import Path
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
 from osa_tool.analytics.report_maker import ReportGenerator

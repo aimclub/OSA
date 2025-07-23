@@ -15,19 +15,15 @@ def config_loader():
     return config_loader
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_load_data_metadata():
     metadata_mock = MagicMock()
     metadata_mock.default_branch = "main"
     metadata_mock.license_name = "license_name"
 
-    patcher_builder = patch("osa_tool.readmegen.generator.base_builder.load_data_metadata", return_value=metadata_mock)
-    patcher_header = patch("osa_tool.readmegen.generator.header.load_data_metadata", return_value=metadata_mock)
-
-    mock_builder = patcher_builder.start()
-    mock_header = patcher_header.start()
-
-    yield
-
-    patcher_builder.stop()
-    patcher_header.stop()
+    with (
+        patch("osa_tool.readmegen.generator.base_builder.load_data_metadata", return_value=metadata_mock),
+        patch("osa_tool.readmegen.generator.header.load_data_metadata", return_value=metadata_mock),
+        patch("osa_tool.readmegen.generator.installation.load_data_metadata", return_value=metadata_mock),
+    ):
+        yield
