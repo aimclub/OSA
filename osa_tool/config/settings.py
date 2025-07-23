@@ -51,7 +51,7 @@ class ModelSettings(BaseModel):
     encoder: str
     host_name: AnyHttpUrl
     localhost: AnyHttpUrl
-    local_url: AnyHttpUrl
+    itmo_local_url: AnyHttpUrl
     model: str
     path: str
     temperature: NonNegativeFloat

@@ -177,7 +177,6 @@ class ProtollmHandler(ModelHandler):
             None
         """
         self.config = config
-        self.local_url = config.llm.local_url
         self._configure_api(config.llm.api, model_name=config.llm.model)
 
     def send_request(self, prompt: str) -> str:
@@ -201,7 +200,7 @@ class ProtollmHandler(ModelHandler):
     def _build_model_url(self) -> str:
         """Builds the model URL based on the LLM API type."""
         url_templates = {
-            "llama": f"self_hosted;{self.local_url};{self.config.llm.model}",
+            "llama": f"self_hosted;{self.config.llm.itmo_local_url};{self.config.llm.model}",
             "ollama": f"ollama;{self.config.llm.localhost};{self.config.llm.model}",
         }
         return url_templates.get(self.config.llm.api, f"{self.config.llm.url};{self.config.llm.model}")
