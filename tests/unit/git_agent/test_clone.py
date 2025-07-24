@@ -62,7 +62,7 @@ def test_clone_repository_clone_error(mock_exists, mock_logger, mock_repo, githu
     mock_exists.return_value = False
     mock_repo.clone_from.side_effect = GitCommandError("Cloning failed", "git")
     #  Act
-    with pytest.raises(SystemExit):
+    with pytest.raises(GitCommandError):
         github_agent.clone_repository()
     # Assert
     calls = [call.args[0] for call in mock_logger.error.call_args_list]

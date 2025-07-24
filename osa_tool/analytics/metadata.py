@@ -232,11 +232,11 @@ def load_data_metadata(repo_url: str) -> RepositoryMetadata:
             logger.error("Access denied: your token may lack sufficient permissions or you hit a rate limit.")
         else:
             logger.error("Unexpected HTTP error occurred while accessing the repository metadata.")
-        raise SystemExit(1)
+        raise
 
     except Exception as exc:
         logger.error(f"Unexpected error while fetching repository metadata: {exc}")
-        raise SystemExit(1)
+        raise
 
 
 def _load_github_metadata(base_url: str) -> RepositoryMetadata:

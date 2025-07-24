@@ -361,7 +361,7 @@ class GitAgent:
                     )
                 else:
                     logger.error("An unexpected Git error occurred while cloning the repository.")
-                raise SystemExit(1)
+                raise
 
     def create_and_checkout_branch(self, branch: str = None) -> None:
         """Creates and checks out a new branch.
