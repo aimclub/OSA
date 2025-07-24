@@ -148,17 +148,20 @@ Docker, ensure that you upload the PDF file to the OSA folder before building th
 
 ### Configuration
 
-| Flag                 | Description                                                                 | Default                     |
-|----------------------|-----------------------------------------------------------------------------|-----------------------------|
-| `-r`, `--repository` | URL of the GitHub repository (**Mandatory**)                                |                             |
-| `--api`              | LLM API service provider                                                    | `llama`                     |
-| `--base-url`         | URL of the provider compatible with API OpenAI                              | `https://api.openai.com/v1` |
-| `--model`            | Specific LLM model to use                                                   | `gpt-3.5-turbo`             |
-| `--article`          | Link to the pdf file of the article                                         | `None`                      |
-| `--translate-dirs`   | Enable automatic translation of the directory name into English             | `disabled`                  |
-| `--delete-dir`       | Enable deleting the downloaded repository after processing (**Linux only**) | `disabled`                  |
-| `--no-fork`          | Avoid create fork for target repository                                     | `False`                     |
-| `--no-pull-request`  | Avoid create pull request for target repository                             | `False`                     |
+| Flag                 | Description                                                                       | Default                     |
+|----------------------|-----------------------------------------------------------------------------------|-----------------------------|
+| `-r`, `--repository` | URL of the GitHub repository (**Mandatory**)                                      |                             |
+| `--api`              | LLM API service provider                                                          | `llama`                     |
+| `--base-url`         | URL of the provider compatible with API OpenAI                                    | `https://api.openai.com/v1` |
+| `--model`            | Specific LLM model to use                                                         | `gpt-3.5-turbo`             |
+| `--article`          | Link to the pdf file of the article                                               | `None`                      |
+| `--translate-dirs`   | Enable automatic translation of the directory name into English                   | `disabled`                  |
+| `--delete-dir`       | Enable deleting the downloaded repository after processing                        | `disabled`                  |
+| `--no-fork`          | Avoid create fork for target repository                                           | `False`                     |
+| `--no-pull-request`  | Avoid create pull request for target repository                                   | `False`                     |
+| `--top_p`            | Nucleus sampling probability                                                      | `null`                      |
+| `--temperature`      | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative). | `null`                      |
+| `--max_tokens`       | Maximum number of tokens the model can generate in a single response              | `null`                      |
 
 ---
 
