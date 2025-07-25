@@ -53,6 +53,8 @@ Here is a short demo:
 - [Getting started](#getting-started)
 - [Examples](#examples)
 - [Documentation](#documentation)
+- [Chat with developers: OSA_helpdesk](#chat-with-developers-osa_helpdesk)
+- [Publications about OSA](#publications-about-osa)
 - [Contributing](#contributing)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
