@@ -148,7 +148,7 @@ export GIT_TOKEN=<your_git_token>
 
 | Token name       | Description                                                                                                        | Mandatory |
 |------------------|--------------------------------------------------------------------------------------------------------------------|-----------|
-| `GIT_TOKEN`      | Personal GitHub/GitLab/Gitverse token used to clone private repositories, access metadata, and interact with it's API.       | Yes       |
+| `GIT_TOKEN`      | Personal GitHub/GitLab/Gitverse token used to clone private repositories, access metadata, and interact with its API.       | Yes       |
 | `OPENAI_API_KEY` | API key for accessing [OpenAI](https://platform.openai.com/docs/api-reference/introduction)'s language models.     | No        |
 | `VSE_GPT_KEY`    | API key for [vsegpt](https://vsegpt.ru/Docs/API) LLM provider compatible with OpenAI's API format.                 | No        |
 | `X-API-Key`      | API key for the [pepy.tech](https://pepy.tech/pepy-api) REST API, used to fetch Python package download statistics | No        |
