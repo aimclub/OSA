@@ -629,7 +629,8 @@ class GitAgent:
         elif self.platform == "gitlab":
             self._update_gitlab_about_section(base_repo, about_content)
         elif self.platform == "gitverse":
-            self._update_gitverse_about_section(base_repo, about_content)
+            logger.warning("The ability to update repository data via API is not yet available on Gitverse.")
+            # self._update_gitverse_about_section(base_repo, about_content)
 
     def _update_github_about_section(self, repo_path: str, about_content: dict):
         """Update GitHub repository about section.
@@ -709,7 +710,6 @@ class GitAgent:
 
         about_data = {
             "description": about_content["description"],
-            "homepage": about_content["homepage"],
             "topics": about_content["topics"],
         }
 
