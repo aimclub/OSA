@@ -194,7 +194,7 @@ def _parse_repository_metadata_gitverse(repo_data: dict) -> RepositoryMetadata:
         issues_url=repo_data.get("issues_url"),
         language=repo_data.get("language", ""),
         languages=repo_data.get("languages", []),
-        topics=repo_data.get("topics", []),
+        topics=repo_data.get("topics", []) or [],
         has_wiki=repo_data.get("has_wiki", False),
         has_issues=repo_data.get("has_issues", False),
         has_projects=repo_data.get("has_projects", False),

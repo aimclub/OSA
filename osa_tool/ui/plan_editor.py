@@ -34,6 +34,9 @@ class PlanEditor:
             "branch",
             "no_fork",
             "no_pull_request",
+            "temperature",
+            "max_tokens",
+            "top_p",
         ]
         self.special_keys = ["convert_notebooks"]
         self.arguments_metadata = read_arguments_file_flat(build_arguments_path())

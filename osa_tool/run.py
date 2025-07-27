@@ -1,5 +1,7 @@
 import os
 import subprocess
+from typing import List, Optional
+
 from pathlib import Path
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
@@ -54,6 +56,9 @@ def main():
             api=args.api,
             base_url=args.base_url,
             model_name=args.model,
+            temperature=args.temperature,
+            max_tokens=args.max_tokens,
+            top_p=args.top_p,
         )
 
         # Initialize Git agent and perform operations
@@ -220,6 +225,9 @@ def load_configuration(
     api: str,
     base_url: str,
     model_name: str,
+    temperature: Optional[str] = None,
+    max_tokens: Optional[str] = None,
+    top_p: Optional[str] = None,
 ) -> ConfigLoader:
     """
     Loads configuration for osa_tool.
@@ -229,6 +237,9 @@ def load_configuration(
         api: LLM API service provider.
         base_url: URL of the provider compatible with API OpenAI
         model_name: Specific LLM model to use.
+        temperature: Sampling temperature for the model.
+        max_tokens: Maximum number of tokens to generate.
+        top_p: Nucleus sampling value.
 
     Returns:
         config_loader: The configuration object which contains settings for osa_tool.
@@ -237,7 +248,14 @@ def load_configuration(
 
     config_loader.config.git = GitSettings(repository=repo_url)
     config_loader.config.llm = config_loader.config.llm.model_copy(
-        update={"api": api, "url": base_url, "model": model_name}
+        update={
+            "api": api,
+            "url": base_url,
+            "model": model_name,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "top_p": top_p,
+        }
     )
     logger.info("Config successfully updated and loaded")
     return config_loader
