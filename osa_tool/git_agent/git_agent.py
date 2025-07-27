@@ -403,8 +403,18 @@ class GitAgent:
 
         logger.info("Committing changes...")
         self.repo.git.add(".")
-        self.repo.git.commit("-m", commit_message)
-        logger.info("Commit completed.")
+
+        try:
+            self.repo.git.commit("-m", commit_message)
+            logger.info("Commit completed.")
+        except GitCommandError as e:
+            if "nothing to commit" in str(e):
+                logger.warning("Nothing to commit: working tree clean")
+                if self.pr_report_body:
+                    logger.info(self.pr_report_body)
+                return False
+            else:
+                raise
 
         logger.info(f"Pushing changes to branch {branch} in fork...")
         self.repo.git.remote("set-url", "origin", self._get_auth_url(self.fork_url))
@@ -660,18 +670,18 @@ class GitAgent:
         response = requests.patch(url, headers=headers, json=about_data)
 
         if response.status_code in {200, 201}:
-            logger.info(f"Successfully updated GitHub repository description and homepage.")
+            logger.info(f"Successfully updated GitHub repository description and homepage for '{repo_path}'.")
         else:
-            logger.error(f"{response.status_code} - Failed to update description and homepage for {repo_path}.")
+            logger.error(f"{response.status_code} - Failed to update description and homepage for '{repo_path}'.")
 
         url = f"https://api.github.com/repos/{repo_path}/topics"
         topics_data = {"names": about_content["topics"]}
         response = requests.put(url, headers=headers, json=topics_data)
 
         if response.status_code in {200, 201}:
-            logger.info(f"Successfully updated GitHub repository topics.")
+            logger.info(f"Successfully updated GitHub repository topics for '{repo_path}'")
         else:
-            logger.error(f"{response.status_code} - Failed to update topics for {repo_path}.")
+            logger.error(f"{response.status_code} - Failed to update topics for '{repo_path}'.")
 
     def _update_gitlab_about_section(self, repo_path: str, about_content: dict):
         """Update GitLab repository about section.
