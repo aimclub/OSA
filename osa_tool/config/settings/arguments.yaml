@@ -35,8 +35,8 @@ api:
   aliases: [ "--api" ]
   type: str
   description: "LLM API service provider"
-  choices: [ "llama", "openai", "ollama" ]
-  default: "llama"
+  choices: [ "itmo", "openai", "ollama" ]
+  default: "itmo"
 
 base_url:
   aliases: [ "--base-url" ]

@@ -151,7 +151,7 @@ Docker, ensure that you upload the PDF file to the OSA folder before building th
 | Flag                 | Description                                                                       | Default                     |
 |----------------------|-----------------------------------------------------------------------------------|-----------------------------|
 | `-r`, `--repository` | URL of the GitHub repository (**Mandatory**)                                      |                             |
-| `--api`              | LLM API service provider                                                          | `llama`                     |
+| `--api`              | LLM API service provider                                                          | `itmo`                      |
 | `--base-url`         | URL of the provider compatible with API OpenAI                                    | `https://api.openai.com/v1` |
 | `--model`            | Specific LLM model to use                                                         | `gpt-3.5-turbo`             |
 | `--article`          | Link to the pdf file of the article                                               | `None`                      |
