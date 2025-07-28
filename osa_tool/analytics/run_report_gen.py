@@ -134,7 +134,7 @@ def parse_arguments() -> argparse.Namespace:
         "--table-path", type=str, help="Path to an Excel (.xlsx) or CSV file containing tabular data.", required=True
     )
     parser.add_argument(
-        "--api", type=str, choices=["itmo", "openai", "ollama"], help="LLM API service provider.", default="llama"
+        "--api", type=str, choices=["itmo", "openai", "ollama"], help="LLM API service provider.", default="itmo"
     )
     parser.add_argument(
         "--base-url",
