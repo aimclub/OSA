@@ -261,7 +261,8 @@ class DocGen(object):
             "- A description of its parameters without types.\n"
             "- If the method is a class constructor, explicitly list all class fields (object properties) that are initialized, including their names and purposes. These fields should match the attributes assigned within the constructor (e.g., this.field = ..., self.field = ...). This information will be used to generate the class-level documentation.\n"
             "- The return type and description.\n"
-            "Method source code:\n"
+            f"- Method Name: {method_details['method_name']}\n"
+            "Method source code: You are given only the body of a single method, without its signature. All visible code, including any inner functions or nested logic, belongs to this single method. Do not write separate docstrings for inner functions — they are part of the main method's logic.\n"
             "```\n"
             f"""{method_details['source_code']}\n"""
             "```\n"
@@ -269,7 +270,6 @@ class DocGen(object):
             f"""{method_details['arguments']}\n"""
             f"""{"- Use provided source code of imported methods, functions to describe their usage." if context_code else ""}\n"""
             "Method Details:\n"
-            f"- Method Name: {method_details['method_name']}\n"
             f"- Method decorators: {method_details['decorators']}\n"
             f"""{"- Imported methods source code:" if context_code else ""}\n"""
             f"""{context_code if context_code else ""}\n\n"""
@@ -602,6 +602,9 @@ class DocGen(object):
         """
 
         for filename, structure in parsed_structure.items():
+            if not structure["structure"]:
+                logger.info(f"File {filename} does not contain any functions, methods or class constructions.")
+                continue
             self._process_one_file(filename, structure, project_structure=parsed_structure)
 
     def _process_one_file(self, filename, file_structure, project_structure):
