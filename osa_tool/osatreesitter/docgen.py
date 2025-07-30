@@ -404,7 +404,7 @@ class DocGen(object):
 
         if not body_start:
             return source_code
-        
+
         start = body_start
 
         while start > 0 and source_code[start - 1] in " \t\n":
