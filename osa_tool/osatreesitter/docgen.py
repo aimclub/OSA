@@ -394,26 +394,19 @@ class DocGen(object):
         Handles multi-line signatures, decorators, async definitions, and existing docstrings.
         """
         method_body = self.strip_docstring_from_body(method_details["source_code"].strip())
-        method_name = method_details["method_name"]
         docstring_clean = self.extract_pure_docstring(generated_docstring)
 
-        # Determine indentation from the body
-        match = re.search(re.escape(method_body), source_code)
-        if method_name == "get_block_crops":
-            logger.info(match)
+        # Find method within a source code
+        match = re.search(re.escape(method_details["source_code"]), source_code)
         if not match:
-            return source_code  # method body not found
+            return source_code
         body_start = match.start()
 
-        # Walk backwards from method body to find 'def' or 'async def'
-        def_start = source_code.rfind(f"def {method_name}(", 0, body_start)
-        async_def_start = source_code.rfind(f"async def {method_name}(", 0, body_start)
-
-        start_candidates = [p for p in [def_start, async_def_start] if p != -1]
-        if not start_candidates:
+        if not body_start:
             return source_code
+        
+        start = body_start
 
-        start = min(start_candidates)
         while start > 0 and source_code[start - 1] in " \t\n":
             start -= 1
 
