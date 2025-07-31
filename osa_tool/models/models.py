@@ -1,3 +1,4 @@
+import os
 from abc import ABC, abstractmethod
 from uuid import uuid4
 
@@ -200,7 +201,7 @@ class ProtollmHandler(ModelHandler):
     def _build_model_url(self) -> str:
         """Builds the model URL based on the LLM API type."""
         url_templates = {
-            "itmo": f"self_hosted;{self.config.llm.itmo_local_url};{self.config.llm.model}",
+            "itmo": f"self_hosted;{os.getenv('ITMO_MODEL_URL', self.config.llm.url)};{self.config.llm.model}",
             "ollama": f"ollama;{self.config.llm.localhost};{self.config.llm.model}",
         }
         return url_templates.get(self.config.llm.api, f"{self.config.llm.url};{self.config.llm.model}")

@@ -217,8 +217,9 @@ To see available models go there:
 Local ITMO model:
 
 ```sh
-python -m osa_tool.run -r https://github.com/aimclub/OSA
+python -m osa_tool.run -r https://github.com/aimclub/OSA --base_url [ITMO_MODEL_IP]
 ```  
+For this API provider itmo model IP and port must be specified in dotenv (ITMO_MODEL_URL=) or in the --base-url argument.
 
 OpenAI:
 

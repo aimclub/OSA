@@ -178,11 +178,12 @@ To see available models go there:
 2. [OpenAI](https://platform.openai.com/docs/models)
 3. [Ollama](https://ollama.com/library)
 
-Local Llama ITMO:
+Local ITMO model:
 
 ```sh
 python -m osa_tool.run -r https://github.com/aimclub/OSA
 ```  
+For this API provider itmo model IP and port must be specified in dotenv (ITMO_MODEL_URL=) or in the --base-url argument.
 
 OpenAI:
 
