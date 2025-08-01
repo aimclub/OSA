@@ -185,7 +185,7 @@ documentation, see the [GitHub Action Workflow Generator README](./osa_tool/gith
 |----------------------|-------------------------------------------------------------------------------------|-----------------------------|
 | `-r`, `--repository` | URL of the GitHub/GitLab/Gitverse repository (**Mandatory**)                        |                             |
 | `-b`, `--branch`     | Branch name of the repository                                                       | Default branch              |
-| `--api`              | LLM API service provider                                                            | `llama`                     |
+| `--api`              | LLM API service provider                                                            | `itmo`                      |
 | `--base-url`         | URL of the provider compatible with API OpenAI                                      | `https://api.openai.com/v1` |
 | `--model`            | Specific LLM model to use                                                           | `gpt-3.5-turbo`             |
 | `-m`, `--mode`       | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`. | `auto`                      |
@@ -214,11 +214,12 @@ To see available models go there:
 2. [OpenAI](https://platform.openai.com/docs/models)
 3. [Ollama](https://ollama.com/library)
 
-Local Llama ITMO:
+Local ITMO model:
 
 ```sh
-python -m osa_tool.run -r https://github.com/aimclub/OSA
+python -m osa_tool.run -r https://github.com/aimclub/OSA --base_url [ITMO_MODEL_URL]
 ```  
+For this API provider itmo model url must be specified in dotenv (ITMO_MODEL_URL=) or in the --base-url argument.
 
 OpenAI:
 
