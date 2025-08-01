@@ -212,6 +212,7 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
         dg = DocGen(config_loader)
         dg.process_python_file(res)
         dg.generate_the_main_idea(res)
+        res = ts.analyze_directory(ts.cwd)
         dg.process_python_file(res)
         modules_summaries = dg.summarize_submodules(res)
         dg.generate_documentation_mkdocs(repo_path, res, modules_summaries)
