@@ -1,15 +1,10 @@
 import os
-from urllib import response
 
-from deepeval.metrics import GEval
 from deepeval.models import DeepEvalBaseLLM
-from deepeval.test_case import LLMTestCaseParams
 
 from osa_tool.models.models import ModelHandlerFactory
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.readmeai.config.settings import ConfigLoader
 from osa_tool.utils import osa_project_root
-
-
 
 
 # Class wrapper over vsegpt model class. Uses osa's handlers for initialize vsegpt model class
@@ -21,9 +16,9 @@ class CustomLLM(DeepEvalBaseLLM):
 
     def load_model(self, api: str, model_name: str, base_url: str, **kwargs):
         config_loader = ConfigLoader(
-            # config_dir=os.path.join(
-            #     osa_project_root(), "osa_tool", "config", "standart"
-            # )
+            config_dir=os.path.join(
+                osa_project_root(), "osa_tool", "config", "standart"
+            )
         )
         config_loader.config.llm = config_loader.config.llm.model_copy(
             update={"api": api, "model": model_name, "url": base_url} | kwargs

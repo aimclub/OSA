@@ -14,13 +14,13 @@ from deepeval.test_case import LLMTestCase, LLMTestCaseParams
 from dotenv import load_dotenv
 from rich.logging import RichHandler
 
-from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.github_agent.github_agent import GithubAgent
 from osa_tool.models.models import ModelHandlerFactory
+from osa_tool.readmeai.config.settings import ConfigLoader, GitSettings
 from osa_tool.readmeai.deepeval_checker import CustomLLM
-from osa_tool.readmegen.readme_core import readme_agent
-
-# from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
+from osa_tool.readmeai.readme_core import readme_agent
+from osa_tool.readmeai.readmegen_article.config.settings import ArticleConfigLoader
+from osa_tool.utils import osa_project_root
 from struct_to_json import build_tree, tree_to_dict
 
 load_dotenv()
@@ -64,7 +64,19 @@ def load_configuration(
     Returns:
         config_loader: The configuration object which contains settings for osa_tool.
     """
-    config_loader = ConfigLoader()
+    if article is None:
+        config_loader = ConfigLoader(
+            config_dir=os.path.join(
+                osa_project_root(), "osa_tool", "config", "standart"
+            )
+        )
+    else:
+        config_loader = ArticleConfigLoader(
+            config_dir=os.path.join(
+                osa_project_root(), "osa_tool", "config", "with_article"
+            )
+        )
+
     config_loader.config.git = GitSettings(repository=repo_url)
     config_loader.config.llm = config_loader.config.llm.model_copy(
         update={"api": api, "model": model_name, "url": url}
@@ -96,13 +108,10 @@ if __name__ == "__main__":
             user, repo, commit = params.groups()
         else:
             continue
-        full_url = (
-            f"https://api.github.com/repos/{user}/{repo}/git/trees/{commit}?recursive=1"
-        )
+        full_url = f"https://api.github.com/repos/{user}/{repo}/git/trees/{commit}?recursive=1"
         repository_url = repo_url.split("/tree/")[0]
 
         repo_name_to_url[repo_name] = repository_url
-        
         try:
             if not Path(dataset_dir, f"{repo_name}_README.md").exists():
                 # Generate readme by OSA
