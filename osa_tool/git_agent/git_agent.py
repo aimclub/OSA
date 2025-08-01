@@ -638,11 +638,12 @@ class GitAgent:
             raise ValueError("Fork URL is not set. Please create a fork first.")
 
         base_repo = get_base_repo_url(self.repo_url)
-        logger.info(f"Updating 'About' section for base repository - {self.repo_url}")
+        logger.info(f"Updating 'base' repository '{base_repo}'...")
 
         if self.platform == "github":
             self._update_github_about_section(base_repo, about_content)
             fork_repo = get_base_repo_url(self.fork_url)
+            logger.info(f"Updating 'fork' repository '{fork_repo}'...")
             self._update_github_about_section(fork_repo, about_content)
         elif self.platform == "gitlab":
             self._update_gitlab_about_section(base_repo, about_content)
@@ -671,18 +672,18 @@ class GitAgent:
         response = requests.patch(url, headers=headers, json=about_data)
 
         if response.status_code in {200, 201}:
-            logger.info(f"Successfully updated GitHub repository description and homepage for '{repo_path}'.")
+            logger.info(f"Successfully updated description/homepage.")
         else:
-            logger.error(f"{response.status_code} - Failed to update description and homepage for '{repo_path}'.")
+            logger.error(f"{response.status_code} - Failed to update description/homepage.")
 
         url = f"https://api.github.com/repos/{repo_path}/topics"
         topics_data = {"names": about_content["topics"]}
         response = requests.put(url, headers=headers, json=topics_data)
 
         if response.status_code in {200, 201}:
-            logger.info(f"Successfully updated GitHub repository topics for '{repo_path}'")
+            logger.info(f"Successfully updated topics.")
         else:
-            logger.error(f"{response.status_code} - Failed to update topics for '{repo_path}'.")
+            logger.error(f"{response.status_code} - Failed to update topics.")
 
     def _update_gitlab_about_section(self, repo_path: str, about_content: dict):
         """Update GitLab repository about section.
