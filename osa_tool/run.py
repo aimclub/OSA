@@ -128,6 +128,8 @@ def main():
             about_gen.generate_about_content()
             if create_fork:
                 git_agent.update_about_section(about_gen.get_about_content())
+            if not create_pull_request:
+                logger.info("About section:\n" + about_gen.get_about_section_message())
 
         # Generate GitHub workflows
         if plan.get("generate_workflows"):
