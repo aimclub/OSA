@@ -246,7 +246,7 @@ class GitAgent:
         response_check = requests.get(url, headers=headers)
 
         if response_check.status_code == 204:
-            logger.info(f"GitHub repository {base_repo} is already starred.")
+            logger.info(f"GitHub repository '{base_repo}' is already starred.")
             return
         elif response_check.status_code != 404:
             logger.error(f"Failed to check star status: {response_check.status_code} - {response_check.text}")
@@ -255,7 +255,7 @@ class GitAgent:
         response_star = requests.put(url, headers=headers)
 
         if response_star.status_code == 204:
-            logger.info(f"GitHub repository {base_repo} has been starred successfully.")
+            logger.info(f"GitHub repository '{base_repo}' has been starred successfully.")
         else:
             logger.error(f"Failed to star repository: {response_star.status_code} - {response_star.text}")
             raise ValueError("Failed to star repository.")
@@ -279,10 +279,10 @@ class GitAgent:
         response = requests.post(url, headers=headers)
 
         if response.status_code == 304:
-            logger.info(f"GitLab repository {base_repo} is already starred.")
+            logger.info(f"GitLab repository '{base_repo}' is already starred.")
             return
         elif response.status_code == 201:
-            logger.info(f"GitLab repository {base_repo} has been starred successfully.")
+            logger.info(f"GitLab repository '{base_repo}' has been starred successfully.")
             return
         else:
             logger.error(f"Failed to star GitLab repository: {response.status_code} - {response.text}")
@@ -303,7 +303,7 @@ class GitAgent:
         response_check = requests.get(url, headers=headers)
 
         if response_check.status_code == 204:
-            logger.info(f"Gitverse repository {base_repo} is already starred.")
+            logger.info(f"Gitverse repository '{base_repo}' is already starred.")
             return
         elif response_check.status_code != 404:
             logger.error(f"Failed to check star status: {response_check.status_code} - {response_check.text}")
@@ -312,7 +312,7 @@ class GitAgent:
         response_star = requests.put(url, headers=headers)
 
         if response_star.status_code == 204:
-            logger.info(f"Gitverse repository {base_repo} has been starred successfully.")
+            logger.info(f"Gitverse repository '{base_repo}' has been starred successfully.")
             return
         else:
             logger.error(f"Failed to star Gitverse repository: {response_star.status_code} - {response_star.text}")
@@ -342,7 +342,7 @@ class GitAgent:
         else:
             try:
                 logger.info(
-                    f"Cloning the {self.base_branch} branch from {self.repo_url} into directory {self.clone_dir}..."
+                    f"Cloning the '{self.base_branch}' branch from {self.repo_url} into directory {self.clone_dir}..."
                 )
                 self.repo = Repo.clone_from(
                     url=self._get_auth_url(),
@@ -352,7 +352,15 @@ class GitAgent:
                 )
                 logger.info("Cloning completed")
             except GitCommandError as e:
-                logger.error(f"Cloning failed: {repr(e)}")
+                stderr = e.stderr or ""
+                logger.error(f"Cloning failed: {e}")
+
+                if "remote branch" in stderr and "not found" in stderr:
+                    logger.error(
+                        f"Branch '{self.base_branch}' not found in the remote repository. Please check the branch name."
+                    )
+                else:
+                    logger.error("An unexpected Git error occurred while cloning the repository.")
                 raise
 
     def create_and_checkout_branch(self, branch: str = None) -> None:
@@ -395,8 +403,18 @@ class GitAgent:
 
         logger.info("Committing changes...")
         self.repo.git.add(".")
-        self.repo.git.commit("-m", commit_message)
-        logger.info("Commit completed.")
+
+        try:
+            self.repo.git.commit("-m", commit_message)
+            logger.info("Commit completed.")
+        except GitCommandError as e:
+            if "nothing to commit" in str(e):
+                logger.warning("Nothing to commit: working tree clean")
+                if self.pr_report_body:
+                    logger.info(self.pr_report_body)
+                return False
+            else:
+                raise
 
         logger.info(f"Pushing changes to branch {branch} in fork...")
         self.repo.git.remote("set-url", "origin", self._get_auth_url(self.fork_url))
@@ -653,18 +671,18 @@ class GitAgent:
         response = requests.patch(url, headers=headers, json=about_data)
 
         if response.status_code in {200, 201}:
-            logger.info(f"Successfully updated GitHub repository description and homepage.")
+            logger.info(f"Successfully updated GitHub repository description and homepage for '{repo_path}'.")
         else:
-            logger.error(f"{response.status_code} - Failed to update description and homepage for {repo_path}.")
+            logger.error(f"{response.status_code} - Failed to update description and homepage for '{repo_path}'.")
 
         url = f"https://api.github.com/repos/{repo_path}/topics"
         topics_data = {"names": about_content["topics"]}
         response = requests.put(url, headers=headers, json=topics_data)
 
         if response.status_code in {200, 201}:
-            logger.info(f"Successfully updated GitHub repository topics.")
+            logger.info(f"Successfully updated GitHub repository topics for '{repo_path}'")
         else:
-            logger.error(f"{response.status_code} - Failed to update topics for {repo_path}.")
+            logger.error(f"{response.status_code} - Failed to update topics for '{repo_path}'.")
 
     def _update_gitlab_about_section(self, repo_path: str, about_content: dict):
         """Update GitLab repository about section.

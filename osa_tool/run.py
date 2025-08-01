@@ -1,6 +1,7 @@
 import os
 import subprocess
 from typing import List, Optional
+
 from pathlib import Path
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
@@ -127,6 +128,8 @@ def main():
             about_gen.generate_about_content()
             if create_fork:
                 git_agent.update_about_section(about_gen.get_about_content())
+            if not create_pull_request:
+                logger.info("About section:\n" + about_gen.get_about_section_message())
 
         # Generate GitHub workflows
         if plan.get("generate_workflows"):
@@ -142,8 +145,12 @@ def main():
 
         if create_fork and create_pull_request:
             rich_section("Publishing changes")
-            git_agent.commit_and_push_changes(force=True)
-            git_agent.create_pull_request(body=about_gen.get_about_section_message() if about_gen else "")
+            if git_agent.commit_and_push_changes(force=True):
+                git_agent.create_pull_request(body=about_gen.get_about_section_message() if about_gen else "")
+            else:
+                logger.warning("No changes were committed — pull request will not be created.")
+                if about_gen:
+                    logger.info("About section:\n" + about_gen.get_about_section_message())
 
         if plan.get("delete_dir"):
             rich_section("Repository deletion")
