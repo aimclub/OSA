@@ -1,8 +1,7 @@
 import os
 import subprocess
-from typing import List, Optional
-
 from pathlib import Path
+from typing import List, Optional
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
 from osa_tool.analytics.report_maker import ReportGenerator
@@ -76,18 +75,19 @@ def main():
         if create_fork:
             git_agent.create_and_checkout_branch()
 
-        # .ipynb to .py convertion
-        if plan["convert_notebooks"] is not None:
-            rich_section("Jupyter notebooks convertion")
-            convert_notebooks(args.repository, plan.get("convert_notebooks"))
-
         # Repository Analysis Report generation
+        # NOTE: Must run first - switches GitHub branches
         if plan.get("report"):
             rich_section("Report generation")
             analytics = ReportGenerator(config, sourcerank)
             analytics.build_pdf()
             if create_fork:
                 git_agent.upload_report(analytics.filename, analytics.output_path)
+
+        # .ipynb to .py convertion
+        if plan["convert_notebooks"] is not None:
+            rich_section("Jupyter notebooks convertion")
+            convert_notebooks(args.repository, plan.get("convert_notebooks"))
 
         # Auto translating names of directories
         if plan.get("translate_dirs"):
