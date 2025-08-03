@@ -1,4 +1,5 @@
 import os
+import asyncio
 import subprocess
 from typing import List, Optional
 from pathlib import Path
@@ -76,7 +77,7 @@ def main():
             git_agent.create_and_checkout_branch()
 
         # .ipynb to .py convertion
-        if plan["convert_notebooks"] is not None:
+        if plan.get("convert_notebooks"):
             rich_section("Jupyter notebooks convertion")
             convert_notebooks(args.repository, plan.get("convert_notebooks"))
 
@@ -203,10 +204,10 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
         ts = OSA_TreeSitter(repo_path)
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen(config_loader)
-        dg.process_python_file(res)
-        dg.generate_the_main_idea(res)
-        dg.process_python_file(res)
-        modules_summaries = dg.summarize_submodules(res)
+        asyncio.run(dg.process_python_file(res))
+        asyncio.run(dg.generate_the_main_idea(res))
+        asyncio.run(dg.process_python_file(res))
+        modules_summaries = asyncio.run(dg.summarize_submodules(res))
         dg.generate_documentation_mkdocs(repo_path, res, modules_summaries)
         dg.create_mkdocs_github_workflow(repo_url, repo_path)
 

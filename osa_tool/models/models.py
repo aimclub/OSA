@@ -1,3 +1,4 @@
+import asyncio
 from abc import ABC, abstractmethod
 from uuid import uuid4
 
@@ -27,6 +28,12 @@ class ModelHandler(ABC):
     @abstractmethod
     def send_request(self, prompt: str) -> str: ...
 
+    @abstractmethod
+    async def async_request(self, prompt: str) -> str: ...
+
+    @abstractmethod
+    async def generate_concurrently(self, prompts: list[str]) -> list: ...
+
     def initialize_payload(self, config: Settings, prompt: str) -> None:
         """
         Initializes the payload for the instance.
@@ -54,17 +61,6 @@ class PayloadFactory:
      __init__:
         Initializes the instance with a unique job ID, temperature, tokens limit, prompt, and roles. The 'config' parameter should include 'llm' with 'temperature' and 'tokens' attributes. The 'prompt' parameter is the initial user prompt.
 
-     to_payload:
-        Converts the instance variables to a dictionary payload. This method takes the instance variables job_id, temperature, tokens_limit, and prompt and packages them into a dictionary. The returned dictionary has the following structure:
-            {
-                "job_id": job_id,
-                "meta": {
-                    "temperature": temperature,
-                    "tokens_limit": tokens_limit,
-                },
-                "content": prompt,
-            }
-
      to_payload_completions:
         Converts the instance variables to a dictionary payload for completions. This method returns a dictionary with keys 'job_id', 'meta', and 'messages'. The 'meta' key contains a nested dictionary with keys 'temperature' and 'tokens_limit'. The values for these keys are taken from the instance variables of the same names.
     """
@@ -89,36 +85,6 @@ class PayloadFactory:
             SystemMessage(content="You are a helpful assistant for analyzing open-source repositories."),
             {"role": "user", "content": prompt},
         ]
-
-    def to_payload(self) -> dict:
-        """
-        Converts the instance variables to a dictionary payload.
-
-        This method takes the instance variables job_id, temperature, tokens_limit, and prompt and
-        packages them into a dictionary. This can be useful for serialization or for sending the
-        instance data over a network.
-
-        No parameters are required as it uses instance variables.
-
-        Returns:
-            dict: A dictionary containing the instance variables. The dictionary has the following structure:
-                {
-                    "job_id": job_id,
-                    "meta": {
-                        "temperature": temperature,
-                        "tokens_limit": tokens_limit,
-                    },
-                    "content": prompt,
-                }
-        """
-        return {
-            "job_id": self.job_id,
-            "meta": {
-                "temperature": self.temperature,
-                "tokens_limit": self.tokens_limit,
-            },
-            "content": self.prompt,
-        }
 
     def to_payload_completions(self) -> dict:
         """
@@ -197,6 +163,15 @@ class ProtollmHandler(ModelHandler):
         response = self.client.invoke(messages)
         return response.content
 
+    async def async_request(self, prompt: str) -> str:
+        self.initialize_payload(self.config, prompt)
+        response = await self.client.ainvoke(self.payload["messages"])
+        return response.content
+
+    async def generate_concurrently(self, prompts: list[str]) -> list[str]:
+        coroutines = [self.async_request(p) for p in prompts]
+        return await asyncio.gather(*coroutines)
+
     def _build_model_url(self) -> str:
         """Builds the model URL based on the LLM API type."""
         url_templates = {
@@ -229,12 +204,8 @@ class ProtollmHandler(ModelHandler):
             None
         """
         dotenv.load_dotenv()
-        connector_creator = create_llm_connector
 
-        model_url = self._build_model_url()
-        llm_params = self._get_llm_params()
-
-        self.client = connector_creator(model_url, **llm_params)
+        self.client = create_llm_connector(model_url=self._build_model_url(), **self._get_llm_params())
 
 
 class ModelHandlerFactory:
@@ -249,7 +220,7 @@ class ModelHandlerFactory:
     """
 
     @classmethod
-    def build(cls, config: Settings) -> ModelHandler:
+    def build(cls, config: Settings) -> ProtollmHandler:
         """
         Builds and returns a handler based on the configuration of the class.
 

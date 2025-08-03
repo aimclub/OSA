@@ -1,9 +1,8 @@
-import multiprocessing.pool
 import os
 import re
-import textwrap
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-from typing import List, Dict, Any
+import asyncio, aiofiles
+from typing import List, Dict, Any, Awaitable, Callable
+from collections import defaultdict
 
 import black
 from pathlib import Path
@@ -15,7 +14,7 @@ import tiktoken
 import yaml
 
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.models.models import ModelHandler, ModelHandlerFactory
+from osa_tool.models.models import ModelHandler, ModelHandlerFactory, ProtollmHandler
 from osa_tool.utils import logger, osa_project_root
 
 dotenv.load_dotenv()
@@ -72,7 +71,7 @@ class DocGen(object):
         This method is a constructor that initializes the object by setting the 'api_key' attribute to the value of the 'OPENAI_API_KEY' environment variable.
         """
         self.config = config_loader.config
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
+        self.model_handler: ProtollmHandler = ModelHandlerFactory.build(self.config)
         self.main_idea = None
 
     @staticmethod
@@ -190,7 +189,7 @@ class DocGen(object):
         tokens = enc.encode(prompt)
         return len(tokens)
 
-    def generate_class_documentation(self, class_details: dict) -> str:
+    async def generate_class_documentation(self, class_details: dict) -> str:
         """
         Generate documentation for a class.
 
@@ -220,9 +219,9 @@ class DocGen(object):
             for method in class_details[2:-1]:
                 prompt += f"- {method['method_name']}: {method['docstring']}\n"
 
-        return self.model_handler.send_request(prompt)
+        return await self.model_handler.async_request(prompt)
 
-    def update_class_documentation(self, class_details: dict) -> str:
+    async def update_class_documentation(self, class_details: dict) -> str:
         """
         Generate documentation for a class.
 
@@ -247,10 +246,10 @@ class DocGen(object):
             f"""Old docstring description part: {old_desc}\n\n"""
             """Return only pure changed description - without any code, other parts of docs, any quotations)"""
         )
-        new_desc = self.model_handler.send_request(prompt)
+        new_desc = await self.model_handler.async_request(prompt)
         return "\n\n".join(['"""\n' + new_desc, other])
 
-    def generate_method_documentation(self, method_details: dict, context_code: str = None) -> str:
+    async def generate_method_documentation(self, method_details: dict, context_code: str = None) -> str:
         """
         Generate documentation for a single method.
         """
@@ -273,9 +272,9 @@ class DocGen(object):
             "Return only docstring without any quotation. Follow such format:\n <triple_quotes>\ncontent\n<triple_quotes>"
         )
 
-        return self.model_handler.send_request(prompt)
+        return await self.model_handler.async_request(prompt)
 
-    def update_method_documentation(
+    async def update_method_documentation(
         self, method_details: dict, context_code: str = None, class_name: str = None
     ) -> str:
         """
@@ -303,7 +302,7 @@ class DocGen(object):
             f"""Old docstring description part: {old_desc}\n\n"""
             "Return only pure changed description - without any code, other parts of docs, any quotations"
         )
-        new_desc = self.model_handler.send_request(prompt)
+        new_desc = await self.model_handler.async_request(prompt)
 
         return "\n\n".join(['"""\n' + new_desc, other])
 
@@ -512,7 +511,7 @@ class DocGen(object):
             write_back=black.WriteBack.YES,
         )
 
-    def process_python_file(self, parsed_structure: dict) -> None:
+    async def process_python_file(self, parsed_structure: dict) -> None:
         """
         Processes a Python file by generating and inserting missing docstrings.
 
@@ -530,12 +529,20 @@ class DocGen(object):
         """
 
         for filename, structure in parsed_structure.items():
-            self._process_one_file(filename, structure, project_structure=parsed_structure)
+            await self._process_one_file(filename, structure, project_structure=parsed_structure)
 
-    def _process_one_file(self, filename, file_structure, project_structure):
+    async def _process_one_file(self, filename, file_structure, project_structure):
         self.format_with_black(filename)
-        with open(filename, "r", encoding="utf-8") as f:
-            source_code = f.read()
+
+        async with aiofiles.open(filename, "r", encoding="utf-8") as f:
+            source_code = await f.read()
+
+        coroutines = {
+            "classes": [],
+            "methods": [],
+            "functions": []
+        }
+
         for item in file_structure["structure"]:
             if item["type"] == "class":
                 for method in item["methods"]:
@@ -544,29 +551,28 @@ class DocGen(object):
                             f"""{"Generating" if self.main_idea else "Updating"} docstring for method: {method['method_name']} in class {item['name']} at {filename}"""
                         )
                         method_context = self.context_extractor(method, project_structure)
+
                         generated_docstring = (
                             self.generate_method_documentation(method, method_context)
                             if self.main_idea is None
                             else self.update_method_documentation(method, method_context, class_name=item["name"])
                         )
-                        generated_docstring = self.extract_pure_docstring(generated_docstring)
-                        if generated_docstring:
-                            method["docstring"] = generated_docstring
-                            source_code = self.insert_docstring_in_code(source_code, method, generated_docstring)
+                        coroutines["methods"].append((method, generated_docstring))
+
             if item["type"] == "function":
                 func_details = item["details"]
                 if func_details["docstring"] == None or self.main_idea:
+
                     logger.info(
                         f"""{"Generating" if self.main_idea else "Updating"} docstring for a function: {func_details['method_name']} at {filename}"""
                     )
+
                     generated_docstring = (
                         self.generate_method_documentation(func_details)
                         if self.main_idea is None
                         else self.update_method_documentation(func_details)
                     )
-                    generated_docstring = self.extract_pure_docstring(generated_docstring)
-                    if generated_docstring:
-                        source_code = self.insert_docstring_in_code(source_code, func_details, generated_docstring)
+                    coroutines["functions"].append((func_details, generated_docstring))
 
         for item in file_structure["structure"]:
             if item["type"] == "class" and (item["docstring"] == None or self.main_idea):
@@ -586,19 +592,44 @@ class DocGen(object):
                 logger.info(
                     f"""{"Generating" if self.main_idea else "Updating"} docstring for class: {item['name']} in class at {filename}"""
                 )
+
                 generated_cls_docstring = (
                     self.generate_class_documentation(cls_structure)
                     if self.main_idea is None
                     else self.update_class_documentation(cls_structure)
                 )
-                if generated_cls_docstring:
-                    source_code = self.insert_cls_docstring_in_code(source_code, class_name, generated_cls_docstring)
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(source_code)
+                coroutines["classes"].append((class_name, generated_cls_docstring))
+
+        methods_docstrings = await asyncio.gather(*[task[1] for task in coroutines["methods"]])
+        for docstring, _method in zip(methods_docstrings, [name[0] for name in coroutines["methods"]]):
+
+            clear_method_docstring = self.extract_pure_docstring(docstring)
+
+            if clear_method_docstring:
+                _method["docstring"] = clear_method_docstring
+                source_code = self.insert_docstring_in_code(source_code, _method, clear_method_docstring)
+
+        functions_docstrings = await asyncio.gather(*[task[1] for task in coroutines["functions"]])
+        for docstring, _function in zip(functions_docstrings, [name[0] for name in coroutines["functions"]]):
+
+            clear_function_docstring = self.extract_pure_docstring(docstring)
+
+            if clear_function_docstring:
+                source_code = self.insert_docstring_in_code(source_code, _function, clear_function_docstring)
+
+        classes_docstrings = await asyncio.gather(*[task[1] for task in coroutines["classes"]])
+        for docstring, _class in zip(classes_docstrings, [name[0] for name in coroutines["classes"]]):
+
+            if docstring:
+                source_code = self.insert_cls_docstring_in_code(source_code, _class, docstring)
+
+        async with aiofiles.open(filename, "w", encoding="utf-8") as f:
+            await f.write(source_code)
+
         self.format_with_black(filename)
         logger.info(f"Updated file: {filename}")
 
-    def generate_the_main_idea(self, parsed_structure: dict) -> None:
+    async def generate_the_main_idea(self, parsed_structure: dict) -> None:
         prompt = (
             "You are an AI documentation assistant, and your task is to deduce the main idea of the project and formulate for which purpose it was written."
             "You are given with the list of the main components (classes and functions) with it's short description and location in project hierarchy:\n"
@@ -628,30 +659,55 @@ class DocGen(object):
                 """
                 )
         logger.info(f"Generating the main idea of the project...")
-        self.main_idea = self.model_handler.send_request(prompt.format(components="\n\n".join(structure)))
+        self.main_idea = await self.model_handler.async_request(prompt.format(components="\n\n".join(structure)))
 
-    def summarize_submodules(self, project_structure):
-        summaries = {}
+    async def summarize_submodules(self, project_structure) -> Dict[str, str]:
+        """
+        This method performs recursive traversal over given parsed structure of a Python codebase and
+        generates short summaries for each directory (submodule).
+
+        Args:
+            project_structure: A dictionary representing the parsed structure of the Python codebase.
+                The dictionary keys are filenames and the values are lists of dictionaries representing
+                classes and their methods.
+
+        Returns:
+            Dict[str, str]
+        """
+
         self._rename_invalid_dirs(self.config.git.name)
 
-        def summarize_directory(name: str, file_summaries: List[str], submodule_summaries: List[str]) -> str:
-            prompt = (
-                "You are an AI documentation assistant, and your task is to sujmmarize the module of project and formulate for which purpose it was written."
-                "You are given with the list of the components (classes and functions or submodules) with it's short description:\n\n"
-                "{components}\n\n"
-                "Also you have the snippet from README file of project from this module has came describing the main idea of the whole project:\n\n"
-                "{main_idea}\n\n"
-                "You should generate markdown-formatted documentation page describing this module using description of all files and all submodules.\n"
-                "Do not too generalize overview and purpose parts using main idea, but try to explicit which part of main functionality does this module. Concentrate on local module features were infered previously.\n"
-                "Format you answer in a way you're writing README file for the module. Use such template:\n\n"
-                "# Name\n"
-                "## Overview\n"
-                "## Purpose\n"
-                "Do not mention or describe any submodule or files! Rename snake_case names on meaningful names."
-                "Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know "
-                "you're provided with any information. AVOID ANY SPECULATION and inaccurate descriptions! Now, provide the summarized idea of the module based on it's components"
-            )
+        _prompt = (
+            "You are an AI documentation assistant, and your task is to summarize the module of project and formulate for which purpose it was written."
+            "You are given with the list of the components (classes and functions or submodules) with it's short description:\n\n"
+            "{components}\n\n"
+            "Also you have the snippet from README file of project from this module has came describing the main idea of the whole project:\n\n"
+            "{main_idea}\n\n"
+            "You should generate markdown-formatted documentation page describing this module using description of all files and all submodules.\n"
+            "Do not too generalize overview and purpose parts using main idea, but try to explicit which part of main functionality does this module. Concentrate on local module features were infered previously.\n"
+            "Format you answer in a way you're writing README file for the module. Use such template:\n\n"
+            "# Name\n"
+            "## Overview\n"
+            "## Purpose\n"
+            "Do not mention or describe any submodule or files! Rename snake_case names on meaningful names."
+            "Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know "
+            "you're provided with any information. AVOID ANY SPECULATION and inaccurate descriptions! Now, provide the summarized idea of the module based on it's components"
+        )
 
+        _summaries = {}
+
+        async def summarize_directory(name: str, file_summaries: List[str], submodule_summaries: List[str]) -> str:
+            """
+            This method performs async http request to the LLM server and generates summary for given submodule.
+
+            Args:
+                name: submodule (directory) name in current project
+                file_summaries: list of file descriptions which the submodule contains
+                submodule_summaries: list of nested subdirectories summaries which the submodule contains
+
+            Returns:
+                str
+            """
             components = [
                 (
                     f"Module name: {name}",
@@ -662,45 +718,45 @@ class DocGen(object):
                 )
             ]
             logger.info(f"Generating summary for the module {name}")
-            result = self.model_handler.send_request(prompt.format(components=components, main_idea=self.main_idea))
-            return result
+            return await self.model_handler.async_request(_prompt.format(components=components, main_idea=self.main_idea))
 
-        def traverse_and_summarize(path: Path, project_structure: Dict[str, Any]) -> str:
-            dirs_summaries = []
-            files_summaries = []
+        async def traverse_and_summarize(path: Path, project: dict) -> str:
 
-            dirs = [
-                i
-                for i in os.listdir(path)
-                if os.path.isdir(Path(path, i)) and i not in [".git", ".github", "test", "tests"]
-            ]
-            files = [i for i in os.listdir(path) if not os.path.isdir(Path(path, i))]
+            _exclusions = (".git", ".github", "test", "tests", "osa_docs")
+            _coroutines = []
 
-            for dir_name in dirs:
-                dir_path = Path(path, dir_name)
-                dir_summary = traverse_and_summarize(dir_path, project_structure)
-                if dir_summary:
-                    dirs_summaries.append(dir_summary)
+            leaves_summaries = []
 
-            for file_name in files:
-                file_path = Path(path, file_name)
-                if str(file_path) in project_structure:
-                    files_summaries.append(
-                        self.format_structure_openai_short(
-                            filename=file_path.name, structure=project_structure[str(file_path)]
-                        )
+            directories = [d for d in os.listdir(path) if os.path.isdir(Path(path, d)) and d not in _exclusions]
+            files = [f for f in os.listdir(path) if ~(os.path.isdir(Path(path, f)))]
+
+            for name in directories:
+                p = Path(path, name)
+
+                _coroutines.append(traverse_and_summarize(p, project))
+
+            for name in files:
+                p = Path(path, name)
+
+                if str(p) in project:
+                    leaves_summaries.append(
+                        self.format_structure_openai_short(filename=p.name, structure=project[str(p)])
                     )
-            if files_summaries or dirs_summaries:
-                if path == self.config.git.name:  # main page of the repo
-                    summary = self.main_idea
 
-                else:
-                    summary = summarize_directory(Path(path).name, files_summaries, dirs_summaries)
-                summaries[str(path)] = summary
+            folder_summaries = await asyncio.gather(*_coroutines)
+
+            if leaves_summaries or folder_summaries:
+                summary = (
+                    self.main_idea
+                    if path == self.config.git.name
+                    else await summarize_directory(Path(path).name, leaves_summaries, folder_summaries)
+                )
+                _summaries[str(path)] = summary
+
                 return summary
 
-        traverse_and_summarize(self.config.git.name, project_structure=project_structure)
-        return summaries
+        await traverse_and_summarize(self.config.git.name, project_structure)
+        return _summaries
 
     def convert_path_to_dot_notation(self, path):
         path_obj = Path(path) if isinstance(path, str) else path
