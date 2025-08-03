@@ -159,7 +159,7 @@ refine_readme:
 requirements:
   aliases: ["--requirements"]
   type: flag
-  description: "Generate a requirements.txt file based on repository content."
+  description: "Generate or refine a requirements.txt file based on repository content."
   default: false
 
 organize:
