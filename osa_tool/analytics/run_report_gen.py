@@ -124,7 +124,7 @@ def parse_arguments() -> argparse.Namespace:
     Returns:
         argparse.Namespace: Parsed arguments including:
           - table_path: path to input table file (.csv or .xlsx)
-          - api: choice of LLM API provider ("llama", "openai", "ollama")
+          - api: choice of LLM API provider ("itmo", "openai", "ollama")
           - base_url: base URL of the API provider
           - model: LLM model name to use
     """
@@ -134,7 +134,7 @@ def parse_arguments() -> argparse.Namespace:
         "--table-path", type=str, help="Path to an Excel (.xlsx) or CSV file containing tabular data.", required=True
     )
     parser.add_argument(
-        "--api", type=str, choices=["llama", "openai", "ollama"], help="LLM API service provider.", default="llama"
+        "--api", type=str, choices=["itmo", "openai", "ollama"], help="LLM API service provider.", default="itmo"
     )
     parser.add_argument(
         "--base-url",

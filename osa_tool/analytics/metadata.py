@@ -6,6 +6,7 @@ from functools import lru_cache
 
 import requests
 from dotenv import load_dotenv
+from requests import HTTPError
 
 from osa_tool.utils import get_base_repo_url, logger
 
@@ -206,7 +207,7 @@ def _parse_repository_metadata_gitverse(repo_data: dict) -> RepositoryMetadata:
 
 
 @lru_cache(maxsize=1)
-def load_data_metadata(repo_url: str) -> RepositoryMetadata | None:
+def load_data_metadata(repo_url: str) -> RepositoryMetadata:
     """Retrieve repository metadata from any supported platform."""
     try:
         platform = detect_platform(repo_url)
@@ -219,9 +220,23 @@ def load_data_metadata(repo_url: str) -> RepositoryMetadata | None:
         else:
             return _load_gitverse_metadata(base_url)
 
+    except HTTPError as http_exc:
+        status_code = getattr(http_exc.response, "status_code", None)
+        logger.error(f"Error while fetching repository metadata: {http_exc}")
+
+        if status_code == 401:
+            logger.error("Authentication failed: please check your Git token (missing or expired).")
+        elif status_code == 404:
+            logger.error("Repository not found: please check the repository URL.")
+        elif status_code == 403:
+            logger.error("Access denied: your token may lack sufficient permissions or you hit a rate limit.")
+        else:
+            logger.error("Unexpected HTTP error occurred while accessing the repository metadata.")
+        raise
+
     except Exception as exc:
-        logger.error(f"Error while fetching repository metadata: {exc}")
-        return None
+        logger.error(f"Unexpected error while fetching repository metadata: {exc}")
+        raise
 
 
 def _load_github_metadata(base_url: str) -> RepositoryMetadata:
@@ -236,7 +251,7 @@ def _load_github_metadata(base_url: str) -> RepositoryMetadata:
     response.raise_for_status()
 
     metadata = response.json()
-    logger.info(f"Successfully fetched GitHub metadata for repository: {base_url}")
+    logger.info(f"Successfully fetched GitHub metadata for repository: '{base_url}'")
     return _parse_repository_metadata_github(metadata)
 
 
@@ -256,7 +271,7 @@ def _load_gitlab_metadata(repo_url: str, base_url: str) -> RepositoryMetadata:
     response.raise_for_status()
 
     metadata = response.json()
-    logger.info(f"Successfully fetched GitLab metadata for repository: {base_url}")
+    logger.info(f"Successfully fetched GitLab metadata for repository: '{base_url}'")
     return _parse_repository_metadata_gitlab(metadata)
 
 
@@ -274,5 +289,5 @@ def _load_gitverse_metadata(base_url: str) -> RepositoryMetadata:
     response.raise_for_status()
 
     metadata = response.json()
-    logger.info(f"Successfully fetched Gitverse metadata for repository: {base_url}")
+    logger.info(f"Successfully fetched Gitverse metadata for repository: '{base_url}'")
     return _parse_repository_metadata_gitverse(metadata)

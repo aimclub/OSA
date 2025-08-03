@@ -27,7 +27,6 @@ context_window = 4096
 encoder = "cl100k_base"
 host_name = "https://api.openai.com/v1"
 localhost = "http://localhost:11434/"
-itmo_local_url = "http://10.32.15.21:6672"
 model = "gpt-3.5-turbo"
 path = "generate"
 temperature = 0.05
