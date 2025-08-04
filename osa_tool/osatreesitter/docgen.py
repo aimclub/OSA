@@ -614,7 +614,9 @@ class DocGen(object):
                             else self.update_method_documentation(method, method_context, class_name=item["name"])
                         )
                         if not generated_docstring:
-                            logger.info(f"Failed to recieve a proper docstring for the method {method['method_name']} of class {item['name']}.\nRetrying ...")
+                            logger.info(
+                                f"Failed to recieve a proper docstring for the method {method['method_name']} of class {item['name']}.\nRetrying ..."
+                            )
                             generated_docstring = (
                                 self.generate_method_documentation(method, method_context)
                                 if self.main_idea is None
@@ -640,7 +642,9 @@ class DocGen(object):
                         else self.update_method_documentation(func_details)
                     )
                     if not generated_docstring:
-                        logger.info(f"Failed to recieve a proper docstring for the function {func_details['method_name']} at {filename}.\nRetrying ...")
+                        logger.info(
+                            f"Failed to recieve a proper docstring for the function {func_details['method_name']} at {filename}.\nRetrying ..."
+                        )
                         generated_docstring = (
                             self.generate_method_documentation(func_details)
                             if self.main_idea is None
@@ -676,7 +680,9 @@ class DocGen(object):
                     else self.update_class_documentation(cls_structure)
                 )
                 if not generated_cls_docstring:
-                    logger.info(f"Failed to recieve a proper docstring for the class {item['name']} at {filename}.\nRetrying ...")
+                    logger.info(
+                        f"Failed to recieve a proper docstring for the class {item['name']} at {filename}.\nRetrying ..."
+                    )
                     generated_cls_docstring = (
                         self.generate_class_documentation(cls_structure)
                         if self.main_idea is None
