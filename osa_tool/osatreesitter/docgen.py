@@ -1,7 +1,7 @@
 import os
 import re
 import asyncio, aiofiles
-from typing import List, Dict, Any, Awaitable, Callable
+from typing import List, Dict
 from collections import defaultdict
 
 import black
@@ -537,11 +537,7 @@ class DocGen(object):
         async with aiofiles.open(filename, "r", encoding="utf-8") as f:
             source_code = await f.read()
 
-        coroutines = {
-            "classes": [],
-            "methods": [],
-            "functions": []
-        }
+        coroutines = {"classes": [], "methods": [], "functions": []}
 
         for item in file_structure["structure"]:
             if item["type"] == "class":
@@ -718,7 +714,9 @@ class DocGen(object):
                 )
             ]
             logger.info(f"Generating summary for the module {name}")
-            return await self.model_handler.async_request(_prompt.format(components=components, main_idea=self.main_idea))
+            return await self.model_handler.async_request(
+                _prompt.format(components=components, main_idea=self.main_idea)
+            )
 
         async def traverse_and_summarize(path: Path, project: dict) -> str:
 
