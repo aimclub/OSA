@@ -320,9 +320,6 @@ class DocGen(object):
         Returns:
             A properly formatted Python docstring string with triple quotes.
         """
-        if not gpt_response:
-            return '"""No response from LLM."""'
-
         response = gpt_response.strip().replace("<triple quotes>", '"""')
 
         # 1 — Strip Markdown-style code block
@@ -608,7 +605,7 @@ class DocGen(object):
                 for method in item["methods"]:
                     if method["docstring"] == None or self.main_idea:  # If docstring is missing
                         logger.info(
-                            f"""{"Generating" if self.main_idea else "Updating"} docstring for method: {method['method_name']} in class {item['name']} at {filename}"""
+                            f"""{"Generating" if self.main_idea else "Updating"} docstring for the method: {method['method_name']} of class {item['name']} at {filename}"""
                         )
                         method_context = self.context_extractor(method, project_structure)
                         generated_docstring = (
@@ -616,26 +613,44 @@ class DocGen(object):
                             if self.main_idea is None
                             else self.update_method_documentation(method, method_context, class_name=item["name"])
                         )
-                        generated_docstring = self.extract_pure_docstring(generated_docstring)
+                        if not generated_docstring:
+                            logger.info(f"Failed to recieve a proper docstring for the method {method['method_name']} of class {item['name']}.\nRetrying ...")
+                            generated_docstring = (
+                                self.generate_method_documentation(method, method_context)
+                                if self.main_idea is None
+                                else self.update_method_documentation(method, method_context, class_name=item["name"])
+                            )
                         if generated_docstring:
+                            generated_docstring = self.extract_pure_docstring(generated_docstring)
                             method["docstring"] = generated_docstring
                             source_code = self.insert_docstring_in_code(
                                 source_code, method, generated_docstring, class_method=True
                             )
+                        else:
+                            logger.error(f"Could not recieve any response from the LLM.")
             if item["type"] == "function":
                 func_details = item["details"]
                 if func_details["docstring"] == None or self.main_idea:
                     logger.info(
-                        f"""{"Generating" if self.main_idea else "Updating"} docstring for a function: {func_details['method_name']} at {filename}"""
+                        f"""{"Generating" if self.main_idea else "Updating"} docstring for the function: {func_details['method_name']} at {filename}"""
                     )
                     generated_docstring = (
                         self.generate_method_documentation(func_details)
                         if self.main_idea is None
                         else self.update_method_documentation(func_details)
                     )
-                    generated_docstring = self.extract_pure_docstring(generated_docstring)
+                    if not generated_docstring:
+                        logger.info(f"Failed to recieve a proper docstring for the function {func_details['method_name']} at {filename}.\nRetrying ...")
+                        generated_docstring = (
+                            self.generate_method_documentation(func_details)
+                            if self.main_idea is None
+                            else self.update_method_documentation(func_details)
+                        )
                     if generated_docstring:
+                        generated_docstring = self.extract_pure_docstring(generated_docstring)
                         source_code = self.insert_docstring_in_code(source_code, func_details, generated_docstring)
+                    else:
+                        logger.error(f"Could not recieve any response from the LLM.")
 
         for item in file_structure["structure"]:
             if item["type"] == "class" and (item["docstring"] == None or self.main_idea):
@@ -653,15 +668,24 @@ class DocGen(object):
                     )
                 cls_structure.append(item["docstring"])
                 logger.info(
-                    f"""{"Generating" if self.main_idea else "Updating"} docstring for class: {item['name']} in class at {filename}"""
+                    f"""{"Generating" if self.main_idea else "Updating"} docstring for the class: {item['name']} at {filename}"""
                 )
                 generated_cls_docstring = (
                     self.generate_class_documentation(cls_structure)
                     if self.main_idea is None
                     else self.update_class_documentation(cls_structure)
                 )
+                if not generated_cls_docstring:
+                    logger.info(f"Failed to recieve a proper docstring for the class {item['name']} at {filename}.\nRetrying ...")
+                    generated_cls_docstring = (
+                        self.generate_class_documentation(cls_structure)
+                        if self.main_idea is None
+                        else self.update_class_documentation(cls_structure)
+                    )
                 if generated_cls_docstring:
                     source_code = self.insert_cls_docstring_in_code(source_code, class_name, generated_cls_docstring)
+                else:
+                    logger.error(f"Could not recieve any response from the LLM.")
         with open(filename, "w", encoding="utf-8") as f:
             f.write(source_code)
         logger.info(f"Updated file: {filename}")
