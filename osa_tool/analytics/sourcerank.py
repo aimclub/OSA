@@ -38,7 +38,7 @@ class SourceRank:
         return bool(pattern.search(self.tree))
 
     def contributing_presence(self) -> bool:
-        pattern = re.compile(r"\b\w*contribut\w*\.(md|rst|txt)$", re.IGNORECASE)
+        pattern = re.compile(r"\b\w*contribut\w*\.(md|rst|txt)$", re.IGNORECASE | re.MULTILINE)
         return bool(pattern.search(self.tree))
 
     def requirements_presence(self) -> bool:
