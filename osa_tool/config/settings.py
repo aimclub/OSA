@@ -46,6 +46,7 @@ class ModelSettings(BaseModel):
     """
 
     api: str
+    rate_limit: int
     url: str
     context_window: PositiveInt
     encoder: str

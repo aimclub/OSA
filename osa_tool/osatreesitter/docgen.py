@@ -2,7 +2,6 @@ import os
 import re
 import asyncio, aiofiles
 from typing import List, Dict
-from collections import defaultdict
 
 import black
 from pathlib import Path
@@ -518,7 +517,7 @@ class DocGen(object):
             write_back=black.WriteBack.YES,
         )
 
-    async def process_python_file(self, parsed_structure: dict, rate_limit: int = 10) -> None:
+    async def process_python_file(self, parsed_structure: dict, rate_limit: int = 20) -> None:
         """
         Processes a Python file by generating and inserting missing docstrings.
 
@@ -665,7 +664,7 @@ class DocGen(object):
         logger.info(f"Generating the main idea of the project...")
         self.main_idea = await self.model_handler.async_request(prompt.format(components="\n\n".join(structure)))
 
-    async def summarize_submodules(self, project_structure) -> Dict[str, str]:
+    async def summarize_submodules(self, project_structure, rate_limit: int = 20) -> Dict[str, str]:
         """
         This method performs recursive traversal over given parsed structure of a Python codebase and
         generates short summaries for each directory (submodule).
@@ -674,12 +673,14 @@ class DocGen(object):
             project_structure: A dictionary representing the parsed structure of the Python codebase.
                 The dictionary keys are filenames and the values are lists of dictionaries representing
                 classes and their methods.
-
+            rate_limit: A number of maximum concurrent requests to provided API
         Returns:
             Dict[str, str]
         """
 
-        # self._rename_invalid_dirs(self.config.git.name)
+        self._rename_invalid_dirs(self.config.git.name)
+
+        semaphore = asyncio.Semaphore(rate_limit)
 
         _prompt = (
             "You are an AI documentation assistant, and your task is to summarize the module of project and formulate for which purpose it was written."
@@ -722,9 +723,11 @@ class DocGen(object):
                 )
             ]
             logger.info(f"Generating summary for the module {name}")
-            return await self.model_handler.async_request(
-                _prompt.format(components=components, main_idea=self.main_idea)
-            )
+
+            async with semaphore:
+                return await self.model_handler.async_request(
+                    _prompt.format(components=components, main_idea=self.main_idea)
+                )
 
         async def traverse_and_summarize(path: Path, project: dict) -> str:
 
@@ -762,7 +765,6 @@ class DocGen(object):
                 return summary
 
         await traverse_and_summarize(self.config.git.name, project_structure)
-        logger.info(f"DEBUG {_summaries}")
         return _summaries
 
     def convert_path_to_dot_notation(self, path):
