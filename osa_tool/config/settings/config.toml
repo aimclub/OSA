@@ -17,11 +17,12 @@ skill_icons = "skill_icons.json"
 
 # Git Repository Settings
 [git]
-repository = "https://github.com/aimclub/FEDOT"
+repository = "https://github.com/MikhaelProskurin/itmo_mlops_course"
 
 # Language Model API Settings
 [llm]
 api = "openai"
+rate_limit = 10
 url = "https://api.openai.com/v1"
 context_window = 4096
 encoder = "cl100k_base"

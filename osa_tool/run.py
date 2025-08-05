@@ -58,6 +58,7 @@ def main():
         config = load_configuration(
             repo_url=args.repository,
             api=args.api,
+            rate_limit=10,
             base_url=args.base_url,
             model_name=args.model,
             temperature=args.temperature,
@@ -231,6 +232,7 @@ async def generate_docstrings(config_loader: ConfigLoader) -> None:
 def load_configuration(
     repo_url: str,
     api: str,
+    rate_limit: int,
     base_url: str,
     model_name: str,
     temperature: Optional[str] = None,
@@ -243,6 +245,7 @@ def load_configuration(
     Args:
         repo_url: URL of the GitHub repository.
         api: LLM API service provider.
+        rate_limit: Number of concurrent requests to LLM API server.
         base_url: URL of the provider compatible with API OpenAI
         model_name: Specific LLM model to use.
         temperature: Sampling temperature for the model.
@@ -258,6 +261,7 @@ def load_configuration(
     config_loader.config.llm = config_loader.config.llm.model_copy(
         update={
             "api": api,
+            "rate_limit": rate_limit,
             "url": base_url,
             "model": model_name,
             "temperature": temperature,
