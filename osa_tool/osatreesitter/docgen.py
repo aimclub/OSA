@@ -753,6 +753,7 @@ class DocGen(object):
                     )
 
             folder_summaries = await asyncio.gather(*_coroutines)
+            folder_summaries = [s for s in folder_summaries if s]
 
             if leaves_summaries or folder_summaries:
                 summary = (
