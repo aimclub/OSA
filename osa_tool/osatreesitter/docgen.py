@@ -671,7 +671,7 @@ class DocGen(object):
             Dict[str, str]
         """
 
-        self._rename_invalid_dirs(self.config.git.name)
+        # self._rename_invalid_dirs(self.config.git.name)
 
         _prompt = (
             "You are an AI documentation assistant, and your task is to summarize the module of project and formulate for which purpose it was written."
@@ -726,7 +726,7 @@ class DocGen(object):
             leaves_summaries = []
 
             directories = [d for d in os.listdir(path) if os.path.isdir(Path(path, d)) and d not in _exclusions]
-            files = [f for f in os.listdir(path) if ~(os.path.isdir(Path(path, f)))]
+            files = [f for f in os.listdir(path) if not(os.path.isdir(Path(path, f)))]
 
             for name in directories:
                 p = Path(path, name)
