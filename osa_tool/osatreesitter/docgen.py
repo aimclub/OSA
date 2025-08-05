@@ -189,7 +189,7 @@ class DocGen(object):
         tokens = enc.encode(prompt)
         return len(tokens)
 
-    async def generate_class_documentation(self, class_details: dict) -> str:
+    async def generate_class_documentation(self, class_details: dict, semaphore: asyncio.Semaphore) -> str:
         """
         Generate documentation for a class.
 
@@ -219,9 +219,10 @@ class DocGen(object):
             for method in class_details[2:-1]:
                 prompt += f"- {method['method_name']}: {method['docstring']}\n"
 
-        return await self.model_handler.async_request(prompt)
+        async with semaphore:
+            return await self.model_handler.async_request(prompt)
 
-    async def update_class_documentation(self, class_details: dict) -> str:
+    async def update_class_documentation(self, class_details: dict, semaphore: asyncio.Semaphore) -> str:
         """
         Generate documentation for a class.
 
@@ -246,10 +247,15 @@ class DocGen(object):
             f"""Old docstring description part: {old_desc}\n\n"""
             """Return only pure changed description - without any code, other parts of docs, any quotations)"""
         )
-        new_desc = await self.model_handler.async_request(prompt)
+
+        async with semaphore:
+            new_desc = await self.model_handler.async_request(prompt)
+
         return "\n\n".join(['"""\n' + new_desc, other])
 
-    async def generate_method_documentation(self, method_details: dict, context_code: str = None) -> str:
+    async def generate_method_documentation(
+            self, method_details: dict, semaphore: asyncio.Semaphore, context_code: str = None,
+    ) -> str:
         """
         Generate documentation for a single method.
         """
@@ -271,11 +277,11 @@ class DocGen(object):
             "Note: DO NOT count parameters which are not listed in the parameters list. DO NOT lose any parameter."
             "Return only docstring without any quotation. Follow such format:\n <triple_quotes>\ncontent\n<triple_quotes>"
         )
-
-        return await self.model_handler.async_request(prompt)
+        async with semaphore:
+            return await self.model_handler.async_request(prompt)
 
     async def update_method_documentation(
-        self, method_details: dict, context_code: str = None, class_name: str = None
+        self, method_details: dict, semaphore: asyncio.Semaphore, context_code: str = None, class_name: str = None
     ) -> str:
         """
         Generate documentation for a single method.
@@ -302,7 +308,8 @@ class DocGen(object):
             f"""Old docstring description part: {old_desc}\n\n"""
             "Return only pure changed description - without any code, other parts of docs, any quotations"
         )
-        new_desc = await self.model_handler.async_request(prompt)
+        async with semaphore:
+            new_desc = await self.model_handler.async_request(prompt)
 
         return "\n\n".join(['"""\n' + new_desc, other])
 
@@ -511,7 +518,7 @@ class DocGen(object):
             write_back=black.WriteBack.YES,
         )
 
-    async def process_python_file(self, parsed_structure: dict) -> None:
+    async def process_python_file(self, parsed_structure: dict, rate_limit: int = 10) -> None:
         """
         Processes a Python file by generating and inserting missing docstrings.
 
@@ -523,15 +530,16 @@ class DocGen(object):
             parsed_structure: A dictionary representing the parsed structure of the Python codebase.
                 The dictionary keys are filenames and the values are lists of dictionaries representing
                 classes and their methods.
-
+            rate_limit: A number of maximum concurrent requests to provided API
         Returns:
             None
         """
+        semaphore = asyncio.Semaphore(rate_limit)
 
         for filename, structure in parsed_structure.items():
-            await self._process_one_file(filename, structure, project_structure=parsed_structure)
+            await self._process_one_file(filename, structure, project_structure=parsed_structure, semaphore=semaphore)
 
-    async def _process_one_file(self, filename, file_structure, project_structure):
+    async def _process_one_file(self, filename, file_structure, project_structure, semaphore):
         self.format_with_black(filename)
 
         async with aiofiles.open(filename, "r", encoding="utf-8") as f:
@@ -549,9 +557,9 @@ class DocGen(object):
                         method_context = self.context_extractor(method, project_structure)
 
                         generated_docstring = (
-                            self.generate_method_documentation(method, method_context)
+                            self.generate_method_documentation(method, semaphore, method_context)
                             if self.main_idea is None
-                            else self.update_method_documentation(method, method_context, class_name=item["name"])
+                            else self.update_method_documentation(method, semaphore, method_context, class_name=item["name"])
                         )
                         coroutines["methods"].append((method, generated_docstring))
 
@@ -564,9 +572,9 @@ class DocGen(object):
                     )
 
                     generated_docstring = (
-                        self.generate_method_documentation(func_details)
+                        self.generate_method_documentation(func_details, semaphore)
                         if self.main_idea is None
-                        else self.update_method_documentation(func_details)
+                        else self.update_method_documentation(func_details, semaphore)
                     )
                     coroutines["functions"].append((func_details, generated_docstring))
 
@@ -590,9 +598,9 @@ class DocGen(object):
                 )
 
                 generated_cls_docstring = (
-                    self.generate_class_documentation(cls_structure)
+                    self.generate_class_documentation(cls_structure, semaphore)
                     if self.main_idea is None
-                    else self.update_class_documentation(cls_structure)
+                    else self.update_class_documentation(cls_structure, semaphore)
                 )
                 coroutines["classes"].append((class_name, generated_cls_docstring))
 
@@ -754,6 +762,7 @@ class DocGen(object):
                 return summary
 
         await traverse_and_summarize(self.config.git.name, project_structure)
+        logger.info(f"DEBUG {_summaries}")
         return _summaries
 
     def convert_path_to_dot_notation(self, path):
