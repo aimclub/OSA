@@ -195,7 +195,7 @@ class DocGen(object):
 
         Args:
             class_details: A list of dictionaries containing method names and their docstrings.
-
+            semaphore: synchronous primitive that implements limitation of concurrency degree to avoid overloading api.
         Returns:
             The generated class docstring.
         """
@@ -228,7 +228,7 @@ class DocGen(object):
 
         Args:
             class_details: A list of dictionaries containing method names and their docstrings.
-
+            semaphore: synchronous primitive that implements limitation of concurrency degree to avoid overloading api.
         Returns:
             The generated class docstring.
         """
@@ -582,7 +582,7 @@ class DocGen(object):
             write_back=black.WriteBack.YES,
         )
 
-    async def process_python_file(self, parsed_structure: dict, rate_limit: int = 20) -> None:
+    async def process_python_file(self, parsed_structure: dict, rate_limit: int = 10) -> None:
         """
         Processes a Python file by generating and inserting missing docstrings.
 
