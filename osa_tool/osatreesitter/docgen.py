@@ -697,7 +697,8 @@ class DocGen(object):
 
         logger.info(f"Updated file: {filename}")
 
-    async def generate_the_main_idea(self, parsed_structure: dict) -> None:
+    async def generate_the_main_idea(self, parsed_structure: dict, top_n: int = 5) -> None:
+
         prompt = (
             "You are an AI documentation assistant, and your task is to deduce the main idea of the project and formulate for which purpose it was written."
             "You are given with the list of the main components (classes and functions) with it's short description and location in project hierarchy:\n"
@@ -711,23 +712,44 @@ class DocGen(object):
             "Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know "
             "you're provided with any information. AVOID ANY SPECULATION and inaccurate descriptions! Now, provide the summarized idea of the project based on it's components"
         )
-        structure = []
-        for file in parsed_structure:
+
+        _exclusions = (".git", ".github", "test", "tests", "__init__", "__pycache__")
+
+        prompt_structure = []
+
+        accepted_packages = [
+            (str(f), len(parsed_structure[f]["imports"]))
+            for f in parsed_structure
+            if all(e not in f for e in _exclusions)
+        ]
+
+        importance_top = sorted(accepted_packages, key=lambda pair: pair[1], reverse=True)[:top_n]
+
+        for file, score in importance_top:
+
             for component in parsed_structure[file]["structure"]:
-                t = component["type"]
-                if t == "class":
+
+                _type = component["type"]
+
+                if _type == "class":
                     docstring = component["docstring"].split("\n\n")[0].strip('"\n ') if component["docstring"] else ""
                 else:
                     docstring = component["details"]["docstring"] if component["details"]["docstring"] else ""
-                structure.append(
-                    f"""{t.capitalize()} name: {component['name'] if t == "class" else component['details']['method_name']}
-                Component description: {docstring}
-                Component place in hierarchy: {file}
-                Component importance score: {len(parsed_structure[file]['imports'])}
-                """
+
+                prompt_structure.append(
+                    f"""
+                    {_type.capitalize()} name: {component["name"] if _type == "class" else component["details"]["method_name"]}
+                    Component description: {docstring}
+                    Component place in hierarchy: {file}
+                    Component importance score: {score}
+                    """
                 )
+
         logger.info(f"Generating the main idea of the project...")
-        self.main_idea = await self.model_handler.async_request(prompt.format(components="\n\n".join(structure)))
+
+        components = "\n\n".join(prompt_structure)
+
+        self.main_idea = await self.model_handler.async_request(prompt.format(components=components))
 
     async def summarize_submodules(self, project_structure, rate_limit: int = 20) -> Dict[str, str]:
         """

@@ -165,11 +165,31 @@ class ProtollmHandler(ModelHandler):
         return response.content
 
     async def async_request(self, prompt: str) -> str:
+        """
+        Asynchronous alternative of send_request method.
+        This method do the same things in general.
+
+        Args:
+            prompt: The prompt to initialize the payload with.
+
+        Returns:
+            str: The response received from the request.
+        """
         self.initialize_payload(self.config, prompt)
         response = await self.client.ainvoke(self.payload["messages"])
         return response.content
 
     async def generate_concurrently(self, prompts: list[str]) -> list[str]:
+        """
+        Sends a batch of requests to the specified llm server endpoint.
+        Requests would be sent in concurrent format and processed in the order of their input.
+
+        Args:
+            prompts: The batch of prompts to send on llm server endpoint.
+
+        Returns:
+            list[str]: The list of responses from awaited coroutines.
+        """
         coroutines = [self.async_request(p) for p in prompts]
         return await asyncio.gather(*coroutines)
 
