@@ -254,7 +254,10 @@ class DocGen(object):
         return "\n\n".join(['"""\n' + new_desc, other])
 
     async def generate_method_documentation(
-            self, method_details: dict, semaphore: asyncio.Semaphore, context_code: str = None,
+        self,
+        method_details: dict,
+        semaphore: asyncio.Semaphore,
+        context_code: str = None,
     ) -> str:
         """
         Generate documentation for a single method.
@@ -624,7 +627,9 @@ class DocGen(object):
                         generated_docstring = (
                             self.generate_method_documentation(method, semaphore, method_context)
                             if self.main_idea is None
-                            else self.update_method_documentation(method, semaphore, method_context, class_name=item["name"])
+                            else self.update_method_documentation(
+                                method, semaphore, method_context, class_name=item["name"]
+                            )
                         )
                         coroutines["methods"].append((method, generated_docstring))
 

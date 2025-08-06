@@ -166,6 +166,7 @@ def main():
     finally:
         loop.close()
 
+
 def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) -> None:
     """Converts Jupyter notebooks to Python scripts based on provided paths.
 
