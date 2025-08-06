@@ -1,7 +1,8 @@
 import os
 import subprocess
+import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
 from osa_tool.analytics.report_maker import ReportGenerator
@@ -84,9 +85,9 @@ def main():
             if create_fork:
                 git_agent.upload_report(analytics.filename, analytics.output_path)
 
-        # .ipynb to .py convertion
+        # .ipynb to .py conversion
         if plan["convert_notebooks"] is not None:
-            rich_section("Jupyter notebooks convertion")
+            rich_section("Jupyter notebooks conversion")
             convert_notebooks(args.repository, plan.get("convert_notebooks"))
 
         # Auto translating names of directories
@@ -157,8 +158,10 @@ def main():
             delete_repository(args.repository)
 
         rich_section("All operations completed successfully")
+        sys.exit(0)
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
+        sys.exit(1)
 
 
 def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) -> None:
