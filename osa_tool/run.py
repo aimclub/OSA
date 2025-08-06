@@ -105,9 +105,9 @@ def main():
             loop.run_until_complete(generate_docstrings(config))
 
         # License compiling
-        if plan.get("ensure_license"):
+        if license_type := plan.get("ensure_license"):
             rich_section("License generation")
-            compile_license_file(sourcerank, plan.get("ensure_license"))
+            compile_license_file(sourcerank, license_type)
 
         # Generate community documentation
         if plan.get("community_docs"):
