@@ -1,9 +1,8 @@
 import os
 import asyncio
 import subprocess
-from typing import Optional
-
 from pathlib import Path
+from typing import Optional
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
 from osa_tool.analytics.report_maker import ReportGenerator
@@ -80,18 +79,19 @@ def main():
         if create_fork:
             git_agent.create_and_checkout_branch()
 
-        # .ipynb to .py convertion
-        if plan.get("convert_notebooks"):
-            rich_section("Jupyter notebooks convertion")
-            convert_notebooks(args.repository, plan.get("convert_notebooks"))
-
         # Repository Analysis Report generation
+        # NOTE: Must run first - switches GitHub branches
         if plan.get("report"):
             rich_section("Report generation")
             analytics = ReportGenerator(config, sourcerank)
             analytics.build_pdf()
             if create_fork:
                 git_agent.upload_report(analytics.filename, analytics.output_path)
+
+        # .ipynb to .py convertion
+        if plan.get("convert_notebooks"):
+            rich_section("Jupyter notebooks convertion")
+            convert_notebooks(args.repository, plan.get("convert_notebooks"))
 
         # Auto translating names of directories
         if plan.get("translate_dirs"):
@@ -218,6 +218,7 @@ async def generate_docstrings(config_loader: ConfigLoader) -> None:
         dg = DocGen(config_loader)
         await dg.process_python_file(res, rate_limit)
         await dg.generate_the_main_idea(res)
+        res = ts.analyze_directory(ts.cwd)
         await dg.process_python_file(res, rate_limit)
         modules_summaries = await dg.summarize_submodules(res, rate_limit)
         dg.generate_documentation_mkdocs(repo_path, res, modules_summaries)
@@ -235,7 +236,7 @@ def load_configuration(
     model_name: str,
     temperature: Optional[str] = None,
     max_tokens: Optional[str] = None,
-    top_p: Optional[str] = None
+    top_p: Optional[str] = None,
 ) -> ConfigLoader:
     """
     Loads configuration for osa_tool.
@@ -248,6 +249,7 @@ def load_configuration(
         temperature: Sampling temperature for the model.
         max_tokens: Maximum number of tokens to generate.
         top_p: Nucleus sampling value.
+
     Returns:
         config_loader: The configuration object which contains settings for osa_tool.
     """
