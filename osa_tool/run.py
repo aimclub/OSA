@@ -1,7 +1,8 @@
 import os
+import asyncio
 import subprocess
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
 from osa_tool.analytics.report_maker import ReportGenerator
@@ -48,6 +49,9 @@ def main():
     create_fork = not args.no_fork
     create_pull_request = not args.no_pull_request
 
+    loop = asyncio.get_event_loop()
+    asyncio.set_event_loop(loop)
+
     try:
         # Load configurations and update
         config = load_configuration(
@@ -85,9 +89,9 @@ def main():
                 git_agent.upload_report(analytics.filename, analytics.output_path)
 
         # .ipynb to .py convertion
-        if plan["convert_notebooks"] is not None:
+        if notebook := plan.get("convert_notebooks"):
             rich_section("Jupyter notebooks convertion")
-            convert_notebooks(args.repository, plan.get("convert_notebooks"))
+            convert_notebooks(args.repository, notebook)
 
         # Auto translating names of directories
         if plan.get("translate_dirs"):
@@ -98,12 +102,12 @@ def main():
         # Docstring generation
         if plan.get("docstring"):
             rich_section("Docstrings generation")
-            generate_docstrings(config)
+            loop.run_until_complete(generate_docstrings(config))
 
         # License compiling
-        if plan.get("ensure_license"):
+        if license_type := plan.get("ensure_license"):
             rich_section("License generation")
-            compile_license_file(sourcerank, plan.get("ensure_license"))
+            compile_license_file(sourcerank, license_type)
 
         # Generate community documentation
         if plan.get("community_docs"):
@@ -159,6 +163,8 @@ def main():
         rich_section("All operations completed successfully")
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
+    finally:
+        loop.close()
 
 
 def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) -> None:
@@ -197,7 +203,7 @@ def generate_requirements(repo_url):
         logger.error(f"Error while generating project's requirements: {e.stderr}")
 
 
-def generate_docstrings(config_loader: ConfigLoader) -> None:
+async def generate_docstrings(config_loader: ConfigLoader) -> None:
     """Generates a docstrings for .py's classes and methods of the provided repository.
 
     Args:
@@ -206,15 +212,16 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
     """
     try:
         repo_url = config_loader.config.git.repository
+        rate_limit = config_loader.config.llm.rate_limit
         repo_path = parse_folder_name(repo_url)
         ts = OSA_TreeSitter(repo_path)
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen(config_loader)
-        dg.process_python_file(res)
-        dg.generate_the_main_idea(res)
+        await dg.process_python_file(res, rate_limit)
+        await dg.generate_the_main_idea(res)
         res = ts.analyze_directory(ts.cwd)
-        dg.process_python_file(res)
-        modules_summaries = dg.summarize_submodules(res)
+        await dg.process_python_file(res, rate_limit)
+        modules_summaries = await dg.summarize_submodules(res, rate_limit)
         dg.generate_documentation_mkdocs(repo_path, res, modules_summaries)
         dg.create_mkdocs_github_workflow(repo_url, repo_path)
 
