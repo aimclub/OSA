@@ -50,6 +50,15 @@ def main():
     create_pull_request = not args.no_pull_request
 
     try:
+        # Switch to output directory if present
+        if args.output:
+            output_path = Path(args.output).resolve()
+            if not output_path.exists():
+                output_path.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Created directory: {output_path}")
+            os.chdir(output_path)
+            logger.info(f"Output path changed to {output_path}")
+
         # Load configurations and update
         config = load_configuration(
             repo_url=args.repository,
