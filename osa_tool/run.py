@@ -89,9 +89,9 @@ def main():
                 git_agent.upload_report(analytics.filename, analytics.output_path)
 
         # .ipynb to .py convertion
-        if plan.get("convert_notebooks"):
+        if notebook := plan.get("convert_notebooks"):
             rich_section("Jupyter notebooks convertion")
-            convert_notebooks(args.repository, plan.get("convert_notebooks"))
+            convert_notebooks(args.repository, notebook)
 
         # Auto translating names of directories
         if plan.get("translate_dirs"):
