@@ -10,6 +10,7 @@ from pathlib import Path
 import shutil
 import subprocess
 
+import black.report
 import dotenv
 import tiktoken
 import yaml
@@ -205,7 +206,7 @@ class DocGen(object):
             f"""Generate a single Python docstring for the following class {class_details[0]}. The docstring should follow Google-style format and include:\n"""
             "- A short summary of what the class does.\n"
             "- A list of its methods without details if class has them otherwise do not mention a list of methods.\n"
-            "- A list of its attributes without types if class has them otherwise do not mention a list of attributes.\n"
+            "- A list of its attributes that explicitly mentioned at the constructor method's docstring (can be adressed as attributes, properties, class fields, etc.), without types if class or constructor method has them otherwise do not mention a list of attributes.\n"
             "- A brief summary of what its methods and attributes do if one has them for.\n\n"
             "Return only docstring without any quotation. Follow such format:\n <triple_quotes>\ncontent\n<triple_quotes>"
         )
@@ -258,18 +259,21 @@ class DocGen(object):
             "Generate a Python docstring for the following method. The docstring should follow Google-style format and include:\n"
             "- A short summary of what the method does\n."
             "- A description of its parameters without types.\n"
+            "- If the method is a class constructor, explicitly list all class fields (object properties) that are initialized, including their names and purposes. These fields should match the attributes assigned within the constructor (e.g., this.field = ..., self.field = ...). This information will be used to generate the class-level documentation.\n"
             "- The return type and description.\n"
-            f"""{"- Use provided source code of imported methods, functions to describe their usage." if context_code else ""}\n"""
-            "Method Details:\n"
             f"- Method Name: {method_details['method_name']}\n"
-            f"- Method decorators: {method_details['decorators']}\n"
-            "- Source Code:\n"
+            "Method source code: You are given only the body of a single method, without its signature. All visible code, including any inner functions or nested logic, belongs to this single method. Do not write separate docstrings for inner functions — they are part of the main method's logic.\n"
             "```\n"
             f"""{method_details['source_code']}\n"""
             "```\n"
+            "-List of arguments:\n"
+            f"""{method_details['arguments']}\n"""
+            f"""{"- Use provided source code of imported methods, functions to describe their usage." if context_code else ""}\n"""
+            "Method Details:\n"
+            f"- Method decorators: {method_details['decorators']}\n"
             f"""{"- Imported methods source code:" if context_code else ""}\n"""
             f"""{context_code if context_code else ""}\n\n"""
-            "Note: DO NOT count parameters which are not listed in the parameters list. DO NOT lose any parameter."
+            "Note: DO NOT RETURN METHOD'S BODY. DO NOT count parameters which are not listed in the parameters list. DO NOT lose any parameter. DO NOT wrap any sections of the docstring into <any_tag> clear those parts out."
             "Return only docstring without any quotation. Follow such format:\n <triple_quotes>\ncontent\n<triple_quotes>"
         )
 
@@ -281,14 +285,13 @@ class DocGen(object):
         """
         Generate documentation for a single method.
         """
-        try:
-            desc, other = method_details["docstring"].split("\n\n", maxsplit=1)
-        except:
-            return method_details["docstring"]
-        old_desc = desc.strip('"\n ')
+        docstring = method_details["docstring"]
         prompt = (
-            """Update the provided description for the following Python method using the main idea of the project.\n"""
+            """Update the provided docstring description for the following Python method using the main idea of the project.\n"""
             """Do not pay too much attention to the provided main idea - try not to mention it explicitly\n"""
+            """Based on the provided context and main idea give an answer to the question WHY method doing what it is doing\n"""
+            """If original docstring provides only description update it with Args and Return sections based on provided source code as well\n"""
+            f"""Original docstring: {docstring}\n\n"""
             f"""{"- Use provided source code of imported methods, functions to understand their usage." if context_code else ""}\n"""
             """Method Details:\n"""
             f"""- Method Name: {method_details["method_name"]} {("located inside " + class_name + " class") if class_name else ""}\n"""
@@ -299,141 +302,200 @@ class DocGen(object):
             "```\n"
             f"""{"- Imported methods source code:" if context_code else ""}\n"""
             f"""{context_code if context_code else ""}\n\n"""
-            "The main idea: {self.main_idea}\n"
-            f"""Old docstring description part: {old_desc}\n\n"""
-            "Return only pure changed description - without any code, other parts of docs, any quotations"
+            f"The main idea: {self.main_idea}\n"
+            "Return only pure changed docstring - DO NOT RETURN ANY CODE, DO NOT RETURN other parts of docs"
         )
         new_desc = self.model_handler.send_request(prompt)
 
-        return "\n\n".join(['"""\n' + new_desc, other])
+        return new_desc
 
     def extract_pure_docstring(self, gpt_response: str) -> str:
         """
-        Extracts only the docstring from the GPT-4 response while keeping triple quotes.
+        Extracts only the docstring from the GPT response while keeping triple quotes.
+        Handles common formatting issues like Markdown blocks, extra indentation, and missing closing quotes.
 
         Args:
-            gpt_response: The full response from GPT-4.
+            gpt_response: Full response string from LLM.
 
         Returns:
-            The properly formatted docstring including triple quotes.
+            A properly formatted Python docstring string with triple quotes.
         """
+        response = gpt_response.strip().replace("<triple quotes>", '"""')
 
-        # Try to recover if closing triple-quote was replaced with ```
-        if gpt_response is None:
-            return '"""No valid docstring found."""'
-        triple_quote_pos = gpt_response.find('"""')
-        if triple_quote_pos != -1:
-            # Look for closing triple-quote
-            closing_pos = gpt_response.find('"""', triple_quote_pos + 3)
-            if closing_pos == -1:
-                # Try to find a ``` after opening """
-                broken_close_pos = gpt_response.find("```", triple_quote_pos + 3)
-                if broken_close_pos != -1:
-                    # Replace only this incorrect closing ``` with """
-                    gpt_response = gpt_response[:broken_close_pos] + '"""' + gpt_response[broken_close_pos + 3 :]
+        # 1 — Strip Markdown-style code block
+        markdown_match = re.search(r"```[a-z]*\n([\s\S]+?)\n```", response, re.IGNORECASE)
+        if markdown_match:
+            response = markdown_match.group(1).strip()
 
-        # Regex to capture the full docstring with triple quotes
-        match = re.search(r'("""+)\n?(.*?)\n?\1', gpt_response, re.DOTALL)
+        # 2 — Fix case: opening triple quote but no closure
+        if response.count('"""') == 1:
+            pos = response.find('"""')
+            body = response[pos + 3 :].strip()
+            if len(body.split()) > 3:
+                return f'"""\n{body}\n"""'
 
+        # 3 — Try to extract proper triple-quoted block
+        match = re.search(r'("""|\'\'\')\n?(.*?)\n?\1', response, re.DOTALL)
         if match:
-            triple_quotes = match.group(1)  # Keep the triple quotes (""" or """)
-            extracted_docstring = match.group(2)  # Extract only the content inside the docstring
-            cleaned_content = re.sub(r"^\s*def\s+\w+\(.*?\):\s*", "", extracted_docstring, flags=re.MULTILINE).strip(
-                "\"' "
-            )
-            # very silly approach to correct indentation (calculate spaces before 'Args' literals)
-            if "Args" in cleaned_content:
-                spaces = re.findall("\n([^\S\r\n]*)Args", cleaned_content)
+            quote = match.group(1)
+            content = match.group(2).strip()
+
+            # Remove accidental leaked `def ...():`
+            content = re.sub(r"^\s*def\s+\w+\(.*?\):\s*", "", content, flags=re.MULTILINE).strip()
+
+            # De-indent "Args" section
+            if "Args" in content:
+                spaces = re.findall(r"\n([^\S\r\n]*)Args", content)
                 if spaces:
-                    spaces = spaces[0]
-                    cleaned_content = cleaned_content.replace("\n" + spaces, "\n")  # shift content left
+                    indent = spaces[0]
+                    content = content.replace("\n" + indent, "\n")
 
-            return f"{triple_quotes}\n{cleaned_content}\n{triple_quotes}"
+            return f"{quote}\n{content}\n{quote}"
 
-        return '"""No valid docstring found."""'  # Return a placeholder if no docstring was found
+        # 4 — fallback: treat entire content as docstring if long enough
+        if response.startswith("'''") and response.endswith("'''"):
+            response = f'"""{response[3:-3].strip()}"""'
+        cleaned = response.strip("`'\" \n")
+        if len(cleaned.split()) > 3:
+            return f'"""\n{cleaned}\n"""'
 
-    def insert_docstring_in_code(self, source_code: str, method_details: dict, generated_docstring: str) -> str:
+        return '"""No valid docstring found."""'
+
+    @staticmethod
+    def strip_docstring_from_body(body: str) -> str:
         """
-        This method inserts a generated docstring into the specified location in the source code.
-
-        Args:
-            source_code: The source code where the docstring should be inserted.
-            method_details: A dictionary containing details about the method.
-                It should have a key 'method_name' with the name of the method where the docstring should be inserted.
-            generated_docstring: The docstring that should be inserted into the source code.
-
-        Returns:
-            None
+        Method to trimm method's body from docstring
         """
-        # Matches a method definition with the given name,
-        # including an optional return type. Ensures no docstring follows.
-        method_pattern = (
-            rf"((?:@\w+(?:\([^)]*\))?\s*\n)*\s*(?:async\s+)?def\s+{method_details['method_name']}\s*\((?:[^)(]|\((?:[^)(]*|\([^)(]*\))*\))*\)\s*(->\s*[a-zA-Z0-9_\[\],. |]+)?\s*:\n)(\s*)"
-            + r"(\"{3}[\s\S]*?\"{3}|\'{3}[\s\S]*?\'{3})?"
-        )
-        """
-        (
-            (?:@\w+(?:\([^)]*\))?\s*\n)*                # Optional decorators: e.g. @decorator or @decorator(args), each followed by newline
-            \s*                                         # Optional whitespace before function definition
-            (?:async\s+)?                               # Optional 'async' keyword followed by whitespace
-            def\s+{method_details['method_name']}\s*    # 'def' keyword followed by the specific method name and optional spaces
-            \(                                          # Opening parenthesis for the parameter list
-                (?:                                     # Non-capturing group to match parameters inside parentheses
-                    [^)(]                               # Match any character except parentheses (simple parameter)
-                    |                                   # OR
-                    \(                                  # Opening a nested parenthesis
-                        (?:[^)(]*|\([^)(]*\))*          # Recursively match nested parentheses content
-                    \)                                  # Closing the nested parenthesis
-                )*                                      # Repeat zero or more times (all parameters)
-            \)                                          # Closing parenthesis of the parameter list
-            \s*                                         # Optional whitespace after parameters
-            (->\s*[a-zA-Z0-9_\[\],. |]+)?               # Optional return type annotation (e.g. -> int, -> dict[str, Any])
-            \s*:\n                                      # Colon ending the function header followed by newline
-        )
-        (\s*)                                          # Capture indentation (spaces/tabs) of the next line (function body)
-        (?!\s*\"\"\")                                  # Negative lookahead: ensure the next non-space characters are NOT triple quotes (no docstring yet)
-        """
+        lines = body.strip().splitlines()
+        if len(lines) < 1:
+            return body
 
-        docstring_with_format = self.extract_pure_docstring(generated_docstring)
-        matches = list(re.finditer(method_pattern, source_code))
-        if matches:
-            last_match = matches[-1]
-            start, end = last_match.span()
-            updated_code = (
-                source_code[:start]
-                + re.sub(method_pattern, rf"\1\3{docstring_with_format}\n\3", source_code[start:end], count=1)
-                + source_code[end:]
-            )
+        first_line = lines[0].strip()
+        if first_line.startswith(('"""', "'''")):
+            closing = first_line[:3]
+            # Oneliner docstring
+            if first_line.count(closing) == 2:
+                return "\n".join(lines[1:]).lstrip()
+            # Multyline docstring
+            for i in range(1, len(lines)):
+                if closing in lines[i]:
+                    return "\n".join(lines[i + 1 :]).lstrip()
+        return body
 
-        else:
-            updated_code = source_code
-        return updated_code
+    def insert_docstring_in_code(
+        self, source_code: str, method_details: dict, generated_docstring: str, class_method: bool = False
+    ) -> str:
+        """
+        Inserts or replaces a method-level docstring in the provided source code,
+        using the method's body from method_details['source_code'] to locate the method.
+        Handles multi-line signatures, decorators, async definitions, and existing docstrings.
+        """
+        method_body = self.strip_docstring_from_body(method_details["source_code"].strip())
+        docstring_clean = self.extract_pure_docstring(generated_docstring)
+
+        # Find method within a source code
+        match = re.search(re.escape(method_details["source_code"]), source_code)
+        if not match:
+            return source_code
+        body_start = match.start()
+
+        if not body_start:
+            return source_code
+
+        start = body_start
+
+        while start > 0 and source_code[start - 1] in " \t\n":
+            start -= 1
+
+        end = body_start + len(method_body)
+
+        method_block = source_code[start:end]
+        method_lines = method_block.splitlines(keepends=True)
+
+        indent = "        " if class_method else "    "
+
+        def indent_docstring(docstring: str) -> str:
+            lines = docstring.strip().splitlines()
+            if len(lines) == 1:
+                return f'{indent}"""{lines[0]}"""'
+            indented = [f"{indent}" + lines[0]]
+            for line in lines[1:]:
+                indented.append(f"{indent}{line}")
+            return "\n".join(indented) + "\n"
+
+        # Check for existing docstring right after signature
+        signature_end_index = None
+        for i, line in enumerate(method_lines):
+            if line.strip().endswith(":"):
+                signature_end_index = i
+                break
+
+        docstring_inserted = indent_docstring(docstring_clean)
+
+        if signature_end_index is not None:
+            next_line_index = signature_end_index + 1
+            while next_line_index < len(method_lines) and method_lines[next_line_index].strip() == "":
+                next_line_index += 1
+
+            if next_line_index < len(method_lines) and method_lines[next_line_index].strip().startswith(('"""', "'''")):
+                # Replace old docstring
+                closing = method_lines[next_line_index].strip()[:3]
+                end_doc_idx = next_line_index
+                for j in range(next_line_index + 1, len(method_lines)):
+                    if closing in method_lines[j]:
+                        end_doc_idx = j
+                        break
+                method_lines = method_lines[:next_line_index] + [docstring_inserted] + method_lines[end_doc_idx + 1 :]
+            else:
+                # Insert new docstring
+                method_lines.insert(signature_end_index + 1, docstring_inserted)
+
+        updated_block = "".join(method_lines)
+        result = source_code[:start] + updated_block + source_code[end:]
+
+        return result
 
     def insert_cls_docstring_in_code(self, source_code: str, class_name: str, generated_docstring: str) -> str:
         """
-        Inserts a generated class docstring into the class definition.
+        Inserts or replaces a class-level docstring for a given class name.
 
         Args:
-
-            source_code: The source code where the docstring should be inserted.
-            class_name: Class name.
-            generated_docstring: The docstring that should be inserted.
+            source_code: The full source code string.
+            class_name: Name of the class to update.
+            generated_docstring: The new docstring (raw response from LLM).
 
         Returns:
-            The updated source code with the class docstring inserted.
+            Updated source code with the inserted or replaced class docstring.
         """
-
-        # Matches a class definition with the given name,
-        # including optional parentheses. Ensures no docstring follows.
         class_pattern = (
-            rf"(class\s+{class_name}\s*(\([^)]*\))?\s*:\n)(\s*)(?!\s*\"\"\")"
-            + r"(\"{3}[\s\S]*?\"{3}|\'{3}[\s\S]*?\'{3})?"
+            rf"(class\s+{class_name}\s*(\([^)]*\))?\s*:\n)"  # group 1: class signature
+            rf"([ \t]*)"  # group 3: indentation (for docstring)
+            rf"(\"\"\"[\s\S]*?\"\"\"|\'\'\'[\s\S]*?\'\'\')?"  # group 4: existing docstring (optional)
         )
 
-        # Ensure we keep only the extracted docstring
-        docstring_with_format = self.extract_pure_docstring(generated_docstring)
+        match = re.search(class_pattern, source_code)
+        if not match:
+            return source_code  # Class not found
 
-        updated_code = re.sub(class_pattern, rf"\1\3{docstring_with_format}\n\3", source_code, count=1)
+        signature = match.group(1)
+        indent = match.group(3) or "    "
+        existing_docstring = match.group(4)
+
+        docstring = self.extract_pure_docstring(generated_docstring)
+
+        # Applying indentation to all docstring lines
+        indented_lines = [indent + line if line.strip() else indent for line in docstring.strip().splitlines()]
+        indented_docstring = "\n".join(indented_lines) + "\n"
+
+        start, end = match.span()
+
+        if existing_docstring:
+            # Substituting an existing docstring
+            updated_code = source_code[:start] + signature + indented_docstring + source_code[end:]
+        else:
+            # Inserting new docstring
+            insert_point = source_code.find("\n", start) + 1
+            updated_code = source_code[:insert_point] + indented_docstring + source_code[insert_point:]
 
         return updated_code
 
@@ -530,10 +592,12 @@ class DocGen(object):
         """
 
         for filename, structure in parsed_structure.items():
+            if not structure["structure"]:
+                logger.info(f"File {filename} does not contain any functions, methods or class constructions.")
+                continue
             self._process_one_file(filename, structure, project_structure=parsed_structure)
 
     def _process_one_file(self, filename, file_structure, project_structure):
-        self.format_with_black(filename)
         with open(filename, "r", encoding="utf-8") as f:
             source_code = f.read()
         for item in file_structure["structure"]:
@@ -541,7 +605,7 @@ class DocGen(object):
                 for method in item["methods"]:
                     if method["docstring"] == None or self.main_idea:  # If docstring is missing
                         logger.info(
-                            f"""{"Generating" if self.main_idea else "Updating"} docstring for method: {method['method_name']} in class {item['name']} at {filename}"""
+                            f"""{"Generating" if self.main_idea else "Updating"} docstring for the method: {method['method_name']} of class {item['name']} at {filename}"""
                         )
                         method_context = self.context_extractor(method, project_structure)
                         generated_docstring = (
@@ -549,24 +613,48 @@ class DocGen(object):
                             if self.main_idea is None
                             else self.update_method_documentation(method, method_context, class_name=item["name"])
                         )
-                        generated_docstring = self.extract_pure_docstring(generated_docstring)
+                        if not generated_docstring:
+                            logger.info(
+                                f"Failed to recieve a proper docstring for the method {method['method_name']} of class {item['name']}.\nRetrying ..."
+                            )
+                            generated_docstring = (
+                                self.generate_method_documentation(method, method_context)
+                                if self.main_idea is None
+                                else self.update_method_documentation(method, method_context, class_name=item["name"])
+                            )
                         if generated_docstring:
+                            generated_docstring = self.extract_pure_docstring(generated_docstring)
                             method["docstring"] = generated_docstring
-                            source_code = self.insert_docstring_in_code(source_code, method, generated_docstring)
+                            source_code = self.insert_docstring_in_code(
+                                source_code, method, generated_docstring, class_method=True
+                            )
+                        else:
+                            logger.error(f"Could not recieve any response from the LLM.")
             if item["type"] == "function":
                 func_details = item["details"]
                 if func_details["docstring"] == None or self.main_idea:
                     logger.info(
-                        f"""{"Generating" if self.main_idea else "Updating"} docstring for a function: {func_details['method_name']} at {filename}"""
+                        f"""{"Generating" if self.main_idea else "Updating"} docstring for the function: {func_details['method_name']} at {filename}"""
                     )
                     generated_docstring = (
                         self.generate_method_documentation(func_details)
                         if self.main_idea is None
                         else self.update_method_documentation(func_details)
                     )
-                    generated_docstring = self.extract_pure_docstring(generated_docstring)
+                    if not generated_docstring:
+                        logger.info(
+                            f"Failed to recieve a proper docstring for the function {func_details['method_name']} at {filename}.\nRetrying ..."
+                        )
+                        generated_docstring = (
+                            self.generate_method_documentation(func_details)
+                            if self.main_idea is None
+                            else self.update_method_documentation(func_details)
+                        )
                     if generated_docstring:
+                        generated_docstring = self.extract_pure_docstring(generated_docstring)
                         source_code = self.insert_docstring_in_code(source_code, func_details, generated_docstring)
+                    else:
+                        logger.error(f"Could not recieve any response from the LLM.")
 
         for item in file_structure["structure"]:
             if item["type"] == "class" and (item["docstring"] == None or self.main_idea):
@@ -584,18 +672,28 @@ class DocGen(object):
                     )
                 cls_structure.append(item["docstring"])
                 logger.info(
-                    f"""{"Generating" if self.main_idea else "Updating"} docstring for class: {item['name']} in class at {filename}"""
+                    f"""{"Generating" if self.main_idea else "Updating"} docstring for the class: {item['name']} at {filename}"""
                 )
                 generated_cls_docstring = (
                     self.generate_class_documentation(cls_structure)
                     if self.main_idea is None
                     else self.update_class_documentation(cls_structure)
                 )
+                if not generated_cls_docstring:
+                    logger.info(
+                        f"Failed to recieve a proper docstring for the class {item['name']} at {filename}.\nRetrying ..."
+                    )
+                    generated_cls_docstring = (
+                        self.generate_class_documentation(cls_structure)
+                        if self.main_idea is None
+                        else self.update_class_documentation(cls_structure)
+                    )
                 if generated_cls_docstring:
                     source_code = self.insert_cls_docstring_in_code(source_code, class_name, generated_cls_docstring)
+                else:
+                    logger.error(f"Could not recieve any response from the LLM.")
         with open(filename, "w", encoding="utf-8") as f:
             f.write(source_code)
-        self.format_with_black(filename)
         logger.info(f"Updated file: {filename}")
 
     def generate_the_main_idea(self, parsed_structure: dict) -> None:
@@ -632,7 +730,7 @@ class DocGen(object):
 
     def summarize_submodules(self, project_structure):
         summaries = {}
-        self._rename_invalid_dirs(self.config.git.name)
+        self._rename_invalid_dirs(Path(self.config.git.name).resolve())
 
         def summarize_directory(name: str, file_summaries: List[str], submodule_summaries: List[str]) -> str:
             prompt = (
