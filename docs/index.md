@@ -146,22 +146,31 @@ either a link to a PDF file of the article or a path to a local PDF file after t
 Docker, ensure that you upload the PDF file to the OSA folder before building the image, then, specify the path as
 /app/OSA/... or just use volume mounting to access the file.
 
+The --generate-workflows option is intended to create customizable CI/CD pipelines for Python repositories. For detailed
+documentation, see the [GitHub Action Workflow Generator README](./osa_tool/github_workflow/README.md).
+
 ### Configuration
 
-| Flag                 | Description                                                                       | Default                     |
-|----------------------|-----------------------------------------------------------------------------------|-----------------------------|
-| `-r`, `--repository` | URL of the GitHub repository (**Mandatory**)                                      |                             |
-| `--api`              | LLM API service provider                                                          | `itmo`                      |
-| `--base-url`         | URL of the provider compatible with API OpenAI                                    | `https://api.openai.com/v1` |
-| `--model`            | Specific LLM model to use                                                         | `gpt-3.5-turbo`             |
-| `--article`          | Link to the pdf file of the article                                               | `None`                      |
-| `--translate-dirs`   | Enable automatic translation of the directory name into English                   | `disabled`                  |
-| `--delete-dir`       | Enable deleting the downloaded repository after processing                        | `disabled`                  |
-| `--no-fork`          | Avoid create fork for target repository                                           | `False`                     |
-| `--no-pull-request`  | Avoid create pull request for target repository                                   | `False`                     |
-| `--top_p`            | Nucleus sampling probability                                                      | `null`                      |
-| `--temperature`      | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative). | `null`                      |
-| `--max_tokens`       | Maximum number of tokens the model can generate in a single response              | `null`                      |
+| Flag                 | Description                                                                         | Default                     |
+|----------------------|-------------------------------------------------------------------------------------|-----------------------------|
+| `-r`, `--repository` | URL of the GitHub repository (**Mandatory**)                                        |                             |
+| `-b`, `--branch`     | Branch name of the repository                                                       | Default branch              |
+| `-o`, `--output`     | Path to the output directory                                                        | Current working directory   |
+| `--api`              | LLM API service provider                                                            | `itmo`                      |
+| `--base-url`         | URL of the provider compatible with API OpenAI                                      | `https://api.openai.com/v1` |
+| `--model`            | Specific LLM model to use                                                           | `gpt-3.5-turbo`             |
+| `--article`          | Link to the pdf file of the article                                                 | `None`                      |
+| `--translate-dirs`   | Enable automatic translation of the directory name into English                     | `disabled`                  |
+| `-m`, `--mode`       | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`. | `auto`                      |
+| `--delete-dir`       | Enable deleting the downloaded repository after processing                          | `disabled`                  |
+| `--no-fork`          | Avoid create fork for target repository                                             | `False`                     |
+| `--no-pull-request`  | Avoid create pull request for target repository                                     | `False`                     |
+| `--top_p`            | Nucleus sampling probability                                                        | `null`                      |
+| `--temperature`      | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).   | `null`                      |
+| `--max_tokens`       | Maximum number of tokens the model can generate in a single response                | `null`                      |
+
+To learn how to work with the interactive CLI and view descriptions of all available keys, visit
+the [CLI usage guide](./osa_tool/scheduler/README.md).
 
 ---
 
@@ -183,6 +192,7 @@ Local ITMO model:
 ```sh
 python -m osa_tool.run -r https://github.com/aimclub/OSA --base_url [ITMO_MODEL_URL]
 ```  
+
 For this API provider itmo model url must be specified in dotenv (ITMO_MODEL_URL=) or in the --base-url argument.
 
 OpenAI:
@@ -242,11 +252,11 @@ for their code that we used as a foundation for our own version of README genera
 
 If you use this software, please cite it as below.
 
-### APA format:
+### APA format
 
     ITMO, NSS Lab (2025). Open-Source-Advisor repository [Computer software]. https://github.com/aimclub/OSA
 
-### BibTeX format:
+### BibTeX format
 
     @misc{Open-Source-Advisor,
 
