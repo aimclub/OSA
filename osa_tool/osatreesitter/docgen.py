@@ -319,7 +319,8 @@ class DocGen(object):
 
         return new_desc
 
-    def extract_pure_docstring(self, gpt_response: str) -> str:
+    @staticmethod
+    def extract_pure_docstring(gpt_response: str) -> str:
         """
         Extracts only the docstring from the GPT response while keeping triple quotes.
         Handles common formatting issues like Markdown blocks, extra indentation, and missing closing quotes.
@@ -392,16 +393,17 @@ class DocGen(object):
                     return "\n".join(lines[i + 1 :]).lstrip()
         return body
 
+    @staticmethod
     def insert_docstring_in_code(
-        self, source_code: str, method_details: dict, generated_docstring: str, class_method: bool = False
+        source_code: str, method_details: dict, generated_docstring: str, class_method: bool = False
     ) -> str:
         """
         Inserts or replaces a method-level docstring in the provided source code,
         using the method's body from method_details['source_code'] to locate the method.
         Handles multi-line signatures, decorators, async definitions, and existing docstrings.
         """
-        method_body = self.strip_docstring_from_body(method_details["source_code"].strip())
-        docstring_clean = self.extract_pure_docstring(generated_docstring)
+        method_body = DocGen.strip_docstring_from_body(method_details["source_code"].strip())
+        docstring_clean = DocGen.extract_pure_docstring(generated_docstring)
 
         # Find method within a source code
         match = re.search(re.escape(method_details["source_code"]), source_code)
@@ -465,7 +467,8 @@ class DocGen(object):
 
         return result
 
-    def insert_cls_docstring_in_code(self, source_code: str, class_name: str, generated_docstring: str) -> str:
+    @staticmethod
+    def insert_cls_docstring_in_code(source_code: str, class_name: str, generated_docstring: str) -> str:
         """
         Inserts or replaces a class-level docstring for a given class name.
 
@@ -491,7 +494,7 @@ class DocGen(object):
         indent = match.group(3) or "    "
         existing_docstring = match.group(4)
 
-        docstring = self.extract_pure_docstring(generated_docstring)
+        docstring = DocGen.extract_pure_docstring(generated_docstring)
 
         # Applying indentation to all docstring lines
         indented_lines = [indent + line if line.strip() else indent for line in docstring.strip().splitlines()]
@@ -585,37 +588,42 @@ class DocGen(object):
         )
 
 
-    def _run_in_executor(self, parsed_structure: dict, project_source_code: dict, generated_docstrings: dict, n_workers: int = 8) -> list:
+    @staticmethod
+    def _run_in_executor(parsed_structure: dict, project_source_code: dict, generated_docstrings: dict, n_workers: int = 8) -> list[dict]:
         """Method for something"""
 
-        args = [(file, project_source_code[file], generated_docstrings[file]) for file in parsed_structure]
+        structure = [k for k, v in parsed_structure.items() if v.get("structure")]
+
+        args = [(file, project_source_code[file], generated_docstrings[file]) for file in structure]
 
         with ProcessPoolExecutor(max_workers=n_workers) as executor:
-            result = list(executor.map(self._perform_code_augmentations, args))
+            result = list(executor.map(DocGen._perform_code_augmentations, args))
 
         return result
 
-
-    def _perform_code_augmentations(self, file: str, source_code: str, docstrings: dict[str, list]) -> dict[str, str]:
+    @staticmethod
+    def _perform_code_augmentations(args) -> dict[str, str]:
         """Method for something"""
+
+        file, source_code, docstrings = args
 
         logger.info(f"Augmenting code for {file}")
 
-        for _type, generated in docstrings.values():
+        for _type, generated in docstrings.items():
 
             match _type:
 
                 case "methods":
                     for docstring, m in generated:
-                        source_code = self.insert_docstring_in_code(source_code, m, docstring, class_method=True)
+                        source_code = DocGen.insert_docstring_in_code(source_code, m, docstring, class_method=True)
 
                 case "functions":
                     for docstring, f in generated:
-                        source_code = self.insert_docstring_in_code(source_code, f, docstring)
+                        source_code = DocGen.insert_docstring_in_code(source_code, f, docstring)
 
                 case "classes":
                     for docstring, c in generated:
-                        source_code = self.insert_cls_docstring_in_code(source_code, c, docstring)
+                        source_code = DocGen.insert_cls_docstring_in_code(source_code, c, docstring)
 
         return {file: source_code}
 
@@ -627,37 +635,44 @@ class DocGen(object):
 
         for filename, structure in parsed_structure.items():
 
-            if not structure.get("structure"):
+            if structure.get("structure"):
+
+                generated_content = await self._fetch_docstrings(filename, structure, parsed_structure, semaphore)
+
+                generating_results[filename] = generated_content
+
+            else:
                 logger.info(f"File {filename} does not contain any functions, methods or class constructions.")
-                continue
-
-            generated_content = await self._fetch_docstrings(filename, structure, parsed_structure, semaphore)
-
-            generating_results[filename] = generated_content
 
         return generating_results
 
     @staticmethod
     async def _get_project_source_code(parsed_structure: dict, sem: asyncio.Semaphore) -> dict[str, str]:
+        """TBD"""
+
+        structure = [k for k, v in parsed_structure.items() if v.get("structure")]
 
         async def _read_code(file: str) -> tuple:
             async with sem:
                 async with aiofiles.open(file, mode="r", encoding="utf-8") as f:
                     return file, await f.read()
 
-        result = await asyncio.gather(*[_read_code(file) for file in parsed_structure])
+        result = await asyncio.gather(*[_read_code(file) for file in structure])
 
         return {file: code for file, code in result}
 
     @staticmethod
     async def _write_augmented_code(parsed_structure: dict, augmented_code: list, sem: asyncio.Semaphore) -> None:
+        """TBD"""
+
+        structure = [k for k, v in parsed_structure.items() if v.get("structure")]
 
         async def _write_code(file: str, code: str) -> None:
             async with sem:
                 async with aiofiles.open(file, mode="w", encoding="utf-8") as f:
                     await f.write(code)
 
-        await asyncio.gather(*[_write_code(f, augmented_code[f]) for f in parsed_structure])
+        await asyncio.gather(*[_write_code(f, augmented_code[i][f]) for i, f in enumerate(structure)])
 
 
     async def _fetch_docstrings(self, file: str, file_meta: dict, project: dict, semaphore: asyncio.Semaphore) -> dict[str, list]:
@@ -736,8 +751,7 @@ class DocGen(object):
             fetched_docstrings = await asyncio.gather(*[task[1] for task in _coroutines[key]])
             structure_names = [name[0] for name in _coroutines[key]]
 
-            # result[key] = [pair for pair in zip(fetched_docstrings, structure_names) if pair[0]]
-            result[key] = list(zip(fetched_docstrings, structure_names))
+            result[key] = [pair for pair in zip(fetched_docstrings, structure_names) if pair[0]]
 
         return result
 
