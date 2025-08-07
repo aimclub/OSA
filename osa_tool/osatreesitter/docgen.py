@@ -1,7 +1,9 @@
 import os
 import re
 import asyncio, aiofiles
-from typing import List, Dict
+from concurrent.futures import ProcessPoolExecutor
+from typing import List, Dict, Awaitable
+from collections import defaultdict
 
 import black
 from pathlib import Path
@@ -582,125 +584,162 @@ class DocGen(object):
             write_back=black.WriteBack.YES,
         )
 
-    async def process_python_file(self, parsed_structure: dict, rate_limit: int = 10) -> None:
-        """
-        Processes a Python file by generating and inserting missing docstrings.
 
-        This method iterates over the given parsed structure of a Python codebase, checks each class method for missing
-        docstrings, and generates and inserts them if missing. The method updates the source file with the new docstrings
-        and logs the path of the updated file.
+    def _run_in_executor(self, parsed_structure: dict, project_source_code: dict, generated_docstrings: dict, n_workers: int = 8) -> list:
+        """Method for something"""
 
-        Args:
-            parsed_structure: A dictionary representing the parsed structure of the Python codebase.
-                The dictionary keys are filenames and the values are lists of dictionaries representing
-                classes and their methods.
-            rate_limit: A number of maximum concurrent requests to provided API
-        Returns:
-            None
-        """
+        args = [(file, project_source_code[file], generated_docstrings[file]) for file in parsed_structure]
+
+        with ProcessPoolExecutor(max_workers=n_workers) as executor:
+            result = list(executor.map(self._perform_code_augmentations, args))
+
+        return result
+
+
+    def _perform_code_augmentations(self, file: str, source_code: str, docstrings: dict[str, list]) -> dict[str, str]:
+        """Method for something"""
+
+        logger.info(f"Augmenting code for {file}")
+
+        for _type, generated in docstrings.values():
+
+            match _type:
+
+                case "methods":
+                    for docstring, m in generated:
+                        source_code = self.insert_docstring_in_code(source_code, m, docstring, class_method=True)
+
+                case "functions":
+                    for docstring, f in generated:
+                        source_code = self.insert_docstring_in_code(source_code, f, docstring)
+
+                case "classes":
+                    for docstring, c in generated:
+                        source_code = self.insert_cls_docstring_in_code(source_code, c, docstring)
+
+        return {file: source_code}
+
+    async def _generate_docstrings_for_project(self, parsed_structure: dict, rate_limit: int = 10) -> dict[str, dict]:
+        """Method for something"""
+
+        generating_results = {}
         semaphore = asyncio.Semaphore(rate_limit)
 
         for filename, structure in parsed_structure.items():
-            if not structure["structure"]:
+
+            if not structure.get("structure"):
                 logger.info(f"File {filename} does not contain any functions, methods or class constructions.")
                 continue
-            await self._process_one_file(filename, structure, project_structure=parsed_structure, semaphore=semaphore)
 
-    async def _process_one_file(self, filename, file_structure, project_structure, semaphore):
+            generated_content = await self._fetch_docstrings(filename, structure, parsed_structure, semaphore)
 
-        async with aiofiles.open(filename, "r", encoding="utf-8") as f:
-            source_code = await f.read()
+            generating_results[filename] = generated_content
 
-        coroutines = {"classes": [], "methods": [], "functions": []}
+        return generating_results
 
-        for item in file_structure["structure"]:
-            if item["type"] == "class":
-                for method in item["methods"]:
-                    if method["docstring"] is None or self.main_idea:  # If docstring is missing
+    @staticmethod
+    async def _get_project_source_code(parsed_structure: dict, sem: asyncio.Semaphore) -> dict[str, str]:
+
+        async def _read_code(file: str) -> tuple:
+            async with sem:
+                async with aiofiles.open(file, mode="r", encoding="utf-8") as f:
+                    return file, await f.read()
+
+        result = await asyncio.gather(*[_read_code(file) for file in parsed_structure])
+
+        return {file: code for file, code in result}
+
+    @staticmethod
+    async def _write_augmented_code(parsed_structure: dict, augmented_code: list, sem: asyncio.Semaphore) -> None:
+
+        async def _write_code(file: str, code: str) -> None:
+            async with sem:
+                async with aiofiles.open(file, mode="w", encoding="utf-8") as f:
+                    await f.write(code)
+
+        await asyncio.gather(*[_write_code(f, augmented_code[f]) for f in parsed_structure])
+
+
+    async def _fetch_docstrings(self, file: str, file_meta: dict, project: dict, semaphore: asyncio.Semaphore) -> dict[str, list]:
+        """Method for something"""
+
+        result = {}
+
+        _coroutines = {"classes": [], "methods": [], "functions": []}
+
+        for item in file_meta["structure"]:
+
+            _type = item["type"]
+
+            match _type:
+                case "class":
+
+                    class_name = item["name"]
+                    class_metadata = [class_name, item["attributes"]]
+
+                    for method in item["methods"]:
+
+                        if not item.get("docstring") or self.main_idea:
+                            class_metadata.append(
+                                {"method_name": method["method_name"], "docstring": method["docstring"]}
+                            )
+
+                        if not method.get("docstring") or self.main_idea:
+
+                            logger.info(
+                                f"""{"Generating" if self.main_idea else "Updating"} docstring for the method: {method['method_name']} of class {item['name']} at {file}"""
+                            )
+
+                            context = self.context_extractor(method, project)
+
+                            request_coroutine = (
+                                self.generate_method_documentation(method, semaphore, context)
+                                if not self.main_idea
+                                else self.update_method_documentation(method, semaphore, context, item["name"])
+                            )
+                            _coroutines["methods"].append((method, request_coroutine))
+
+                    if not item.get("docstrings") or self.main_idea:
 
                         logger.info(
-                            f"""{"Generating" if self.main_idea else "Updating"} docstring for the method: {method['method_name']} of class {item['name']} at {filename}"""
+                            f"""{"Generating" if self.main_idea else "Updating"} docstring for the class: {item["name"]} at {file}"""
                         )
 
-                        method_context = self.context_extractor(method, project_structure)
+                        class_metadata.append(item["docstring"])
 
-                        generated_docstring = (
-                            self.generate_method_documentation(method, semaphore, method_context)
-                            if self.main_idea is None
-                            else self.update_method_documentation(
-                                method, semaphore, method_context, class_name=item["name"]
-                            )
+                        request_coroutine = (
+                            self.generate_class_documentation(class_metadata, semaphore)
+                            if not self.main_idea
+                            else self.update_class_documentation(class_metadata, semaphore)
                         )
-                        coroutines["methods"].append((method, generated_docstring))
+                        _coroutines["classes"].append((class_name, request_coroutine))
 
-            if item["type"] == "function":
-                func_details = item["details"]
-                if func_details["docstring"] is None or self.main_idea:
+                case "function":
 
-                    logger.info(
-                        f"""{"Generating" if self.main_idea else "Updating"} docstring for the function: {func_details['method_name']} at {filename}"""
-                    )
+                    function_metadata = item["details"]
 
-                    generated_docstring = (
-                        self.generate_method_documentation(func_details, semaphore)
-                        if self.main_idea is None
-                        else self.update_method_documentation(func_details, semaphore)
-                    )
-                    coroutines["functions"].append((func_details, generated_docstring))
+                    if not function_metadata.get("docstring") or self.main_idea:
 
-        for item in file_structure["structure"]:
-            if item["type"] == "class" and (item["docstring"] is None or self.main_idea):
-                class_name = item["name"]
-                cls_structure = [class_name, item["attributes"]]
+                        logger.info(
+                            f"""{"Generating" if self.main_idea else "Updating"} docstring for the function: {function_metadata["method_name"]} at {file}"""
+                        )
 
-                for method in item["methods"]:
-                    cls_structure.append(
-                        {
-                            "method_name": method["method_name"],
-                            "docstring": method["docstring"],
-                        }
-                    )
-                cls_structure.append(item["docstring"])
-                logger.info(
-                    f"""{"Generating" if self.main_idea else "Updating"} docstring for the class: {item['name']} at {filename}"""
-                )
+                        request_coroutine = (
+                            self.generate_method_documentation(function_metadata, semaphore)
+                            if not self.main_idea
+                            else self.update_method_documentation(function_metadata, semaphore)
+                        )
+                        _coroutines["functions"].append((function_metadata, request_coroutine))
 
-                generated_cls_docstring = (
-                    self.generate_class_documentation(cls_structure, semaphore)
-                    if self.main_idea is None
-                    else self.update_class_documentation(cls_structure, semaphore)
-                )
-                coroutines["classes"].append((class_name, generated_cls_docstring))
+        for key in _coroutines.keys():
 
-        methods_docstrings = await asyncio.gather(*[task[1] for task in coroutines["methods"]])
-        for docstring, _method in zip(methods_docstrings, [name[0] for name in coroutines["methods"]]):
+            fetched_docstrings = await asyncio.gather(*[task[1] for task in _coroutines[key]])
+            structure_names = [name[0] for name in _coroutines[key]]
 
-            if docstring:
-                clear_method_docstring = self.extract_pure_docstring(docstring)
+            # result[key] = [pair for pair in zip(fetched_docstrings, structure_names) if pair[0]]
+            result[key] = list(zip(fetched_docstrings, structure_names))
 
-                _method["docstring"] = clear_method_docstring
-                source_code = self.insert_docstring_in_code(
-                    source_code, _method, clear_method_docstring, class_method=True
-                )
-
-        functions_docstrings = await asyncio.gather(*[task[1] for task in coroutines["functions"]])
-        for docstring, _function in zip(functions_docstrings, [name[0] for name in coroutines["functions"]]):
-
-            if docstring:
-                clear_function_docstring = self.extract_pure_docstring(docstring)
-
-                source_code = self.insert_docstring_in_code(source_code, _function, clear_function_docstring)
-
-        classes_docstrings = await asyncio.gather(*[task[1] for task in coroutines["classes"]])
-        for docstring, _class in zip(classes_docstrings, [name[0] for name in coroutines["classes"]]):
-
-            if docstring:
-                source_code = self.insert_cls_docstring_in_code(source_code, _class, docstring)
-
-        async with aiofiles.open(filename, "w", encoding="utf-8") as f:
-            await f.write(source_code)
-
-        logger.info(f"Updated file: {filename}")
+        return result
 
     async def generate_the_main_idea(self, parsed_structure: dict, top_n: int = 5) -> None:
 
