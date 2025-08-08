@@ -586,10 +586,9 @@ class DocGen(object):
             write_back=black.WriteBack.YES,
         )
 
-
     @staticmethod
     def _run_in_executor(
-            parsed_structure: dict, project_source_code: dict, generated_docstrings: dict, n_workers: int = 8
+        parsed_structure: dict, project_source_code: dict, generated_docstrings: dict, n_workers: int = 8
     ) -> list[dict]:
         """
         Runs docstrings insertion tasks in multiprocessing mode.
@@ -738,8 +737,9 @@ class DocGen(object):
         # executing coroutines concurrently
         await asyncio.gather(*[_write_code(f, augmented_code[i][f]) for i, f in enumerate(structure)])
 
-
-    async def _fetch_docstrings(self, file: str, file_meta: dict, project: dict, semaphore: asyncio.Semaphore) -> dict[str, list]:
+    async def _fetch_docstrings(
+        self, file: str, file_meta: dict, project: dict, semaphore: asyncio.Semaphore
+    ) -> dict[str, list]:
         """
         Collects a batch of requests for each structure in given file by its metadata.
         Then concurrently executes a batch of requests and wraps the results to the dict structure.
