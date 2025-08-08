@@ -185,9 +185,12 @@ documentation, see the [GitHub Action Workflow Generator README](./osa_tool/gith
 |----------------------|-------------------------------------------------------------------------------------|-----------------------------|
 | `-r`, `--repository` | URL of the GitHub/GitLab/Gitverse repository (**Mandatory**)                        |                             |
 | `-b`, `--branch`     | Branch name of the repository                                                       | Default branch              |
+| `-o`, `--output`     | Path to the output directory                                                        | Current working directory   |
 | `--api`              | LLM API service provider                                                            | `itmo`                      |
 | `--base-url`         | URL of the provider compatible with API OpenAI                                      | `https://api.openai.com/v1` |
 | `--model`            | Specific LLM model to use                                                           | `gpt-3.5-turbo`             |
+| `--article`          | Link to the pdf file of the article                                                 | `None`                      |
+| `--translate-dirs`   | Enable automatic translation of the directory name into English                     | `disabled`                  |
 | `-m`, `--mode`       | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`. | `auto`                      |
 | `--delete-dir`       | Enable deleting the downloaded repository after processing                          | `disabled`                  |
 | `--no-fork`          | Avoid create fork for target repository                                             | `False`                     |
@@ -219,6 +222,7 @@ Local ITMO model:
 ```sh
 python -m osa_tool.run -r https://github.com/aimclub/OSA --base_url [ITMO_MODEL_URL]
 ```  
+
 For this API provider itmo model url must be specified in dotenv (ITMO_MODEL_URL=) or in the --base-url argument.
 
 OpenAI:
@@ -251,7 +255,7 @@ Detailed description of OSA API is available [here](https://aimclub.github.io/OS
 
 In our Telegram chat [OSA_helpdesk](t.me/osa_helpdesk) you can ask questions about working with OSA and find the latest news about the project.
 
---- 
+---
 
 ## Publications about OSA
 

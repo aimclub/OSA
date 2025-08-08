@@ -24,6 +24,13 @@ web_mode:
     without launching the interactive CLI editor.
   default: false
 
+output:
+  aliases: ["-o","--output"]
+  type: str
+  description: "Path to the output directory"
+  example: "path/to/directory"
+  required: false
+
 branch:
   aliases: [ "-b", "--branch" ]
   type: str

@@ -2,6 +2,7 @@ import os
 import asyncio
 import multiprocessing
 import subprocess
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -51,6 +52,15 @@ def main():
     create_pull_request = not args.no_pull_request
 
     try:
+        # Switch to output directory if present
+        if args.output:
+            output_path = Path(args.output).resolve()
+            if not output_path.exists():
+                output_path.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Created directory: {output_path}")
+            os.chdir(output_path)
+            logger.info(f"Output path changed to {output_path}")
+
         # Load configurations and update
         config = load_configuration(
             repo_url=args.repository,
@@ -86,9 +96,9 @@ def main():
             if create_fork:
                 git_agent.upload_report(analytics.filename, analytics.output_path)
 
-        # .ipynb to .py convertion
+        # .ipynb to .py conversion
         if notebook := plan.get("convert_notebooks"):
-            rich_section("Jupyter notebooks convertion")
+            rich_section("Jupyter notebooks conversion")
             convert_notebooks(args.repository, notebook)
 
         # Auto translating names of directories
@@ -159,8 +169,10 @@ def main():
             delete_repository(args.repository)
 
         rich_section("All operations completed successfully")
+        sys.exit(0)
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
+        sys.exit(1)
 
 
 def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) -> None:

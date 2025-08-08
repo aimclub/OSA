@@ -32,6 +32,7 @@ class PlanEditor:
             "base_url",
             "model",
             "branch",
+            "output",
             "no_fork",
             "no_pull_request",
             "temperature",
