@@ -2,8 +2,7 @@ import os
 import re
 import asyncio, aiofiles
 from concurrent.futures import ProcessPoolExecutor
-from typing import List, Dict, Awaitable
-from collections import defaultdict
+from typing import List, Dict
 
 import black
 from pathlib import Path
@@ -590,10 +589,24 @@ class DocGen(object):
 
     @staticmethod
     def _run_in_executor(parsed_structure: dict, project_source_code: dict, generated_docstrings: dict, n_workers: int = 8) -> list[dict]:
-        """Method for something"""
+        """
+            Runs docstrings insertion tasks in multiprocessing mode.
+            For correct execution, all objects that would be sent to the processes must be pickle-able.
+            The results will be received in the order in which they were sent to the executor.
+
+            Args:
+                parsed_structure:
+                project_source_code:
+                generated_docstrings:
+                n_workers: The number of workers that would be participating in cpu-bound work.
+
+            Returns:
+                list[dict]
+        """
 
         structure = [k for k, v in parsed_structure.items() if v.get("structure")]
 
+        # mapping the arguments for cpu-bound tasks
         args = [(file, project_source_code[file], generated_docstrings[file]) for file in structure]
 
         with ProcessPoolExecutor(max_workers=n_workers) as executor:
@@ -603,14 +616,27 @@ class DocGen(object):
 
     @staticmethod
     def _perform_code_augmentations(args) -> dict[str, str]:
-        """Method for something"""
+        """
+            Performs the insertion of generated docstrings into presented source code.
+            This method contains the main cpu-bound work of current "docstrings" algorithm
+            because of regexp usage in DocGen insertion methods.
 
+            Args:
+                  args: A tuple that contains filename it's source code and docstrings which would be inserted
+
+            Returns:
+                dict[str, str]
+        """
+
+        # unpack the given arguments
         file, source_code, docstrings = args
 
         logger.info(f"Augmenting code for {file}")
 
+        # iterating over given docstrings dictionary and choosing of insertion strategy.
         for _type, generated in docstrings.items():
 
+            # note that "source_code" variable is from outer scope.
             match _type:
 
                 case "methods":
@@ -625,18 +651,30 @@ class DocGen(object):
                     for docstring, c in generated:
                         source_code = DocGen.insert_cls_docstring_in_code(source_code, c, docstring)
 
+        # serialize the results to a dictionary
         return {file: source_code}
 
     async def _generate_docstrings_for_project(self, parsed_structure: dict, rate_limit: int = 10) -> dict[str, dict]:
-        """Method for something"""
+        """
+            Generates a docstrings for all structures in given project by interacting with LLM.
+
+            Args:
+                parsed_structure: Parsed structure of current project that contains all files and their metadata.
+                rate_limit: A number of API requests to LLM-server that could be sent at the same time.
+
+            Returns:
+                dict[str, dict]
+        """
 
         generating_results = {}
         semaphore = asyncio.Semaphore(rate_limit)
 
         for filename, structure in parsed_structure.items():
 
+            # if structure contains empty file without functions, etc., there are no purpose for docstrings generation.
             if structure.get("structure"):
 
+                # collecting the result for current file
                 generated_content = await self._fetch_docstrings(filename, structure, parsed_structure, semaphore)
 
                 generating_results[filename] = generated_content
@@ -648,40 +686,77 @@ class DocGen(object):
 
     @staticmethod
     async def _get_project_source_code(parsed_structure: dict, sem: asyncio.Semaphore) -> dict[str, str]:
-        """TBD"""
+        """
+            Concurrently reads each file of given project and serialize source code in pickle-able object
+            for future use in multiprocessing cpu-bound tasks.
+
+            Args:
+                parsed_structure: Parsed structure of current project that contains all files and their metadata.
+                sem: Synchronous primitive for preventing the overload of file-system.
+
+            Returns:
+                dict[str, str]
+        """
 
         structure = [k for k, v in parsed_structure.items() if v.get("structure")]
 
+        # single file reading coroutine
         async def _read_code(file: str) -> tuple:
             async with sem:
                 async with aiofiles.open(file, mode="r", encoding="utf-8") as f:
                     return file, await f.read()
 
+        # collecting the results, then serializing
         result = await asyncio.gather(*[_read_code(file) for file in structure])
 
         return {file: code for file, code in result}
 
     @staticmethod
     async def _write_augmented_code(parsed_structure: dict, augmented_code: list, sem: asyncio.Semaphore) -> None:
-        """TBD"""
+        """
+            Writes given code after docstrings insertion in necessary files concurrently
+
+            Args:
+                parsed_structure: Parsed structure of current project that contains all files and their metadata.
+                augmented_code: List of
+                sem: Synchronous primitive for preventing the overload of file-system.
+
+            Returns:
+                None
+        """
 
         structure = [k for k, v in parsed_structure.items() if v.get("structure")]
 
+        # single file writing coroutine
         async def _write_code(file: str, code: str) -> None:
             async with sem:
                 async with aiofiles.open(file, mode="w", encoding="utf-8") as f:
                     await f.write(code)
 
+        # executing coroutines concurrently
         await asyncio.gather(*[_write_code(f, augmented_code[i][f]) for i, f in enumerate(structure)])
 
 
     async def _fetch_docstrings(self, file: str, file_meta: dict, project: dict, semaphore: asyncio.Semaphore) -> dict[str, list]:
-        """Method for something"""
+        """
+            Collects a batch of requests for each structure in given file by its metadata.
+            Then concurrently executes a batch of requests and wraps the results to the dict structure.
+
+            Args:
+                file: The name of the file for which the generation will be performed.
+                file_meta: Dictionary which contains metadata about file from project parsed structure.
+                project: Parsed structure of current project that contains all files and their metadata.
+                semaphore: Synchronous primitive for preventing the overload external LLM-server API.
+
+            Returns:
+                dict[str, list]
+        """
 
         result = {}
 
         _coroutines = {"classes": [], "methods": [], "functions": []}
 
+        # iterating over given file metadata dictionary
         for item in file_meta["structure"]:
 
             _type = item["type"]
@@ -689,16 +764,20 @@ class DocGen(object):
             match _type:
                 case "class":
 
+                    # collecting a class metadata ahead
                     class_name = item["name"]
                     class_metadata = [class_name, item["attributes"]]
 
                     for method in item["methods"]:
 
+                        # enrich the class metadata by meta about it's methods
                         if not item.get("docstring") or self.main_idea:
+
                             class_metadata.append(
                                 {"method_name": method["method_name"], "docstring": method["docstring"]}
                             )
 
+                        # produce different request type based on main_idea presence or docstring absence
                         if not method.get("docstring") or self.main_idea:
 
                             logger.info(
@@ -712,8 +791,11 @@ class DocGen(object):
                                 if not self.main_idea
                                 else self.update_method_documentation(method, semaphore, context, item["name"])
                             )
+
+                            # just add new coroutine and method metadata to a task list
                             _coroutines["methods"].append((method, request_coroutine))
 
+                    # same condition for classes to producing a new coroutine
                     if not item.get("docstrings") or self.main_idea:
 
                         logger.info(
@@ -727,12 +809,15 @@ class DocGen(object):
                             if not self.main_idea
                             else self.update_class_documentation(class_metadata, semaphore)
                         )
+
+                        # just add new coroutine and class name to a task list
                         _coroutines["classes"].append((class_name, request_coroutine))
 
                 case "function":
 
                     function_metadata = item["details"]
 
+                    # produce different request type based on main_idea presence or docstring absence
                     if not function_metadata.get("docstring") or self.main_idea:
 
                         logger.info(
@@ -744,13 +829,17 @@ class DocGen(object):
                             if not self.main_idea
                             else self.update_method_documentation(function_metadata, semaphore)
                         )
+
+                        # just add new coroutine and function metadata to a task list
                         _coroutines["functions"].append((function_metadata, request_coroutine))
 
+        # getting and collecting the requests batch result for each object type
         for key in _coroutines.keys():
 
             fetched_docstrings = await asyncio.gather(*[task[1] for task in _coroutines[key]])
             structure_names = [name[0] for name in _coroutines[key]]
 
+            # clear pairs if LLM returns an empty docstring generation response
             result[key] = [pair for pair in zip(fetched_docstrings, structure_names) if pair[0]]
 
         return result
