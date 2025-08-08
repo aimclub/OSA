@@ -632,7 +632,7 @@ class DocGen(object):
         # unpack the given arguments
         file, source_code, docstrings = args
 
-        logger.info(f"Augmenting code for {file}")
+        logger.info(f"Augmenting code for the file: {file}")
 
         # iterating over given docstrings dictionary and choosing of insertion strategy.
         for _type, generated in docstrings.items():
@@ -670,6 +670,8 @@ class DocGen(object):
         generating_results = {}
         semaphore = asyncio.Semaphore(rate_limit)
 
+        logger.info(f"Docstrings generation for the project has started!")
+
         for filename, structure in parsed_structure.items():
 
             # if structure contains empty file without functions, etc., there are no purpose for docstrings generation.
@@ -683,6 +685,7 @@ class DocGen(object):
             else:
                 logger.info(f"File {filename} does not contain any functions, methods or class constructions.")
 
+        logger.info(f"Docstrings generation for the project is complete!")
         return generating_results
 
     @staticmethod
@@ -783,7 +786,7 @@ class DocGen(object):
                         if not method.get("docstring") or self.main_idea:
 
                             logger.info(
-                                f"""{"Generating" if self.main_idea else "Updating"} docstring for the method: {method['method_name']} of class {item['name']} at {file}"""
+                                f"""Requesting for docstrings {"generation" if self.main_idea else "update"} for the method: {method["method_name"]} of class {item["name"]} at {file}"""
                             )
 
                             context = self.context_extractor(method, project)
@@ -801,7 +804,7 @@ class DocGen(object):
                     if not item.get("docstrings") or self.main_idea:
 
                         logger.info(
-                            f"""{"Generating" if self.main_idea else "Updating"} docstring for the class: {item["name"]} at {file}"""
+                            f"""Requesting for docstrings {"generation" if self.main_idea else "update"} for the class: {item["name"]} at {file}"""
                         )
 
                         class_metadata.append(item["docstring"])
@@ -823,7 +826,7 @@ class DocGen(object):
                     if not function_metadata.get("docstring") or self.main_idea:
 
                         logger.info(
-                            f"""{"Generating" if self.main_idea else "Updating"} docstring for the function: {function_metadata["method_name"]} at {file}"""
+                            f"""Requesting for docstrings {"generation" if self.main_idea else "update"} for the function: {function_metadata["method_name"]} at {file}"""
                         )
 
                         request_coroutine = (
