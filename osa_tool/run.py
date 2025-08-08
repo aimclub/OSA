@@ -229,7 +229,7 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
 
         source_code = loop.run_until_complete(dg._get_project_source_code(res, sem))
         generated_after_idea = loop.run_until_complete(dg._generate_docstrings_for_project(res, rate_limit))
-        augmented_after_idea = dg._run_in_executor(res, source_code, generated_after_idea)
+        augmented_after_idea = dg._run_in_executor(res, source_code, generated_after_idea, workers)
         loop.run_until_complete(dg._write_augmented_code(res, augmented_after_idea, sem))
 
         modules_summaries = loop.run_until_complete(dg.summarize_submodules(res, rate_limit))

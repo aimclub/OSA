@@ -712,13 +712,13 @@ class DocGen(object):
         return {file: code for file, code in result}
 
     @staticmethod
-    async def _write_augmented_code(parsed_structure: dict, augmented_code: list, sem: asyncio.Semaphore) -> None:
+    async def _write_augmented_code(parsed_structure: dict, augmented_code: list[dict], sem: asyncio.Semaphore) -> None:
         """
             Writes given code after docstrings insertion in necessary files concurrently
 
             Args:
                 parsed_structure: Parsed structure of current project that contains all files and their metadata.
-                augmented_code: List of
+                augmented_code: List of code snippets that contains inserted docstrings.
                 sem: Synchronous primitive for preventing the overload of file-system.
 
             Returns:
