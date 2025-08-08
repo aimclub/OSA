@@ -588,20 +588,22 @@ class DocGen(object):
 
 
     @staticmethod
-    def _run_in_executor(parsed_structure: dict, project_source_code: dict, generated_docstrings: dict, n_workers: int = 8) -> list[dict]:
+    def _run_in_executor(
+            parsed_structure: dict, project_source_code: dict, generated_docstrings: dict, n_workers: int = 8
+    ) -> list[dict]:
         """
-            Runs docstrings insertion tasks in multiprocessing mode.
-            For correct execution, all objects that would be sent to the processes must be pickle-able.
-            The results will be received in the order in which they were sent to the executor.
+        Runs docstrings insertion tasks in multiprocessing mode.
+        For correct execution, all objects that would be sent to the processes must be pickle-able.
+        The results will be received in the order in which they were sent to the executor.
 
-            Args:
-                parsed_structure:
-                project_source_code:
-                generated_docstrings:
-                n_workers: The number of workers that would be participating in cpu-bound work.
+        Args:
+            parsed_structure:
+            project_source_code:
+            generated_docstrings:
+            n_workers: The number of workers that would be participating in cpu-bound work.
 
-            Returns:
-                list[dict]
+        Returns:
+            list[dict]
         """
 
         structure = [k for k, v in parsed_structure.items() if v.get("structure")]
@@ -617,15 +619,15 @@ class DocGen(object):
     @staticmethod
     def _perform_code_augmentations(args) -> dict[str, str]:
         """
-            Performs the insertion of generated docstrings into presented source code.
-            This method contains the main cpu-bound work of current "docstrings" algorithm
-            because of regexp usage in DocGen insertion methods.
+        Performs the insertion of generated docstrings into presented source code.
+        This method contains the main cpu-bound work of current "docstrings" algorithm
+        because of regexp usage in DocGen insertion methods.
 
-            Args:
-                  args: A tuple that contains filename it's source code and docstrings which would be inserted
+        Args:
+                args: A tuple that contains filename it's source code and docstrings which would be inserted
 
-            Returns:
-                dict[str, str]
+        Returns:
+            dict[str, str]
         """
 
         # unpack the given arguments
@@ -656,14 +658,14 @@ class DocGen(object):
 
     async def _generate_docstrings_for_project(self, parsed_structure: dict, rate_limit: int = 10) -> dict[str, dict]:
         """
-            Generates a docstrings for all structures in given project by interacting with LLM.
+        Generates a docstrings for all structures in given project by interacting with LLM.
 
-            Args:
-                parsed_structure: Parsed structure of current project that contains all files and their metadata.
-                rate_limit: A number of API requests to LLM-server that could be sent at the same time.
+        Args:
+            parsed_structure: Parsed structure of current project that contains all files and their metadata.
+            rate_limit: A number of API requests to LLM-server that could be sent at the same time.
 
-            Returns:
-                dict[str, dict]
+        Returns:
+            dict[str, dict]
         """
 
         generating_results = {}
@@ -687,15 +689,15 @@ class DocGen(object):
     @staticmethod
     async def _get_project_source_code(parsed_structure: dict, sem: asyncio.Semaphore) -> dict[str, str]:
         """
-            Concurrently reads each file of given project and serialize source code in pickle-able object
-            for future use in multiprocessing cpu-bound tasks.
+        Concurrently reads each file of given project and serialize source code in pickle-able object
+        for future use in multiprocessing cpu-bound tasks.
 
             Args:
-                parsed_structure: Parsed structure of current project that contains all files and their metadata.
-                sem: Synchronous primitive for preventing the overload of file-system.
+            parsed_structure: Parsed structure of current project that contains all files and their metadata.
+            sem: Synchronous primitive for preventing the overload of file-system.
 
-            Returns:
-                dict[str, str]
+        Returns:
+            dict[str, str]
         """
 
         structure = [k for k, v in parsed_structure.items() if v.get("structure")]
@@ -714,15 +716,15 @@ class DocGen(object):
     @staticmethod
     async def _write_augmented_code(parsed_structure: dict, augmented_code: list[dict], sem: asyncio.Semaphore) -> None:
         """
-            Writes given code after docstrings insertion in necessary files concurrently
+        Writes given code after docstrings insertion in necessary files concurrently
 
-            Args:
-                parsed_structure: Parsed structure of current project that contains all files and their metadata.
-                augmented_code: List of code snippets that contains inserted docstrings.
-                sem: Synchronous primitive for preventing the overload of file-system.
+        Args:
+            parsed_structure: Parsed structure of current project that contains all files and their metadata.
+            augmented_code: List of code snippets that contains inserted docstrings.
+            sem: Synchronous primitive for preventing the overload of file-system.
 
-            Returns:
-                None
+        Returns:
+            None
         """
 
         structure = [k for k, v in parsed_structure.items() if v.get("structure")]
@@ -739,17 +741,17 @@ class DocGen(object):
 
     async def _fetch_docstrings(self, file: str, file_meta: dict, project: dict, semaphore: asyncio.Semaphore) -> dict[str, list]:
         """
-            Collects a batch of requests for each structure in given file by its metadata.
-            Then concurrently executes a batch of requests and wraps the results to the dict structure.
+        Collects a batch of requests for each structure in given file by its metadata.
+        Then concurrently executes a batch of requests and wraps the results to the dict structure.
 
-            Args:
-                file: The name of the file for which the generation will be performed.
-                file_meta: Dictionary which contains metadata about file from project parsed structure.
-                project: Parsed structure of current project that contains all files and their metadata.
-                semaphore: Synchronous primitive for preventing the overload external LLM-server API.
+        Args:
+            file: The name of the file for which the generation will be performed.
+            file_meta: Dictionary which contains metadata about file from project parsed structure.
+            project: Parsed structure of current project that contains all files and their metadata.
+            semaphore: Synchronous primitive for preventing the overload external LLM-server API.
 
-            Returns:
-                dict[str, list]
+        Returns:
+            dict[str, list]
         """
 
         result = {}
