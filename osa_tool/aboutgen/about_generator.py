@@ -87,7 +87,6 @@ class AboutGenerator:
             str: A repository description (up to 150 characters) or an empty string
                  if README content is unavailable.
         """
-        logger.info("Generating repository description...")
         if self.metadata and self.metadata.description:
             logger.warning("Description already exists in metadata. Skipping generation.")
             return self.metadata.description
@@ -204,7 +203,7 @@ class AboutGenerator:
                 logger.error(f"Error validating topic '{topic}': {e}")
                 continue
 
-        logger.info(f"Validated {len(validated_topics)} topics out of {len(topics)}")
+        logger.info(f"Validated {len(validated_topics)} topics out of {len(topics)}.")
         return validated_topics
 
     @staticmethod
@@ -243,7 +242,7 @@ class AboutGenerator:
                 logger.error(f"Error validating topic '{topic}': {e}")
                 continue
 
-        logger.info(f"Validated {len(validated_topics)} topics out of {len(topics)}")
+        logger.info(f"Validated {len(validated_topics)} topics out of {len(topics)}.")
         return validated_topics
 
     @staticmethod

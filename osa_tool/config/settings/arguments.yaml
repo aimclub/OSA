@@ -24,6 +24,13 @@ web_mode:
     without launching the interactive CLI editor.
   default: false
 
+output:
+  aliases: ["-o","--output"]
+  type: str
+  description: "Path to the output directory"
+  example: "path/to/directory"
+  required: false
+
 branch:
   aliases: [ "-b", "--branch" ]
   type: str
@@ -159,7 +166,7 @@ refine_readme:
 requirements:
   aliases: ["--requirements"]
   type: flag
-  description: "Generate a requirements.txt file based on repository content."
+  description: "Generate or refine a requirements.txt file based on repository content."
   default: false
 
 organize:

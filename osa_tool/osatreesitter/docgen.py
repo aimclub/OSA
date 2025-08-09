@@ -1,21 +1,20 @@
-import multiprocessing.pool
 import os
 import re
-import textwrap
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-from typing import List, Dict, Any
+import asyncio, aiofiles
+from typing import List, Dict
 
 import black
 from pathlib import Path
 import shutil
 import subprocess
 
+import black.report
 import dotenv
 import tiktoken
 import yaml
 
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.models.models import ModelHandler, ModelHandlerFactory
+from osa_tool.models.models import ModelHandler, ModelHandlerFactory, ProtollmHandler
 from osa_tool.utils import logger, osa_project_root
 
 dotenv.load_dotenv()
@@ -72,7 +71,7 @@ class DocGen(object):
         This method is a constructor that initializes the object by setting the 'api_key' attribute to the value of the 'OPENAI_API_KEY' environment variable.
         """
         self.config = config_loader.config
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
+        self.model_handler: ProtollmHandler = ModelHandlerFactory.build(self.config)
         self.main_idea = None
 
     @staticmethod
@@ -190,13 +189,13 @@ class DocGen(object):
         tokens = enc.encode(prompt)
         return len(tokens)
 
-    def generate_class_documentation(self, class_details: dict) -> str:
+    async def generate_class_documentation(self, class_details: list, semaphore: asyncio.Semaphore) -> str:
         """
         Generate documentation for a class.
 
         Args:
             class_details: A list of dictionaries containing method names and their docstrings.
-
+            semaphore: synchronous primitive that implements limitation of concurrency degree to avoid overloading api.
         Returns:
             The generated class docstring.
         """
@@ -205,7 +204,7 @@ class DocGen(object):
             f"""Generate a single Python docstring for the following class {class_details[0]}. The docstring should follow Google-style format and include:\n"""
             "- A short summary of what the class does.\n"
             "- A list of its methods without details if class has them otherwise do not mention a list of methods.\n"
-            "- A list of its attributes without types if class has them otherwise do not mention a list of attributes.\n"
+            "- A list of its attributes that explicitly mentioned at the constructor method's docstring (can be adressed as attributes, properties, class fields, etc.), without types if class or constructor method has them otherwise do not mention a list of attributes.\n"
             "- A brief summary of what its methods and attributes do if one has them for.\n\n"
             "Return only docstring without any quotation. Follow such format:\n <triple_quotes>\ncontent\n<triple_quotes>"
         )
@@ -220,15 +219,16 @@ class DocGen(object):
             for method in class_details[2:-1]:
                 prompt += f"- {method['method_name']}: {method['docstring']}\n"
 
-        return self.model_handler.send_request(prompt)
+        async with semaphore:
+            return await self.model_handler.async_request(prompt)
 
-    def update_class_documentation(self, class_details: dict) -> str:
+    async def update_class_documentation(self, class_details: list, semaphore: asyncio.Semaphore) -> str:
         """
         Generate documentation for a class.
 
         Args:
             class_details: A list of dictionaries containing method names and their docstrings.
-
+            semaphore: synchronous primitive that implements limitation of concurrency degree to avoid overloading api.
         Returns:
             The generated class docstring.
         """
@@ -247,10 +247,18 @@ class DocGen(object):
             f"""Old docstring description part: {old_desc}\n\n"""
             """Return only pure changed description - without any code, other parts of docs, any quotations)"""
         )
-        new_desc = self.model_handler.send_request(prompt)
+
+        async with semaphore:
+            new_desc = await self.model_handler.async_request(prompt)
+
         return "\n\n".join(['"""\n' + new_desc, other])
 
-    def generate_method_documentation(self, method_details: dict, context_code: str = None) -> str:
+    async def generate_method_documentation(
+        self,
+        method_details: dict,
+        semaphore: asyncio.Semaphore,
+        context_code: str = None,
+    ) -> str:
         """
         Generate documentation for a single method.
         """
@@ -258,37 +266,39 @@ class DocGen(object):
             "Generate a Python docstring for the following method. The docstring should follow Google-style format and include:\n"
             "- A short summary of what the method does\n."
             "- A description of its parameters without types.\n"
+            "- If the method is a class constructor, explicitly list all class fields (object properties) that are initialized, including their names and purposes. These fields should match the attributes assigned within the constructor (e.g., this.field = ..., self.field = ...). This information will be used to generate the class-level documentation.\n"
             "- The return type and description.\n"
-            f"""{"- Use provided source code of imported methods, functions to describe their usage." if context_code else ""}\n"""
-            "Method Details:\n"
             f"- Method Name: {method_details['method_name']}\n"
-            f"- Method decorators: {method_details['decorators']}\n"
-            "- Source Code:\n"
+            "Method source code: You are given only the body of a single method, without its signature. All visible code, including any inner functions or nested logic, belongs to this single method. Do not write separate docstrings for inner functions — they are part of the main method's logic.\n"
             "```\n"
             f"""{method_details['source_code']}\n"""
             "```\n"
+            "-List of arguments:\n"
+            f"""{method_details['arguments']}\n"""
+            f"""{"- Use provided source code of imported methods, functions to describe their usage." if context_code else ""}\n"""
+            "Method Details:\n"
+            f"- Method decorators: {method_details['decorators']}\n"
             f"""{"- Imported methods source code:" if context_code else ""}\n"""
             f"""{context_code if context_code else ""}\n\n"""
-            "Note: DO NOT count parameters which are not listed in the parameters list. DO NOT lose any parameter."
+            "Note: DO NOT RETURN METHOD'S BODY. DO NOT count parameters which are not listed in the parameters list. DO NOT lose any parameter. DO NOT wrap any sections of the docstring into <any_tag> clear those parts out."
             "Return only docstring without any quotation. Follow such format:\n <triple_quotes>\ncontent\n<triple_quotes>"
         )
+        async with semaphore:
+            return await self.model_handler.async_request(prompt)
 
-        return self.model_handler.send_request(prompt)
-
-    def update_method_documentation(
-        self, method_details: dict, context_code: str = None, class_name: str = None
+    async def update_method_documentation(
+        self, method_details: dict, semaphore: asyncio.Semaphore, context_code: str = None, class_name: str = None
     ) -> str:
         """
         Generate documentation for a single method.
         """
-        try:
-            desc, other = method_details["docstring"].split("\n\n", maxsplit=1)
-        except:
-            return method_details["docstring"]
-        old_desc = desc.strip('"\n ')
+        docstring = method_details["docstring"]
         prompt = (
-            """Update the provided description for the following Python method using the main idea of the project.\n"""
+            """Update the provided docstring description for the following Python method using the main idea of the project.\n"""
             """Do not pay too much attention to the provided main idea - try not to mention it explicitly\n"""
+            """Based on the provided context and main idea give an answer to the question WHY method doing what it is doing\n"""
+            """If original docstring provides only description update it with Args and Return sections based on provided source code as well\n"""
+            f"""Original docstring: {docstring}\n\n"""
             f"""{"- Use provided source code of imported methods, functions to understand their usage." if context_code else ""}\n"""
             """Method Details:\n"""
             f"""- Method Name: {method_details["method_name"]} {("located inside " + class_name + " class") if class_name else ""}\n"""
@@ -299,141 +309,201 @@ class DocGen(object):
             "```\n"
             f"""{"- Imported methods source code:" if context_code else ""}\n"""
             f"""{context_code if context_code else ""}\n\n"""
-            "The main idea: {self.main_idea}\n"
-            f"""Old docstring description part: {old_desc}\n\n"""
-            "Return only pure changed description - without any code, other parts of docs, any quotations"
+            f"The main idea: {self.main_idea}\n"
+            "Return only pure changed docstring - DO NOT RETURN ANY CODE, DO NOT RETURN other parts of docs"
         )
-        new_desc = self.model_handler.send_request(prompt)
+        async with semaphore:
+            new_desc = await self.model_handler.async_request(prompt)
 
-        return "\n\n".join(['"""\n' + new_desc, other])
+        return new_desc
 
     def extract_pure_docstring(self, gpt_response: str) -> str:
         """
-        Extracts only the docstring from the GPT-4 response while keeping triple quotes.
+        Extracts only the docstring from the GPT response while keeping triple quotes.
+        Handles common formatting issues like Markdown blocks, extra indentation, and missing closing quotes.
 
         Args:
-            gpt_response: The full response from GPT-4.
+            gpt_response: Full response string from LLM.
 
         Returns:
-            The properly formatted docstring including triple quotes.
+            A properly formatted Python docstring string with triple quotes.
         """
+        response = gpt_response.strip().replace("<triple quotes>", '"""')
 
-        # Try to recover if closing triple-quote was replaced with ```
-        if gpt_response is None:
-            return '"""No valid docstring found."""'
-        triple_quote_pos = gpt_response.find('"""')
-        if triple_quote_pos != -1:
-            # Look for closing triple-quote
-            closing_pos = gpt_response.find('"""', triple_quote_pos + 3)
-            if closing_pos == -1:
-                # Try to find a ``` after opening """
-                broken_close_pos = gpt_response.find("```", triple_quote_pos + 3)
-                if broken_close_pos != -1:
-                    # Replace only this incorrect closing ``` with """
-                    gpt_response = gpt_response[:broken_close_pos] + '"""' + gpt_response[broken_close_pos + 3 :]
+        # 1 — Strip Markdown-style code block
+        markdown_match = re.search(r"```[a-z]*\n([\s\S]+?)\n```", response, re.IGNORECASE)
+        if markdown_match:
+            response = markdown_match.group(1).strip()
 
-        # Regex to capture the full docstring with triple quotes
-        match = re.search(r'("""+)\n?(.*?)\n?\1', gpt_response, re.DOTALL)
+        # 2 — Fix case: opening triple quote but no closure
+        if response.count('"""') == 1:
+            pos = response.find('"""')
+            body = response[pos + 3 :].strip()
+            if len(body.split()) > 3:
+                return f'"""\n{body}\n"""'
 
+        # 3 — Try to extract proper triple-quoted block
+        match = re.search(r'("""|\'\'\')\n?(.*?)\n?\1', response, re.DOTALL)
         if match:
-            triple_quotes = match.group(1)  # Keep the triple quotes (""" or """)
-            extracted_docstring = match.group(2)  # Extract only the content inside the docstring
-            cleaned_content = re.sub(r"^\s*def\s+\w+\(.*?\):\s*", "", extracted_docstring, flags=re.MULTILINE).strip(
-                "\"' "
-            )
-            # very silly approach to correct indentation (calculate spaces before 'Args' literals)
-            if "Args" in cleaned_content:
-                spaces = re.findall("\n([^\S\r\n]*)Args", cleaned_content)
+            quote = match.group(1)
+            content = match.group(2).strip()
+
+            # Remove accidental leaked `def ...():`
+            content = re.sub(r"^\s*def\s+\w+\(.*?\):\s*", "", content, flags=re.MULTILINE).strip()
+
+            # De-indent "Args" section
+            if "Args" in content:
+                spaces = re.findall(r"\n([^\S\r\n]*)Args", content)
                 if spaces:
-                    spaces = spaces[0]
-                    cleaned_content = cleaned_content.replace("\n" + spaces, "\n")  # shift content left
+                    indent = spaces[0]
+                    content = content.replace("\n" + indent, "\n")
 
-            return f"{triple_quotes}\n{cleaned_content}\n{triple_quotes}"
+            return f"{quote}\n{content}\n{quote}"
 
-        return '"""No valid docstring found."""'  # Return a placeholder if no docstring was found
+        # 4 — fallback: treat entire content as docstring if long enough
+        if response.startswith("'''") and response.endswith("'''"):
+            response = f'"""{response[3:-3].strip()}"""'
+        cleaned = response.strip("`'\" \n")
+        if len(cleaned.split()) > 3:
+            return f'"""\n{cleaned}\n"""'
 
-    def insert_docstring_in_code(self, source_code: str, method_details: dict, generated_docstring: str) -> str:
+        return '"""No valid docstring found."""'
+
+    @staticmethod
+    def strip_docstring_from_body(body: str) -> str:
         """
-        This method inserts a generated docstring into the specified location in the source code.
-
-        Args:
-            source_code: The source code where the docstring should be inserted.
-            method_details: A dictionary containing details about the method.
-                It should have a key 'method_name' with the name of the method where the docstring should be inserted.
-            generated_docstring: The docstring that should be inserted into the source code.
-
-        Returns:
-            None
+        Method to trimm method's body from docstring
         """
-        # Matches a method definition with the given name,
-        # including an optional return type. Ensures no docstring follows.
-        method_pattern = (
-            rf"((?:@\w+(?:\([^)]*\))?\s*\n)*\s*(?:async\s+)?def\s+{method_details['method_name']}\s*\((?:[^)(]|\((?:[^)(]*|\([^)(]*\))*\))*\)\s*(->\s*[a-zA-Z0-9_\[\],. |]+)?\s*:\n)(\s*)"
-            + r"(\"{3}[\s\S]*?\"{3}|\'{3}[\s\S]*?\'{3})?"
-        )
-        """
-        (
-            (?:@\w+(?:\([^)]*\))?\s*\n)*                # Optional decorators: e.g. @decorator or @decorator(args), each followed by newline
-            \s*                                         # Optional whitespace before function definition
-            (?:async\s+)?                               # Optional 'async' keyword followed by whitespace
-            def\s+{method_details['method_name']}\s*    # 'def' keyword followed by the specific method name and optional spaces
-            \(                                          # Opening parenthesis for the parameter list
-                (?:                                     # Non-capturing group to match parameters inside parentheses
-                    [^)(]                               # Match any character except parentheses (simple parameter)
-                    |                                   # OR
-                    \(                                  # Opening a nested parenthesis
-                        (?:[^)(]*|\([^)(]*\))*          # Recursively match nested parentheses content
-                    \)                                  # Closing the nested parenthesis
-                )*                                      # Repeat zero or more times (all parameters)
-            \)                                          # Closing parenthesis of the parameter list
-            \s*                                         # Optional whitespace after parameters
-            (->\s*[a-zA-Z0-9_\[\],. |]+)?               # Optional return type annotation (e.g. -> int, -> dict[str, Any])
-            \s*:\n                                      # Colon ending the function header followed by newline
-        )
-        (\s*)                                          # Capture indentation (spaces/tabs) of the next line (function body)
-        (?!\s*\"\"\")                                  # Negative lookahead: ensure the next non-space characters are NOT triple quotes (no docstring yet)
-        """
+        lines = body.strip().splitlines()
+        if len(lines) < 1:
+            return body
 
-        docstring_with_format = self.extract_pure_docstring(generated_docstring)
-        matches = list(re.finditer(method_pattern, source_code))
-        if matches:
-            last_match = matches[-1]
-            start, end = last_match.span()
-            updated_code = (
-                source_code[:start]
-                + re.sub(method_pattern, rf"\1\3{docstring_with_format}\n\3", source_code[start:end], count=1)
-                + source_code[end:]
-            )
+        first_line = lines[0].strip()
+        if first_line.startswith(('"""', "'''")):
+            closing = first_line[:3]
+            # Oneliner docstring
+            if first_line.count(closing) == 2:
+                return "\n".join(lines[1:]).lstrip()
+            # Multiline docstring
+            for i in range(1, len(lines)):
+                if closing in lines[i]:
+                    return "\n".join(lines[i + 1 :]).lstrip()
+        return body
 
-        else:
-            updated_code = source_code
-        return updated_code
+    def insert_docstring_in_code(
+        self, source_code: str, method_details: dict, generated_docstring: str, class_method: bool = False
+    ) -> str:
+        """
+        Inserts or replaces a method-level docstring in the provided source code,
+        using the method's body from method_details['source_code'] to locate the method.
+        Handles multi-line signatures, decorators, async definitions, and existing docstrings.
+        """
+        method_body = self.strip_docstring_from_body(method_details["source_code"].strip())
+        docstring_clean = self.extract_pure_docstring(generated_docstring)
+
+        # Find method within a source code
+        match = re.search(re.escape(method_details["source_code"]), source_code)
+        if not match:
+            return source_code
+        body_start = match.start()
+
+        if not body_start:
+            return source_code
+
+        start = body_start
+
+        while start > 0 and source_code[start - 1] in " \t\n":
+            start -= 1
+
+        end = body_start + len(method_body)
+
+        method_block = source_code[start:end]
+        method_lines = method_block.splitlines(keepends=True)
+
+        indent = "        " if class_method else "    "
+
+        def indent_docstring(docstring: str) -> str:
+            lines = docstring.strip().splitlines()
+            if len(lines) == 1:
+                return f'{indent}"""{lines[0]}"""'
+            indented = [f"{indent}" + lines[0]]
+            for line in lines[1:]:
+                indented.append(f"{indent}{line}")
+            return "\n".join(indented) + "\n"
+
+        # Check for existing docstring right after signature
+        signature_end_index = None
+        for i, line in enumerate(method_lines):
+            if line.strip().endswith(":"):
+                signature_end_index = i
+                break
+
+        docstring_inserted = indent_docstring(docstring_clean)
+
+        if signature_end_index is not None:
+            next_line_index = signature_end_index + 1
+            while next_line_index < len(method_lines) and method_lines[next_line_index].strip() == "":
+                next_line_index += 1
+
+            if next_line_index < len(method_lines) and method_lines[next_line_index].strip().startswith(('"""', "'''")):
+                # Replace old docstring
+                closing = method_lines[next_line_index].strip()[:3]
+                end_doc_idx = next_line_index
+                for j in range(next_line_index + 1, len(method_lines)):
+                    if closing in method_lines[j]:
+                        end_doc_idx = j
+                        break
+                method_lines = method_lines[:next_line_index] + [docstring_inserted] + method_lines[end_doc_idx + 1 :]
+            else:
+                # Insert new docstring
+                method_lines.insert(signature_end_index + 1, docstring_inserted)
+
+        updated_block = "".join(method_lines)
+        result = source_code[:start] + updated_block + source_code[end:]
+
+        return result
 
     def insert_cls_docstring_in_code(self, source_code: str, class_name: str, generated_docstring: str) -> str:
         """
-        Inserts a generated class docstring into the class definition.
+        Inserts or replaces a class-level docstring for a given class name.
 
         Args:
-
-            source_code: The source code where the docstring should be inserted.
-            class_name: Class name.
-            generated_docstring: The docstring that should be inserted.
+            source_code: The full source code string.
+            class_name: Name of the class to update.
+            generated_docstring: The new docstring (raw response from LLM).
 
         Returns:
-            The updated source code with the class docstring inserted.
+            Updated source code with the inserted or replaced class docstring.
         """
-
-        # Matches a class definition with the given name,
-        # including optional parentheses. Ensures no docstring follows.
         class_pattern = (
-            rf"(class\s+{class_name}\s*(\([^)]*\))?\s*:\n)(\s*)(?!\s*\"\"\")"
-            + r"(\"{3}[\s\S]*?\"{3}|\'{3}[\s\S]*?\'{3})?"
+            rf"(class\s+{class_name}\s*(\([^)]*\))?\s*:\n)"  # group 1: class signature
+            rf"([ \t]*)"  # group 3: indentation (for docstring)
+            rf"(\"\"\"[\s\S]*?\"\"\"|\'\'\'[\s\S]*?\'\'\')?"  # group 4: existing docstring (optional)
         )
 
-        # Ensure we keep only the extracted docstring
-        docstring_with_format = self.extract_pure_docstring(generated_docstring)
+        match = re.search(class_pattern, source_code)
+        if not match:
+            return source_code  # Class not found
 
-        updated_code = re.sub(class_pattern, rf"\1\3{docstring_with_format}\n\3", source_code, count=1)
+        signature = match.group(1)
+        indent = match.group(3) or "    "
+        existing_docstring = match.group(4)
+
+        docstring = self.extract_pure_docstring(generated_docstring)
+
+        # Applying indentation to all docstring lines
+        indented_lines = [indent + line if line.strip() else indent for line in docstring.strip().splitlines()]
+        indented_docstring = "\n".join(indented_lines) + "\n"
+
+        start, end = match.span()
+
+        if existing_docstring:
+            # Substituting an existing docstring
+            updated_code = source_code[:start] + signature + indented_docstring + source_code[end:]
+        else:
+            # Inserting new docstring
+            insert_point = source_code.find("\n", start) + 1
+            updated_code = source_code[:insert_point] + indented_docstring + source_code[insert_point:]
 
         return updated_code
 
@@ -512,7 +582,7 @@ class DocGen(object):
             write_back=black.WriteBack.YES,
         )
 
-    def process_python_file(self, parsed_structure: dict) -> None:
+    async def process_python_file(self, parsed_structure: dict, rate_limit: int = 10) -> None:
         """
         Processes a Python file by generating and inserting missing docstrings.
 
@@ -524,56 +594,64 @@ class DocGen(object):
             parsed_structure: A dictionary representing the parsed structure of the Python codebase.
                 The dictionary keys are filenames and the values are lists of dictionaries representing
                 classes and their methods.
-
+            rate_limit: A number of maximum concurrent requests to provided API
         Returns:
             None
         """
+        semaphore = asyncio.Semaphore(rate_limit)
 
         for filename, structure in parsed_structure.items():
-            self._process_one_file(filename, structure, project_structure=parsed_structure)
+            if not structure["structure"]:
+                logger.info(f"File {filename} does not contain any functions, methods or class constructions.")
+                continue
+            await self._process_one_file(filename, structure, project_structure=parsed_structure, semaphore=semaphore)
 
-    def _process_one_file(self, filename, file_structure, project_structure):
-        self.format_with_black(filename)
-        with open(filename, "r", encoding="utf-8") as f:
-            source_code = f.read()
+    async def _process_one_file(self, filename, file_structure, project_structure, semaphore):
+
+        async with aiofiles.open(filename, "r", encoding="utf-8") as f:
+            source_code = await f.read()
+
+        coroutines = {"classes": [], "methods": [], "functions": []}
+
         for item in file_structure["structure"]:
             if item["type"] == "class":
                 for method in item["methods"]:
-                    if method["docstring"] == None or self.main_idea:  # If docstring is missing
+                    if method["docstring"] is None or self.main_idea:  # If docstring is missing
+
                         logger.info(
-                            f"""{"Generating" if self.main_idea else "Updating"} docstring for method: {method['method_name']} in class {item['name']} at {filename}"""
+                            f"""{"Generating" if self.main_idea else "Updating"} docstring for the method: {method['method_name']} of class {item['name']} at {filename}"""
                         )
+
                         method_context = self.context_extractor(method, project_structure)
+
                         generated_docstring = (
-                            self.generate_method_documentation(method, method_context)
+                            self.generate_method_documentation(method, semaphore, method_context)
                             if self.main_idea is None
-                            else self.update_method_documentation(method, method_context, class_name=item["name"])
+                            else self.update_method_documentation(
+                                method, semaphore, method_context, class_name=item["name"]
+                            )
                         )
-                        generated_docstring = self.extract_pure_docstring(generated_docstring)
-                        if generated_docstring:
-                            method["docstring"] = generated_docstring
-                            source_code = self.insert_docstring_in_code(source_code, method, generated_docstring)
+                        coroutines["methods"].append((method, generated_docstring))
+
             if item["type"] == "function":
                 func_details = item["details"]
-                if func_details["docstring"] == None or self.main_idea:
+                if func_details["docstring"] is None or self.main_idea:
+
                     logger.info(
-                        f"""{"Generating" if self.main_idea else "Updating"} docstring for a function: {func_details['method_name']} at {filename}"""
+                        f"""{"Generating" if self.main_idea else "Updating"} docstring for the function: {func_details['method_name']} at {filename}"""
                     )
+
                     generated_docstring = (
-                        self.generate_method_documentation(func_details)
+                        self.generate_method_documentation(func_details, semaphore)
                         if self.main_idea is None
-                        else self.update_method_documentation(func_details)
+                        else self.update_method_documentation(func_details, semaphore)
                     )
-                    generated_docstring = self.extract_pure_docstring(generated_docstring)
-                    if generated_docstring:
-                        source_code = self.insert_docstring_in_code(source_code, func_details, generated_docstring)
+                    coroutines["functions"].append((func_details, generated_docstring))
 
         for item in file_structure["structure"]:
-            if item["type"] == "class" and (item["docstring"] == None or self.main_idea):
+            if item["type"] == "class" and (item["docstring"] is None or self.main_idea):
                 class_name = item["name"]
-                cls_structure = []
-                cls_structure.append(class_name)
-                cls_structure.append(item["attributes"])
+                cls_structure = [class_name, item["attributes"]]
 
                 for method in item["methods"]:
                     cls_structure.append(
@@ -584,21 +662,48 @@ class DocGen(object):
                     )
                 cls_structure.append(item["docstring"])
                 logger.info(
-                    f"""{"Generating" if self.main_idea else "Updating"} docstring for class: {item['name']} in class at {filename}"""
+                    f"""{"Generating" if self.main_idea else "Updating"} docstring for the class: {item['name']} at {filename}"""
                 )
+
                 generated_cls_docstring = (
-                    self.generate_class_documentation(cls_structure)
+                    self.generate_class_documentation(cls_structure, semaphore)
                     if self.main_idea is None
-                    else self.update_class_documentation(cls_structure)
+                    else self.update_class_documentation(cls_structure, semaphore)
                 )
-                if generated_cls_docstring:
-                    source_code = self.insert_cls_docstring_in_code(source_code, class_name, generated_cls_docstring)
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(source_code)
-        self.format_with_black(filename)
+                coroutines["classes"].append((class_name, generated_cls_docstring))
+
+        methods_docstrings = await asyncio.gather(*[task[1] for task in coroutines["methods"]])
+        for docstring, _method in zip(methods_docstrings, [name[0] for name in coroutines["methods"]]):
+
+            if docstring:
+                clear_method_docstring = self.extract_pure_docstring(docstring)
+
+                _method["docstring"] = clear_method_docstring
+                source_code = self.insert_docstring_in_code(
+                    source_code, _method, clear_method_docstring, class_method=True
+                )
+
+        functions_docstrings = await asyncio.gather(*[task[1] for task in coroutines["functions"]])
+        for docstring, _function in zip(functions_docstrings, [name[0] for name in coroutines["functions"]]):
+
+            if docstring:
+                clear_function_docstring = self.extract_pure_docstring(docstring)
+
+                source_code = self.insert_docstring_in_code(source_code, _function, clear_function_docstring)
+
+        classes_docstrings = await asyncio.gather(*[task[1] for task in coroutines["classes"]])
+        for docstring, _class in zip(classes_docstrings, [name[0] for name in coroutines["classes"]]):
+
+            if docstring:
+                source_code = self.insert_cls_docstring_in_code(source_code, _class, docstring)
+
+        async with aiofiles.open(filename, "w", encoding="utf-8") as f:
+            await f.write(source_code)
+
         logger.info(f"Updated file: {filename}")
 
-    def generate_the_main_idea(self, parsed_structure: dict) -> None:
+    async def generate_the_main_idea(self, parsed_structure: dict, top_n: int = 5) -> None:
+
         prompt = (
             "You are an AI documentation assistant, and your task is to deduce the main idea of the project and formulate for which purpose it was written."
             "You are given with the list of the main components (classes and functions) with it's short description and location in project hierarchy:\n"
@@ -612,46 +717,94 @@ class DocGen(object):
             "Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know "
             "you're provided with any information. AVOID ANY SPECULATION and inaccurate descriptions! Now, provide the summarized idea of the project based on it's components"
         )
-        structure = []
-        for file in parsed_structure:
+
+        _exclusions = (".git", ".github", "test", "tests", "__init__", "__pycache__")
+
+        prompt_structure = []
+
+        accepted_packages = [
+            (str(f), len(parsed_structure[f]["imports"]))
+            for f in parsed_structure
+            if all(e not in f for e in _exclusions)
+        ]
+
+        importance_top = sorted(accepted_packages, key=lambda pair: pair[1], reverse=True)[:top_n]
+
+        for file, score in importance_top:
+
             for component in parsed_structure[file]["structure"]:
-                t = component["type"]
-                if t == "class":
+
+                _type = component["type"]
+
+                if _type == "class":
                     docstring = component["docstring"].split("\n\n")[0].strip('"\n ') if component["docstring"] else ""
                 else:
                     docstring = component["details"]["docstring"] if component["details"]["docstring"] else ""
-                structure.append(
-                    f"""{t.capitalize()} name: {component['name'] if t == "class" else component['details']['method_name']}
-                Component description: {docstring}
-                Component place in hierarchy: {file}
-                Component importance score: {len(parsed_structure[file]['imports'])}
-                """
+
+                prompt_structure.append(
+                    f"""
+                    {_type.capitalize()} name: {component["name"] if _type == "class" else component["details"]["method_name"]}
+                    Component description: {docstring}
+                    Component place in hierarchy: {file}
+                    Component importance score: {score}
+                    """
                 )
+
         logger.info(f"Generating the main idea of the project...")
-        self.main_idea = self.model_handler.send_request(prompt.format(components="\n\n".join(structure)))
 
-    def summarize_submodules(self, project_structure):
-        summaries = {}
-        self._rename_invalid_dirs(self.config.git.name)
+        components = "\n\n".join(prompt_structure)
 
-        def summarize_directory(name: str, file_summaries: List[str], submodule_summaries: List[str]) -> str:
-            prompt = (
-                "You are an AI documentation assistant, and your task is to sujmmarize the module of project and formulate for which purpose it was written."
-                "You are given with the list of the components (classes and functions or submodules) with it's short description:\n\n"
-                "{components}\n\n"
-                "Also you have the snippet from README file of project from this module has came describing the main idea of the whole project:\n\n"
-                "{main_idea}\n\n"
-                "You should generate markdown-formatted documentation page describing this module using description of all files and all submodules.\n"
-                "Do not too generalize overview and purpose parts using main idea, but try to explicit which part of main functionality does this module. Concentrate on local module features were infered previously.\n"
-                "Format you answer in a way you're writing README file for the module. Use such template:\n\n"
-                "# Name\n"
-                "## Overview\n"
-                "## Purpose\n"
-                "Do not mention or describe any submodule or files! Rename snake_case names on meaningful names."
-                "Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know "
-                "you're provided with any information. AVOID ANY SPECULATION and inaccurate descriptions! Now, provide the summarized idea of the module based on it's components"
-            )
+        self.main_idea = await self.model_handler.async_request(prompt.format(components=components))
 
+    async def summarize_submodules(self, project_structure, rate_limit: int = 20) -> Dict[str, str]:
+        """
+        This method performs recursive traversal over given parsed structure of a Python codebase and
+        generates short summaries for each directory (submodule).
+
+        Args:
+            project_structure: A dictionary representing the parsed structure of the Python codebase.
+                The dictionary keys are filenames and the values are lists of dictionaries representing
+                classes and their methods.
+            rate_limit: A number of maximum concurrent requests to provided API
+        Returns:
+            Dict[str, str]
+        """
+
+        self._rename_invalid_dirs(Path(self.config.git.name).resolve())
+
+        semaphore = asyncio.Semaphore(rate_limit)
+
+        _prompt = (
+            "You are an AI documentation assistant, and your task is to summarize the module of project and formulate for which purpose it was written."
+            "You are given with the list of the components (classes and functions or submodules) with it's short description:\n\n"
+            "{components}\n\n"
+            "Also you have the snippet from README file of project from this module has came describing the main idea of the whole project:\n\n"
+            "{main_idea}\n\n"
+            "You should generate markdown-formatted documentation page describing this module using description of all files and all submodules.\n"
+            "Do not too generalize overview and purpose parts using main idea, but try to explicit which part of main functionality does this module. Concentrate on local module features were infered previously.\n"
+            "Format you answer in a way you're writing README file for the module. Use such template:\n\n"
+            "# Name\n"
+            "## Overview\n"
+            "## Purpose\n"
+            "Do not mention or describe any submodule or files! Rename snake_case names on meaningful names."
+            "Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know "
+            "you're provided with any information. AVOID ANY SPECULATION and inaccurate descriptions! Now, provide the summarized idea of the module based on it's components"
+        )
+
+        _summaries = {}
+
+        async def summarize_directory(name: str, file_summaries: List[str], submodule_summaries: List[str]) -> str:
+            """
+            This method performs async http request to the LLM server and generates summary for given submodule.
+
+            Args:
+                name: submodule (directory) name in current project
+                file_summaries: list of file descriptions which the submodule contains
+                submodule_summaries: list of nested subdirectories summaries which the submodule contains
+
+            Returns:
+                str
+            """
             components = [
                 (
                     f"Module name: {name}",
@@ -662,45 +815,50 @@ class DocGen(object):
                 )
             ]
             logger.info(f"Generating summary for the module {name}")
-            result = self.model_handler.send_request(prompt.format(components=components, main_idea=self.main_idea))
-            return result
 
-        def traverse_and_summarize(path: Path, project_structure: Dict[str, Any]) -> str:
-            dirs_summaries = []
-            files_summaries = []
+            async with semaphore:
+                return await self.model_handler.async_request(
+                    _prompt.format(components=components, main_idea=self.main_idea)
+                )
 
-            dirs = [
-                i
-                for i in os.listdir(path)
-                if os.path.isdir(Path(path, i)) and i not in [".git", ".github", "test", "tests"]
-            ]
-            files = [i for i in os.listdir(path) if not os.path.isdir(Path(path, i))]
+        async def traverse_and_summarize(path: Path, project: dict) -> str:
 
-            for dir_name in dirs:
-                dir_path = Path(path, dir_name)
-                dir_summary = traverse_and_summarize(dir_path, project_structure)
-                if dir_summary:
-                    dirs_summaries.append(dir_summary)
+            _exclusions = (".git", ".github", "test", "tests", "osa_docs")
+            _coroutines = []
 
-            for file_name in files:
-                file_path = Path(path, file_name)
-                if str(file_path) in project_structure:
-                    files_summaries.append(
-                        self.format_structure_openai_short(
-                            filename=file_path.name, structure=project_structure[str(file_path)]
-                        )
+            leaves_summaries = []
+
+            directories = [d for d in os.listdir(path) if os.path.isdir(Path(path, d)) and d not in _exclusions]
+            files = [f for f in os.listdir(path) if not (os.path.isdir(Path(path, f)))]
+
+            for name in directories:
+                p = Path(path, name)
+
+                _coroutines.append(traverse_and_summarize(p, project))
+
+            for name in files:
+                p = Path(path, name)
+
+                if str(p) in project:
+                    leaves_summaries.append(
+                        self.format_structure_openai_short(filename=p.name, structure=project[str(p)])
                     )
-            if files_summaries or dirs_summaries:
-                if path == self.config.git.name:  # main page of the repo
-                    summary = self.main_idea
 
-                else:
-                    summary = summarize_directory(Path(path).name, files_summaries, dirs_summaries)
-                summaries[str(path)] = summary
+            folder_summaries = await asyncio.gather(*_coroutines)
+            folder_summaries = [s for s in folder_summaries if s]
+
+            if leaves_summaries or folder_summaries:
+                summary = (
+                    self.main_idea
+                    if path == self.config.git.name
+                    else await summarize_directory(Path(path).name, leaves_summaries, folder_summaries)
+                )
+                _summaries[str(path)] = summary
+
                 return summary
 
-        traverse_and_summarize(self.config.git.name, project_structure=project_structure)
-        return summaries
+        await traverse_and_summarize(self.config.git.name, project_structure)
+        return _summaries
 
     def convert_path_to_dot_notation(self, path):
         path_obj = Path(path) if isinstance(path, str) else path

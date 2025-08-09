@@ -33,7 +33,7 @@ Run Open-Source-Advisor using the following command:
 python -m osa_tool.run -r {repository} [--mode {mode}] [--api {api}] [--base-url {base_url}] [--model {model_name}]
 ```
 
-### Required Argument:
+### Required Argument
 
 `-r`, `--repository` - URL of the repository to be analyzed and processed.
 
@@ -73,33 +73,33 @@ In **custom mode**:
 
 - A list of editable actions is displayed.
 - Available commands:
-    - `help` or `?` — displays a table with descriptions of all editable keys.
-    - `multi-bool` — enables batch editing of boolean-type keys.
-    - `done` — finishes the editing session and displays the current plan.
+  - `help` or `?` — displays a table with descriptions of all editable keys.
+  - `multi-bool` — enables batch editing of boolean-type keys.
+  - `done` — finishes the editing session and displays the current plan.
 - To edit an action, enter its name.
 - For each selected action:
-    - If it is a **boolean value** (True/False), a prompt will request setting it to:
-        - `y` — enable
-        - `n` — disable
-        - `skip` — leave unchanged
-    - If it is a **string** or **list**:
-        - A new value can be entered.
-        - Leave empty to skip.
-        - Enter `None` to explicitly disable the value.
-    - Before entering a new value, the system will display:
-        - A short description.
-        - Allowed values (if available).
-        - An example (if available).
-        - The current value.
+  - If it is a **boolean value** (True/False), a prompt will request setting it to:
+    - `y` — enable
+    - `n` — disable
+    - `skip` — leave unchanged
+  - If it is a **string** or **list**:
+    - A new value can be entered.
+    - Leave empty to skip.
+    - Enter `None` to explicitly disable the value.
+  - Before entering a new value, the system will display:
+    - A short description.
+    - Allowed values (if available).
+    - An example (if available).
+    - The current value.
 
 Once the user type `done`:
 
 - The updated tables with planned actions and inactive actions will be displayed again.
 - The program will prompt the user one more time to confirm the updated plan
 - Available options:
-    - Confirm with `y` or **Enter**
-    - Cancel with `n`
-    - Re-enter manual editing mode with `custom`
+  - Confirm with `y` or **Enter**
+  - Cancel with `n`
+  - Re-enter manual editing mode with `custom`
 
 This interactive loop continues until the user explicitly confirms or cancels the operation.
 
@@ -113,6 +113,7 @@ to the repository.
 | repository           | `-r`, `--repository`     | str  | URL of the GitHub repository                                                                                                                                  | `https://github.com/aimclub/OSA` | —                           |
 | mode                 | `-m`, `--mode`           | str  | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`.                                                                           | `auto`                           | `basic`, `auto`, `advanced` |
 | branch               | `-b`, `--branch`         | str  | Branch name of the GitHub repository                                                                                                                          | `null`                           | —                           |
+| output               | `-o`, `--output`         | str  | Path to the output directory                                                                                                                                  | `null`                           | —                           |
 | api                  | `--api`                  | str  | LLM API service provider                                                                                                                                      | `itmo`                           | `itmo`, `openai`, `ollama`  |
 | base_url             | `--base-url`             | str  | URL of the provider compatible with OpenAI API                                                                                                                | `https://api.openai.com/v1`      | —                           |
 | model                | `--model`                | str  | Specific LLM model to use. See: [link1](https://vsegpt.ru/Docs/Models), [link2](https://platform.openai.com/docs/models), [link3](https://ollama.com/library) | `gpt-3.5-turbo`                  | —                           |
