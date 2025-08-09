@@ -171,6 +171,7 @@ def _parse_repository_metadata_gitlab(repo_data: dict) -> RepositoryMetadata:
 def _parse_repository_metadata_gitverse(repo_data: dict) -> RepositoryMetadata:
     """Parse Gitverse API response into RepositoryMetadata."""
     owner_info = repo_data.get("owner", {}) or {}
+    license_info = repo_data.get("license") or {}
 
     return RepositoryMetadata(
         name=repo_data.get("name", ""),
@@ -200,8 +201,8 @@ def _parse_repository_metadata_gitverse(repo_data: dict) -> RepositoryMetadata:
         has_projects=repo_data.get("has_projects", False),
         is_private=repo_data.get("private", False),
         homepage_url=repo_data.get("homepage", ""),
-        license_name=repo_data.get("license", {}).get("name", ""),
-        license_url=repo_data.get("license", {}).get("url", ""),
+        license_name=license_info.get("name", ""),
+        license_url=license_info.get("url", ""),
         platform="gitverse",
     )
 

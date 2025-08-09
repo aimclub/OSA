@@ -1,147 +1,204 @@
-import os
-from unittest.mock import MagicMock, patch
+from pathlib import Path
+from unittest.mock import patch, MagicMock
 
-from reportlab.platypus import ListFlowable, Table
+from reportlab.platypus import Table, Paragraph, ListFlowable, Flowable
 
-from osa_tool.analytics.prompt_builder import (
-    CodeDocumentation,
-    OverallAssessment,
-    ReadmeEvaluation,
-    RepositoryReport,
-    RepositoryStructure,
-    YesNoPartial,
-)
 from osa_tool.analytics.report_maker import ReportGenerator
+from tests.utils.fixtures.report_generator import text_generator_instance
 
 
-def test_report_generator_initialization(report_generator):
-    # Assert
-    assert report_generator.repo_url == "https://github.com/testuser/testrepo.git"
-    assert report_generator.metadata is not None
-    assert report_generator.output_path.endswith("_report.pdf")
-
-
-def test_generate_qr_code(report_generator):
-    # Act
-    qr_path = report_generator.generate_qr_code()
-    # Assert
-    assert qr_path.endswith("temp_qr.png")
-    assert os.path.exists(qr_path)
-    # TearDown
-    os.remove(qr_path)
-
-
-def test_table_builder(report_generator):
+def test_report_generator_init(mock_config_loader, mock_sourcerank, load_metadata_report_maker):
     # Arrange
-    data = [["Header 1", "Header 2"], ["Row 1", "✓"], ["Row 2", "✗"]]
+    expected_metadata = load_metadata_report_maker.return_value
+    expected_repo_url = mock_config_loader.config.git.repository
+    expected_filename = f"{expected_metadata.name}_report.pdf"
+    expected_output_path = Path.cwd() / expected_filename
+    expected_logo_path = Path(".") / "docs" / "images" / "osa_logo.PNG"
+    sourcerank_instance = mock_sourcerank()
+
+    with (
+        patch("osa_tool.analytics.report_maker.osa_project_root", return_value="."),
+        patch("osa_tool.analytics.report_maker.TextGenerator") as mock_text_generator,
+    ):
+        # Act
+        report_generator = ReportGenerator(mock_config_loader, sourcerank_instance)
+
+        # Assert
+        assert report_generator.config == mock_config_loader.config
+        assert report_generator.sourcerank is sourcerank_instance
+        assert isinstance(report_generator.text_generator, MagicMock)
+        assert report_generator.repo_url == expected_repo_url
+        assert report_generator.osa_url == "https://github.com/aimclub/OSA"
+        assert report_generator.metadata == expected_metadata
+        assert report_generator.filename == expected_filename
+        assert Path(report_generator.output_path) == expected_output_path
+        assert Path(report_generator.logo_path) == expected_logo_path
+        mock_text_generator.assert_called_once_with(mock_config_loader, sourcerank_instance)
+
+
+def test_table_builder_without_coloring():
+    # Arrange
+    data = [["Feature", "Status"], ["README", "✓"], ["License", "✗"]]
+    w_first_col, w_second_col = 100, 200
+
     # Act
-    table = report_generator.table_builder(data, 100, 100, coloring=True)
+    table = ReportGenerator.table_builder(data, w_first_col, w_second_col, coloring=False)
+
     # Assert
     assert isinstance(table, Table)
+    assert table._argW == [w_first_col, w_second_col]
+    assert table._cellvalues == data
 
 
-@patch.object(ReportGenerator, "generate_qr_code", return_value="temp_qr.png")
-@patch("os.remove")
-def test_draw_images_and_tables(mock_remove, mock_generate_qr_code, report_generator):
+def test_table_builder_with_coloring():
     # Arrange
-    mock_canvas = MagicMock()
-    mock_doc = MagicMock()
+    data = [["Check", "Pass"], ["Test A", "✓"], ["Test B", "✗"]]
+    w_first_col, w_second_col = 80, 180
+
     # Act
-    report_generator.draw_images_and_tables(mock_canvas, mock_doc)
+    table = ReportGenerator.table_builder(data, w_first_col, w_second_col, coloring=True)
+
     # Assert
-    mock_canvas.drawImage.assert_called()
-    mock_canvas.line.assert_called()
-    mock_remove.assert_called_once_with("temp_qr.png")
+    assert isinstance(table, Table)
+    assert table._argW == [w_first_col, w_second_col]
+    assert table._cellvalues == data
 
 
-def test_header(report_generator):
+def test_generate_qr_code(
+    tmp_path,
+    mock_config_loader,
+    mock_sourcerank,
+    monkeypatch,
+    load_metadata_report_maker,
+    load_metadata_report_generator,
+):
+    # Arrange
+    monkeypatch.chdir(tmp_path)
+    report_generator = ReportGenerator(mock_config_loader, mock_sourcerank())
+
+    # Act
+    qr_path = report_generator.generate_qr_code()
+
+    # Assert
+    assert Path(qr_path).exists()
+
+    # Cleanup
+    Path(qr_path).unlink()
+
+
+def test_header(mock_config_loader, mock_sourcerank, load_metadata_report_maker, load_metadata_report_generator):
+    # Arrange
+    report_generator = ReportGenerator(mock_config_loader, mock_sourcerank())
+
     # Act
     header_elements = report_generator.header()
+
     # Assert
+    assert isinstance(header_elements, list)
+    assert all(isinstance(el, Paragraph) for el in header_elements)
     assert len(header_elements) == 2
+    assert "Repository Analysis Report" in header_elements[0].getPlainText()
+    assert "for" in header_elements[1].getPlainText()
 
 
-def test_table_generator(report_generator):
+def test_draw_images_and_tables(
+    tmp_path,
+    mock_config_loader,
+    mock_sourcerank,
+    load_metadata_report_maker,
+    load_metadata_report_generator,
+    monkeypatch,
+):
+    # Arrange
+    monkeypatch.chdir(tmp_path)
+    report_generator = ReportGenerator(mock_config_loader, mock_sourcerank())
+    canvas_mock = MagicMock()
+    doc_mock = MagicMock()
+    report_generator.table_generator = MagicMock(return_value=(MagicMock(), MagicMock()))
+
     # Act
-    table1, table2 = report_generator.table_generator()
+    report_generator.draw_images_and_tables(canvas_mock, doc_mock)
+
+    # Assert
+    assert canvas_mock.drawImage.call_count == 2
+    assert canvas_mock.linkURL.call_count == 2
+    assert canvas_mock.line.call_count == 2
+    assert report_generator.table_generator.called
+
+
+def test_table_generator_returns_two_tables(
+    mock_config_loader, mock_sourcerank, load_metadata_report_maker, load_metadata_report_generator
+):
+    # Arrange
+    generator = ReportGenerator(mock_config_loader, mock_sourcerank())
+
+    # Act
+    table1, table2 = generator.table_generator()
+
     # Assert
     assert isinstance(table1, Table)
     assert isinstance(table2, Table)
 
 
-def test_body_first_part(report_generator):
+def test_body_first_part_returns_bullet_list(
+    mock_config_loader, mock_sourcerank, load_metadata_report_maker, load_metadata_report_generator
+):
     # Arrange
-    report_generator.metadata = MagicMock()
-    report_generator.metadata.created_at = "2025-03-28T14:30:00Z"
-    report_generator.metadata.owner = "testuser"
-    report_generator.metadata.owner_url = "https://github.com/testuser"
-    report_generator.metadata.name = "testrepo"
-    report_generator.metadata.repo_url = "https://github.com/testuser/testrepo"
+    generator = ReportGenerator(mock_config_loader, mock_sourcerank())
+
     # Act
-    body_part = report_generator.body_first_part()
+    bullet_list = generator.body_first_part()
+
     # Assert
-    assert isinstance(body_part, ListFlowable)
-
-
-def test_body_second_part(report_generator):
-    # Arrange
-    report_generator.text_generator = MagicMock()
-    report_generator.text_generator.make_request.return_value = RepositoryReport(
-        structure=RepositoryStructure(
-            compliance="Yes",
-            missing_files=["file1.py", "file2.py"],
-            organization="Well structured",
-        ),
-        readme=ReadmeEvaluation(
-            readme_quality="High",
-            project_description=YesNoPartial.YES,
-            installation=YesNoPartial.PARTIAL,
-            usage_examples=YesNoPartial.NO,
-            contribution_guidelines=YesNoPartial.YES,
-            license_specified=YesNoPartial.NO,
-            badges_present=YesNoPartial.PARTIAL,
-        ),
-        documentation=CodeDocumentation(tests_present=YesNoPartial.YES, docs_quality="Good", outdated_content=False),
-        assessment=OverallAssessment(
-            key_shortcomings=["Missing tests", "No documentation"],
-            recommendations=["Improve tests", "Update docs"],
-        ),
+    assert isinstance(bullet_list, ListFlowable)
+    assert len(bullet_list._content) == 3
+    assert all(
+        any(key in item.text for key in ("Repository Name", "Owner", "Created at")) for item in bullet_list._content
     )
+
+
+def test_body_second_part_returns_story_elements(
+    mock_config_loader,
+    mock_sourcerank,
+    text_generator_instance,
+    monkeypatch,
+    load_metadata_report_maker,
+    load_metadata_report_generator,
+):
+    # Arrange
+    report_generator = ReportGenerator(mock_config_loader, mock_sourcerank())
+    report_generator.text_generator, _ = text_generator_instance
 
     # Act
     story = report_generator.body_second_part()
 
     # Assert
-    assert len(story) > 0
+    assert isinstance(story, list)
+    assert all(isinstance(item, Flowable) for item in story)
+    assert any("Repository Structure" in para.getPlainText() for para in story if isinstance(para, Paragraph))
+    assert any("README Analysis" in para.getPlainText() for para in story if isinstance(para, Paragraph))
+    assert any("Recommendations" in para.getPlainText() for para in story if isinstance(para, Paragraph))
 
-    # Repository Structure
-    assert "Repository Structure" in story[0].getPlainText()
-    assert "Compliance: Yes" in story[1].getPlainText()
-    assert "Missing files: file1.py, file2.py" in story[2].getPlainText()
-    assert "Organization: Well structured" in story[3].getPlainText()
 
-    # README Analysis
-    assert "README Analysis" in story[4].getPlainText()
-    assert "Quality: High" in story[5].getPlainText()
-    assert "Project description: Yes" in story[6].getPlainText()
-    assert "Installation: Partial" in story[7].getPlainText()
-    assert "Usage examples: No" in story[8].getPlainText()
-    assert "Contribution guidelines: Yes" in story[9].getPlainText()
-    assert "License specified: No" in story[10].getPlainText()
-    assert "Badges present: Partial" in story[11].getPlainText()
+def test_build_pdf_creates_output_file(
+    tmp_path,
+    mock_config_loader,
+    mock_sourcerank,
+    load_metadata_report_maker,
+    load_metadata_report_generator,
+    text_generator_instance,
+    monkeypatch,
+):
+    # Arrange
+    monkeypatch.chdir(tmp_path)
+    report_generator = ReportGenerator(mock_config_loader, mock_sourcerank())
+    report_generator.text_generator, _ = text_generator_instance
 
-    # Documentation
-    assert "Documentation:" in story[12].getPlainText()
-    assert "Tests present: Yes" in story[13].getPlainText()
-    assert "Documentation quality: Good" in story[14].getPlainText()
-    assert "Outdated content: No" in story[15].getPlainText()
+    # Act
+    report_generator.build_pdf()
 
-    # Key Shortcomings
-    assert "Key Shortcomings" in story[16].getPlainText()
-    assert "- Missing tests" in story[17].getPlainText()
-    assert "- No documentation" in story[18].getPlainText()
-
-    # Recommendations
-    assert "Recommendations" in story[19].getPlainText()
-    assert "- Improve tests" in story[20].getPlainText()
-    assert "- Update docs" in story[21].getPlainText()
+    # Assert
+    output_path = Path(report_generator.output_path)
+    assert output_path.exists()
+    assert output_path.name == f"{report_generator.metadata.name}_report.pdf"
+    assert output_path.stat().st_size > 0

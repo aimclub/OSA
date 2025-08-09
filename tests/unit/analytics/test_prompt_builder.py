@@ -1,57 +1,102 @@
-from osa_tool.analytics.prompt_builder import RepositoryReport, YesNoPartial
+from osa_tool.analytics.prompt_builder import (
+    RepositoryReport,
+    RepositoryStructure,
+    ReadmeEvaluation,
+    CodeDocumentation,
+    OverallAssessment,
+    YesNoPartial,
+)
 
 
-# Tests for RepositoryReport with default values.
-def test_structure_defaults(default_report):
-    assert default_report.structure.compliance == "Unknown"
-    assert default_report.structure.missing_files == []
-    assert default_report.structure.organization == "Unknown"
+def test_repository_report_defaults():
+    # Act
+    report = RepositoryReport()
+
+    # Assert
+    assert report.structure.compliance == "Unknown"
+    assert report.structure.missing_files == []
+    assert report.readme.readme_quality == "Unknown"
+    assert report.readme.project_description == YesNoPartial.UNKNOWN
+    assert report.documentation.tests_present == YesNoPartial.UNKNOWN
+    assert report.documentation.outdated_content is False
+    assert report.assessment.key_shortcomings == ["There are no critical issues"]
+    assert report.assessment.recommendations == ["No recommendations"]
 
 
-def test_readme_defaults(default_report):
-    assert default_report.readme.readme_quality == "Unknown"
-    assert default_report.readme.project_description == YesNoPartial.UNKNOWN
-    assert default_report.readme.installation == YesNoPartial.UNKNOWN
-    assert default_report.readme.usage_examples == YesNoPartial.UNKNOWN
-    assert default_report.readme.contribution_guidelines == YesNoPartial.UNKNOWN
-    assert default_report.readme.license_specified == YesNoPartial.UNKNOWN
-    assert default_report.readme.badges_present == YesNoPartial.UNKNOWN
+def test_repository_report_with_custom_data():
+    # Arrange
+    custom_data = RepositoryReport(
+        structure=RepositoryStructure(
+            compliance="Partial",
+            missing_files=["README.md", "LICENSE"],
+            organization="Good",
+        ),
+        readme=ReadmeEvaluation(
+            readme_quality="Good",
+            project_description=YesNoPartial.YES,
+            installation=YesNoPartial.PARTIAL,
+            usage_examples=YesNoPartial.NO,
+            contribution_guidelines=YesNoPartial.YES,
+            license_specified=YesNoPartial.NO,
+            badges_present=YesNoPartial.YES,
+        ),
+        documentation=CodeDocumentation(
+            tests_present=YesNoPartial.YES,
+            docs_quality="Detailed",
+            outdated_content=True,
+        ),
+        assessment=OverallAssessment(
+            key_shortcomings=["Missing LICENSE file", "Outdated API docs"],
+            recommendations=["Add LICENSE", "Update documentation"],
+        ),
+    )
+
+    # Assert
+    assert custom_data.structure.missing_files == ["README.md", "LICENSE"]
+    assert custom_data.readme.project_description == YesNoPartial.YES
+    assert custom_data.documentation.outdated_content is True
+    assert "Missing LICENSE file" in custom_data.assessment.key_shortcomings
+    assert custom_data.assessment.recommendations == ["Add LICENSE", "Update documentation"]
 
 
-def test_documentation_defaults(default_report):
-    assert default_report.documentation.tests_present == YesNoPartial.UNKNOWN
-    assert default_report.documentation.docs_quality == "Unknown"
-    assert default_report.documentation.outdated_content is False
+def test_repository_report_enum_validation():
+    # Act
+    readme_eval = ReadmeEvaluation(project_description="Yes")
+
+    # Assert
+    assert readme_eval.project_description == YesNoPartial.YES
 
 
-def test_assessment_defaults(default_report):
-    assert default_report.assessment.key_shortcomings == ["There are no critical issues"]
-    assert default_report.assessment.recommendations == ["No recommendations"]
+def test_repository_report_ignores_extra_fields():
+    # Act
+    data_with_extra = {
+        "structure": {
+            "compliance": "Yes",
+            "missing_files": [],
+            "organization": "Excellent",
+            "unexpected_field": "ignored",
+        },
+        "readme": {"readme_quality": "Good", "badges_present": "Partial", "extra_field": 123},
+        "documentation": {"tests_present": "Yes", "docs_quality": "Good"},
+        "assessment": {"key_shortcomings": [], "recommendations": []},
+        "extra_top_level_field": "should be ignored",
+    }
+    report = RepositoryReport(**data_with_extra)
+
+    # Assert
+    assert not hasattr(report.structure, "unexpected_field")
+    assert not hasattr(report.readme, "extra_field")
+    assert not hasattr(report, "extra_top_level_field")
 
 
-# Tests for RepositoryReport with custom-defined values.
-def test_structure_custom(custom_report):
-    assert custom_report.structure.compliance == "Good"
-    assert custom_report.structure.missing_files == ["setup.py"]
-    assert custom_report.structure.organization == "Well structured"
+def test_repository_report_list_defaults_are_independent():
+    # Arrange
+    report1 = RepositoryReport()
+    report2 = RepositoryReport()
 
+    # Act
+    report1.structure.missing_files.append("README.md")
 
-def test_readme_custom(custom_report):
-    assert custom_report.readme.readme_quality == "Good"
-    assert custom_report.readme.project_description == YesNoPartial.YES
-
-
-def test_documentation_custom(custom_report):
-    assert custom_report.documentation.tests_present == YesNoPartial.YES
-    assert custom_report.documentation.docs_quality == "High"
-    assert custom_report.documentation.outdated_content is True
-
-
-def test_assessment_custom(custom_report):
-    assert custom_report.assessment.key_shortcomings == ["No CI/CD"]
-    assert custom_report.assessment.recommendations == ["Add GitHub Actions"]
-
-
-def test_extra_fields_ignored():
-    report = RepositoryReport(extra_field="This should be ignored")
-    assert not hasattr(report, "extra_field")
+    # Assert
+    assert report1.structure.missing_files == ["README.md"]
+    assert report2.structure.missing_files == []

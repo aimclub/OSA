@@ -1,51 +1,81 @@
-from unittest.mock import MagicMock, patch
+import pytest
+
+from osa_tool.analytics.prompt_builder import RepositoryReport
+from tests.utils.fixtures.report_generator import text_generator_instance
 
 
-def test_text_generator_initialization(text_generator):
-    # Assert
-    assert text_generator.config.git.repository == "https://github.com/testuser/testrepo.git"
-    assert isinstance(text_generator.model_handler, MagicMock)
+def test_make_request_success(text_generator_instance):
+    # Arrange
+    text_generator, mock_model_handler = text_generator_instance
+    valid_response = {
+        "structure": {"compliance": "Yes", "missing_files": [], "organization": "Well-organized"},
+        "readme": {
+            "readme_quality": "High quality with clear instructions",
+            "project_description": "Yes",
+            "installation": "Yes",
+            "usage_examples": "Partial",
+            "contribution_guidelines": "No",
+            "license_specified": "Yes",
+            "badges_present": "Partial",
+        },
+        "documentation": {
+            "tests_present": "Yes",
+            "docs_quality": "Comprehensive and up-to-date",
+            "outdated_content": False,
+        },
+        "assessment": {
+            "key_shortcomings": ["Missing contribution guidelines"],
+            "recommendations": ["Add a CONTRIBUTING.md file with guidelines"],
+        },
+    }
+    mock_model_handler.send_request.return_value = str(valid_response).replace("'", '"')
 
-
-@patch("json.loads", return_value={})
-@patch(
-    "osa_tool.analytics.prompt_builder.RepositoryReport.model_validate",
-    return_value=MagicMock(),
-)
-def test_make_request(mock_parse_obj, mock_json_loads, text_generator):
     # Act
     report = text_generator.make_request()
+
     # Assert
-    assert isinstance(report, MagicMock)
+    assert isinstance(report, RepositoryReport)
+    assert report.structure.compliance == "Yes"
+    assert report.readme.project_description == "Yes"
+    assert report.documentation.tests_present == "Yes"
+    assert "Missing contribution guidelines" in report.assessment.key_shortcomings
 
 
-@patch("builtins.open", new_callable=MagicMock)
-@patch(
-    "osa_tool.analytics.report_generator.tomllib.load",
-    return_value={"prompt": {"main_prompt": "Prompt"}},
-)
-def test_build_prompt(mock_tomllib_load, mock_open, text_generator):
+def test_make_request_invalid_json(text_generator_instance):
+    # Arrange
+    text_generator, mock_model_handler = text_generator_instance
+
+    # Act
+    mock_model_handler.send_request.return_value = "{INVALID_JSON}"
+
+    # Assert
+    with pytest.raises(ValueError, match="JSON parsing error"):
+        text_generator.make_request()
+
+
+def test_make_request_validation_error(text_generator_instance):
+    # Arrange
+    text_generator, mock_model_handler = text_generator_instance
+    invalid_structure = {"structure": {"compliance": 123}}
+
+    # Act
+    mock_model_handler.send_request.return_value = str(invalid_structure).replace("'", '"')
+
+    # Assert
+    with pytest.raises(ValueError, match="JSON parsing error"):
+        text_generator.make_request()
+
+
+def test_build_prompt_content(text_generator_instance):
+    # Arrange
+    text_generator, _ = text_generator_instance
+
     # Act
     prompt = text_generator._build_prompt()
-    # Assert
-    assert prompt == "Prompt"
 
-
-def test_extract_presence_files(text_generator):
-    # Arrange
-    text_generator.sourcerank.readme_presence = MagicMock(return_value=True)
-    text_generator.sourcerank.license_presence = MagicMock(return_value=False)
-    text_generator.sourcerank.examples_presence = MagicMock(return_value="Partial")
-    text_generator.sourcerank.docs_presence = MagicMock(return_value=True)
-    text_generator.sourcerank.requirements_presence = MagicMock(return_value=True)
-    expected = [
-        "README presence is True",
-        "LICENSE presence is False",
-        "Examples presence is Partial",
-        "Documentation presence is True",
-        "Requirements presence is True",
-    ]
-    # Act
-    result = text_generator._extract_presence_files()
     # Assert
-    assert result == expected
+    assert text_generator.metadata.name in prompt
+    assert str(text_generator.metadata) in prompt
+    assert str(text_generator.sourcerank.tree) in prompt
+    assert "README presence is" in prompt
+    assert "Sample README content" in prompt

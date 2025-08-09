@@ -7,6 +7,7 @@ from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import Settings, GitSettings, ModelSettings, WorkflowSettings
 from osa_tool.utils import parse_folder_name
 from tests.data_factory import DataFactory
+from tests.utils.mocks.requests_mock import mock_requests_response
 
 
 @pytest.fixture(scope="session")
@@ -18,9 +19,10 @@ def data_factory():
 # Config Loader Fixtures
 # -------------------
 @pytest.fixture
-def mock_config_loader(data_factory):
+def mock_config_loader(data_factory, request):
     """Mock ConfigLoader with dynamically generated test data"""
-    test_settings = data_factory.generate_full_settings()
+    platform = getattr(request, "param", "github")
+    test_settings = data_factory.generate_full_settings(platform)
     # Create real Pydantic models from generated data
     settings = Settings(
         git=GitSettings(**test_settings["git"]),
@@ -87,6 +89,50 @@ def mock_sourcerank(mock_config_loader, mock_parse_folder_name, data_factory):
             return instance
 
     return factory
+
+
+# -------------------
+# RepositoryMetadata Fixtures
+# -------------------
+@pytest.fixture
+def repo_info(mock_config_loader):
+    full_name = mock_config_loader.config.git.full_name
+    owner, repo_name = full_name.split("/")
+    repo_url = mock_config_loader.config.git.repository
+    platform = mock_config_loader.config.git.host
+    return platform, owner, repo_name, repo_url
+
+
+@pytest.fixture
+def mock_requests_response_factory():
+    """Fixture to provide a reusable mock response factory for requests.get."""
+    return mock_requests_response
+
+
+@pytest.fixture
+def mock_repository_metadata(data_factory, repo_info):
+    platform, owner, repo_name, repo_url = repo_info
+    return data_factory.generate_repository_metadata(platform, owner, repo_name, repo_url)
+
+
+def create_load_metadata_fixture(target_path: str):
+    @pytest.fixture
+    def _fixture(mock_repository_metadata):
+        with patch(target_path, return_value=mock_repository_metadata) as mock_func:
+            yield mock_func
+
+    return _fixture
+
+
+# aboutgen module
+load_metadata_about_generator = create_load_metadata_fixture("osa_tool.aboutgen.about_generator.load_data_metadata")
+# analytics module
+load_metadata_report_maker = create_load_metadata_fixture("osa_tool.analytics.report_maker.load_data_metadata")
+load_metadata_report_generator = create_load_metadata_fixture("osa_tool.analytics.report_generator.load_data_metadata")
+# docs_generator module
+load_metadata_community = create_load_metadata_fixture("osa_tool.docs_generator.community.load_data_metadata")
+load_metadata_contributing = create_load_metadata_fixture("osa_tool.docs_generator.contributing.load_data_metadata")
+load_metadata_license = create_load_metadata_fixture("osa_tool.docs_generator.license.load_data_metadata")
 
 
 @pytest.fixture

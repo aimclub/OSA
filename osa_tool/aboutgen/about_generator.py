@@ -138,7 +138,7 @@ class AboutGenerator:
             topics = [topic.strip().lower().replace(" ", "-") for topic in response.split(",") if topic.strip()]
             logger.debug(f"Generated topics from LLM: {topics}")
             validated_topics = self._validate_topics(topics)
-            return list(set([*existing_topics, *validated_topics]))
+            return list({*existing_topics, *validated_topics})
         except Exception as e:
             logger.error(f"Error generating topics: {e}")
             return []
@@ -162,7 +162,8 @@ class AboutGenerator:
             logger.warning(f"Topic validation not implemented for platform: {self.platform}")
             return topics
 
-    def _validate_github_topics(self, topics: List[str]) -> List[str]:
+    @staticmethod
+    def _validate_github_topics(topics: List[str]) -> List[str]:
         """Validates topics against GitHub Topics API.
 
         Args:
@@ -206,7 +207,8 @@ class AboutGenerator:
         logger.info(f"Validated {len(validated_topics)} topics out of {len(topics)}")
         return validated_topics
 
-    def _validate_gitlab_topics(self, topics: List[str]) -> List[str]:
+    @staticmethod
+    def _validate_gitlab_topics(topics: List[str]) -> List[str]:
         """Validates topics against GitLab Topics API.
 
         Args:
@@ -244,7 +246,8 @@ class AboutGenerator:
         logger.info(f"Validated {len(validated_topics)} topics out of {len(topics)}")
         return validated_topics
 
-    def _validate_gitverse_topics(self, topics: List[str]) -> List[str]:
+    @staticmethod
+    def _validate_gitverse_topics(topics: List[str]) -> List[str]:
         """Validates topics for Gitverse platform.
 
         Args:
@@ -286,7 +289,8 @@ class AboutGenerator:
 
         return candidates[0] if candidates else ""
 
-    def _extract_readme_urls(self, readme_content: str) -> List[str]:
+    @staticmethod
+    def _extract_readme_urls(readme_content: str) -> List[str]:
         """Extract all absolute URLs from README content"""
         logger.info("Extracting URLs from README.")
         url_pattern = r"(?:http|ftp|https):\/\/(?:[\w_-]+(?:(?:\.[\w_-]+)+))(?:[\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])"

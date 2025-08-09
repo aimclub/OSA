@@ -20,9 +20,13 @@ METHOD_CASES = {
     [(method, tree_type, expected) for method, cases in METHOD_CASES.items() for tree_type, expected in cases],
 )
 def test_source_rank_methods(method_name, repo_tree_type, expected, sourcerank_with_repo_tree):
+    # Arrange
     repo_tree_data = get_mock_repo_tree(repo_tree_type)
     instance = sourcerank_with_repo_tree(repo_tree_data)
 
+    # Act
     method = getattr(instance, method_name)
     result = method()
+
+    # Assert
     assert result is expected, f"{method_name} failed for tree: {repo_tree_type}"
