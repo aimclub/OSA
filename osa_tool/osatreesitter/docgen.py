@@ -2,7 +2,7 @@ import os
 import re
 import asyncio, aiofiles
 from concurrent.futures import ProcessPoolExecutor
-from typing import List, Dict
+from typing import Tuple, List, Dict, Callable
 
 import black
 from pathlib import Path
@@ -596,9 +596,9 @@ class DocGen(object):
         The results will be received in the order in which they were sent to the executor.
 
         Args:
-            parsed_structure:
-            project_source_code:
-            generated_docstrings:
+            parsed_structure: Parsed structure of current project that contains all files and their metadata.
+            project_source_code: Serialized version of source code.
+            generated_docstrings: Docstrings that would be inserted in the source code.
             n_workers: The number of workers that would be participating in cpu-bound work.
 
         Returns:
@@ -655,35 +655,75 @@ class DocGen(object):
         # serialize the results to a dictionary
         return {file: source_code}
 
-    async def _generate_docstrings_for_project(self, parsed_structure: dict, rate_limit: int = 10) -> dict[str, dict]:
+    async def _generate_docstrings_for_items(
+            self, parsed_structure: dict, docstring_type: tuple | str, rate_limit: int = 10
+    ) -> dict[str, dict]:
         """
         Generates a docstrings for all structures in given project by interacting with LLM.
 
         Args:
             parsed_structure: Parsed structure of current project that contains all files and their metadata.
+            docstring_type: Defines docstrings generation strategy by given value.
             rate_limit: A number of API requests to LLM-server that could be sent at the same time.
 
         Returns:
             dict[str, dict]
+
+        Note:
+            The docstrings_type argument accepts the only following values
+            ('functions', 'methods'), 'classes', ('functions', 'methods', 'classes')
         """
 
-        generating_results = {}
         semaphore = asyncio.Semaphore(rate_limit)
+
+        async def _iterate_and_collect(project_structure: dict, collect_fn: Callable, *args) -> dict[str, dict]:
+            """Iterates over project structure and generates the docstrings by given callable"""
+            results = {}
+
+            for filename, structure in project_structure.items():
+                # if structure contains empty file, there are no purpose for docstrings generation.
+                if structure.get("structure"):
+                    results[filename] = await collect_fn(filename, structure, *args)
+                else:
+                    logger.info(f"File {filename} does not contain any functions, methods or class constructions.")
+            return results
 
         logger.info(f"Docstrings generation for the project has started!")
 
-        for filename, structure in parsed_structure.items():
+        # generation strategy choice
+        match docstring_type:
 
-            # if structure contains empty file without functions, etc., there are no purpose for docstrings generation.
-            if structure.get("structure"):
+            case "functions", "methods":
 
-                # collecting the result for current file
-                generated_content = await self._fetch_docstrings(filename, structure, parsed_structure, semaphore)
+                generating_results = await _iterate_and_collect(
+                    parsed_structure, self._fetch_docstrings, parsed_structure, semaphore
+                )
 
-                generating_results[filename] = generated_content
+            case "classes":
 
-            else:
-                logger.info(f"File {filename} does not contain any functions, methods or class constructions.")
+                generating_results = await _iterate_and_collect(
+                    parsed_structure, self._fetch_docstrings_for_class, semaphore
+                )
+
+            case "functions", "methods", "classes":
+
+                # fetch generation results for functions and methods
+                fn_results = await _iterate_and_collect(
+                    parsed_structure, self._fetch_docstrings, parsed_structure, semaphore
+                )
+
+                # then fetch for classes
+                cl_results = await _iterate_and_collect(
+                    parsed_structure, self._fetch_docstrings_for_class, semaphore
+                )
+
+                assert fn_results.keys() == cl_results.keys(), "Filenames for each type of the result must be the same."
+
+                # merge the results of generation for each result type
+                generating_results = {file: {fn_results[file].update(cl_results[file])} for file in parsed_structure}
+
+            case _:
+                raise ValueError("Invalid docstrings_type passed! It must be ('functions', 'methods') or 'classes' or ('functions', 'methods', 'classes')")
 
         logger.info(f"Docstrings generation for the project is complete!")
         return generating_results
@@ -744,7 +784,7 @@ class DocGen(object):
         self, file: str, file_meta: dict, project: dict, semaphore: asyncio.Semaphore
     ) -> dict[str, list]:
         """
-        Collects a batch of requests for each structure in given file by its metadata.
+        Collects a batch of requests for each method/function object in given file by its metadata.
         Then concurrently executes a batch of requests and wraps the results to the dict structure.
 
         Args:
@@ -759,7 +799,7 @@ class DocGen(object):
 
         result = {}
 
-        _coroutines = {"classes": [], "methods": [], "functions": []}
+        _coroutines = {"methods": [], "functions": []}
 
         # iterating over given file metadata dictionary
         for item in file_meta["structure"]:
@@ -769,24 +809,13 @@ class DocGen(object):
             match _type:
                 case "class":
 
-                    # collecting a class metadata ahead
-                    class_name = item["name"]
-                    class_metadata = [class_name, item["attributes"]]
-
                     for method in item["methods"]:
-
-                        # enrich the class metadata by meta about it's methods
-                        if not item.get("docstring") or self.main_idea:
-
-                            class_metadata.append(
-                                {"method_name": method["method_name"], "docstring": method["docstring"]}
-                            )
 
                         # produce different request type based on main_idea presence or docstring absence
                         if not method.get("docstring") or self.main_idea:
 
                             logger.info(
-                                f"""Requesting for docstrings {"generation" if self.main_idea else "update"} for the method: {method["method_name"]} of class {item["name"]} at {file}"""
+                                f"""Requesting for docstrings {"update" if self.main_idea else "generation"} for the method: {method["method_name"]} of class {item["name"]} at {file}"""
                             )
 
                             context = self.context_extractor(method, project)
@@ -800,24 +829,6 @@ class DocGen(object):
                             # just add new coroutine and method metadata to a task list
                             _coroutines["methods"].append((method, request_coroutine))
 
-                    # same condition for classes to producing a new coroutine
-                    if not item.get("docstrings") or self.main_idea:
-
-                        logger.info(
-                            f"""Requesting for docstrings {"generation" if self.main_idea else "update"} for the class: {item["name"]} at {file}"""
-                        )
-
-                        class_metadata.append(item["docstring"])
-
-                        request_coroutine = (
-                            self.generate_class_documentation(class_metadata, semaphore)
-                            if not self.main_idea
-                            else self.update_class_documentation(class_metadata, semaphore)
-                        )
-
-                        # just add new coroutine and class name to a task list
-                        _coroutines["classes"].append((class_name, request_coroutine))
-
                 case "function":
 
                     function_metadata = item["details"]
@@ -826,7 +837,7 @@ class DocGen(object):
                     if not function_metadata.get("docstring") or self.main_idea:
 
                         logger.info(
-                            f"""Requesting for docstrings {"generation" if self.main_idea else "update"} for the function: {function_metadata["method_name"]} at {file}"""
+                            f"""Requesting for docstrings {"update" if self.main_idea else "generation"} for the function: {function_metadata["method_name"]} at {file}"""
                         )
 
                         request_coroutine = (
@@ -848,6 +859,64 @@ class DocGen(object):
             result[key] = [pair for pair in zip(fetched_docstrings, structure_names) if pair[0]]
 
         return result
+
+    async def _fetch_docstrings_for_class(
+        self, file: str, file_meta: dict, semaphore: asyncio.Semaphore
+    ) -> dict[str, list]:
+        """
+        Collects a batch of requests for each class in given file by its metadata.
+        Then concurrently executes a batch of requests and wraps the results to the dict structure.
+
+        Args:
+            file: The name of the file for which the generation will be performed.
+            file_meta: Dictionary which contains metadata about file from project parsed structure.
+            semaphore: Synchronous primitive for preventing the overload external LLM-server API.
+
+        Returns:
+            dict[str, list]
+        """
+
+        _coroutines = []
+
+        for item in file_meta["structure"]:
+
+            _type = item["type"]
+
+            match _type:
+                case "class":
+
+                    if not item.get("docstring") or self.main_idea:
+
+                        # collecting a class metadata ahead
+                        class_name = item["name"]
+                        class_metadata = [class_name, item["attributes"]]
+
+                        # enrich the class metadata by meta about it's methods
+                        for method in item["methods"]:
+
+                            class_metadata.append(
+                                {"method_name": method["method_name"], "docstring": method["docstring"]}
+                            )
+
+                        class_metadata.append(item["docstring"])
+
+                        logger.info(
+                            f"""Requesting for docstrings {"update" if self.main_idea else "generation"} for the class: {item["name"]} at {file}"""
+                        )
+
+                        request_coroutine = (
+                            self.generate_class_documentation(class_metadata, semaphore)
+                            if not self.main_idea
+                            else self.update_class_documentation(class_metadata, semaphore)
+                        )
+
+                        # just add new coroutine and class name to a task list
+                        _coroutines.append((class_name, request_coroutine))
+
+        fetched_docstrings = await asyncio.gather(*[task[1] for task in _coroutines])
+        structure_names = [name[0] for name in _coroutines]
+
+        return {"classes": [pair for pair in zip(fetched_docstrings, structure_names) if pair[0]]}
 
     async def generate_the_main_idea(self, parsed_structure: dict, top_n: int = 5) -> None:
 

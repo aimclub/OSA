@@ -231,16 +231,45 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen(config_loader)
 
+        # getting the project source code and start generating docstrings
         source_code = loop.run_until_complete(dg._get_project_source_code(res, sem))
-        generated_before_idea = loop.run_until_complete(dg._generate_docstrings_for_project(res, rate_limit))
-        augmented_before_idea = dg._run_in_executor(res, source_code, generated_before_idea)
-        loop.run_until_complete(dg._write_augmented_code(res, augmented_before_idea, sem))
 
-        loop.run_until_complete(dg.generate_the_main_idea(res))
+        # first stage
+        # generate for functions and methods first
+        fn_generated_docstrings = loop.run_until_complete(
+            dg._generate_docstrings_for_items(res, docstring_type=("functions", "methods"), rate_limit=rate_limit)
+        )
+        fn_augmented = dg._run_in_executor(
+            res, source_code, generated_docstrings=fn_generated_docstrings, n_workers=workers
+        )
+        loop.run_until_complete(dg._write_augmented_code(res, augmented_code=fn_augmented, sem=sem))
+
+        # re-analyze project after docstrings writing
         res = ts.analyze_directory(ts.cwd)
+        source_code = loop.run_until_complete(dg._get_project_source_code(ts.analyze_directory(ts.cwd), sem))
 
+        # then generate description for classes based on filled methods docstrings
+        cl_generated_docstrings = loop.run_until_complete(
+            dg._generate_docstrings_for_items(res, docstring_type="classes", rate_limit=rate_limit)
+        )
+        cl_augmented = dg._run_in_executor(
+            res, source_code, generated_docstrings=cl_generated_docstrings, n_workers=workers
+        )
+        loop.run_until_complete(dg._write_augmented_code(res, augmented_code=cl_augmented, sem=sem))
+
+        # generate the main idea
+        loop.run_until_complete(dg.generate_the_main_idea(res))
+
+        # re-analyze project and read augmented source code
+        res = ts.analyze_directory(ts.cwd)
         source_code = loop.run_until_complete(dg._get_project_source_code(res, sem))
-        generated_after_idea = loop.run_until_complete(dg._generate_docstrings_for_project(res, rate_limit))
+
+        # update docstrings for project based on generated main idea
+        generated_after_idea = loop.run_until_complete(
+            dg._generate_docstrings_for_items(res, docstring_type=("functions", "methods", "classes"), rate_limit=rate_limit)
+        )
+
+        # augment the source code and persist it
         augmented_after_idea = dg._run_in_executor(res, source_code, generated_after_idea, workers)
         loop.run_until_complete(dg._write_augmented_code(res, augmented_after_idea, sem))
 
