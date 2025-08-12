@@ -266,7 +266,9 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
 
         # update docstrings for project based on generated main idea
         generated_after_idea = loop.run_until_complete(
-            dg._generate_docstrings_for_items(res, docstring_type=("functions", "methods", "classes"), rate_limit=rate_limit)
+            dg._generate_docstrings_for_items(
+                res, docstring_type=("functions", "methods", "classes"), rate_limit=rate_limit
+            )
         )
 
         # augment the source code and persist it

@@ -656,7 +656,7 @@ class DocGen(object):
         return {file: source_code}
 
     async def _generate_docstrings_for_items(
-            self, parsed_structure: dict, docstring_type: tuple | str, rate_limit: int = 10
+        self, parsed_structure: dict, docstring_type: tuple | str, rate_limit: int = 10
     ) -> dict[str, dict]:
         """
         Generates a docstrings for all structures in given project by interacting with LLM.
@@ -713,9 +713,7 @@ class DocGen(object):
                 )
 
                 # then fetch for classes
-                cl_results = await _iterate_and_collect(
-                    parsed_structure, self._fetch_docstrings_for_class, semaphore
-                )
+                cl_results = await _iterate_and_collect(parsed_structure, self._fetch_docstrings_for_class, semaphore)
 
                 assert fn_results.keys() == cl_results.keys(), "Filenames for each type of the result must be the same."
 
@@ -723,7 +721,9 @@ class DocGen(object):
                 generating_results = {file: {fn_results[file].update(cl_results[file])} for file in parsed_structure}
 
             case _:
-                raise ValueError("Invalid docstrings_type passed! It must be ('functions', 'methods') or 'classes' or ('functions', 'methods', 'classes')")
+                raise ValueError(
+                    "Invalid docstrings_type passed! It must be ('functions', 'methods') or 'classes' or ('functions', 'methods', 'classes')"
+                )
 
         logger.info(f"Docstrings generation for the project is complete!")
         return generating_results
