@@ -937,22 +937,16 @@ class DocGen(object):
             shutil.rmtree(mkdocs_dir)
         logger.info(f"MKDocs configuration successfully built at: {mkdocs_dir}")
 
-    def create_mkdocs_github_workflow(
-        self,
-        repository_url: str,
-        path: str
-    ) -> None:
+    def create_mkdocs_git_workflow(self, repository_url: str, path: str) -> None:
         """
-        Generates GitHub workflow .yaml for MkDocs documentation for a Python project.
+        Generates .yaml documentation deploy workflow for chosen git host service.
 
         Parameters:
             repository_url: str - URI of the Python project's repository on GitHub.
             path: str - The path to the root directory of the Python project.
-            filename: str - The name of the .yaml file that contains GitHub workflow for mkdocs deploying.
-            branches: list[str] - List of branches to trigger the MkDocs workflow on
 
         Returns:
-            None. The method generates GitHub workflow for MkDocs documentation of a current project.
+            None. The method generates workflow for MkDocs documentation of a current project.
         """
         config_file = osa_project_root().resolve() / "docs" / "templates" / "ci_config.toml"
         git_host = self.config.git.host
@@ -991,7 +985,7 @@ class DocGen(object):
                 "image": f"python:{gitlab_cfg['build']['python_version']}",
                 "before_script": gitlab_cfg["build"]["before_script"],
                 "script": gitlab_cfg["build"]["script"],
-                "rules": gitlab_cfg["build"]["rules"]
+                "rules": gitlab_cfg["build"]["rules"],
             }
 
             gitlab_data["pages"] = {
@@ -1002,12 +996,12 @@ class DocGen(object):
                 "artifacts": {
                     "paths": gitlab_cfg["deploy"]["artifacts"]["paths"],
                 },
-                "rules": gitlab_cfg["deploy"]["rules"]
+                "rules": gitlab_cfg["deploy"]["rules"],
             }
 
             yaml.Dumper.ignore_aliases = lambda *args: True
             gitlab_file.write_text(yaml.safe_dump(gitlab_data, sort_keys=False))
-            logger.info(f"GitLab CI created: {gitlab_file}")       
+            logger.info(f"GitLab CI created: {gitlab_file}")
 
     @staticmethod
     def _sanitize_name(name: str) -> str:
