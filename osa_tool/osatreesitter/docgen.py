@@ -2,7 +2,7 @@ import os
 import re
 import asyncio, aiofiles
 from concurrent.futures import ProcessPoolExecutor
-from typing import Tuple, List, Dict, Callable
+from typing import List, Dict, Callable
 
 import black
 from pathlib import Path
