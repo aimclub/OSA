@@ -717,8 +717,10 @@ class DocGen(object):
 
                 assert fn_results.keys() == cl_results.keys(), "Filenames for each type of the result must be the same."
 
-                # merge the results of generation for each result type
-                generating_results = {file: {fn_results[file].update(cl_results[file])} for file in parsed_structure}
+                # merge the results of generation for each result type. following dict structure is {file: results}
+                generating_results = {
+                    f: {fn_results[f].update(cl_results[f])} for f, s in parsed_structure.items() if s.get("structure")
+                }
 
             case _:
                 raise ValueError(
