@@ -719,7 +719,7 @@ class DocGen(object):
 
                 # merge the results of generation for each result type. following dict structure is {file: results}
                 generating_results = {
-                    f: {fn_results[f].update(cl_results[f])} for f, s in parsed_structure.items() if s.get("structure")
+                    f: fn_results[f] | cl_results[f] for f, s in parsed_structure.items() if s.get("structure")
                 }
 
             case _:
