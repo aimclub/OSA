@@ -16,7 +16,11 @@ from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.convertion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.docs_generator.license import compile_license_file
-from osa_tool.git_agent.git_agent import GitAgent
+from osa_tool.git_agent.git_agent import (
+    GitHubAgent,
+    GitLabAgent,
+    GitverseAgent
+)
 from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
@@ -75,7 +79,13 @@ def main():
         )
 
         # Initialize Git agent and perform operations
-        git_agent = GitAgent(args.repository, args.branch)
+        if "github.com" in args.repository:
+            git_agent = GitHubAgent(args.repository, args.branch)
+        elif "gitlab" in args.repository:
+            git_agent = GitLabAgent(args.repository, args.branch)
+        elif "gitverse.ru" in args.repository:
+            git_agent = GitverseAgent(args.repository, args.branch)
+
         if create_fork:
             git_agent.star_repository()
             git_agent.create_fork()
@@ -83,17 +93,17 @@ def main():
 
         # Initialize ModeScheduler
         sourcerank = SourceRank(config)
-        scheduler = ModeScheduler(config, sourcerank, args, workflow_keys)
+        scheduler = ModeScheduler(config, sourcerank, args, workflow_keys, git_agent.metadata)
         plan = scheduler.plan
 
         if create_fork:
             git_agent.create_and_checkout_branch()
 
         # Repository Analysis Report generation
-        # NOTE: Must run first - switches GitHub branches
+        # NOTE: Must run first - switches Git branches
         if plan.get("report"):
             rich_section("Report generation")
-            analytics = ReportGenerator(config, sourcerank)
+            analytics = ReportGenerator(config, sourcerank, git_agent.metadata)
             analytics.build_pdf()
             if create_fork:
                 git_agent.upload_report(analytics.filename, analytics.output_path)
@@ -117,12 +127,12 @@ def main():
         # License compiling
         if license_type := plan.get("ensure_license"):
             rich_section("License generation")
-            compile_license_file(sourcerank, license_type)
+            compile_license_file(sourcerank, license_type, git_agent.metadata)
 
         # Generate community documentation
         if plan.get("community_docs"):
             rich_section("Community docs generation")
-            generate_documentation(config)
+            generate_documentation(config, git_agent.metadata)
 
         # Requirements generation
         if plan.get("requirements"):
@@ -132,13 +142,13 @@ def main():
         # Readme generation
         if plan.get("readme"):
             rich_section("README generation")
-            readme_agent(config, plan.get("article"), plan.get("refine_readme"))
+            readme_agent(config, plan.get("article"), plan.get("refine_readme"), git_agent.metadata)
 
         # About section generation
         about_gen = None
         if plan.get("about"):
             rich_section("About Section generation")
-            about_gen = AboutGenerator(config)
+            about_gen = AboutGenerator(config, git_agent)
             about_gen.generate_about_content()
             if create_fork:
                 git_agent.update_about_section(about_gen.get_about_content())

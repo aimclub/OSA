@@ -2,7 +2,7 @@ import os
 
 import tomli
 
-from osa_tool.analytics.metadata import load_data_metadata
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.utils import find_in_repo_tree, save_sections
@@ -14,12 +14,12 @@ class CommunityTemplateBuilder:
     Builds PULL_REQUEST_TEMPLATE Markdown file.
     """
 
-    def __init__(self, config_loader: ConfigLoader):
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.repo_url = self.config.git.repository
         self.sourcerank = SourceRank(self.config_loader)
-        self.metadata = load_data_metadata(self.repo_url)
+        self.metadata = metadata
         self.template_path = os.path.join(osa_project_root(), "docs", "templates", "community.toml")
         self.url_path = f"https://{self.config.git.host_domain}/{self.config.git.full_name}/"
         self.branch_path = f"tree/{self.metadata.default_branch}/"

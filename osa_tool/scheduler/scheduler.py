@@ -3,7 +3,7 @@ import os
 
 from pydantic import ValidationError
 
-from osa_tool.analytics.metadata import load_data_metadata
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
@@ -21,7 +21,7 @@ class ModeScheduler:
     based on repository analysis, configuration, and selected execution mode.
     """
 
-    def __init__(self, config: ConfigLoader, sourcerank: SourceRank, args, workflow_keys: list):
+    def __init__(self, config: ConfigLoader, sourcerank: SourceRank, args, workflow_keys: list, metadata: RepositoryMetadata):
         self.mode = args.mode
         self.args = args
         self.workflow_keys = workflow_keys
@@ -29,7 +29,7 @@ class ModeScheduler:
         self.sourcerank = sourcerank
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.repo_url = self.config.git.repository
-        self.metadata = load_data_metadata(self.repo_url)
+        self.metadata = metadata
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.prompts = PromptLoader().prompts
         self.workflows_plan = {key: value for key, value in vars(self.args).items() if key in self.workflow_keys}
