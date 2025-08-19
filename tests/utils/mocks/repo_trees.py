@@ -40,7 +40,7 @@ CONTRIBUTING.txt
     "WITH_REQUIREMENTS_ONLY": """
 src/
 src/main.py
-requirements-dev.txt
+requirements.txt
 """.strip(),
     "WITH_EXAMPLES_ONLY": """
 src/main.py
@@ -49,6 +49,14 @@ tutorials/getting_started.ipynb
     "LICENSE_ONLY": """
 LICENSE.md
 src/
+src/main.py
+""".strip(),
+    "WITH_SETUP": """
+setup.py
+src/main.py
+""".strip(),
+    "WITH_PYPROJECT": """
+pyproject.toml
 src/main.py
 """.strip(),
 }

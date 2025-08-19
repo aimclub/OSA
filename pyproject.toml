@@ -57,6 +57,7 @@ pydantic-extra-types = "2.9.0"
 pydantic_core = "~2.23.4"
 Pygments = "2.19.1"
 pytest = "8.3.4"
+pytest-asyncio = "1.1.0"
 pytest-mock = "3.14.0"
 python-dotenv = "1.0.1"
 PyYAML = "6.0.2"
@@ -81,7 +82,7 @@ black = "25.1.0"
 mkdocs = "1.6.1"
 mkdocstrings = { extras = ["python"], version = "0.29.1" }
 mkdocs-material = "9.6.13"
-pipreqs = {version= "~=0.5.0", python = "<3.13"}
+pipreqs = { version = "~=0.5.0", python = "<3.13" }
 aiofiles = "^24.1.0"
 
 [tool.poetry.group.dev.dependencies]

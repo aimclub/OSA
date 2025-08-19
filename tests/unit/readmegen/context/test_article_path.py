@@ -1,98 +1,103 @@
 import os
 from tempfile import NamedTemporaryFile
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
+import requests
 
-from osa_tool.readmegen.context.article_path import fetch_pdf_from_url, get_pdf_path
-
-
-@pytest.fixture
-def mock_pdf_file():
-    with NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
-        temp_file.write(b"%PDF-1.4 test pdf content")
-        temp_pdf_path = temp_file.name
-    yield temp_pdf_path
-    os.remove(temp_pdf_path)
+from osa_tool.readmegen.context.article_path import get_pdf_path, fetch_pdf_from_url
+from tests.utils.fixtures.article_fixtures import temp_pdf_file
 
 
-@pytest.fixture
-def mock_url_response():
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.headers = {"Content-Type": "application/pdf"}
-    mock_response.iter_content.return_value = [b"%PDF-1.4 mock pdf content"]
-    return mock_response
+def test_get_pdf_path_local_valid(temp_pdf_file):
+    # Assert
+    assert get_pdf_path(temp_pdf_file) == temp_pdf_file
 
 
-@patch("requests.get")
-def test_get_pdf_path_url(mock_get, mock_url_response):
+def test_get_pdf_path_local_not_pdf():
     # Arrange
-    mock_get.return_value = mock_url_response
-    url = "http://example.com/test.pdf"
+    with NamedTemporaryFile(delete=False, suffix=".txt") as tmp:
+        tmp.write(b"Not a PDF")
+        tmp.flush()
+        tmp_name = tmp.name
+    # Assert
+    try:
+        assert get_pdf_path(tmp_name) is None
+    # Cleanup
+    finally:
+        os.remove(tmp_name)
+
+
+def test_get_pdf_path_local_missing():
+    # Assert
+    assert get_pdf_path("nonexistent.pdf") is None
+
+
+@patch("osa_tool.readmegen.context.article_path.fetch_pdf_from_url", return_value="/tmp/fake.pdf")
+def test_get_pdf_path_url_valid(mock_fetch):
     # Act
-    pdf_path = get_pdf_path(url)
+    result = get_pdf_path("http://example.com/file.pdf")
+
+    # Assert
+    assert result == "/tmp/fake.pdf"
+    mock_fetch.assert_called_once()
+
+
+@patch("osa_tool.readmegen.context.article_path.fetch_pdf_from_url", return_value=None)
+def test_get_pdf_path_url_invalid(mock_fetch):
+    # Act
+    result = get_pdf_path("http://example.com/invalid.pdf")
+
+    # Assert
+    assert result is None
+    mock_fetch.assert_called_once()
+
+
+def test_fetch_pdf_from_url_success(tmp_path, mock_requests_response_factory):
+    # Arrange
+    mock_resp = mock_requests_response_factory(
+        200, headers={"Content-Type": "application/pdf"}, content_iter=lambda chunk_size: [b"%PDF-1.4 fake data"]
+    )
+    with patch("requests.get", return_value=mock_resp):
+        # Act
+        pdf_path = fetch_pdf_from_url("http://example.com/file.pdf")
+
     # Assert
     assert pdf_path is not None
-    assert pdf_path.endswith(".pdf")
     assert os.path.exists(pdf_path)
-    # Teardown
+    with open(pdf_path, "rb") as f:
+        assert b"%PDF-1.4" in f.read()
+
+    # Cleanup
     os.remove(pdf_path)
 
 
-@patch("requests.get")
-def test_get_pdf_path_invalid_url(mock_get):
+def test_fetch_pdf_from_url_not_pdf(mock_requests_response_factory):
     # Arrange
-    mock_get.return_value = MagicMock(status_code=404)
-    url = "http://example.com/invalid.pdf"
-    # Act
-    pdf_path = get_pdf_path(url)
+    mock_resp = mock_requests_response_factory(200, headers={"Content-Type": "text/html"})
+    with patch("requests.get", return_value=mock_resp):
+        # Act
+        pdf_path = fetch_pdf_from_url("http://example.com/file.pdf")
+
     # Assert
     assert pdf_path is None
 
 
-def test_get_pdf_path_file(mock_pdf_file):
-    # Act
-    pdf_path = get_pdf_path(mock_pdf_file)
-    # Assert
-    assert pdf_path == mock_pdf_file
-    assert os.path.exists(pdf_path)
-
-
-def test_get_pdf_path_invalid_file():
+def test_fetch_pdf_from_url_404(mock_requests_response_factory):
     # Arrange
-    invalid_path = os.path.join(os.getcwd(), "test.txt")
-    with open(invalid_path, "w") as f:
-        f.write("This is not a PDF.")
-    # Act
-    pdf_path = get_pdf_path(invalid_path)
+    mock_resp = mock_requests_response_factory(404, headers={"Content-Type": "application/pdf"})
+    with patch("requests.get", return_value=mock_resp):
+        # Act
+        pdf_path = fetch_pdf_from_url("http://example.com/missing.pdf")
+
     # Assert
     assert pdf_path is None
-    # Teardown
-    os.remove(invalid_path)
 
 
-@patch("requests.get")
-def test_fetch_pdf_from_url_success(mock_get, mock_url_response):
+def test_fetch_pdf_from_url_exception():
     # Arrange
-    mock_get.return_value = mock_url_response
-    url = "http://example.com/test.pdf"
-    # Act
-    pdf_file_path = fetch_pdf_from_url(url)
-    # Assert
-    assert pdf_file_path is not None
-    assert pdf_file_path.endswith(".pdf")
-    assert os.path.exists(pdf_file_path)
-    # Teardown
-    os.remove(pdf_file_path)
+    with patch("requests.get", side_effect=requests.exceptions.RequestException("Boom")):
+        # Act
+        pdf_path = fetch_pdf_from_url("http://example.com/error.pdf")
 
-
-@patch("requests.get")
-def test_fetch_pdf_from_url_failure(mock_get):
-    # Arrange
-    mock_get.return_value = MagicMock(status_code=404)
-    url = "http://example.com/invalid.pdf"
-    # Act
-    pdf_file_path = fetch_pdf_from_url(url)
     # Assert
-    assert pdf_file_path is None
+    assert pdf_path is None

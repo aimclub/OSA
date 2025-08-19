@@ -5,7 +5,7 @@ repository = "https://github.com/aimclub/OSA"
 # Language Model API Settings
 [llm]
 api = "openai"
-rate_limit = 10
+rate_limit = 1
 url = "https://api.openai.com/v1"
 context_window = 4096
 encoder = "cl100k_base"

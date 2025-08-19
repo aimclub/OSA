@@ -150,15 +150,18 @@ class DependencyExtractor:
 
         techs = set()
 
-        with open(path, encoding="utf-8") as f:
-            content = f.read()
+        try:
+            with open(path, encoding="utf-8") as f:
+                content = f.read()
+            match = re.search(self.regex_setup_install_requires, content, re.DOTALL)
+            if match:
+                items = re.findall(self.regex_setup_dependency_items, match.group(1))
+                for item in items:
+                    dep = next(filter(None, item))
+                    techs.add(dep.split()[0].lower())
+        except Exception as e:
+            logger.error(f"Failed to parse setup.py: {e}")
 
-        match = re.search(self.regex_setup_install_requires, content, re.DOTALL)
-        if match:
-            items = re.findall(self.regex_setup_dependency_items, match.group(1))
-            for item in items:
-                dep = next(filter(None, item))
-                techs.add(dep.split()[0].lower())
         return techs
 
     @staticmethod

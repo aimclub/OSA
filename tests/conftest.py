@@ -133,6 +133,14 @@ load_metadata_report_generator = create_load_metadata_fixture("osa_tool.analytic
 load_metadata_community = create_load_metadata_fixture("osa_tool.docs_generator.community.load_data_metadata")
 load_metadata_contributing = create_load_metadata_fixture("osa_tool.docs_generator.contributing.load_data_metadata")
 load_metadata_license = create_load_metadata_fixture("osa_tool.docs_generator.license.load_data_metadata")
+# readmegen/generator
+load_metadata_base_builder = create_load_metadata_fixture(
+    "osa_tool.readmegen.generator.base_builder.load_data_metadata"
+)
+load_metadata_header = create_load_metadata_fixture("osa_tool.readmegen.generator.header.load_data_metadata")
+load_metadata_installation = create_load_metadata_fixture(
+    "osa_tool.readmegen.generator.installation.load_data_metadata"
+)
 
 
 @pytest.fixture

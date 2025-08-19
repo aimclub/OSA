@@ -41,6 +41,7 @@ class DataFactory:
         version = random.choice(["3.5", "4.0", "4-turbo"])
         return {
             "api": "openai",
+            "rate_limit": random.randint(5, 20),
             "url": f"https://api.openai.{random_word()}.com/v1",
             "context_window": random.randint(2048, 8192),
             "encoder": f"{random_word()}_encoder",
