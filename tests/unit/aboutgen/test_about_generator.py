@@ -1,10 +1,5 @@
-from unittest.mock import MagicMock, patch
-
-import pytest
-
 from osa_tool.aboutgen.about_generator import AboutGenerator
-from tests.utils.fixtures.extract_readme_content_fixtures import mock_readme_content_aboutgen
-from tests.utils.fixtures.model_handler_fixtures import mock_model_handler_aboutgen
+from tests.utils.fixtures.aboutgen_fixtures import *
 
 
 def test_about_generator_init(

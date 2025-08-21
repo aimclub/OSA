@@ -16,6 +16,9 @@ def data_factory():
     return DataFactory()
 
 
+pytest_plugins = ["tests.utils.fixtures.readmegen_prompt_builder_fixtures"]
+
+
 # -------------------
 # Config Loader Fixtures
 # -------------------
@@ -145,6 +148,8 @@ load_metadata_header = create_load_metadata_fixture("osa_tool.readmegen.generato
 load_metadata_installation = create_load_metadata_fixture(
     "osa_tool.readmegen.generator.installation.load_data_metadata"
 )
+# readmegen/prompts
+load_metadata_prompts = create_load_metadata_fixture("osa_tool.readmegen.prompts.prompts_builder.load_data_metadata")
 
 
 @pytest.fixture
