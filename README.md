@@ -300,28 +300,18 @@ for their code that we used as a foundation for our own version of README genera
 
 If you use this software, please cite it as below.
 
-### APA format
+### Simple format
 
-    ITMO, NSS Lab (2025). Open-Source-Advisor repository [Computer software]. https://github.com/aimclub/OSA
+    Nikitin N. et al. An LLM-Powered Tool for Enhancing Scientific Open-Source Repositories // Championing Open-source DEvelopment in ML Workshop@ ICML25.
 
 ### BibTeX format
 
-    @misc{Open-Source-Advisor,
-
-        author = {ITMO, NSS Lab},
-
-        title = {Open-Source-Advisor repository},
-
-        year = {2025},
-
-        publisher = {github.com},
-
-        journal = {github.com repository},
-
-        howpublished = {\url{https://github.com/aimclub/OSA.git}},
-
-        url = {https://github.com/aimclub/OSA.git}
-
-    }
+    @inproceedings{nikitinllm,
+    title={An LLM-Powered Tool for Enhancing Scientific Open-Source Repositories},
+    author={Nikitin, Nikolay and Getmanov, Andrey and Popov, Zakhar and 
+        Ulyanova Ekaterina and Aksenkin, Yaroslav and 
+        Sokolov, Ilya and Boukhanovsky, Alexander},
+    booktitle={Championing Open-source DEvelopment in ML Workshop@ ICML25}
+}
 
 ---

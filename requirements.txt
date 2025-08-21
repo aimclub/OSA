@@ -64,5 +64,5 @@ urllib3==2.3.0
 yarl==1.18.3
 pipreqs==0.5.0
 
-protollm>=0.1.3
+protollm>=0.1.5
 aiofiles>=24.1.0
