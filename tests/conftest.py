@@ -1,3 +1,4 @@
+import os
 from contextlib import ExitStack
 from unittest.mock import Mock, patch, MagicMock
 
@@ -33,6 +34,9 @@ def mock_config_loader(data_factory, request):
     # Create mock loader
     mock_loader = Mock()
     mock_loader.config = settings
+
+    # Set fake API key for tests
+    os.environ["OPENAI_API_KEY"] = "fake-key-for-tests"
 
     # Patch the original ConfigLoader
     with (patch("osa_tool.config.settings.ConfigLoader", return_value=mock_loader),):
