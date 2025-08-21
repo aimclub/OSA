@@ -1,11 +1,10 @@
 import asyncio
 from pathlib import Path
-from unittest.mock import patch, MagicMock, AsyncMock, ANY
+from unittest.mock import patch, MagicMock, AsyncMock
 
 import pytest
 
 from osa_tool.osatreesitter.docgen import DocGen
-from tests.utils.fixtures.osatreesitter_fixtures import mock_aiofiles_open
 
 
 def test_format_class(mock_config_loader):
@@ -589,79 +588,6 @@ def test_format_with_black_calls_black(mock_config_loader, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_process_python_file_empty_structure(mock_config_loader, caplog):
-    # Arrange
-    docgen = DocGen(mock_config_loader)
-    parsed_structure = {"file1.py": {"structure": []}}
-
-    # Act
-    await docgen.process_python_file(parsed_structure)
-
-    # Assert
-    assert "does not contain any functions" in caplog.text
-
-
-@pytest.mark.asyncio
-async def test__process_one_file_methods_and_functions(mock_config_loader, mock_aiofiles_open):
-    # Arrange
-    docgen = DocGen(mock_config_loader)
-    fake_source = "class MyClass:\n    def my_method(self):\n        pass\n"
-
-    file_structure = {
-        "structure": [
-            {
-                "type": "class",
-                "name": "MyClass",
-                "docstring": None,
-                "attributes": [],
-                "methods": [{"method_name": "my_method", "docstring": None}],
-            },
-            {"type": "function", "details": {"method_name": "standalone_func", "docstring": None}},
-        ]
-    }
-    project_structure = {"file1.py": file_structure}
-
-    with (
-        mock_aiofiles_open(fake_source) as mock_open,
-        patch.object(docgen, "generate_method_documentation", new=AsyncMock(return_value="'''Method docs'''")),
-        patch.object(docgen, "generate_class_documentation", new=AsyncMock(return_value="'''Class docs'''")),
-        patch.object(docgen, "extract_pure_docstring", return_value="pure_doc"),
-        patch.object(docgen, "insert_docstring_in_code", return_value=fake_source),
-        patch.object(docgen, "insert_cls_docstring_in_code", return_value=fake_source),
-    ):
-        # Act
-        await docgen._process_one_file("file1.py", file_structure, project_structure, asyncio.Semaphore(10))
-
-        # Assert
-        docgen.generate_method_documentation.assert_any_call({"method_name": "standalone_func", "docstring": None}, ANY)
-        docgen.generate_class_documentation.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test__process_one_file_skip_when_docstrings_exist(mock_config_loader, mock_aiofiles_open):
-    # Arrange
-    docgen = DocGen(mock_config_loader)
-
-    fake_source = "def foo():\n    '''Already documented'''\n    pass\n"
-    file_structure = {
-        "structure": [
-            {
-                "type": "function",
-                "details": {"method_name": "foo", "docstring": "Already documented"},
-            }
-        ]
-    }
-    project_structure = {"file1.py": file_structure}
-
-    with mock_aiofiles_open(fake_source) as mock_open:
-        # Act
-        await docgen._process_one_file("file1.py", file_structure, project_structure, asyncio.Semaphore(10))
-
-        # Assert
-        mock_open.return_value.__aenter__.return_value.write.assert_called_once_with(fake_source)
-
-
-@pytest.mark.asyncio
 async def test_generate_the_main_idea_filters_and_sorts(mock_config_loader, mocker):
     # Arrange
     docgen = DocGen(mock_config_loader)
@@ -845,3 +771,175 @@ def test_purge_temp_files_removes_temp_dir(mock_config_loader, tmp_path):
     assert temp_dir.exists()
     docgen._purge_temp_files(tmp_path)
     assert not temp_dir.exists()
+
+
+@pytest.mark.asyncio
+async def test_generate_docstrings_for_functions_methods(mock_config_loader):
+    # Arrange
+    docgen = DocGen(mock_config_loader)
+
+    async def mock_fetch_docstrings(filename, structure, parsed_structure, semaphore):
+        return {"functions": [("docstring", "func1")], "methods": [("docstring", "method1")]}
+
+    docgen._fetch_docstrings = mock_fetch_docstrings
+    parsed_structure = {
+        "file1.py": {"structure": True},
+        "file2.py": {"structure": True},
+    }
+
+    # Act
+    results = await docgen._generate_docstrings_for_items(parsed_structure, ("functions", "methods"))
+
+    # Assert
+    for file in parsed_structure:
+        assert "functions" in results[file]
+        assert "methods" in results[file]
+
+
+@pytest.mark.asyncio
+async def test_generate_docstrings_for_classes(mock_config_loader):
+    # Arrange
+    docgen = DocGen(mock_config_loader)
+
+    async def mock_fetch_docstrings_for_class(filename, structure, semaphore):
+        return {"classes": [("docstring", "Class1")]}
+
+    docgen._fetch_docstrings_for_class = mock_fetch_docstrings_for_class
+    parsed_structure = {
+        "file1.py": {"structure": True},
+        "file2.py": {"structure": True},
+    }
+
+    # Act
+    results = await docgen._generate_docstrings_for_items(parsed_structure, "classes")
+
+    # Assert
+    for file in parsed_structure:
+        assert "classes" in results[file]
+
+
+@pytest.mark.asyncio
+async def test_generate_docstrings_for_all_types(mock_config_loader):
+    # Arrange
+    docgen = DocGen(mock_config_loader)
+
+    async def mock_fetch_docstrings(filename, structure, parsed_structure, semaphore):
+        return {"functions": [("docstring", "func1")], "methods": [("docstring", "method1")]}
+
+    async def mock_fetch_docstrings_for_class(filename, structure, semaphore):
+        return {"classes": [("docstring", "Class1")]}
+
+    docgen._fetch_docstrings = mock_fetch_docstrings
+    docgen._fetch_docstrings_for_class = mock_fetch_docstrings_for_class
+    parsed_structure = {
+        "file1.py": {"structure": True},
+        "file2.py": {"structure": True},
+    }
+
+    # Act
+    results = await docgen._generate_docstrings_for_items(parsed_structure, ("functions", "methods", "classes"))
+
+    # Assert
+    for file in parsed_structure:
+        assert "functions" in results[file]
+        assert "methods" in results[file]
+        assert "classes" in results[file]
+
+
+def test_perform_code_augmentations(mock_config_loader):
+    # Arrange
+    docgen = DocGen(mock_config_loader)
+    with (
+        patch("osa_tool.osatreesitter.docgen.DocGen.insert_docstring_in_code") as mock_insert,
+        patch("osa_tool.osatreesitter.docgen.DocGen.insert_cls_docstring_in_code") as mock_insert_cls,
+    ):
+        mock_insert.side_effect = lambda src, obj, doc, class_method=False: src + f"\n# {doc}"
+        mock_insert_cls.side_effect = lambda src, cls, doc: src + f"\n# {doc}"
+
+        args = ("file1.py", "def foo(): pass", {"functions": [("doc1", "foo")], "methods": [], "classes": []})
+
+        # Act
+        result = docgen._perform_code_augmentations(args)
+
+        # Assert
+        assert "file1.py" in result
+        assert "# doc1" in result["file1.py"]
+
+
+def test_run_in_executor_with_fake_augment(mock_config_loader):
+    # Arrange
+    docgen = DocGen(mock_config_loader)
+    parsed_structure = {
+        "file1.py": {"structure": True},
+        "file2.py": {"structure": True},
+    }
+    project_source_code = {
+        "file1.py": "def foo(): pass",
+        "file2.py": "def bar(): pass",
+    }
+    generated_docstrings = {
+        "file1.py": {"functions": [("doc1", "foo")], "methods": [], "classes": []},
+        "file2.py": {"functions": [("doc2", "bar")], "methods": [], "classes": []},
+    }
+
+    def fake_augment(args):
+        filename, src, docs = args
+        return {filename: src + "\n# augmented"}
+
+    # Act
+    args = [(file, project_source_code[file], generated_docstrings[file]) for file in parsed_structure]
+    results = []
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        for result in executor.map(fake_augment, args):
+            results.append(result)
+
+    # Assert
+    expected_results = [
+        {"file1.py": "def foo(): pass\n# augmented"},
+        {"file2.py": "def bar(): pass\n# augmented"},
+    ]
+    assert results == expected_results
+
+
+@pytest.mark.asyncio
+async def test_get_project_source_code_with_config(tmp_path, mock_config_loader):
+    # Arrange
+    files = {"file1.py": "print('hello')", "file2.py": "print('world')"}
+
+    for name, content in files.items():
+        (tmp_path / name).write_text(content, encoding="utf-8")
+    parsed_structure = {str(tmp_path / name): {"structure": True} for name in files}
+
+    sem = asyncio.Semaphore(2)
+
+    docgen = DocGen(config_loader=mock_config_loader)
+
+    # Act
+    result = await docgen._get_project_source_code(parsed_structure, sem)
+
+    # Assert
+    expected = {str(tmp_path / k): v for k, v in files.items()}
+    assert result == expected
+
+
+@pytest.mark.asyncio
+async def test_write_augmented_code_with_config(tmp_path, mock_config_loader):
+    # Arrange
+    files = ["file1.py", "file2.py"]
+    for f in files:
+        (tmp_path / f).write_text("old code", encoding="utf-8")
+    parsed_structure = {str(tmp_path / f): {"structure": True} for f in files}
+    augmented_code = [{str(tmp_path / files[0]): "new code 1"}, {str(tmp_path / files[1]): "new code 2"}]
+
+    sem = asyncio.Semaphore(2)
+    docgen = DocGen(config_loader=mock_config_loader)
+
+    # Act
+    await docgen._write_augmented_code(parsed_structure, augmented_code, sem)
+
+    # Assert
+    for i, f in enumerate(files):
+        content = (tmp_path / f).read_text(encoding="utf-8")
+        assert content == augmented_code[i][str(tmp_path / f)]
