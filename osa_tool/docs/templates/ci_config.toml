@@ -32,7 +32,9 @@ stage = "build"
 python_version = "3.12"
 before_script = ["pip install mkdocs mkdocs-material mkdocstrings[python]"]
 script = ["mkdocs build --config-file osa_mkdocs.yml"]
-rules = [{ if = '$CI_COMMIT_BRANCH == "main"', when = "always" }, { if = '$CI_PIPELINE_SOURCE == "merge_request_event"', when = "always" }]
+artifacts.paths = ["site"]
+artifacts.expire_in = "1 week"
+rules = [{ if = '$CI_COMMIT_BRANCH == "main"'}, { if = '$CI_PIPELINE_SOURCE == "merge_request_event"'}]
 
 [gitlab.deploy]
 stage = "deploy"
@@ -40,4 +42,4 @@ python_version = "3.12"
 before_script = ["pip install mkdocs mkdocs-material mkdocstrings[python]"]
 script = ["mkdocs build --config-file osa_mkdocs.yml", "mv site public"]
 artifacts.paths = ["public"]
-rules = [{ if = '$CI_COMMIT_BRANCH == "main"', when = "always" }, { if = '$CI_PIPELINE_SOURCE == "merge_request_event"', when = "always" }]
+rules = [{ if = '$CI_COMMIT_BRANCH == "main"'}]

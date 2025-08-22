@@ -985,6 +985,10 @@ class DocGen(object):
                 "image": f"python:{gitlab_cfg['build']['python_version']}",
                 "before_script": gitlab_cfg["build"]["before_script"],
                 "script": gitlab_cfg["build"]["script"],
+                "artifacts": {
+                    "paths": gitlab_cfg["build"]["artifacts"]["paths"],
+                    "expire_in": gitlab_cfg["build"]["artifacts"]["expire_in"],
+                },
                 "rules": gitlab_cfg["build"]["rules"],
             }
 
