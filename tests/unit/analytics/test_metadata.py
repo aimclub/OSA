@@ -74,20 +74,19 @@ def test_load_data_metadata_unexpected_exception(mock_config_loader):
 
 @pytest.mark.parametrize("mock_config_loader", ["github", "gitlab", "gitverse"], indirect=True)
 def test_detect_platform_with_fixture(mock_config_loader):
+    # Arrange
     repo_url = mock_config_loader.config.git.repository
     expected_platform = mock_config_loader.config.git.host
 
-    mapping = {
-        "github": "github",
-        "gitlab": "gitlab",
-        "gitverse": "gitverse",
-    }
-
-    assert detect_platform(repo_url) == mapping[mock_config_loader.config.git.host]
+    # Assert
+    assert detect_platform(repo_url) == expected_platform
 
 
 @pytest.mark.parametrize("mock_config_loader", ["unsupported_platform"], indirect=True)
 def test_detect_platform_unsupported_with_fixture(mock_config_loader):
+    # Arrange
     repo_url = mock_config_loader.config.git.repository
+
+    # Assert
     with pytest.raises(ValueError, match="Unsupported platform"):
         detect_platform(repo_url)

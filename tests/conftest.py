@@ -16,7 +16,10 @@ def data_factory():
     return DataFactory()
 
 
-pytest_plugins = ["tests.utils.fixtures.readmegen_prompt_builder_fixtures"]
+pytest_plugins = [
+    "tests.utils.fixtures.readmegen_prompt_builder_fixtures",
+    "tests.utils.fixtures.readmegen_llm_service_fixtures",
+]
 
 
 # -------------------
