@@ -1,86 +1,149 @@
-import os
+from unittest.mock import patch
+
+import pytest
+
 from osa_tool.organization.repo_organizer import RepoOrganizer
 
 
-class TestRepoOrganizer:
-    def test_add_directories(self, tmp_path):
-        repo_path = str(tmp_path)
-        organizer = RepoOrganizer(repo_path)
+def test_add_directories_creates_missing(tmp_path):
+    # Arrange
+    repo = RepoOrganizer(str(tmp_path))
+    tests_dir = tmp_path / "tests"
+    examples_dir = tmp_path / "examples"
 
-        assert not os.path.exists(organizer.tests_dir)
-        assert not os.path.exists(organizer.examples_dir)
+    with patch("osa_tool.organization.repo_organizer.logger") as mock_logger:
+        # Act
+        repo.add_directories()
 
-        organizer.add_directories()
-        assert os.path.exists(organizer.tests_dir)
-        assert os.path.exists(organizer.examples_dir)
+        # Assert
+        assert tests_dir.exists()
+        assert examples_dir.exists()
+        assert any("Created directory" in str(c.args[0]) for c in mock_logger.info.call_args_list)
 
-    def test_match_patterns(self):
-        organizer = RepoOrganizer("")
 
-        assert organizer.match_patterns("test_file.py", organizer.TEST_PATTERNS)
-        assert organizer.match_patterns("file_test.py", organizer.TEST_PATTERNS)
-        assert not organizer.match_patterns("file.py", organizer.TEST_PATTERNS)
-        assert organizer.match_patterns("TEST_file.py", organizer.TEST_PATTERNS)
-        assert organizer.match_patterns("file_TEST.py", organizer.TEST_PATTERNS)
+def test_add_directories_when_already_exist(tmp_path):
+    # Arrange
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "examples").mkdir()
+    repo = RepoOrganizer(str(tmp_path))
 
-        assert organizer.match_patterns("example.py", organizer.EXAMPLE_PATTERNS)
-        assert organizer.match_patterns("my_example.py", organizer.EXAMPLE_PATTERNS)
-        assert organizer.match_patterns("sample_code.py", organizer.EXAMPLE_PATTERNS)
-        assert organizer.match_patterns("demo_app.py", organizer.EXAMPLE_PATTERNS)
-        assert not organizer.match_patterns("file.py", organizer.EXAMPLE_PATTERNS)
+    with patch("osa_tool.organization.repo_organizer.logger") as mock_logger:
+        # Act
+        repo.add_directories()
 
-    def test_move_files_by_patterns(self, tmp_path):
-        repo_path = str(tmp_path)
+        # Assert
+        assert any("already exists" in str(c.args[0]) for c in mock_logger.info.call_args_list)
 
-        test_file_path = os.path.join(repo_path, "test_file.py")
-        normal_file_path = os.path.join(repo_path, "normal_file.py")
 
-        with open(test_file_path, "w") as f:
-            f.write("# Test file")
-        with open(normal_file_path, "w") as f:
-            f.write("# Normal file")
+@pytest.mark.parametrize(
+    "filename,patterns,expected",
+    [
+        ("test_something.py", RepoOrganizer.TEST_PATTERNS, True),
+        ("something_test.py", RepoOrganizer.TEST_PATTERNS, True),
+        ("normal.py", RepoOrganizer.TEST_PATTERNS, False),
+        ("example_script.py", RepoOrganizer.EXAMPLE_PATTERNS, True),
+        ("sample_run.py", RepoOrganizer.EXAMPLE_PATTERNS, True),
+        ("unrelated.py", RepoOrganizer.EXAMPLE_PATTERNS, False),
+    ],
+)
+def test_match_patterns(filename, patterns, expected, tmp_path):
+    # Act
+    repo = RepoOrganizer(str(tmp_path))
 
-        organizer = RepoOrganizer(repo_path)
-        organizer.add_directories()
-        organizer.move_files_by_patterns(organizer.tests_dir, organizer.TEST_PATTERNS)
+    # Assert
+    assert repo.match_patterns(filename, patterns) is expected
 
-        assert not os.path.exists(test_file_path)
-        assert os.path.exists(os.path.join(organizer.tests_dir, "test_file.py"))
-        assert os.path.exists(normal_file_path)
 
-    def test_organize(self, tmp_path):
-        repo_path = str(tmp_path)
+def test_move_files_by_patterns_moves_files(tmp_path):
+    # Arrange
+    repo = RepoOrganizer(str(tmp_path))
+    repo.add_directories()
 
-        test_file_path = os.path.join(repo_path, "test_file.py")
-        example_file_path = os.path.join(repo_path, "example_code.py")
-        normal_file_path = os.path.join(repo_path, "normal_file.py")
-        with open(test_file_path, "w") as f:
-            f.write("# Test file")
-        with open(example_file_path, "w") as f:
-            f.write("# Example file")
-        with open(normal_file_path, "w") as f:
-            f.write("# Normal file")
+    # Create a test file at repo root
+    test_file = tmp_path / "test_abc.py"
+    test_file.write_text("print('hi')")
 
-        organizer = RepoOrganizer(repo_path)
-        organizer.organize()
+    with patch("osa_tool.organization.repo_organizer.logger") as mock_logger:
+        # Act
+        repo.move_files_by_patterns(repo.tests_dir, RepoOrganizer.TEST_PATTERNS)
 
-        assert os.path.exists(organizer.tests_dir)
-        assert os.path.exists(organizer.examples_dir)
-        assert not os.path.exists(test_file_path)
-        assert not os.path.exists(example_file_path)
-        assert os.path.exists(normal_file_path)
-        assert os.path.exists(os.path.join(organizer.tests_dir, "test_file.py"))
-        assert os.path.exists(os.path.join(organizer.examples_dir, "example_code.py"))
+    # Assert
+    moved_file = tmp_path / "tests" / "test_abc.py"
+    assert moved_file.exists()
+    assert not test_file.exists()
+    assert any("Moved" in str(c.args[0]) for c in mock_logger.info.call_args_list)
 
-    def test_exclude_directories(self, tmp_path):
-        repo_path = str(tmp_path)
-        excluded_dir = os.path.join(repo_path, ".git")
-        os.makedirs(excluded_dir)
-        test_file_path = os.path.join(excluded_dir, "test_excluded.py")
-        with open(test_file_path, "w") as f:
-            f.write("# Test file in excluded directory")
-        organizer = RepoOrganizer(repo_path)
-        organizer.organize()
 
-        assert os.path.exists(test_file_path)
-        assert not os.path.exists(os.path.join(organizer.tests_dir, "test_excluded.py"))
+def test_move_files_by_patterns_skips_already_in_target(tmp_path):
+    # Arrange
+    repo = RepoOrganizer(str(tmp_path))
+    repo.add_directories()
+
+    inside_test_file = tmp_path / "tests" / "test_inside.py"
+    inside_test_file.write_text("print('inside')")
+
+    with patch("osa_tool.organization.repo_organizer.shutil.move") as mock_move:
+        # Act
+        repo.move_files_by_patterns(repo.tests_dir, RepoOrganizer.TEST_PATTERNS)
+
+        # Assert
+        mock_move.assert_not_called()
+
+
+def test_move_files_handles_exception(tmp_path):
+    # Arrange
+    repo = RepoOrganizer(str(tmp_path))
+    repo.add_directories()
+
+    test_file = tmp_path / "test_err.py"
+    test_file.write_text("print('oops')")
+
+    with (
+        patch("osa_tool.organization.repo_organizer.shutil.move", side_effect=OSError("disk error")),
+        patch("osa_tool.organization.repo_organizer.logger") as mock_logger,
+    ):
+        # Act
+        repo.move_files_by_patterns(repo.tests_dir, RepoOrganizer.TEST_PATTERNS)
+
+    # Assert
+    assert test_file.exists()
+    assert any("Failed to move" in str(c.args[0]) for c in mock_logger.error.call_args_list)
+
+
+def test_organize_runs_all(tmp_path):
+    # Arrange
+    repo = RepoOrganizer(str(tmp_path))
+
+    (tmp_path / "test_func.py").write_text("test")
+    (tmp_path / "demo_script.py").write_text("demo")
+
+    with patch("osa_tool.organization.repo_organizer.logger") as mock_logger:
+        # Act
+        repo.organize()
+
+    # Assert
+    assert (tmp_path / "tests" / "test_func.py").exists()
+    assert (tmp_path / "examples" / "demo_script.py").exists()
+    assert any("completed" in str(c.args[0]) for c in mock_logger.info.call_args_list)
+
+
+@pytest.mark.parametrize(
+    "excluded_dir",
+    [".git", ".venv", "__pycache__", "node_modules", ".idea", ".vscode"],
+)
+def test_move_files_skips_each_excluded_dir(tmp_path, excluded_dir):
+    # Arrange
+    repo = RepoOrganizer(str(tmp_path))
+    repo.add_directories()
+
+    dpath = tmp_path / excluded_dir
+    dpath.mkdir()
+    (dpath / "test_excluded.py").write_text("print('skip me')")
+
+    with patch("osa_tool.organization.repo_organizer.shutil.move") as mock_move:
+        # Act
+        repo.move_files_by_patterns(repo.tests_dir, RepoOrganizer.TEST_PATTERNS)
+
+    # Assert
+    assert (dpath / "test_excluded.py").exists()
+    mock_move.assert_not_called()

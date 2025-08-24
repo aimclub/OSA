@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
-from typing import List
 from enum import Enum
+
+from pydantic import BaseModel, Field
 
 
 class YesNoPartial(str, Enum):
@@ -12,7 +12,7 @@ class YesNoPartial(str, Enum):
 
 class RepositoryStructure(BaseModel):
     compliance: str = Field("Unknown", description="Compliance with standard structure")
-    missing_files: List[str] = Field(
+    missing_files: list[str] = Field(
         default_factory=list,
         description="List of missing critical files that impact project usability and clarity",
     )
@@ -45,11 +45,11 @@ class CodeDocumentation(BaseModel):
 
 
 class OverallAssessment(BaseModel):
-    key_shortcomings: List[str] = Field(
+    key_shortcomings: list[str] = Field(
         default_factory=lambda: ["There are no critical issues"],
         description="List of the most significant and critical issues that need to be addressed",
     )
-    recommendations: List[str] = Field(
+    recommendations: list[str] = Field(
         default_factory=lambda: ["No recommendations"],
         description="Specific improvements to address issues or optimize the process",
     )

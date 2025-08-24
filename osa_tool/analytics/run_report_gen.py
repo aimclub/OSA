@@ -6,7 +6,7 @@ import pandas as pd
 
 from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.github_agent.github_agent import GithubAgent
+from osa_tool.git_agent.git_agent import GitAgent
 from osa_tool.readmegen.context.pypi_status_checker import PyPiPackageInspector
 from osa_tool.run import load_configuration
 from osa_tool.utils import logger, rich_section, delete_repository
@@ -78,7 +78,7 @@ def main():
         )
 
         # Clone the repository
-        github_agent = GithubAgent(repo_url)
+        github_agent = GitAgent(repo_url)
         github_agent.clone_repository()
 
         # Initialize analytics and generate report

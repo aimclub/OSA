@@ -40,10 +40,10 @@ class LLMClient:
         key_files_content = FileProcessor(self.config_loader, key_files).process_files()
 
         logger.info("Generating core features of the project...")
-        core_features = self.run_request(self.prompts.get_prompt_core_features(key_files_content))
+        core_features = self.model_handler.send_request(self.prompts.get_prompt_core_features(key_files_content))
 
         logger.info("Generating project overview...")
-        overview = self.run_request(self.prompts.get_prompt_overview(core_features))
+        overview = self.model_handler.send_request(self.prompts.get_prompt_overview(core_features))
 
         core_features = process_text(core_features)
         overview = process_text(overview)
@@ -51,7 +51,7 @@ class LLMClient:
         logger.info("Attempting to generate Getting Started section...")
         examples_files = extract_example_paths(self.tree)
         examples_content = FileProcessor(self.config_loader, examples_files).process_files()
-        getting_started = self.run_request(self.prompts.get_prompt_getting_started(examples_content))
+        getting_started = self.model_handler.send_request(self.prompts.get_prompt_getting_started(examples_content))
         getting_started = process_text(getting_started)
 
         logger.info("README-style summary generation completed.")
@@ -75,27 +75,29 @@ class LLMClient:
         key_files_content = FileProcessor(self.config_loader, key_files).process_files()
 
         logger.info("Generating summary of key files...")
-        files_summary = self.run_request(self.prompts.get_prompt_files_summary(key_files_content))
+        files_summary = self.model_handler.send_request(self.prompts.get_prompt_files_summary(key_files_content))
 
         path_to_pdf = get_pdf_path(article)
         pdf_content = PdfParser(path_to_pdf).data_extractor()
 
         logger.info("Generating summary of PDF content...")
-        pdf_summary = self.run_request(self.prompts.get_prompt_pdf_summary(pdf_content))
+        pdf_summary = self.model_handler.send_request(self.prompts.get_prompt_pdf_summary(pdf_content))
 
         logger.info("Generating project overview from combined sources...")
-        overview = self.run_request(self.prompts.get_prompt_overview_article(files_summary, pdf_summary))
+        overview = self.model_handler.send_request(self.prompts.get_prompt_overview_article(files_summary, pdf_summary))
 
         logger.info("Generating content section...")
-        content = self.run_request(self.prompts.get_prompt_content_article(files_summary, pdf_summary))
+        content = self.model_handler.send_request(self.prompts.get_prompt_content_article(files_summary, pdf_summary))
 
         logger.info("Generating algorithm description...")
-        algorithms = self.run_request(self.prompts.get_prompt_algorithms_article(key_files_content, pdf_summary))
+        algorithms = self.model_handler.send_request(
+            self.prompts.get_prompt_algorithms_article(key_files_content, pdf_summary)
+        )
 
         logger.info("Attempting to generate Getting Started section...")
         examples_files = extract_example_paths(self.tree)
         examples_content = FileProcessor(self.config_loader, examples_files).process_files()
-        getting_started = self.run_request(self.prompts.get_prompt_getting_started(examples_content))
+        getting_started = self.model_handler.send_request(self.prompts.get_prompt_getting_started(examples_content))
 
         overview = process_text(overview)
         content = process_text(content)
@@ -105,14 +107,9 @@ class LLMClient:
         logger.info("Article-style summary generation completed.")
         return overview, content, algorithms, getting_started
 
-    def run_request(self, prompt: str) -> str:
-        """Sends a prompt to the model and returns the response."""
-        response = self.model_handler.send_request(prompt)
-        return response
-
     def get_key_files(self) -> list:
         """Identifies key files from the project repository using model analysis."""
-        key_files_response = self.run_request(self.prompts.get_prompt_preanalysis())
+        key_files_response = self.model_handler.send_request(self.prompts.get_prompt_preanalysis())
         key_files_cleaned = process_text(key_files_response)
 
         try:
@@ -130,7 +127,7 @@ class LLMClient:
     def deduplicate_sections(self, installation: str, getting_started: str) -> str:
         """Deduplicates information in Installation and Getting Started sections."""
         logger.info("Deduplicating sections Installation and Getting Started...")
-        response = self.run_request(
+        response = self.model_handler.send_request(
             self.prompts.get_prompt_deduplicated_install_and_start(installation, getting_started)
         )
         response = process_text(response)
@@ -138,6 +135,6 @@ class LLMClient:
 
     def refine_readme(self, new_readme_sections: dict) -> str:
         logger.info("Refining README files...")
-        response = self.run_request(self.prompts.get_prompt_refine_readme(new_readme_sections))
+        response = self.model_handler.send_request(self.prompts.get_prompt_refine_readme(new_readme_sections))
         response = process_text(response)
         return response

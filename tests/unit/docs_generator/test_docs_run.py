@@ -1,39 +1,40 @@
-from unittest import mock
+from unittest.mock import patch, MagicMock
 
 from osa_tool.docs_generator.docs_run import generate_documentation
 
 
-@mock.patch("osa_tool.docs_generator.docs_run.CommunityTemplateBuilder")
-@mock.patch("osa_tool.docs_generator.docs_run.ContributingBuilder")
-@mock.patch("osa_tool.docs_generator.docs_run.logger")
-def test_generate_documentation(mock_logger, mock_contributing_builder, mock_community_builder, config_loader):
-    # Arrange
-    # Create mocks for the configuration and all builders
-    mock_contributing = mock.MagicMock()
-    mock_contributing_builder.return_value = mock_contributing
-    mock_community = mock.MagicMock()
-    mock_community_builder.return_value = mock_community
-    # Mock build methods
-    mock_contributing.build = mock.MagicMock()
-    mock_community.build_code_of_conduct = mock.MagicMock()
-    mock_community.build_pull_request = mock.MagicMock()
-    mock_community.build_bug_issue = mock.MagicMock()
-    mock_community.build_documentation_issue = mock.MagicMock()
-    mock_community.build_feature_issue = mock.MagicMock()
+def test_generate_documentation_calls_builders_methods(
+    mock_config_loader, load_metadata_community, load_metadata_contributing, caplog
+):
+    with (
+        patch("osa_tool.docs_generator.docs_run.CommunityTemplateBuilder") as mock_community_cls,
+        patch("osa_tool.docs_generator.docs_run.ContributingBuilder") as mock_contrib_cls,
+    ):
+        # Arrange
+        mock_contributing_instance = MagicMock()
+        mock_community_instance = MagicMock()
 
-    # Act
-    generate_documentation(config_loader)
-    # Assert
-    # Check that Con
-    mock_contributing.build.assert_called_once()
+        mock_contributing_instance.build = MagicMock()
+        mock_community_instance.build_code_of_conduct = MagicMock()
+        mock_community_instance.build_pull_request = MagicMock()
+        mock_community_instance.build_bug_issue = MagicMock()
+        mock_community_instance.build_documentation_issue = MagicMock()
+        mock_community_instance.build_feature_issue = MagicMock()
 
-    # Check that CommunityTemplateBuilder methods were called
-    mock_community.build_code_of_conduct.assert_called_once()
-    mock_community.build_pull_request.assert_called_once()
-    mock_community.build_bug_issue.assert_called_once()
-    mock_community.build_documentation_issue.assert_called_once()
-    mock_community.build_feature_issue.assert_called_once()
+        mock_contrib_cls.return_value = mock_contributing_instance
+        mock_community_cls.return_value = mock_community_instance
+        caplog.set_level("INFO")
 
-    # Check that the logs contain the correct call
-    mock_logger.info.assert_any_call("Starting generating additional documentation.")
-    mock_logger.info.assert_any_call("All additional documentation successfully generated.")
+        # Act
+        generate_documentation(mock_config_loader)
+
+        # Assert
+        assert "Starting generating additional documentation." in caplog.text
+        assert "All additional documentation successfully generated." in caplog.text
+
+        mock_contributing_instance.build.assert_called_once()
+        mock_community_instance.build_code_of_conduct.assert_called_once()
+        mock_community_instance.build_pull_request.assert_called_once()
+        mock_community_instance.build_bug_issue.assert_called_once()
+        mock_community_instance.build_documentation_issue.assert_called_once()
+        mock_community_instance.build_feature_issue.assert_called_once()
