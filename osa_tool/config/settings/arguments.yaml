@@ -14,7 +14,7 @@ mode:
       auto (default)  — automatically determine necessary actions based on repository analysis.
       advanced        — run all enabled features based on provided flags.
   choices: [ "basic", "auto", "advanced" ]
-  default: "auto"
+  default: "basic"
 
 web_mode:
   aliases: [ "--web-mode" ]
@@ -43,13 +43,13 @@ api:
   type: str
   description: "LLM API service provider"
   choices: [ "itmo", "openai", "ollama" ]
-  default: "itmo"
+  default: "openai"
 
 base_url:
   aliases: [ "--base-url" ]
   type: str
   description: "URL of the provider compatible with API OpenAI"
-  default: "https://api.openai.com/v1"
+  default: "https://openrouter.ai/api/v1"
 
 model:
   aliases: [ "--model" ]
@@ -60,7 +60,7 @@ model:
     1. https://vsegpt.ru/Docs/Models
     2. https://platform.openai.com/docs/models
     3. https://ollama.com/library
-  default: "gpt-3.5-turbo"
+  default: "openai/gpt-4.1"
 
 temperature:
   aliases: [ "--temperature" ]
