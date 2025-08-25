@@ -4,7 +4,6 @@ from unittest.mock import patch, MagicMock
 from reportlab.platypus import Table, Paragraph, ListFlowable, Flowable
 
 from osa_tool.analytics.report_maker import ReportGenerator
-from tests.utils.fixtures.report_generator import text_generator_instance
 
 
 def test_report_generator_init(mock_config_loader, mock_sourcerank, load_metadata_report_maker):

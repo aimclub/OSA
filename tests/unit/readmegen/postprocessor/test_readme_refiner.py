@@ -4,7 +4,7 @@ import pytest
 
 import osa_tool.readmegen.postprocessor.readme_refiner as refiner_module
 from osa_tool.readmegen.postprocessor.readme_refiner import ReadmeRefiner
-from tests.utils.fixtures.readmegen_readme_refiner_fixtures import DummyLLM
+from tests.utils.fixtures.readmegen_readme_refiner import DummyLLM
 
 
 def test_parse_generated_readme_basic(mock_config_loader, load_metadata_prompts):

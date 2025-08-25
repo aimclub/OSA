@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch
 from pdfminer.layout import LTTextContainer
 
 from osa_tool.readmegen.context.article_content import PdfParser
-from tests.utils.fixtures.article_fixtures import mock_lt_element
 
 
 @patch("osa_tool.readmegen.context.article_content.pdfplumber.open")

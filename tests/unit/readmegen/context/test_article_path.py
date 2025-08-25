@@ -5,7 +5,6 @@ from unittest.mock import patch
 import requests
 
 from osa_tool.readmegen.context.article_path import get_pdf_path, fetch_pdf_from_url
-from tests.utils.fixtures.article_fixtures import temp_pdf_file
 
 
 def test_get_pdf_path_local_valid(temp_pdf_file):

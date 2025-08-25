@@ -10,16 +10,27 @@ from osa_tool.utils import parse_folder_name
 from tests.data_factory import DataFactory
 from tests.utils.mocks.requests_mock import mock_requests_response
 
+pytest_plugins = [
+    "tests.utils.fixtures.aboutgen",
+    "tests.utils.fixtures.analytics_load_metadata",
+    "tests.utils.fixtures.analytics_report_generator",
+    "tests.utils.fixtures.analytics_sourcerank",
+    "tests.utils.fixtures.models",
+    "tests.utils.fixtures.osa_arguments_parser",
+    "tests.utils.fixtures.osatreesitter",
+    "tests.utils.fixtures.readmegen_context_article",
+    "tests.utils.fixtures.readmegen_llm_service",
+    "tests.utils.fixtures.readmegen_markdown_builder",
+    "tests.utils.fixtures.readmegen_prompt_builder",
+    "tests.utils.fixtures.readmegen_readme_refiner",
+    "tests.utils.fixtures.scheduler",
+    "tests.utils.fixtures.ui_plan_editor",
+]
+
 
 @pytest.fixture(scope="session")
 def data_factory():
     return DataFactory()
-
-
-pytest_plugins = [
-    "tests.utils.fixtures.readmegen_prompt_builder_fixtures",
-    "tests.utils.fixtures.readmegen_llm_service_fixtures",
-]
 
 
 # -------------------
@@ -143,6 +154,9 @@ load_metadata_report_generator = create_load_metadata_fixture("osa_tool.analytic
 load_metadata_community = create_load_metadata_fixture("osa_tool.docs_generator.community.load_data_metadata")
 load_metadata_contributing = create_load_metadata_fixture("osa_tool.docs_generator.contributing.load_data_metadata")
 load_metadata_license = create_load_metadata_fixture("osa_tool.docs_generator.license.load_data_metadata")
+# scheduler
+load_metadata_workflow_manager = create_load_metadata_fixture("osa_tool.scheduler.workflow_manager.load_data_metadata")
+load_metadata_scheduler = create_load_metadata_fixture("osa_tool.scheduler.scheduler.load_data_metadata")
 # readmegen/generator
 load_metadata_base_builder = create_load_metadata_fixture(
     "osa_tool.readmegen.generator.base_builder.load_data_metadata"

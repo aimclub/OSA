@@ -26,7 +26,7 @@ def temp_dir_with_files(tmp_path):
     return str(tmp_path), [str(py1), str(py2)]
 
 
-class FakeNode:
+class Node:
     """Lightweight stub to simulate tree_sitter.Node."""
 
     def __init__(
@@ -51,7 +51,7 @@ class FakeNode:
 
     def child_by_field_name(self, field):
         if field == "name":
-            return FakeNode("identifier", text=(self._name or "func").encode())
+            return Node("identifier", text=(self._name or "func").encode())
         if field == "parameters":
             for c in self.children:
                 if c.type == "parameters":

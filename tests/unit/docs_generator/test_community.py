@@ -3,7 +3,6 @@ from unittest.mock import patch
 import pytest
 
 from osa_tool.docs_generator.community import CommunityTemplateBuilder
-from tests.utils.fixtures.sourcerank import sourcerank_with_repo_tree
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 

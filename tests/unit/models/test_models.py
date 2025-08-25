@@ -1,7 +1,7 @@
 import pytest
 
 from osa_tool.models.models import PayloadFactory, ProtollmHandler, ModelHandlerFactory
-from tests.utils.fixtures.models_fixtures import patch_llm_connector, DummyLLMClient
+from tests.utils.fixtures.models import DummyLLMClient
 
 
 def test_payload_factory_generates_expected_structure(mock_config_loader):

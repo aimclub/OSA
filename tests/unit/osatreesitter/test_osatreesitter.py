@@ -2,7 +2,7 @@ import os
 import shutil
 
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter  # adjust import path
-from tests.utils.fixtures.osatreesitter_fixtures import temp_py_file, temp_dir_with_files, FakeNode
+from tests.utils.fixtures.osatreesitter import Node
 
 
 def test_files_list_directory(temp_dir_with_files):
@@ -77,15 +77,15 @@ def test_traverse_expression_adds_identifiers():
     ts = OSA_TreeSitter(".")
 
     # Fake tree-sitter node using a minimal stub
-    class FakeNode:
+    class Node:
         def __init__(self, type_, children=None, text=None):
             self.type = type_
             self.children = children or []
             self.text = text
 
-    identifier = FakeNode("identifier", text=b"foo")
-    assignment = FakeNode("assignment", children=[identifier])
-    expr_node = FakeNode("expr", children=[assignment])
+    identifier = Node("identifier", text=b"foo")
+    assignment = Node("assignment", children=[identifier])
+    expr_node = Node("expr", children=[assignment])
 
     # Act
     attrs = ts._traverse_expression([], expr_node)
@@ -105,13 +105,13 @@ def test_get_attributes_calls_traverse_expression(monkeypatch):
 
     monkeypatch.setattr(ts, "_traverse_expression", fake_traverse)
 
-    class FakeNode:
+    class Node:
         def __init__(self, type_, children=None):
             self.type = type_
             self.children = children or []
 
-    expr_stmt = FakeNode("expression_statement")
-    block_node = FakeNode("block", children=[expr_stmt])
+    expr_stmt = Node("expression_statement")
+    block_node = Node("block", children=[expr_stmt])
 
     # Act
     attrs = ts._get_attributes([], block_node)
@@ -131,9 +131,9 @@ def test_class_parser_appends_structure(monkeypatch):
     monkeypatch.setattr(ts, "_traverse_block", lambda block, src, imports: [{"method": "from_block"}])
     monkeypatch.setattr(ts, "_extract_function_details", lambda node, src, imports: {"method": "from_func"})
 
-    block_node = FakeNode("block")
-    func_node = FakeNode("function_definition")
-    class_node = FakeNode("class_definition", children=[block_node, func_node], name="MyClass")
+    block_node = Node("block")
+    func_node = Node("function_definition")
+    class_node = Node("class_definition", children=[block_node, func_node], name="MyClass")
 
     structure = {"structure": [], "imports": {}}
 
@@ -155,7 +155,7 @@ def test_function_parser_appends_structure(monkeypatch):
     ts = OSA_TreeSitter(".")
     monkeypatch.setattr(ts, "_extract_function_details", lambda node, src, imports, dec_list=None: {"name": "myfunc"})
 
-    node = FakeNode("function_definition", start_point=(4, 0))
+    node = Node("function_definition", start_point=(4, 0))
     structure = {"structure": [], "imports": {}}
 
     # Act
@@ -171,9 +171,9 @@ def test_function_parser_appends_structure(monkeypatch):
 def test_get_decorators_with_identifier_and_call():
     # Arrange
     ts = OSA_TreeSitter(".")
-    identifier = FakeNode("identifier", text=b"deco1")
-    call = FakeNode("call", text=b"deco2()")
-    dec_node = FakeNode("decorators", children=[identifier, call])
+    identifier = Node("identifier", text=b"deco1")
+    call = Node("call", text=b"deco2()")
+    dec_node = Node("decorators", children=[identifier, call])
 
     # Act
     result = ts._get_decorators([], dec_node)
@@ -255,8 +255,8 @@ def test_extract_imports(monkeypatch):
         return {"x": {"module": "m", "path": "p"}}
 
     monkeypatch.setattr(ts, "_resolve_import_path", fake_resolve)
-    import_node = FakeNode("import_statement", text=b"import x")
-    root_node = FakeNode("root", children=[import_node])
+    import_node = Node("import_statement", text=b"import x")
+    root_node = Node("root", children=[import_node])
 
     # Act
     result = ts._extract_imports(root_node)
@@ -321,15 +321,15 @@ def test_resolve_method_calls_with_assignment(monkeypatch):
     ts = OSA_TreeSitter(".")
     imports = {"m": {"module": "m", "path": "p"}}
 
-    func_node = FakeNode("identifier", text=b"m.do", start_byte=0, end_byte=4)
-    call_node = FakeNode("call", field_function=func_node)
+    func_node = Node("identifier", text=b"m.do", start_byte=0, end_byte=4)
+    call_node = Node("call", field_function=func_node)
     call_node.field_function = func_node
 
-    identifier = FakeNode("identifier", text=b"alias")
-    assign_node = FakeNode("assignment", children=[identifier, call_node])
-    expr = FakeNode("expr", children=[assign_node])
-    block = FakeNode("block", children=[expr])
-    function_node = FakeNode("function_definition", children=[block])
+    identifier = Node("identifier", text=b"alias")
+    assign_node = Node("assignment", children=[identifier, call_node])
+    expr = Node("expr", children=[assign_node])
+    block = Node("block", children=[expr])
+    function_node = Node("function_definition", children=[block])
 
     # Act
     result = ts._resolve_method_calls(function_node, "m.do()", imports)
@@ -344,13 +344,13 @@ def test_resolve_method_calls_direct_call(monkeypatch):
     ts = OSA_TreeSitter(".")
     imports = {"m": {"module": "m", "path": "p"}}
 
-    func_node = FakeNode("identifier", text=b"m.work", start_byte=0, end_byte=6)
-    call_node = FakeNode("call", children=[], field_function=func_node)
+    func_node = Node("identifier", text=b"m.work", start_byte=0, end_byte=6)
+    call_node = Node("call", children=[], field_function=func_node)
     call_node.field_function = func_node
 
-    expr = FakeNode("expr", children=[call_node])
-    block = FakeNode("block", children=[expr])
-    function_node = FakeNode("function_definition", children=[block])
+    expr = Node("expr", children=[call_node])
+    block = Node("block", children=[expr])
+    function_node = Node("function_definition", children=[block])
 
     # Act
     result = ts._resolve_method_calls(function_node, "m.work", imports)
@@ -362,7 +362,7 @@ def test_resolve_method_calls_direct_call(monkeypatch):
 def test_resolve_method_calls_no_block_returns_empty():
     # Arrange
     ts = OSA_TreeSitter(".")
-    fn_node = FakeNode("function_definition", children=[])
+    fn_node = Node("function_definition", children=[])
 
     # Act
     result = ts._resolve_method_calls(fn_node, "src", {})
@@ -379,7 +379,7 @@ def test_extract_structure_orchestrates(monkeypatch):
     fake_tree = type(
         "T",
         (),
-        {"root_node": FakeNode("root", children=[FakeNode("function_definition"), FakeNode("class_definition")])},
+        {"root_node": Node("root", children=[Node("function_definition"), Node("class_definition")])},
     )
     monkeypatch.setattr(ts, "_parse_source_code", lambda filename: (fake_tree, "src"))
     monkeypatch.setattr(ts, "_extract_imports", lambda root: {"imp": {"module": "m", "path": "p"}})
@@ -401,9 +401,9 @@ def test_get_docstring_from_block():
     # Arrange
     ts = OSA_TreeSitter(".")
 
-    string_node = FakeNode("string", text=b'"Docstring here"')
-    expr = FakeNode("expression_statement", children=[string_node])
-    block = FakeNode("block", children=[expr])
+    string_node = Node("string", text=b'"Docstring here"')
+    expr = Node("expression_statement", children=[string_node])
+    block = Node("block", children=[expr])
 
     # Act
     result = ts._get_docstring(block)
@@ -420,10 +420,10 @@ def test_traverse_block(monkeypatch):
     monkeypatch.setattr(ts, "_extract_function_details", lambda *a, **k: fake_method)
     monkeypatch.setattr(ts, "_get_decorators", lambda l, d: ["@dec"])
 
-    func_def = FakeNode("function_definition")
-    decorator = FakeNode("decorator")
-    decorated = FakeNode("decorated_definition", children=[decorator, func_def])
-    block = FakeNode("block", children=[decorated, func_def])
+    func_def = Node("function_definition")
+    decorator = Node("decorator")
+    decorated = Node("decorated_definition", children=[decorator, func_def])
+    block = Node("block", children=[decorated, func_def])
 
     # Act
     result = ts._traverse_block(block, "code", {})
@@ -439,11 +439,11 @@ def test_extract_function_details(monkeypatch):
     monkeypatch.setattr(ts, "_get_docstring", lambda node: "doc")
     monkeypatch.setattr(ts, "_resolve_method_calls", lambda *a: [{"function": "call"}])
 
-    name_node = FakeNode("identifier", text=b"my_func")
-    param_id = FakeNode("identifier", text=b"x")
-    params_node = FakeNode("parameters", children=[param_id])
-    block = FakeNode("block", children=[FakeNode("string", text=b"'doc'")])
-    func_node = FakeNode(
+    name_node = Node("identifier", text=b"my_func")
+    param_id = Node("identifier", text=b"x")
+    params_node = Node("parameters", children=[param_id])
+    block = Node("block", children=[Node("string", text=b"'doc'")])
+    func_node = Node(
         "function_definition",
         children=[name_node, params_node, block],
         start_point=(0, 0),

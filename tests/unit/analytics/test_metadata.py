@@ -4,7 +4,6 @@ import pytest
 from requests.exceptions import HTTPError
 
 from osa_tool.analytics.metadata import load_data_metadata, RepositoryMetadata, detect_platform
-from tests.utils.fixtures.load_metadata_fixtures import mock_api_response_metadata
 
 
 @pytest.mark.parametrize("mock_config_loader", ["github"], indirect=True)

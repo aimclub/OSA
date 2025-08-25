@@ -1,7 +1,6 @@
 import pytest
 
 from osa_tool.readmegen.context.files_contents import FileContext
-from tests.utils.fixtures.readmegen_prompt_builder_fixtures import prompt_builder
 
 
 def test_serialize_file_contexts(prompt_builder):

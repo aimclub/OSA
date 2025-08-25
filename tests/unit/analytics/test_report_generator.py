@@ -1,7 +1,6 @@
 import pytest
 
 from osa_tool.analytics.prompt_builder import RepositoryReport
-from tests.utils.fixtures.report_generator import text_generator_instance
 
 
 def test_make_request_success(text_generator_instance):

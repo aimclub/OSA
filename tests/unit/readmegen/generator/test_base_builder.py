@@ -4,7 +4,6 @@ from unittest.mock import patch
 import pytest
 
 from osa_tool.readmegen.generator.base_builder import MarkdownBuilderBase
-from tests.utils.fixtures.sourcerank import sourcerank_with_repo_tree
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 

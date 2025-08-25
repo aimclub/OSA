@@ -1,6 +1,5 @@
 import pytest
 
-from tests.utils.fixtures.sourcerank import sourcerank_with_repo_tree
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 METHOD_CASES = {
