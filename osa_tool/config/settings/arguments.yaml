@@ -22,7 +22,7 @@ web_mode:
   description: |
     Enable web interface mode. When set, the tool will generate the task plan
     without launching the interactive CLI editor.
-  default: false
+  default: true
 
 output:
   aliases: ["-o","--output"]
