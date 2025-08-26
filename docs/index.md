@@ -11,6 +11,8 @@ It also generates advices and recommendations for the repository.
 
 OSA is currently under development, so not all features are implemented.
 
+[Watch the intro video on YouTube](https://www.youtube.com/watch?v=LDSb7JJgKoY)
+
 ---
 
 ## How it works?
@@ -109,19 +111,24 @@ File `.env` is required to specify GitHub token (GIT_TOKEN) and LLM API key (OPE
 
 When running `osa-tool` from CLI, you need to set the GIT_TOKEN and API key first:
 
-```commandline
+```sh
+# Linux / macOS (bash/zsh)
 export OPENAI_API_KEY=<your_api_key>
 export GIT_TOKEN=<your_git_token>
+
+# Windows (PowerShell)
+setx OPENAI_API_KEY "<your_api_key>"
+setx GIT_TOKEN "<your_git_token>"
 ```
 
 ### Tokens
 
-| Token name       | Description                                                                                                        | Mandatory |
-|------------------|--------------------------------------------------------------------------------------------------------------------|-----------|
-| `GIT_TOKEN`      | Personal GitHub token used to clone private repositories, access metadata, and interact with the GitHub API.       | Yes       |
-| `OPENAI_API_KEY` | API key for accessing [OpenAI](https://platform.openai.com/docs/api-reference/introduction)'s language models.     | No        |
-| `VSE_GPT_KEY`    | API key for [vsegpt](https://vsegpt.ru/Docs/API) LLM provider compatible with OpenAI's API format.                 | No        |
-| `X-API-Key`      | API key for the [pepy.tech](https://pepy.tech/pepy-api) REST API, used to fetch Python package download statistics | No        |
+| Token name       | Description                                                                                                           | Mandatory |
+|------------------|-----------------------------------------------------------------------------------------------------------------------|-----------|
+| `GIT_TOKEN`      | Personal GitHub/GitLab/Gitverse token used to clone private repositories, access metadata, and interact with its API. | Yes       |
+| `OPENAI_API_KEY` | API key for accessing [OpenAI](https://platform.openai.com/docs/api-reference/introduction)'s language models.        | No        |
+| `VSE_GPT_KEY`    | API key for [vsegpt](https://vsegpt.ru/Docs/API) LLM provider compatible with OpenAI's API format.                    | No        |
+| `X-API-Key`      | API key for the [pepy.tech](https://pepy.tech/pepy-api) REST API, used to fetch Python package download statistics    | No        |
 
 ### Usage
 
@@ -147,30 +154,29 @@ Docker, ensure that you upload the PDF file to the OSA folder before building th
 /app/OSA/... or just use volume mounting to access the file.
 
 The --generate-workflows option is intended to create customizable CI/CD pipelines for Python repositories. For detailed
-documentation, see the [GitHub Action Workflow Generator README](./osa_tool/github_workflow/README.md).
+documentation, see the [GitHub Action Workflow Generator README](../osa_tool/github_workflow/README.md).
 
 ### Configuration
 
 | Flag                 | Description                                                                         | Default                     |
 |----------------------|-------------------------------------------------------------------------------------|-----------------------------|
-| `-r`, `--repository` | URL of the GitHub repository (**Mandatory**)                                        |                             |
+| `-r`, `--repository` | URL of the GitHub/GitLab/Gitverse repository (**Mandatory**)                        |                             |
 | `-b`, `--branch`     | Branch name of the repository                                                       | Default branch              |
 | `-o`, `--output`     | Path to the output directory                                                        | Current working directory   |
 | `--api`              | LLM API service provider                                                            | `itmo`                      |
 | `--base-url`         | URL of the provider compatible with API OpenAI                                      | `https://api.openai.com/v1` |
 | `--model`            | Specific LLM model to use                                                           | `gpt-3.5-turbo`             |
+| `--top_p`            | Nucleus sampling probability                                                        | `None`                      |
+| `--temperature`      | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).   | `None`                      |
+| `--max_tokens`       | Maximum number of tokens the model can generate in a single response                | `None`                      |
 | `--article`          | Link to the pdf file of the article                                                 | `None`                      |
-| `--translate-dirs`   | Enable automatic translation of the directory name into English                     | `disabled`                  |
 | `-m`, `--mode`       | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`. | `auto`                      |
 | `--delete-dir`       | Enable deleting the downloaded repository after processing                          | `disabled`                  |
 | `--no-fork`          | Avoid create fork for target repository                                             | `False`                     |
 | `--no-pull-request`  | Avoid create pull request for target repository                                     | `False`                     |
-| `--top_p`            | Nucleus sampling probability                                                        | `null`                      |
-| `--temperature`      | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).   | `null`                      |
-| `--max_tokens`       | Maximum number of tokens the model can generate in a single response                | `null`                      |
 
 To learn how to work with the interactive CLI and view descriptions of all available keys, visit
-the [CLI usage guide](./osa_tool/scheduler/README.md).
+the [CLI usage guide](../osa_tool/scheduler/README.md).
 
 ---
 
@@ -178,14 +184,12 @@ the [CLI usage guide](./osa_tool/scheduler/README.md).
 
 Examples of generated README files are available in [examples](https://github.com/aimclub/OSA/tree/main/examples).
 
-URL of the GitHub repository, LLM API service provider (*optional*) and Specific LLM model to use (*optional*) are
-required to use the generator.
+URL of the GitHub/GitLab/Gitverse repository, LLM API service provider (*optional*) and Specific LLM model to use
+(*optional*) are required to use the generator.
 
-To see available models go there:
-
-1. [VseGpt](https://vsegpt.ru/Docs/Models)
-2. [OpenAI](https://platform.openai.com/docs/models)
-3. [Ollama](https://ollama.com/library)
+Supported LLM providers are available as part of the [ProtoLLM](https://github.com/aimclub/ProtoLLM/)
+ecosystem. See the [connectors directory](https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors) for the
+full list.
 
 Local ITMO model:
 
@@ -221,6 +225,25 @@ Detailed description of OSA API is available [here](https://aimclub.github.io/OS
 
 ---
 
+## Chat with developers: OSA_helpdesk
+
+In our Telegram chat [OSA_helpdesk](t.me/osa_helpdesk) you can ask questions about working with OSA and find the latest
+news about the project.
+
+---
+
+## Publications about OSA
+
+In English:
+
+- [Automate Your Coding with OSA – ITMO-Made AI Assistant for Researchers](https://news.itmo.ru/en/news/14282/)
+
+In Russian:
+
+- [OSA: ИИ-помощник для разработчиков научного open source кода](https://habr.com/ru/companies/spbifmo/articles/906018/)
+
+---
+
 ## Contributing
 
 - **[Report Issues](https://github.com/aimclub/OSA/issues )**: Submit bugs found or log feature requests for the
@@ -252,28 +275,19 @@ for their code that we used as a foundation for our own version of README genera
 
 If you use this software, please cite it as below.
 
-### APA format
+### Simple format
 
-    ITMO, NSS Lab (2025). Open-Source-Advisor repository [Computer software]. https://github.com/aimclub/OSA
+    Nikitin N. et al. An LLM-Powered Tool for Enhancing Scientific Open-Source Repositories // Championing Open-source DEvelopment in ML Workshop@ ICML25.
 
 ### BibTeX format
 
-    @misc{Open-Source-Advisor,
+    @inproceedings{nikitinllm,
+    title={An LLM-Powered Tool for Enhancing Scientific Open-Source Repositories},
+    author={Nikitin, Nikolay and Getmanov, Andrey and Popov, Zakhar and 
+        Ulyanova Ekaterina and Aksenkin, Yaroslav and 
+        Sokolov, Ilya and Boukhanovsky, Alexander},
+    booktitle={Championing Open-source DEvelopment in ML Workshop@ ICML25}
 
-        author = {ITMO, NSS Lab},
-
-        title = {Open-Source-Advisor repository},
-
-        year = {2025},
-
-        publisher = {github.com},
-
-        journal = {github.com repository},
-
-        howpublished = {\url{https://github.com/aimclub/OSA.git}},
-
-        url = {https://github.com/aimclub/OSA.git}
-
-    }
+}
 
 ---

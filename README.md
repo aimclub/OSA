@@ -36,6 +36,8 @@ It also generates advices and recommendations for the repository.
 
 OSA is currently under development, so not all features are implemented.
 
+[Watch the intro video on YouTube](https://www.youtube.com/watch?v=LDSb7JJgKoY)
+
 ---
 
 ## How it works?
@@ -135,23 +137,29 @@ docker build --build-arg GIT_USER_NAME="your-user-name" --build-arg GIT_USER_EMA
 
 OSA requires Python 3.10 or higher.
 
-File `.env` is required to specify GitHub/GitLab/Gitverse token (GIT_TOKEN) and LLM API key (OPENAI_API_KEY or VSE_GPT_KEY)
+File `.env` is required to specify GitHub/GitLab/Gitverse token (GIT_TOKEN) and LLM API key (OPENAI_API_KEY or
+VSE_GPT_KEY)
 
 When running `osa-tool` from CLI, you need to set the GIT_TOKEN and API key first:
 
-```commandline
+```sh
+# Linux / macOS (bash/zsh)
 export OPENAI_API_KEY=<your_api_key>
 export GIT_TOKEN=<your_git_token>
+
+# Windows (PowerShell)
+setx OPENAI_API_KEY "<your_api_key>"
+setx GIT_TOKEN "<your_git_token>"
 ```
 
 ### Tokens
 
-| Token name       | Description                                                                                                        | Mandatory |
-|------------------|--------------------------------------------------------------------------------------------------------------------|-----------|
-| `GIT_TOKEN`      | Personal GitHub/GitLab/Gitverse token used to clone private repositories, access metadata, and interact with its API.       | Yes       |
-| `OPENAI_API_KEY` | API key for accessing [OpenAI](https://platform.openai.com/docs/api-reference/introduction)'s language models.     | No        |
-| `VSE_GPT_KEY`    | API key for [vsegpt](https://vsegpt.ru/Docs/API) LLM provider compatible with OpenAI's API format.                 | No        |
-| `X-API-Key`      | API key for the [pepy.tech](https://pepy.tech/pepy-api) REST API, used to fetch Python package download statistics | No        |
+| Token name       | Description                                                                                                           | Mandatory |
+|------------------|-----------------------------------------------------------------------------------------------------------------------|-----------|
+| `GIT_TOKEN`      | Personal GitHub/GitLab/Gitverse token used to clone private repositories, access metadata, and interact with its API. | Yes       |
+| `OPENAI_API_KEY` | API key for accessing [OpenAI](https://platform.openai.com/docs/api-reference/introduction)'s language models.        | No        |
+| `VSE_GPT_KEY`    | API key for [vsegpt](https://vsegpt.ru/Docs/API) LLM provider compatible with OpenAI's API format.                    | No        |
+| `X-API-Key`      | API key for the [pepy.tech](https://pepy.tech/pepy-api) REST API, used to fetch Python package download statistics    | No        |
 
 ### Usage
 
@@ -189,15 +197,14 @@ documentation, see the [GitHub Action Workflow Generator README](./osa_tool/gith
 | `--api`              | LLM API service provider                                                            | `itmo`                      |
 | `--base-url`         | URL of the provider compatible with API OpenAI                                      | `https://api.openai.com/v1` |
 | `--model`            | Specific LLM model to use                                                           | `gpt-3.5-turbo`             |
+| `--top_p`            | Nucleus sampling probability                                                        | `None`                      |
+| `--temperature`      | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).   | `None`                      |
+| `--max_tokens`       | Maximum number of tokens the model can generate in a single response                | `None`                      |
 | `--article`          | Link to the pdf file of the article                                                 | `None`                      |
-| `--translate-dirs`   | Enable automatic translation of the directory name into English                     | `disabled`                  |
 | `-m`, `--mode`       | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`. | `auto`                      |
 | `--delete-dir`       | Enable deleting the downloaded repository after processing                          | `disabled`                  |
 | `--no-fork`          | Avoid create fork for target repository                                             | `False`                     |
 | `--no-pull-request`  | Avoid create pull request for target repository                                     | `False`                     |
-| `--top_p`            | Nucleus sampling probability                                                        | `null`                      |
-| `--temperature`      | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).   | `null`                      |
-| `--max_tokens`       | Maximum number of tokens the model can generate in a single response                | `null`                      |
 
 To learn how to work with the interactive CLI and view descriptions of all available keys, visit
 the [CLI usage guide](./osa_tool/scheduler/README.md).
@@ -208,19 +215,17 @@ the [CLI usage guide](./osa_tool/scheduler/README.md).
 
 Examples of generated README files are available in [examples](https://github.com/aimclub/OSA/tree/main/examples).
 
-URL of the GitHub/GitLab/Gitverse repository, LLM API service provider (*optional*) and Specific LLM model to use (*optional*) are
-required to use the generator.
+URL of the GitHub/GitLab/Gitverse repository, LLM API service provider (*optional*) and Specific LLM model to use
+(*optional*) are required to use the generator.
 
-To see available models go there:
-
-1. [VseGpt](https://vsegpt.ru/Docs/Models)
-2. [OpenAI](https://platform.openai.com/docs/models)
-3. [Ollama](https://ollama.com/library)
+Supported LLM providers are available as part of the [ProtoLLM](https://github.com/aimclub/ProtoLLM/)
+ecosystem. See the [connectors directory](https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors) for the
+full list.
 
 Local ITMO model:
 
 ```sh
-python -m osa_tool.run -r https://github.com/aimclub/OSA --base_url [ITMO_MODEL_URL]
+python -m osa_tool.run -r https://github.com/aimclub/OSA --base-url [ITMO_MODEL_URL]
 ```  
 
 For this API provider itmo model url must be specified in dotenv (ITMO_MODEL_URL=) or in the --base-url argument.
@@ -253,7 +258,8 @@ Detailed description of OSA API is available [here](https://aimclub.github.io/OS
 
 ## Chat with developers: OSA_helpdesk
 
-In our Telegram chat [OSA_helpdesk](t.me/osa_helpdesk) you can ask questions about working with OSA and find the latest news about the project.
+In our Telegram chat [OSA_helpdesk](t.me/osa_helpdesk) you can ask questions about working with OSA and find the latest
+news about the project.
 
 ---
 
@@ -312,6 +318,7 @@ If you use this software, please cite it as below.
         Ulyanova Ekaterina and Aksenkin, Yaroslav and 
         Sokolov, Ilya and Boukhanovsky, Alexander},
     booktitle={Championing Open-source DEvelopment in ML Workshop@ ICML25}
+
 }
 
 ---
