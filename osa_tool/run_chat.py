@@ -1,8 +1,13 @@
 import os
+
 from dotenv import load_dotenv
 from langchain.tools.render import render_text_description
 
-CONFIG_PATH = 'OSA/config.env'
+# here shouild me keys:
+# VISION_LLM_URL, MAIN_LLM_MODEL, MAIN_LLM_URL,
+# SCENARIO_LLM_MODEL, SCENARIO_LLM_URL, OPENAI_API_KEY, ANOTHER_STORAGE_PATH
+# GIT_TOKEN
+CONFIG_PATH = "OSA/config.env"
 load_dotenv(CONFIG_PATH)
 
 from protollm.agents.builder import GraphBuilder
@@ -11,12 +16,8 @@ from protollm.connectors import create_llm_connector
 from osa_tool.osa_agent.osa_agent_func import execute_console_command, osa_node
 
 tools_rendered = render_text_description([execute_console_command])
-osa_desc = (
-    "'osa_node' -  LLM-based tool for improving the quality of scientific open source projects and helping create them from scratch. It automates the generation of README, different levels of documentation, CI/CD scripts, etc. It also generates advices and recommendations for the repository"
-)
-additional_agents_description = (
-    osa_desc
-)
+osa_desc = "'osa_node' -  LLM-based tool for improving the quality of scientific open source projects and helping create them from scratch. It automates the generation of README, different levels of documentation, CI/CD scripts, etc. It also generates advices and recommendations for the repository"
+additional_agents_description = osa_desc
 
 conf = {
     # maximum number of recursions
@@ -24,18 +25,12 @@ conf = {
     "configurable": {
         "user_id": "1",
         "visual_model": create_llm_connector(os.environ["VISION_LLM_URL"]),
-        "llm": create_llm_connector(
-            os.environ['MAIN_LLM_URL']+';'+os.environ['MAIN_LLM_MODEL']
-        ),
+        "llm": create_llm_connector(os.environ["MAIN_LLM_URL"] + ";" + os.environ["MAIN_LLM_MODEL"]),
         "max_retries": 1,
         # list of scenario agents
-        "scenario_agents": [
-            "osa_node"
-        ],
+        "scenario_agents": ["osa_node"],
         # nodes for scenario agents
-        "scenario_agent_funcs": {
-            "osa_node": osa_node
-        },
+        "scenario_agent_funcs": {"osa_node": osa_node},
         # descripton for agents tools - if using langchain @tool
         # or description of agent capabilities in free format
         "tools_for_agents": {
@@ -73,7 +68,28 @@ conf = {
                 "problem_statement": None,
                 "rules": """Don't plan more than 2 tasks! Almost always plan only 1 task. Only if the text is huge use 2.""",
                 "desc_restrictions": None,
-                "examples": None,
+                "examples": """   
+        Request: "Refactor the code in the repository https://github.com/alinzh/dreamstime. Article is https://arxiv.org/pdf/1612.00593."
+        Response: {{
+            "steps": [
+                ["Refactor the code in the repository https://github.com/alinzh/dreamstime, use article https://arxiv.org/pdf/1612.00593 as reference."]
+            ]
+        }}
+        
+        Example:
+        Request: "Refactor repo https://github.com/avb/vns, paper: https://arxiv.org/pdf/1612.008883."
+        Response: {{
+            "steps": [
+                ['Refactor repository https://github.com/avb/vns, use paper from link https://arxiv.org/pdf/1612.008883.']
+            ]
+            
+        Example:
+        Request: "Refactor repo https://github.com/avb/vns, paper: https://arxiv.org/pdf/1612.008883. And, please, make same for project https://github.com/avb/optuna."
+        Response: {{
+            "steps": [
+                ['Refactor repository https://github.com/avb/vns, use paper from link https://arxiv.org/pdf/1612.008883.'], ['Refactor repository https://github.com/avb/optuna']
+            ]
+        }}""",
                 "additional_hints": None,
             },
             "chat": {
@@ -97,10 +113,10 @@ conf = {
 }
 
 
-inputs = {"input": "Make refactoring for repo https://github.com/alinzh/search_api_aviasales, article is https://arxiv.org/pdf/1612.00593"}
-
 graph = GraphBuilder(conf)
 
 if __name__ == "__main__":
-    for step in graph.stream(inputs, user_id="1"):
-        print(step)
+    while True:
+        print("Enter your task:")
+        for step in graph.stream({"input": input()}, user_id="1"):
+            print(step)
