@@ -688,7 +688,7 @@ class DocGen(object):
                     logger.info(f"File {filename} does not contain any functions, methods or class constructions.")
             return results
 
-        logger.info(f"Docstrings generation for the project has started!")
+        logger.info(f"Docstrings {'update' if self.main_idea else 'generation'} for the project has started!")
 
         # generation strategy choice
         match docstring_type:
