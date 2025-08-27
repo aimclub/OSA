@@ -283,7 +283,7 @@ def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEvent
 
         modules_summaries = loop.run_until_complete(dg.summarize_submodules(res, rate_limit))
         dg.generate_documentation_mkdocs(repo_path, res, modules_summaries)
-        dg.create_mkdocs_github_workflow(repo_url, repo_path)
+        dg.create_mkdocs_git_workflow(repo_url, repo_path)
 
     except Exception as e:
         dg._purge_temp_files(repo_path)
