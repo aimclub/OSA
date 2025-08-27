@@ -1007,7 +1007,9 @@ class DocGen(object):
 
             yaml.Dumper.ignore_aliases = lambda *args: True
             gitlab_file.write_text(yaml.safe_dump(gitlab_data, sort_keys=False))
-            logger.info(f"GitLab CI created: {gitlab_file}.\nThe resulting OSA documentation can be downloaded and reviewed at the 'mkdocs_build' job's artifacts initated by MR.\nIt will be automatically deployed once MR is proceeded into the main branch.\nNote that artifacts of the 'mkdocs_build' job are set to expire in a span of 1 week.")
+            logger.info(
+                f"GitLab CI created: {gitlab_file}.\nThe resulting OSA documentation can be downloaded and reviewed at the 'mkdocs_build' job's artifacts initated by MR.\nIt will be automatically deployed once MR is proceeded into the main branch.\nNote that artifacts of the 'mkdocs_build' job are set to expire in a span of 1 week."
+            )
 
     @staticmethod
     def _sanitize_name(name: str) -> str:
