@@ -107,30 +107,29 @@ docker build --build-arg GIT_USER_NAME="your-user-name" --build-arg GIT_USER_EMA
 
 OSA requires Python 3.10 or higher.
 
-File `.env` is required to specify GitHub/GitLab/Gitverse token (GIT_TOKEN) and LLM API key (OPENAI_KEY,
-LLM_SERVICE_KEY or AUTHORIZATION_KEY)
+File `.env` is required to specify GitHub/GitLab/Gitverse token (GIT_TOKEN) and LLM API key (OPENAI_API_KEY or
+AUTHORIZATION_KEY)
 
 When running `osa-tool` from CLI, you need to set the GIT_TOKEN and API key first:
 
 ```sh
 # Linux / macOS (bash/zsh)
-export OPENAI_KEY=<your_api_key>
+export OPENAI_API_KEY=<your_api_key>
 export GIT_TOKEN=<your_git_token>
 
 # Windows (PowerShell)
-setx OPENAI_KEY "<your_api_key>"
+setx OPENAI_API_KEY "<your_api_key>"
 setx GIT_TOKEN "<your_git_token>"
 ```
 
 ### Tokens
 
-| Token name          | Description                                                                                                           | Mandatory |
-|---------------------|-----------------------------------------------------------------------------------------------------------------------|-----------|
-| `GIT_TOKEN`         | Personal GitHub/GitLab/Gitverse token used to clone private repositories, access metadata, and interact with its API. | Yes       |
-| `OPENAI_KEY`        | API key for accessing [OpenAI](https://platform.openai.com/docs/api-reference/introduction)'s language models.        | No        |
-| `LLM_SERVICE_KEY`   | API key for [vsegpt](https://vsegpt.ru/Docs/API) and [openrouter](https://openrouter.ai/) providers                   | No        |
-| `AUTHORIZATION_KEY` | API key for [gigachat](https://developers.sber.ru/portal/products/gigachat-api) provider                              | No        |
-| `X-API-Key`         | API key for the [pepy.tech](https://pepy.tech/pepy-api) REST API, used to fetch Python package download statistics    | No        |
+| Token name          | Description                                                                                                                                                                          | Mandatory |
+|---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| `GIT_TOKEN`         | Personal GitHub/GitLab/Gitverse token used to clone private repositories, access metadata, and interact with its API.                                                                | Yes       |
+| `OPENAI_API_KEY`    | API key for accessing [OpenAI](https://platform.openai.com/docs/api-reference/introduction), [vsegpt](https://vsegpt.ru/Docs/API) and [openrouter](https://openrouter.ai/) providers | No        |
+| `AUTHORIZATION_KEY` | API key for [gigachat](https://developers.sber.ru/portal/products/gigachat-api) provider                                                                                             | No        |
+| `X-API-Key`         | API key for the [pepy.tech](https://pepy.tech/pepy-api) REST API, used to fetch Python package download statistics                                                                   | No        |
 
 ### Usage
 
