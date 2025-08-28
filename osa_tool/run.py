@@ -51,6 +51,9 @@ def main():
     create_fork = not args.no_fork
     create_pull_request = not args.no_pull_request
 
+    loop = asyncio.get_event_loop()
+    asyncio.set_event_loop(loop)
+
     try:
         # Switch to output directory if present
         if args.output:
@@ -110,7 +113,7 @@ def main():
         # Docstring generation
         if plan.get("docstring"):
             rich_section("Docstrings generation")
-            generate_docstrings(config)
+            generate_docstrings(config, loop)
 
         # License compiling
         if license_type := plan.get("ensure_license"):
@@ -170,9 +173,13 @@ def main():
 
         rich_section("All operations completed successfully")
         sys.exit(0)
+
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
         sys.exit(1)
+
+    finally:
+        loop.close()
 
 
 def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) -> None:
@@ -211,15 +218,14 @@ def generate_requirements(repo_url):
         logger.error(f"Error while generating project's requirements: {e.stderr}")
 
 
-def generate_docstrings(config_loader: ConfigLoader) -> None:
+def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEventLoop) -> None:
     """Generates a docstrings for .py's classes and methods of the provided repository.
 
     Args:
         config_loader: The configuration object which contains settings for osa_tool.
-
+        loop: Link to the event loop in the main thread.
     """
 
-    loop = asyncio.get_event_loop()
     sem = asyncio.Semaphore(100)
     workers = multiprocessing.cpu_count()
 
@@ -277,14 +283,11 @@ def generate_docstrings(config_loader: ConfigLoader) -> None:
 
         modules_summaries = loop.run_until_complete(dg.summarize_submodules(res, rate_limit))
         dg.generate_documentation_mkdocs(repo_path, res, modules_summaries)
-        dg.create_mkdocs_github_workflow(repo_url, repo_path)
+        dg.create_mkdocs_git_workflow(repo_url, repo_path)
 
     except Exception as e:
         dg._purge_temp_files(repo_path)
         logger.error("Error while generating codebase documentation: %s", repr(e), exc_info=True)
-
-    finally:
-        loop.close()
 
 
 def load_configuration(

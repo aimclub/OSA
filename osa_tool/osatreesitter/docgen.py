@@ -13,6 +13,7 @@ import black.report
 import dotenv
 import tiktoken
 import yaml
+import tomli
 
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory, ProtollmHandler
@@ -688,7 +689,7 @@ class DocGen(object):
                     logger.info(f"File {filename} does not contain any functions, methods or class constructions.")
             return results
 
-        logger.info(f"Docstrings generation for the project has started!")
+        logger.info(f"Docstrings {'update' if self.main_idea else 'generation'} for the project has started!")
 
         # generation strategy choice
         match docstring_type:
@@ -1107,7 +1108,9 @@ class DocGen(object):
         self._add_init_files(repo_path)
 
         init_doc_path = Path(repo_path, "osa_docs")
-        init_doc_path.mkdir(parents=True, exist_ok=True)
+        if init_doc_path.exists():
+            shutil.rmtree(init_doc_path)
+        init_doc_path.mkdir(parents=True)
         for file in files_info:
             if not files_info[file]["structure"]:
                 continue
@@ -1154,78 +1157,77 @@ class DocGen(object):
             shutil.rmtree(mkdocs_dir)
         logger.info(f"MKDocs configuration successfully built at: {mkdocs_dir}")
 
-    def create_mkdocs_github_workflow(
-        self,
-        repository_url: str,
-        path: str,
-        filename: str = "osa_mkdocs",
-        branches: list[str] = None,
-    ) -> None:
+    def create_mkdocs_git_workflow(self, repository_url: str, path: str) -> None:
         """
-        Generates GitHub workflow .yaml for MkDocs documentation for a Python project.
+        Generates .yaml documentation deploy workflow for chosen git host service.
 
         Parameters:
             repository_url: str - URI of the Python project's repository on GitHub.
             path: str - The path to the root directory of the Python project.
-            filename: str - The name of the .yaml file that contains GitHub workflow for mkdocs deploying.
-            branches: list[str] - List of branches to trigger the MkDocs workflow on
 
         Returns:
-            None. The method generates GitHub workflow for MkDocs documentation of a current project.
+            None. The method generates workflow for MkDocs documentation of a current project.
         """
-        clear_repo_name = re.sub(pattern="https://", repl="", string=repository_url)
+        config_file = osa_project_root().resolve() / "docs" / "templates" / "ci_config.toml"
+        git_host = self.config.git.host
 
-        if not branches:
-            branches = ["main", "master"]
+        with open(config_file, "rb") as f:
+            cfg = tomli.load(f)
 
-        _workflow = {
-            "name": "MkDocs workflow",
-            "on": {
-                "push": {"branches": branches},
-                "pull_request": {"branches": branches},
-            },
-            "jobs": {
-                "mkdocs_deployment": {
-                    "name": "[OSA] Deploying MkDocs",
-                    "runs-on": "ubuntu-latest",
-                    "permissions": {"contents": "write"},
-                    "steps": [
-                        {
-                            "name": "[OSA] Checking-out repository",
-                            "uses": "actions/checkout@v4",
-                        },
-                        {
-                            "name": "[OSA] Installing Python",
-                            "uses": "actions/setup-python@v4",
-                            "with": {"python-version": "3.12"},
-                        },
-                        {
-                            "name": "[OSA] Installing MkDocs dependencies",
-                            "run": "pip install mkdocs mkdocs-material mkdocstrings[python]",
-                        },
-                        {
-                            "name": "[OSA] MkDocs documentation deploying",
-                            "run": "mkdocs gh-deploy --force --config-file osa_mkdocs.yml",
-                            "env": {"GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"},
-                        },
-                    ],
-                }
-            },
-        }
+        if git_host == "github":
+            workflows_path = Path(path).resolve() / ".github" / "workflows"
+            workflows_path.mkdir(parents=True, exist_ok=True)
+            github_workflow_file = workflows_path / "osa_mkdocs.yml"
+            github_workflow_file.write_text(cfg["github"]["workflow"])
+            logger.info(f"GitHub workflow created: {github_workflow_file}")
+            logger.info(
+                f"In order to perform the documentation deployment automatically, please make sure that\n1. At {repository_url}/settings/actions following permission are enabled:\n\t1) 'Read and write permissions'\n\t2) 'Allow GitHub Actions to create and approve pull requests'\n2. 'gh-pages' branch is chosen as the source at 'Build and deployment' section at {repository_url}/settings/pages ."
+            )
 
-        workflows_path = f"{Path(path).resolve()}/.github/workflows"
+        if git_host == "gitlab":
+            gitlab_cfg = cfg.get("gitlab", {})
+            gitlab_file = Path(path).resolve() / ".gitlab-ci.yml"
 
-        if not os.path.exists(workflows_path):
-            os.makedirs(workflows_path)
+            if gitlab_file.exists():
+                gitlab_data = yaml.safe_load(gitlab_file.read_text()) or {}
+            else:
+                gitlab_data = {}
 
-        # Disable anchors use to run action
-        yaml.Dumper.ignore_aliases = lambda self, data: True
+            stages: list = gitlab_data.get("stages", [])
+            for section in ("build", "deploy"):
+                stage_name = gitlab_cfg[section]["stage"]
+                if stage_name not in stages:
+                    stages.append(stage_name)
+            gitlab_data["stages"] = stages
 
-        with open(f"{workflows_path}/{filename}.yml", mode="w") as actions:
-            yaml.dump(data=_workflow, stream=actions, Dumper=yaml.Dumper, sort_keys=False)
-        logger.info(
-            f"In order to perform the documentation deployment automatically, please make sure that\n1. At {repository_url}/settings/actions following permission are enabled:\n\t1) 'Read and write permissions'\n\t2) 'Allow GitHub Actions to create and approve pull requests'\n2. 'gh-pages' branch is chosen as the source at 'Build and deployment' section at {repository_url}/settings/pages ."
-        )
+            gitlab_data["mkdocs_build"] = {
+                "stage": gitlab_cfg["build"]["stage"],
+                "image": f"python:{gitlab_cfg['build']['python_version']}",
+                "before_script": gitlab_cfg["build"]["before_script"],
+                "script": gitlab_cfg["build"]["script"],
+                "artifacts": {
+                    "paths": gitlab_cfg["build"]["artifacts"]["paths"],
+                    "expire_in": gitlab_cfg["build"]["artifacts"]["expire_in"],
+                },
+                "rules": gitlab_cfg["build"]["rules"],
+            }
+
+            gitlab_data["pages"] = {
+                "stage": gitlab_cfg["deploy"]["stage"],
+                "image": f"python:{gitlab_cfg['deploy']['python_version']}",
+                "before_script": gitlab_cfg["deploy"]["before_script"],
+                "script": gitlab_cfg["deploy"]["script"],
+                "artifacts": {
+                    "paths": gitlab_cfg["deploy"]["artifacts"]["paths"],
+                },
+                "rules": gitlab_cfg["deploy"]["rules"],
+            }
+
+            yaml.Dumper.ignore_aliases = lambda *args: True
+            gitlab_file.write_text(yaml.safe_dump(gitlab_data, sort_keys=False))
+            logger.info(
+                f"GitLab CI created: {gitlab_file}.\nThe resulting OSA documentation can be downloaded and reviewed at the 'mkdocs_build' job's artifacts initated by MR.\nIt will be automatically deployed once MR is proceeded into the main branch.\nNote that artifacts of the 'mkdocs_build' job are set to expire in a span of 1 week."
+            )
 
     @staticmethod
     def _sanitize_name(name: str) -> str:
@@ -1299,14 +1301,28 @@ class DocGen(object):
                 None
         """
         py_dirs = set()
+        skip_dirs = {repo_path / "tests"}
+
+        def is_in_skip_dirs(path: Path) -> bool:
+            for skip_dir in skip_dirs:
+                try:
+                    path.relative_to(skip_dir)
+                    return True
+                except ValueError:
+                    continue
+            return False
+
         for py_file in repo_path.rglob("*.py"):
             if py_file.name != "__init__.py":
-                parent = py_file.parent
-                while parent != repo_path.parent:
-                    py_dirs.add(parent)
+                parent = py_file.parent.resolve()
+                while parent != repo_path.parent.resolve():
                     if parent == repo_path:
                         break
-                    parent = parent.parent
+                    if is_in_skip_dirs(parent):
+                        parent = parent.parent.resolve()
+                        continue
+                    py_dirs.add(parent)
+                    parent = parent.parent.resolve()
 
         for folder in py_dirs:
             init_path: Path = folder / "__init__.py"
