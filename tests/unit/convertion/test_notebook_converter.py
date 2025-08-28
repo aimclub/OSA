@@ -4,7 +4,7 @@ from unittest.mock import patch, mock_open
 import nbformat
 import pytest
 
-from osa_tool.convertion.notebook_converter import NotebookConverter  # change to your actual module import
+from osa_tool.convertion.notebook_converter import NotebookConverter
 
 
 def test_is_syntax_correct():
