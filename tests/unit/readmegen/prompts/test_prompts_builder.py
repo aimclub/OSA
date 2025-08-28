@@ -1,169 +1,151 @@
-from unittest.mock import MagicMock, patch
-
 import pytest
 
 from osa_tool.readmegen.context.files_contents import FileContext
-from osa_tool.readmegen.prompts.prompts_builder import PromptBuilder
 
 
-@pytest.fixture
-def mock_config_loader():
-    mock = MagicMock()
-    mock.config.git.repository = "https://github.com/test/repo"
-    return mock
-
-
-@pytest.fixture
-def mock_metadata():
-    mock = MagicMock()
-    mock.name = "TestProject"
-    mock.description = "Test project description"
-    return mock
-
-
-@pytest.fixture
-def file_contexts():
-    return [
+def test_serialize_file_contexts(prompt_builder):
+    # Arrange
+    files = [
         FileContext(name="file1.py", path="src/file1.py", content="print('hello')"),
         FileContext(name="file2.py", path="src/file2.py", content="print('world')"),
     ]
 
-
-@pytest.fixture(autouse=True)
-def patch_dependencies(mock_metadata):
-    with (
-        patch(
-            "osa_tool.readmegen.prompts.prompts_builder.load_data_metadata",
-            return_value=mock_metadata,
-        ),
-        patch(
-            "osa_tool.readmegen.prompts.prompts_builder.extract_readme_content",
-            return_value="README content",
-        ),
-        patch(
-            "osa_tool.readmegen.prompts.prompts_builder.parse_folder_name",
-            return_value="repo",
-        ),
-        patch("osa_tool.readmegen.prompts.prompts_builder.SourceRank") as mock_sourcerank,
-        patch("osa_tool.readmegen.prompts.prompts_builder.PromptBuilder.load_prompts") as mock_load_prompts,
-    ):
-        mock_sourcerank.return_value.tree = "repo/tree"
-
-        def side_effect(path):
-            if "prompts.toml" in path:
-                return {
-                    "preanalysis": "Tree: {repository_tree} | Readme: {readme_content}",
-                    "core_features": "Project: {project_name}, Meta: {metadata}, Readme: {readme_content}, Keys: {key_files_content}",
-                    "overview": "Name: {project_name}, Desc: {description}, Readme: {readme_content}, Features: {core_features}",
-                    "getting_started": "Proj: {project_name}, Readme: {readme_content}, Examples: {examples_files_content}",
-                }
-            elif "prompts_article.toml" in path:
-                return {
-                    "file_summary": "Files: {files_content}",
-                    "pdf_summary": "PDF: {pdf_content}",
-                    "overview": "Article for {project_name} | Files: {files_summary} | PDF: {pdf_summary} | Readme: {readme_content}",
-                    "content": "Article content: {project_name}, {files_summary}, {pdf_summary} | Readme: {readme_content}",
-                    "algorithms": "Algo: {project_name} | {files_content} | {pdf_summary} | Readme: {readme_content}",
-                }
-            else:
-                return {}
-
-        mock_load_prompts.side_effect = side_effect
-
-        yield
-
-
-def test_get_prompt_preanalysis(mock_config_loader):
-    # Arrange
-    builder = PromptBuilder(mock_config_loader)
     # Act
-    prompt = builder.get_prompt_preanalysis()
+    result = prompt_builder.serialize_file_contexts(files)
+
     # Assert
-    assert "Tree: repo/tree" in prompt
-    assert "Readme: README content" in prompt
+    expected = "### file1.py (src/file1.py)\nprint('hello')\n\n### file2.py (src/file2.py)\nprint('world')"
+    assert result == expected
 
 
-def test_get_prompt_core_features(mock_config_loader, file_contexts):
+def test_load_prompts_valid(prompt_builder):
     # Arrange
-    builder = PromptBuilder(mock_config_loader)
+    prompt_path = prompt_builder.readme_prompt_path
+
     # Act
-    prompt = builder.get_prompt_core_features(file_contexts)
+    prompts = prompt_builder.load_prompts(prompt_path)
+
     # Assert
-    assert "Project: TestProject" in prompt
-    assert "Keys: " in prompt
-    assert "file1.py" in prompt
+    assert "preanalysis" in prompts
+    assert "Based on the provided information" in prompts["core_features"]
 
 
-def test_get_prompt_overview(mock_config_loader):
+def test_load_prompts_missing_file(prompt_builder):
+    # Assert
+    with pytest.raises(FileNotFoundError):
+        prompt_builder.load_prompts("non_existing_file.toml")
+
+
+def test_get_prompt_preanalysis(prompt_builder):
+    # Act
+    prompt = prompt_builder.get_prompt_preanalysis()
+
+    # Assert
+    assert "Sample README" in prompt
+    assert str(prompt_builder.tree) in prompt
+
+
+def test_get_prompt_core_features(prompt_builder):
     # Arrange
-    builder = PromptBuilder(mock_config_loader)
-    core_features = "Fast, Modular"
+    key_files = [FileContext(name="main.py", path="src/main.py", content="print('hi')")]
+
     # Act
-    prompt = builder.get_prompt_overview(core_features)
+    prompt = prompt_builder.get_prompt_core_features(key_files)
+
     # Assert
-    assert "Name: TestProject" in prompt
-    assert "Features: Fast, Modular" in prompt
+    assert "Sample README" in prompt
+    assert "main.py" in prompt
+    assert prompt_builder.metadata.name in prompt
 
 
-def test_get_prompt_getting_started(mock_config_loader, file_contexts):
+def test_get_prompt_overview(prompt_builder):
+    # Act
+    prompt = prompt_builder.get_prompt_overview(core_features="some features")
+
+    # Assert
+    assert "some features" in prompt
+    assert prompt_builder.metadata.description in prompt
+
+
+def test_get_prompt_getting_started(prompt_builder):
     # Arrange
-    builder = PromptBuilder(mock_config_loader)
+    example_files = [FileContext(name="example.py", path="examples/example.py", content="print('example')")]
+
     # Act
-    prompt = builder.get_prompt_getting_started(file_contexts)
+    prompt = prompt_builder.get_prompt_getting_started(example_files)
+
     # Assert
-    assert "Proj: TestProject" in prompt
-    assert "Examples: " in prompt
-    assert "file2.py" in prompt
+    assert "example.py" in prompt
+    assert "Sample README" in prompt
 
 
-def test_get_prompt_files_summary(mock_config_loader, file_contexts):
+def test_get_prompt_deduplicated_install_and_start(prompt_builder):
+    # Act
+    prompt = prompt_builder.get_prompt_deduplicated_install_and_start("install steps", "getting started")
+
+    # Assert
+    assert "install steps" in prompt
+    assert "getting started" in prompt
+
+
+def test_get_prompt_files_summary(prompt_builder):
     # Arrange
-    builder = PromptBuilder(mock_config_loader)
+    files = [FileContext(name="a.py", path="src/a.py", content="print('a')")]
+
     # Act
-    prompt = builder.get_prompt_files_summary(file_contexts)
+    prompt = prompt_builder.get_prompt_files_summary(files)
+
     # Assert
-    assert "Files: " in prompt
-    assert "file1.py" in prompt
+    assert "a.py" in prompt
+    assert "Sample README" in prompt
 
 
-def test_get_prompt_pdf_summary(mock_config_loader):
+def test_get_prompt_pdf_summary(prompt_builder):
+    # Act
+    prompt = prompt_builder.get_prompt_pdf_summary("PDF text here")
+
+    # Assert
+    assert "PDF text here" in prompt
+
+
+def test_get_prompt_overview_article(prompt_builder):
+    # Act
+    prompt = prompt_builder.get_prompt_overview_article("files summary", "pdf summary")
+
+    # Assert
+    assert "files summary" in prompt
+    assert "pdf summary" in prompt
+    assert "Sample README" in prompt
+
+
+def test_get_prompt_content_article(prompt_builder):
+    # Act
+    prompt = prompt_builder.get_prompt_content_article("files summary", "pdf summary")
+
+    # Assert
+    assert "files summary" in prompt
+    assert "pdf summary" in prompt
+
+
+def test_get_prompt_algorithms_article(prompt_builder):
     # Arrange
-    builder = PromptBuilder(mock_config_loader)
+    files = [FileContext(name="algo.py", path="src/algo.py", content="def foo(): pass")]
+
     # Act
-    prompt = builder.get_prompt_pdf_summary("PDF content here")
+    prompt = prompt_builder.get_prompt_algorithms_article(files, "pdf summary")
+
     # Assert
-    assert "PDF: PDF content here" in prompt
+    assert "algo.py" in prompt
+    assert "pdf summary" in prompt
 
 
-def test_get_prompt_overview_article(mock_config_loader):
+def test_get_prompt_refine_readme(prompt_builder):
     # Arrange
-    builder = PromptBuilder(mock_config_loader)
+    new_sections = {"installation": "new install", "usage": "new usage"}
+
     # Act
-    prompt = builder.get_prompt_overview_article("Summary A", "PDF B")
+    prompt = prompt_builder.get_prompt_refine_readme(new_sections)
+
     # Assert
-    assert "Article for TestProject" in prompt
-    assert "Files: Summary A" in prompt
-    assert "PDF: PDF B" in prompt
-
-
-def test_get_prompt_content_article(mock_config_loader):
-    # Arrange
-    builder = PromptBuilder(mock_config_loader)
-    print(builder.prompts_article["content"])
-    # Act
-    prompt = builder.get_prompt_content_article("FS", "PDF Summary")
-    # Assert
-    assert "FS" in prompt
-    assert "PDF Summary" in prompt
-
-
-def test_get_prompt_algorithms_article(mock_config_loader, file_contexts):
-    # Arrange
-    builder = PromptBuilder(mock_config_loader)
-    # Act
-    prompt = builder.get_prompt_algorithms_article(file_contexts, "PDF SUM")
-    # Assert
-    assert "Algo: TestProject" in prompt
-    assert "file1.py" in prompt
-    assert "print('hello')" in prompt
-    assert "PDF SUM" in prompt
+    assert "Sample README" in prompt
+    assert str(new_sections) in prompt

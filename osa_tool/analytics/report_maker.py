@@ -14,6 +14,7 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
+    Flowable,
 )
 
 from osa_tool.analytics.metadata import load_data_metadata
@@ -247,7 +248,7 @@ class ReportGenerator:
         )
         return bullet_list
 
-    def body_second_part(self) -> list:
+    def body_second_part(self) -> list[Flowable]:
         """
         Generates the second part of the report, which contains the analysis of the repository.
 
@@ -353,7 +354,6 @@ class ReportGenerator:
                 pagesize=A4,
                 topMargin=50,
                 bottomMargin=40,
-                leftMaring=10,
             )
             doc.build(
                 [

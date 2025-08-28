@@ -1,80 +1,106 @@
 from unittest.mock import MagicMock, patch
 
-import pytest
+from pdfminer.layout import LTTextContainer
 
 from osa_tool.readmegen.context.article_content import PdfParser
 
 
-@pytest.fixture
-def mock_pdf_path(tmp_path):
-    file_path = tmp_path / "test.pdf"
-    file_path.write_text("dummy content")
-    return str(file_path)
-
-
-@pytest.fixture
-def parser(mock_pdf_path):
-    return PdfParser(mock_pdf_path)
-
-
-def test_data_extractor_filters_table_text(parser):
+@patch("osa_tool.readmegen.context.article_content.pdfplumber.open")
+@patch("osa_tool.readmegen.context.article_content.extract_pages")
+def test_basic_text_extraction(mock_extract_pages, mock_pdfplumber_open, mock_lt_element, tmp_path):
     # Arrange
-    mock_table = MagicMock()
-    mock_table.bbox = (0, 0, 500, 500)
-
-    mock_page = MagicMock()
-    mock_page.find_tables.return_value = [mock_table]
+    pdf_file = tmp_path / "sample.pdf"
+    pdf_file.write_text("dummy content")
 
     mock_doc = MagicMock()
-    mock_doc.pages = [mock_page]
+    mock_doc.pages = []
+    mock_pdfplumber_open.return_value.__enter__.return_value = mock_doc
 
-    with patch("osa_tool.readmegen.context.article_content.pdfplumber.open") as mock_pdf_open:
-        mock_pdf_open.return_value.__enter__.return_value = mock_doc
+    mock_extract_pages.return_value = [[mock_lt_element]]
 
-        mock_element = MagicMock()
-        mock_element.get_text.return_value = "In table"
-        mock_element.bbox = (100, 100, 200, 200)
+    with (
+        patch.object(PdfParser, "is_table_text_lines", return_value=False),
+        patch.object(PdfParser, "is_table_text_standard", return_value=False),
+    ):
+        parser = PdfParser(str(pdf_file))
 
-        with patch("osa_tool.readmegen.context.article_content.extract_pages") as mock_extract_pages:
-            mock_extract_pages.return_value = [[mock_element]]
-            # Act
-            result = parser.data_extractor()
-            # Assert
-            assert "In table" not in result, "Text inside table was not filtered out."
+        # Act
+        text = parser.data_extractor()
 
-
-def test_is_table_text_lines_detects_text_inside_box():
-    # Arrange
-    verticals = [(100, 100, 100, 300), (200, 100, 200, 300)]
-    horizontals = [(100, 100, 200, 100), (100, 300, 200, 300)]
-
-    mock_element = MagicMock()
-    mock_element.bbox = (120, 150, 180, 180)  # Center is clearly inside
-    # Act
-    result = PdfParser.is_table_text_lines(mock_element, verticals, horizontals)
     # Assert
-    assert result is True
+    assert "Sample text" in text
 
 
-def test_is_table_text_standard_true():
+def test_ignore_short_text(tmp_path):
     # Arrange
-    mock_element = MagicMock()
-    mock_element.bbox = (10, 10, 20, 20)
+    element = MagicMock(spec=LTTextContainer)
+    element.get_text.return_value = "abc"
+    element.bbox = (0, 0, 1, 1)
 
-    table_boxes = [(0, 0, 30, 30)]
-    # Act
-    result = PdfParser.is_table_text_standard(mock_element, table_boxes)
+    with (
+        patch("osa_tool.readmegen.context.article_content.pdfplumber.open") as mock_open,
+        patch("osa_tool.readmegen.context.article_content.extract_pages", return_value=[[element]]),
+        patch.object(PdfParser, "is_table_text_lines", return_value=False),
+        patch.object(PdfParser, "is_table_text_standard", return_value=False),
+    ):
+        mock_doc = MagicMock()
+        mock_doc.pages = []
+        mock_open.return_value.__enter__.return_value = mock_doc
+        parser = PdfParser(str(tmp_path / "dummy.pdf"))
+
+        # Act
+        result = parser.data_extractor()
+
     # Assert
-    assert result is True
+    assert result == ""
 
 
-def test_is_table_text_standard_false():
+def test_ignore_table_text_lines(mock_lt_element, tmp_path):
     # Arrange
-    mock_element = MagicMock()
-    mock_element.bbox = (100, 100, 200, 200)
+    pdf_file = tmp_path / "sample.pdf"
+    pdf_file.write_text("dummy content")
 
-    table_boxes = [(0, 0, 30, 30)]
-    # Act
-    result = PdfParser.is_table_text_standard(mock_element, table_boxes)
+    with (
+        patch("osa_tool.readmegen.context.article_content.pdfplumber.open") as mock_open,
+        patch("osa_tool.readmegen.context.article_content.extract_pages", return_value=[[mock_lt_element]]),
+        patch.object(PdfParser, "is_table_text_lines", return_value=True),
+        patch.object(PdfParser, "is_table_text_standard", return_value=False),
+    ):
+        mock_doc = MagicMock()
+        mock_doc.pages = []
+        mock_open.return_value.__enter__.return_value = mock_doc
+
+        parser = PdfParser(str(pdf_file))
+
+        # Act
+        result = parser.data_extractor()
+
     # Assert
-    assert result is False
+    assert result == ""
+
+
+def test_file_removal(tmp_path):
+    # Arrange
+    pdf_file = tmp_path / "downloaded_sample.pdf"
+    pdf_file.write_text("dummy content")
+
+    element = MagicMock(spec=LTTextContainer)
+    element.get_text.return_value = "Some text"
+    element.bbox = (0, 0, 10, 10)
+
+    with (
+        patch("osa_tool.readmegen.context.article_content.pdfplumber.open") as mock_open,
+        patch("osa_tool.readmegen.context.article_content.extract_pages", return_value=[[element]]),
+        patch.object(PdfParser, "is_table_text_lines", return_value=False),
+        patch.object(PdfParser, "is_table_text_standard", return_value=False),
+    ):
+        mock_doc = MagicMock()
+        mock_doc.pages = []
+        mock_open.return_value.__enter__.return_value = mock_doc
+        parser = PdfParser(str(pdf_file))
+
+        # Act
+        _ = parser.data_extractor()
+
+    # Assert
+    assert not pdf_file.exists()

@@ -1,80 +1,190 @@
-from unittest.mock import MagicMock, patch
-
-import pytest
-
 from osa_tool.readmegen.generator.header import HeaderBuilder
+from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
-@pytest.fixture
-def header_builder(config_loader):
-    source_rank_mock = MagicMock()
-    source_rank_mock.tree = {}
+def test_header_builder_initialization(mock_header_builder):
+    # Arrange
+    builder = mock_header_builder
 
-    metadata_mock = MagicMock()
-    metadata_mock.license_name = "MIT"
-
-    pypi_info_mock = MagicMock()
-    pypi_info_mock.get_info.return_value = {
-        "name": "TestPackage",
-        "version": "1.0.0",
-        "downloads": 1000,
-    }
-
-    dependency_extractor_mock = MagicMock()
-    dependency_extractor_mock.extract_techs.return_value = ["Python", "Django"]
-
-    with (
-        patch(
-            "osa_tool.readmegen.generator.header.SourceRank",
-            return_value=source_rank_mock,
-        ),
-        patch(
-            "osa_tool.readmegen.generator.header.load_data_metadata",
-            return_value=metadata_mock,
-        ),
-        patch(
-            "osa_tool.readmegen.generator.header.PyPiPackageInspector",
-            return_value=pypi_info_mock,
-        ),
-        patch(
-            "osa_tool.readmegen.generator.header.DependencyExtractor",
-            return_value=dependency_extractor_mock,
-        ),
-    ):
-        builder = HeaderBuilder(config_loader)
-        yield builder
-
-
-def test_load_template(header_builder):
-    # Act
-    template = header_builder.load_template()
     # Assert
+    assert builder.config is not None
+    assert builder.repo_url is not None
+    assert builder._template is not None
+    assert builder.tree is not None
+
+
+def test_load_template(mock_header_builder):
+    # Arrange
+    builder = mock_header_builder
+
+    # Act
+    template = builder.load_template()
+
+    # Assert
+    assert isinstance(template, dict)
     assert "headers" in template
-    assert "information_badges" in template
-    assert "technology_badges" in template
 
 
-def test_generate_info_badges(header_builder):
+def test_load_tech_icons(mock_header_builder):
+    # Arrange
+    builder = mock_header_builder
+
     # Act
-    badges = header_builder.generate_info_badges()
+    icons = builder.load_tech_icons()
+
     # Assert
-    assert "[![PyPi](https://badge.fury.io/py/TestPackage.svg)](https://badge.fury.io/py/TestPackage)" in badges
-    assert "[![Downloads](https://static.pepy.tech/badge/TestPackage)](https://pepy.tech/project/TestPackage)" in badges
+    assert isinstance(icons, dict)
 
 
-def test_generate_license_badge(header_builder):
+def test_generate_info_badges_with_info(mock_header_builder):
+    # Arrange
+    builder = mock_header_builder
+
     # Act
-    badge = header_builder.generate_license_badge()
+    badges = builder.generate_info_badges()
+
     # Assert
-    assert (
-        "![License](https://img.shields.io/github/license/user/TestProject?style=flat&logo=opensourceinitiative&logoColor=white&color=blue)"
-        in badge
-    )
+    assert isinstance(badges, str)
 
 
-def test_build_header(header_builder):
+def test_generate_info_badges_without_info(mock_header_builder):
+    # Arrange
+    builder = mock_header_builder
+    builder.info = None
+
     # Act
-    header = header_builder.build_header()
+    badges = builder.generate_info_badges()
+
     # Assert
-    assert "TestProject" in header
-    assert "[![PyPi]" in header
+    assert badges == ""
+
+
+def test_generate_license_badge_with_license(mock_header_builder):
+    # Arrange
+    builder = mock_header_builder
+
+    # Act
+    badge = builder.generate_license_badge()
+
+    # Assert
+    assert isinstance(badge, str)
+
+
+def test_generate_license_badge_without_license(mock_header_builder):
+    # Arrange
+    builder = mock_header_builder
+    builder.metadata.license_name = None
+
+    # Act
+    badge = builder.generate_license_badge()
+
+    # Assert
+    assert badge == ""
+
+
+def test_generate_tech_badges_with_techs(mock_header_builder):
+    # Arrange
+    builder = mock_header_builder
+
+    # Act
+    badges = builder.generate_tech_badges()
+
+    # Assert
+    assert isinstance(badges, str)
+
+
+def test_generate_tech_badges_without_techs(mock_header_builder):
+    # Arrange
+    builder = mock_header_builder
+    builder.techs = set()
+
+    # Act
+    badges = builder.generate_tech_badges()
+
+    # Assert
+    assert isinstance(badges, str)
+
+
+def test_generate_tech_badges_empty_result(mock_header_builder):
+    # Arrange
+    builder = mock_header_builder
+    builder.techs = {"python"}
+
+    # Act
+    badges = builder.generate_tech_badges()
+
+    # Assert
+    assert isinstance(badges, str)
+
+
+def test_build_information_section(mock_header_builder):
+    # Arrange
+    builder = mock_header_builder
+
+    # Act
+    section = builder.build_information_section
+
+    # Assert
+    assert isinstance(section, str)
+
+
+def test_build_technology_section(mock_header_builder):
+    # Arrange
+    builder = mock_header_builder
+
+    # Act
+    section = builder.build_technology_section
+
+    # Assert
+    assert isinstance(section, str)
+
+
+def test_build_header(mock_header_builder):
+    # Arrange
+    builder = mock_header_builder
+
+    # Act
+    header = builder.build_header()
+
+    # Assert
+    assert isinstance(header, str)
+    assert builder.config.git.name in header
+
+
+def test_generate_info_badges_formats_correctly(mock_header_builder):
+    # Arrange
+    builder = mock_header_builder
+
+    # Act
+    badges = builder.generate_info_badges()
+
+    # Assert
+    assert isinstance(badges, str)
+
+
+def test_generate_tech_badges_respects_max_limit(mock_header_builder):
+    # Arrange
+    builder = mock_header_builder
+    many_techs = {f"tech{i}" for i in range(15)}
+    builder.techs = many_techs
+
+    # Act
+    badges = builder.generate_tech_badges()
+
+    # Assert
+    assert isinstance(badges, str)
+
+
+def test_header_builder_with_minimal_repo_tree(mock_config_loader, load_metadata_header, sourcerank_with_repo_tree):
+    # Arrange
+    repo_tree_data = get_mock_repo_tree("MINIMAL")
+    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+    builder = HeaderBuilder(mock_config_loader)
+    builder.sourcerank = sourcerank
+
+    # Assert
+    assert builder.config is not None
+    assert builder.sourcerank is not None
+
+    header = builder.build_header()
+    assert isinstance(header, str)

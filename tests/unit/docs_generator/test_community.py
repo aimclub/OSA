@@ -1,81 +1,182 @@
-from unittest import mock
+from unittest.mock import patch
 
 import pytest
 
 from osa_tool.docs_generator.community import CommunityTemplateBuilder
+from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
-@pytest.fixture
-def builder(config_loader):
-    with (
-        mock.patch("osa_tool.docs_generator.community.SourceRank") as MockSourceRank,
-        mock.patch("osa_tool.docs_generator.community.load_data_metadata") as mock_metadata,
-    ):
-        mock_rank = MockSourceRank.return_value
-        mock_rank.contributing_presence.return_value = True
-        mock_rank.docs_presence.return_value = True
-        mock_rank.tree = ["docs/CONTRIBUTING.md"]
-
-        mock_metadata.return_value = mock.Mock(default_branch="main", name="TestProject")
-
-        return CommunityTemplateBuilder(config_loader)
-
-
-@mock.patch("osa_tool.docs_generator.community.save_sections")
-@mock.patch("osa_tool.docs_generator.community.logger")
-def test_build_code_of_conduct(mock_logger, mock_save, builder):
+def test_community_template_builder_init(
+    mock_config_loader,
+    load_metadata_community,
+):
     # Act
-    builder.build_code_of_conduct()
-    expected_content = builder._template["code_of_conduct"]
+    builder = CommunityTemplateBuilder(mock_config_loader)
+
     # Assert
-    mock_save.assert_called_once_with(expected_content, builder.code_of_conduct_to_save)
-    mock_logger.info.assert_called_once()
+    assert builder.repo_url == mock_config_loader.config.git.repository
+    assert builder.metadata == load_metadata_community.return_value
+    assert builder.sourcerank is not None
+    assert "code_of_conduct" in builder._template
+    assert "pull_request" in builder._template
+    assert "docs_issue" in builder._template
+    assert "feature_issue" in builder._template
+    assert "bug_issue" in builder._template
+
+    assert builder.repo_path.endswith(".github")
+    assert builder.code_of_conduct_to_save.endswith("CODE_OF_CONDUCT.md")
+    assert builder.pr_to_save.endswith("PULL_REQUEST_TEMPLATE.md")
+    assert builder.docs_issue_to_save.endswith("DOCUMENTATION_ISSUE.md")
+    assert builder.feature_issue_to_save.endswith("FEATURE_ISSUE.md")
+    assert builder.bug_issue_to_save.endswith("BUG_ISSUE.md")
 
 
-@mock.patch("osa_tool.docs_generator.community.save_sections")
-@mock.patch("osa_tool.docs_generator.community.logger")
-@mock.patch(
-    "osa_tool.docs_generator.community.find_in_repo_tree",
-    return_value="docs/CONTRIBUTING.md",
+def test_build_code_of_conduct(mock_config_loader, load_metadata_community, tmp_path, caplog):
+    # Arrange
+    builder = CommunityTemplateBuilder(mock_config_loader)
+    builder.repo_path = tmp_path / ".github"
+    builder.code_of_conduct_to_save = builder.repo_path / "CODE_OF_CONDUCT.md"
+    caplog.set_level("INFO")
+
+    with (patch("osa_tool.docs_generator.community.save_sections") as mock_save_sections,):
+        mock_save_sections.return_value = None
+
+        # Act
+        builder.build_code_of_conduct()
+
+        # Assert
+        mock_save_sections.assert_called_once()
+        assert f"CODE_OF_CONDUCT.md successfully generated in folder {builder.repo_path}" in caplog.text
+
+
+def test_build_pull_request(mock_config_loader, load_metadata_community, sourcerank_with_repo_tree, tmp_path, caplog):
+    # Arrange
+    repo_tree_data = get_mock_repo_tree("FULL")
+    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+
+    builder = CommunityTemplateBuilder(mock_config_loader)
+    builder.sourcerank = sourcerank
+    builder.repo_path = tmp_path / ".github"
+    builder.pr_to_save = builder.repo_path / "PULL_REQUEST_TEMPLATE.md"
+    caplog.set_level("INFO")
+
+    with (patch("osa_tool.docs_generator.community.save_sections") as mock_save_sections,):
+        mock_save_sections.return_value = None
+
+        # Act
+        builder.build_pull_request()
+
+        # Assert
+        mock_save_sections.assert_called_once()
+        assert f"PULL_REQUEST_TEMPLATE.md successfully generated in folder {builder.repo_path}" in caplog.text
+
+
+def test_build_documentation_issue_with_docs_present(
+    mock_config_loader, load_metadata_community, sourcerank_with_repo_tree, tmp_path, caplog
+):
+    # Arrange
+    repo_tree_data = get_mock_repo_tree("FULL")
+    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+
+    builder = CommunityTemplateBuilder(mock_config_loader)
+    builder.sourcerank = sourcerank
+    builder.repo_path = tmp_path / ".github"
+    builder.docs_issue_to_save = builder.repo_path / "DOCUMENTATION_ISSUE.md"
+    caplog.set_level("INFO")
+
+    with patch("osa_tool.docs_generator.community.save_sections") as mock_save_sections:
+        mock_save_sections.return_value = None
+
+        # Act
+        builder.build_documentation_issue()
+
+        # Assert
+        mock_save_sections.assert_called_once()
+        assert "DOCUMENTATION_ISSUE.md successfully generated in folder" in caplog.text
+
+
+def test_build_documentation_issue_without_docs_present(
+    mock_config_loader, load_metadata_community, sourcerank_with_repo_tree, tmp_path
+):
+    # Arrange
+    repo_tree_data = get_mock_repo_tree("MINIMAL")
+    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+
+    builder = CommunityTemplateBuilder(mock_config_loader)
+    builder.sourcerank = sourcerank
+    builder.repo_path = tmp_path / ".github"
+    builder.docs_issue_to_save = builder.repo_path / "DOCUMENTATION_ISSUE.md"
+
+    with patch("osa_tool.docs_generator.community.save_sections") as mock_save_sections:
+        # Act
+        builder.build_documentation_issue()
+
+        # Assert
+        mock_save_sections.assert_not_called()
+
+
+def test_build_feature_issue(mock_config_loader, load_metadata_community, tmp_path, caplog):
+    # Arrange
+    builder = CommunityTemplateBuilder(mock_config_loader)
+    builder.repo_path = tmp_path / ".github"
+    builder.feature_issue_to_save = builder.repo_path / "FEATURE_ISSUE.md"
+    caplog.set_level("INFO")
+
+    with patch("osa_tool.docs_generator.community.save_sections") as mock_save_sections:
+        mock_save_sections.return_value = None
+
+        # Act
+        builder.build_feature_issue()
+
+        # Assert
+        mock_save_sections.assert_called_once()
+        assert "FEATURE_ISSUE.md successfully generated in folder" in caplog.text
+
+
+def test_build_bug_issue(mock_config_loader, load_metadata_community, tmp_path, caplog):
+    # Arrange
+    builder = CommunityTemplateBuilder(mock_config_loader)
+    builder.repo_path = tmp_path / ".github"
+    builder.bug_issue_to_save = builder.repo_path / "BUG_ISSUE.md"
+    caplog.set_level("INFO")
+
+    with patch("osa_tool.docs_generator.community.save_sections") as mock_save_sections:
+        mock_save_sections.return_value = None
+
+        # Act
+        builder.build_bug_issue()
+
+        # Assert
+        mock_save_sections.assert_called_once()
+        assert "BUG_ISSUE.md successfully generated in folder" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "method_name, expected_log",
+    [
+        ("build_code_of_conduct", "Error while generating CODE_OF_CONDUCT.md"),
+        ("build_pull_request", "Error while generating PULL_REQUEST_TEMPLATE.md"),
+        ("build_documentation_issue", "Error while generating DOCUMENTATION_ISSUE.md"),
+        ("build_feature_issue", "Error while generating FEATURE_ISSUE.md"),
+        ("build_bug_issue", "Error while generating BUG_ISSUE.md"),
+    ],
 )
-def test_build_pull_request(mock_find, mock_logger, mock_save, builder):
-    # Act
-    builder.build_pull_request()
-    contributing_url = f"https://github.com/user/TestProject/tree/main/docs/CONTRIBUTING.md"
-    expected_content = builder._template["pull_request"].format(contributing_url=contributing_url)
-    # Assert
-    mock_save.assert_called_once_with(expected_content, builder.pr_to_save)
-    mock_logger.info.assert_called_once()
+def test_builder_methods_log_errors_on_exception(
+    method_name, expected_log, mock_config_loader, load_metadata_community, sourcerank_with_repo_tree, caplog
+):
+    # Arrange
+    repo_tree_data = get_mock_repo_tree("FULL")
+    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+    builder = CommunityTemplateBuilder(mock_config_loader)
+    builder.sourcerank = sourcerank
+    caplog.set_level("ERROR")
 
+    with patch("osa_tool.docs_generator.community.save_sections", side_effect=Exception("save failed")):
+        # Act
+        method = getattr(builder, method_name)
+        method()
 
-@mock.patch("osa_tool.docs_generator.community.save_sections")
-@mock.patch("osa_tool.docs_generator.community.logger")
-def test_build_documentation_issue(mock_logger, mock_save, builder):
-    # Act
-    builder.build_documentation_issue()
-    expected_content = builder._template["docs_issue"]
-    # Assert
-    mock_save.assert_called_once_with(expected_content, builder.docs_issue_to_save)
-    mock_logger.info.assert_called_once()
-
-
-@mock.patch("osa_tool.docs_generator.community.save_sections")
-@mock.patch("osa_tool.docs_generator.community.logger")
-def test_build_feature_issue(mock_logger, mock_save, builder):
-    # Act
-    builder.build_feature_issue()
-    expected_content = builder._template["feature_issue"].format(project_name=builder.metadata.name)
-    # Assert
-    mock_save.assert_called_once_with(expected_content, builder.feature_issue_to_save)
-    mock_logger.info.assert_called_once()
-
-
-@mock.patch("osa_tool.docs_generator.community.save_sections")
-@mock.patch("osa_tool.docs_generator.community.logger")
-def test_build_bug_issue(mock_logger, mock_save, builder):
-    # Act
-    builder.build_bug_issue()
-    expected_content = builder._template["bug_issue"].format(project_name=builder.metadata.name)
-    # Assert
-    mock_save.assert_called_once_with(expected_content, builder.bug_issue_to_save)
-    mock_logger.info.assert_called_once()
+        # Assert
+        assert any(
+            expected_log in message for message in caplog.messages
+        ), f"Expected log message '{expected_log}' not found in logs: {caplog.messages}"

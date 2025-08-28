@@ -1,81 +1,139 @@
 from unittest.mock import patch
 
-import pytest
-
 from osa_tool.readmegen.generator.installation import InstallationSectionBuilder
+from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
-def example_pypi_info():
-    return {"name": "cool-package"}
+def test_installation_builder_initialization(mock_installation_builder):
+    # Arrange
+    builder = mock_installation_builder
 
-
-@pytest.fixture
-def patch_dependencies():
-    with (
-        patch("osa_tool.readmegen.generator.installation.load_data_metadata"),
-        patch("osa_tool.readmegen.generator.installation.SourceRank") as mock_rank,
-        patch("osa_tool.readmegen.generator.installation.PyPiPackageInspector") as mock_pypi,
-        patch("osa_tool.readmegen.generator.installation.DependencyExtractor") as mock_dep,
-    ):
-
-        yield mock_rank, mock_pypi, mock_dep
-
-
-@pytest.fixture
-def builder_with_pypi(config_loader, patch_dependencies):
-    _, mock_pypi, mock_dep = patch_dependencies
-    mock_pypi.return_value.get_info.return_value = example_pypi_info()
-    mock_dep.return_value.extract_python_version_requirement.return_value = "3.11"
-
-    return InstallationSectionBuilder(config_loader)
-
-
-@pytest.fixture
-def builder_from_source_with_reqs(config_loader, patch_dependencies):
-    mock_rank, mock_pypi, mock_dep = patch_dependencies
-    mock_rank.return_value.tree = "requirements.txt"
-    mock_pypi.return_value.get_info.return_value = None
-    mock_dep.return_value.extract_python_version_requirement.return_value = None
-
-    with patch(
-        "osa_tool.readmegen.generator.installation.find_in_repo_tree",
-        return_value="requirements.txt",
-    ):
-        return InstallationSectionBuilder(config_loader)
-
-
-@pytest.fixture
-def builder_from_source_without_reqs(config_loader, patch_dependencies):
-    mock_rank, mock_pypi, mock_dep = patch_dependencies
-    mock_rank.return_value.tree = "mock_tree"
-    mock_pypi.return_value.get_info.return_value = None
-    mock_dep.return_value.extract_python_version_requirement.return_value = "3.10"
-
-    with patch("osa_tool.readmegen.generator.installation.find_in_repo_tree", return_value=None):
-        return InstallationSectionBuilder(config_loader)
-
-
-def test_build_with_pypi(builder_with_pypi):
-    # Act
-    result = builder_with_pypi.build_installation()
     # Assert
-    assert "pip install cool-package" in result
-    assert "requires Python 3.11" in result
+    assert builder.config is not None
+    assert builder.repo_url is not None
+    assert builder._template is not None
+    assert builder.sourcerank is not None
 
 
-def test_build_from_source_with_requirements(builder_from_source_with_reqs):
+def test_load_template(mock_installation_builder):
+    # Arrange
+    builder = mock_installation_builder
+
     # Act
-    result = builder_from_source_with_reqs.build_installation()
+    template = builder.load_template()
+
     # Assert
-    assert "git clone" in result
-    assert "pip install -r requirements.txt" in result
-    assert "requires Python" not in result
+    assert isinstance(template, dict)
+    assert "installation" in template
 
 
-def test_build_from_source_without_requirements(builder_from_source_without_reqs):
+def test_python_requires_with_version(mock_installation_builder):
+    # Arrange
+    builder = mock_installation_builder
+    builder.version = ">=3.8"
+
     # Act
-    result = builder_from_source_without_reqs.build_installation()
+    requirements = builder._python_requires()
+
     # Assert
-    assert "git clone" in result
-    assert "pip install -r requirements.txt" not in result
-    assert "requires Python 3.10" in result
+    assert isinstance(requirements, str)
+    assert "Python >=3.8" in requirements
+
+
+def test_python_requires_without_version(mock_installation_builder):
+    # Arrange
+    builder = mock_installation_builder
+    builder.version = None
+
+    # Act
+    requirements = builder._python_requires()
+
+    # Assert
+    assert requirements == ""
+
+
+def test_generate_install_command_with_pypi_info(mock_installation_builder):
+    # Arrange
+    builder = mock_installation_builder
+    builder.info = {"name": "test-package"}
+
+    # Act
+    command = builder._generate_install_command()
+
+    # Assert
+    assert isinstance(command, str)
+    assert "pip install test-package" in command
+
+
+def test_generate_install_command_without_pypi_info(mock_installation_builder):
+    # Arrange
+    builder = mock_installation_builder
+    builder.info = None
+
+    # Act
+    command = builder._generate_install_command()
+
+    # Assert
+    assert isinstance(command, str)
+    assert "Clone the" in command
+    assert "Build from source" in command
+
+
+def test_generate_install_command_with_requirements_txt(mock_installation_builder):
+    # Arrange
+    builder = mock_installation_builder
+    builder.info = None
+
+    with patch("osa_tool.readmegen.generator.installation.find_in_repo_tree", return_value="requirements.txt"):
+
+        # Act
+        command = builder._generate_install_command()
+
+    # Assert
+    assert isinstance(command, str)
+    assert "pip install -r requirements.txt" in command
+
+
+def test_build_installation(mock_installation_builder):
+    # Arrange
+    builder = mock_installation_builder
+
+    # Act
+    installation = builder.build_installation()
+
+    # Assert
+    assert isinstance(installation, str)
+    assert builder.config.git.name in installation
+
+
+def test_build_installation_with_python_version(mock_installation_builder):
+    # Arrange
+    builder = mock_installation_builder
+    builder.version = ">=3.8"
+    builder.info = {"name": "test-package"}
+
+    # Act
+    installation = builder.build_installation()
+
+    # Assert
+    assert isinstance(installation, str)
+    assert "Python >=3.8" in installation
+    assert "pip install test-package" in installation
+
+
+def test_installation_builder_with_minimal_repo_tree(
+    mock_config_loader, load_metadata_installation, sourcerank_with_repo_tree
+):
+    # Arrange
+    repo_tree_data = get_mock_repo_tree("MINIMAL")
+    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+
+    builder = InstallationSectionBuilder(mock_config_loader)
+    builder.sourcerank = sourcerank
+
+    # Assert
+    assert builder.config is not None
+    assert builder.sourcerank is not None
+
+    installation = builder.build_installation()
+    assert isinstance(installation, str)

@@ -1,73 +1,91 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from osa_tool.config.settings import ConfigLoader
-from osa_tool.models.models import ModelHandler
-from osa_tool.readmegen.models.llm_service import LLMClient
+
+def test_get_key_files_returns_list(llm_client, mock_model_handler):
+    # Arrange
+    llm_client.model_handler = mock_model_handler(side_effect=['{"key_files": ["src/main.py", "README.md"]}'])
+
+    with patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process:
+        mock_process.side_effect = lambda x: x
+
+        # Act
+        result = llm_client.get_key_files()
+
+    # Assert
+    assert result == ["src/main.py", "README.md"]
 
 
-@pytest.fixture
-def mock_llm_client():
-    mock_config_loader = MagicMock(spec=ConfigLoader)
-    mock_git_config = MagicMock()
-    mock_git_config.repository = "https://github.com/example/repo"
-    mock_config = MagicMock()
-    mock_config.git = mock_git_config
-    mock_config_loader.config = mock_config
+def test_get_key_files_invalid_json_raises(llm_client, mock_model_handler):
+    # Arrange
+    llm_client.model_handler = mock_model_handler(side_effect=["not a json"])
+
+    with patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process:
+        mock_process.side_effect = lambda x: x
+
+        # Assert
+        with pytest.raises(ValueError):
+            llm_client.get_key_files()
+
+
+def test_get_responses_article_returns_expected(llm_client, mock_model_handler):
+    # Arrange
+    llm_client.model_handler = mock_model_handler(
+        side_effect=[
+            '{"key_files": ["src/main.py", "README.md"]}',  # get_key_files
+            "files_summary",  # files summary
+            "pdf_summary",  # pdf summary
+            "overview_article",  # overview
+            "content_article",  # content
+            "algorithms_article",  # algorithms
+            "getting_started_article",  # getting_started
+        ]
+    )
 
     with (
-        patch("osa_tool.models.models.ModelHandlerFactory.build") as mock_model_handler_factory,
-        patch("osa_tool.readmegen.models.llm_service.SourceRank") as mock_source_rank,
-        patch("osa_tool.readmegen.models.llm_service.PromptBuilder") as mock_prompt_builder,
+        patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process,
+        patch("osa_tool.readmegen.context.article_path.get_pdf_path") as mock_pdf_path,
+        patch("osa_tool.readmegen.context.article_content.PdfParser.data_extractor") as mock_pdf_extract,
     ):
-        # ModelHandler
-        mock_model_handler = MagicMock(ModelHandler)
-        mock_model_handler.send_request.return_value = "mock_response"
-        mock_model_handler_factory.return_value = mock_model_handler
-        # SourceRank
-        mock_source_rank_instance = MagicMock()
-        mock_source_rank_instance.tree = "examples/example.py"
-        mock_source_rank.return_value = mock_source_rank_instance
-        # PromptBuilder
-        mock_prompt_builder_instance = MagicMock()
-        mock_prompt_builder_instance.get_prompt_core_features.return_value = "mock_prompt_core_features"
-        mock_prompt_builder_instance.get_prompt_overview.return_value = "mock_prompt_overview"
-        mock_prompt_builder_instance.get_prompt_getting_started.return_value = "mock_prompt_getting_started"
-        mock_prompt_builder_instance.get_prompt_preanalysis.return_value = "mock_prompt_preanalysis"
-        mock_prompt_builder.return_value = mock_prompt_builder_instance
 
-        return LLMClient(mock_config_loader)
+        mock_process.side_effect = lambda x: x
+        mock_pdf_path.return_value = "fake_path.pdf"
+        mock_pdf_extract.return_value = "pdf_content"
 
+        # Act
+        overview, content, algorithms, getting_started = llm_client.get_responses_article("article.pdf")
 
-@pytest.fixture
-def mock_response_json():
-    return """
-    {
-        "key_files": [
-            "src/main.py",
-            "src/api/handlers.py"
-        ]
-    }
-    """
-
-
-def test_get_responses(mock_llm_client):
-    # Arrange
-    mock_response = '{"text": "mock_response"}'
-    mock_llm_client.run_request = MagicMock(side_effect=lambda prompt: mock_response)
-    # Act
-    core_features, overview, getting_started = mock_llm_client.get_responses()
     # Assert
-    assert core_features == '{"text": "mock_response"}'
-    assert overview == '{"text": "mock_response"}'
-    assert getting_started == '{"text": "mock_response"}'
+    assert overview == "overview_article"
+    assert content == "content_article"
+    assert algorithms == "algorithms_article"
+    assert getting_started == "getting_started_article"
 
 
-def test_get_key_files(mock_llm_client, mock_response_json):
+def test_deduplicate_sections_returns_expected(llm_client, mock_model_handler):
     # Arrange
-    mock_llm_client.run_request = MagicMock(return_value=mock_response_json)
-    # Act
-    key_files = mock_llm_client.get_key_files()
+    llm_client.model_handler = mock_model_handler(side_effect=["deduplicated"])
+
+    with patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process:
+        mock_process.side_effect = lambda x: x
+
+        # Act
+        result = llm_client.deduplicate_sections("installation", "getting_started")
+
     # Assert
-    assert key_files == ["src/main.py", "src/api/handlers.py"]
+    assert result == "deduplicated"
+
+
+def test_refine_readme_returns_expected(llm_client, mock_model_handler):
+    # Arrange
+    llm_client.model_handler = mock_model_handler(side_effect=["refined_readme"])
+
+    with patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process:
+        mock_process.side_effect = lambda x: x
+
+        # Act
+        result = llm_client.refine_readme({"section": "content"})
+
+    # Assert
+    assert result == "refined_readme"

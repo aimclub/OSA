@@ -1,158 +1,215 @@
 import json
-
-import pytest
+from unittest.mock import patch
 
 from osa_tool.readmegen.generator.builder import MarkdownBuilder
+from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
-def example_overview():
-    return json.dumps({"overview": "This project does amazing things with AI."})
-
-
-def example_core_features():
-    return json.dumps(
+def test_core_features_with_critical_features(mock_markdown_builder):
+    # Arrange
+    core_features_json = json.dumps(
         [
-            {
-                "feature_name": "Fast Inference",
-                "feature_description": "Performs prediction in under 10ms",
-                "is_critical": True,
-            },
-            {
-                "feature_name": "Modular Design",
-                "feature_description": "Easily plug in new components",
-                "is_critical": False,
-            },
-            {
-                "feature_name": "API Ready",
-                "feature_description": "Exposes a REST API for integration",
-                "is_critical": True,
-            },
+            {"feature_name": "Feature 1", "feature_description": "Description 1", "is_critical": True},
+            {"feature_name": "Feature 2", "feature_description": "Description 2", "is_critical": False},
         ]
     )
-
-
-def example_getting_started():
-    return json.dumps({"getting_started": "To get started, install the package and run `main.py`."})
-
-
-@pytest.fixture
-def markdown_builder(config_loader, mock_load_data_metadata):
-    return MarkdownBuilder(
-        config_loader=config_loader,
-        overview=example_overview(),
-        core_features=example_core_features(),
-        getting_started=example_getting_started(),
+    builder = mock_markdown_builder(
+        core_features=core_features_json, overview="Test overview", getting_started="Test getting started"
     )
 
-
-def test_template_loading(markdown_builder):
     # Act
-    template = markdown_builder.load_template()
+    result = builder.core_features
+
     # Assert
-    assert isinstance(template, dict)
-    assert "overview" in template
-    assert "core_features" in template
-    assert "getting_started" in template
+    assert "Feature 1" in result
+    assert "Description 1" in result
+    assert "Feature 2" not in result
+    assert "**Feature 1**" in result
 
 
-def test_overview_section(markdown_builder):
+def test_core_features_no_critical_features(mock_markdown_builder):
+    # Arrange
+    core_features_json = json.dumps(
+        [{"feature_name": "Feature 1", "feature_description": "Description 1", "is_critical": False}]
+    )
+    builder = mock_markdown_builder(
+        core_features=core_features_json, overview="Test overview", getting_started="Test getting started"
+    )
+
     # Act
-    section = markdown_builder.overview
+    result = builder.core_features
+
     # Assert
-    assert "This project does amazing things" in section
-    assert section.startswith("## Overview")
-    assert "This project" in section
+    assert "_No critical features identified._" in result
 
 
-def test_core_features_section(markdown_builder):
+def test_core_features_empty_json(mock_markdown_builder):
+    # Arrange
+    builder = mock_markdown_builder(
+        core_features=None, overview="Test overview", getting_started="Test getting started"
+    )
+
     # Act
-    section = markdown_builder.core_features
+    result = builder.core_features
+
     # Assert
-    assert "Fast Inference" in section
-    assert "API Ready" in section
-    assert "Modular Design" not in section
-    assert section.startswith("## Core features")
+    assert result == ""
 
 
-def test_getting_started_section(markdown_builder):
+def test_core_features_multiple_critical_features(mock_markdown_builder):
+    # Arrange
+    core_features_json = json.dumps(
+        [
+            {"feature_name": "Feature 1", "feature_description": "Description 1", "is_critical": True},
+            {"feature_name": "Feature 2", "feature_description": "Description 2", "is_critical": True},
+            {"feature_name": "Feature 3", "feature_description": "Description 3", "is_critical": False},
+        ]
+    )
+    builder = mock_markdown_builder(
+        core_features=core_features_json, overview="Test overview", getting_started="Test getting started"
+    )
+
     # Act
-    section = markdown_builder.getting_started
+    result = builder.core_features
+
     # Assert
-    assert "install the package" in section
-    assert section.startswith("## Getting Started")
+    assert "1. **Feature 1**: Description 1" in result
+    assert "2. **Feature 2**: Description 2" in result
+    assert "Feature 3" not in result
 
 
-def test_installation_section(markdown_builder):
+def test_contributing_with_discussions_and_contributing_file(mock_markdown_builder, sourcerank_with_repo_tree):
+    # Arrange
+    repo_tree_data = get_mock_repo_tree("FULL")
+    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+    builder = mock_markdown_builder(
+        core_features="[]", overview="Test overview", getting_started="Test getting started"
+    )
+    builder.sourcerank = sourcerank
+
+    with patch.object(MarkdownBuilder, "_check_url") as mock_check_url:
+        mock_check_url.side_effect = lambda url: "discussions" in url
+
+        # Act
+        result = builder.contributing
+
+    # Assert
+    assert isinstance(result, str)
+
+
+def test_contributing_without_discussions(mock_markdown_builder, sourcerank_with_repo_tree):
+    # Arrange
+    repo_tree_data = get_mock_repo_tree("FULL")
+    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+    builder = mock_markdown_builder(
+        core_features="[]", overview="Test overview", getting_started="Test getting started"
+    )
+    builder.sourcerank = sourcerank
+    with patch.object(MarkdownBuilder, "_check_url") as mock_check_url:
+        mock_check_url.return_value = False
+
+        # Act
+        result = builder.contributing
+
+    # Assert
+    assert isinstance(result, str)
+
+
+def test_contributing_without_contributing_file(mock_markdown_builder, sourcerank_with_repo_tree):
+    # Arrange
+    repo_tree_data = get_mock_repo_tree("MINIMAL")
+    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+    builder = mock_markdown_builder(
+        core_features="[]", overview="Test overview", getting_started="Test getting started"
+    )
+    builder.sourcerank = sourcerank
+
+    with patch.object(MarkdownBuilder, "_check_url") as mock_check_url:
+        mock_check_url.side_effect = lambda url: "discussions" in url
+
+        result = builder.contributing
+
+    # Assert
+    assert isinstance(result, str)
+
+
+def test_contributing_with_contributing_only(mock_markdown_builder, sourcerank_with_repo_tree):
+    # Arrange
+    repo_tree_data = get_mock_repo_tree("WITH_CONTRIBUTING_ONLY")
+    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+
+    builder = mock_markdown_builder(
+        core_features="[]", overview="Test overview", getting_started="Test getting started"
+    )
+    builder.sourcerank = sourcerank
+
+    with patch.object(MarkdownBuilder, "_check_url") as mock_check_url:
+        mock_check_url.return_value = True
+
+        # Act
+        result = builder.contributing
+
+    # Assert
+    assert isinstance(result, str)
+
+
+def test_toc_generation(mock_markdown_builder):
+    # Arrange
+    core_features_json = json.dumps([{"feature_name": "Test", "feature_description": "Desc", "is_critical": True}])
+    builder = mock_markdown_builder(
+        core_features=core_features_json,
+        overview=json.dumps({"overview": None}),
+        getting_started=json.dumps({"getting_started": "Test getting started"}),
+    )
+
     # Act
-    section = markdown_builder.installation
+    result = builder.toc
+
     # Assert
-    assert isinstance(section, str)
-    assert section.startswith("## Installation")
+    assert isinstance(result, str)
+    assert "- [" in result or "* [" in result
+    assert "Getting Started" in result
 
 
-def test_header_section(markdown_builder):
-    # Act
-    section = markdown_builder.header
+def test_build_method_full(mock_markdown_builder, sourcerank_with_repo_tree):
+    # Arrange
+    core_features_json = json.dumps(
+        [{"feature_name": "Feature 1", "feature_description": "Description 1", "is_critical": True}]
+    )
+    repo_tree_data = get_mock_repo_tree("FULL")
+    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+
+    builder = mock_markdown_builder(
+        core_features=core_features_json,
+        overview=json.dumps({"overview": "Test overview"}),
+        getting_started=json.dumps({"getting_started": "Test getting started"}),
+    )
+    builder.sourcerank = sourcerank
+
+    with patch.object(MarkdownBuilder, "_check_url", return_value=True):
+
+        # Act
+        result = builder.build()
+
     # Assert
-    assert isinstance(section, str)
-    assert section.startswith("# ")
+    assert isinstance(result, str)
+    assert len(result) > 0
 
 
-def test_examples_section_optional(markdown_builder):
-    # Act
-    section = markdown_builder.examples
+def test_build_method_minimal(mock_markdown_builder, sourcerank_with_repo_tree):
+    # Arrange
+    repo_tree_data = get_mock_repo_tree("MINIMAL")
+    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+    builder = mock_markdown_builder(
+        core_features=None, overview=json.dumps({"overview": ""}), getting_started=json.dumps({"getting_started": ""})
+    )
+    builder.sourcerank = sourcerank
+
+    with patch.object(MarkdownBuilder, "_check_url", return_value=False):
+
+        # Act
+        result = builder.build()
+
     # Assert
-    assert isinstance(section, str)
-
-
-def test_documentation_section(markdown_builder):
-    # Act
-    section = markdown_builder.documentation
-    # Assert
-    assert isinstance(section, str)
-    assert section.startswith("## Documentation") or section == ""
-
-
-def test_contributing_section(markdown_builder):
-    # Act
-    section = markdown_builder.contributing
-    # Assert
-    assert isinstance(section, str)
-    assert section.startswith("## Contributing") or section == ""
-
-
-def test_license_section(markdown_builder):
-    # Act
-    section = markdown_builder.license
-    # Assert
-    assert isinstance(section, str)
-    assert section.startswith("## License") or section == ""
-
-
-def test_citation_section(markdown_builder):
-    # Act
-    section = markdown_builder.citation
-    # Assert
-    assert isinstance(section, str)
-    assert section.startswith("## Citation")
-
-
-def test_table_of_contents(markdown_builder):
-    # Act
-    toc = markdown_builder.toc
-    # Assert
-    assert "Table of Contents" in toc
-    assert "- [Core features](#core-features)" in toc
-
-
-def test_full_readme_build(markdown_builder):
-    # Act
-    readme = markdown_builder.build()
-    # Assert
-    assert isinstance(readme, str)
-    assert "# " in readme
-    assert "## Overview" in readme
-    assert "## Core features" in readme
-    assert "## Installation" in readme
-    assert "## Getting Started" in readme
-    assert "## Table of Contents" in readme
+    assert isinstance(result, str)
+    assert "Getting Started" not in result

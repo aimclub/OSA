@@ -1,223 +1,569 @@
-import pytest
 import os
-from unittest.mock import patch, mock_open, MagicMock, Mock
-from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
+import shutil
+
+from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter  # adjust import path
+from tests.utils.fixtures.osatreesitter import Node
 
 
-@pytest.fixture
-def osa_tree_sitter():
-    """Создание фикстуры OSA_TreeSitter для повторного использования."""
-    return OSA_TreeSitter("test_directory")
+def test_files_list_directory(temp_dir_with_files):
+    # Arrange
+    repo_path, expected_files = temp_dir_with_files
 
-
-@patch("os.path.isdir", return_value=True)
-@patch("os.walk", return_value=[("test_directory", [], ["script.py", "test.txt"])])
-def test_files_list_directory(mock_walk, mock_isdir, osa_tree_sitter):
-    """Test that files_list correctly identifies Python files in a directory."""
     # Act
-    files, status = osa_tree_sitter.files_list("test_directory")
-    expected_files = [os.path.join("test_directory", "script.py")]
+    files, status = OSA_TreeSitter.files_list(repo_path)
+
     # Assert
-    assert files == expected_files
+    assert status == 0
+    assert all(f in files for f in expected_files)
+    assert not any(f.endswith(".txt") for f in files)
+
+
+def test_files_list_single_file(temp_py_file):
+    # Aсt
+    files, status = OSA_TreeSitter.files_list(temp_py_file)
+
+    # Assert
+    assert status == 1
+    assert files == [os.path.abspath(temp_py_file)]
+
+
+def test_files_list_non_py_file(tmp_path):
+    # Arrange
+    file = tmp_path / "note.txt"
+    file.write_text("hello")
+
+    # Act
+    files, status = OSA_TreeSitter.files_list(str(file))
+
+    # Assert
+    assert files == []
     assert status == 0
 
 
-@patch("os.path.isfile", return_value=True)
-@patch("os.path.abspath", return_value="/absolute/path/to/script.py")
-def test_files_list_file(mock_abspath, mock_isfile, osa_tree_sitter):
-    """Test that files_list correctly handles a single file path."""
-    # Act
-    files, status = osa_tree_sitter.files_list("script.py")
-    # Assert
-    assert files == ["/absolute/path/to/script.py"]
-    assert status == 1
-
-
-def test_if_file_handler(osa_tree_sitter):
-    """Test _if_file_handler returns the directory path."""
+def test_if_file_handler_returns_dir(temp_py_file):
     # Arrange
-    path = "/path/to/script.py"
-    # Act
-    result = osa_tree_sitter._if_file_handler(path)
+    parent_dir = os.path.dirname(temp_py_file)
+
     # Assert
-    assert result == "/path/to"
+    assert OSA_TreeSitter._if_file_handler(temp_py_file) == parent_dir
 
 
-@patch("builtins.open", new_callable=mock_open, read_data="print('Hello')")
-def test_open_file(mock_file, osa_tree_sitter):
-    """Test open_file correctly reads a file's content."""
+def test_open_file_reads_content(temp_py_file):
     # Act
-    content = osa_tree_sitter.open_file("script.py")
+    content = OSA_TreeSitter.open_file(temp_py_file)
+
     # Assert
-    assert content == "print('Hello')"
+    assert "x = 1" in content
+    assert "y = 2" in content
 
 
-@patch("tree_sitter.Parser")
-@patch("osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._parser_build")
-@patch(
-    "osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter.open_file",
-    return_value="def test(): pass",
-)
-def test_parse_source_code(mock_open_file, mock_parser_build, mock_parser, osa_tree_sitter):
-    """Test _parse_source_code returns a parsed tree."""
+def test_parser_build_and_parse(temp_py_file):
     # Arrange
-    mock_parser_build.return_value = mock_parser
-    mock_parser.parse.return_value = "mock_tree"
+    ts = OSA_TreeSitter(os.path.dirname(temp_py_file))
+
     # Act
-    tree, source_code = osa_tree_sitter._parse_source_code("script.py")
+    parser = ts._parser_build(temp_py_file)
+
     # Assert
-    assert tree == "mock_tree"
-    assert source_code == "def test(): pass"
+    assert parser is not None
+
+    tree, source = ts._parse_source_code(temp_py_file)
+    assert "x = 1" in source
+    assert hasattr(tree, "root_node")
 
 
-@patch("osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._class_parser")
-@patch("osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._function_parser")
-@patch("osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._parse_source_code")
-@patch(
-    "osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._extract_imports",
-    return_value={},
-)
-@patch(
-    "osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter._get_decorators",
-    return_value=["mock_decorator"],
-)
-def test_extract_structure(
-    mock_get_decorators,
-    mock_extract_imports,
-    mock_parse_source_code,
-    mock_function_parser,
-    mock_class_parser,
-    osa_tree_sitter,
-):
-    """Test extract_structure processes functions, classes, and decorators in a Python file."""
+def test_traverse_expression_adds_identifiers():
+    # Arrange
+    ts = OSA_TreeSitter(".")
 
-    mock_tree = MagicMock()
-    mock_tree.root_node = MagicMock()
+    # Fake tree-sitter node using a minimal stub
+    class Node:
+        def __init__(self, type_, children=None, text=None):
+            self.type = type_
+            self.children = children or []
+            self.text = text
 
-    mock_decorated_node = MagicMock()
-    mock_decorated_node.type = "decorated_definition"
-    mock_function_node = MagicMock()
-    mock_function_node.type = "function_definition"
-    mock_decorated_node.children = [MagicMock(type="decorator"), mock_function_node]
+    identifier = Node("identifier", text=b"foo")
+    assignment = Node("assignment", children=[identifier])
+    expr_node = Node("expr", children=[assignment])
 
-    mock_class_node = MagicMock()
-    mock_class_node.type = "class_definition"
-
-    mock_tree.root_node.children = [
-        mock_decorated_node,
-        mock_class_node,
-        mock_function_node,
-    ]
-    mock_parse_source_code.return_value = (mock_tree, "def test(): pass")
-
-    def function_parser_side_effect(structure: dict, source_code, node, dec_list=[]):
-        structure["structure"].append(f"mock_function_structure_{len(structure['structure'])}")
-        return structure
-
-    def class_parser_side_effect(structure: dict, source_code, node, dec_list=[]):
-        structure["structure"].append(f"mock_class_structure_{len(structure['structure'])}")
-        return structure
-
-    mock_function_parser.side_effect = function_parser_side_effect
-    mock_class_parser.side_effect = class_parser_side_effect
-
-    result = osa_tree_sitter.extract_structure("script.py")
-
-    assert result == {
-        "structure": [
-            "mock_function_structure_0",
-            "mock_class_structure_1",
-            "mock_function_structure_2",
-        ],
-        "imports": {},
-    }
-
-    mock_parse_source_code.assert_called_with("script.py")
-
-
-@patch(
-    "osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter.files_list",
-    return_value=(["script.py"], 0),
-)
-@patch(
-    "osa_tool.osatreesitter.osa_treesitter.OSA_TreeSitter.extract_structure",
-    return_value=[{"type": "function", "name": "test"}],
-)
-def test_analyze_directory(mock_extract_structure, mock_files_list, osa_tree_sitter):
-    """Test analyze_directory correctly processes all Python files."""
     # Act
-    result = osa_tree_sitter.analyze_directory("test_directory")
+    attrs = ts._traverse_expression([], expr_node)
+
     # Assert
-    assert "script.py" in result
-    assert result["script.py"] == [{"type": "function", "name": "test"}]
+    assert "foo" in attrs
 
 
-def test_resolve_import_path_from_import(osa_tree_sitter, tmp_path):
-    file = tmp_path / "utils.py"
-    file.write_text("# dummy")
-    osa_tree_sitter.cwd = str(tmp_path)
+def test_get_attributes_calls_traverse_expression(monkeypatch):
+    # Arrange
+    ts = OSA_TreeSitter(".")
+    called = {}
 
-    with patch("os.path.exists", return_value=True):
-        result = osa_tree_sitter._resolve_import_path("from utils import MyClass")
+    def fake_traverse(attrs, node):
+        called["ok"] = True
+        return attrs + ["bar"]
 
-    assert "MyClass" in result
-    assert result["MyClass"]["module"] == "utils"
-    assert result["MyClass"]["path"].endswith("utils.py")
+    monkeypatch.setattr(ts, "_traverse_expression", fake_traverse)
 
+    class Node:
+        def __init__(self, type_, children=None):
+            self.type = type_
+            self.children = children or []
 
-def test_resolve_import_path_with_alias(osa_tree_sitter, tmp_path):
-    (tmp_path / "mypkg").mkdir()
-    file = tmp_path / "mypkg" / "core.py"
-    file.write_text("# dummy")
-    osa_tree_sitter.cwd = str(tmp_path)
+    expr_stmt = Node("expression_statement")
+    block_node = Node("block", children=[expr_stmt])
 
-    with patch("os.path.exists", return_value=True):
-        result = osa_tree_sitter._resolve_import_path("import mypkg.core as core")
+    # Act
+    attrs = ts._get_attributes([], block_node)
 
-    assert "core" in result
-    assert result["core"]["module"] == "mypkg.core"
-    assert result["core"]["path"].endswith("core.py")
-
-
-def test_resolve_import_path_invalid_format(osa_tree_sitter):
-    assert osa_tree_sitter._resolve_import_path("not an import") == {}
+    # Assert
+    assert "bar" in attrs
+    assert called["ok"] is True
 
 
-def test_extract_imports_parses_nodes(osa_tree_sitter):
-    node1 = Mock()
-    node1.type = "import_statement"
-    node1.text = b"import os"
+def test_class_parser_appends_structure(monkeypatch):
+    # Arrange
+    ts = OSA_TreeSitter(".")
 
-    node2 = Mock()
-    node2.type = "import_from_statement"
-    node2.text = b"from math import sqrt"
+    # monkeypatch dependencies
+    monkeypatch.setattr(ts, "_get_attributes", lambda attrs, node: ["attr1"])
+    monkeypatch.setattr(ts, "_get_docstring", lambda node: "docstring here")
+    monkeypatch.setattr(ts, "_traverse_block", lambda block, src, imports: [{"method": "from_block"}])
+    monkeypatch.setattr(ts, "_extract_function_details", lambda node, src, imports: {"method": "from_func"})
 
-    root_node = Mock()
-    root_node.children = [node1, node2]
+    block_node = Node("block")
+    func_node = Node("function_definition")
+    class_node = Node("class_definition", children=[block_node, func_node], name="MyClass")
 
-    with patch.object(osa_tree_sitter, "_resolve_import_path") as mock_resolve:
-        mock_resolve.side_effect = [
-            {"os": {"module": "os", "path": "/fake/os.py"}},
-            {"sqrt": {"module": "math", "class": "sqrt", "path": "/fake/math.py"}},
-        ]
-        result = osa_tree_sitter._extract_imports(root_node)
+    structure = {"structure": [], "imports": {}}
 
-    assert "os" in result and "sqrt" in result
+    # Act
+    ts._class_parser(structure, "source_code_here", class_node, dec_list=["@decor"])
 
-
-def test_resolve_import_with_function(osa_tree_sitter):
-    imports = {"np": {"module": "numpy", "path": "/numpy.py"}}
-    result = osa_tree_sitter._resolve_import("np.array", "np", imports)
-    assert result["module"] == "numpy"
-    assert result["function"] == "array"
+    # Assert
+    result = structure["structure"][0]
+    assert result["type"] == "class"
+    assert result["name"] == "MyClass"
+    assert result["decorators"] == ["@decor"]
+    assert "attr1" in result["attributes"]
+    assert result["docstring"] == "docstring here"
+    assert any("method" in m for m in result["methods"])
 
 
-def test_resolve_import_class_method_chain(osa_tree_sitter):
-    imports = {"mod": {"module": "pkg.module", "class": "MyClass", "path": "/module.py"}}
-    result = osa_tree_sitter._resolve_import("mod.MyClass().run", "mod", imports)
+def test_function_parser_appends_structure(monkeypatch):
+    # Arrange
+    ts = OSA_TreeSitter(".")
+    monkeypatch.setattr(ts, "_extract_function_details", lambda node, src, imports, dec_list=None: {"name": "myfunc"})
+
+    node = Node("function_definition", start_point=(4, 0))
+    structure = {"structure": [], "imports": {}}
+
+    # Act
+    ts._function_parser(structure, "src", node, dec_list=["@dec"])
+
+    # Assert
+    result = structure["structure"][0]
+    assert result["type"] == "function"
+    assert result["start_line"] == 5  # 0-based to 1-based
+    assert result["details"]["name"] == "myfunc"
+
+
+def test_get_decorators_with_identifier_and_call():
+    # Arrange
+    ts = OSA_TreeSitter(".")
+    identifier = Node("identifier", text=b"deco1")
+    call = Node("call", text=b"deco2()")
+    dec_node = Node("decorators", children=[identifier, call])
+
+    # Act
+    result = ts._get_decorators([], dec_node)
+
+    # Assert
+    assert "@deco1" in result
+    assert "@deco2()" in result
+
+
+def test_resolve_import_from_with_alias(tmp_path):
+    # Arrange
+    ts = OSA_TreeSitter(str(tmp_path))
+
+    module_file = tmp_path / "mymod.py"
+    module_file.write_text("class Foo: pass")
+
+    text = "from mymod import Foo as Bar"
+
+    # Act
+    result = ts._resolve_import_path(text)
+
+    # Assert
+    assert "Bar" in result
+    assert result["Bar"]["class"] == "Foo"
+    assert result["Bar"]["module"] == "mymod"
+    assert result["Bar"]["path"].endswith("mymod.py")
+
+
+def test_resolve_import_simple(tmp_path):
+    # Arrange
+    ts = OSA_TreeSitter(str(tmp_path))
+    module_file = tmp_path / "simplemod.py"
+    module_file.write_text("")
+
+    text = "import simplemod"
+
+    # Act
+    result = ts._resolve_import_path(text)
+
+    # Assert
+    assert "simplemod" in result
+    assert result["simplemod"]["module"] == "simplemod"
+
+
+def test_resolve_import_with_as(tmp_path):
+    # Arrange
+    ts = OSA_TreeSitter(str(tmp_path))
+    module_file = tmp_path / "aliasmod.py"
+    module_file.write_text("")
+
+    text = "import aliasmod as am"
+
+    # Act
+    result = ts._resolve_import_path(text)
+
+    # Assert
+    assert "am" in result
+    assert result["am"]["module"] == "aliasmod"
+
+
+def test_resolve_import_invalid_string_returns_empty():
+    # Arrange
+    ts = OSA_TreeSitter(".")
+
+    # Act
+    result = ts._resolve_import_path("not an import")
+
+    # Asset
+    assert result == {}
+
+
+def test_extract_imports(monkeypatch):
+    # Arrange
+    ts = OSA_TreeSitter(".")
+    called = {}
+
+    def fake_resolve(text):
+        called["ok"] = True
+        return {"x": {"module": "m", "path": "p"}}
+
+    monkeypatch.setattr(ts, "_resolve_import_path", fake_resolve)
+    import_node = Node("import_statement", text=b"import x")
+    root_node = Node("root", children=[import_node])
+
+    # Act
+    result = ts._extract_imports(root_node)
+
+    # Assert
+    assert "x" in result
+    assert called["ok"]
+
+
+def test_resolve_import_simple_alias(tmp_path):
+    # Arrange
+    ts = OSA_TreeSitter(str(tmp_path))
+    imports = {"mymod": {"module": "mymod", "path": "p.py"}}
+
+    # Act
+    result = ts._resolve_import("mymod", "mymod", imports, {})
+
+    # Assert
+    assert result["module"] == "mymod"
+    assert result["path"] == "p.py"
+    assert result["function"] is None
+
+
+def test_resolve_import_function_call():
+    # Arrange
+    ts = OSA_TreeSitter(".")
+    imports = {"m": {"module": "m", "path": "p"}}
+
+    # Act
+    result = ts._resolve_import("m.do_something", "m", imports, {})
+
+    # Assert
+    assert result["function"] == "do_something"
+
+
+def test_resolve_import_class_and_method():
+    # Arrange
+    ts = OSA_TreeSitter(".")
+    imports = {"m": {"module": "m", "path": "p"}}
+
+    # Act
+    result = ts._resolve_import("m.MyClass().run", "m", imports, {})
+
+    # Assert
     assert result["class"] == "MyClass"
     assert result["function"] == "MyClass().run"
 
 
-def test_resolve_import_unknown(osa_tree_sitter):
-    assert osa_tree_sitter._resolve_import("foo.bar", "foo", {}) == {}
+def test_resolve_import_unknown_alias_returns_empty():
+    # Arrange
+    ts = OSA_TreeSitter(".")
+
+    # Act
+    result = ts._resolve_import("x.y", "x", {}, {})
+
+    # Assert
+    assert result == {}
+
+
+def test_resolve_method_calls_with_assignment(monkeypatch):
+    # Arrange
+    ts = OSA_TreeSitter(".")
+    imports = {"m": {"module": "m", "path": "p"}}
+
+    func_node = Node("identifier", text=b"m.do", start_byte=0, end_byte=4)
+    call_node = Node("call", field_function=func_node)
+    call_node.field_function = func_node
+
+    identifier = Node("identifier", text=b"alias")
+    assign_node = Node("assignment", children=[identifier, call_node])
+    expr = Node("expr", children=[assign_node])
+    block = Node("block", children=[expr])
+    function_node = Node("function_definition", children=[block])
+
+    # Act
+    result = ts._resolve_method_calls(function_node, "m.do()", imports)
+
+    # Assert
+    assert result[0]["module"] == "m"
+    assert result[0]["function"] == "do"
+
+
+def test_resolve_method_calls_direct_call(monkeypatch):
+    # Arrange
+    ts = OSA_TreeSitter(".")
+    imports = {"m": {"module": "m", "path": "p"}}
+
+    func_node = Node("identifier", text=b"m.work", start_byte=0, end_byte=6)
+    call_node = Node("call", children=[], field_function=func_node)
+    call_node.field_function = func_node
+
+    expr = Node("expr", children=[call_node])
+    block = Node("block", children=[expr])
+    function_node = Node("function_definition", children=[block])
+
+    # Act
+    result = ts._resolve_method_calls(function_node, "m.work", imports)
+
+    # Assert
+    assert result[0]["function"] == "work"
+
+
+def test_resolve_method_calls_no_block_returns_empty():
+    # Arrange
+    ts = OSA_TreeSitter(".")
+    fn_node = Node("function_definition", children=[])
+
+    # Act
+    result = ts._resolve_method_calls(fn_node, "src", {})
+
+    # Assert
+    assert result == []
+
+
+def test_extract_structure_orchestrates(monkeypatch):
+    # Arrange
+    ts = OSA_TreeSitter(".")
+
+    # Patch parse and extract
+    fake_tree = type(
+        "T",
+        (),
+        {"root_node": Node("root", children=[Node("function_definition"), Node("class_definition")])},
+    )
+    monkeypatch.setattr(ts, "_parse_source_code", lambda filename: (fake_tree, "src"))
+    monkeypatch.setattr(ts, "_extract_imports", lambda root: {"imp": {"module": "m", "path": "p"}})
+
+    called = {"func": False, "cls": False}
+    monkeypatch.setattr(ts, "_function_parser", lambda s, sc, n, dec_list=None: called.__setitem__("func", True))
+    monkeypatch.setattr(ts, "_class_parser", lambda s, sc, n, dec_list=None: called.__setitem__("cls", True))
+
+    # Act
+    result = ts.extract_structure("file.py")
+
+    # Assert
+    assert "structure" in result
+    assert "imports" in result
+    assert called["func"] and called["cls"]
+
+
+def test_get_docstring_from_block():
+    # Arrange
+    ts = OSA_TreeSitter(".")
+
+    string_node = Node("string", text=b'"Docstring here"')
+    expr = Node("expression_statement", children=[string_node])
+    block = Node("block", children=[expr])
+
+    # Act
+    result = ts._get_docstring(block)
+
+    # Assert
+    assert "Docstring here" in result
+
+
+def test_traverse_block(monkeypatch):
+    # Arrange
+    ts = OSA_TreeSitter(".")
+
+    fake_method = {"method_name": "foo"}
+    monkeypatch.setattr(ts, "_extract_function_details", lambda *a, **k: fake_method)
+    monkeypatch.setattr(ts, "_get_decorators", lambda l, d: ["@dec"])
+
+    func_def = Node("function_definition")
+    decorator = Node("decorator")
+    decorated = Node("decorated_definition", children=[decorator, func_def])
+    block = Node("block", children=[decorated, func_def])
+
+    # Act
+    result = ts._traverse_block(block, "code", {})
+
+    # Assert
+    assert fake_method in result
+    assert len(result) == 2
+
+
+def test_extract_function_details(monkeypatch):
+    # Arrange
+    ts = OSA_TreeSitter(".")
+    monkeypatch.setattr(ts, "_get_docstring", lambda node: "doc")
+    monkeypatch.setattr(ts, "_resolve_method_calls", lambda *a: [{"function": "call"}])
+
+    name_node = Node("identifier", text=b"my_func")
+    param_id = Node("identifier", text=b"x")
+    params_node = Node("parameters", children=[param_id])
+    block = Node("block", children=[Node("string", text=b"'doc'")])
+    func_node = Node(
+        "function_definition",
+        children=[name_node, params_node, block],
+        start_point=(0, 0),
+        start_byte=0,
+        end_byte=10,
+        name="my_func",
+    )
+
+    # Act
+    result = ts._extract_function_details(func_node, "def my_func(x): pass", {}, ["@dec"])
+
+    # Assert
+    assert result["method_name"] == "my_func"
+    assert "x" in result["arguments"]
+    assert result["docstring"] == "doc"
+    assert result["method_calls"][0]["function"] == "call"
+
+
+def test_analyze_directory(monkeypatch, tmp_path):
+    # Arrange
+    ts = OSA_TreeSitter(".")
+    fake_file = tmp_path / "test.py"
+    fake_file.write_text("print('hi')")
+
+    monkeypatch.setattr(ts, "files_list", lambda p: ([str(fake_file)], True))
+    monkeypatch.setattr(ts, "extract_structure", lambda f: {"imports": {}, "structure": []})
+
+    # Act
+    results = ts.analyze_directory(str(tmp_path))
+
+    # Assert
+    assert str(fake_file) in results
+
+
+def test_show_results(monkeypatch, caplog):
+    # Arrange
+    ts = OSA_TreeSitter(".")
+    caplog.set_level("INFO")
+    results = {
+        "file.py": {
+            "structure": [
+                {
+                    "type": "class",
+                    "name": "C",
+                    "start_line": 1,
+                    "docstring": "doc",
+                    "methods": [
+                        {
+                            "method_name": "m",
+                            "arguments": ["x"],
+                            "return_type": "int",
+                            "start_line": 2,
+                            "docstring": None,
+                            "source_code": "def m(x): pass",
+                        }
+                    ],
+                },
+                {
+                    "type": "function",
+                    "details": {
+                        "method_name": "f",
+                        "arguments": [],
+                        "return_type": None,
+                        "start_line": 1,
+                        "docstring": None,
+                        "source_code": "def f(): pass",
+                    },
+                },
+            ],
+            "imports": {},
+        }
+    }
+
+    # Act
+    ts.show_results(results)
+
+    # Assert
+    assert "Class: C" in caplog.text
+    assert "Function: f" in caplog.text
+
+
+def test_log_results(tmp_path, monkeypatch):
+    # Arrange
+    ts = OSA_TreeSitter(".")
+    ts.cwd = str(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    results = {
+        "file.py": {
+            "structure": [
+                {
+                    "type": "class",
+                    "name": "C",
+                    "start_line": 1,
+                    "docstring": None,
+                    "methods": [
+                        {
+                            "method_name": "m",
+                            "arguments": [],
+                            "return_type": None,
+                            "start_line": 2,
+                            "docstring": None,
+                            "source_code": "def m(): pass",
+                        }
+                    ],
+                }
+            ],
+            "imports": {},
+        }
+    }
+
+    # Act
+    ts.log_results(results)
+
+    # Assert
+    report = tmp_path / "examples" / "report.txt"
+    assert report.exists()
+    text = report.read_text(encoding="utf-8")
+    assert "Class: C" in text
+    assert "Method: m" in text
+
+    # Cleanup
+    shutil.rmtree(tmp_path / "examples")

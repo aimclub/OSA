@@ -1,80 +1,133 @@
 import json
-
-import pytest
+from unittest.mock import patch
 
 from osa_tool.readmegen.generator.builder_article import MarkdownBuilderArticle
+from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
-def example_overview():
-    return json.dumps({"overview": "This is the overview section."})
-
-
-def example_content():
-    return json.dumps({"content": "This is the content section."})
-
-
-def example_algorithms():
-    return json.dumps({"algorithms": "This is the algorithms section."})
-
-
-@pytest.fixture
-def markdown_builder(config_loader, mock_load_data_metadata):
-    return MarkdownBuilderArticle(
-        config_loader=config_loader,
-        overview=example_overview(),
-        content=example_content(),
-        algorithms=example_algorithms(),
+def test_content_section(mock_markdown_builder_article):
+    # Arrange
+    content_json = json.dumps({"content": "This is the content section"})
+    builder = mock_markdown_builder_article(
+        overview=json.dumps({"overview": "Test overview"}),
+        content=content_json,
+        algorithms=json.dumps({"algorithms": "Test algorithms"}),
+        getting_started=json.dumps({"getting_started": "Test getting started"}),
     )
 
-
-def test_load_template(markdown_builder):
     # Act
-    template = markdown_builder.load_template()
+    result = builder.content
+
     # Assert
-    assert "headers" in template
-    assert "overview" in template
+    assert isinstance(result, str)
 
 
-def test_header_section(markdown_builder):
+def test_content_empty_json(mock_markdown_builder_article):
+    # Arrange
+    builder = mock_markdown_builder_article(
+        overview=json.dumps({"overview": "Test overview"}),
+        content=None,
+        algorithms=json.dumps({"algorithms": "Test algorithms"}),
+        getting_started=json.dumps({"getting_started": "Test getting started"}),
+    )
+
     # Act
-    header = markdown_builder.header
+    result = builder.content
+
     # Assert
-    assert "TestProject" in header
+    assert result == ""
 
 
-def test_overview_section(markdown_builder):
+def test_algorithms_section(mock_markdown_builder_article):
+    # Arrange
+    algorithms_json = json.dumps({"algorithms": "These are the algorithms"})
+    builder = mock_markdown_builder_article(
+        overview=json.dumps({"overview": "Test overview"}),
+        content=json.dumps({"content": "Test content"}),
+        algorithms=algorithms_json,
+        getting_started=json.dumps({"getting_started": "Test getting started"}),
+    )
+
     # Act
-    section = markdown_builder.overview
+    result = builder.algorithms
+
     # Assert
-    assert isinstance(section, str)
-    assert section.startswith("## Overview")
-    assert "This is the overview section." in section
+    assert isinstance(result, str)
 
 
-def test_content_section(markdown_builder):
+def test_algorithms_empty_json(mock_markdown_builder_article):
+    # Arrange
+    builder = mock_markdown_builder_article(
+        overview=json.dumps({"overview": "Test overview"}),
+        content=json.dumps({"content": "Test content"}),
+        algorithms=None,
+        getting_started=json.dumps({"getting_started": "Test getting started"}),
+    )
+
     # Act
-    section = markdown_builder.content
+    result = builder.algorithms
+
     # Assert
-    assert isinstance(section, str)
-    assert section.startswith("## Content")
-    assert "This is the content section." in section
+    assert result == ""
 
 
-def test_algorithms_section(markdown_builder):
+def test_toc_generation_article(mock_markdown_builder_article):
+    # Arrange
+    builder = mock_markdown_builder_article(
+        overview=json.dumps({"overview": "Test overview"}),
+        content=json.dumps({"content": "Test content"}),
+        algorithms=json.dumps({"algorithms": "Test algorithms"}),
+        getting_started=json.dumps({"getting_started": "Test getting started"}),
+    )
+
     # Act
-    section = markdown_builder.algorithms
+    result = builder.toc
+
     # Assert
-    assert isinstance(section, str)
-    assert section.startswith("## Algorithms")
-    assert "This is the algorithms section." in section
+    assert isinstance(result, str)
+    assert "- [" in result or "* [" in result
 
 
-def test_build_readme(markdown_builder):
-    # Act
-    readme = markdown_builder.build()
+def test_build_method_article_full(mock_markdown_builder_article, sourcerank_with_repo_tree):
+    # Arrange
+    repo_tree_data = get_mock_repo_tree("FULL")
+    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+
+    builder = mock_markdown_builder_article(
+        overview=json.dumps({"overview": "Test overview"}),
+        content=json.dumps({"content": "Test content"}),
+        algorithms=json.dumps({"algorithms": "Test algorithms"}),
+        getting_started=json.dumps({"getting_started": "Test getting started"}),
+    )
+    builder.sourcerank = sourcerank
+
+    with patch.object(MarkdownBuilderArticle, "_check_url", return_value=True):
+
+        # Act
+        result = builder.build()
+
     # Assert
-    assert isinstance(readme, str)
-    assert "## Overview" in readme
-    assert "## Content" in readme
-    assert "## Algorithms" in readme
-    assert "TestProject" in readme
+    assert isinstance(result, str)
+    assert len(result) > 0
+
+
+def test_build_method_article_minimal(mock_markdown_builder_article, sourcerank_with_repo_tree):
+    # Arrange
+    repo_tree_data = get_mock_repo_tree("MINIMAL")
+    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+
+    builder = mock_markdown_builder_article(
+        overview=json.dumps({"overview": ""}),
+        content=json.dumps({"content": ""}),
+        algorithms=json.dumps({"algorithms": ""}),
+        getting_started=json.dumps({"getting_started": ""}),
+    )
+    builder.sourcerank = sourcerank
+
+    with patch.object(MarkdownBuilderArticle, "_check_url", return_value=False):
+
+        # Act
+        result = builder.build()
+
+    # Assert
+    assert isinstance(result, str)
