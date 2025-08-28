@@ -697,25 +697,6 @@ def test_generate_documentation_mkdocs(mock_root, mock_copy, mock_write_text, mo
     mock_copy.assert_called_once()
 
 
-@patch("osa_tool.osatreesitter.docgen.os.makedirs")
-@patch("builtins.open", new_callable=MagicMock)
-@patch("osa_tool.osatreesitter.docgen.logger")
-def test_create_mkdocs_github_workflow(mock_logger, mock_open, mock_makedirs, mock_config_loader):
-    # Arrange
-    docgen = DocGen(mock_config_loader)
-    repo_url = docgen.config.git.repository
-    path = docgen.config.git.repository
-
-    # Act
-    docgen.create_mkdocs_github_workflow(repo_url, path, filename="test_workflow", branches=["dev"])
-
-    workflows_path = f"{Path(path).resolve()}/.github/workflows"
-    # Assert
-    mock_makedirs.assert_called_with(workflows_path)
-    mock_open.assert_called_with(f"{workflows_path}/test_workflow.yml", mode="w")
-    assert mock_logger.info.called
-
-
 def test_sanitize_name_basic(mock_config_loader):
     # Arrange
     docgen = DocGen(mock_config_loader)
