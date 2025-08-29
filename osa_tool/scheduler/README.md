@@ -73,33 +73,33 @@ In **custom mode**:
 
 - A list of editable actions is displayed.
 - Available commands:
-  - `help` or `?` — displays a table with descriptions of all editable keys.
-  - `multi-bool` — enables batch editing of boolean-type keys.
-  - `done` — finishes the editing session and displays the current plan.
+    - `help` or `?` — displays a table with descriptions of all editable keys.
+    - `multi-bool` — enables batch editing of boolean-type keys.
+    - `done` — finishes the editing session and displays the current plan.
 - To edit an action, enter its name.
 - For each selected action:
-  - If it is a **boolean value** (True/False), a prompt will request setting it to:
-    - `y` — enable
-    - `n` — disable
-    - `skip` — leave unchanged
-  - If it is a **string** or **list**:
-    - A new value can be entered.
-    - Leave empty to skip.
-    - Enter `None` to explicitly disable the value.
-  - Before entering a new value, the system will display:
-    - A short description.
-    - Allowed values (if available).
-    - An example (if available).
-    - The current value.
+    - If it is a **boolean value** (True/False), a prompt will request setting it to:
+        - `y` — enable
+        - `n` — disable
+        - `skip` — leave unchanged
+    - If it is a **string** or **list**:
+        - A new value can be entered.
+        - Leave empty to skip.
+        - Enter `None` to explicitly disable the value.
+    - Before entering a new value, the system will display:
+        - A short description.
+        - Allowed values (if available).
+        - An example (if available).
+        - The current value.
 
 Once the user type `done`:
 
 - The updated tables with planned actions and inactive actions will be displayed again.
 - The program will prompt the user one more time to confirm the updated plan
 - Available options:
-  - Confirm with `y` or **Enter**
-  - Cancel with `n`
-  - Re-enter manual editing mode with `custom`
+    - Confirm with `y` or **Enter**
+    - Cancel with `n`
+    - Re-enter manual editing mode with `custom`
 
 This interactive loop continues until the user explicitly confirms or cancels the operation.
 
@@ -108,42 +108,44 @@ to the repository.
 
 ## Table of Available Keys
 
-| Parameter            | Aliases                  | Type | Description                                                                                                                                                   | Default                          | Choices                     |
-|:---------------------|:-------------------------|:-----|:--------------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------------------------|:----------------------------|
-| repository           | `-r`, `--repository`     | str  | URL of the GitHub repository                                                                                                                                  | `https://github.com/aimclub/OSA` | —                           |
-| mode                 | `-m`, `--mode`           | str  | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`.                                                                           | `auto`                           | `basic`, `auto`, `advanced` |
-| branch               | `-b`, `--branch`         | str  | Branch name of the GitHub repository                                                                                                                          | `null`                           | —                           |
-| output               | `-o`, `--output`         | str  | Path to the output directory                                                                                                                                  | `null`                           | —                           |
-| api                  | `--api`                  | str  | LLM API service provider                                                                                                                                      | `itmo`                           | `itmo`, `openai`, `ollama`  |
-| base_url             | `--base-url`             | str  | URL of the provider compatible with OpenAI API                                                                                                                | `https://api.openai.com/v1`      | —                           |
-| model                | `--model`                | str  | Specific LLM model to use. See: [link1](https://vsegpt.ru/Docs/Models), [link2](https://platform.openai.com/docs/models), [link3](https://ollama.com/library) | `gpt-3.5-turbo`                  | —                           |
-| article              | `--article`              | str  | README template for a repository with an article, or a link to a PDF file                                                                                     | `null`                           | —                           |
-| translate_dirs       | `--translate-dirs`       | flag | Enable automatic translation of directory names into English                                                                                                  | `false`                          | —                           |
-| convert_notebooks    | `--convert-notebooks`    | list | Convert Jupyter notebooks to `.py` format. Provide paths, or leave empty for repo directory                                                                   | —                                | —                           |
-| delete_dir           | `--delete-dir`           | flag | Delete the downloaded repository after processing                                                                                                             | `false`                          | —                           |
-| ensure_license       | `--ensure-license`       | str  | Enable LICENSE file compilation                                                                                                                               | `null`                           | `bsd-3`, `mit`, `ap2`       |
-| no_fork              | `--no-fork`              | flag | Do not create a public fork to the target repository                                                                                                          | `false`                          | —                           |
-| no_pull_request      | `--no-pull-request`      | flag | Do not create a pull request to the target repository                                                                                                         | `false`                          | —                           |
-| community_docs       | `--community-docs`       | flag | Generate community-related documentation files                                                                                                                | `false`                          | —                           |
-| docstring            | `--docstring`            | flag | Automatically generate docstrings for Python files                                                                                                            | `false`                          | —                           |
-| report               | `--report`               | flag | Analyze the repository and generate a PDF report                                                                                                              | `false`                          | —                           |
-| readme               | `--readme`               | flag | Generate a `README.md` file based on repository content                                                                                                       | `false`                          | —                           |
-| organize             | `--organize`             | flag | Organize the repository by adding standard `tests` and `examples` directories if missing                                                                      | `false`                          | —                           |
-| about                | `--about`                | flag | Generate About section with tags                                                                                                                              | `false`                          | —                           |
-| generate_workflows   | `--generate-workflows`   | flag | Generate GitHub Action workflows for the repository                                                                                                           | `false`                          | —                           |
-| workflows_output_dir | `--workflows-output-dir` | str  | Directory where workflow files will be saved                                                                                                                  | `.github/workflows`              | —                           |
-| include_tests        | `--include-tests`        | flag | Include unit tests workflow                                                                                                                                   | `true`                           | —                           |
-| include_black        | `--include-black`        | flag | Include Black formatter workflow                                                                                                                              | `true`                           | —                           |
-| include_pep8         | `--include-pep8`         | flag | Include PEP 8 compliance workflow                                                                                                                             | `true`                           | —                           |
-| include_autopep8     | `--include-autopep8`     | flag | Include autopep8 formatter workflow                                                                                                                           | `false`                          | —                           |
-| include_fix_pep8     | `--include-fix-pep8`     | flag | Include fix-pep8 command workflow                                                                                                                             | `false`                          | —                           |
-| include_pypi         | `--include-pypi`         | flag | Include PyPI publish workflow                                                                                                                                 | `false`                          | —                           |
-| python_versions      | `--python-versions`      | list | Python versions to test against                                                                                                                               | `[3.9, 3.10]`                    | —                           |
-| pep8_tool            | `--pep8-tool`            | str  | Tool to use for PEP 8 checking                                                                                                                                | `flake8`                         | `flake8`, `pylint`          |
-| use_poetry           | `--use-poetry`           | flag | Use Poetry for packaging                                                                                                                                      | `false`                          | —                           |
-| branches             | `--branches`             | list | Branches to trigger workflows on                                                                                                                              | `[]`                             | —                           |
-| codecov_token        | `--codecov-token`        | flag | Use Codecov token for coverage upload                                                                                                                         | `false`                          | —                           |
-| include_codecov      | `--include-codecov`      | flag | Include Codecov coverage step in unit tests workflow                                                                                                          | `true`                           | —                           |
-| top_p                | `--top_p`                | str  | Nucleus sampling probability                                                                                                                                  | `null`                           | —                           |
-| temperature          | `--temperature`          | str  | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).                                                                             | `null`                           | —                           |
-| max_tokens           | `--max_tokens`           | str  | Maximum number of tokens the model can generate in a single response                                                                                          | `1500`                           | —                           |
+| Parameter            | Aliases                  | Type | Description                                                                                                                        | Default                          | Choices                     |
+|:---------------------|:-------------------------|:-----|:-----------------------------------------------------------------------------------------------------------------------------------|:---------------------------------|:----------------------------|
+| repository           | `-r`, `--repository`     | str  | URL of the GitHub repository                                                                                                       | `https://github.com/aimclub/OSA` | —                           |
+| mode                 | `-m`, `--mode`           | str  | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`.                                                | `auto`                           | `basic`, `auto`, `advanced` |
+| branch               | `-b`, `--branch`         | str  | Branch name of the GitHub repository                                                                                               | `null`                           | —                           |
+| output               | `-o`, `--output`         | str  | Path to the output directory                                                                                                       | `null`                           | —                           |
+| api                  | `--api`                  | str  | LLM API service provider                                                                                                           | `itmo`                           | `itmo`, `openai`, `ollama`  |
+| base_url             | `--base-url`             | str  | URL of the service provider. See [available urls](https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors)               | `https://api.openai.com/v1`      | —                           |
+| model                | `--model`                | str  | Specific LLM model to use. See [available providers and models](https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors) | `gpt-3.5-turbo`                  | —                           |
+| top_p                | `--top_p`                | str  | Nucleus sampling probability                                                                                                       | `null`                           | —                           |
+| temperature          | `--temperature`          | str  | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).                                                  | `null`                           | —                           |
+| max_tokens           | `--max_tokens`           | str  | Maximum number of tokens the model can generate in a single response                                                               | `1500`                           | —                           |
+| article              | `--article`              | str  | README template for a repository with an article, or a link to a PDF file                                                          | `null`                           | —                           |
+| translate_dirs       | `--translate-dirs`       | flag | Enable automatic translation of directory names into English                                                                       | `false`                          | —                           |
+| convert_notebooks    | `--convert-notebooks`    | list | Convert Jupyter notebooks to `.py` format. Provide paths, or leave empty for repo directory                                        | —                                | —                           |
+| delete_dir           | `--delete-dir`           | flag | Delete the downloaded repository after processing                                                                                  | `false`                          | —                           |
+| ensure_license       | `--ensure-license`       | str  | Enable LICENSE file compilation                                                                                                    | `null`                           | `bsd-3`, `mit`, `ap2`       |
+| no_fork              | `--no-fork`              | flag | Do not create a public fork to the target repository                                                                               | `false`                          | —                           |
+| no_pull_request      | `--no-pull-request`      | flag | Do not create a pull request to the target repository                                                                              | `false`                          | —                           |
+| community_docs       | `--community-docs`       | flag | Generate community-related documentation files                                                                                     | `false`                          | —                           |
+| docstring            | `--docstring`            | flag | Automatically generate docstrings for Python files                                                                                 | `false`                          | —                           |
+| report               | `--report`               | flag | Analyze the repository and generate a PDF report                                                                                   | `false`                          | —                           |
+| readme               | `--readme`               | flag | Generate a `README.md` file based on repository content                                                                            | `false`                          | —                           |
+| refine_readme        | `--refine-readme`        | flag | Enable advanced README refinement. This process requires a powerful LLM model (such as GPT-4 or equivalent) for optimal results    | `false`                          | —                           |
+| requirements         | `--requirements `        | flag | Generate or refine a requirements.txt file based on repository content.                                                            | `false`                          | —                           |
+| organize             | `--organize`             | flag | Organize the repository by adding standard `tests` and `examples` directories if missing                                           | `false`                          | —                           |
+| about                | `--about`                | flag | Generate About section with tags                                                                                                   | `false`                          | —                           |
+| generate_workflows   | `--generate-workflows`   | flag | Generate GitHub Action workflows for the repository                                                                                | `false`                          | —                           |
+| workflows_output_dir | `--workflows-output-dir` | str  | Directory where workflow files will be saved                                                                                       | `.github/workflows`              | —                           |
+| include_tests        | `--include-tests`        | flag | Include unit tests workflow                                                                                                        | `true`                           | —                           |
+| include_black        | `--include-black`        | flag | Include Black formatter workflow                                                                                                   | `true`                           | —                           |
+| include_pep8         | `--include-pep8`         | flag | Include PEP 8 compliance workflow                                                                                                  | `true`                           | —                           |
+| include_autopep8     | `--include-autopep8`     | flag | Include autopep8 formatter workflow                                                                                                | `false`                          | —                           |
+| include_fix_pep8     | `--include-fix-pep8`     | flag | Include fix-pep8 command workflow                                                                                                  | `false`                          | —                           |
+| include_pypi         | `--include-pypi`         | flag | Include PyPI publish workflow                                                                                                      | `false`                          | —                           |
+| python_versions      | `--python-versions`      | list | Python versions to test against                                                                                                    | `[3.9, 3.10]`                    | —                           |
+| pep8_tool            | `--pep8-tool`            | str  | Tool to use for PEP 8 checking                                                                                                     | `flake8`                         | `flake8`, `pylint`          |
+| use_poetry           | `--use-poetry`           | flag | Use Poetry for packaging                                                                                                           | `false`                          | —                           |
+| branches             | `--branches`             | list | Branches to trigger workflows on                                                                                                   | `[]`                             | —                           |
+| codecov_token        | `--codecov-token`        | flag | Use Codecov token for coverage upload                                                                                              | `false`                          | —                           |
+| include_codecov      | `--include-codecov`      | flag | Include Codecov coverage step in unit tests workflow                                                                               | `true`                           | —                           |

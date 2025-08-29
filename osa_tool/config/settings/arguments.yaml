@@ -25,7 +25,7 @@ web_mode:
   default: false
 
 output:
-  aliases: ["-o","--output"]
+  aliases: [ "-o","--output" ]
   type: str
   description: "Path to the output directory"
   example: "path/to/directory"
@@ -48,18 +48,17 @@ api:
 base_url:
   aliases: [ "--base-url" ]
   type: str
-  description: "URL of the provider compatible with API OpenAI"
+  description: |
+    URL of the service provider.
+    See: https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors
   default: "https://api.openai.com/v1"
 
 model:
   aliases: [ "--model" ]
   type: str
   description: |
-    Specific LLM model to use.
-    See:
-    1. https://vsegpt.ru/Docs/Models
-    2. https://platform.openai.com/docs/models
-    3. https://ollama.com/library
+    Specific LLM model to use. See available providers and models:
+    https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors
   default: "gpt-3.5-turbo"
 
 temperature:
@@ -164,7 +163,7 @@ refine_readme:
   default: false
 
 requirements:
-  aliases: ["--requirements"]
+  aliases: [ "--requirements" ]
   type: flag
   description: "Generate or refine a requirements.txt file based on repository content."
   default: false
