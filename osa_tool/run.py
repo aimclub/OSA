@@ -1,10 +1,12 @@
-import os
 import asyncio
 import multiprocessing
+import os
 import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
+
+from pydantic import ValidationError
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
 from osa_tool.analytics.report_maker import ReportGenerator
@@ -175,7 +177,7 @@ def main():
         sys.exit(0)
 
     except Exception as e:
-        logger.error("Error: %s", e, exc_info=True)
+        logger.error("Error: %s", e, exc_info=False if args.web_mode else True)
         sys.exit(1)
 
     finally:
@@ -316,7 +318,11 @@ def load_configuration(
     """
     config_loader = ConfigLoader()
 
-    config_loader.config.git = GitSettings(repository=repo_url)
+    try:
+        config_loader.config.git = GitSettings(repository=repo_url)
+    except ValidationError as es:
+        first_error = es.errors()[0]
+        raise ValueError(f"{first_error["msg"]}{first_error["input"]}")
     config_loader.config.llm = config_loader.config.llm.model_copy(
         update={
             "api": api,
