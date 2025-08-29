@@ -11,15 +11,13 @@ It also generates advices and recommendations for the repository.
 
 OSA is currently under development, so not all features are implemented.
 
-[Watch the intro video on YouTube](https://www.youtube.com/watch?v=LDSb7JJgKoY)
-
 ---
 
 ## How it works?
 
-Here is a short demo:
+Here is a short video:
 
-![Animation](./images/osa_demo.gif)
+[![Watch the video](https://img.youtube.com/vi/LDSb7JJgKoY/maxresdefault.jpg)](https://www.youtube.com/watch?v=LDSb7JJgKoY)
 
 ---
 
@@ -210,6 +208,12 @@ VseGPT:
 
 ```sh
 python -m osa_tool.run -r https://github.com/aimclub/OSA --api openai --base-url https://api.vsegpt.ru/v1 --model openai/gpt-3.5-turbo
+```
+
+Openrouter:
+
+```sh
+python -m osa_tool.run -r https://github.com/aimclub/OSA --api openai --base-url https://openrouter.ai/api/v1 --model qwen/qwen3-30b-a3b-instruct-2507
 ```
 
 Ollama:
