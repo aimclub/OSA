@@ -175,7 +175,7 @@ def main():
         sys.exit(0)
 
     except Exception as e:
-        logger.error("Error: %s", e, exc_info=True)
+        logger.error("Error: %s", e, exc_info=False if args.web_mode else True)
         sys.exit(1)
 
     finally:
