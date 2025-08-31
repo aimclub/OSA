@@ -7,19 +7,16 @@ repository:
   type: str
   aliases: ["-r", "--repository"]
   description: "Git repository URL"
-  default: "https://github.com/example/repo"
 
 verbose:
   type: flag
   aliases: ["-v", "--verbose"]
   description: "Enable verbose output"
-  default: false
 
 timeout:
   type: int
   aliases: ["-t", "--timeout"]
   description: "Timeout in seconds"
-  default: 30
 
 platform_group:
   platform:
@@ -27,26 +24,42 @@ platform_group:
     aliases: ["-p", "--platform"]
     description: "Target platform"
     choices: ["github", "gitlab", "gitverse"]
-    default: "github"
 
   version:
     type: str
     aliases: ["--version"]
     description: "Platform version"
-    default: "latest"
 
 tags:
   type: list
   aliases: ["--tags"]
   description: "List of tags"
-  default: []
 """
+
+TOML_CONFIG_EXAMPLE = {
+    "git": {
+        "repository": "https://github.com/example/repo",
+    },
+    "general": {
+        "verbose": False,
+        "timeout": 30,
+        "platform": "github",
+        "version": "latest",
+        "tags": [],
+    },
+}
 
 
 @pytest.fixture
 def mock_yaml_file():
     with patch("builtins.open", mock_open(read_data=YAML_CONFIG_EXAMPLE)):
         yield
+
+
+@pytest.fixture()
+def mock_toml_file():
+    with patch("osa_tool.arguments_parser.read_config_file", return_value=TOML_CONFIG_EXAMPLE):
+        yield TOML_CONFIG_EXAMPLE
 
 
 @pytest.fixture

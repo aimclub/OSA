@@ -1,12 +1,14 @@
 # Git Repository Settings
 [git]
 repository = "https://github.com/aimclub/OSA"
+no_fork = false
+no_pull_request = false
 
 # Language Model API Settings
 [llm]
-api = "openai"
+api = "itmo"
 rate_limit = 10
-url = "https://api.openai.com/v1"
+base_url = "https://api.openai.com/v1"
 context_window = 4096
 encoder = "cl100k_base"
 host_name = "https://api.openai.com/v1"
@@ -16,6 +18,26 @@ path = "generate"
 temperature = 0.05
 tokens = 4096
 top_p = 0.95
+
+# General CLI-related defaults
+[general]
+mode = "auto"
+web_mode = false
+# output = ""
+# branch = ""
+# article = ""
+translate_dirs = false
+# convert_notebooks = []
+delete_dir = false
+# ensure_license = ""
+community_docs = false
+docstring = false
+report = false
+readme = false
+refine_readme = false
+requirements = false
+organize = false
+about = false
 
 # GitHub Actions Workflow Settings
 [workflows]

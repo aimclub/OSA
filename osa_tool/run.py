@@ -1,6 +1,6 @@
-import os
 import asyncio
 import multiprocessing
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -29,7 +29,6 @@ from osa_tool.scheduler.workflow_manager import (
 )
 from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.utils import (
-    build_arguments_path,
     delete_repository,
     logger,
     parse_folder_name,
@@ -45,9 +44,9 @@ def main():
     """
 
     # Create a command line argument parser
-    parser = build_parser_from_yaml(build_arguments_path())
+    parser = build_parser_from_yaml()
     args = parser.parse_args()
-    workflow_keys = get_keys_from_group_in_yaml(build_arguments_path(), "workflow")
+    workflow_keys = get_keys_from_group_in_yaml("workflow")
     create_fork = not args.no_fork
     create_pull_request = not args.no_pull_request
 
