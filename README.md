@@ -44,7 +44,7 @@ OSA is currently under development, so not all features are implemented.
 
 Here is a short video:
 
-[![Watch the video](https://img.youtube.com/vi/LDSb7JJgKoY/maxresdefault.jpg)](https://www.youtube.com/watch?v=LDSb7JJgKoY)
+[![Watch the video](./docs/images/osa_preview.png)](https://www.youtube.com/watch?v=LDSb7JJgKoY)
 
 ---
 
