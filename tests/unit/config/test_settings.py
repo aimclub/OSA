@@ -27,7 +27,12 @@ def test_config_loader_success(mock_config_loader):
 
 
 def test_config_loader_file_not_found(monkeypatch):
-    monkeypatch.setattr("osa_tool.config.settings.osa_project_root", lambda: "/nonexistent")
+    # Arrange
+    monkeypatch.setattr("osa_tool.config.settings.build_config_path", lambda: "/nonexistent/config.toml")
+
+    # Assert
+    with pytest.raises(FileNotFoundError):
+        ConfigLoader()._get_config_path()
 
     with pytest.raises(FileNotFoundError, match="Configuration file .* not found"):
         ConfigLoader()

@@ -60,8 +60,13 @@ def osa_project_root() -> Path:
 
 
 def build_arguments_path() -> str:
-    """Returns arguments.yaml for CLI parser."""
+    """Returns arguments.yaml path for CLI parser."""
     return os.path.join(osa_project_root(), "config", "settings", "arguments.yaml")
+
+
+def build_config_path() -> str:
+    """Returns config.toml path for CLI parser and settings.py."""
+    return os.path.join(osa_project_root(), "config", "settings", "config.toml")
 
 
 def get_base_repo_url(repo_url: str) -> str:

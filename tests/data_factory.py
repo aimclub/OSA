@@ -42,7 +42,7 @@ class DataFactory:
         return {
             "api": "openai",
             "rate_limit": random.randint(5, 20),
-            "url": f"https://api.openai.{random_word()}.com/v1",
+            "base_url": f"https://api.openai.{random_word()}.com/v1",
             "context_window": random.randint(2048, 8192),
             "encoder": f"{random_word()}_encoder",
             "host_name": f"https://api.{random_word()}.com",

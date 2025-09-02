@@ -17,7 +17,7 @@ from pydantic import (
     PositiveInt,
 )
 
-from osa_tool.utils import osa_project_root, parse_git_url
+from osa_tool.utils import parse_git_url, build_config_path
 
 
 class GitSettings(BaseModel):
@@ -30,8 +30,6 @@ class GitSettings(BaseModel):
     host_domain: str | None = None
     host: str | None = None
     name: str = ""
-
-    model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")
     def set_git_attributes(self):
@@ -47,7 +45,7 @@ class ModelSettings(BaseModel):
 
     api: str
     rate_limit: PositiveInt
-    url: str
+    base_url: str
     context_window: PositiveInt
     encoder: str
     host_name: AnyHttpUrl
@@ -128,7 +126,7 @@ class ConfigLoader:
         Helper method to get the correct resource path,
         looking outside the package.
         """
-        file_path = os.path.join(osa_project_root(), "config", "settings", "config.toml")
+        file_path = build_config_path()
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Configuration file {file_path} not found.")
         return str(file_path)

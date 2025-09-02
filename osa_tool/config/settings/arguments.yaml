@@ -3,7 +3,6 @@ repository:
   type: str
   description: "URL of the GitHub repository"
   required: true
-  default: "https://github.com/aimclub/OSA"
 
 mode:
   aliases: [ "-m", "--mode" ]
@@ -14,7 +13,6 @@ mode:
       auto (default)  — automatically determine necessary actions based on repository analysis.
       advanced        — run all enabled features based on provided flags.
   choices: [ "basic", "auto", "advanced" ]
-  default: "auto"
 
 web_mode:
   aliases: [ "--web-mode" ]
@@ -22,7 +20,6 @@ web_mode:
   description: |
     Enable web interface mode. When set, the tool will generate the task plan
     without launching the interactive CLI editor.
-  default: false
 
 output:
   aliases: [ "-o","--output" ]
@@ -36,14 +33,12 @@ branch:
   type: str
   description: "Branch name of the GitHub repository"
   required: false
-  default: null
 
 api:
   aliases: [ "--api" ]
   type: str
   description: "LLM API service provider"
   choices: [ "itmo", "openai", "ollama" ]
-  default: "itmo"
 
 base_url:
   aliases: [ "--base-url" ]
@@ -51,7 +46,6 @@ base_url:
   description: |
     URL of the service provider.
     See: https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors
-  default: "https://api.openai.com/v1"
 
 model:
   aliases: [ "--model" ]
@@ -59,27 +53,23 @@ model:
   description: |
     Specific LLM model to use. See available providers and models:
     https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors
-  default: "gpt-3.5-turbo"
 
 temperature:
   aliases: [ "--temperature" ]
   type: str
   description: "Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative)."
-  default: null
   example: 0.3, 0.9
 
 tokens:
   aliases: [ "--max-tokens" ]
   type: str
   description: "Maximum number of tokens the model can generate in a single response."
-  default: 4096
   example: 256, 1024
 
 top_p:
   aliases: [ "--top-p" ]
   type: str
   description: "Nucleus sampling probability (1.0 = all tokens considered)."
-  default: null
   example: 0.8, 0.95
 
 article:
@@ -88,7 +78,6 @@ article:
   description: |
     Select a README template for a repository with an article.
     Or provide a link to the pdf file.
-  default: null
   const: ""
   example: "path/to/file"
 
@@ -96,7 +85,6 @@ translate_dirs:
   aliases: [ "--translate-dirs" ]
   type: flag
   description: "Enable automatic translation of the directory name into English."
-  default: false
 
 convert_notebooks:
   aliases: [ "--convert-notebooks" ]
@@ -110,130 +98,109 @@ delete_dir:
   aliases: [ "--delete-dir" ]
   type: flag
   description: "Enable deleting the downloaded repository after processing."
-  default: false
 
 ensure_license:
   aliases: [ "--ensure-license" ]
   type: str
   choices: [ "bsd-3", "mit", "ap2" ]
   description: "Enable LICENSE file compilation."
-  default: null
   const: "bsd-3"
 
 no_fork:
   aliases: [ "--no-fork" ]
   type: flag
   description: "Do not create a public fork to the target repository."
-  default: false
 
 no_pull_request:
   aliases: [ "--no-pull-request" ]
   type: flag
   description: "Do not create a pull request to the target repository."
-  default: false
 
 community_docs:
   aliases: [ "--community-docs" ]
   type: flag
   description: "Generate community-related documentation files, such as Code of Conduct and Contributing guidelines."
-  default: false
 
 docstring:
   aliases: [ "--docstring" ]
   type: flag
   description: "Automatically generate docstrings for all Python files in the repository."
-  default: false
 
 report:
   aliases: [ "--report" ]
   type: flag
   description: "Analyze the repository and generate a PDF report with project insights."
-  default: false
 
 readme:
   aliases: [ "--readme" ]
   type: flag
   description: "Generate a README.md file based on repository content and metadata."
-  default: false
 
 refine_readme:
   aliases: [ "--refine-readme" ]
   type: flag
   description: "Enable advanced README refinement. This process requires a powerful LLM model (such as GPT-4 or equivalent) for optimal results."
-  default: false
 
 requirements:
   aliases: [ "--requirements" ]
   type: flag
   description: "Generate or refine a requirements.txt file based on repository content."
-  default: false
 
 organize:
   aliases: [ "--organize" ]
   type: flag
   description: "Organize the repository structure by adding standard 'tests' and 'examples' directories if missing."
-  default: false
 
 about:
   aliases: [ "--about" ]
   type: flag
   description: "Generate About section with tags."
-  default: false
 
 workflow:
   generate_workflows:
     aliases: [ "--generate-workflows" ]
     type: flag
     description: "Generate GitHub Action workflows for the repository."
-    default: false
 
   workflows_output_dir:
     aliases: [ "--workflows-output-dir" ]
     type: str
     description: "Directory where the workflow files will be saved."
-    default: ".github/workflows"
 
   include_tests:
     aliases: [ "--include-tests" ]
     type: flag
     description: "Include unit tests workflow."
-    default: true
 
   include_black:
     aliases: [ "--include-black" ]
     type: flag
     description: "Include Black formatter workflow."
-    default: true
 
   include_pep8:
     aliases: [ "--include-pep8" ]
     type: flag
     description: "Include PEP 8 compliance workflow."
-    default: true
 
   include_autopep8:
     aliases: [ "--include-autopep8" ]
     type: flag
     description: "Include autopep8 formatter workflow."
-    default: false
 
   include_fix_pep8:
     aliases: [ "--include-fix-pep8" ]
     type: flag
     description: "Include fix-pep8 command workflow."
-    default: false
 
   include_pypi:
     aliases: [ "--include-pypi" ]
     type: flag
     description: "Include PyPI publish workflow."
-    default: false
 
   python_versions:
     aliases: [ "--python-versions" ]
     type: list
     description: "Python versions to test against."
-    default: [ "3.9", "3.10" ]
     example: 3.8, 3.11
 
   pep8_tool:
@@ -241,29 +208,24 @@ workflow:
     type: str
     description: "Tool to use for PEP 8 checking."
     choices: [ "flake8", "pylint" ]
-    default: "flake8"
 
   use_poetry:
     aliases: [ "--use-poetry" ]
     type: flag
     description: "Use Poetry for packaging."
-    default: false
 
   branches:
     aliases: [ "--branches" ]
     type: list
     description: "Branches to trigger the workflows on."
-    default: [ ]
     example: main, develop
 
   codecov_token:
     aliases: [ "--codecov-token" ]
     type: flag
     description: "Use Codecov token for uploading coverage."
-    default: false
 
   include_codecov:
     aliases: [ "--include-codecov" ]
     type: flag
     description: "Include Codecov coverage step in a unit tests workflow."
-    default: true
