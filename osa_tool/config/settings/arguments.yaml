@@ -43,17 +43,16 @@ api:
 base_url:
   aliases: [ "--base-url" ]
   type: str
-  description: "URL of the provider compatible with API OpenAI"
+  description: |
+    URL of the service provider.
+    See: https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors
 
 model:
   aliases: [ "--model" ]
   type: str
   description: |
-    Specific LLM model to use.
-    See:
-    1. https://vsegpt.ru/Docs/Models
-    2. https://platform.openai.com/docs/models
-    3. https://ollama.com/library
+    Specific LLM model to use. See available providers and models:
+    https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors
 
 temperature:
   aliases: [ "--temperature" ]
