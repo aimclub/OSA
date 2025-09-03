@@ -139,7 +139,7 @@ def parse_git_url(repo_url: str) -> tuple[str, str, str, str]:
     parsed_url = urlparse(repo_url)
 
     if parsed_url.scheme not in ["http", "https"]:
-        raise ValueError(f"Unknown scheme provided: {parsed_url.scheme}")
+        raise ValueError(f"Provided URL is not correct: {parsed_url.scheme}")
 
     if not parsed_url.netloc:
         raise ValueError(f"Invalid Git repository URL: {parsed_url}")
