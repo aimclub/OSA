@@ -321,11 +321,11 @@ def load_configuration(
         config_loader.config.git = GitSettings(repository=repo_url)
     except ValidationError as es:
         first_error = es.errors()[0]
-        raise ValueError(f"{first_error["msg"]}{first_error["input"]}")
+        raise ValueError(f"{first_error['msg']}{first_error['input']}")
     config_loader.config.llm = config_loader.config.llm.model_copy(
         update={
             "api": api,
-            "url": base_url,
+            "base_url": base_url,
             "model": model_name,
             "temperature": temperature,
             "max_tokens": max_tokens,
