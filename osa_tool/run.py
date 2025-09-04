@@ -325,7 +325,7 @@ def load_configuration(
     config_loader.config.llm = config_loader.config.llm.model_copy(
         update={
             "api": api,
-            "url": base_url,
+            "base_url": base_url,
             "model": model_name,
             "temperature": temperature,
             "max_tokens": max_tokens,
