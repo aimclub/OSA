@@ -79,15 +79,6 @@ def test_get_prompt_getting_started(prompt_builder):
     assert "Sample README" in prompt
 
 
-def test_get_prompt_deduplicated_install_and_start(prompt_builder):
-    # Act
-    prompt = prompt_builder.get_prompt_deduplicated_install_and_start("install steps", "getting started")
-
-    # Assert
-    assert "install steps" in prompt
-    assert "getting started" in prompt
-
-
 def test_get_prompt_files_summary(prompt_builder):
     # Arrange
     files = [FileContext(name="a.py", path="src/a.py", content="print('a')")]
@@ -141,11 +132,11 @@ def test_get_prompt_algorithms_article(prompt_builder):
 
 def test_get_prompt_refine_readme(prompt_builder):
     # Arrange
-    new_sections = {"installation": "new install", "usage": "new usage"}
+    new_sections = "## Installation\n\nnew install\n\n## Usage\n\nusage"
 
     # Act
     prompt = prompt_builder.get_prompt_refine_readme(new_sections)
 
     # Assert
     assert "Sample README" in prompt
-    assert str(new_sections) in prompt
+    assert "## Installation" in prompt

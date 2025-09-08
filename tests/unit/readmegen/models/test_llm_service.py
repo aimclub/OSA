@@ -63,20 +63,6 @@ def test_get_responses_article_returns_expected(llm_client, mock_model_handler):
     assert getting_started == "getting_started_article"
 
 
-def test_deduplicate_sections_returns_expected(llm_client, mock_model_handler):
-    # Arrange
-    llm_client.model_handler = mock_model_handler(side_effect=["deduplicated"])
-
-    with patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process:
-        mock_process.side_effect = lambda x: x
-
-        # Act
-        result = llm_client.deduplicate_sections("installation", "getting_started")
-
-    # Assert
-    assert result == "deduplicated"
-
-
 def test_refine_readme_returns_expected(llm_client, mock_model_handler):
     # Arrange
     llm_client.model_handler = mock_model_handler(side_effect=["refined_readme"])

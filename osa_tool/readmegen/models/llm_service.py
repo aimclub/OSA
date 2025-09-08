@@ -124,17 +124,35 @@ class LLMClient:
         key_files = extract_relative_paths(key_files)
         return key_files
 
-    def deduplicate_sections(self, installation: str, getting_started: str) -> str:
-        """Deduplicates information in Installation and Getting Started sections."""
-        logger.info("Deduplicating sections Installation and Getting Started...")
-        response = self.model_handler.send_request(
-            self.prompts.get_prompt_deduplicated_install_and_start(installation, getting_started)
-        )
+    def get_citation_from_readme(self) -> str:
+        logger.info("Detecting citations in README...")
+        response = self.model_handler.send_request(self.prompts.get_prompt_detect_citation())
         response = process_text(response)
-        return response
+        try:
+            response_json = json.loads(response)
+        except (json.JSONDecodeError, ValueError) as e:
+            raise ValueError(f"Failed to parse JSON response: {e}") from e
 
-    def refine_readme(self, new_readme_sections: dict) -> str:
+        return response_json["citation"]
+
+    def refine_readme(self, generated_readme: str) -> str:
         logger.info("Refining README files...")
-        response = self.model_handler.send_request(self.prompts.get_prompt_refine_readme(new_readme_sections))
+        response = self.model_handler.send_request(self.prompts.get_prompt_refine_readme(generated_readme))
         response = process_text(response)
-        return response
+        try:
+            response_json = json.loads(response)
+        except (json.JSONDecodeError, ValueError) as e:
+            raise ValueError(f"Failed to parse JSON response: {e}") from e
+
+        return response_json["readme"]
+
+    def clean(self, readme: str) -> str:
+        logger.info("Cleaning README...")
+        response = self.model_handler.send_request(self.prompts.get_prompt_clean_readme(readme))
+        response = process_text(response)
+        try:
+            response_json = json.loads(response)
+        except (json.JSONDecodeError, ValueError) as e:
+            raise ValueError(f"Failed to parse JSON response: {e}") from e
+
+        return response_json["readme"]

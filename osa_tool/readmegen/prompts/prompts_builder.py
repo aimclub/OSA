@@ -77,18 +77,6 @@ class PromptBuilder:
             logger.error(f"Failed to build getting started prompt: {e}")
             raise
 
-    def get_prompt_deduplicated_install_and_start(self, installation: str, getting_started: str) -> str:
-        """Builds a deduplicating prompt using Installation and Getting Started sections of README."""
-        try:
-            formatted_prompt = self.prompts["deduplicate_sections"].format(
-                installation=installation,
-                getting_started=getting_started,
-            )
-            return formatted_prompt
-        except Exception as e:
-            logger.error(f"Failed to build deduplicating prompt: {e}")
-            raise
-
     def get_prompt_files_summary(self, files_content: list[FileContext]) -> str:
         """Builds a files summary prompt using serialized file contents."""
         try:
@@ -152,6 +140,35 @@ class PromptBuilder:
             logger.error(f"Failed to build algorithms prompt: {e}")
             raise
 
+    def get_prompt_detect_citation(self) -> str:
+        """Builds a detection of citation prompt."""
+        try:
+            formatted_prompt = self.prompts["citation"].format(readme=extract_readme_content(self.base_path))
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build detection of citation prompt: {e}")
+            raise
+
+    def get_prompt_refine_readme(self, generated_readme: str) -> str:
+        """Builds a refine prompt using old and new README."""
+        try:
+            formatted_prompt = self.prompts["refine"].format(
+                old_readme=extract_readme_content(self.base_path), new_readme=generated_readme
+            )
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build refine readme prompt: {e}")
+            raise
+
+    def get_prompt_clean_readme(self, readme: str) -> str:
+        """Builds a cleaning README prompt."""
+        try:
+            formatted_prompt = self.prompts["clean"].format(readme=readme)
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build cleaning readme prompt: {e}")
+            raise
+
     @staticmethod
     def serialize_file_contexts(files: list[FileContext]) -> str:
         """
@@ -165,16 +182,6 @@ class PromptBuilder:
                 Each section includes the file's name, path, and content.
         """
         return "\n\n".join(f"### {f.name} ({f.path})\n{f.content}" for f in files)
-
-    def get_prompt_refine_readme(self, new_readme_sections: dict) -> str:
-        try:
-            formatted_prompt = self.prompts["refine"].format(
-                old_readme=extract_readme_content(self.base_path), new_readme_sections=new_readme_sections
-            )
-            return formatted_prompt
-        except Exception as e:
-            logger.error(f"Failed to build refine readme prompt: {e}")
-            raise
 
     @staticmethod
     def load_prompts(path: str, section: str = "prompts") -> dict:
