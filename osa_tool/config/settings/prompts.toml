@@ -195,67 +195,206 @@ RULES:
 - Output valid JSON, strictly following the given structure.
 """
 
-refine = """
+citation = """
+INPUT DATA:
+
+{readme}
+
+TASK:
+Analyze the README and extract any citation of the repository or any articles (e.g., BibTeX, DOI, or reference text).
+Return only the citation.
+If no citation is present, return an empty string.
+
+Output JSON exactly in this format:
+
+{{
+    "citation": "text"
+}}
+
+RULES:
+
+1. Only return the citation text; do not include any other content.
+2. If multiple citations exist, return all of them concatenated.
+3. If no citation is found, return an empty string ("").
+4. Preserve the original formatting of the citation (e.g., BibTeX, DOI, plain text).
+"""
+
+refine_step1 = """
+TASK:
+Use the NEW GENERATED README as the base structure.
+Enrich it with valuable content from the ORIGINAL README.
+Do not append all content at the end. Insert only in the most relevant sections.
+Keep Markdown formatting and section order.
+
+RULES:
+
+- Always keep the generated README as the main outline.
+- Add only missing valuable details from the original README.
+- If a section already exists, enrich it instead of duplicating.
+- Pre-header content (title/logo/badges) from the original may go at the top; all other content must be placed into the relevant sections.
+- Do not rewrite or delete; only merge.
+
+OUTPUT:
+Output JSON exactly in this format:
+
+{{
+    "readme": "text"
+}}
+
 INPUT DATA:
 
 1. ORIGINAL README CONTENT:
 
 {old_readme}
 
-2. GENERATED README SECTIONS (as JSON):
+2. NEW GENERATED README:
 
-{new_readme_sections}
+{new_readme}
+"""
 
+refine_step2 = """
 TASK:
-You are refining the generated README by combining it with the original README content.
-
-GOAL:
-Improve the generated README by:
-- Preserving valuable content from the original README that is missing in the generated one.
-- Removing outdated, redundant, or duplicated content.
-- Ensuring clear, consistent, and well-structured markdown formatting.
-
-PROCESS:
-
-- Use the generated README sections as the base structure.
-- Review both the original README and the generated sections.
-- If useful information from the original README is missing in the generated one, integrate it into the appropriate section.
-- Avoid duplicate or conflicting content.
-- Keep markdown formatting clean and consistent.
-- If there’s valuable content in the original README not present in the generated one, you may create new sections, but only if it doesn’t overlap with existing ones.
-
-TABLE OF CONTENTS:
-
-- If a Table of Contents exists, update it to reflect the final list of section names, using the exact section titles.
-- Exclude `badges` and `Overview` from the Table of Contents.
-
-FINAL OUTPUT:
-
-Return a valid JSON object where:
-- Each key is a section title (e.g., "badges", "Overview", "Installation").
-- The value is the cleaned, final markdown content for that section.
-- The order of keys determines the order of sections in the final README.
-- Omit any empty sections.
-
-Example:
-
-{{
-    "badges": "project title, badges...",
-    "Overview": "overview text...",
-    "Installation": "installation instructions...",
-    "Usage": "how to use..."
-}}
+Clean and normalize the README.
 
 RULES:
 
-- No extra explanations or comments.
-- No content duplication.
-- Preserve markdown formatting.
-- JSON keys order defines README order.
+- Remove duplicate text, commands, and media; keep the first occurrence.
+- Treat commands as duplicates even if formatted differently (`$ pip install`, `pip install`, fenced code, inline).
+- If two blocks contain the same instruction, keep only the first full block.
+- Remove redundant or outdated fragments.
+- Convert all .rst syntax to valid GitHub-Flavored Markdown.
+  - RST images with :target: → clickable Markdown image.
+  - Preserve :alt: as alt text.
+- Code blocks must use triple backticks.
+- Tables must use Markdown tables.
+- Keep order of sections; do not rewrite, only delete duplicates or convert formatting.
 
-SPECIAL RULES:
+OUTPUT:
+Output JSON exactly in this format:
 
-- All content before the first meaningful markdown header (starting with `## `) in the original README should go to the `badges` section **only if it contains the project title, logos, or status badges**.
-- Textual descriptions, images, or code examples before the first `## ` header should be evaluated and placed into the appropriate sections (like "Overview", "Usage", or "Installation").
-- Avoid placing unrelated text or images in `badges`.
+{{
+    "readme": "text"
+}}
+
+INPUT DATA:
+
+{readme}
+"""
+
+refine_step3 = """
+TASK:
+Finalize the README.
+
+RULES:
+
+- Ensure consistent heading levels (e.g., `##`, `###`).
+- Check the existing Table of Contents.
+  - Ensure it exactly matches the section headings and their order.
+  - Add missing entries, remove extra ones, and fix incorrect anchors if needed.
+  - Do not regenerate from scratch if not necessary.
+- Ensure no repeated media or links remain.
+- Output must be GitHub-Flavored Markdown.
+- No .rst syntax.
+
+OUTPUT:
+Output JSON exactly in this format:
+
+{{
+    "readme": "text"
+}}
+
+INPUT DATA:
+
+{readme}
+"""
+
+clean_step1 = """
+TASK:
+Remove duplicate content, commands, and media from the README.
+
+RULES:
+
+1. Preserve the original section order; do not move or create sections.
+2. Remove later duplicates of text, commands, or paragraphs (keep the first occurrence).
+3. Treat commands as duplicates even if formatted differently:
+   - With or without shell prompt symbols (`$`, `sh`).
+   - Inside or outside of code blocks.
+   - Surrounded by different explanatory text.
+   If two blocks or sections exist to show the same command, keep only the first block and delete the later one entirely.
+4. Remove later duplicates of media (images, previews, video links).
+5. If both plain image and clickable preview exist, keep the clickable preview and delete the plain image.
+6. Do not rewrite or merge text; only delete duplicates.
+7. Keep GitHub-Flavored Markdown (GFM).
+8. Do not change the Table of Contents at this step.
+
+OUTPUT:
+Return a JSON object in the form:
+
+{{
+    "readme": "text"
+}}
+
+INPUT DATA:
+
+{readme}
+"""
+
+clean_step2 = """
+TASK:
+Remove duplicated commands, paragraphs, or media from the README, even if they are written differently or placed in different sections.
+
+RULES:
+
+1. Treat commands as duplicates even if:
+   - They differ only by shell prompt symbols (`$`, `sh`).
+   - They are in or outside of fenced code blocks.
+   - They are preceded or followed by different explanatory sentences.
+   Example:
+     "Install using pip:" + ```sh pip install epde```
+     and
+     "To get started, run:" + ```$ pip install epde```
+     → keep only the first occurrence.
+2. Treat media as duplicates even if:
+   - One is a plain image and another is a clickable preview of the same image. Keep the clickable preview, remove the plain one.
+   - The same image, preview, or video is included multiple times.
+3. Treat paragraphs as duplicates if they communicate the same information, even with different wording. Keep only the first occurrence.
+4. Preserve the original section order; do not move or reorder sections.
+5. Do not rewrite or merge text, only delete duplicates.
+6. Do not change the Table of Contents at this step.
+7. Keep GitHub-Flavored Markdown (GFM).
+
+OUTPUT:
+Return a JSON object in the form:
+
+{{
+    "readme": "text"
+}}
+
+INPUT DATA:
+
+{readme}
+"""
+
+clean_step3 = """
+TASK:
+Finalize the README formatting.
+
+RULES:
+
+1. Ensure consistent heading levels (e.g., `##`, `###`).
+2. Ensure no `.rst` syntax remains.
+3. Ensure no duplicate media, text, or commands remain.
+4. The ToC must still match the final section titles.
+5. Final output must be valid GitHub-Flavored Markdown.
+
+OUTPUT:
+Return a JSON object in the form:
+
+{{
+    "readme": "text"
+}}
+
+INPUT DATA:
+
+{readme}
 """
