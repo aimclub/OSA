@@ -149,24 +149,60 @@ class PromptBuilder:
             logger.error(f"Failed to build detection of citation prompt: {e}")
             raise
 
-    def get_prompt_refine_readme(self, generated_readme: str) -> str:
-        """Builds a refine prompt using old and new README."""
+    def get_prompt_refine_readme_step1(self, generated_readme: str) -> str:
+        """Builds a refine prompt step 1 using old and new README."""
         try:
-            formatted_prompt = self.prompts["refine"].format(
+            formatted_prompt = self.prompts["refine_step1"].format(
                 old_readme=extract_readme_content(self.base_path), new_readme=generated_readme
             )
             return formatted_prompt
         except Exception as e:
-            logger.error(f"Failed to build refine readme prompt: {e}")
+            logger.error(f"Failed to build refine readme step 1 prompt: {e}")
             raise
 
-    def get_prompt_clean_readme(self, readme: str) -> str:
-        """Builds a cleaning README prompt."""
+    def get_prompt_refine_readme_step2(self, readme: str) -> str:
+        """Builds a refine prompt step 2."""
         try:
-            formatted_prompt = self.prompts["clean"].format(readme=readme)
+            formatted_prompt = self.prompts["refine_step2"].format(readme=readme)
             return formatted_prompt
         except Exception as e:
-            logger.error(f"Failed to build cleaning readme prompt: {e}")
+            logger.error(f"Failed to build refine readme step 2 prompt: {e}")
+            raise
+
+    def get_prompt_refine_readme_step3(self, readme: str) -> str:
+        """Builds a refine prompt step 1 using old and new README."""
+        try:
+            formatted_prompt = self.prompts["refine_step3"].format(readme=readme)
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build refine readme step 3 prompt: {e}")
+            raise
+
+    def get_prompt_clean_readme_step1(self, readme: str) -> str:
+        """Builds a cleaning README prompt step 1."""
+        try:
+            formatted_prompt = self.prompts["clean_step1"].format(readme=readme)
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build cleaning readme step 1 prompt: {e}")
+            raise
+
+    def get_prompt_clean_readme_step2(self, readme: str) -> str:
+        """Builds a cleaning README prompt step 2."""
+        try:
+            formatted_prompt = self.prompts["clean_step2"].format(readme=readme)
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build cleaning readme step 2 prompt: {e}")
+            raise
+
+    def get_prompt_clean_readme_step3(self, readme: str) -> str:
+        """Builds a cleaning README prompt step 2."""
+        try:
+            formatted_prompt = self.prompts["clean_step3"].format(readme=readme)
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build cleaning readme step 3 prompt: {e}")
             raise
 
     @staticmethod

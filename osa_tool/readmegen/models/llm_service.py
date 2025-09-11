@@ -137,10 +137,19 @@ class LLMClient:
 
     def refine_readme(self, generated_readme: str) -> str:
         logger.info("Refining README files...")
-        response = self.model_handler.send_request(self.prompts.get_prompt_refine_readme(generated_readme))
-        response = process_text(response)
+        refine_step1 = process_text(
+            self.model_handler.send_request(self.prompts.get_prompt_refine_readme_step1(generated_readme))
+        )
+
+        refine_step2 = process_text(
+            self.model_handler.send_request(self.prompts.get_prompt_refine_readme_step2(refine_step1))
+        )
+
+        refine_step3 = process_text(
+            self.model_handler.send_request(self.prompts.get_prompt_refine_readme_step3(refine_step2))
+        )
         try:
-            response_json = json.loads(response)
+            response_json = json.loads(refine_step3)
         except (json.JSONDecodeError, ValueError) as e:
             raise ValueError(f"Failed to parse JSON response: {e}") from e
 
@@ -148,10 +157,15 @@ class LLMClient:
 
     def clean(self, readme: str) -> str:
         logger.info("Cleaning README...")
-        response = self.model_handler.send_request(self.prompts.get_prompt_clean_readme(readme))
-        response = process_text(response)
+        clean_step1 = process_text(self.model_handler.send_request(self.prompts.get_prompt_clean_readme_step1(readme)))
+        clean_step2 = process_text(
+            self.model_handler.send_request(self.prompts.get_prompt_clean_readme_step2(clean_step1))
+        )
+        clean_step3 = process_text(
+            self.model_handler.send_request(self.prompts.get_prompt_clean_readme_step3(clean_step2))
+        )
         try:
-            response_json = json.loads(response)
+            response_json = json.loads(clean_step3)
         except (json.JSONDecodeError, ValueError) as e:
             raise ValueError(f"Failed to parse JSON response: {e}") from e
 
