@@ -453,7 +453,7 @@ class DocGen(object):
                 # Replace old docstring
                 closing = method_lines[next_line_index].strip()[:3]
                 end_doc_idx = next_line_index
-                
+
                 if len(method_lines[next_line_index].strip()) > 3 and method_lines[next_line_index].strip().endswith(
                     closing
                 ):
