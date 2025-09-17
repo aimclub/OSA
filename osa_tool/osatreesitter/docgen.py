@@ -453,6 +453,17 @@ class DocGen(object):
                 # Replace old docstring
                 closing = method_lines[next_line_index].strip()[:3]
                 end_doc_idx = next_line_index
+
+                if len(method_lines[next_line_index].strip()) > 3 and method_lines[next_line_index].strip().endswith(
+                    closing
+                ):
+                    method_lines = (
+                        method_lines[:next_line_index] + [docstring_inserted] + method_lines[end_doc_idx + 1 :]
+                    )
+                    updated_block = "".join(method_lines)
+                    result = source_code[:start] + updated_block + source_code[end:]
+                    return result
+
                 for j in range(next_line_index + 1, len(method_lines)):
                     if closing in method_lines[j]:
                         end_doc_idx = j
