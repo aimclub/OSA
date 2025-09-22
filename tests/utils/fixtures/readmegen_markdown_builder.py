@@ -12,7 +12,11 @@ from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 @pytest.fixture
 def mock_markdown_builder(
-    mock_config_loader, load_metadata_base_builder, load_metadata_header, load_metadata_installation
+    mock_config_loader,
+    load_metadata_base_builder,
+    load_metadata_header,
+    load_metadata_installation,
+    load_metadata_prompts,
 ):
     def _create_builder(core_features=None, overview=None, getting_started=None):
         builder = MarkdownBuilder(
@@ -28,7 +32,11 @@ def mock_markdown_builder(
 
 @pytest.fixture
 def mock_markdown_builder_article(
-    mock_config_loader, load_metadata_base_builder, load_metadata_header, load_metadata_installation
+    mock_config_loader,
+    load_metadata_base_builder,
+    load_metadata_header,
+    load_metadata_installation,
+    load_metadata_prompts,
 ):
     def _create_builder(overview=None, content=None, algorithms=None, getting_started=None):
         builder = MarkdownBuilderArticle(

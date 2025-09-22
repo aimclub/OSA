@@ -205,6 +205,15 @@ class PromptBuilder:
             logger.error(f"Failed to build cleaning readme step 3 prompt: {e}")
             raise
 
+    def get_prompt_article_name_extraction(self, pdf_content: str) -> str:
+        """Builds an article name extraction prompt"""
+        try:
+            formatted_prompt = self.prompts_article["article_name_extraction"].format(pdf_content=pdf_content)
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build article name extraction prompt: {e}")
+            raise
+
     @staticmethod
     def serialize_file_contexts(files: list[FileContext]) -> str:
         """

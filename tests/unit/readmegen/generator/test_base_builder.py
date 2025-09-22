@@ -9,7 +9,12 @@ from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 @pytest.fixture
 def builder(
-    mock_config_loader, mock_sourcerank, load_metadata_base_builder, load_metadata_header, load_metadata_installation
+    mock_config_loader,
+    mock_sourcerank,
+    load_metadata_base_builder,
+    load_metadata_header,
+    load_metadata_installation,
+    load_metadata_prompts,
 ):
     return MarkdownBuilderBase(mock_config_loader)
 
@@ -60,8 +65,7 @@ def test_getting_started_section(builder):
 def test_examples_section_with_examples(builder, sourcerank_with_repo_tree):
     # Arrange
     repo_tree_data = get_mock_repo_tree("WITH_EXAMPLES_ONLY")
-    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
-    builder.sourcerank = sourcerank
+    builder.sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
     # Act
     result = builder.examples
@@ -74,8 +78,7 @@ def test_examples_section_with_examples(builder, sourcerank_with_repo_tree):
 def test_examples_section_no_examples(builder, sourcerank_with_repo_tree):
     # Arrange
     repo_tree_data = get_mock_repo_tree("MINIMAL")
-    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
-    builder.sourcerank = sourcerank
+    builder.sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
     # Assert
     assert builder.examples == ""
@@ -93,8 +96,7 @@ def test_documentation_section_with_homepage(builder):
 def test_documentation_section_with_local_docs(builder, sourcerank_with_repo_tree):
     # Arrange
     repo_tree_data = get_mock_repo_tree("WITH_DOCS")
-    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
-    builder.sourcerank = sourcerank
+    builder.sourcerank = sourcerank_with_repo_tree(repo_tree_data)
     builder.metadata.homepage_url = None
 
     # Act
@@ -108,8 +110,7 @@ def test_documentation_section_with_local_docs(builder, sourcerank_with_repo_tre
 def test_documentation_section_empty(builder, sourcerank_with_repo_tree):
     # Arrange
     repo_tree_data = get_mock_repo_tree("MINIMAL")
-    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
-    builder.sourcerank = sourcerank
+    builder.sourcerank = sourcerank_with_repo_tree(repo_tree_data)
     builder.metadata.homepage_url = None
 
     # Assert
@@ -131,30 +132,61 @@ def test_license_section_with_file(builder):
 def test_license_section_empty(builder, sourcerank_with_repo_tree):
     # Arrange
     repo_tree_data = get_mock_repo_tree("MINIMAL")
-    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
-    builder.sourcerank = sourcerank
+    builder.sourcerank = sourcerank_with_repo_tree(repo_tree_data)
     builder.metadata.license_name = None
 
     # Assert
     assert builder.license == ""
 
 
-def test_citation_section_with_file(builder):
+def test_citation_section_with_file(builder, sourcerank_with_repo_tree):
+    # Assert
+    repo_tree_data = get_mock_repo_tree("FULL")
+    builder.sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+
     # Act
     result = builder.citation
 
     # Assert
     assert "## Citation" in result
+    assert "CITATION" in result
+    assert builder._template["citation_v1"].split("{")[0] in result
 
 
-def test_citation_section_without_file(builder, sourcerank_with_repo_tree):
+def test_citation_section_with_llm(builder, sourcerank_with_repo_tree, llm_client, mock_model_handler):
+    # Assert
+    repo_tree_data = get_mock_repo_tree("MINIMAL")
+    builder.sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+
+    llm_client.model_handler = mock_model_handler(side_effect=['{"citation": "LLM CITATION"}'])
+    with (
+        patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process,
+        patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client),
+    ):
+        mock_process.side_effect = lambda x: x
+
+        # Act
+        result = builder.citation
+
+    # Assert
+    assert "## Citation" in result
+    assert "LLM CITATION" in result
+
+
+def test_citation_section_fallback(builder, sourcerank_with_repo_tree, llm_client, mock_model_handler):
     # Arrange
     repo_tree_data = get_mock_repo_tree("MINIMAL")
-    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
-    builder.sourcerank = sourcerank
+    builder.sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
-    # Act
-    result = builder.citation
+    llm_client.model_handler = mock_model_handler(side_effect=['{"citation": ""}'])
+    with (
+        patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process,
+        patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client),
+    ):
+        mock_process.side_effect = lambda x: x
+
+        # Act
+        result = builder.citation
 
     # Assert
     assert "## Citation" in result

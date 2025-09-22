@@ -170,3 +170,15 @@ class LLMClient:
             raise ValueError(f"Failed to parse JSON response: {e}") from e
 
         return response_json["readme"]
+
+    def get_article_name(self, pdf_content: str) -> str:
+        logger.info("Getting article name from pdf...")
+        response = process_text(
+            self.model_handler.send_request(self.prompts.get_prompt_article_name_extraction(pdf_content))
+        )
+        try:
+            response_json = json.loads(response)
+        except (json.JSONDecodeError, ValueError) as e:
+            raise ValueError(f"Failed to parse JSON response: {e}") from e
+
+        return response_json["article_name"]
