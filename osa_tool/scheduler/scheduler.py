@@ -39,11 +39,7 @@ class ModeScheduler:
     def _basic_plan() -> dict:
         """Return default plan for 'basic' mode."""
         plan = {
-            "about": True,
-            "community_docs": True,
-            "organize": True,
-            "readme": True,
-            "report": True,
+            "docstring": True,
         }
         return plan
 
