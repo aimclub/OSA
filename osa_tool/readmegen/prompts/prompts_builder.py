@@ -152,6 +152,18 @@ class PromptBuilder:
             logger.error(f"Failed to build algorithms prompt: {e}")
             raise
 
+    def get_prompt_translate_readme(self, readme_content: str, target_language: str) -> str:
+        """Builds a prompt to translate README into target language"""
+        try:
+            formatted_prompt = self.prompts["translate"].format(
+                target_language=target_language,
+                readme_content=readme_content,
+            )
+            return formatted_prompt
+        except Exception as e:
+            logger.error(f"Failed to build readme translation prompt: {e}")
+            raise
+
     @staticmethod
     def serialize_file_contexts(files: list[FileContext]) -> str:
         """

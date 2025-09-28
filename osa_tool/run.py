@@ -30,6 +30,7 @@ from osa_tool.scheduler.workflow_manager import (
     update_workflow_config,
 )
 from osa_tool.translation.dir_translator import DirectoryTranslator
+from osa_tool.translation.readme_translator import ReadmeTranslator
 from osa_tool.utils import (
     delete_repository,
     logger,
@@ -135,6 +136,11 @@ def main():
         if plan.get("readme"):
             rich_section("README generation")
             readme_agent(config, plan.get("article"), plan.get("refine_readme"))
+
+        # Readme translation
+        if plan.get("translate_readme"):
+            rich_section("README translation")
+            ReadmeTranslator(config, plan.get("translate_readme")).translate_readme()
 
         # About section generation
         about_gen = None
