@@ -150,7 +150,7 @@ class PromptBuilder:
             raise
 
     def get_prompt_refine_readme_step1(self, generated_readme: str) -> str:
-        """Builds a refine prompt step 1 using old and new README."""
+        """Builds a prompt to merge original README details into the generated structure."""
         try:
             formatted_prompt = self.prompts["refine_step1"].format(
                 old_readme=extract_readme_content(self.base_path), new_readme=generated_readme
@@ -161,7 +161,7 @@ class PromptBuilder:
             raise
 
     def get_prompt_refine_readme_step2(self, readme: str) -> str:
-        """Builds a refine prompt step 2."""
+        """Builds a prompt to clean duplicates and normalize formatting in README."""
         try:
             formatted_prompt = self.prompts["refine_step2"].format(readme=readme)
             return formatted_prompt
@@ -170,7 +170,7 @@ class PromptBuilder:
             raise
 
     def get_prompt_refine_readme_step3(self, readme: str) -> str:
-        """Builds a refine prompt step 1 using old and new README."""
+        """Builds a prompt to finalize README headings, ToC, and formatting consistency."""
         try:
             formatted_prompt = self.prompts["refine_step3"].format(readme=readme)
             return formatted_prompt
@@ -179,7 +179,7 @@ class PromptBuilder:
             raise
 
     def get_prompt_clean_readme_step1(self, readme: str) -> str:
-        """Builds a cleaning README prompt step 1."""
+        """Builds a prompt to remove duplicate commands, text, and media from README."""
         try:
             formatted_prompt = self.prompts["clean_step1"].format(readme=readme)
             return formatted_prompt
@@ -188,7 +188,7 @@ class PromptBuilder:
             raise
 
     def get_prompt_clean_readme_step2(self, readme: str) -> str:
-        """Builds a cleaning README prompt step 2."""
+        """Builds a prompt to delete semantically duplicated content across README sections."""
         try:
             formatted_prompt = self.prompts["clean_step2"].format(readme=readme)
             return formatted_prompt
@@ -197,7 +197,7 @@ class PromptBuilder:
             raise
 
     def get_prompt_clean_readme_step3(self, readme: str) -> str:
-        """Builds a cleaning README prompt step 2."""
+        """Builds a prompt to finalize README formatting and ensure GFM compliance."""
         try:
             formatted_prompt = self.prompts["clean_step3"].format(readme=readme)
             return formatted_prompt
