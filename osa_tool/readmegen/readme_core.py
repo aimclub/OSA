@@ -1,5 +1,6 @@
 import os
 
+from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.generator.builder import MarkdownBuilder
 from osa_tool.readmegen.generator.builder_article import MarkdownBuilderArticle
 from osa_tool.readmegen.models.llm_service import LLMClient
@@ -7,7 +8,7 @@ from osa_tool.readmegen.utils import remove_extra_blank_lines, save_sections
 from osa_tool.utils import logger, parse_folder_name
 
 
-def readme_agent(config_loader, article: str | None, refine_readme: bool) -> None:
+def readme_agent(config_loader: ConfigLoader, article: str | None, refine_readme: bool) -> None:
     """Generates a README.md file for the specified GitHub repository.
 
     Args:
