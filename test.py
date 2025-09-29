@@ -21,34 +21,38 @@ def run(repos, folder):
             "osa-tool",
             "-r",
             r,
-            # "--api",
-            # "openai",
-            # "--base-url",
+            "--api",
+            "openai",
+            "--base-url",
             # "https://openrouter.ai/api/v1",
-            # "--model",
+            "https://foundation-models.api.cloud.ru/v1",
+            "--model",
             # "gpt-4.1",
+            "meta-llama/Llama-3.3-70B-Instruct",
             "--no-fork",
             "--no-pull-request",
             "--output",
-            f"/home/ilya/OSA/{folder}__OSA_qwq_32b",
+            f"/home/ilya/OSA/{folder}__OSA_Llama_3.3_70B_Instruct",
             "-m",
             "basic",
-            "--web-mode"
+            "--web-mode",
         ]
-
-        process = subprocess.run(
-            cmd,
-            text=True,
-            env=env,
-            universal_newlines=True,
-            capture_output=True
-        )
 
         with open("logs.txt", "a") as f:
             f.write(f"{folder}\n")
             f.write(f"{r}\n")
             f.write("\n")
-            f.write(process.stdout[-25000:])
+
+        process = subprocess.run(
+            cmd,
+            text=True,
+            env=env,
+            # capture_output=True,
+            stdout=open("logs.txt", "a"),
+            stderr=subprocess.STDOUT,
+        )
+
+        with open("logs.txt", "a") as f:
             f.write("\n")
             f.write("\n")
             f.write("\n")
@@ -66,11 +70,11 @@ def run(repos, folder):
 
 if __name__ == "__main__":
     repos = [
-        # "https://github.com/psf/requests",
-        "https://github.com/pallets/flask",
-        "https://github.com/mwaskom/seaborn",
-        "https://github.com/matplotlib/matplotlib",
-        "https://github.com/paul-gauthier/aider",
+        "https://github.com/psf/requests",
+        # "https://github.com/pallets/flask",
+        # "https://github.com/mwaskom/seaborn",
+        # "https://github.com/matplotlib/matplotlib",
+        # "https://github.com/paul-gauthier/aider",
     ]
     run(repos, "popular_1")
 
