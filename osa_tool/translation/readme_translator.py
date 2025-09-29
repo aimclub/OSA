@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import shutil
 
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandlerFactory, ModelHandler
@@ -36,6 +37,8 @@ class ReadmeTranslator:
                 "content": response.strip(),
                 "suffix": target_language[:2].lower(),
             }
+
+        result["target_language"] = target_language
         return result
 
     async def translate_readme_async(self) -> None:
@@ -49,11 +52,21 @@ class ReadmeTranslator:
 
         semaphore = asyncio.Semaphore(self.rate_limit)
 
+        results = {}
+
         async def translate_and_save(lang: str):
             translation = await self.translate_readme_request_async(readme_content, lang, semaphore)
             self.save_translated_readme(translation)
+            results[lang] = translation
 
         await asyncio.gather(*(translate_and_save(lang) for lang in self.languages))
+
+        if self.languages:
+            first_lang = self.languages[0]
+            if first_lang in results:
+                self.set_default_translated_readme(results[first_lang])
+            else:
+                logger.warning(f"No translation found for first language '{first_lang}'")
 
     def save_translated_readme(self, translation: dict) -> None:
         """
@@ -77,6 +90,37 @@ class ReadmeTranslator:
         save_sections(content, file_path)
         remove_extra_blank_lines(file_path)
         logger.info(f"Saved translated README: {file_path}")
+
+    def set_default_translated_readme(self, translation: dict) -> None:
+        """
+        Create a .github/README.md symlink (or copy fallback)
+        pointing to the first translated README.
+        """
+        suffix = translation.get("suffix")
+        if not suffix:
+            logger.warning("No suffix for first translated README, skipping default setup.")
+            return
+
+        source_path = os.path.join(self.base_path, f"README_{suffix}.md")
+        if not os.path.exists(source_path):
+            logger.warning(f"Translated README not found at {source_path}, skipping setup.")
+            return
+
+        github_dir = os.path.join(self.base_path, ".github")
+        os.makedirs(github_dir, exist_ok=True)
+
+        target_path = os.path.join(github_dir, "README.md")
+
+        try:
+            if os.path.exists(target_path):
+                os.remove(target_path)
+
+            os.symlink(source_path, target_path)
+            logger.info(f"Created symlink: {target_path} -> {source_path}")
+        except (OSError, NotImplementedError) as e:
+            logger.warning(f"Symlink not supported ({e}), copying file instead")
+            shutil.copyfile(source_path, target_path)
+            logger.info(f"Copied file: {target_path}")
 
     def get_main_readme_file(self) -> str:
         """Return the content of the main README.md in the repository root, or empty string if not found."""
