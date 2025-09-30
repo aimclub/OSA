@@ -185,7 +185,7 @@ Docker, ensure that you upload the PDF file to the OSA folder before building th
 /app/OSA/... or just use volume mounting to access the file.
 
 The --generate-workflows option is intended to create customizable CI/CD pipelines for Python repositories. For detailed
-documentation, see the [GitHub Action Workflow Generator README](./osa_tool/github_workflow/README.md).
+documentation, see the [GitHub Action Workflow Generator README](./osa_tool/workflow/README.md).
 
 ### Configuration
 
