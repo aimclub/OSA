@@ -2,7 +2,7 @@ import os
 
 import tomli
 
-from osa_tool.analytics.metadata import load_data_metadata
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.utils import (
@@ -18,19 +18,19 @@ class ContributingBuilder:
     Builds the CONTRIBUTING.md Markdown documentation file for the project.
     """
 
-    def __init__(self, config_loader: ConfigLoader):
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.sourcerank = SourceRank(self.config_loader)
         self.repo_url = self.config.git.repository
-        self.metadata = load_data_metadata(self.repo_url)
+        self.metadata = metadata
         self.template_path = os.path.join(osa_project_root(), "docs", "templates", "contributing.toml")
         self.url_path = f"https://{self.config.git.host_domain}/{self.config.git.full_name}/"
         self.branch_path = f"tree/{self.metadata.default_branch}/"
         self.issues_url = self.url_path + "issues"
         self._template = self.load_template()
 
-        self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url), ".github")
+        self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url), "." + self.config.git.host)
         self.file_to_save = os.path.join(self.repo_path, "CONTRIBUTING.md")
 
     def load_template(self) -> dict:

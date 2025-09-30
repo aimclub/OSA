@@ -1,0 +1,30 @@
+name: {name}
+
+on:
+  repository_dispatch:
+    types: [fix-pep8-command]
+
+jobs:
+  fix-pep8:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: {token}
+          repository: ${{ github.event.client_payload.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.client_payload.pull_request.head.ref }}
+
+      - name: autopep8
+        id: autopep8
+        uses: peter-evans/autopep8@v2
+        with:
+          args: --exit-code --max-line-length {max_line_length} --recursive --in-place {aggressive_args}
+
+      - name: Commit autopep8 changes
+        id: cap8c
+        if: steps.autopep8.outputs.exit-code == '2'
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git commit -am "Automated autopep8 fixes"
+          git push

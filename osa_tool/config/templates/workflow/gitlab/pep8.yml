@@ -1,0 +1,7 @@
+pep8_check:
+  image: python:{python_version}
+  stage: lint
+  script:
+    - pip install {tool}
+    - {tool} {src}
+  {branches_section}

@@ -5,7 +5,7 @@ import re
 import requests
 import tomli
 
-from osa_tool.analytics.metadata import load_data_metadata
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.generator.header import HeaderBuilder
@@ -16,12 +16,12 @@ from osa_tool.utils import osa_project_root
 
 
 class MarkdownBuilderBase:
-    def __init__(self, config_loader: ConfigLoader, overview=None, getting_started=None):
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata, overview=None, getting_started=None):
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.sourcerank = SourceRank(self.config_loader)
         self.repo_url = self.config.git.repository
-        self.metadata = load_data_metadata(self.repo_url)
+        self.metadata = metadata
         self.url_path = f"https://{self.config.git.host_domain}/{self.config.git.full_name}/"
         self.branch_path = f"tree/{self.metadata.default_branch}/"
 

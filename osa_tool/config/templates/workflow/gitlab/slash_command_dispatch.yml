@@ -1,0 +1,6 @@
+slash_command_dispatch:
+  image: alpine
+  stage: deploy
+  script:
+    - echo "Dispatch slash command: {commands}"
+  when: manual

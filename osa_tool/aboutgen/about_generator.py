@@ -6,8 +6,8 @@ from typing import List
 import requests
 
 from osa_tool.aboutgen.prompts_about_config import PromptAboutLoader
-from osa_tool.analytics.metadata import detect_platform, load_data_metadata
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.git_agent.git_agent import GitAgent
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.utils import extract_readme_content, logger, parse_folder_name
 
@@ -26,15 +26,15 @@ HOMEPAGE_KEYS = [
 class AboutGenerator:
     """Generates Git repository About section content."""
 
-    def __init__(self, config_loader: ConfigLoader):
+    def __init__(self, config_loader: ConfigLoader, git_agent: GitAgent):
         self.config = config_loader.config
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.repo_url = self.config.git.repository
-        self.metadata = load_data_metadata(self.repo_url)
+        self.metadata = git_agent.metadata
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.readme_content = extract_readme_content(self.base_path)
-        self.platform = detect_platform(self.repo_url)
         self.prompts = PromptAboutLoader().prompts
+        self.validate_topics = git_agent.validate_topics
 
         self._content: dict | None = None
 
@@ -136,157 +136,11 @@ class AboutGenerator:
             response = self.model_handler.send_request(formatted_prompt)
             topics = [topic.strip().lower().replace(" ", "-") for topic in response.split(",") if topic.strip()]
             logger.debug(f"Generated topics from LLM: {topics}")
-            validated_topics = self._validate_topics(topics)
+            validated_topics = self.validate_topics(topics)
             return list({*existing_topics, *validated_topics})
         except Exception as e:
             logger.error(f"Error generating topics: {e}")
             return []
-
-    def _validate_topics(self, topics: List[str]) -> List[str]:
-        """Validates topics against platform-specific APIs.
-
-        Args:
-            topics (List[str]): List of potential topics to validate
-
-        Returns:
-            List[str]: List of validated topics that exist on platform
-        """
-        if self.platform == "github":
-            return self._validate_github_topics(topics)
-        elif self.platform == "gitlab":
-            return self._validate_gitlab_topics(topics)
-        elif self.platform == "gitverse":
-            return self._validate_gitverse_topics(topics)
-        else:
-            logger.warning(f"Topic validation not implemented for platform: {self.platform}")
-            return topics
-
-    @staticmethod
-    def _validate_github_topics(topics: List[str]) -> List[str]:
-        """Validates topics against GitHub Topics API.
-
-        Args:
-            topics (List[str]): List of potential topics to validate
-
-        Returns:
-            List[str]: List of validated topics that exist on GitHub
-        """
-        logger.info("Validating topics against GitHub Topics API...")
-        min_repo = 5
-        validated_topics = []
-
-        for topic in topics:
-            try:
-                response = requests.get(
-                    f"https://api.github.com/search/topics?q={topic}+repositories:>{min_repo}",
-                    headers={"Accept": "application/vnd.github.v3+json"},
-                )
-
-                if response.status_code == 200:
-                    data = response.json()
-                    if (total := data.get("total_count", 0)) > 0:
-                        if total == 1:
-                            valid_topic = data.get("items")[0].get("name")
-                            logger.debug(f"Applied transformation for topic: '{topic} -> {valid_topic}'")
-                        else:
-                            valid_topic = topic
-                        validated_topics.append(valid_topic)
-                    else:
-                        logger.debug(f"Generated topic '{topic}' is not valid, skipping")
-                elif response.status_code == 403:
-                    logger.warning("Rate limit exceeded, waiting 60 seconds")
-                    time.sleep(60)
-
-                time.sleep(1)
-
-            except Exception as e:
-                logger.error(f"Error validating topic '{topic}': {e}")
-                continue
-
-        logger.info(f"Validated {len(validated_topics)} topics out of {len(topics)}.")
-        return validated_topics
-
-    @staticmethod
-    def _validate_gitlab_topics(topics: List[str]) -> List[str]:
-        """Validates topics against GitLab Topics API.
-
-        Args:
-            topics (List[str]): List of potential topics to validate
-
-        Returns:
-            List[str]: List of validated topics that exist on GitLab
-        """
-        logger.info("Validating topics against GitLab Topics API...")
-        validated_topics = []
-        base_url = "https://gitlab.com/api/v4/topics"
-        headers = {"Accept": "application/json"}
-
-        for topic in topics:
-            try:
-                params = {"search": topic}
-                response = requests.get(base_url, headers=headers, params=params)
-                if response.status_code == 200:
-                    data = response.json()
-                    for entry in data:
-                        if entry.get("name") == topic:
-                            validated_topics.append(topic)
-                            logger.debug(f"Validated GitLab topic: {topic}")
-                            break
-                    else:
-                        logger.debug(f"Topic '{topic}' not found on GitLab, skipping")
-                elif response.status_code == 403:
-                    logger.warning("Rate limit exceeded, waiting 60 seconds")
-                    time.sleep(60)
-                time.sleep(1)
-            except Exception as e:
-                logger.error(f"Error validating topic '{topic}': {e}")
-                continue
-
-        logger.info(f"Validated {len(validated_topics)} topics out of {len(topics)}.")
-        return validated_topics
-
-    @staticmethod
-    def _validate_gitverse_topics(topics: List[str]) -> List[str]:
-        """Validates topics for Gitverse platform.
-
-        Args:
-            topics (List[str]): List of potential topics to validate
-
-        Returns:
-            List[str]: List of topics (no validation performed)
-        """
-        logger.warning("Topic validation is not implemented for Gitverse. Returning original topics list.")
-        return topics
-
-    def detect_homepage(self) -> str:
-        """
-        Detects the homepage URL for a project.
-
-        Returns:
-            str: The detected homepage URL, an empty string if none is found.
-        """
-        logger.info("Detecting homepage URL...")
-        if self.metadata and self.metadata.homepage_url:
-            logger.warning("Homepage already exists in metadata. Skipping generation.")
-            return self.metadata.homepage_url
-
-        if not self.readme_content:
-            logger.warning("No README content found. Cannot detect homepage.")
-            return ""
-
-        urls = self._extract_readme_urls(self.readme_content)
-        if not urls:
-            logger.info("No URLs found in README")
-            return ""
-
-        candidates = self._analyze_urls(urls)
-        logger.debug(f"Detected homepage: {candidates}")
-
-        for url in candidates:
-            if any(key in url.lower() for key in HOMEPAGE_KEYS):
-                return url
-
-        return candidates[0] if candidates else ""
 
     @staticmethod
     def _extract_readme_urls(readme_content: str) -> List[str]:

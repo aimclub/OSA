@@ -1,0 +1,18 @@
+name: {name}
+on:
+{on_section}
+jobs:
+  lint:
+    name: "Run {tool}"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repo"
+        uses: actions/checkout@v4
+      - name: "Set up Python {python_version}"
+        uses: actions/setup-python@v4
+        with:
+          python-version: {python_version}
+      - name: "Install dependencies"
+        run: "pip install {tool}"
+      - name: "Run {tool}"
+        run: {tool_command}

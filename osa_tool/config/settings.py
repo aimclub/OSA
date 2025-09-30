@@ -58,13 +58,12 @@ class ModelSettings(BaseModel):
 
 
 class WorkflowSettings(BaseModel):
-    """GitHub Actions workflow generation settings."""
+    """Git workflow generation settings."""
 
     generate_workflows: bool = Field(
         default=False,
-        description="Flag indicating whether to generate GitHub workflows.",
+        description="Flag indicating whether to generate workflows.",
     )
-    output_dir: str = Field(default=".github/workflows", description="Directory to save workflow files.")
     include_tests: bool = Field(default=True, description="Include unit tests workflow.")
     include_black: bool = Field(default=True, description="Include Black formatter workflow.")
     include_pep8: bool = Field(default=True, description="Include PEP 8 compliance workflow.")

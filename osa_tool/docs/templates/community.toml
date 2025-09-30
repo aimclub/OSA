@@ -255,3 +255,150 @@ Issues regarding dependencies and libraries should be reported in their respecti
 <!--- How has this issue affected you? What are you trying to accomplish? -->
 <!--- Providing context helps us come up with a solution that is most useful in the real world -->
 """
+
+vulnerability_disclosure = """
+<!---
+Please read this!
+
+This template is for reporting a security vulnerability about GitLab or 
+GitLab.com
+
+See also:
+
+- https://about.gitlab.com/security/disclosure/
+
+--->
+
+### Summary
+
+<!-- Summarize the bug encountered concisely. -->
+
+### Steps to reproduce
+
+<!-- Describe how one can reproduce the issue - this is very important. Please use an ordered list. -->
+
+### Example Project
+
+<!-- If possible, please create an example project here on GitLab.com that exhibits the problematic 
+behavior, and link to it here in the bug report. If you are using an older version of GitLab, this 
+will also determine whether the bug is fixed in a more recent version. -->
+
+### What is the current *bug* behavior?
+
+<!-- Describe what actually happens. -->
+
+### What is the expected *correct* behavior?
+
+<!-- Describe what you should see instead. -->
+
+### Relevant logs and/or screenshots
+
+<!-- Paste any relevant logs - please use code blocks (```) to format console output, logs, and code
+ as it's tough to read otherwise. -->
+
+### Output of checks
+
+<!-- If you are reporting a bug on GitLab.com, write: This bug happens on GitLab.com -->
+
+#### Results of GitLab environment info
+
+<!--  Input any relevant GitLab environment information if needed. -->
+
+<details>
+<summary>Expand for output related to GitLab environment info</summary>
+
+<pre>
+
+(For installations with omnibus-gitlab package run and paste the output of:
+`sudo gitlab-rake gitlab:env:info`)
+
+(For installations from source run and paste the output of:
+`sudo -u git -H bundle exec rake gitlab:env:info RAILS_ENV=production`)
+
+</pre>
+</details>
+
+#### Results of GitLab application Check
+
+<!--  Input any relevant GitLab application check information if needed. -->
+
+<details>
+<summary>Expand for output related to the GitLab application check</summary>
+<pre>
+
+(For installations with omnibus-gitlab package run and paste the output of:
+`sudo gitlab-rake gitlab:check SANITIZE=true`)
+
+(For installations from source run and paste the output of:
+`sudo -u git -H bundle exec rake gitlab:check RAILS_ENV=production SANITIZE=true`)
+
+(we will only investigate if the tests are passing)
+
+</pre>
+</details>
+
+### Possible fixes
+
+<!-- If you can, link to the line of code that might be responsible for the problem. -->
+
+
+---
+
+<!-- Do not edit past here unless you are certain of the impact -->
+"""
+
+security_github = """ 
+# Reporting Security Issues
+
+Our team take security bugs seriously. We appreciate your efforts to responsibly disclose your 
+findings, and will make every effort to acknowledge your contributions.
+
+To report a security issue, please use the GitHub Security Advisory 
+["Report a Vulnerability"]({repo_url}/security/advisories/new) tab.
+"""
+
+security_gitlab = """
+# Security Policy
+
+## Reporting a Vulnerability
+
+Use [the Vulnerability Disclosure issue template]({repo_url}/-/issues/new?issuable_template=Vulnerability%20Disclosure) to report a new security vulnerability.
+
+New security issue should follow these guidelines when being created on `GitLab.com`:
+
+- Create new issues as `confidential` if unsure whether issue a potential
+vulnerability or not. It is easier to make an issue that should have been
+public open than to remediate an issue that should have been confidential.
+Consider adding the `/confidential` quick action to a project issue template.
+
+- Always label as ``~security`` at a minimum. If you're reporting a vulnerability (or something you suspect may possibly be one) please use the [Vulnerability Disclosure](https://gitlab.com/gitlab-org/gitlab/-/issues/new?issuable_template=Vulnerability%20Disclosure) template while creating the issue. Otherwise, follow the steps here (with a security label).
+
+- Add any additional labels you know apply. Additional labels will be applied
+by the security team and other engineering personnel, but it will help with
+the triage process:
+
+  - [`~"type::bug"`, `~"type::maintenance"`, or `~"type::feature"` if appropriate](https://handbook.gitlab.com/handbook/security/product-security/application-security/vulnerability-management/#vulnerability-vs-feature-vs-bug)
+  - Team or DevOps lifecycle labels
+  - `~customer` if issue is a result of a customer report
+  - `~internal customer` should be added by team members when the issue
+    impacts GitLab operations.
+  - `~dependency update` if issue is related to updating to newer versions of the dependencies GitLab requires.
+  - `~featureflag::` scoped labels if issue is for a functionality behind a feature flag
+
+- Issues that contain customer specific data, such as private repository contents,
+should be assigned `~keep confidential`. If possible avoid this by linking
+resources only available to GitLab team member. Label the link with `(GitLab internal)` for clarity.
+
+Occasionally, data that should remain confidential, such as the private
+project contents of a user that reported an issue, may get included in an
+issue. If necessary, a sanitized issue may need to be created with more
+general discussion and examples appropriate for public disclosure prior to
+release.
+"""
+
+security_gitverse = """
+# Reporting Security Issues
+
+Our team take security bugs seriously. We appreciate your efforts to responsibly disclose your 
+findings, and will make every effort to acknowledge your contributions.
+"""

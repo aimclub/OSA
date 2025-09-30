@@ -160,12 +160,7 @@ workflow:
   generate_workflows:
     aliases: [ "--generate-workflows" ]
     type: flag
-    description: "Generate GitHub Action workflows for the repository."
-
-  workflows_output_dir:
-    aliases: [ "--workflows-output-dir" ]
-    type: str
-    description: "Directory where the workflow files will be saved."
+    description: "Generate workflows for the repository."
 
   include_tests:
     aliases: [ "--include-tests" ]
