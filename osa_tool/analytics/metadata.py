@@ -1,8 +1,8 @@
+from abc import ABC, abstractmethod
 import os
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from functools import lru_cache
 
 import requests
 from dotenv import load_dotenv
@@ -16,7 +16,7 @@ load_dotenv()
 @dataclass
 class RepositoryMetadata:
     """
-    Dataclass to store GitHub repository metadata.
+    Dataclass to store Git repository metadata.
     """
 
     name: str
@@ -61,234 +61,299 @@ class RepositoryMetadata:
     license_name: str | None
     license_url: str | None
 
-    # Platform
-    platform: str
 
-
-def detect_platform(repo_url: str) -> str:
-    """Detect which platform the repository is hosted on.
-
-    Args:
-        repo_url: The URL of the Git repository.
-
-    Raises:
-        ValueError: If inappropriate platform used.
+class MetadataLoader(ABC):
     """
-    if "github.com" in repo_url:
-        return "github"
-    elif "gitlab" in repo_url:
-        return "gitlab"
-    elif "gitverse.ru" in repo_url:
-        return "gitverse"
-    else:
-        raise ValueError(f"Unsupported platform for URL: {repo_url}")
+    Abstract base class for repository metadata loaders.
+    """
+
+    @classmethod
+    def load_data(cls, repo_url: str) -> RepositoryMetadata:
+        """
+        General method to load repository metadata for a given URL.
+        Calls the platform-specific loader method.
+
+        Args:
+            repo_url (str): The full URL of the repository.
+
+        Returns:
+            RepositoryMetadata: Parsed repository metadata.
+        """
+        try:
+            return cls._load_platform_data(repo_url)
+
+        except HTTPError as http_exc:
+            status_code = getattr(http_exc.response, "status_code", None)
+            logger.error(f"Error while fetching repository metadata: {http_exc}")
+
+            if status_code == 401:
+                logger.error("Authentication failed: please check your Git token (missing or expired).")
+            elif status_code == 404:
+                logger.error("Repository not found: please check the repository URL.")
+            elif status_code == 403:
+                logger.error("Access denied: your token may lack sufficient permissions or you hit a rate limit.")
+            else:
+                logger.error("Unexpected HTTP error occurred while accessing the repository metadata.")
+            raise
+
+        except Exception as exc:
+            logger.error(f"Unexpected error while fetching repository metadata: {exc}")
+            raise
+
+    @classmethod
+    @abstractmethod
+    def _load_platform_data(cls, repo_url: str) -> RepositoryMetadata:
+        """
+        Abstract method to load metadata from a platform-specific API.
+
+        Args:
+            repo_url (str): The full URL of the repository.
+
+        Returns:
+            RepositoryMetadata: Parsed repository metadata.
+        """
+        pass
+
+    @classmethod
+    @abstractmethod
+    def _parse_metadata(cls, repo_data: dict) -> RepositoryMetadata:
+        """
+        Abstract method to parse raw API response dictionary into RepositoryMetadata.
+
+        Args:
+            repo_data (dict): Raw API response data.
+
+        Returns:
+            RepositoryMetadata: Parsed repository metadata.
+        """
+        pass
 
 
-def _parse_repository_metadata_github(repo_data: dict) -> RepositoryMetadata:
-    """Parse GitHub API response into RepositoryMetadata."""
-    languages = repo_data.get("languages", {})
-    license_info = repo_data.get("license", {}) or {}
-    owner_info = repo_data.get("owner", {}) or {}
+class GitHubMetadataLoader(MetadataLoader):
+    @classmethod
+    def _load_platform_data(cls, repo_url: str) -> RepositoryMetadata:
+        """
+        Load GitHub repository metadata via GitHub API.
 
-    return RepositoryMetadata(
-        name=repo_data.get("name", ""),
-        full_name=repo_data.get("full_name", ""),
-        owner=owner_info.get("login", ""),
-        owner_url=owner_info.get("html_url", ""),
-        description=repo_data.get("description", ""),
-        stars_count=repo_data.get("stargazers_count", 0),
-        forks_count=repo_data.get("forks_count", 0),
-        watchers_count=repo_data.get("watchers_count", 0),
-        open_issues_count=repo_data.get("open_issues_count", 0),
-        default_branch=repo_data.get("default_branch", ""),
-        created_at=repo_data.get("created_at", ""),
-        updated_at=repo_data.get("updated_at", ""),
-        pushed_at=repo_data.get("pushed_at", ""),
-        size_kb=repo_data.get("size", 0),
-        clone_url_http=repo_data.get("clone_url", ""),
-        clone_url_ssh=repo_data.get("ssh_url", ""),
-        contributors_url=repo_data.get("contributors_url"),
-        languages_url=repo_data.get("languages_url", ""),
-        issues_url=repo_data.get("issues_url"),
-        language=repo_data.get("language", ""),
-        languages=list(languages.keys()) if languages else [],
-        topics=repo_data.get("topics", []),
-        has_wiki=repo_data.get("has_wiki", False),
-        has_issues=repo_data.get("has_issues", False),
-        has_projects=repo_data.get("has_projects", False),
-        is_private=repo_data.get("private", False),
-        homepage_url=repo_data.get("homepage", ""),
-        license_name=license_info.get("name", ""),
-        license_url=license_info.get("url", ""),
-        platform="github",
-    )
+        Args:
+            repo_url (str): URL of the GitHub repository.
 
-
-def _parse_repository_metadata_gitlab(repo_data: dict) -> RepositoryMetadata:
-    """Parse GitLab API response into RepositoryMetadata."""
-    owner_info = repo_data.get("owner", {}) or {}
-    namespace = repo_data.get("namespace", {}) or {}
-
-    # Converting to a unified view with GitHub
-    created_time = datetime.strptime(repo_data.get("created_at", "").split(".")[0], "%Y-%m-%dT%H:%M:%S").strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
-
-    return RepositoryMetadata(
-        name=repo_data.get("name", ""),
-        full_name=repo_data.get("path_with_namespace", ""),
-        owner=namespace.get("name", "") or owner_info.get("name", ""),
-        owner_url=namespace.get("web_url", "") or owner_info.get("web_url", ""),
-        description=repo_data.get("description", ""),
-        stars_count=repo_data.get("star_count", 0),
-        forks_count=repo_data.get("forks_count", 0),
-        watchers_count=0,  # GitLab doesn't have watchers concept
-        open_issues_count=repo_data.get("open_issues_count", 0),
-        default_branch=repo_data.get("default_branch", ""),
-        created_at=created_time,
-        updated_at=repo_data.get("last_activity_at", ""),
-        pushed_at=repo_data.get("last_activity_at", ""),
-        size_kb=repo_data.get("repository_size", 0) // 1024,  # Convert bytes to KB
-        clone_url_http=repo_data.get("http_url_to_repo", ""),
-        clone_url_ssh=repo_data.get("ssh_url_to_repo", ""),
-        contributors_url=f"{repo_data.get('web_url', '')}/contributors" if repo_data.get("web_url") else None,
-        languages_url=f"{repo_data.get('web_url', '')}/languages" if repo_data.get("web_url") else "",
-        issues_url=f"{repo_data.get('web_url', '')}/issues" if repo_data.get("web_url") else None,
-        language="",  # GitLab API doesn't provide primary language in basic response
-        languages=[],
-        topics=repo_data.get("tag_list", []),
-        has_wiki=repo_data.get("wiki_enabled", False),
-        has_issues=repo_data.get("issues_enabled", False),
-        has_projects=True,  # GitLab always has project management features
-        is_private=repo_data.get("visibility", "public") != "public",
-        homepage_url="",
-        license_name="",
-        license_url="",
-        platform="gitlab",
-    )
-
-
-def _parse_repository_metadata_gitverse(repo_data: dict) -> RepositoryMetadata:
-    """Parse Gitverse API response into RepositoryMetadata."""
-    owner_info = repo_data.get("owner", {}) or {}
-    license_info = repo_data.get("license") or {}
-
-    return RepositoryMetadata(
-        name=repo_data.get("name", ""),
-        full_name=repo_data.get("full_name", ""),
-        owner=owner_info.get("login", ""),
-        owner_url=owner_info.get("html_url", ""),
-        description=repo_data.get("description", ""),
-        stars_count=repo_data.get("stargazers_count", 0),
-        forks_count=repo_data.get("forks_count", 0),
-        watchers_count=repo_data.get("watchers_count", 0),
-        open_issues_count=repo_data.get("open_issues_count", 0),
-        default_branch=repo_data.get("default_branch", ""),
-        created_at=repo_data.get("created_at", ""),
-        updated_at=repo_data.get("updated_at", ""),
-        pushed_at=repo_data.get("pushed_at", ""),
-        size_kb=repo_data.get("size", 0),
-        clone_url_http=repo_data.get("clone_url", ""),
-        clone_url_ssh=repo_data.get("ssh_url", ""),
-        contributors_url=repo_data.get("contributors_url"),
-        languages_url=repo_data.get("languages_url", ""),
-        issues_url=repo_data.get("issues_url"),
-        language=repo_data.get("language", ""),
-        languages=repo_data.get("languages", []),
-        topics=repo_data.get("topics", []) or [],
-        has_wiki=repo_data.get("has_wiki", False),
-        has_issues=repo_data.get("has_issues", False),
-        has_projects=repo_data.get("has_projects", False),
-        is_private=repo_data.get("private", False),
-        homepage_url=repo_data.get("homepage", ""),
-        license_name=license_info.get("name", ""),
-        license_url=license_info.get("url", ""),
-        platform="gitverse",
-    )
-
-
-@lru_cache(maxsize=1)
-def load_data_metadata(repo_url: str) -> RepositoryMetadata:
-    """Retrieve repository metadata from any supported platform."""
-    try:
-        platform = detect_platform(repo_url)
+        Returns:
+            RepositoryMetadata: Parsed metadata object.
+        """
         base_url = get_base_repo_url(repo_url)
+        headers = {
+            "Authorization": f"token {os.getenv('GIT_TOKEN', os.getenv('GITHUB_TOKEN', ''))}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+        url = f"https://api.github.com/repos/{base_url}"
+        response = requests.get(url=url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        logger.info(f"Successfully fetched GitHub metadata for repository: '{base_url}'")
+        return GitHubMetadataLoader._parse_metadata(data)
 
-        if platform == "github":
-            return _load_github_metadata(base_url)
-        elif platform == "gitlab":
-            return _load_gitlab_metadata(repo_url, base_url)
+    @classmethod
+    def _parse_metadata(cls, repo_data: dict) -> RepositoryMetadata:
+        """
+        Parse GitHub API response into RepositoryMetadata.
+
+        Args:
+            repo_data (dict): Raw GitHub API response.
+
+        Returns:
+            RepositoryMetadata: Parsed repository metadata.
+        """
+        languages = repo_data.get("languages", {})
+        license_info = repo_data.get("license", {}) or {}
+        owner_info = repo_data.get("owner", {}) or {}
+
+        return RepositoryMetadata(
+            name=repo_data.get("name", ""),
+            full_name=repo_data.get("full_name", ""),
+            owner=owner_info.get("login", ""),
+            owner_url=owner_info.get("html_url", ""),
+            description=repo_data.get("description", ""),
+            stars_count=repo_data.get("stargazers_count", 0),
+            forks_count=repo_data.get("forks_count", 0),
+            watchers_count=repo_data.get("watchers_count", 0),
+            open_issues_count=repo_data.get("open_issues_count", 0),
+            default_branch=repo_data.get("default_branch", ""),
+            created_at=repo_data.get("created_at", ""),
+            updated_at=repo_data.get("updated_at", ""),
+            pushed_at=repo_data.get("pushed_at", ""),
+            size_kb=repo_data.get("size", 0),
+            clone_url_http=repo_data.get("clone_url", ""),
+            clone_url_ssh=repo_data.get("ssh_url", ""),
+            contributors_url=repo_data.get("contributors_url"),
+            languages_url=repo_data.get("languages_url", ""),
+            issues_url=repo_data.get("issues_url"),
+            language=repo_data.get("language", ""),
+            languages=list(languages.keys()) if languages else [],
+            topics=repo_data.get("topics", []),
+            has_wiki=repo_data.get("has_wiki", False),
+            has_issues=repo_data.get("has_issues", False),
+            has_projects=repo_data.get("has_projects", False),
+            is_private=repo_data.get("private", False),
+            homepage_url=repo_data.get("homepage", ""),
+            license_name=license_info.get("name", ""),
+            license_url=license_info.get("url", ""),
+        )
+
+
+class GitLabMetadataLoader(MetadataLoader):
+    @classmethod
+    def _load_platform_data(cls, repo_url: str) -> RepositoryMetadata:
+        """
+        Load GitLab repository metadata via GitLab API.
+
+        Args:
+            repo_url (str): URL of the GitLab repository.
+
+        Returns:
+            RepositoryMetadata: Parsed metadata object.
+        """
+        base_url = get_base_repo_url(repo_url)
+        gitlab_instance_match = re.match(r"(https?://[^/]*gitlab[^/]*)", repo_url)
+        if not gitlab_instance_match:
+            raise ValueError("Invalid GitLab repository URL")
+        gitlab_instance = gitlab_instance_match.group(1)
+
+        headers = {
+            "Authorization": f"Bearer {os.getenv('GITLAB_TOKEN', os.getenv('GIT_TOKEN'))}",
+            "Content-Type": "application/json",
+        }
+        project_path = base_url.replace("/", "%2F")
+        url = f"{gitlab_instance}/api/v4/projects/{project_path}"
+
+        response = requests.get(url=url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        logger.info(f"Successfully fetched GitLab metadata for repository: '{base_url}'")
+        return GitLabMetadataLoader._parse_metadata(data)
+
+    @classmethod
+    def _parse_metadata(cls, repo_data: dict) -> RepositoryMetadata:
+        """
+        Parse GitLab API response into RepositoryMetadata.
+
+        Args:
+            repo_data (dict): Raw GitLab API response.
+
+        Returns:
+            RepositoryMetadata: Parsed repository metadata.
+        """
+        owner_info = repo_data.get("owner", {}) or {}
+        namespace = repo_data.get("namespace", {}) or {}
+
+        created_raw = repo_data.get("created_at", "")
+        if created_raw:
+            created_time = datetime.strptime(created_raw.split(".")[0], "%Y-%m-%dT%H:%M:%S").strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            )
         else:
-            return _load_gitverse_metadata(base_url)
+            created_time = ""
 
-    except HTTPError as http_exc:
-        status_code = getattr(http_exc.response, "status_code", None)
-        logger.error(f"Error while fetching repository metadata: {http_exc}")
-
-        if status_code == 401:
-            logger.error("Authentication failed: please check your Git token (missing or expired).")
-        elif status_code == 404:
-            logger.error("Repository not found: please check the repository URL.")
-        elif status_code == 403:
-            logger.error("Access denied: your token may lack sufficient permissions or you hit a rate limit.")
-        else:
-            logger.error("Unexpected HTTP error occurred while accessing the repository metadata.")
-        raise
-
-    except Exception as exc:
-        logger.error(f"Unexpected error while fetching repository metadata: {exc}")
-        raise
-
-
-def _load_github_metadata(base_url: str) -> RepositoryMetadata:
-    """Load metadata from GitHub API."""
-    headers = {
-        "Authorization": f"token {os.getenv('GIT_TOKEN', os.getenv('GITHUB_TOKEN', ''))}",
-        "Accept": "application/vnd.github.v3+json",
-    }
-    url = f"https://api.github.com/repos/{base_url}"
-
-    response = requests.get(url=url, headers=headers)
-    response.raise_for_status()
-
-    metadata = response.json()
-    logger.info(f"Successfully fetched GitHub metadata for repository: '{base_url}'")
-    return _parse_repository_metadata_github(metadata)
+        return RepositoryMetadata(
+            name=repo_data.get("name", ""),
+            full_name=repo_data.get("path_with_namespace", ""),
+            owner=namespace.get("name", "") or owner_info.get("name", ""),
+            owner_url=namespace.get("web_url", "") or owner_info.get("web_url", ""),
+            description=repo_data.get("description", ""),
+            stars_count=repo_data.get("star_count", 0),
+            forks_count=repo_data.get("forks_count", 0),
+            watchers_count=0,  # GitLab does not have watchers, set to 0
+            open_issues_count=repo_data.get("open_issues_count", 0),
+            default_branch=repo_data.get("default_branch", ""),
+            created_at=created_time,
+            updated_at=repo_data.get("last_activity_at", ""),
+            pushed_at=repo_data.get("last_activity_at", ""),
+            size_kb=repo_data.get("repository_size", 0) // 1024,  # Convert bytes to KB
+            clone_url_http=repo_data.get("http_url_to_repo", ""),
+            clone_url_ssh=repo_data.get("ssh_url_to_repo", ""),
+            contributors_url=f"{repo_data.get('web_url', '')}/contributors" if repo_data.get("web_url") else None,
+            languages_url=f"{repo_data.get('web_url', '')}/languages" if repo_data.get("web_url") else "",
+            issues_url=f"{repo_data.get('web_url', '')}/issues" if repo_data.get("web_url") else None,
+            language="",  # GitLab API does not provide primary language
+            languages=[],
+            topics=repo_data.get("tag_list", []),
+            has_wiki=repo_data.get("wiki_enabled", False),
+            has_issues=repo_data.get("issues_enabled", False),
+            has_projects=True,  # GitLab always has project management features enabled
+            is_private=repo_data.get("visibility", "public") != "public",
+            homepage_url="",
+            license_name="",
+            license_url="",
+        )
 
 
-def _load_gitlab_metadata(repo_url: str, base_url: str) -> RepositoryMetadata:
-    """Load metadata from GitLab API."""
-    gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", repo_url).group(1)
+class GitverseMetadataLoader(MetadataLoader):
+    @classmethod
+    def _load_platform_data(cls, repo_url: str) -> RepositoryMetadata:
+        """
+        Load Gitverse repository metadata via Gitverse API.
 
-    headers = {
-        "Authorization": f"Bearer {os.getenv('GITLAB_TOKEN', os.getenv('GIT_TOKEN'))}",
-        "Content-Type": "application/json",
-    }
+        Args:
+            repo_url (str): URL of the Gitverse repository.
 
-    project_path = base_url.replace("/", "%2F")
-    url = f"{gitlab_instance}/api/v4/projects/{project_path}"
+        Returns:
+            RepositoryMetadata: Parsed metadata object.
+        """
+        base_url = get_base_repo_url(repo_url)
+        headers = {
+            "Authorization": f"Bearer {os.getenv('GITVERSE_TOKEN', os.getenv('GIT_TOKEN'))}",
+            "Accept": "application/vnd.gitverse.object+json;version=1",
+            "Content-Type": "application/json",
+        }
+        url = f"https://api.gitverse.ru/repos/{base_url}"
 
-    response = requests.get(url=url, headers=headers)
-    response.raise_for_status()
+        response = requests.get(url=url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        logger.info(f"Successfully fetched Gitverse metadata for repository: '{base_url}'")
+        return GitverseMetadataLoader._parse_metadata(data)
 
-    metadata = response.json()
-    logger.info(f"Successfully fetched GitLab metadata for repository: '{base_url}'")
-    return _parse_repository_metadata_gitlab(metadata)
+    @classmethod
+    def _parse_metadata(cls, repo_data: dict) -> RepositoryMetadata:
+        """
+        Parse Gitverse API response into RepositoryMetadata.
 
+        Args:
+            repo_data (dict): Raw Gitverse API response.
 
-def _load_gitverse_metadata(base_url: str) -> RepositoryMetadata:
-    """Load metadata from Gitverse API."""
-    headers = {
-        "Authorization": f"Bearer {os.getenv('GITVERSE_TOKEN', os.getenv('GIT_TOKEN'))}",
-        "Accept": "application/vnd.gitverse.object+json;version=1",
-        "Content-Type": "application/json",
-    }
+        Returns:
+            RepositoryMetadata: Parsed repository metadata.
+        """
+        owner_info = repo_data.get("owner", {}) or {}
 
-    url = f"https://api.gitverse.ru/repos/{base_url}"
-
-    response = requests.get(url=url, headers=headers)
-    response.raise_for_status()
-
-    metadata = response.json()
-    logger.info(f"Successfully fetched Gitverse metadata for repository: '{base_url}'")
-    return _parse_repository_metadata_gitverse(metadata)
+        return RepositoryMetadata(
+            name=repo_data.get("name", ""),
+            full_name=repo_data.get("full_name", ""),
+            owner=owner_info.get("login", ""),
+            owner_url=owner_info.get("html_url", ""),
+            description=repo_data.get("description", ""),
+            stars_count=repo_data.get("stargazers_count", 0),
+            forks_count=repo_data.get("forks_count", 0),
+            watchers_count=repo_data.get("watchers_count", 0),
+            open_issues_count=repo_data.get("open_issues_count", 0),
+            default_branch=repo_data.get("default_branch", ""),
+            created_at=repo_data.get("created_at", ""),
+            updated_at=repo_data.get("updated_at", ""),
+            pushed_at=repo_data.get("pushed_at", ""),
+            size_kb=repo_data.get("size", 0),
+            clone_url_http=repo_data.get("clone_url", ""),
+            clone_url_ssh=repo_data.get("ssh_url", ""),
+            contributors_url=repo_data.get("contributors_url"),
+            languages_url=repo_data.get("languages_url", ""),
+            issues_url=repo_data.get("issues_url"),
+            language=repo_data.get("language", ""),
+            languages=repo_data.get("languages", []) or [],
+            topics=repo_data.get("topics", []) or [],
+            has_wiki=repo_data.get("has_wiki", False),
+            has_issues=repo_data.get("has_issues", False),
+            has_projects=repo_data.get("has_projects", False),
+            is_private=repo_data.get("private", False),
+            homepage_url=repo_data.get("homepage", ""),
+            license_name=repo_data.get("license", {}).get("name", ""),
+            license_url=repo_data.get("license", {}).get("url", ""),
+        )

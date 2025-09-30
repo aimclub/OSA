@@ -2,7 +2,7 @@ import os
 
 import tomli
 
-from osa_tool.analytics.metadata import load_data_metadata
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.context.files_contents import FileContext
@@ -10,7 +10,7 @@ from osa_tool.utils import extract_readme_content, logger, parse_folder_name, os
 
 
 class PromptBuilder:
-    def __init__(self, config_loader: ConfigLoader):
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.readme_prompt_path = os.path.join(osa_project_root(), "config", "settings", "prompts.toml")
@@ -21,7 +21,7 @@ class PromptBuilder:
         self.tree = self.sourcerank.tree
 
         self.repo_url = self.config.git.repository
-        self.metadata = load_data_metadata(self.repo_url)
+        self.metadata = metadata
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
 
     def get_prompt_preanalysis(self) -> str:

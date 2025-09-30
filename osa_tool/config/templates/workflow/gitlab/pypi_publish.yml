@@ -1,0 +1,7 @@
+pypi_publish:
+  image: python:{python_version}
+  stage: deploy
+  script:
+    {script}
+  only:
+    - tags

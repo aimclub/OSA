@@ -1,91 +1,94 @@
 import os
-
 import yaml
-
+from abc import ABC, abstractmethod
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
+from osa_tool.arguments_parser import get_keys_from_group_in_yaml
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.github_workflow import generate_workflows_from_settings
-from osa_tool.utils import parse_folder_name, logger
+from osa_tool.workflow.workflow_generator import GitHubWorkflowGenerator, GitLabWorkflowGenerator
+from osa_tool.utils import build_arguments_path, parse_folder_name, logger
 
 
-class WorkflowManager:
+class WorkflowManager(ABC):
     """
-    Manages GitHub Actions workflows for a given repository.
-    Detects existing jobs, builds a plan for workflow generation.
+    Abstract manager for CI/CD configurations handling different platforms (GitHub, GitLab, Gitverse).
+
+    Args:
+        repo_url: Repository URL.
+        metadata: Metadata object of the repository.
+        args: Parsed arguments object containing CI/CD related settings.
+
+    Raises:
+        NotImplementedError: If abstract methods are not implemented in subclasses.
     """
 
-    def __init__(self, base_path: str, sourcerank: SourceRank, metadata: RepositoryMetadata, workflows_plan: dict):
-        self.base_path = base_path
-        self.sourcerank = sourcerank
+    job_name_for_key = {
+        "include_black": ["black", "lint", "Lint", "format"],
+        "include_tests": ["test", "unit_tests"],
+        "include_pep8": ["lint", "Lint", "pep8_check"],
+        "include_autopep8": ["autopep8"],
+        "include_fix_pep8": ["fix_pep8_command", "fix-pep8"],
+        "slash-command-dispatch": ["slash_command_dispatch", "slashCommandDispatch"],
+        "pypi-publish": ["pypi_publish", "pypi-publish"],
+    }
+
+    def __init__(self, repo_url: str, metadata: RepositoryMetadata, args):
+        self.repo_url = repo_url
+        self.base_path = os.path.join(os.getcwd(), parse_folder_name(repo_url))
         self.metadata = metadata
-        self.workflows_plan = workflows_plan
-        self.workflows_dir = self._find_workflows_directory()
-        self.existing_jobs = self._get_existing_jobs()
-        self.excluded_keys = {"workflows_output_dir", "python_versions"}
-        self.job_name_for_key = {
-            "include_black": ["black", "lint", "Lint", "format"],
-            "include_tests": ["test", "unit_tests"],
-            "include_pep8": ["lint", "Lint", "pep8_check"],
-            "include_autopep8": "autopep8",
-            "include_fix_pep8": ["fix_pep8_command", "fix-pep8"],
-            "slash-command-dispatch": ["slash_command_dispatch", "slashCommandDispatch"],
-            "pypi-publish": ["pypi_publish", "pypi-publish"],
-        }
+        self.workflow_keys = get_keys_from_group_in_yaml("workflow")
+        self.workflow_plan = {key: value for key, value in vars(args).items() if key in self.workflow_keys}
+        self.workflow_path = self._locate_workflow_path()
+        self.existing_jobs = self._find_existing_jobs()
 
-    def _find_workflows_directory(self) -> str | None:
-        """Locate the '.github/workflows' directory if it exists."""
-        workflows_dir = os.path.join(self.base_path, ".github", "workflows")
-        return workflows_dir if os.path.exists(workflows_dir) and os.path.isdir(workflows_dir) else None
+    @abstractmethod
+    def _locate_workflow_path(self) -> str | None:
+        """
+        Locate the path where CI/CD configuration files are stored in the repository.
 
-    def _has_python_code(self) -> bool:
-        """Check whether the repository contains Python code."""
+        Returns:
+            The path to CI/CD directory or file if exists, else None.
+        """
+        pass
+
+    @abstractmethod
+    def _find_existing_jobs(self) -> set[str]:
+        """
+        Get the set of existing job names defined in CI/CD configurations.
+
+        Returns:
+            Set of job names.
+        """
+        pass
+
+    def has_python_code(self) -> bool:
+        """
+        Checks whether the repository contains Python code.
+
+        Returns:
+            True if Python code is present, False otherwise.
+        """
         if not self.metadata.language:
             return False
         return "Python" in self.metadata.language
 
-    def _get_existing_jobs(self) -> set[str]:
+    def build_actual_plan(self, sourcerank: SourceRank) -> dict:
         """
-        Collect the names of all existing jobs from workflow YAML files.
+        Build the workflow generation plan based on the initial plan, Python presence,
+        existing jobs, and platform-specific logic.
+
+        Args:
+            sourcerank: Analyzer object to detect test presence.
 
         Returns:
-            set[str]: Set of job names defined in existing workflow files.
+            Dictionary representing the final workflow plan.
         """
-        existing_jobs = set()
-        if not self.workflows_dir:
-            return existing_jobs
-
-        for filename in os.listdir(self.workflows_dir):
-            if filename.endswith((".yml", ".yaml")):
-                file_path = os.path.join(self.workflows_dir, filename)
-                with open(file_path, "r", encoding="utf-8") as f:
-                    try:
-                        content = yaml.safe_load(f)
-                    except (yaml.YAMLError, IOError, OSError) as e:
-                        logger.warning(f"Error while loading {file_path}: {e}")
-                        continue
-
-                    if not content or "jobs" not in content:
-                        continue
-
-                    for job_name in content["jobs"].keys():
-                        existing_jobs.add(job_name)
-
-        return existing_jobs
-
-    def build_actual_plan(self) -> dict:
-        """
-        Build an actual workflow plan based on detected jobs and repository features.
-
-        Returns:
-            dict: A dictionary with final workflow plan.
-        """
-        if not self._has_python_code():
-            return {key: False for key in self.workflows_plan}
+        if not self.has_python_code():
+            return {key: False for key in self.workflow_plan}
 
         result_plan = {}
 
-        for key, default_value in self.workflows_plan.items():
+        for key, default_value in self.workflow_plan.items():
             job_names = self.job_name_for_key.get(key)
             if job_names is None:
                 result_plan[key] = default_value
@@ -99,7 +102,7 @@ class WorkflowManager:
             if key == "include_black":
                 result_plan[key] = default_value and not job_exists
             elif key == "include_tests":
-                has_tests = self.sourcerank.tests_presence()
+                has_tests = sourcerank.tests_presence()
                 result_plan[key] = default_value and has_tests and not job_exists
             elif key == "include_pep8":
                 result_plan[key] = default_value and not job_exists
@@ -108,51 +111,213 @@ class WorkflowManager:
             else:
                 result_plan[key] = default_value
 
-        # Set generate_workflows flag if any relevant workflow key is enabled
-        generate = any(key not in self.excluded_keys and value is True for key, value in result_plan.items())
-        result_plan["generate_workflows"] = generate
+        generate = any(key != "python_versions" and val is True for key, val in result_plan.items())
+        result_plan["generate_workflow"] = generate
 
         return result_plan
 
+    def update_workflow_config(self, config_loader: ConfigLoader, plan: dict) -> None:
+        """
+        Update workflow configuration settings in the config loader based on the given plan.
 
-def update_workflow_config(config_loader, plan: dict, workflow_keys: list) -> None:
+        Args:
+            config_loader: Configuration loader object containing settings.
+            plan: Final workflow plan.
+        """
+        workflow_settings = {}
+        for key in self.workflow_keys:
+            workflow_settings[key] = plan.get(key)
+        config_loader.config.workflows = config_loader.config.workflows.model_copy(update=workflow_settings)
+        logger.info("Config successfully updated with workflow settings")
+
+    def generate_workflow(self, config_loader: ConfigLoader) -> None:
+        """
+        Generate CI/CD files according to the updated configuration settings.
+
+        Args:
+            config_loader (ConfigLoader): Configuration loader object with updated settings.
+
+        Raises:
+            Logs error on failure but does not raise.
+        """
+        try:
+            logger.info("Generating CI/CD files...")
+
+            output_dir = self._get_output_dir()
+            workflow_settings = config_loader.config.workflows
+            created_files = self._generate_files(workflow_settings, output_dir)
+
+            if created_files:
+                files_list = "\n".join(f" - {f}" for f in created_files)
+                logger.info("Successfully generated the following CI/CD files:\n%s", files_list)
+            else:
+                logger.info("No CI/CD files were generated.")
+
+        except Exception as e:
+            logger.error("Error while generating CI/CD files: %s", repr(e), exc_info=True)
+
+    @abstractmethod
+    def _get_output_dir(self) -> str:
+        """
+        Returns the directory path where CI/CD files should be generated for the platform.
+
+        Returns:
+            Path to the output directory.
+        """
+        pass
+
+    @abstractmethod
+    def _generate_files(self, workflow_settings, output_dir) -> list[str]:
+        """
+        Executes the actual generation of CI/CD configuration files.
+
+        Args:
+            workflow_settings: workflow specific settings extracted from the config.
+            output_dir: The directory to generate the files into.
+
+        Returns:
+            List of generated file paths.
+        """
+        pass
+
+
+class GitHubWorkflowManager(WorkflowManager):
     """
-    Update workflow configuration in the config loader based on the actual plan.
+    Workflow manager implementation for GitHub platform.
 
-    Args:
-        config_loader: Configuration loader object which contains workflow settings
-        plan: Workflow plan dictionary.
-        workflow_keys: List of workflow keys to update.
+    Uses `.github/workflows` directory for workflows storage and generation.
     """
-    workflow_settings = {}
-    for key in workflow_keys:
-        workflow_settings[key] = plan.get(key)
-    config_loader.config.workflows = config_loader.config.workflows.model_copy(update=workflow_settings)
-    logger.info("Config successfully updated with workflow_settings")
+
+    def _locate_workflow_path(self) -> str | None:
+        wdir = os.path.join(self.base_path, ".github", "workflows")
+        return wdir if os.path.isdir(wdir) else None
+
+    def _find_existing_jobs(self) -> set[str]:
+        if not self.workflow_path:
+            return set()
+
+        existing_jobs = set()
+        for fname in os.listdir(self.workflow_path):
+            if fname.endswith((".yml", ".yaml")):
+                fpath = os.path.join(self.workflow_path, fname)
+                try:
+                    with open(fpath, encoding="utf-8") as f:
+                        content = yaml.safe_load(f)
+                except (yaml.YAMLError, IOError, OSError) as e:
+                    logger.warning(f"Failed to load {fpath}: {e}")
+                    continue
+                if not content or "jobs" not in content:
+                    continue
+                existing_jobs.update(content["jobs"].keys())
+        return existing_jobs
+
+    def _get_output_dir(self) -> str:
+        return os.path.join(self.base_path, ".github", "workflows")
+
+    def _generate_files(self, workflow_settings, output_dir) -> list[str]:
+        generator = GitHubWorkflowGenerator(output_dir)
+        return generator.generate_selected_jobs(workflow_settings)
 
 
-def generate_github_workflows(config_loader: ConfigLoader) -> None:
+class GitLabWorkflowManager(WorkflowManager):
     """
-    Generate GitHub Action workflows based on configuration settings.
+    Workflow manager implementation for GitLab platform.
 
-    Args:
-        config_loader: Configuration loader object which contains workflow settings
+    Uses `.gitlab-ci.yml` file at the repository root.
     """
-    try:
-        logger.info("Generating GitHub action workflows...")
 
-        # Get the workflow settings from the config
-        workflow_settings = config_loader.config.workflows
-        repo_url = config_loader.config.git.repository
-        output_dir = os.path.join(os.getcwd(), parse_folder_name(repo_url), workflow_settings.output_dir)
+    def _locate_workflow_path(self) -> str | None:
+        fpath = os.path.join(self.base_path, ".gitlab-ci.yml")
+        if os.path.isfile(fpath):
+            return fpath
+        return None
 
-        created_files = generate_workflows_from_settings(workflow_settings, output_dir)
+    def _find_existing_jobs(self) -> set[str]:
+        if not self.workflow_path:
+            return set()
 
-        if created_files:
-            formatted_files = "\n".join(f" - {file}" for file in created_files)
-            logger.info("Successfully generated the following workflow files:\n%s", formatted_files)
-        else:
-            logger.info("No workflow files were generated.")
+        try:
+            with open(self.workflow_path, encoding="utf-8") as f:
+                content = yaml.safe_load(f)
+        except (yaml.YAMLError, IOError, OSError) as e:
+            logger.warning(f"Failed to load {self.workflow_path}: {e}")
+            return set()
 
-    except Exception as e:
-        logger.error("Error while generating GitHub workflows: %s", repr(e), exc_info=True)
+        if not content:
+            return set()
+
+        special_keys = {
+            "stages",
+            "include",
+            "variables",
+            "default",
+            "workflow",
+            "image",
+            "services",
+            "before_script",
+            "after_script",
+            "cache",
+            "pages",
+        }
+
+        jobs = {k for k in content.keys() if k not in special_keys and isinstance(content[k], dict)}
+        return jobs
+
+    def _get_output_dir(self) -> str:
+        return self.base_path
+
+    def _generate_files(self, workflow_settings, output_dir) -> list[str]:
+        generator = GitLabWorkflowGenerator(output_dir)
+        return generator.generate_selected_jobs(workflow_settings)
+
+
+class GitverseWorkflowManager(WorkflowManager):
+    """
+    Workflow manager implementation for Gitverse platform.
+
+    Tries to use `.gitverse/workflows` directory for workflows, falling back to `.github/workflows`.
+    """
+
+    def _locate_workflow_path(self) -> str | None:
+        gitverse_dir = os.path.join(self.base_path, ".gitverse", "workflows")
+        if os.path.isdir(gitverse_dir):
+            return gitverse_dir
+        github_dir = os.path.join(self.base_path, ".github", "workflows")
+        if os.path.isdir(github_dir):
+            return github_dir
+        return None
+
+    def _find_existing_jobs(self) -> set[str]:
+        if not self.workflow_path:
+            return set()
+
+        existing_jobs = set()
+        if os.path.isdir(self.workflow_path):
+            for fname in os.listdir(self.workflow_path):
+                if fname.endswith((".yml", ".yaml")):
+                    fpath = os.path.join(self.workflow_path, fname)
+                    try:
+                        with open(fpath, encoding="utf-8") as f:
+                            content = yaml.safe_load(f)
+                    except (yaml.YAMLError, IOError, OSError) as e:
+                        logger.warning(f"Failed to load {fpath}: {e}")
+                        continue
+                    if not content or "jobs" not in content:
+                        continue
+                    existing_jobs.update(content["jobs"].keys())
+        return existing_jobs
+
+    def _get_output_dir(self) -> str:
+        gitverse_wflows = os.path.join(self.base_path, ".gitverse", "workflows")
+        if os.path.isdir(gitverse_wflows):
+            return gitverse_wflows
+        github_wflows = os.path.join(self.base_path, ".github", "workflows")
+        if os.path.isdir(github_wflows):
+            return github_wflows
+        out_dir = gitverse_wflows
+        os.makedirs(out_dir, exist_ok=True)
+        return out_dir
+
+    def _generate_files(self, workflow_settings, output_dir) -> list[str]:
+        generator = GitHubWorkflowGenerator(output_dir)
+        return generator.generate_selected_jobs(workflow_settings)

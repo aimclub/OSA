@@ -59,7 +59,6 @@ class DataFactory:
         """Generating data for WorkflowSettings"""
         return {
             "generate_workflows": random.choice([True, False]),
-            "output_dir": f".github/{random_word()}",
             "include_tests": random.choice([True, False]),
             "include_black": random.choice([True, False]),
             "include_pep8": random.choice([True, False]),

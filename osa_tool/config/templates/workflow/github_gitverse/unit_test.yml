@@ -1,0 +1,24 @@
+name: {name}
+on:
+{on_section}
+jobs:
+  test:
+    name: "Run Tests"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: {timeout_minutes}
+    strategy:
+      matrix:
+        os: {os_list}
+        python-version: {python_versions}
+    steps:
+      - name: "Checkout repo"
+        uses: actions/checkout@v4
+      - name: "Set up Python ${{ matrix.python-version }}"
+        uses: actions/setup-python@v4
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - name: "Install dependencies"
+        run: "{dependencies_command} && pip install pytest pytest-cov"
+      - name: "Run tests"
+        run: "{test_command} --cov=." 
+    {codecov_step}
