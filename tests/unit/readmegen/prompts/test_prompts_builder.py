@@ -1,6 +1,7 @@
 import pytest
 
 from osa_tool.readmegen.context.files_contents import FileContext
+from osa_tool.readmegen.prompts.prompts_builder import PromptLoadError
 
 
 def test_serialize_file_contexts(prompt_builder):
@@ -32,7 +33,7 @@ def test_load_prompts_valid(prompt_builder):
 
 def test_load_prompts_missing_file(prompt_builder):
     # Assert
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(PromptLoadError):
         prompt_builder.load_prompts("non_existing_file.toml")
 
 

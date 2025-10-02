@@ -28,10 +28,10 @@ class ReadmeTranslator:
         prompt = PromptBuilder(self.config_loader).get_prompt_translate_readme(readme_content, target_language)
         async with semaphore:
             response = await self.model_handler.async_request(prompt)
-            response = process_text(response)
         try:
+            response = process_text(response)
             result = json.loads(response)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, ValueError):
             logger.warning(f"LLM response for '{target_language}' is not valid JSON, applying fallback")
             result = {
                 "content": response.strip(),

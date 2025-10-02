@@ -138,9 +138,10 @@ def main():
             readme_agent(config, plan.get("article"), plan.get("refine_readme"))
 
         # Readme translation
-        if plan.get("translate_readme"):
+        translate_readme = plan.get("translate_readme")
+        if translate_readme:
             rich_section("README translation")
-            ReadmeTranslator(config, plan.get("translate_readme")).translate_readme()
+            ReadmeTranslator(config, translate_readme).translate_readme()
 
         # About section generation
         about_gen = None

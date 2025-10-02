@@ -34,7 +34,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build preanalysis prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build preanalysis prompt") from e
 
     def get_prompt_core_features(self, key_files: list[FileContext]) -> str:
         """Builds a core features prompt using project metadata, README content, and key files."""
@@ -48,7 +48,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build core features prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build core features prompt") from e
 
     def get_prompt_overview(self, core_features: str) -> str:
         """Builds an overview prompt using metadata, README content, and extracted core features."""
@@ -62,7 +62,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build overview prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build overview prompt") from e
 
     def get_prompt_getting_started(self, examples_files: list[FileContext]) -> str:
         """Builds a getting started prompt using metadata, README content, and example files."""
@@ -75,7 +75,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build getting started prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build getting started prompt") from e
 
     def get_prompt_deduplicated_install_and_start(self, installation: str, getting_started: str) -> str:
         """Builds a deduplicating prompt using Installation and Getting Started sections of README."""
@@ -87,7 +87,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build deduplicating prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build deduplicating prompt") from e
 
     def get_prompt_files_summary(self, files_content: list[FileContext]) -> str:
         """Builds a files summary prompt using serialized file contents."""
@@ -99,7 +99,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build files summary prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build summary prompt") from e
 
     def get_prompt_pdf_summary(self, pdf_content: str) -> str:
         """Builds a PDF summary prompt using the provided PDF content."""
@@ -108,7 +108,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build PDF summary prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build PDF summary prompt") from e
 
     def get_prompt_overview_article(self, files_summary: str, pdf_summary: str) -> str:
         """Builds an article overview prompt using metadata, file summary, and PDF summary."""
@@ -122,7 +122,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build overview prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build article overview prompt") from e
 
     def get_prompt_content_article(self, files_summary: str, pdf_summary: str) -> str:
         """Builds a content article prompt using metadata, key file content, and PDF summary."""
@@ -136,7 +136,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build content prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build content prompt") from e
 
     def get_prompt_algorithms_article(self, key_files: list[FileContext], pdf_summary: str) -> str:
         """Builds an algorithms article prompt using metadata, file summary, and PDF summary."""
@@ -150,7 +150,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build algorithms prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build algorithms prompt") from e
 
     def get_prompt_translate_readme(self, readme_content: str, target_language: str) -> str:
         """Builds a prompt to translate README into target language"""
@@ -162,7 +162,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build readme translation prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build translation prompt") from e
 
     @staticmethod
     def serialize_file_contexts(files: list[FileContext]) -> str:
@@ -200,15 +200,29 @@ class PromptBuilder:
         Returns:
             dict: Dictionary with prompts from the specified section.
         """
-        if not os.path.exists(path):
-            logger.error(f"Prompts file {path} not found.")
-            raise FileNotFoundError(f"Prompts file {path} not found.")
+        try:
+            if not os.path.exists(path):
+                raise FileNotFoundError(f"Prompts file {path} not found.")
 
-        with open(path, "rb") as f:
-            toml_data = tomli.load(f)
+            with open(path, "rb") as f:
+                toml_data = tomli.load(f)
 
-        if section not in toml_data:
-            logger.error(f"Section '{section}' not found in {path}.")
-            raise KeyError(f"Section '{section}' not found in {path}.")
+            if section not in toml_data:
+                raise KeyError(f"Section '{section}' not found in {path}.")
 
-        return toml_data[section]
+            return toml_data[section]
+        except Exception as e:
+            logger.error(f"Failed to load prompts from {path}: {e}")
+            raise PromptLoadError(f"Could not load prompts from {path}") from e
+
+
+class PromptBuilderError(Exception):
+    """Base exception for PromptBuilder errors."""
+
+
+class PromptLoadError(PromptBuilderError):
+    """Raised when loading prompts from a file fails."""
+
+
+class PromptFormatError(PromptBuilderError):
+    """Raised when building a specific prompt fails."""
