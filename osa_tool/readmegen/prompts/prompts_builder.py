@@ -159,7 +159,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build detection of citation prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build detection of citation prompt") from e
 
     def get_prompt_refine_readme_step1(self, generated_readme: str) -> str:
         """Builds a prompt to merge original README details into the generated structure."""
@@ -170,7 +170,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build refine readme step 1 prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build refine readme step 1 prompt") from e
 
     def get_prompt_refine_readme_step2(self, readme: str) -> str:
         """Builds a prompt to clean duplicates and normalize formatting in README."""
@@ -179,7 +179,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build refine readme step 2 prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build refine readme step 2 prompt") from e
 
     def get_prompt_refine_readme_step3(self, readme: str) -> str:
         """Builds a prompt to finalize README headings, ToC, and formatting consistency."""
@@ -188,7 +188,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build refine readme step 3 prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build refine readme step 3 prompt") from e
 
     def get_prompt_clean_readme_step1(self, readme: str) -> str:
         """Builds a prompt to remove duplicate commands, text, and media from README."""
@@ -197,7 +197,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build cleaning readme step 1 prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build cleaning readme step 1 prompt") from e
 
     def get_prompt_clean_readme_step2(self, readme: str) -> str:
         """Builds a prompt to delete semantically duplicated content across README sections."""
@@ -206,7 +206,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build cleaning readme step 2 prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build cleaning readme step 2 prompt") from e
 
     def get_prompt_clean_readme_step3(self, readme: str) -> str:
         """Builds a prompt to finalize README formatting and ensure GFM compliance."""
@@ -215,7 +215,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build cleaning readme step 3 prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build cleaning readme step 3 prompt") from e
 
     def get_prompt_article_name_extraction(self, pdf_content: str) -> str:
         """Builds an article name extraction prompt"""
@@ -224,7 +224,7 @@ class PromptBuilder:
             return formatted_prompt
         except Exception as e:
             logger.error(f"Failed to build article name extraction prompt: {e}")
-            raise
+            raise PromptFormatError("Could not build article name extraction prompt") from e
 
     @staticmethod
     def serialize_file_contexts(files: list[FileContext]) -> str:
