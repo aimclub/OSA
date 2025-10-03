@@ -71,7 +71,7 @@ def test_algorithms_empty_json(mock_markdown_builder_article):
     assert result == ""
 
 
-def test_toc_generation_article(mock_markdown_builder_article):
+def test_toc_generation_article(mock_markdown_builder_article, llm_client, mock_model_handler):
     # Arrange
     builder = mock_markdown_builder_article(
         overview=json.dumps({"overview": "Test overview"}),
@@ -79,13 +79,21 @@ def test_toc_generation_article(mock_markdown_builder_article):
         algorithms=json.dumps({"algorithms": "Test algorithms"}),
         getting_started=json.dumps({"getting_started": "Test getting started"}),
     )
+    llm_client.model_handler = mock_model_handler(side_effect=['{"citation": ""}'])
 
-    # Act
-    result = builder.toc
+    with (
+        patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process,
+        patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client),
+    ):
+        mock_process.side_effect = lambda x: x
+
+        # Act
+        result = builder.toc
 
     # Assert
     assert isinstance(result, str)
     assert "- [" in result or "* [" in result
+    assert "Citation" in result
 
 
 def test_build_method_article_full(mock_markdown_builder_article, sourcerank_with_repo_tree):
@@ -111,7 +119,12 @@ def test_build_method_article_full(mock_markdown_builder_article, sourcerank_wit
     assert len(result) > 0
 
 
-def test_build_method_article_minimal(mock_markdown_builder_article, sourcerank_with_repo_tree):
+def test_build_method_article_minimal(
+    mock_markdown_builder_article,
+    sourcerank_with_repo_tree,
+    llm_client,
+    mock_model_handler,
+):
     # Arrange
     repo_tree_data = get_mock_repo_tree("MINIMAL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
@@ -124,10 +137,18 @@ def test_build_method_article_minimal(mock_markdown_builder_article, sourcerank_
     )
     builder.sourcerank = sourcerank
 
-    with patch.object(MarkdownBuilderArticle, "_check_url", return_value=False):
+    llm_client.model_handler = mock_model_handler(side_effect=['{"citation": null}'])
+
+    with (
+        patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process,
+        patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client),
+        patch.object(MarkdownBuilderArticle, "_check_url", return_value=False),
+    ):
+        mock_process.side_effect = lambda x: x
 
         # Act
         result = builder.build()
 
     # Assert
     assert isinstance(result, str)
+    assert "## Citation" in result

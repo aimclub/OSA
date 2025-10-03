@@ -79,15 +79,6 @@ def test_get_prompt_getting_started(prompt_builder):
     assert "Sample README" in prompt
 
 
-def test_get_prompt_deduplicated_install_and_start(prompt_builder):
-    # Act
-    prompt = prompt_builder.get_prompt_deduplicated_install_and_start("install steps", "getting started")
-
-    # Assert
-    assert "install steps" in prompt
-    assert "getting started" in prompt
-
-
 def test_get_prompt_files_summary(prompt_builder):
     # Arrange
     files = [FileContext(name="a.py", path="src/a.py", content="print('a')")]
@@ -139,13 +130,78 @@ def test_get_prompt_algorithms_article(prompt_builder):
     assert "pdf summary" in prompt
 
 
-def test_get_prompt_refine_readme(prompt_builder):
+def test_get_prompt_refine_readme_step1(prompt_builder):
     # Arrange
-    new_sections = {"installation": "new install", "usage": "new usage"}
+    new_readme = "New generated readme"
 
     # Act
-    prompt = prompt_builder.get_prompt_refine_readme(new_sections)
+    result = prompt_builder.get_prompt_refine_readme_step1(new_readme)
 
     # Assert
-    assert "Sample README" in prompt
-    assert str(new_sections) in prompt
+    assert new_readme in result
+
+
+def test_get_prompt_refine_readme_step2(prompt_builder):
+    # Arrange
+    readme_text = "Some intermediate readme step2"
+
+    # Act
+    result = prompt_builder.get_prompt_refine_readme_step2(readme_text)
+
+    # Assert
+    assert readme_text in result
+
+
+def test_get_prompt_refine_readme_step3(prompt_builder):
+    # Arrange
+    readme_text = "Some intermediate readme step3"
+
+    # Act
+    result = prompt_builder.get_prompt_refine_readme_step3(readme_text)
+
+    # Assert
+    assert readme_text in result
+
+
+def test_get_prompt_clean_readme_step1(prompt_builder):
+    # Arrange
+    readme_text = "Dirty README step1"
+
+    # Act
+    result = prompt_builder.get_prompt_clean_readme_step1(readme_text)
+
+    # Assert
+    assert readme_text in result
+
+
+def test_get_prompt_clean_readme_step2(prompt_builder):
+    # Arrange
+    readme_text = "Dirty README step2"
+
+    # Act
+    result = prompt_builder.get_prompt_clean_readme_step2(readme_text)
+
+    # Assert
+    assert readme_text in result
+
+
+def test_get_prompt_clean_readme_step3(prompt_builder):
+    # Arrange
+    readme_text = "Dirty README step3"
+
+    # Act
+    result = prompt_builder.get_prompt_clean_readme_step3(readme_text)
+
+    # Assert
+    assert readme_text in result
+
+
+def test_get_prompt_article_name_extraction(prompt_builder):
+    # Arrange
+    pdf_content = "PDF content with article"
+
+    # Act
+    result = prompt_builder.get_prompt_article_name_extraction(pdf_content)
+
+    # Assert
+    assert pdf_content in result
