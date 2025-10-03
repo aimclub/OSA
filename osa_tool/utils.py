@@ -197,6 +197,7 @@ def get_repo_tree(repo_path: str) -> str:
         ".xlsx",
         ".db",
         ".sqlite",
+        ".npy",
         # Archives
         ".zip",
         ".tar",
@@ -223,6 +224,7 @@ def get_repo_tree(repo_path: str) -> str:
         ".pyd",
         ".egg",
         ".whl",
+        ".mat",
         # Documents
         ".pdf",
         ".doc",
@@ -248,6 +250,7 @@ def get_repo_tree(repo_path: str) -> str:
         ".vcxproj",
         ".vcproj",
         ".dSYM",
+        ".nb",
     }
 
     lines = []

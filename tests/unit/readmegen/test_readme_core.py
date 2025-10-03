@@ -7,8 +7,7 @@ from osa_tool.readmegen.readme_core import readme_agent
 @patch("osa_tool.readmegen.readme_core.save_sections")
 @patch("osa_tool.readmegen.readme_core.MarkdownBuilder")
 @patch("osa_tool.readmegen.readme_core.LLMClient")
-@patch("osa_tool.readmegen.readme_core.ReadmeRefiner")
-def test_readme_agent_without_article(mock_refine, mock_llm, mock_builder, mock_save, mock_clean, mock_config_loader):
+def test_readme_agent_without_article(mock_llm, mock_builder, mock_save, mock_clean, mock_config_loader):
     # Arrange
     mock_llm.return_value.get_responses.return_value = (
         "core_features_text",
@@ -16,7 +15,8 @@ def test_readme_agent_without_article(mock_refine, mock_llm, mock_builder, mock_
         "getting_started_text",
     )
     mock_builder.return_value.build.return_value = "Final README content"
-    mock_refine.return_value.refine.return_value = "Refined README content"
+    mock_llm.return_value.refine_readme.return_value = "Refined README content"
+    mock_llm.return_value.clean.return_value = "Cleaned README content"
 
     # Act
     readme_agent(mock_config_loader, article=None, refine_readme=True)
@@ -27,8 +27,8 @@ def test_readme_agent_without_article(mock_refine, mock_llm, mock_builder, mock_
         mock_config_loader, "overview_text", "core_features_text", "getting_started_text"
     )
     mock_builder.return_value.build.assert_called_once()
-    mock_refine.assert_called_once_with(mock_config_loader, "Final README content")
-    mock_refine.return_value.refine.assert_called_once()
+    mock_llm.return_value.refine_readme.assert_called_once_with("Final README content")
+    mock_llm.return_value.clean.assert_called_once_with("Refined README content")
     mock_save.assert_called_once()
     mock_clean.assert_called_once()
 

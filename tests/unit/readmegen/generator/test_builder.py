@@ -153,7 +153,7 @@ def test_contributing_with_contributing_only(mock_markdown_builder, sourcerank_w
     assert isinstance(result, str)
 
 
-def test_toc_generation(mock_markdown_builder):
+def test_toc_generation(mock_markdown_builder, llm_client, mock_model_handler):
     # Arrange
     core_features_json = json.dumps([{"feature_name": "Test", "feature_description": "Desc", "is_critical": True}])
     builder = mock_markdown_builder(
@@ -162,13 +162,22 @@ def test_toc_generation(mock_markdown_builder):
         getting_started=json.dumps({"getting_started": "Test getting started"}),
     )
 
-    # Act
-    result = builder.toc
+    llm_client.model_handler = mock_model_handler(side_effect=['{"citation": null}'])
+
+    with (
+        patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process,
+        patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client),
+    ):
+        mock_process.side_effect = lambda x: x
+
+        # Act
+        result = builder.toc
 
     # Assert
     assert isinstance(result, str)
     assert "- [" in result or "* [" in result
     assert "Getting Started" in result
+    assert "Citation" in result
 
 
 def test_build_method_full(mock_markdown_builder, sourcerank_with_repo_tree):
@@ -196,16 +205,25 @@ def test_build_method_full(mock_markdown_builder, sourcerank_with_repo_tree):
     assert len(result) > 0
 
 
-def test_build_method_minimal(mock_markdown_builder, sourcerank_with_repo_tree):
+def test_build_method_minimal(mock_markdown_builder, sourcerank_with_repo_tree, llm_client, mock_model_handler):
     # Arrange
     repo_tree_data = get_mock_repo_tree("MINIMAL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
     builder = mock_markdown_builder(
-        core_features=None, overview=json.dumps({"overview": ""}), getting_started=json.dumps({"getting_started": ""})
+        core_features=None,
+        overview=json.dumps({"overview": ""}),
+        getting_started=json.dumps({"getting_started": ""}),
     )
     builder.sourcerank = sourcerank
 
-    with patch.object(MarkdownBuilder, "_check_url", return_value=False):
+    llm_client.model_handler = mock_model_handler(side_effect=['{"citation": ""}'])
+
+    with (
+        patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process,
+        patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client),
+        patch.object(MarkdownBuilder, "_check_url", return_value=False),
+    ):
+        mock_process.side_effect = lambda x: x
 
         # Act
         result = builder.build()
@@ -213,3 +231,4 @@ def test_build_method_minimal(mock_markdown_builder, sourcerank_with_repo_tree):
     # Assert
     assert isinstance(result, str)
     assert "Getting Started" not in result
+    assert "## Citation" in result

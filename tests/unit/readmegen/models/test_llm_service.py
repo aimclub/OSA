@@ -63,29 +63,57 @@ def test_get_responses_article_returns_expected(llm_client, mock_model_handler):
     assert getting_started == "getting_started_article"
 
 
-def test_deduplicate_sections_returns_expected(llm_client, mock_model_handler):
+def test_get_citation_from_readme_returns_expected(llm_client, mock_model_handler):
     # Arrange
-    llm_client.model_handler = mock_model_handler(side_effect=["deduplicated"])
+    llm_client.model_handler = mock_model_handler(side_effect=['{"citation": "Some citation"}'])
 
     with patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process:
         mock_process.side_effect = lambda x: x
 
         # Act
-        result = llm_client.deduplicate_sections("installation", "getting_started")
+        result = llm_client.get_citation_from_readme()
 
     # Assert
-    assert result == "deduplicated"
+    assert result == "Some citation"
 
 
 def test_refine_readme_returns_expected(llm_client, mock_model_handler):
     # Arrange
-    llm_client.model_handler = mock_model_handler(side_effect=["refined_readme"])
+    llm_client.model_handler = mock_model_handler(side_effect=["step1", "step2", '{"readme": "refined_readme"}'])
 
     with patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process:
         mock_process.side_effect = lambda x: x
 
         # Act
-        result = llm_client.refine_readme({"section": "content"})
+        result = llm_client.refine_readme("generated_readme")
 
     # Assert
     assert result == "refined_readme"
+
+
+def test_clean_returns_expected(llm_client, mock_model_handler):
+    # Arrange
+    llm_client.model_handler = mock_model_handler(side_effect=["clean1", "clean2", '{"readme": "cleaned_readme"}'])
+
+    with patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process:
+        mock_process.side_effect = lambda x: x
+
+        # Act
+        result = llm_client.clean("dirty_readme")
+
+    # Assert
+    assert result == "cleaned_readme"
+
+
+def test_get_article_name_returns_expected(llm_client, mock_model_handler):
+    # Arrange
+    llm_client.model_handler = mock_model_handler(side_effect=['{"article_name": "Deep Learning Paper"}'])
+
+    with patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process:
+        mock_process.side_effect = lambda x: x
+
+        # Act
+        result = llm_client.get_article_name("pdf_content")
+
+    # Assert
+    assert result == "Deep Learning Paper"

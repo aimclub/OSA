@@ -169,3 +169,28 @@ RULES:
 - Use clear, academic-oriented, accessible language.
 - Limit the description to 100-130 words.
 """
+
+article_name_extraction = """
+TASK:
+From the provided text, extract the most accurate and concise title of the article. Focus on the linguistic and structural cues within the text. The title should capture the essence of the work and be formatted as a single clear phrase.
+
+RULES:
+
+- Rely strictly on the given text.
+- Prefer the text’s first strong heading or the phrase that best encapsulates the article’s subject.
+- If multiple candidates appear, select the one most formal and general in scope.
+- Avoid using section headers like "Introduction", "Abstract", or "Conclusion".
+- Do not invent or rephrase — use the exact wording from the text.
+- Output must be short and precise, no more than 20 words.
+- Do not add explanations or commentary.
+
+Generate a JSON response following this exact structure:
+
+{{
+    "article_name": "text"
+}}
+
+INPUT DATA:
+
+1. ARTICLE TEXT: {pdf_content}
+"""
