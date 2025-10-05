@@ -27,6 +27,7 @@ web_mode = false
 # branch = ""
 # article = ""
 translate_dirs = false
+translate_readme = []
 # convert_notebooks = []
 delete_dir = false
 # ensure_license = ""

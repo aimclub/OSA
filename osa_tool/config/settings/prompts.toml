@@ -398,3 +398,37 @@ INPUT DATA:
 
 {readme}
 """
+
+translate = """
+TASK:
+Translate the provided README content into the target language.
+
+RULES:
+
+- Translate only natural language parts (titles, descriptions, paragraphs, lists).
+- DO NOT translate:
+  * project name,
+  * code blocks,
+  * shell commands,
+  * configuration snippets,
+  * links, badges, and image references.
+- Preserve original Markdown formatting.
+- Return only valid JSON, no explanations.
+- The "suffix" must be the correct ISO 639-1 or common abbreviation of the target language.
+
+OUTPUT FORMAT:
+Return a JSON object with the following structure:
+
+{{
+    "content": "translated README text",
+    "suffix": "short language code (e.g., en, ru, es, fr, de)"
+}}
+
+INPUT DATA:
+
+1. TARGET LANGUAGE: {target_language}
+
+2. README CONTENT:
+
+{readme_content}
+"""
