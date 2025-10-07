@@ -688,6 +688,7 @@ class GitverseAgent(GitAgent):
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.gitverse.object+json;version=1",
             "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0"
         }
 
         user_url = "https://api.gitverse.ru/user"
@@ -728,6 +729,7 @@ class GitverseAgent(GitAgent):
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.gitverse.object+json;version=1",
+            "User-Agent": "Mozilla/5.0"
         }
         url = f"https://api.gitverse.ru/user/starred/{base_repo}"
         response_check = requests.get(url, headers=headers)
@@ -765,6 +767,7 @@ class GitverseAgent(GitAgent):
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.gitverse.object+json;version=1",
             "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0"
         }
         url = f"https://api.gitverse.ru/repos/{base_repo}/pulls"
         response = requests.post(url, json=pr_data, headers=headers)

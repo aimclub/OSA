@@ -304,6 +304,7 @@ class GitverseMetadataLoader(MetadataLoader):
             "Authorization": f"Bearer {os.getenv('GITVERSE_TOKEN', os.getenv('GIT_TOKEN'))}",
             "Accept": "application/vnd.gitverse.object+json;version=1",
             "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0"
         }
         url = f"https://api.gitverse.ru/repos/{base_url}"
 
