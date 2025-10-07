@@ -1,5 +1,3 @@
-import json
-
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.generator.base_builder import MarkdownBuilderBase
 
@@ -18,24 +16,22 @@ class MarkdownBuilderArticle(MarkdownBuilderBase):
         getting_started: str = None,
     ):
         super().__init__(config_loader, overview=overview, getting_started=getting_started)
-        self._content_json = content
-        self._algorithms_json = algorithms
+        self._content = content
+        self._algorithms = algorithms
 
     @property
     def content(self) -> str:
         """Generates the README Repository Content section"""
-        if not self._content_json:
+        if not self._content:
             return ""
-        content_data = json.loads(self._content_json)
-        return self._template["content"].format(content_data["content"])
+        return self._template["content"].format(self._content)
 
     @property
     def algorithms(self) -> str:
         """Generates the README Algorithms section"""
-        if not self._algorithms_json:
+        if not self._algorithms:
             return ""
-        algorithms_data = json.loads(self._algorithms_json)
-        return self._template["algorithms"].format(algorithms_data["algorithms"])
+        return self._template["algorithms"].format(self._algorithms)
 
     @property
     def toc(self) -> str:
