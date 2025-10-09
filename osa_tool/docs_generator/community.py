@@ -44,7 +44,7 @@ class CommunityTemplateBuilder:
             self.feature_issue_to_save = os.path.join(self.issue_templates_path, "FEATURE_ISSUE.md")
             self.bug_issue_to_save = os.path.join(self.issue_templates_path, "BUG_ISSUE.md")
             self.vulnerability_disclosure_to_save = os.path.join(self.issue_templates_path, "Vulnerability_Disclosure.md")
-        else:
+        elif "github" in self.config.git.host:
             self.issue_templates_path = os.path.join(self.repo_path, "ISSUE_TEMPLATE")
             os.makedirs(self.issue_templates_path, exist_ok=True)
             self.pr_to_save = os.path.join(self.repo_path, "PULL_REQUEST_TEMPLATE.md")
