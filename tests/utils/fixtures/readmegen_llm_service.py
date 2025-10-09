@@ -50,10 +50,7 @@ def mock_file_processor_factory(mock_file_contexts):
 
     def _make_processor(file_specs):
         mock_fp = Mock()
-        file_contexts = [
-            mock_file_contexts(name, path, content)
-            for name, path, content in file_specs
-        ]
+        file_contexts = [mock_file_contexts(name, path, content) for name, path, content in file_specs]
         mock_fp.process_files.return_value = file_contexts
         return mock_fp
 
