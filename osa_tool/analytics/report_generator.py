@@ -1,17 +1,21 @@
-import json
 import os
-from json import JSONDecodeError
 
 import tomli as tomllib
 from pydantic import ValidationError
 
 from osa_tool.analytics.metadata import load_data_metadata
-from osa_tool.analytics.prompt_builder import RepositoryReport
+from osa_tool.analytics.prompt_builder import (
+    RepositoryReport,
+    RepositoryStructure,
+    ReadmeEvaluation,
+    CodeDocumentation,
+    OverallAssessment,
+)
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
-from osa_tool.readmegen.postprocessor.response_cleaner import process_text
-from osa_tool.utils import extract_readme_content, osa_project_root, parse_folder_name
+from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
+from osa_tool.utils import extract_readme_content, osa_project_root, parse_folder_name, logger
 
 
 class TextGenerator:
@@ -32,13 +36,24 @@ class TextGenerator:
             str: The generated repository analysis response from the model.
         """
         response = self.model_handler.send_request(self._build_prompt())
-        cleaned_response = process_text(response)
+        parsed_data = JsonProcessor.parse(response, expected_type=dict)
         try:
-            parsed_json = json.loads(cleaned_response)
-            parsed_report = RepositoryReport.model_validate(parsed_json)
+            parsed_report = RepositoryReport.model_validate(parsed_data)
             return parsed_report
-        except (ValidationError, JSONDecodeError) as e:
-            raise ValueError(f"JSON parsing error: {e}")
+
+        except ValidationError as e:
+            logger.warning(f"Validation failed, fallback applied: {e}")
+
+            return RepositoryReport(
+                structure=RepositoryStructure(),
+                readme=ReadmeEvaluation(),
+                documentation=CodeDocumentation(),
+                assessment=OverallAssessment(),
+            )
+
+        except Exception as e:
+            logger.error(f"Unexpected error while parsing RepositoryReport: {e}")
+            raise ValueError(f"Failed to process model response: {e}")
 
     def _build_prompt(self) -> str:
         """

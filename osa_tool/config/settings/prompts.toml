@@ -2,18 +2,7 @@
 
 [prompts]
 preanalysis = """
-INPUT DATA:
-
-1. REPOSITORY FILE TREE:
-
-{repository_tree}
-
-2. README CONTENT:
-
-{readme_content}
-
 TASK:
-
 Based on the provided data about the files and the README content,
 your task is to identify and return the paths to 4-6 key files that
 contain the main business logic or project description.
@@ -34,27 +23,20 @@ RULES:
 - Exclude files related to tests, configuration, or assets unless they are central to the business logic.
 - Exclude README files.
 - Return only valid JSON without additional explanations or formatting.
+
+INPUT DATA:
+
+1. REPOSITORY FILE TREE:
+
+{repository_tree}
+
+2. README CONTENT:
+
+{readme_content}
 """
 
 core_features = """
-INPUT DATA:
-
-1. PROJECT NAME: {project_name}
-
-2. METADATA:
-
-{metadata}
-
-3. README CONTENT:
-
-{readme_content}
-
-4. KEY FILES CONTENTS:
-
-{key_files_content}
-
 TASK:
-
 Based on the provided information about the project, generate a list of core features for the project.
 Each core feature should be represented by JSON format following this exact structure:
 
@@ -72,23 +54,25 @@ RULES:
 - Be sure to generate multiple core features, each describing a different aspect of the project.
 - The 'feature_name' should describe a key aspect.
 - The 'feature_description' should be a detailed but short explanation of the feature.
-"""
 
-overview = """
 INPUT DATA:
 
 1. PROJECT NAME: {project_name}
 
-2. SHORT DESCRIPTION: {description}
+2. METADATA:
+
+{metadata}
 
 3. README CONTENT:
 
 {readme_content}
 
-4. CORE FEATURES:
+4. KEY FILES CONTENTS:
 
-{core_features}
+{key_files_content}
+"""
 
+overview = """
 TASK:
 Generate a concise overview of the project by analyzing the provided data.
 Your response should be a short paragraph that encapsulates the core use-case, value proposition.
@@ -103,21 +87,23 @@ RULES:
 - Focus on the project's core purpose and its value proposition without mentioning specific technical aspects.
 - Avoid technical jargon, code snippets, or any implementation details.
 - The overview should be no more than 60 words.
-"""
 
-getting_started = """
 INPUT DATA:
 
 1. PROJECT NAME: {project_name}
 
-2. README CONTENT:
+2. SHORT DESCRIPTION: {description}
+
+3. README CONTENT:
 
 {readme_content}
 
-3. CONTENTS OF THE EXAMPLES DIRECTORY:
+4. CORE FEATURES:
 
-{examples_files_content}
+{core_features}
+"""
 
+getting_started = """
 TASK:
 You are generating the "Getting Started" section for the README file of the project above.
 Your goal is to help a new user understand how to start using the project by analyzing the provided example files and any relevant assets (such as images or gifs) from the README.
@@ -147,19 +133,21 @@ RULES:
 - If no meaningful example files are found and no helpful images or gifs are available, return `"getting_started": null`
 - Do not add a "## Getting Started" heading — only the content for that section.
 - Output valid JSON, strictly following the given structure.
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. README CONTENT:
+
+{readme_content}
+
+3. CONTENTS OF THE EXAMPLES DIRECTORY:
+
+{examples_files_content}
 """
 
 deduplicate_sections = """
-INPUT DATA:
-
-1. INSTALLATION SECTION CONTENT:
-
-{installation}
-
-2. GETTING STARTED SECTION CONTENT:
-
-{getting_started}
-
 TASK:
 You are cleaning up and reorganizing the "Installation" and "Getting Started" sections for a project's README file.
 Your goal is to eliminate duplicated or overlapping information between the two sections while preserving their logical separation:
@@ -193,13 +181,19 @@ RULES:
 - Add section header for "## Installation".
 - Don't add section header for "## Getting Started".
 - Output valid JSON, strictly following the given structure.
+
+INPUT DATA:
+
+1. INSTALLATION SECTION CONTENT:
+
+{installation}
+
+2. GETTING STARTED SECTION CONTENT:
+
+{getting_started}
 """
 
 citation = """
-INPUT DATA:
-
-{readme}
-
 TASK:
 Analyze the README and extract any citation of the repository or any articles (e.g., BibTeX, DOI, or reference text).
 Return only the citation.
@@ -217,6 +211,10 @@ RULES:
 2. If multiple citations exist, return all of them concatenated.
 3. If no citation is found, return an empty string ("").
 4. Preserve the original formatting of the citation (e.g., BibTeX, DOI, plain text).
+
+INPUT DATA:
+
+{readme}
 """
 
 refine_step1 = """

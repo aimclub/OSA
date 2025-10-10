@@ -1,118 +1,181 @@
-import pytest
+from unittest.mock import patch
 
-from osa_tool.readmegen.postprocessor.response_cleaner import process_text
+from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
 
 
-def test_valid_json_object_simple():
+def test_process_text_valid_json_object():
     # Arrange
-    text = 'Some text before {"a": 1, "b": 2} some text after'
+    text = '{"name": "Alice", "age": 30}'
 
     # Act
-    result = process_text(text)
+    result = JsonProcessor.process_text(text)
+
+    # Assert
+    assert result == '{"name": "Alice", "age": 30}'
+
+
+def test_process_text_valid_json_array():
+    # Arrange
+    text = '["apple", "banana"]'
+
+    # Act
+    result = JsonProcessor.process_text(text)
+
+    # Assert
+    assert result == '["apple", "banana"]'
+
+
+def test_process_text_with_surrounding_text():
+    # Arrange
+    text = 'Some intro\n```json\n{"key": "value"}\n```\nMore text'
+
+    # Act
+    result = JsonProcessor.process_text(text)
+
+    # Assert
+    assert result == '{"key": "value"}'
+
+
+def test_process_text_removes_trailing_commas():
+    # Arrange
+    text = '{"a": 1, "b": 2,}'
+
+    # Act
+    result = JsonProcessor.process_text(text)
 
     # Assert
     assert result == '{"a": 1, "b": 2}'
 
-
-def test_valid_json_array_simple():
     # Arrange
-    text = "prefix [1, 2, 3] suffix"
+    text = '["x", "y",]'
 
     # Act
-    result = process_text(text)
+    result = JsonProcessor.process_text(text)
 
     # Assert
-    assert result == "[1, 2, 3]"
+    assert result == '["x", "y"]'
 
 
-def test_python_literals_are_converted():
+def test_process_text_no_brackets_raises_value_error():
+    # Assert
+    try:
+        JsonProcessor.process_text("Just plain text")
+        assert False, "Expected ValueError"
+    except ValueError as e:
+        assert "No JSON start bracket" in str(e)
+
+
+def test_process_text_mismatched_brackets():
+    # Assert
+    try:
+        JsonProcessor.process_text("Text with { but no closing")
+        assert False, "Expected ValueError"
+    except ValueError as e:
+        assert "No valid JSON end bracket" in str(e)
+
+
+def test_process_text_non_string_input():
+    # Assert
+    try:
+        JsonProcessor.process_text(123)
+        assert False, "Expected ValueError"
+    except ValueError as e:
+        assert str(e) == "Input must be a string."
+
+
+def test_parse_success_extract_key():
     # Arrange
-    text = "{'key': None, 'flag': True, 'other': False}"
+    text = '{"overview": "System OK"}'
 
     # Act
-    result = process_text(text)
+    result = JsonProcessor.parse(text, expected_key="overview", expected_type=str)
 
     # Assert
-    assert "null" in result
-    assert "true" in result
-    assert "false" in result
+    assert result == "System OK"
 
 
-def test_trailing_comma_removed_object():
+def test_parse_success_array_extraction():
     # Arrange
-    text = "{'a': 1, 'b': 2,}"
+    text = '{"files": ["main.py", "utils.py"]}'
 
     # Act
-    result = process_text(text)
+    result = JsonProcessor.parse(text, expected_key="files", expected_type=list)
 
     # Assert
-    assert result == "{'a': 1, 'b': 2}"
+    assert result == ["main.py", "utils.py"]
 
 
-def test_trailing_comma_removed_array():
+def test_parse_fallback_to_list_when_expected_type_list():
     # Arrange
-    text = "[1, 2, 3,]"
+    text = "Not JSON at all"
 
     # Act
-    result = process_text(text)
+    result = JsonProcessor.parse(text, expected_type=list)
 
     # Assert
-    assert result == "[1, 2, 3]"
+    assert result == ["Not JSON at all"]
 
 
-def test_prefers_first_opening_bracket():
+def test_parse_fallback_wrap_in_list():
     # Arrange
-    text = 'garbage [99] prefix {"x": 42}'
+    text = "Error occurred"
 
     # Act
-    result = process_text(text)
+    result = JsonProcessor.parse(text, wrap_in_list=True)
 
     # Assert
-    assert result == "[99]"
+    assert result == ["Error occurred"]
 
 
-def test_returns_longest_valid_block():
+def test_parse_fallback_to_dict():
     # Arrange
-    text = "{ 'outer': { 'inner': 123 } } and noise"
+    text = "Raw response"
 
     # Act
-    result = process_text(text)
+    result = JsonProcessor.parse(text, expected_type=dict)
 
     # Assert
-    assert result.startswith("{")
-    assert result.endswith("}")
+    assert result == {"raw": "Raw response"}
 
 
-def test_raises_if_no_json_start():
-    # Assert
-    with pytest.raises(ValueError, match="No JSON start bracket found"):
-        process_text("just plain text without brackets")
-
-
-def test_raises_if_no_matching_end():
-    # Assert
-    with pytest.raises(ValueError, match="No valid JSON end bracket found"):
-        process_text("something { 'broken': 1 ")
-
-
-def test_multiple_blocks_takes_first():
+def test_parse_fallback_dict_with_custom_key():
     # Arrange
-    text = 'noise [1,2] more {"a": 1}'
+    text = "Fallback content"
 
     # Act
-    result = process_text(text)
+    result = JsonProcessor.parse(text, expected_key="summary", expected_type=dict)
 
     # Assert
-    assert result == "[1,2]"
+    assert result == {"summary": "Fallback content"}
 
 
-def test_nested_array_inside_object():
+def test_parse_type_mismatch_triggers_fallback():
     # Arrange
-    text = "{'numbers': [1,2,3,]}"
+    text = '{"value": "string"}'
 
     # Act
-    result = process_text(text)
+    result = JsonProcessor.parse(text, expected_type=list)
+    # Assert
+    assert result == [text.strip()]
+
+
+def test_parse_nested_valid_json():
+    # Arrange
+    text = 'Prefix {"data": [1, {"flag": true}], "null_val": null} Suffix'
+
+    # Act
+    result = JsonProcessor.parse(text)
 
     # Assert
-    assert "'numbers'" in result
-    assert "[1,2,3]" in result
+    expected = {"data": [1, {"flag": True}], "null_val": None}
+    assert result == expected
+
+
+def test_parse_logs_warning_on_failure():
+    with patch("osa_tool.readmegen.postprocessor.response_cleaner.logger") as mock_logger:
+        # Act
+        JsonProcessor.parse("invalid", expected_type=dict)
+
+        # Assert
+        mock_logger.warning.assert_called_once()
+        assert "Failed to parse JSON" in mock_logger.warning.call_args[0][0]

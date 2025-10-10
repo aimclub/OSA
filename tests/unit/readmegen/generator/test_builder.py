@@ -158,17 +158,13 @@ def test_toc_generation(mock_markdown_builder, llm_client, mock_model_handler):
     core_features_json = json.dumps([{"feature_name": "Test", "feature_description": "Desc", "is_critical": True}])
     builder = mock_markdown_builder(
         core_features=core_features_json,
-        overview=json.dumps({"overview": None}),
-        getting_started=json.dumps({"getting_started": "Test getting started"}),
+        overview=None,
+        getting_started="Test getting started",
     )
 
     llm_client.model_handler = mock_model_handler(side_effect=['{"citation": null}'])
 
-    with (
-        patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process,
-        patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client),
-    ):
-        mock_process.side_effect = lambda x: x
+    with patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client):
 
         # Act
         result = builder.toc
@@ -190,8 +186,8 @@ def test_build_method_full(mock_markdown_builder, sourcerank_with_repo_tree):
 
     builder = mock_markdown_builder(
         core_features=core_features_json,
-        overview=json.dumps({"overview": "Test overview"}),
-        getting_started=json.dumps({"getting_started": "Test getting started"}),
+        overview="Test overview",
+        getting_started="Test getting started",
     )
     builder.sourcerank = sourcerank
 
@@ -211,20 +207,17 @@ def test_build_method_minimal(mock_markdown_builder, sourcerank_with_repo_tree, 
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
     builder = mock_markdown_builder(
         core_features=None,
-        overview=json.dumps({"overview": ""}),
-        getting_started=json.dumps({"getting_started": ""}),
+        overview="",
+        getting_started="",
     )
     builder.sourcerank = sourcerank
 
     llm_client.model_handler = mock_model_handler(side_effect=['{"citation": ""}'])
 
     with (
-        patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process,
         patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client),
         patch.object(MarkdownBuilder, "_check_url", return_value=False),
     ):
-        mock_process.side_effect = lambda x: x
-
         # Act
         result = builder.build()
 

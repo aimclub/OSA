@@ -2,16 +2,6 @@
 
 [prompts]
 file_summary = """
-INPUT DATA:
-
-1. FILES CONTENT:
-
-{files_content}
-
-2. README CONTENT:
-
-{readme_content}
-
 TASK:
 Analyze the provided code repository based on the available source code and README description. Your task is to summarize the following:
 Purpose: The overall goal and intended function of the codebase as reflected in both the code and README.
@@ -33,13 +23,19 @@ RULES:
 - Begin with a verb or noun.
 - Do not include quotes, code snippets, bullets, or lists.
 - Limit the response to 200-250 words.
+
+INPUT DATA:
+
+1. FILES CONTENT:
+
+{files_content}
+
+2. README CONTENT:
+
+{readme_content}
 """
 
 pdf_summary = """
-INPUT DATA:
-
-1. PDF CONTENT: {pdf_content}
-
 TASK:
 Analyze the given text, which may be a technical report or article. Your task is to extract the following, basing your response solely on the context provided:
 
@@ -63,21 +59,12 @@ RULES:
 - Exclude quotes, code snippets, bullets, or lists.
 - Limit the response to 200-250 words.
 
+INPUT DATA:
+
+1. PDF CONTENT: {pdf_content}
 """
 
 overview = """
-INPUT DATA:
-
-1. PROJECT NAME: {project_name}
-
-2. FILE SUMMARIES: {files_summary}
-
-3. PDF SUMMARIES: {pdf_summary}
-
-4. README CONTENT:
-
-{readme_content}
-
 TASK:
 Write a high-level overview capturing the essence, purpose, and objectives of the project. The repository is developed as part of, or in support of, an academic article or research work. Use the provided file summaries, PDF summaries, and README content to identify the project's central idea, its primary goals, and the key problems it addresses.
 
@@ -99,9 +86,7 @@ RULES:
 - Avoid phrases like "This project" or "The repository".
 - Do not include code snippets, bullet points, or explicit file references.
 - Limit the response to 90-140 words.
-"""
 
-content = """
 INPUT DATA:
 
 1. PROJECT NAME: {project_name}
@@ -113,7 +98,9 @@ INPUT DATA:
 4. README CONTENT:
 
 {readme_content}
+"""
 
+content = """
 TASK:
 Summarize the key components of the project—including datasets, models, utilities, and supporting modules—and explain how they collectively contribute to the overall functionality and objectives.
 Use the provided file summaries, PDF summaries, and README content to identify the main parts and their conceptual relationships.
@@ -132,23 +119,21 @@ RULES:
 - Avoid technical implementation details, code references, or file names.
 - Use clear, accessible, academic-style language.
 - Limit the description to 100-130 words.
-"""
 
-algorithms = """
 INPUT DATA:
 
 1. PROJECT NAME: {project_name}
 
-2. FILES CONTENT:
-
-{files_content}
+2. FILE SUMMARIES: {files_summary}
 
 3. PDF SUMMARIES: {pdf_summary}
 
 4. README CONTENT:
 
 {readme_content}
+"""
 
+algorithms = """
 TASK:
 Summarize the main algorithms, computational methods, or analytical techniques implemented in the project.
 For each, explain its conceptual role and how it contributes to achieving the project’s objectives.
@@ -168,6 +153,20 @@ RULES:
 - Avoid technical implementation details, code references, and file names.
 - Use clear, academic-oriented, accessible language.
 - Limit the description to 100-130 words.
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. FILES CONTENT:
+
+{files_content}
+
+3. PDF SUMMARIES: {pdf_summary}
+
+4. README CONTENT:
+
+{readme_content}
 """
 
 article_name_extraction = """

@@ -1,6 +1,10 @@
-import pytest
-
-from osa_tool.analytics.prompt_builder import RepositoryReport
+from osa_tool.analytics.prompt_builder import (
+    RepositoryReport,
+    RepositoryStructure,
+    ReadmeEvaluation,
+    CodeDocumentation,
+    OverallAssessment,
+)
 
 
 def test_make_request_success(text_generator_instance):
@@ -43,26 +47,18 @@ def test_make_request_success(text_generator_instance):
 def test_make_request_invalid_json(text_generator_instance):
     # Arrange
     text_generator, mock_model_handler = text_generator_instance
-
-    # Act
     mock_model_handler.send_request.return_value = "{INVALID_JSON}"
 
-    # Assert
-    with pytest.raises(ValueError, match="JSON parsing error"):
-        text_generator.make_request()
-
-
-def test_make_request_validation_error(text_generator_instance):
-    # Arrange
-    text_generator, mock_model_handler = text_generator_instance
-    invalid_structure = {"structure": {"compliance": 123}}
-
     # Act
-    mock_model_handler.send_request.return_value = str(invalid_structure).replace("'", '"')
+
+    report = text_generator.make_request()
 
     # Assert
-    with pytest.raises(ValueError, match="JSON parsing error"):
-        text_generator.make_request()
+    assert isinstance(report, RepositoryReport)
+    assert report.structure == RepositoryStructure()
+    assert report.readme == ReadmeEvaluation()
+    assert report.documentation == CodeDocumentation()
+    assert report.assessment == OverallAssessment()
 
 
 def test_build_prompt_content(text_generator_instance):

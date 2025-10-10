@@ -1,14 +1,12 @@
-import json
-
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.context.article_content import PdfParser
 from osa_tool.readmegen.context.article_path import get_pdf_path
 from osa_tool.readmegen.context.files_contents import FileProcessor
-from osa_tool.readmegen.postprocessor.response_cleaner import process_text
+from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
 from osa_tool.readmegen.prompts.prompts_builder import PromptBuilder
-from osa_tool.readmegen.utils import extract_example_paths, extract_relative_paths
+from osa_tool.readmegen.utils import extract_example_paths
 from osa_tool.utils import logger
 
 
@@ -40,19 +38,18 @@ class LLMClient:
         key_files_content = FileProcessor(self.config_loader, key_files).process_files()
 
         logger.info("Generating core features of the project...")
-        core_features = self.model_handler.send_request(self.prompts.get_prompt_core_features(key_files_content))
+        core_raw = self.model_handler.send_request(self.prompts.get_prompt_core_features(key_files_content))
+        core_features = JsonProcessor.parse(core_raw, expected_type=str)
 
         logger.info("Generating project overview...")
-        overview = self.model_handler.send_request(self.prompts.get_prompt_overview(core_features))
-
-        core_features = process_text(core_features)
-        overview = process_text(overview)
+        overview_raw = self.model_handler.send_request(self.prompts.get_prompt_overview(core_features))
+        overview = JsonProcessor.parse(overview_raw, expected_key="overview", expected_type=str)
 
         logger.info("Attempting to generate Getting Started section...")
         examples_files = extract_example_paths(self.tree)
         examples_content = FileProcessor(self.config_loader, examples_files).process_files()
-        getting_started = self.model_handler.send_request(self.prompts.get_prompt_getting_started(examples_content))
-        getting_started = process_text(getting_started)
+        getting_started_raw = self.model_handler.send_request(self.prompts.get_prompt_getting_started(examples_content))
+        getting_started = JsonProcessor.parse(getting_started_raw, expected_key="getting_started", expected_type=str)
 
         logger.info("README-style summary generation completed.")
         return core_features, overview, getting_started
@@ -84,101 +81,70 @@ class LLMClient:
         pdf_summary = self.model_handler.send_request(self.prompts.get_prompt_pdf_summary(pdf_content))
 
         logger.info("Generating project overview from combined sources...")
-        overview = self.model_handler.send_request(self.prompts.get_prompt_overview_article(files_summary, pdf_summary))
+        overview_raw = self.model_handler.send_request(
+            self.prompts.get_prompt_overview_article(files_summary, pdf_summary)
+        )
+        overview = JsonProcessor.parse(overview_raw, expected_key="overview", expected_type=str)
 
         logger.info("Generating content section...")
-        content = self.model_handler.send_request(self.prompts.get_prompt_content_article(files_summary, pdf_summary))
+        content_raw = self.model_handler.send_request(
+            self.prompts.get_prompt_content_article(files_summary, pdf_summary)
+        )
+        content = JsonProcessor.parse(content_raw, expected_key="content", expected_type=str)
 
         logger.info("Generating algorithm description...")
-        algorithms = self.model_handler.send_request(
+        algorithms_raw = self.model_handler.send_request(
             self.prompts.get_prompt_algorithms_article(key_files_content, pdf_summary)
         )
+        algorithms = JsonProcessor.parse(algorithms_raw, expected_key="algorithms", expected_type=str)
 
         logger.info("Attempting to generate Getting Started section...")
         examples_files = extract_example_paths(self.tree)
         examples_content = FileProcessor(self.config_loader, examples_files).process_files()
-        getting_started = self.model_handler.send_request(self.prompts.get_prompt_getting_started(examples_content))
-
-        overview = process_text(overview)
-        content = process_text(content)
-        algorithms = process_text(algorithms)
-        getting_started = process_text(getting_started)
+        getting_started_raw = self.model_handler.send_request(self.prompts.get_prompt_getting_started(examples_content))
+        getting_started = JsonProcessor.parse(getting_started_raw, expected_key="getting_started", expected_type=str)
 
         logger.info("Article-style summary generation completed.")
         return overview, content, algorithms, getting_started
 
     def get_key_files(self) -> list:
         """Identifies key files from the project repository using model analysis."""
-        key_files_response = self.model_handler.send_request(self.prompts.get_prompt_preanalysis())
-        key_files_cleaned = process_text(key_files_response)
-
-        try:
-            response_json = json.loads(key_files_cleaned)
-            key_files = response_json.get("key_files", [])
-            if not isinstance(key_files, list):
-                raise ValueError("Invalid format: 'key_files' must be a list.")
-
-        except (json.JSONDecodeError, ValueError) as e:
-            raise ValueError(f"Failed to parse JSON response: {e}") from e
-
-        key_files = extract_relative_paths(key_files)
-        return key_files
+        response = self.model_handler.send_request(self.prompts.get_prompt_preanalysis())
+        data = JsonProcessor.parse(response, expected_key="key_files", expected_type=list)
+        return data or []
 
     def get_citation_from_readme(self) -> str:
         logger.info("Detecting citations in README...")
-        response = self.model_handler.send_request(self.prompts.get_prompt_detect_citation())
-        response = process_text(response)
-        try:
-            response_json = json.loads(response)
-        except (json.JSONDecodeError, ValueError) as e:
-            raise ValueError(f"Failed to parse JSON response: {e}") from e
-
-        return response_json["citation"]
+        citation_raw = self.model_handler.send_request(self.prompts.get_prompt_detect_citation())
+        citation = JsonProcessor.parse(citation_raw, expected_key="citation", expected_type=str)
+        return citation
 
     def refine_readme(self, generated_readme: str) -> str:
         logger.info("Refining README files...")
-        refine_step1 = process_text(
-            self.model_handler.send_request(self.prompts.get_prompt_refine_readme_step1(generated_readme))
-        )
+        refine_step1 = self.model_handler.send_request(self.prompts.get_prompt_refine_readme_step1(generated_readme))
+        refine_step1 = JsonProcessor.parse(refine_step1, expected_key="readme", expected_type=str)
 
-        refine_step2 = process_text(
-            self.model_handler.send_request(self.prompts.get_prompt_refine_readme_step2(refine_step1))
-        )
+        refine_step2 = self.model_handler.send_request(self.prompts.get_prompt_refine_readme_step2(refine_step1))
+        refine_step2 = JsonProcessor.parse(refine_step2, expected_key="readme", expected_type=str)
 
-        refine_step3 = process_text(
-            self.model_handler.send_request(self.prompts.get_prompt_refine_readme_step3(refine_step2))
-        )
-        try:
-            response_json = json.loads(refine_step3)
-        except (json.JSONDecodeError, ValueError) as e:
-            raise ValueError(f"Failed to parse JSON response: {e}") from e
-
-        return response_json["readme"]
+        refine_step3 = self.model_handler.send_request(self.prompts.get_prompt_refine_readme_step3(refine_step2))
+        refine_step3 = JsonProcessor.parse(refine_step3, expected_key="readme", expected_type=str)
+        return refine_step3
 
     def clean(self, readme: str) -> str:
         logger.info("Cleaning README...")
-        clean_step1 = process_text(self.model_handler.send_request(self.prompts.get_prompt_clean_readme_step1(readme)))
-        clean_step2 = process_text(
-            self.model_handler.send_request(self.prompts.get_prompt_clean_readme_step2(clean_step1))
-        )
-        clean_step3 = process_text(
-            self.model_handler.send_request(self.prompts.get_prompt_clean_readme_step3(clean_step2))
-        )
-        try:
-            response_json = json.loads(clean_step3)
-        except (json.JSONDecodeError, ValueError) as e:
-            raise ValueError(f"Failed to parse JSON response: {e}") from e
+        clean_step1 = self.model_handler.send_request(self.prompts.get_prompt_clean_readme_step1(readme))
+        clean_step1 = JsonProcessor.parse(clean_step1, expected_key="readme", expected_type=str)
 
-        return response_json["readme"]
+        clean_step2 = self.model_handler.send_request(self.prompts.get_prompt_clean_readme_step2(clean_step1))
+        clean_step2 = JsonProcessor.parse(clean_step2, expected_key="readme", expected_type=str)
+
+        clean_step3 = self.model_handler.send_request(self.prompts.get_prompt_clean_readme_step3(clean_step2))
+        clean_step3 = JsonProcessor.parse(clean_step3, expected_key="readme", expected_type=str)
+        return clean_step3
 
     def get_article_name(self, pdf_content: str) -> str:
         logger.info("Getting article name from pdf...")
-        response = process_text(
-            self.model_handler.send_request(self.prompts.get_prompt_article_name_extraction(pdf_content))
-        )
-        try:
-            response_json = json.loads(response)
-        except (json.JSONDecodeError, ValueError) as e:
-            raise ValueError(f"Failed to parse JSON response: {e}") from e
-
-        return response_json["article_name"]
+        article_name = self.model_handler.send_request(self.prompts.get_prompt_article_name_extraction(pdf_content))
+        article_name = JsonProcessor.parse(article_name, expected_key="article_name", expected_type=str)
+        return article_name
