@@ -11,12 +11,11 @@ from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
 @pytest.fixture
-def mock_markdown_builder(
-    mock_config_loader, load_metadata_base_builder, load_metadata_header, load_metadata_installation
-):
+def mock_markdown_builder(mock_config_loader, mock_repository_metadata):
     def _create_builder(core_features=None, overview=None, getting_started=None):
         builder = MarkdownBuilder(
             config_loader=mock_config_loader,
+            metadata=mock_repository_metadata,
             core_features=core_features,
             overview=overview,
             getting_started=getting_started,
@@ -27,12 +26,11 @@ def mock_markdown_builder(
 
 
 @pytest.fixture
-def mock_markdown_builder_article(
-    mock_config_loader, load_metadata_base_builder, load_metadata_header, load_metadata_installation
-):
+def mock_markdown_builder_article(mock_config_loader, mock_repository_metadata):
     def _create_builder(overview=None, content=None, algorithms=None, getting_started=None):
         builder = MarkdownBuilderArticle(
             config_loader=mock_config_loader,
+            metadata=mock_repository_metadata,
             overview=overview,
             content=content,
             algorithms=algorithms,
@@ -63,11 +61,15 @@ def mock_dependency_extractor():
 
 @pytest.fixture
 def mock_header_builder(
-    mock_config_loader, load_metadata_header, mock_pypi_inspector, mock_dependency_extractor, sourcerank_with_repo_tree
+    mock_config_loader,
+    mock_repository_metadata,
+    mock_pypi_inspector,
+    mock_dependency_extractor,
+    sourcerank_with_repo_tree,
 ):
     repo_tree_data = get_mock_repo_tree("FULL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
-    builder = HeaderBuilder(mock_config_loader)
+    builder = HeaderBuilder(mock_config_loader, mock_repository_metadata)
     builder.tree = sourcerank.tree
     return builder
 
@@ -75,13 +77,13 @@ def mock_header_builder(
 @pytest.fixture
 def mock_installation_builder(
     mock_config_loader,
-    load_metadata_installation,
+    mock_repository_metadata,
     mock_pypi_inspector,
     mock_dependency_extractor,
     sourcerank_with_repo_tree,
 ):
     repo_tree_data = get_mock_repo_tree("FULL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
-    builder = InstallationSectionBuilder(mock_config_loader)
+    builder = InstallationSectionBuilder(mock_config_loader, mock_repository_metadata)
     builder.sourcerank = sourcerank
     return builder

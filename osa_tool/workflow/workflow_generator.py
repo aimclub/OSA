@@ -26,10 +26,10 @@ class WorkflowGenerator(ABC):
     def load_template(self, template_name: str) -> str:
         """
         Load a template file content as a string.
-        
+
         Args:
             template_name: Template file name.
-        
+
         Returns:
             str: Contents of the template file.
         """
@@ -73,10 +73,10 @@ class WorkflowGenerator(ABC):
     @abstractmethod
     def generate_selected_jobs(self, settings: WorkflowSettings) -> List[str]:
         """Generate selected jobs based on settings.
-        
+
         Args:
             settings: CI/CD specific settings extracted from the config.
-        
+
         Returns:
             List[str]: List of paths to generated files.
         """
@@ -87,16 +87,19 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
     def load_template(self, template_name: str) -> str:
         """
         Load a template file content as a string.
-        
+
         Args:
             template_name: Template file name.
-        
+
         Returns:
             str: Contents of the template file.
         """
         template_path = os.path.join(
             osa_project_root(),
-            "config", "templates", "workflow", "github_gitverse",
+            "config",
+            "templates",
+            "workflow",
+            "github_gitverse",
             template_name,
         )
         with open(template_path, "r", encoding="utf-8") as file:
@@ -115,7 +118,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
         python_version: Optional[str] = None,
     ) -> str:
         """
-        Create a GitHub Actions workflow for running the Black code formatter 
+        Create a GitHub Actions workflow for running the Black code formatter
         using the official Black action.
 
         Args:
@@ -134,20 +137,18 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
         """
         steps = [{"name": "Checkout repo", "uses": "actions/checkout@v4"}]
         if use_pyproject or python_version:
-            steps.append({
-                "name": "Set up Python",
-                "uses": "actions/setup-python@v5",
-                "with": {"python-version": python_version or "3.11"},
-            })
+            steps.append(
+                {
+                    "name": "Set up Python",
+                    "uses": "actions/setup-python@v5",
+                    "with": {"python-version": python_version or "3.11"},
+                }
+            )
 
         black_step = {
             "name": "Run Black",
             "uses": "psf/black@stable",
-            "with": {
-                "options": black_options,
-                "src": src,
-                "jupyter": str(jupyter).lower()
-            },
+            "with": {"options": black_options, "src": src, "jupyter": str(jupyter).lower()},
         }
         if use_pyproject:
             black_step["with"]["use_pyproject"] = "true"
@@ -156,16 +157,12 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
         steps.append(black_step)
 
         steps_yaml = yaml.dump(steps, default_flow_style=False, indent=1)
-        steps_yaml = steps_yaml.replace('\n  ', '\n        ')
-        steps_yaml = steps_yaml.replace('\n- ', '\n      - ')
-
+        steps_yaml = steps_yaml.replace("\n  ", "\n        ")
+        steps_yaml = steps_yaml.replace("\n- ", "\n      - ")
 
         on_section = {}
         if branches:
-            on_section = {
-                "push": {"branches": branches},
-                "pull_request": {"branches": branches}
-            }
+            on_section = {"push": {"branches": branches}, "pull_request": {"branches": branches}}
         else:
             on_section = ["push", "pull_request"]
 
@@ -174,13 +171,13 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
             name=name,
             on_section=yaml.dump(on_section, default_flow_style=False).rstrip(),
             job_name=job_name,
-            steps=steps_yaml
+            steps=steps_yaml,
         )
 
         file_path = os.path.join(self.output_dir, "black.yml")
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(rendered)
-        
+
         return file_path
 
     def generate_unit_test(
@@ -216,7 +213,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
             on_section = {
                 "push": {"branches": branches},
                 "pull_request": {"branches": branches},
-                "workflow_dispatch": {}
+                "workflow_dispatch": {},
             }
         else:
             on_section = ["push", "pull_request", "workflow_dispatch"]
@@ -246,7 +243,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
         file_path = os.path.join(self.output_dir, "unit_test.yml")
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(rendered)
-        
+
         return file_path
 
     def generate_pep8(
@@ -271,10 +268,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
             str: Path to the generated file.
         """
         if branches:
-            on_section = {
-                "push": {"branches": branches},
-                "pull_request": {"branches": branches}
-            }
+            on_section = {"push": {"branches": branches}, "pull_request": {"branches": branches}}
         else:
             on_section = ["push", "pull_request"]
 
@@ -295,7 +289,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
         file_path = os.path.join(self.output_dir, "pep8.yml")
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(rendered)
-        
+
         return file_path
 
     def generate_autopep8(
@@ -318,9 +312,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
             str: Path to the generated file.
         """
         if branches:
-            on_section = {
-                "pull_request": {"branches": branches}
-            }
+            on_section = {"pull_request": {"branches": branches}}
         else:
             on_section = ["pull_request"]
 
@@ -340,7 +332,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
         file_path = os.path.join(self.output_dir, "autopep8.yml")
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(rendered)
-        
+
         return file_path
 
     def generate_fix_pep8_command(
@@ -378,7 +370,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
         file_path = os.path.join(self.output_dir, "fix_pep8.yml")
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(rendered)
-        
+
         return file_path
 
     def generate_slash_command_dispatch(
@@ -408,7 +400,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
         file_path = os.path.join(self.output_dir, "slash_command_dispatch.yml")
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(rendered)
-        
+
         return file_path
 
     def generate_pypi_publish(
@@ -444,7 +436,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
 
         if not on_section:
             raise ValueError("At least one of trigger_on_tags or trigger_on_release must be True")
-        
+
         if use_poetry:
             steps = [
                 {
@@ -484,8 +476,8 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
             ]
 
         steps_yaml = yaml.dump(steps, default_flow_style=False, indent=1)
-        steps_yaml = steps_yaml.replace('\n  ', '\n        ')
-        steps_yaml = steps_yaml.replace('\n- ', '\n      - ')
+        steps_yaml = steps_yaml.replace("\n  ", "\n        ")
+        steps_yaml = steps_yaml.replace("\n- ", "\n      - ")
 
         template = self.load_template("pypi_publish.yml")
         rendered = template.format(
@@ -498,7 +490,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
         file_path = os.path.join(self.output_dir, "pypi_publish.yml")
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(rendered)
-        
+
         return file_path
 
     def generate_selected_jobs(self, settings: WorkflowSettings) -> List[str]:
@@ -548,7 +540,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
             file_path = self.generate_pypi_publish(
                 # Use the latest Python version
                 python_version=settings.python_versions[-1],
-                use_poetry=settings.use_poetry
+                use_poetry=settings.use_poetry,
             )
             generated_files.append(file_path)
 
@@ -559,16 +551,19 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
     def load_template(self, template_name: str) -> str:
         """
         Load a template file content as a string.
-        
+
         Args:
             template_name: Template file name.
-        
+
         Returns:
             str: Contents of the template file.
         """
         template_path = os.path.join(
             osa_project_root(),
-            "config", "templates", "workflow", "gitlab",
+            "config",
+            "templates",
+            "workflow",
+            "gitlab",
             template_name,
         )
         with open(template_path, "r", encoding="utf-8") as file:
@@ -583,7 +578,7 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
         branches: List[str] = None,
     ) -> str:
         branches_section = self._generate_branches_section(branches)
-        
+
         template = self.load_template("black.yml")
         return template.format(
             python_version=python_version,
@@ -600,10 +595,11 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
         branches: List[str] = None,
     ) -> str:
         branches_section = self._generate_branches_section(branches)
-        matrix_yaml = yaml.dump([{"PYTHON_VERSION": version} for version in python_versions], 
-                            default_flow_style=False, indent=1)
-        matrix_yaml = matrix_yaml.replace('\n- ', '\n      - ')
-        
+        matrix_yaml = yaml.dump(
+            [{"PYTHON_VERSION": version} for version in python_versions], default_flow_style=False, indent=1
+        )
+        matrix_yaml = matrix_yaml.replace("\n- ", "\n      - ")
+
         template = self.load_template("unit_test.yml")
         return template.format(
             matrix_yaml=matrix_yaml,
@@ -620,7 +616,7 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
         branches: List[str] = None,
     ) -> str:
         branches_section = self._generate_branches_section(branches)
-        
+
         template = self.load_template("pep8.yml")
         return template.format(
             python_version=python_version,
@@ -637,7 +633,7 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
         branches: List[str] = None,
     ) -> str:
         branches_section = self._generate_branches_section(branches)
-        
+
         template = self.load_template("autopep8.yml")
         return template.format(
             python_version=python_version,
@@ -653,7 +649,7 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
         branches: List[str] = None,
     ) -> str:
         branches_section = self._generate_branches_section(branches)
-        
+
         template = self.load_template("fix_pep8.yml")
         return template.format(
             python_version=python_version,
@@ -676,27 +672,23 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
         use_poetry: bool = False,
     ) -> str:
         if use_poetry:
-            script = [
-                "pip install poetry",
-                "poetry build",
-                "poetry publish -u $PYPI_USERNAME -p $PYPI_PASSWORD"
-            ]
+            script = ["pip install poetry", "poetry build", "poetry publish -u $PYPI_USERNAME -p $PYPI_PASSWORD"]
         else:
             script = [
                 "pip install twine build",
                 "python -m build",
-                "twine upload -u $PYPI_USERNAME -p $PYPI_PASSWORD dist/*"
+                "twine upload -u $PYPI_USERNAME -p $PYPI_PASSWORD dist/*",
             ]
-        
+
         script_yaml = yaml.dump(script, default_flow_style=False, indent=1)
-        script_yaml = script_yaml.replace('\n- ', '\n    - ')
-        
+        script_yaml = script_yaml.replace("\n- ", "\n    - ")
+
         template = self.load_template("pypi_publish.yml")
         return template.format(
             python_version=python_version,
             script=script_yaml,
         )
-    
+
     def _generate_branches_section(self, branches: List[str] = None) -> str:
         if not branches:
             return ""
@@ -718,52 +710,61 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
 
         yaml_parts.append("stages:")
         yaml_parts.append("  - test")
-        yaml_parts.append("  - lint") 
+        yaml_parts.append("  - lint")
         yaml_parts.append("  - fix")
         yaml_parts.append("  - deploy")
         yaml_parts.append("")
 
         if settings.include_black:
-            yaml_parts.append(self.generate_black_formatter(
-                python_version=settings.python_versions[-1],
-                branches=settings.branches,
-            ))
-
-        if settings.include_tests:
-            yaml_parts.append(self.generate_unit_test(
-                python_versions=settings.python_versions,
-                branches=settings.branches,
-            ))
-
-        if settings.include_pep8:
-            yaml_parts.append(self.generate_pep8(
-                tool=settings.pep8_tool,
-                python_version=settings.python_versions[-1],
-                branches=settings.branches,
-            ))
-
-        if settings.include_autopep8:
-            yaml_parts.append(self.generate_autopep8(
-                python_version=settings.python_versions[-1],
-                branches=settings.branches,
-            ))
-
-            if settings.include_fix_pep8:
-                yaml_parts.append(self.generate_fix_pep8_command(
+            yaml_parts.append(
+                self.generate_black_formatter(
                     python_version=settings.python_versions[-1],
                     branches=settings.branches,
-                ))
+                )
+            )
+
+        if settings.include_tests:
+            yaml_parts.append(
+                self.generate_unit_test(
+                    python_versions=settings.python_versions,
+                    branches=settings.branches,
+                )
+            )
+
+        if settings.include_pep8:
+            yaml_parts.append(
+                self.generate_pep8(
+                    tool=settings.pep8_tool,
+                    python_version=settings.python_versions[-1],
+                    branches=settings.branches,
+                )
+            )
+
+        if settings.include_autopep8:
+            yaml_parts.append(
+                self.generate_autopep8(
+                    python_version=settings.python_versions[-1],
+                    branches=settings.branches,
+                )
+            )
+
+            if settings.include_fix_pep8:
+                yaml_parts.append(
+                    self.generate_fix_pep8_command(
+                        python_version=settings.python_versions[-1],
+                        branches=settings.branches,
+                    )
+                )
 
         if settings.include_pypi:
-            yaml_parts.append(self.generate_pypi_publish(
-                python_version=settings.python_versions[-1],
-                use_poetry=settings.use_poetry
-            ))
+            yaml_parts.append(
+                self.generate_pypi_publish(python_version=settings.python_versions[-1], use_poetry=settings.use_poetry)
+            )
 
         content = "\n".join(part for part in yaml_parts if part) + "\n"
         file_path = os.path.join(self.output_dir, ".gitlab-ci.yml")
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
-        
+
         generated_files.append(file_path)
         return generated_files

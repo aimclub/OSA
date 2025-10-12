@@ -16,10 +16,12 @@ def mock_readme_content_prompts():
 
 
 @pytest.fixture
-def prompt_builder(mock_config_loader, mock_readme_content_prompts, sourcerank_with_repo_tree, load_metadata_prompts):
+def prompt_builder(
+    mock_config_loader, mock_readme_content_prompts, sourcerank_with_repo_tree, mock_repository_metadata
+):
     repo_tree_data = get_mock_repo_tree("FULL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
-    pb = PromptBuilder(mock_config_loader)
+    pb = PromptBuilder(mock_config_loader, mock_repository_metadata)
     pb.sourcerank = sourcerank
     pb.tree = sourcerank.tree
     return pb

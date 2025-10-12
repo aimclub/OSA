@@ -16,21 +16,13 @@ from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.convertion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.docs_generator.license import compile_license_file
-from osa_tool.git_agent.git_agent import (
-    GitHubAgent,
-    GitLabAgent,
-    GitverseAgent
-)
+from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent
 from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 from osa_tool.readmegen.readme_core import readme_agent
 from osa_tool.scheduler.scheduler import ModeScheduler
-from osa_tool.scheduler.workflow_manager import (
-    GitHubWorkflowManager,
-    GitLabWorkflowManager,
-    GitverseWorkflowManager
-)
+from osa_tool.scheduler.workflow_manager import GitHubWorkflowManager, GitLabWorkflowManager, GitverseWorkflowManager
 from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.utils import (
     delete_repository,
@@ -87,7 +79,7 @@ def main():
         elif "gitverse.ru" in args.repository:
             git_agent = GitverseAgent(args.repository, args.branch)
             workflow_manager = GitverseWorkflowManager(args.repository, git_agent.metadata, args)
-        
+
         if create_fork:
             git_agent.star_repository()
             git_agent.create_fork()

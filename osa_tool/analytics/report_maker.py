@@ -26,12 +26,7 @@ from osa_tool.utils import logger, osa_project_root
 
 class ReportGenerator:
 
-    def __init__(
-        self,
-        config_loader: ConfigLoader,
-        sourcerank: SourceRank,
-        metadata: RepositoryMetadata
-    ):
+    def __init__(self, config_loader: ConfigLoader, sourcerank: SourceRank, metadata: RepositoryMetadata):
         self.config = config_loader.config
         self.sourcerank = sourcerank
         self.metadata = metadata

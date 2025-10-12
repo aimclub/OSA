@@ -32,18 +32,20 @@ class CommunityTemplateBuilder:
 
     def _setup_paths_depends_on_platform(self) -> None:
         """Configures file save paths depending on the platform."""
-        
+
         if "gitlab" in self.config.git.host:
             self.issue_templates_path = os.path.join(self.repo_path, "issue_templates")
             self.merge_request_templates_path = os.path.join(self.repo_path, "merge_request_templates")
             os.makedirs(self.issue_templates_path, exist_ok=True)
             os.makedirs(self.merge_request_templates_path, exist_ok=True)
-            
+
             self.pr_to_save = os.path.join(self.merge_request_templates_path, "MERGE_REQUEST_TEMPLATE.md")
             self.docs_issue_to_save = os.path.join(self.issue_templates_path, "DOCUMENTATION_ISSUE.md")
             self.feature_issue_to_save = os.path.join(self.issue_templates_path, "FEATURE_ISSUE.md")
             self.bug_issue_to_save = os.path.join(self.issue_templates_path, "BUG_ISSUE.md")
-            self.vulnerability_disclosure_to_save = os.path.join(self.issue_templates_path, "Vulnerability_Disclosure.md")
+            self.vulnerability_disclosure_to_save = os.path.join(
+                self.issue_templates_path, "Vulnerability_Disclosure.md"
+            )
         elif "github" in self.config.git.host:
             self.issue_templates_path = os.path.join(self.repo_path, "ISSUE_TEMPLATE")
             os.makedirs(self.issue_templates_path, exist_ok=True)
@@ -93,7 +95,9 @@ class CommunityTemplateBuilder:
             if self.sourcerank.docs_presence():
                 content = self._template["docs_issue"]
                 save_sections(content, self.docs_issue_to_save)
-                logger.info(f"DOCUMENTATION_ISSUE.md successfully generated in folder {os.path.dirname(self.docs_issue_to_save)}")
+                logger.info(
+                    f"DOCUMENTATION_ISSUE.md successfully generated in folder {os.path.dirname(self.docs_issue_to_save)}"
+                )
         except Exception as e:
             logger.error(
                 "Error while generating DOCUMENTATION_ISSUE.md: %s",
@@ -106,7 +110,9 @@ class CommunityTemplateBuilder:
         try:
             content = self._template["feature_issue"].format(project_name=self.metadata.name)
             save_sections(content, self.feature_issue_to_save)
-            logger.info(f"FEATURE_ISSUE.md successfully generated in folder {os.path.dirname(self.feature_issue_to_save)}")
+            logger.info(
+                f"FEATURE_ISSUE.md successfully generated in folder {os.path.dirname(self.feature_issue_to_save)}"
+            )
         except Exception as e:
             logger.error("Error while generating FEATURE_ISSUE.md: %s", repr(e), exc_info=True)
 
@@ -124,7 +130,9 @@ class CommunityTemplateBuilder:
         try:
             content = self._template["vulnerability_disclosure"]
             save_sections(content, self.vulnerability_disclosure_to_save)
-            logger.info(f"Vulnerability Disclosure.md successfully generated in folder {os.path.dirname(self.vulnerability_disclosure_to_save)}")
+            logger.info(
+                f"Vulnerability Disclosure.md successfully generated in folder {os.path.dirname(self.vulnerability_disclosure_to_save)}"
+            )
         except Exception as e:
             logger.error("Error while generating Vulnerability Disclosure.md: %s", repr(e), exc_info=True)
 

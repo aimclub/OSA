@@ -1,9 +1,6 @@
 import os
 import re
-import time
 from typing import List
-
-import requests
 
 from osa_tool.aboutgen.prompts_about_config import PromptAboutLoader
 from osa_tool.config.settings import ConfigLoader
@@ -141,6 +138,36 @@ class AboutGenerator:
         except Exception as e:
             logger.error(f"Error generating topics: {e}")
             return []
+
+    def detect_homepage(self) -> str:
+        """
+        Detects the homepage URL for a project.
+
+        Returns:
+            str: The detected homepage URL, an empty string if none is found.
+        """
+        logger.info("Detecting homepage URL...")
+        if self.metadata and self.metadata.homepage_url:
+            logger.warning("Homepage already exists in metadata. Skipping generation.")
+            return self.metadata.homepage_url
+
+        if not self.readme_content:
+            logger.warning("No README content found. Cannot detect homepage.")
+            return ""
+
+        urls = self._extract_readme_urls(self.readme_content)
+        if not urls:
+            logger.info("No URLs found in README")
+            return ""
+
+        candidates = self._analyze_urls(urls)
+        logger.debug(f"Detected homepage: {candidates}")
+
+        for url in candidates:
+            if any(key in url.lower() for key in HOMEPAGE_KEYS):
+                return url
+
+        return candidates[0] if candidates else ""
 
     @staticmethod
     def _extract_readme_urls(readme_content: str) -> List[str]:

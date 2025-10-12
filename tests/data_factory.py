@@ -195,5 +195,4 @@ class DataFactory:
             homepage_url=raw["homepage"],
             license_name=raw["license"]["name"] if raw["license"] else None,
             license_url=raw["license"]["url"] if raw["license"] else None,
-            platform=platform,
         )

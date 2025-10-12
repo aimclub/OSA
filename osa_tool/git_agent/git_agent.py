@@ -12,7 +12,7 @@ from osa_tool.analytics.metadata import (
     RepositoryMetadata,
     GitHubMetadataLoader,
     GitLabMetadataLoader,
-    GitverseMetadataLoader
+    GitverseMetadataLoader,
 )
 from osa_tool.utils import get_base_repo_url, logger, parse_folder_name
 
@@ -43,7 +43,7 @@ class GitAgent(abc.ABC):
 
     def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool"):
         """Initializes the agent with repository info.
-        
+
         Args:
             repo_url: The URL of the GitHub repository.
             repo_branch_name: The name of the repository's branch to be checked out.
@@ -68,7 +68,7 @@ class GitAgent(abc.ABC):
     @abc.abstractmethod
     def _load_metadata(self, repo_url: str) -> RepositoryMetadata:
         """Return platform-specific repository metadata.
-        
+
         Args:
             repo_url: The URL of the Git repository.
         """
@@ -87,7 +87,7 @@ class GitAgent(abc.ABC):
     @abc.abstractmethod
     def create_pull_request(self, title: str = None, body: str = None) -> None:
         """Create a pull request / merge request on the platform.
-        
+
         Args:
             title: The title of the PR. If None, the commit message will be used.
             body: The body/description of the PR. If None, the commit message with agent signature will be used.
@@ -242,14 +242,14 @@ class GitAgent(abc.ABC):
         self.commit_and_push_changes(branch=report_branch, commit_message=commit_message, force=True)
 
         self.create_and_checkout_branch(self.branch_name)
-        
+
         report_url = self._build_report_url(report_branch, report_filename)
         self.pr_report_body = f"\nGenerated report - [{report_filename}]({report_url})\n"
 
     @abc.abstractmethod
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
         """Returns the URL to the report file on the corresponding platform.
-        
+
         Args:
             report_branch: Name of the branch for storing reports. Defaults to "osa_tool_attachments".
             report_filename: Name of the report file.
@@ -281,7 +281,7 @@ class GitAgent(abc.ABC):
     @abc.abstractmethod
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
         """A platform-specific helper method for updating the About section of a repository.
-        
+
         Args:
             repo_path: The base repository path (e.g., 'username/repo-name').
             about_content: Dictionary containing the metadata to update about section.
@@ -330,7 +330,7 @@ class GitAgent(abc.ABC):
 class GitHubAgent(GitAgent):
     def _get_token(self) -> str:
         return os.getenv("GIT_TOKEN", os.getenv("GITHUB_TOKEN", ""))
-    
+
     def _load_metadata(self, repo_url: str) -> RepositoryMetadata:
         return GitHubMetadataLoader.load_data(repo_url)
 
@@ -437,13 +437,13 @@ class GitHubAgent(GitAgent):
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
         return f"{self.fork_url}/blob/{report_branch}/{report_filename}"
-    
+
     def _build_auth_url(self, repo_url: str) -> str:
         if repo_url.startswith("https://github.com/"):
             repo_path = repo_url[len("https://github.com/") :]
             return f"https://{self.token}@github.com/{repo_path}.git"
         raise ValueError(f"Unsupported repository URL format for GitHub: {repo_url}")
-    
+
     def validate_topics(self, topics: List[str]) -> List[str]:
         logger.info("Validating topics against GitHub Topics API...")
         min_repo = 5
@@ -484,7 +484,7 @@ class GitHubAgent(GitAgent):
 class GitLabAgent(GitAgent):
     def _get_token(self) -> str:
         return os.getenv("GITLAB_TOKEN", os.getenv("GIT_TOKEN", ""))
-    
+
     def _load_metadata(self, repo_url: str) -> RepositoryMetadata:
         return GitLabMetadataLoader.load_data(repo_url)
 
@@ -636,7 +636,7 @@ class GitLabAgent(GitAgent):
             repo_path = gitlab_match.group(2)
             return f"https://oauth2:{self.token}@{gitlab_host}/{repo_path}.git"
         raise ValueError(f"Unsupported repository URL format for GitLab: {repo_url}")
-    
+
     def validate_topics(self, topics: List[str]) -> List[str]:
         logger.info("Validating topics against GitLab Topics API...")
         validated_topics = []
@@ -688,7 +688,7 @@ class GitverseAgent(GitAgent):
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.gitverse.object+json;version=1",
             "Content-Type": "application/json",
-            "User-Agent": "Mozilla/5.0"
+            "User-Agent": "Mozilla/5.0",
         }
 
         user_url = "https://api.gitverse.ru/user"
@@ -729,7 +729,7 @@ class GitverseAgent(GitAgent):
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.gitverse.object+json;version=1",
-            "User-Agent": "Mozilla/5.0"
+            "User-Agent": "Mozilla/5.0",
         }
         url = f"https://api.gitverse.ru/user/starred/{base_repo}"
         response_check = requests.get(url, headers=headers)
@@ -767,7 +767,7 @@ class GitverseAgent(GitAgent):
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.gitverse.object+json;version=1",
             "Content-Type": "application/json",
-            "User-Agent": "Mozilla/5.0"
+            "User-Agent": "Mozilla/5.0",
         }
         url = f"https://api.gitverse.ru/repos/{base_repo}/pulls"
         response = requests.post(url, json=pr_data, headers=headers)
@@ -779,7 +779,9 @@ class GitverseAgent(GitAgent):
                 raise ValueError("Failed to create pull request.")
 
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
-        logger.warning("Updating repository 'About' section via API is not yet supported for Gitverse. You can see suggestions in PR.")
+        logger.warning(
+            "Updating repository 'About' section via API is not yet supported for Gitverse. You can see suggestions in PR."
+        )
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
         return f"{self.fork_url}/content/{report_branch}/{report_filename}"
@@ -789,7 +791,7 @@ class GitverseAgent(GitAgent):
             repo_path = repo_url[len("https://gitverse.ru/") :]
             return f"https://{self.token}@gitverse.ru/{repo_path}.git"
         raise ValueError(f"Unsupported repository URL format for Gitverse: {repo_url}")
-    
+
     def validate_topics(self, topics: List[str]) -> List[str]:
         logger.warning("Topic validation is not yet implemented for Gitverse. Returning original topics list.")
         return topics

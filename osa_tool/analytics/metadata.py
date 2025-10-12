@@ -1,6 +1,6 @@
-from abc import ABC, abstractmethod
 import os
 import re
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -304,7 +304,7 @@ class GitverseMetadataLoader(MetadataLoader):
             "Authorization": f"Bearer {os.getenv('GITVERSE_TOKEN', os.getenv('GIT_TOKEN'))}",
             "Accept": "application/vnd.gitverse.object+json;version=1",
             "Content-Type": "application/json",
-            "User-Agent": "Mozilla/5.0"
+            "User-Agent": "Mozilla/5.0",
         }
         url = f"https://api.gitverse.ru/repos/{base_url}"
 
@@ -326,6 +326,7 @@ class GitverseMetadataLoader(MetadataLoader):
             RepositoryMetadata: Parsed repository metadata.
         """
         owner_info = repo_data.get("owner", {}) or {}
+        license_info = repo_data.get("license", {}) or {}
 
         return RepositoryMetadata(
             name=repo_data.get("name", ""),
@@ -355,6 +356,6 @@ class GitverseMetadataLoader(MetadataLoader):
             has_projects=repo_data.get("has_projects", False),
             is_private=repo_data.get("private", False),
             homepage_url=repo_data.get("homepage", ""),
-            license_name=repo_data.get("license", {}).get("name", ""),
-            license_url=repo_data.get("license", {}).get("url", ""),
+            license_name=license_info.get("name", ""),
+            license_url=license_info.get("url", ""),
         )

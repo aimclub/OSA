@@ -21,7 +21,14 @@ class ModeScheduler:
     based on repository analysis, configuration, and selected execution mode.
     """
 
-    def __init__(self, config: ConfigLoader, sourcerank: SourceRank, args, workflow_manager: WorkflowManager, metadata: RepositoryMetadata):
+    def __init__(
+        self,
+        config: ConfigLoader,
+        sourcerank: SourceRank,
+        args,
+        workflow_manager: WorkflowManager,
+        metadata: RepositoryMetadata,
+    ):
         self.mode = args.mode
         self.args = args
         self.config = config.config

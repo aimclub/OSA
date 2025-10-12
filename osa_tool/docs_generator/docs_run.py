@@ -31,7 +31,7 @@ def generate_documentation(config_loader: ConfigLoader, metadata: RepositoryMeta
     community.build_feature_issue()
     community.build_security()
 
-    if config_loader.config.git.host == 'gitlab':
+    if config_loader.config.git.host == "gitlab":
         community.build_vulnerability_disclosure()
 
     logger.info("All additional documentation successfully generated.")

@@ -28,8 +28,8 @@ class MarkdownBuilderBase:
         self._overview_json = overview
         self._getting_started_json = getting_started
 
-        self.header = HeaderBuilder(self.config_loader).build_header()
-        self.installation = InstallationSectionBuilder(self.config_loader).build_installation()
+        self.header = HeaderBuilder(self.config_loader, self.metadata).build_header()
+        self.installation = InstallationSectionBuilder(self.config_loader, self.metadata).build_installation()
 
         self.template_path = os.path.join(osa_project_root(), "config", "templates", "template.toml")
         self._template = self.load_template()
