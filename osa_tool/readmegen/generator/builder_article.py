@@ -51,7 +51,7 @@ class MarkdownBuilderArticle(MarkdownBuilderBase):
         }
         return self.table_of_contents(sections)
 
-    def build(self):
+    def build(self) -> str:
         """Builds each section of the README.md file."""
         readme_contents = [
             self.header,

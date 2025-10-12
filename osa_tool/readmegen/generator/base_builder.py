@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from functools import cached_property
 
 import requests
 import tomli
@@ -11,7 +12,7 @@ from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.generator.header import HeaderBuilder
 from osa_tool.readmegen.generator.installation import InstallationSectionBuilder
 from osa_tool.readmegen.models.llm_service import LLMClient
-from osa_tool.readmegen.utils import clean_code_block_indents, find_in_repo_tree
+from osa_tool.readmegen.utils import find_in_repo_tree
 from osa_tool.utils import osa_project_root
 
 
@@ -45,26 +46,6 @@ class MarkdownBuilderBase:
     def _check_url(url):
         response = requests.get(url)
         return response.status_code == 200
-
-    def deduplicate_sections(self):
-        """Deduplicates Installation and Getting Started sections via LLM if both are present."""
-        if not self.installation or not self._getting_started_json:
-            return
-
-        getting_started_text = json.loads(self._getting_started_json)
-        if not getting_started_text["getting_started"]:
-            return
-
-        llm_client = LLMClient(self.config_loader)
-        response = llm_client.deduplicate_sections(self.installation, getting_started_text["getting_started"])
-        response = json.loads(response)
-
-        self.installation = clean_code_block_indents(response["installation"] or "")
-        new_getting_started = clean_code_block_indents(response["getting_started"])
-        if new_getting_started is not None:
-            self._getting_started_json = json.dumps({"getting_started": new_getting_started})
-        else:
-            self._getting_started_json = json.dumps({"getting_started": None})
 
     @property
     def overview(self) -> str:
@@ -119,13 +100,19 @@ class MarkdownBuilderBase:
         path = self.url_path + self.branch_path + help_var if help_var else self.metadata.license_url
         return self._template["license"].format(license_name=self.metadata.license_name, path=path)
 
-    @property
+    @cached_property
     def citation(self) -> str:
         """Generates the README Citation section"""
         if self.sourcerank.citation_presence():
             pattern = r"\bCITATION(\.\w+)?\b"
             path = self.url_path + self.branch_path + find_in_repo_tree(self.sourcerank.tree, pattern)
             return self._template["citation"] + self._template["citation_v1"].format(path=path)
+
+        llm_client = LLMClient(self.config_loader)
+        citation_from_readme = llm_client.get_citation_from_readme()
+
+        if citation_from_readme:
+            return self._template["citation"] + citation_from_readme
 
         return self._template["citation"] + self._template["citation_v2"].format(
             owner=self.metadata.owner,

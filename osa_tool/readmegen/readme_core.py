@@ -4,7 +4,6 @@ from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.readmegen.generator.builder import MarkdownBuilder
 from osa_tool.readmegen.generator.builder_article import MarkdownBuilderArticle
 from osa_tool.readmegen.models.llm_service import LLMClient
-from osa_tool.readmegen.postprocessor.readme_refiner import ReadmeRefiner
 from osa_tool.readmegen.utils import remove_extra_blank_lines, save_sections
 from osa_tool.utils import logger, parse_folder_name
 
@@ -23,25 +22,26 @@ def readme_agent(config_loader, article: str | None, refine_readme: bool, metada
     repo_url = config_loader.config.git.repository
     repo_path = os.path.join(os.getcwd(), parse_folder_name(repo_url))
     file_to_save = os.path.join(repo_path, "README.md")
+    llm_client = LLMClient(config_loader, metadata)
 
     logger.info("Started generating README.md. Processing the repository: %s", repo_url)
     try:
         if article is None:
-            responses = LLMClient(config_loader, metadata).get_responses()
+            responses = llm_client.get_responses()
             (core_features, overview, getting_started) = responses
 
             builder = MarkdownBuilder(config_loader, metadata, overview, core_features, getting_started)
         else:
-            responses = LLMClient(config_loader, metadata).get_responses_article(article)
+            responses = llm_client.get_responses_article(article)
             (overview, content, algorithms, getting_started) = responses
 
             builder = MarkdownBuilderArticle(config_loader, metadata, overview, content, algorithms, getting_started)
 
-        builder.deduplicate_sections()
         readme_content = builder.build()
 
         if refine_readme:
-            readme_content = ReadmeRefiner(config_loader, readme_content).refine()
+            readme_content = llm_client.refine_readme(readme_content)
+            readme_content = llm_client.clean(readme_content)
 
         save_sections(readme_content, file_to_save)
         remove_extra_blank_lines(file_to_save)

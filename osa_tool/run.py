@@ -24,6 +24,7 @@ from osa_tool.readmegen.readme_core import readme_agent
 from osa_tool.scheduler.scheduler import ModeScheduler
 from osa_tool.scheduler.workflow_manager import GitHubWorkflowManager, GitLabWorkflowManager, GitverseWorkflowManager
 from osa_tool.translation.dir_translator import DirectoryTranslator
+from osa_tool.translation.readme_translator import ReadmeTranslator
 from osa_tool.utils import (
     delete_repository,
     logger,
@@ -137,6 +138,12 @@ def main():
         if plan.get("readme"):
             rich_section("README generation")
             readme_agent(config, plan.get("article"), plan.get("refine_readme"), git_agent.metadata)
+
+        # Readme translation
+        translate_readme = plan.get("translate_readme")
+        if translate_readme:
+            rich_section("README translation")
+            ReadmeTranslator(config, translate_readme).translate_readme()
 
         # About section generation
         about_gen = None

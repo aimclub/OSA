@@ -94,6 +94,16 @@ convert_notebooks:
     Provide one or multiple paths, or leave empty for repo directory.
   example: path/to/file1, path/to/file2
 
+translate_readme:
+  aliases: [ "--translate-readme" ]
+  type: list
+  description: |
+    List of target languages to translate the project's main README into.
+    Each language should be specified by its name (e.g., "Russian", "Chinese").
+    The translated README files will be saved separately in the repository folder
+    with language-specific suffixes (e.g., README_ru.md, README_zh.md).
+  example: Russian, Chinese
+
 delete_dir:
   aliases: [ "--delete-dir" ]
   type: flag
