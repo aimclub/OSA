@@ -7,7 +7,9 @@ from osa_tool.readmegen.readme_core import readme_agent
 @patch("osa_tool.readmegen.readme_core.save_sections")
 @patch("osa_tool.readmegen.readme_core.MarkdownBuilder")
 @patch("osa_tool.readmegen.readme_core.LLMClient")
-def test_readme_agent_without_article(mock_llm, mock_builder, mock_save, mock_clean, mock_config_loader, mock_repository_metadata):
+def test_readme_agent_without_article(
+    mock_llm, mock_builder, mock_save, mock_clean, mock_config_loader, mock_repository_metadata
+):
     # Arrange
     mock_llm.return_value.get_responses.return_value = (
         "core_features_text",

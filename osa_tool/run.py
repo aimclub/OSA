@@ -143,7 +143,7 @@ def main():
         translate_readme = plan.get("translate_readme")
         if translate_readme:
             rich_section("README translation")
-            ReadmeTranslator(config, translate_readme).translate_readme()
+            ReadmeTranslator(config, git_agent.metadata, translate_readme).translate_readme()
 
         # About section generation
         about_gen = None
