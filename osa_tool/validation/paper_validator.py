@@ -1,14 +1,9 @@
-from pathlib import Path
-
-from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.conversion.notebook_converter import NotebookConverter
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.context.article_content import PdfParser
 from osa_tool.readmegen.context.article_path import get_pdf_path
-from osa_tool.readmegen.postprocessor.response_cleaner import process_text
-from osa_tool.readmegen.utils import read_file
-from osa_tool.utils import logger, parse_folder_name
+from osa_tool.utils import logger
+from osa_tool.validation.code_analyzer import CodeAnalyzer
 
 article_extract = """
 INPUT DATA:
@@ -39,57 +34,6 @@ Return a valid JSON object with the following structure:
   "abstract": "string",
   "experiments": "string",
   "results": "string"
-}}
-"""
-
-file_analyze = """
-INPUT DATA:
-{file_content}
-
-TASK:
-Analyze the attached Python source code file and extract the following information:
-
-1. List all import statements (including from ... import ...).
-2. For each class defined in the file:
-   - Class name
-   - Its docstring (if present; otherwise an empty string "")
-   - A brief description of what the class does (inferred from code if no docstring)
-3. For each top-level function defined in the file:
-   - Function name
-   - List of input argument names (as a list of strings)
-   - Return type or description of what it returns (if unclear, write "Not specified")
-   - Its docstring (if present; otherwise an empty string "")
-   - A brief description of what the function does
-4. Provide a high-level description of what the entire file does.
-
-RULES:
-- Do NOT include any text outside the JSON object.
-- Ensure the output is valid JSON.
-- If there are no classes or functions, use empty objects: {{}}.
-- If there are no imports, use an empty list: [].
-
-OUTPUT FORMAT:
-Return a valid JSON object with the following structure:
-
-{{
-  "description": "string",
-  "imports": ["import os", "from typing import List", ...],
-  "classes": {{
-    "ClassName1": {{
-      "docstring": "string or empty",
-      "description": "string"}}
-    }},
-    ...
-  }},
-  "functions": {{
-    "function_name1": {{
-      "arguments": ["arg1", "arg2", ...],
-      "returns": "description of return value",
-      "docstring": "string or empty",
-      "description": "string"
-    }},
-    ...
-  }}
 }}
 """
 
@@ -129,17 +73,15 @@ OUTPUT FORMAT:
 
 class PaperValidator:
     def __init__(self, config_loader: ConfigLoader):
+        self.code_analyzer = CodeAnalyzer(config_loader)
         self.config = config_loader.config
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
-        self.sourcerank = SourceRank(config_loader)
-        self.tree = self.sourcerank.tree
-        self.notebook_convertor = NotebookConverter()
 
     def validate(self, article:str) -> None:
         try:
             paper_info = self.process_paper(article)
-            code_files = self.get_code_files()
-            code_files_info = self.process_code_files(code_files)
+            code_files = self.code_analyzer.get_code_files()
+            code_files_info = self.code_analyzer.process_code_files(code_files)
             result = self.validate_paper_against_repo(paper_info, code_files_info)
             logger.info(result)
         except Exception as e:
@@ -156,31 +98,6 @@ class PaperValidator:
         response = self.model_handler.send_request(article_extract.format(pdf_content=pdf_content))
         logger.debug(response)
         return response
-
-    def get_code_files(self) -> list[str]:
-        repo_path = Path(parse_folder_name(self.config.git.repository)).resolve()
-        code_files = []
-        logger.info("Getting code files ...")
-        for filename in self.tree.split("\n"):
-            if ".ipynb" in filename:
-                logger.info("Found .ipynb file, converting ...")
-                self.notebook_convertor.convert_notebook(repo_path.joinpath(filename))
-                code_files.append(str(repo_path.joinpath(filename.replace(".ipynb", ".py"))))
-            if ".py" in filename:
-                code_files.append(str(repo_path.joinpath(filename)))
-        return code_files
-
-    def process_code_files(self, code_files: list[str]):
-        result = ""
-        for file in code_files:
-            logger.info(f"Getting {file} content ...")
-            file_content = read_file(file)
-            logger.info("Analyzing file ...")
-            response = self.model_handler.send_request(file_analyze.format(file_content=file_content))
-            logger.debug(response)
-            file_data = response
-            result += file_data + "\n"
-        return result
 
     def validate_paper_against_repo(self, paper_info, code_files_info):
         logger.info("Validating paper against repository ...")
