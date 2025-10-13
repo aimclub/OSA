@@ -6,54 +6,7 @@ from osa_tool.conversion.notebook_converter import NotebookConverter
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.utils import read_file
 from osa_tool.utils import logger, parse_folder_name
-
-file_analyze = """
-INPUT DATA:
-{file_content}
-
-TASK:
-Analyze the attached Python source code file and extract the following information:
-
-1. For each class defined in the file:
-   - Class name
-   - Its docstring (if present; otherwise an empty string "")
-   - A brief description of what the class does (inferred from code if no docstring)
-2. For each top-level function defined in the file:
-   - Function name
-   - List of input argument names (as a list of strings)
-   - Return type or description of what it returns (if unclear, write "Not specified")
-   - Its docstring (if present; otherwise an empty string "")
-   - A brief description of what the function does
-3. Provide a high-level description of what the entire file does.
-
-RULES:
-- Do NOT include any text outside the JSON object.
-- Ensure the output is valid JSON.
-- If there are no classes or functions, use empty objects: {{}}.
-
-OUTPUT FORMAT:
-Return a valid JSON object with the following structure:
-
-{{
-  "description": "string",
-  "classes": {{
-    "ClassName1": {{
-      "docstring": "string or empty",
-      "description": "string"}}
-    }},
-    ...
-  }},
-  "functions": {{
-    "function_name1": {{
-      "arguments": ["arg1", "arg2", ...],
-      "returns": "description of return value",
-      "docstring": "string or empty",
-      "description": "string"
-    }},
-    ...
-  }}
-}}
-"""
+from osa_tool.validation.prompt_builder import PromptBuilder
 
 
 class CodeAnalyzer:
@@ -61,6 +14,7 @@ class CodeAnalyzer:
         self.config = config_loader.config
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.notebook_convertor = NotebookConverter()
+        self.prompts = PromptBuilder()
         self.sourcerank = SourceRank(config_loader)
         self.tree = self.sourcerank.tree
 
@@ -80,13 +34,13 @@ class CodeAnalyzer:
                 code_files.append(str(repo_path.joinpath(filename)))
         return code_files
 
-    def process_code_files(self, code_files: list[str]):
+    def process_code_files(self, code_files: list[str]) -> str:
         result = ""
         for file in code_files:
             logger.info(f"Getting {file} content ...")
             file_content = read_file(file)
             logger.info("Analyzing file ...")
-            response = self.model_handler.send_request(file_analyze.format(file_content=file_content))
+            response = self.model_handler.send_request(self.prompts.get_prompt_to_analyze_code_file(file_content))
             logger.debug(response)
             file_data = response
             result += file_data + "\n"

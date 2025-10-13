@@ -1,0 +1,177 @@
+[prompts]
+
+analyze_code_file = """
+INPUT DATA:
+{file_content}
+
+TASK:
+Analyze the attached Python source code file and extract the following information:
+
+1. For each class defined in the file:
+   - Class name
+   - Its docstring (if present; otherwise an empty string "")
+   - A brief description of what the class does (inferred from code if no docstring)
+2. For each top-level function defined in the file:
+   - Function name
+   - List of input argument names (as a list of strings)
+   - Return type or description of what it returns (if unclear, write "Not specified")
+   - Its docstring (if present; otherwise an empty string "")
+   - A brief description of what the function does
+3. Provide a high-level description of what the entire file does.
+
+RULES:
+- Do NOT include any text outside the JSON object.
+- Ensure the output is valid JSON.
+- If there are no classes or functions, use empty objects: {{}}.
+
+OUTPUT FORMAT:
+Return a valid JSON object with the following structure:
+
+{{
+  "description": "string",
+  "classes": {{
+    "ClassName1": {{
+      "docstring": "string or empty",
+      "description": "string"}}
+    }},
+    ...
+  }},
+  "functions": {{
+    "function_name1": {{
+      "arguments": ["arg1", "arg2", ...],
+      "returns": "description of return value",
+      "docstring": "string or empty",
+      "description": "string"
+    }},
+    ...
+  }}
+}}
+"""
+
+extract_document_sections = """
+INPUT DATA:
+{doc_content}
+
+TASK:
+Analyze the provided Russian-language documentation text from a scientific or technical project and extract the following sections as plain text:
+
+1. **Abstract** — look for a section titled exactly or similarly to "Реферат". Do NOT use "Введение" (Introduction) as a substitute.
+2. **Experiments / Implementation** — look for sections titled "Программная реализация", "Реализация", "Алгоритмы", "Архитектура", "Пример использования", or similar that describe the actual code, system design, or experimental setup.
+3. **Results** — look for a section titled "Результаты". Do NOT include "Выводы" (Conclusions) or "Заключение" unless they explicitly contain numerical or empirical results.
+
+Return the extracted content in a JSON object with keys: "abstract", "experiments", and "results".
+
+RULES:
+- Return ONLY a valid JSON object—no extra text, markdown, or commentary.
+- Preserve the original Russian text exactly as it appears, including line breaks and special characters.
+- If a section appears multiple times, concatenate all relevant parts in order of appearance.
+- If a section is not found, return an empty string ("").
+- Do NOT translate, paraphrase, summarize, or modify the text.
+- Do NOT include section headings unless they are part of the original paragraph (e.g., if the text starts with "Результаты: ...", keep it).
+
+OUTPUT FORMAT:
+{{
+  "abstract": "string",
+  "experiments": "string",
+  "results": "string"
+}}
+"""
+
+validate_doc_against_repo = """
+INPUT DATA:
+{doc_info}
+
+{code_files_info}
+
+TASK:
+Compare the Russian-language documentation (which describes experiments and results) with the actual implementation in the repository code.
+
+Evaluate the following:
+- Does the code implement the methods, algorithms, system architecture, or experimental procedures described in the documentation’s "experiments" or "implementation" section?
+- Are the datasets, input formats, evaluation metrics, and key parameters consistent between the documentation and the code?
+- Can the reported results (e.g., performance numbers, outputs, behaviors) be reproduced using the provided code?
+
+Based on this comparison:
+1. Set "correspondence" to `true` if the code substantially implements what the documentation claims; otherwise `false`.
+2. Assign a "percentage" score (0.0–100.0) reflecting the degree of alignment (100.0 = full reproducibility and coverage).
+3. Write a brief "conclusion" in English explaining the score, citing specific matches or gaps (e.g., missing evaluation script, undocumented preprocessing step).
+
+RULES:
+- The documentation is in Russian—analyze its technical meaning directly; do NOT translate it unless necessary for reasoning.
+- Return ONLY a valid JSON object—no extra text, markdown, or commentary.
+- Use English for the "conclusion" field to ensure consistency in downstream processing.
+- If critical components (e.g., training loop, dataset loader, metric calculation) are absent from the code, assign a low percentage.
+- Base your judgment exclusively on the provided inputs.
+
+OUTPUT FORMAT:
+{{
+  "correspondence": bool,
+  "percentage": float,
+  "conclusion": string
+}}
+"""
+
+extract_paper_section = """
+INPUT DATA:
+{paper_content}
+
+TASK:
+Analyze the attached scientific paper and extract the following sections as plain text:
+
+1. The **Abstract** section (usually titled "Abstract").
+2. The section describing the **experiments** (may be titled "Experiments", "Experimental Setup", "Methodology", "Materials and Methods", or similar—use your best judgment to identify where the experimental procedures are described).
+3. The **Results** section (typically titled "Results", "Findings", or similar—do not include the "Discussion" or "Conclusion" unless they are merged with Results).
+
+Return the extracted text for each section in a JSON object with the keys: "abstract", "experiments", and "results".
+
+RULES:
+- Return ONLY a valid JSON object—no additional text, explanations, or formatting.
+- For each section:
+  - If found, include the full text exactly as it appears (preserving line breaks, equations, BibTeX, DOIs, etc.).
+  - If multiple relevant sections exist (e.g., multiple experiment subsections), concatenate them into a single string in logical order.
+  - If no such section exists, return an empty string ("").
+- Do NOT paraphrase, summarize, or add content.
+- Do NOT include section titles unless they appear in the original text.
+
+OUTPUT FORMAT:
+Return a valid JSON object with the following structure:
+
+{{
+  "abstract": "string",
+  "experiments": "string",
+  "results": "string"
+}}
+"""
+
+validate_paper_against_repo = """
+INPUT DATA:
+{paper_info}
+
+{code_files_info}
+
+TASK:
+Compare the scientific paper's described experiments and results with the actual implementation and experimental code in the repository.
+
+Specifically:
+- Does the code implement the methods, models, or algorithms described in the paper's experiments section?
+- Are the datasets, evaluation metrics, and experimental procedures consistent with those reported?
+- Are the results (e.g., numerical outcomes, figures, tables) reproducible from the provided code?
+
+Based on this comparison:
+1. Determine if there is substantial compliance between the paper and the code (`true` for compliant, `false` otherwise).
+2. Assign a percentage score (0.0 to 100.0) reflecting how well the repository code aligns with the paper’s experimental claims.
+3. Provide a concise justification for your assessment.
+
+RULES:
+- Return ONLY a valid JSON object—no additional text, markdown, or explanations.
+- The percentage must be a float between 0.0 and 100.0.
+- If key experimental details are missing from the code (e.g., no training script, no evaluation), reflect this in a low score.
+- Base your judgment solely on the provided paper excerpts and code analysis.
+
+OUTPUT FORMAT:
+{{
+  "correspondence": bool,
+  "percentage": float,
+  "conclusion": str
+}}
+"""

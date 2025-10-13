@@ -8,69 +8,7 @@ from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.utils import logger
 from osa_tool.validation.code_analyzer import CodeAnalyzer
-
-document_extract = """
-INPUT DATA:
-{doc_content}
-
-TASK:
-Analyze the provided Russian-language documentation text from a scientific or technical project and extract the following sections as plain text:
-
-1. **Abstract** — look for a section titled exactly or similarly to "Реферат". Do NOT use "Введение" (Introduction) as a substitute.
-2. **Experiments / Implementation** — look for sections titled "Программная реализация", "Реализация", "Алгоритмы", "Архитектура", "Пример использования", or similar that describe the actual code, system design, or experimental setup.
-3. **Results** — look for a section titled "Результаты". Do NOT include "Выводы" (Conclusions) or "Заключение" unless they explicitly contain numerical or empirical results.
-
-Return the extracted content in a JSON object with keys: "abstract", "experiments", and "results".
-
-RULES:
-- Return ONLY a valid JSON object—no extra text, markdown, or commentary.
-- Preserve the original Russian text exactly as it appears, including line breaks and special characters.
-- If a section appears multiple times, concatenate all relevant parts in order of appearance.
-- If a section is not found, return an empty string ("").
-- Do NOT translate, paraphrase, summarize, or modify the text.
-- Do NOT include section headings unless they are part of the original paragraph (e.g., if the text starts with "Результаты: ...", keep it).
-
-OUTPUT FORMAT:
-{{
-  "abstract": "string",
-  "experiments": "string",
-  "results": "string"
-}}
-"""
-
-validate_doc_against_repo = """
-INPUT DATA:
-{doc_info}
-
-{code_files_info}
-
-TASK:
-Compare the Russian-language documentation (which describes experiments and results) with the actual implementation in the repository code.
-
-Evaluate the following:
-- Does the code implement the methods, algorithms, system architecture, or experimental procedures described in the documentation’s "experiments" or "implementation" section?
-- Are the datasets, input formats, evaluation metrics, and key parameters consistent between the documentation and the code?
-- Can the reported results (e.g., performance numbers, outputs, behaviors) be reproduced using the provided code?
-
-Based on this comparison:
-1. Set "correspondence" to `true` if the code substantially implements what the documentation claims; otherwise `false`.
-2. Assign a "percentage" score (0.0–100.0) reflecting the degree of alignment (100.0 = full reproducibility and coverage).
-3. Write a brief "conclusion" in English explaining the score, citing specific matches or gaps (e.g., missing evaluation script, undocumented preprocessing step).
-
-RULES:
-- The documentation is in Russian—analyze its technical meaning directly; do NOT translate it unless necessary for reasoning.
-- Return ONLY a valid JSON object—no extra text, markdown, or commentary.
-- Use English for the "conclusion" field to ensure consistency in downstream processing.
-- If critical components (e.g., training loop, dataset loader, metric calculation) are absent from the code, assign a low percentage.
-- Base your judgment exclusively on the provided inputs.
-
-OUTPUT FORMAT:
-{{
-  "correspondence": bool,
-  "percentage": float,
-  "conclusion": string
-}}
-"""
+from osa_tool.validation.prompt_builder import PromptBuilder
 
 
 class DocValidator:
@@ -78,6 +16,7 @@ class DocValidator:
         self.code_analyzer = CodeAnalyzer(config_loader)
         self.config = config_loader.config
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
+        self.prompts = PromptBuilder()
 
     def describe_image(self, image_path: str):
         base64_image = self.encode_image(image_path)
@@ -97,7 +36,7 @@ class DocValidator:
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode("utf-8")
 
-    def validate(self, path_to_doc: str):
+    def validate(self, path_to_doc: str) -> None:
         try:
             # self.describe_image("/home/ilya/OSA/docx2txt-test-dir/image19.jpeg")
             doc_info = self.process_doc(path_to_doc)
@@ -108,11 +47,13 @@ class DocValidator:
         except Exception as e:
             logger.error(e)
 
-    def process_doc(self, path_to_doc: str):
+    def process_doc(self, path_to_doc: str) -> str:
         raw_content = self.parse_docx(path_to_doc)
         processed_content = self._preprocess_text(raw_content)
         logger.info("Sending request to process document's content ...")
-        response = self.model_handler.send_request(document_extract.format(doc_content=processed_content))
+        response = self.model_handler.send_request(
+            self.prompts.get_prompt_to_extract_sections_from_doc(processed_content)
+        )
         logger.debug(response)
         return response
 
@@ -139,10 +80,10 @@ class DocValidator:
 
         return text.strip()
 
-    def validate_doc_against_repo(self, doc_info: str, code_files_info: str):
+    def validate_doc_against_repo(self, doc_info: str, code_files_info: str) -> str:
         logger.info("Validating doc against repository ...")
         response = self.model_handler.send_request(
-            validate_doc_against_repo.format(doc_info=doc_info, code_files_info=code_files_info)
+            self.prompts.get_prompt_to_validate_doc_against_repo(doc_info, code_files_info)
         )
         logger.debug(response)
         return response
