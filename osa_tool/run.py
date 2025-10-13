@@ -17,6 +17,7 @@ from osa_tool.arguments_parser import (
 )
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.convertion.notebook_converter import NotebookConverter
+from osa_tool.doc_validator.doc_validator import DocValidator
 from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.docs_generator.license import compile_license_file
 from osa_tool.git_agent.git_agent import GitAgent
@@ -100,7 +101,8 @@ def main():
         if plan.get("article"):
             # TODO: modify
             rich_section("Article validation")
-            PaperValidator(config).validate(plan.get("article"))  # type: ignore
+            # PaperValidator(config).validate(plan.get("article"))  # type: ignore
+            DocValidator(config).validate(plan.get("article"))  # type: ignore
 
         return
 
