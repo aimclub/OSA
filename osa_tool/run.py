@@ -17,14 +17,12 @@ from osa_tool.arguments_parser import (
 )
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.conversion.notebook_converter import NotebookConverter
-from osa_tool.doc_validator.doc_validator import DocValidator
 from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.docs_generator.license import compile_license_file
 from osa_tool.git_agent.git_agent import GitAgent
 from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
-from osa_tool.paper_validator.paper_validator import PaperValidator
 from osa_tool.readmegen.readme_core import readme_agent
 from osa_tool.scheduler.scheduler import ModeScheduler
 from osa_tool.scheduler.workflow_manager import (
@@ -34,6 +32,8 @@ from osa_tool.scheduler.workflow_manager import (
 from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.translation.readme_translator import ReadmeTranslator
 from osa_tool.utils import delete_repository, logger, parse_folder_name, rich_section
+from osa_tool.validation.doc_validator import DocValidator
+from osa_tool.validation.paper_validator import PaperValidator
 
 
 def main():
