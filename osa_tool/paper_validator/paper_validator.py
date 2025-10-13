@@ -2,7 +2,7 @@ from pathlib import Path
 
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.convertion.notebook_converter import NotebookConverter
+from osa_tool.conversion.notebook_converter import NotebookConverter
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.context.article_content import PdfParser
 from osa_tool.readmegen.context.article_path import get_pdf_path

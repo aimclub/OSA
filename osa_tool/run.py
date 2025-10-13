@@ -16,7 +16,7 @@ from osa_tool.arguments_parser import (
     get_keys_from_group_in_yaml,
 )
 from osa_tool.config.settings import ConfigLoader, GitSettings
-from osa_tool.convertion.notebook_converter import NotebookConverter
+from osa_tool.conversion.notebook_converter import NotebookConverter
 from osa_tool.doc_validator.doc_validator import DocValidator
 from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.docs_generator.license import compile_license_file
