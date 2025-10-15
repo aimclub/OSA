@@ -22,6 +22,7 @@ class CodeAnalyzer:
         # TODO:
         # 1. Ignore tests
         # 2. Ignore __init__.py?
+        # 3. Check if notebooks are already converted
         repo_path = Path(parse_folder_name(str(self.config.git.repository))).resolve()
         code_files = []
         logger.info("Getting code files ...")

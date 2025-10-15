@@ -98,11 +98,13 @@ def main():
             if create_fork:
                 git_agent.upload_report(analytics.filename, analytics.output_path)
 
-        if plan.get("article"):
-            # TODO: modify
-            rich_section("Article validation")
-            # PaperValidator(config).validate(plan.get("article"))  # type: ignore
-            DocValidator(config).validate(plan.get("article"))  # type: ignore
+        if path_to_doc := plan.get("validate_doc"):
+            rich_section("Document validation")
+            DocValidator(config).validate(path_to_doc)
+
+        if path_to_paper := plan.get("validate_paper"):
+            rich_section("Paper validation")
+            PaperValidator(config).validate(path_to_paper)
 
         return
 
