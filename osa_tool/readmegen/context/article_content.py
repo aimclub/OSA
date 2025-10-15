@@ -1,4 +1,5 @@
 import os
+import subprocess
 from pathlib import Path
 
 import pdfplumber
@@ -126,3 +127,39 @@ class PdfParser:
             if box[0] - tol <= cx <= box[2] + tol and box[1] - tol <= cy <= box[3] + tol:
                 return True
         return False
+
+    @staticmethod
+    def extract_text_from_pdf(pdf_path: str) -> str:
+        """
+        Extract text from a PDF file using pdftotext.
+
+        Args:
+            pdf_path (str): Path to the PDF file.
+
+        Returns:
+            str: Extracted text content.
+
+        Raises:
+            RuntimeError: If pdftotext fails or is not installed.
+        """
+        try:
+            # TODO: add pdftotext dependency or remove if unused
+            result = subprocess.run(
+                [
+                    "pdftotext",
+                    "-layout",
+                    "-enc",
+                    "UTF-8" "-nopgbrk",
+                    str(pdf_path),
+                    "-",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+                encoding="utf-8",
+            )
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"pdftotext failed with error: {e.stderr}") from e
+        except FileNotFoundError:
+            raise RuntimeError("pdftotext not found. Please install poppler-utils.") from None

@@ -16,7 +16,7 @@ from osa_tool.arguments_parser import (
     get_keys_from_group_in_yaml,
 )
 from osa_tool.config.settings import ConfigLoader, GitSettings
-from osa_tool.convertion.notebook_converter import NotebookConverter
+from osa_tool.conversion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.docs_generator.license import compile_license_file
 from osa_tool.git_agent.git_agent import GitAgent
@@ -31,12 +31,9 @@ from osa_tool.scheduler.workflow_manager import (
 )
 from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.translation.readme_translator import ReadmeTranslator
-from osa_tool.utils import (
-    delete_repository,
-    logger,
-    parse_folder_name,
-    rich_section,
-)
+from osa_tool.utils import delete_repository, logger, parse_folder_name, rich_section
+from osa_tool.validation.doc_validator import DocValidator
+from osa_tool.validation.paper_validator import PaperValidator
 
 
 def main():
@@ -100,6 +97,16 @@ def main():
             analytics.build_pdf()
             if create_fork:
                 git_agent.upload_report(analytics.filename, analytics.output_path)
+
+        if path_to_doc := plan.get("validate_doc"):
+            rich_section("Document validation")
+            DocValidator(config).validate(path_to_doc)
+
+        if path_to_paper := plan.get("validate_paper"):
+            rich_section("Paper validation")
+            PaperValidator(config).validate(path_to_paper)
+
+        return
 
         # .ipynb to .py conversion
         if notebook := plan.get("convert_notebooks"):

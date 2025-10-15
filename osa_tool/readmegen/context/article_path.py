@@ -26,7 +26,7 @@ def get_pdf_path(pdf_source: str) -> str | None:
     elif os.path.isfile(pdf_source) and pdf_source.lower().endswith(".pdf"):
         return pdf_source
 
-    logger.info(f"Invalid PDF source provided: {pdf_source}. Could not locate a valid PDF.")
+    logger.error(f"Invalid PDF source provided: {pdf_source}. Could not locate a valid PDF.")
     return None
 
 
