@@ -32,14 +32,10 @@ packaging = ">=25.0"
 pandas = ">=2.2.0"
 "pdfminer.six" = "==20231228"
 pdfplumber = ">=0.11.0"
-pipreqs = ">=0.5.0"
 protollm = ">=0.1.5"
 prompt_toolkit = ">=3.0.50"
 Pygments = ">=2.18.0"
 pydantic = ">=2.9.0,<3.0.0"
-pytest = ">=8.3.0"
-pytest-asyncio = ">=1.0.0"
-pytest-mock = ">=3.12.0"
 python-dotenv = "==1.0.1"
 PyYAML = "==6.0.2"
 qrcode = ">=7.4.0"
@@ -52,10 +48,12 @@ tiktoken = ">=0.8.0"
 tomli = ">=2.0.0"
 tree-sitter = ">=0.23.0"
 tree-sitter-python = ">=0.23.0"
-pipreqs = { version = "~=0.5.0", python = "<3.13" }
+pipreqs = { version = ">=0.5.0", python = "<3.13" }
 
 [tool.poetry.group.dev.dependencies]
-pytest = "8.3.4"
+pytest = ">=8.3.0"
+pytest-asyncio = ">=1.0.0"
+pytest-mock = ">=3.12.0"
 
 [project.scripts]
 osa-tool = "osa_tool.run:main"
