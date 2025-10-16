@@ -1,0 +1,11 @@
+unit_test:
+  stage: test
+  parallel:
+    matrix:
+      {matrix_yaml}
+  image: python:${{PYTHON_VERSION}}
+  before_script:
+    - pip install -r requirements.txt pytest
+  script:
+    - pytest {test_dir}
+{branches_section}

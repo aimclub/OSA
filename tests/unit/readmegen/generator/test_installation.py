@@ -122,13 +122,13 @@ def test_build_installation_with_python_version(mock_installation_builder):
 
 
 def test_installation_builder_with_minimal_repo_tree(
-    mock_config_loader, load_metadata_installation, sourcerank_with_repo_tree
+    mock_config_loader, mock_repository_metadata, sourcerank_with_repo_tree
 ):
     # Arrange
     repo_tree_data = get_mock_repo_tree("MINIMAL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
-    builder = InstallationSectionBuilder(mock_config_loader)
+    builder = InstallationSectionBuilder(mock_config_loader, mock_repository_metadata)
     builder.sourcerank = sourcerank
 
     # Assert

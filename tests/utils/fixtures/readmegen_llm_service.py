@@ -21,12 +21,12 @@ def mock_model_handler():
 
 @pytest.fixture
 def llm_client(
-    mock_config_loader, prompt_builder, sourcerank_with_repo_tree, load_metadata_prompts, mock_model_handler
+    mock_config_loader, prompt_builder, sourcerank_with_repo_tree, mock_repository_metadata, mock_model_handler
 ):
     repo_tree_data = get_mock_repo_tree("FULL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
-    client = LLMClient(mock_config_loader)
+    client = LLMClient(mock_config_loader, mock_repository_metadata)
     client.model_handler = mock_model_handler()
     client.sourcerank = sourcerank
     client.tree = sourcerank.tree

@@ -1,5 +1,6 @@
 import json
 
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.generator.base_builder import MarkdownBuilderBase
 
@@ -12,12 +13,13 @@ class MarkdownBuilderArticle(MarkdownBuilderBase):
     def __init__(
         self,
         config_loader: ConfigLoader,
+        metadata: RepositoryMetadata,
         overview: str = None,
         content: str = None,
         algorithms: str = None,
         getting_started: str = None,
     ):
-        super().__init__(config_loader, overview=overview, getting_started=getting_started)
+        super().__init__(config_loader, metadata, overview=overview, getting_started=getting_started)
         self._content_json = content
         self._algorithms_json = algorithms
 

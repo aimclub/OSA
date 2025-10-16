@@ -3,7 +3,7 @@ import os
 
 from pydantic import ValidationError
 
-from osa_tool.analytics.metadata import load_data_metadata
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
@@ -21,18 +21,24 @@ class ModeScheduler:
     based on repository analysis, configuration, and selected execution mode.
     """
 
-    def __init__(self, config: ConfigLoader, sourcerank: SourceRank, args, workflow_keys: list):
+    def __init__(
+        self,
+        config: ConfigLoader,
+        sourcerank: SourceRank,
+        args,
+        workflow_manager: WorkflowManager,
+        metadata: RepositoryMetadata,
+    ):
         self.mode = args.mode
         self.args = args
-        self.workflow_keys = workflow_keys
         self.config = config.config
         self.sourcerank = sourcerank
+        self.workflow_manager = workflow_manager
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.repo_url = self.config.git.repository
-        self.metadata = load_data_metadata(self.repo_url)
+        self.metadata = metadata
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.prompts = PromptLoader().prompts
-        self.workflows_plan = {key: value for key, value in vars(self.args).items() if key in self.workflow_keys}
         self.plan = self._select_plan()
 
     @staticmethod
@@ -71,14 +77,7 @@ class ModeScheduler:
             if not self.sourcerank.requirements_presence():
                 auto_plan["requirements"] = True
 
-            workflow_manager = WorkflowManager(
-                base_path=self.base_path,
-                sourcerank=self.sourcerank,
-                metadata=self.metadata,
-                workflows_plan=self.workflows_plan,
-            )
-
-            actual_workflows_plan = workflow_manager.build_actual_plan()
+            actual_workflows_plan = self.workflow_manager.build_actual_plan(self.sourcerank)
 
             for key, value in actual_workflows_plan.items():
                 auto_plan[key] = value
@@ -98,8 +97,7 @@ class ModeScheduler:
 
             updated_plan = web_plan_handler.get_updated_plan()
             return updated_plan
-
-        return PlanEditor(self.workflow_keys).confirm_action(plan)
+        return PlanEditor(self.workflow_manager.workflow_keys).confirm_action(plan)
 
     def _make_request_for_auto_mode(self) -> dict:
         """
