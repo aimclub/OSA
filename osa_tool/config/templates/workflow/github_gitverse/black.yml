@@ -1,0 +1,9 @@
+name: {name}
+on:
+{on_section}
+jobs:
+  lint:
+    name: {job_name}
+    runs-on: ubuntu-latest
+    steps:
+      {steps}

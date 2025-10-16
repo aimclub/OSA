@@ -1,3 +1,4 @@
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
@@ -11,10 +12,10 @@ from osa_tool.utils import logger
 
 
 class LLMClient:
-    def __init__(self, config_loader: ConfigLoader):
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
         self.config_loader = config_loader
         self.config = self.config_loader.config
-        self.prompts = PromptBuilder(config_loader)
+        self.prompts = PromptBuilder(config_loader, metadata)
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.sourcerank = SourceRank(config_loader)
         self.tree = self.sourcerank.tree

@@ -283,7 +283,7 @@ class PlanEditor:
 
     def _append_workflow_section(self, table: Table, plan: dict, active: bool) -> None:
         """
-        Append a GitHub Workflows section to a table if workflows are enabled.
+        Append a Workflows section to a table if workflows are enabled.
 
         Args:
             table: Rich table object.
@@ -303,7 +303,7 @@ class PlanEditor:
                 return
 
             table.add_row("", "")
-            table.add_row("[bold]GitHub Workflows actions[/bold]", "")
+            table.add_row("[bold]Workflows actions[/bold]", "")
 
             for key in self.workflow_keys:
                 value = plan.get(key)
@@ -323,7 +323,7 @@ class PlanEditor:
                 return
 
             table.add_row("", "")
-            table.add_row("[bold]GitHub Workflows actions[/bold]", "")
+            table.add_row("[bold]Workflows actions[/bold]", "")
 
             for key in self.workflow_keys:
                 value = plan.get(key)

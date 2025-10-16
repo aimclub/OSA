@@ -1,0 +1,17 @@
+name: {name}
+on:
+  issue_comment:
+    types: ["created"]
+permissions:
+  contents: {permission}
+jobs:
+  slashCommandDispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Slash Command Dispatch"
+        uses: peter-evans/slash-command-dispatch@v3
+        with:
+          token: "${{ secrets.REPO_ACCESS_TOKEN }}"
+          commands: {commands}
+          permission: {permission}
+          issue-type: "pull-request"

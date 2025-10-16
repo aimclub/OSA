@@ -2,6 +2,7 @@ import asyncio
 import os
 import shutil
 
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandlerFactory, ModelHandler
 from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
@@ -11,11 +12,12 @@ from osa_tool.utils import parse_folder_name, logger
 
 
 class ReadmeTranslator:
-    def __init__(self, config_loader: ConfigLoader, languages: list[str]):
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata, languages: list[str]):
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.rate_limit = self.config.llm.rate_limit
         self.languages = languages
+        self.metadata = metadata
         self.repo_url = self.config.git.repository
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
@@ -24,7 +26,9 @@ class ReadmeTranslator:
         self, readme_content: str, target_language: str, semaphore: asyncio.Semaphore
     ) -> dict:
         """Asynchronous request to translate README content via LLM."""
-        prompt = PromptBuilder(self.config_loader).get_prompt_translate_readme(readme_content, target_language)
+        prompt = PromptBuilder(self.config_loader, self.metadata).get_prompt_translate_readme(
+            readme_content, target_language
+        )
         async with semaphore:
             response = await self.model_handler.async_request(prompt)
 

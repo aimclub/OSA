@@ -17,7 +17,7 @@ from reportlab.platypus import (
     Flowable,
 )
 
-from osa_tool.analytics.metadata import load_data_metadata
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.report_generator import TextGenerator
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
@@ -26,17 +26,13 @@ from osa_tool.utils import logger, osa_project_root
 
 class ReportGenerator:
 
-    def __init__(
-        self,
-        config_loader: ConfigLoader,
-        sourcerank: SourceRank,
-    ):
+    def __init__(self, config_loader: ConfigLoader, sourcerank: SourceRank, metadata: RepositoryMetadata):
         self.config = config_loader.config
         self.sourcerank = sourcerank
-        self.text_generator = TextGenerator(config_loader, self.sourcerank)
+        self.metadata = metadata
+        self.text_generator = TextGenerator(config_loader, self.sourcerank, self.metadata)
         self.repo_url = self.config.git.repository
         self.osa_url = "https://github.com/aimclub/OSA"
-        self.metadata = load_data_metadata(self.repo_url)
 
         self.logo_path = os.path.join(osa_project_root(), "docs", "images", "osa_logo.PNG")
 

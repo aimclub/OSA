@@ -3,7 +3,7 @@ import os
 import tomli as tomllib
 from pydantic import ValidationError
 
-from osa_tool.analytics.metadata import load_data_metadata
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.prompt_builder import (
     RepositoryReport,
     RepositoryStructure,
@@ -19,12 +19,12 @@ from osa_tool.utils import extract_readme_content, osa_project_root, parse_folde
 
 
 class TextGenerator:
-    def __init__(self, config_loader: ConfigLoader, sourcerank: SourceRank):
+    def __init__(self, config_loader: ConfigLoader, sourcerank: SourceRank, metadata: RepositoryMetadata):
         self.config = config_loader.config
         self.sourcerank = sourcerank
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.repo_url = self.config.git.repository
-        self.metadata = load_data_metadata(self.repo_url)
+        self.metadata = metadata
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.prompt_path = os.path.join(osa_project_root(), "config", "settings", "prompt_for_analysis.toml")
 

@@ -3,7 +3,7 @@ import os
 
 import tomli
 
-from osa_tool.analytics.metadata import load_data_metadata
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.context.dependencies import DependencyExtractor
@@ -12,13 +12,13 @@ from osa_tool.utils import osa_project_root, parse_folder_name
 
 
 class HeaderBuilder:
-    def __init__(self, config_loader: ConfigLoader):
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.repo_url = self.config.git.repository
         self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.tree = SourceRank(self.config_loader).tree
-        self.metadata = load_data_metadata(self.repo_url)
+        self.metadata = metadata
         self.template_path = os.path.join(osa_project_root(), "config", "templates", "template.toml")
         self.icons_tech_path = os.path.join(
             osa_project_root(),

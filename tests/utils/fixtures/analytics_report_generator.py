@@ -9,7 +9,6 @@ from osa_tool.analytics.report_generator import TextGenerator
 def text_generator_instance(mock_config_loader, mock_sourcerank, mock_repository_metadata):
     sourcerank_instance = mock_sourcerank()
     with (
-        patch("osa_tool.analytics.report_generator.load_data_metadata", return_value=mock_repository_metadata),
         patch("osa_tool.analytics.report_generator.ModelHandlerFactory.build") as mock_model_handler_factory,
         patch("osa_tool.analytics.report_generator.extract_readme_content", return_value="Sample README content"),
         patch(
@@ -28,4 +27,6 @@ def text_generator_instance(mock_config_loader, mock_sourcerank, mock_repository
 
         mock_model_handler_factory.return_value = mock_model_handler
 
-        yield TextGenerator(config_loader=mock_config_loader, sourcerank=sourcerank_instance), mock_model_handler
+        yield TextGenerator(
+            config_loader=mock_config_loader, sourcerank=sourcerank_instance, metadata=mock_repository_metadata
+        ), mock_model_handler

@@ -2,12 +2,12 @@ import os
 
 import tomli
 
-from osa_tool.analytics.metadata import load_data_metadata
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.utils import osa_project_root, logger
 
 
-def compile_license_file(sourcerank: SourceRank, ensure_license):
+def compile_license_file(sourcerank: SourceRank, ensure_license, metadata: RepositoryMetadata):
     """
     Compiles a license file for a software project using a specified template.
 
@@ -18,6 +18,7 @@ def compile_license_file(sourcerank: SourceRank, ensure_license):
     Parameters:
         - sourcerank: SourceRank object containing metadata about the software project.
         - ensure_license: License type provided by user.
+        - metadata: Git repository metadata.
 
     Returns:
         None. The compiled license file is saved in the repository directory of the SourceRank object.
@@ -27,7 +28,7 @@ def compile_license_file(sourcerank: SourceRank, ensure_license):
             logger.info("LICENSE file already exists.")
         else:
             logger.info("LICENSE was not resolved, compiling started...")
-            metadata = load_data_metadata(sourcerank.repo_url)
+            metadata = metadata
             license_template_path = os.path.join(osa_project_root(), "docs", "templates", "licenses.toml")
             with open(license_template_path, "rb") as f:
                 license_template = tomli.load(f)

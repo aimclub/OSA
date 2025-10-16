@@ -11,24 +11,18 @@ from pydantic import ValidationError
 from osa_tool.aboutgen.about_generator import AboutGenerator
 from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.arguments_parser import (
-    build_parser_from_yaml,
-    get_keys_from_group_in_yaml,
-)
+from osa_tool.arguments_parser import build_parser_from_yaml
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.convertion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.docs_generator.license import compile_license_file
-from osa_tool.git_agent.git_agent import GitAgent
+from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent
 from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 from osa_tool.readmegen.readme_core import readme_agent
 from osa_tool.scheduler.scheduler import ModeScheduler
-from osa_tool.scheduler.workflow_manager import (
-    generate_github_workflows,
-    update_workflow_config,
-)
+from osa_tool.scheduler.workflow_manager import GitHubWorkflowManager, GitLabWorkflowManager, GitverseWorkflowManager
 from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.translation.readme_translator import ReadmeTranslator
 from osa_tool.utils import (
@@ -49,7 +43,6 @@ def main():
     # Create a command line argument parser
     parser = build_parser_from_yaml()
     args = parser.parse_args()
-    workflow_keys = get_keys_from_group_in_yaml("workflow")
     create_fork = not args.no_fork
     create_pull_request = not args.no_pull_request
 
@@ -77,8 +70,17 @@ def main():
             top_p=args.top_p,
         )
 
-        # Initialize Git agent and perform operations
-        git_agent = GitAgent(args.repository, args.branch)
+        # Initialize Git agent and Workflow Manager for used platform, perform operations
+        if "github.com" in args.repository:
+            git_agent = GitHubAgent(args.repository, args.branch)
+            workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
+        elif "gitlab.com" in args.repository:
+            git_agent = GitLabAgent(args.repository, args.branch)
+            workflow_manager = GitLabWorkflowManager(args.repository, git_agent.metadata, args)
+        elif "gitverse.ru" in args.repository:
+            git_agent = GitverseAgent(args.repository, args.branch)
+            workflow_manager = GitverseWorkflowManager(args.repository, git_agent.metadata, args)
+
         if create_fork:
             git_agent.star_repository()
             git_agent.create_fork()
@@ -86,7 +88,7 @@ def main():
 
         # Initialize ModeScheduler
         sourcerank = SourceRank(config)
-        scheduler = ModeScheduler(config, sourcerank, args, workflow_keys)
+        scheduler = ModeScheduler(config, sourcerank, args, workflow_manager, git_agent.metadata)
         plan = scheduler.plan
 
         if create_fork:
@@ -96,7 +98,7 @@ def main():
         # NOTE: Must run first - switches GitHub branches
         if plan.get("report"):
             rich_section("Report generation")
-            analytics = ReportGenerator(config, sourcerank)
+            analytics = ReportGenerator(config, sourcerank, git_agent.metadata)
             analytics.build_pdf()
             if create_fork:
                 git_agent.upload_report(analytics.filename, analytics.output_path)
@@ -120,12 +122,12 @@ def main():
         # License compiling
         if license_type := plan.get("ensure_license"):
             rich_section("License generation")
-            compile_license_file(sourcerank, license_type)
+            compile_license_file(sourcerank, license_type, git_agent.metadata)
 
         # Generate community documentation
         if plan.get("community_docs"):
             rich_section("Community docs generation")
-            generate_documentation(config)
+            generate_documentation(config, git_agent.metadata)
 
         # Requirements generation
         if plan.get("requirements"):
@@ -135,30 +137,30 @@ def main():
         # Readme generation
         if plan.get("readme"):
             rich_section("README generation")
-            readme_agent(config, plan.get("article"), plan.get("refine_readme"))
+            readme_agent(config, plan.get("article"), plan.get("refine_readme"), git_agent.metadata)
 
         # Readme translation
         translate_readme = plan.get("translate_readme")
         if translate_readme:
             rich_section("README translation")
-            ReadmeTranslator(config, translate_readme).translate_readme()
+            ReadmeTranslator(config, git_agent.metadata, translate_readme).translate_readme()
 
         # About section generation
         about_gen = None
         if plan.get("about"):
             rich_section("About Section generation")
-            about_gen = AboutGenerator(config)
+            about_gen = AboutGenerator(config, git_agent)
             about_gen.generate_about_content()
             if create_fork:
                 git_agent.update_about_section(about_gen.get_about_content())
             if not create_pull_request:
                 logger.info("About section:\n" + about_gen.get_about_section_message())
 
-        # Generate GitHub workflows
+        # Generate platform-specified CI/CD files
         if plan.get("generate_workflows"):
             rich_section("Workflows generation")
-            update_workflow_config(config, plan, workflow_keys)
-            generate_github_workflows(config)
+            workflow_manager.update_workflow_config(config, plan)
+            workflow_manager.generate_workflow(config)
 
         # Organize repository by adding 'tests' and 'examples' directories if they aren't exist
         if plan.get("organize"):
