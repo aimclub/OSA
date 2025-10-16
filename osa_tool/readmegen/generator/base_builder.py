@@ -102,7 +102,7 @@ class MarkdownBuilderBase:
             path = self.url_path + self.branch_path + find_in_repo_tree(self.sourcerank.tree, pattern)
             return self._template["citation"] + self._template["citation_v1"].format(path=path)
 
-        llm_client = LLMClient(self.config_loader)
+        llm_client = LLMClient(self.config_loader, self.metadata)
         citation_from_readme = llm_client.get_citation_from_readme()
 
         if citation_from_readme:

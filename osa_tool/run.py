@@ -238,11 +238,11 @@ def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEvent
 
     sem = asyncio.Semaphore(100)
     workers = multiprocessing.cpu_count()
+    repo_url = config_loader.config.git.repository
+    repo_path = parse_folder_name(repo_url)
 
     try:
-        repo_url = config_loader.config.git.repository
         rate_limit = config_loader.config.llm.rate_limit
-        repo_path = parse_folder_name(repo_url)
         ts = OSA_TreeSitter(repo_path)
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen(config_loader)

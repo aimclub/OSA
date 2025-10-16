@@ -15,6 +15,7 @@ def readme_agent(config_loader, article: str | None, refine_readme: bool, metada
         config_loader: The configuration object which contains settings for osa_tool.
         article: Optional link to the pdf file of the article.
         refine_readme: Optional flag for refinement README.
+        metadata: Git repository metadata.
 
     Raises:
         Exception: If an error occurs during README.md generation.

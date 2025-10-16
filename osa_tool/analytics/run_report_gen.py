@@ -89,7 +89,7 @@ def main():
 
         # Initialize analytics and generate report
         sourcerank = SourceRank(config)
-        analytics = ReportGenerator(config, sourcerank)
+        analytics = ReportGenerator(config, sourcerank, git_agent.metadata)
         analytics.output_path = os.path.join(reports_dir, f"{analytics.metadata.name}_report.pdf")
         analytics.build_pdf()
 
