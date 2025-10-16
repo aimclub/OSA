@@ -1,12 +1,11 @@
 import asyncio
-import json
 import os
 import shutil
 
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandlerFactory, ModelHandler
-from osa_tool.readmegen.postprocessor.response_cleaner import process_text
+from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
 from osa_tool.readmegen.prompts.prompts_builder import PromptBuilder
 from osa_tool.readmegen.utils import read_file, save_sections, remove_extra_blank_lines
 from osa_tool.utils import parse_folder_name, logger
@@ -32,18 +31,17 @@ class ReadmeTranslator:
         )
         async with semaphore:
             response = await self.model_handler.async_request(prompt)
-        try:
-            response = process_text(response)
-            result = json.loads(response)
-        except (json.JSONDecodeError, ValueError):
-            logger.warning(f"LLM response for '{target_language}' is not valid JSON, applying fallback")
-            result = {
-                "content": response.strip(),
-                "suffix": target_language[:2].lower(),
-            }
 
-        result["target_language"] = target_language
-        return result
+        parsed = JsonProcessor.parse(response, expected_type=dict)
+
+        if not isinstance(parsed, dict):
+            parsed = {"content": str(parsed).strip(), "suffix": target_language[:2].lower()}
+
+        parsed.setdefault("content", parsed.get("raw", "").strip())
+        parsed.setdefault("suffix", target_language[:2].lower())
+        parsed["target_language"] = target_language
+
+        return parsed
 
     async def translate_readme_async(self) -> None:
         """

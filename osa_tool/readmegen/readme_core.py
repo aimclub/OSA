@@ -15,6 +15,7 @@ def readme_agent(config_loader, article: str | None, refine_readme: bool, metada
         config_loader: The configuration object which contains settings for osa_tool.
         article: Optional link to the pdf file of the article.
         refine_readme: Optional flag for refinement README.
+        metadata: Git repository metadata.
 
     Raises:
         Exception: If an error occurs during README.md generation.
@@ -41,7 +42,8 @@ def readme_agent(config_loader, article: str | None, refine_readme: bool, metada
 
         if refine_readme:
             readme_content = llm_client.refine_readme(readme_content)
-            readme_content = llm_client.clean(readme_content)
+
+        readme_content = llm_client.clean(readme_content)
 
         save_sections(readme_content, file_to_save)
         remove_extra_blank_lines(file_to_save)

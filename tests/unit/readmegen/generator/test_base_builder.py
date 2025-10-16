@@ -1,4 +1,3 @@
-import json
 from unittest.mock import patch
 
 import pytest
@@ -31,8 +30,7 @@ def test_load_template_file_not_found(builder):
 
 def test_overview_section(builder):
     # Arrange
-    overview_data = {"overview": "This is a test overview"}
-    builder._overview_json = json.dumps(overview_data)
+    builder._overview = "This is a test overview"
 
     # Act
     result = builder.overview
@@ -44,8 +42,7 @@ def test_overview_section(builder):
 
 def test_getting_started_section(builder):
     # Arrange
-    getting_started_data = {"getting_started": "Run `make install`"}
-    builder._getting_started_json = json.dumps(getting_started_data)
+    builder._getting_started = "Run `make install`"
 
     # Act
     result = builder.getting_started
@@ -133,7 +130,7 @@ def test_license_section_empty(builder, sourcerank_with_repo_tree):
 
 
 def test_citation_section_with_file(builder, sourcerank_with_repo_tree):
-    # Assert
+    # Arrange
     repo_tree_data = get_mock_repo_tree("FULL")
     builder.sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
@@ -147,17 +144,13 @@ def test_citation_section_with_file(builder, sourcerank_with_repo_tree):
 
 
 def test_citation_section_with_llm(builder, sourcerank_with_repo_tree, llm_client, mock_model_handler):
-    # Assert
+    # Arrange
     repo_tree_data = get_mock_repo_tree("MINIMAL")
     builder.sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
     llm_client.model_handler = mock_model_handler(side_effect=['{"citation": "LLM CITATION"}'])
-    with (
-        patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process,
-        patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client),
-    ):
-        mock_process.side_effect = lambda x: x
 
+    with patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client):
         # Act
         result = builder.citation
 
@@ -172,12 +165,8 @@ def test_citation_section_fallback(builder, sourcerank_with_repo_tree, llm_clien
     builder.sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
     llm_client.model_handler = mock_model_handler(side_effect=['{"citation": ""}'])
-    with (
-        patch("osa_tool.readmegen.models.llm_service.process_text") as mock_process,
-        patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client),
-    ):
-        mock_process.side_effect = lambda x: x
 
+    with patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client):
         # Act
         result = builder.citation
 

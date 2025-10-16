@@ -1,13 +1,10 @@
-import json
 import os
-
-from pydantic import ValidationError
 
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
-from osa_tool.readmegen.postprocessor.response_cleaner import process_text
+from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
 from osa_tool.scheduler.prompts import PromptConfig, PromptLoader
 from osa_tool.scheduler.workflow_manager import WorkflowManager
 from osa_tool.ui.plan_editor import PlanEditor
@@ -115,11 +112,7 @@ class ModeScheduler:
         )
 
         response = self.model_handler.send_request(formatted_prompt)
-        cleaned_response = process_text(response)
+        parsed_json = JsonProcessor.parse(response, expected_type=dict)
 
-        try:
-            parsed_json = json.loads(cleaned_response)
-            validated_data = PromptConfig.safe_validate(parsed_json)
-            return validated_data.model_dump()
-        except (ValidationError, json.JSONDecodeError) as e:
-            raise ValueError(f"JSON parsing error: {e}")
+        validated_data = PromptConfig.safe_validate(parsed_json)
+        return validated_data.model_dump()
