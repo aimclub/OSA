@@ -14,7 +14,10 @@ class PaperValidator:
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.prompts = PromptBuilder()
 
-    def validate(self, article:str) -> None:
+    def validate(self, article: str | None) -> None:
+        if not article:
+            logger.error("Article is missing! Please pass it using --article argument.")
+            return
         try:
             paper_info = self.process_paper(article)
             code_files = self.code_analyzer.get_code_files()

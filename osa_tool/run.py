@@ -102,9 +102,9 @@ def main():
             rich_section("Document validation")
             DocValidator(config).validate(path_to_doc)
 
-        if path_to_paper := plan.get("validate_paper"):
+        if plan.get("validate_paper"):
             rich_section("Paper validation")
-            PaperValidator(config).validate(path_to_paper)
+            PaperValidator(config).validate(plan.get("article"))
 
         return
 

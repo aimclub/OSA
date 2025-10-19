@@ -168,10 +168,8 @@ about:
 
 validate_paper:
   aliases: ["--validate-paper"]
-  type: str
+  type: flag
   description: "Check whether the experiments proposed in an attached research paper can be reproduced using the selected repository."
-  const: ""
-  example: "path/to/file"
 
 validate_doc:
   aliases: ["--validate-doc"]
