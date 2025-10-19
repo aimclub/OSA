@@ -19,21 +19,37 @@ class CodeAnalyzer:
         self.tree = self.sourcerank.tree
 
     def get_code_files(self) -> list[str]:
-        # TODO:
-        # 1. Ignore tests
-        # 2. Ignore __init__.py?
-        # 3. Check if notebooks are already converted
         repo_path = Path(parse_folder_name(str(self.config.git.repository))).resolve()
         code_files = []
         logger.info("Getting code files ...")
         for filename in self.tree.split("\n"):
-            if ".ipynb" in filename:
+            if self._is_file_ignored(filename):
+                logger.debug(f"File '{filename}' is ignored")
+                continue
+            if filename.endswith(".ipynb"):
                 logger.info("Found .ipynb file, converting ...")
                 self.notebook_convertor.convert_notebook(str(repo_path.joinpath(filename)))
                 code_files.append(str(repo_path.joinpath(filename.replace(".ipynb", ".py"))))
-            if ".py" in filename:
+            if filename.endswith(".py"):
                 code_files.append(str(repo_path.joinpath(filename)))
+        print(code_files)
         return code_files
+
+    def _is_file_ignored(self, filename: str) -> bool:
+        IGNORE_LIST = (
+            "__init__.py",
+            "setup.py",
+            "conftest.py",
+            "manage.py",
+            "migrations",
+            "tests",
+            "test",
+            "test_" "__pycache__",
+            ".pytest_cache",
+            ".pyo",
+            ".pyc",
+        )
+        return any(pattern in filename for pattern in IGNORE_LIST)
 
     def process_code_files(self, code_files: list[str]) -> str:
         result = ""
