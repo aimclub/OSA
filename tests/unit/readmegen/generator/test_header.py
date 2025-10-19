@@ -175,11 +175,11 @@ def test_generate_tech_badges_respects_max_limit(mock_header_builder):
     assert isinstance(badges, str)
 
 
-def test_header_builder_with_minimal_repo_tree(mock_config_loader, load_metadata_header, sourcerank_with_repo_tree):
+def test_header_builder_with_minimal_repo_tree(mock_config_loader, mock_repository_metadata, sourcerank_with_repo_tree):
     # Arrange
     repo_tree_data = get_mock_repo_tree("MINIMAL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
-    builder = HeaderBuilder(mock_config_loader)
+    builder = HeaderBuilder(mock_config_loader, mock_repository_metadata)
     builder.sourcerank = sourcerank
 
     # Assert

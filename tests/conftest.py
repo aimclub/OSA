@@ -54,6 +54,7 @@ def mock_config_loader(data_factory, request):
 
     # Set fake API key for tests
     os.environ["OPENAI_API_KEY"] = "fake-key-for-tests"
+    os.environ["GIT_TOKEN"] = "fake_token"
 
     # Patch the original ConfigLoader
     with (patch("osa_tool.config.settings.ConfigLoader", return_value=mock_loader),):
@@ -136,37 +137,10 @@ def mock_repository_metadata(data_factory, repo_info):
     return data_factory.generate_repository_metadata(platform, owner, repo_name, repo_url)
 
 
-def create_load_metadata_fixture(target_path: str):
-    @pytest.fixture
-    def _fixture(mock_repository_metadata):
-        with patch(target_path, return_value=mock_repository_metadata) as mock_func:
-            yield mock_func
-
-    return _fixture
-
-
-# aboutgen module
-load_metadata_about_generator = create_load_metadata_fixture("osa_tool.aboutgen.about_generator.load_data_metadata")
-# analytics module
-load_metadata_report_maker = create_load_metadata_fixture("osa_tool.analytics.report_maker.load_data_metadata")
-load_metadata_report_generator = create_load_metadata_fixture("osa_tool.analytics.report_generator.load_data_metadata")
-# docs_generator module
-load_metadata_community = create_load_metadata_fixture("osa_tool.docs_generator.community.load_data_metadata")
-load_metadata_contributing = create_load_metadata_fixture("osa_tool.docs_generator.contributing.load_data_metadata")
-load_metadata_license = create_load_metadata_fixture("osa_tool.docs_generator.license.load_data_metadata")
-# scheduler
-load_metadata_workflow_manager = create_load_metadata_fixture("osa_tool.scheduler.workflow_manager.load_data_metadata")
-load_metadata_scheduler = create_load_metadata_fixture("osa_tool.scheduler.scheduler.load_data_metadata")
-# readmegen/generator
-load_metadata_base_builder = create_load_metadata_fixture(
-    "osa_tool.readmegen.generator.base_builder.load_data_metadata"
-)
-load_metadata_header = create_load_metadata_fixture("osa_tool.readmegen.generator.header.load_data_metadata")
-load_metadata_installation = create_load_metadata_fixture(
-    "osa_tool.readmegen.generator.installation.load_data_metadata"
-)
-# readmegen/prompts
-load_metadata_prompts = create_load_metadata_fixture("osa_tool.readmegen.prompts.prompts_builder.load_data_metadata")
+@pytest.fixture
+def mock_api_raw_data(data_factory, repo_info):
+    platform, owner, repo_name, repo_url = repo_info
+    return data_factory.generate_repository_metadata_raw(platform, owner, repo_name, repo_url)
 
 
 @pytest.fixture

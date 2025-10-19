@@ -1,4 +1,3 @@
-import json
 import os
 import re
 from functools import cached_property
@@ -6,7 +5,7 @@ from functools import cached_property
 import requests
 import tomli
 
-from osa_tool.analytics.metadata import load_data_metadata
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.generator.header import HeaderBuilder
@@ -17,20 +16,20 @@ from osa_tool.utils import osa_project_root
 
 
 class MarkdownBuilderBase:
-    def __init__(self, config_loader: ConfigLoader, overview=None, getting_started=None):
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata, overview=None, getting_started=None):
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.sourcerank = SourceRank(self.config_loader)
         self.repo_url = self.config.git.repository
-        self.metadata = load_data_metadata(self.repo_url)
+        self.metadata = metadata
         self.url_path = f"https://{self.config.git.host_domain}/{self.config.git.full_name}/"
         self.branch_path = f"tree/{self.metadata.default_branch}/"
 
-        self._overview_json = overview
-        self._getting_started_json = getting_started
+        self._overview = overview
+        self._getting_started = getting_started
 
-        self.header = HeaderBuilder(self.config_loader).build_header()
-        self.installation = InstallationSectionBuilder(self.config_loader).build_installation()
+        self.header = HeaderBuilder(self.config_loader, self.metadata).build_header()
+        self.installation = InstallationSectionBuilder(self.config_loader, self.metadata).build_installation()
 
         self.template_path = os.path.join(osa_project_root(), "config", "templates", "template.toml")
         self._template = self.load_template()
@@ -50,21 +49,16 @@ class MarkdownBuilderBase:
     @property
     def overview(self) -> str:
         """Generates the README Overview section"""
-        if not self._overview_json:
+        if not self._overview:
             return ""
-        overview_data = json.loads(self._overview_json)
-        return self._template["overview"].format(overview_data["overview"])
+        return self._template["overview"].format(self._overview)
 
     @property
     def getting_started(self) -> str:
         """Generates the README Getting Started section"""
-        if not self._getting_started_json:
+        if not self._getting_started:
             return ""
-
-        getting_started_text = json.loads(self._getting_started_json)
-        if not getting_started_text["getting_started"]:
-            return ""
-        return self._template["getting_started"].format(getting_started_text["getting_started"])
+        return self._template["getting_started"].format(self._getting_started)
 
     @property
     def examples(self) -> str:
@@ -108,7 +102,7 @@ class MarkdownBuilderBase:
             path = self.url_path + self.branch_path + find_in_repo_tree(self.sourcerank.tree, pattern)
             return self._template["citation"] + self._template["citation_v1"].format(path=path)
 
-        llm_client = LLMClient(self.config_loader)
+        llm_client = LLMClient(self.config_loader, self.metadata)
         citation_from_readme = llm_client.get_citation_from_readme()
 
         if citation_from_readme:

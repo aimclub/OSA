@@ -40,10 +40,9 @@ requirements = false
 organize = false
 about = false
 
-# GitHub Actions Workflow Settings
+#Workflow Settings
 [workflows]
 generate_workflows = false
-output_dir = ".github/workflows"
 include_tests = true
 include_black = true
 include_pep8 = true
