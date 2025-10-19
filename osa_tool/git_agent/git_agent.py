@@ -599,7 +599,7 @@ class GitAgent:
         report_filename: str,
         report_filepath: str,
         report_branch: str = "osa_tool_attachments",
-        commit_message: str = "upload pdf report",
+        commit_message: str = "docs: upload pdf report",
     ) -> None:
         """Uploads the generated PDF report to a separate branch.
 
