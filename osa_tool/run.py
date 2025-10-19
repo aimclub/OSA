@@ -34,6 +34,9 @@ from osa_tool.translation.readme_translator import ReadmeTranslator
 from osa_tool.utils import delete_repository, logger, parse_folder_name, rich_section
 from osa_tool.validation.doc_validator import DocValidator
 from osa_tool.validation.paper_validator import PaperValidator
+from osa_tool.validation.report_generator import (
+    ReportGenerator as ValidationReportGenerator,
+)
 
 
 def main():
@@ -98,15 +101,23 @@ def main():
             if create_fork:
                 git_agent.upload_report(analytics.filename, analytics.output_path)
 
+        # NOTE: Must run first - switches GitHub branches
         if path_to_doc := plan.get("validate_doc"):
             rich_section("Document validation")
-            DocValidator(config).validate(path_to_doc)
+            content = DocValidator(config).validate(path_to_doc)
+            va_re_gen = ValidationReportGenerator(config, sourcerank)
+            va_re_gen.build_pdf("Document", content)
+            if create_fork:
+                git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
 
+        # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_paper"):
             rich_section("Paper validation")
-            PaperValidator(config).validate(plan.get("article"))
-
-        return
+            content = PaperValidator(config).validate(plan.get("article"))
+            va_re_gen = ValidationReportGenerator(config, sourcerank)
+            va_re_gen.build_pdf("Paper", content)
+            if create_fork:
+                git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
 
         # .ipynb to .py conversion
         if notebook := plan.get("convert_notebooks"):
