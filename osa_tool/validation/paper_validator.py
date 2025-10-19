@@ -14,18 +14,18 @@ class PaperValidator:
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.prompts = PromptBuilder()
 
-    def validate(self, article: str | None) -> None:
+    def validate(self, article: str | None) -> str:
         if not article:
-            logger.error("Article is missing! Please pass it using --article argument.")
-            return
+            raise ValueError("Article is missing! Please pass it using --article argument.")
         try:
             paper_info = self.process_paper(article)
             code_files = self.code_analyzer.get_code_files()
             code_files_info = self.code_analyzer.process_code_files(code_files)
             result = self.validate_paper_against_repo(paper_info, code_files_info)
-            logger.info(result)
+            return result
         except Exception as e:
             logger.error(f"Error while validating paper against repo: {e}")
+            raise e
 
     def process_paper(self, article: str) -> str:
         logger.info("Loading PDF...")

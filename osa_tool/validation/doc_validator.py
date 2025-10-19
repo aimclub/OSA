@@ -36,18 +36,20 @@ class DocValidator:
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode("utf-8")
 
-    def validate(self, path_to_doc: str) -> None:
+    def validate(self, path_to_doc: str) -> str:
         try:
             # self.describe_image("/home/ilya/OSA/docx2txt-test-dir/image19.jpeg")
             doc_info = self.process_doc(path_to_doc)
             code_files = self.code_analyzer.get_code_files()
             code_files_info = self.code_analyzer.process_code_files(code_files)
             result = self.validate_doc_against_repo(doc_info, code_files_info)
-            logger.info(result)
+            return result
         except Exception as e:
-            logger.error(e)
+            logger.error(f"Error while validating doc against repo: {e}")
+            raise e
 
     def process_doc(self, path_to_doc: str) -> str:
+        logger.info("Processing DOCX...")
         raw_content = self.parse_docx(path_to_doc)
         processed_content = self._preprocess_text(raw_content)
         logger.info("Sending request to process document's content ...")
