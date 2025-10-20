@@ -7,9 +7,13 @@ import yaml
 from osa_tool.utils import build_arguments_path, build_config_path
 
 
-def build_parser_from_yaml() -> argparse.ArgumentParser:
+def build_parser_from_yaml(extra_sections: list[str] | None = None) -> argparse.ArgumentParser:
     """
     Build an ArgumentParser based on a YAML configuration file.
+
+    Args:
+        extra_sections (list[str] | None): Optional list of section names from YAML
+            to include (used for specialized pipelines).
 
     Returns:
         argparse.ArgumentParser: Configured argument parser.
@@ -57,6 +61,8 @@ def build_parser_from_yaml() -> argparse.ArgumentParser:
 
     for group_name, group_args in config_yaml.items():
         if isinstance(group_args, dict) and "type" not in group_args:
+            if extra_sections and group_name not in extra_sections:
+                continue
             arg_group = parser.add_argument_group(f"{group_name} arguments")
             add_arguments(arg_group, group_args)
 
