@@ -1,6 +1,6 @@
 [project]
 name = "osa_tool"
-version = "0.2.2"
+version = "0.2.3"
 description = "Tool that just makes your open source project better!"
 requires-python = ">=3.10,<4.0"
 authors = [
