@@ -1,10 +1,10 @@
 import os
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
 
 import nbformat
 import pytest
 
-from osa_tool.convertion.notebook_converter import NotebookConverter
+from osa_tool.conversion.notebook_converter import NotebookConverter
 
 
 def test_is_syntax_correct():
