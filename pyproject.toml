@@ -1,6 +1,6 @@
 [project]
 name = "osa_tool"
-version = "0.2.2"
+version = "0.2.3.1"
 description = "Tool that just makes your open source project better!"
 requires-python = ">=3.10,<4.0"
 authors = [
@@ -29,7 +29,7 @@ nbconvert = ">=6.0"
 nbformat = ">=5.0"
 packaging = ">=25.0"
 pdfplumber = ">=0.11.0"
-protollm = ">=0.1.5"
+protollm = ">=0.1.6"
 prompt_toolkit = ">=3.0.50"
 Pygments = ">=2.18.0"
 pydantic = ">=2.9.0,<3.0.0"
