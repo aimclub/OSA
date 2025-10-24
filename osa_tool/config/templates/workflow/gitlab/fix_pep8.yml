@@ -1,0 +1,8 @@
+fix_pep8:
+  image: python:{python_version}
+  stage: fix
+  script:
+    - pip install autopep8
+    - autopep8 --in-place --recursive {src}
+  when: manual
+  {branches_section}

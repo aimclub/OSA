@@ -1,6 +1,7 @@
 from enum import Enum
+from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class YesNoPartial(str, Enum):
@@ -11,19 +12,19 @@ class YesNoPartial(str, Enum):
 
 
 class RepositoryStructure(BaseModel):
-    compliance: str = Field("Unknown", description="Compliance with standard structure")
-    missing_files: list[str] = Field(
-        default_factory=list,
-        description="List of missing critical files that impact project usability and clarity",
-    )
-    organization: str = Field(
-        "Unknown",
-        description="Evaluation of the overall organization of directories and files for maintainability and clarity",
-    )
+    compliance: Annotated[str, "Compliance with standard structure"] = "Unknown"
+    missing_files: Annotated[
+        list[str],
+        "List of missing critical files that impact project usability and clarity",
+    ] = []
+    organization: Annotated[
+        str,
+        "Evaluation of the overall organization of directories and files for maintainability and clarity",
+    ] = "Unknown"
 
 
 class ReadmeEvaluation(BaseModel):
-    readme_quality: str = Field("Unknown", description="Assessment of the README quality with a brief comment")
+    readme_quality: Annotated[str, "Assessment of the README quality with a brief comment"] = "Unknown"
     project_description: YesNoPartial = YesNoPartial.UNKNOWN
     installation: YesNoPartial = YesNoPartial.UNKNOWN
     usage_examples: YesNoPartial = YesNoPartial.UNKNOWN
@@ -34,32 +35,32 @@ class ReadmeEvaluation(BaseModel):
 
 class CodeDocumentation(BaseModel):
     tests_present: YesNoPartial = YesNoPartial.UNKNOWN
-    docs_quality: str = Field(
-        "Unknown",
-        description="Evaluation of the quality of code documentation, including API references, inline comments, and guides",
-    )
-    outdated_content: bool = Field(
-        False,
-        description="Flags whether the documentation contains outdated or misleading information",
-    )
+    docs_quality: Annotated[
+        str,
+        "Evaluation of the quality of code documentation, including API references, inline comments, and guides",
+    ] = "Unknown"
+    outdated_content: Annotated[
+        bool,
+        "Flags whether the documentation contains outdated or misleading information",
+    ] = False
 
 
 class OverallAssessment(BaseModel):
-    key_shortcomings: list[str] = Field(
-        default_factory=lambda: ["There are no critical issues"],
-        description="List of the most significant and critical issues that need to be addressed",
-    )
-    recommendations: list[str] = Field(
-        default_factory=lambda: ["No recommendations"],
-        description="Specific improvements to address issues or optimize the process",
-    )
+    key_shortcomings: Annotated[
+        list[str],
+        "List of the most significant and critical issues that need to be addressed",
+    ] = ["There are no critical issues"]
+    recommendations: Annotated[
+        list[str],
+        "Specific improvements to address issues or optimize the process",
+    ] = ["No recommendations"]
 
 
 class RepositoryReport(BaseModel):
-    structure: RepositoryStructure = Field(default_factory=RepositoryStructure)
-    readme: ReadmeEvaluation = Field(default_factory=ReadmeEvaluation)
-    documentation: CodeDocumentation = Field(default_factory=CodeDocumentation)
-    assessment: OverallAssessment = Field(default_factory=OverallAssessment)
+    structure: RepositoryStructure = RepositoryStructure()
+    readme: ReadmeEvaluation = ReadmeEvaluation()
+    documentation: CodeDocumentation = CodeDocumentation()
+    assessment: OverallAssessment = OverallAssessment()
 
     class Config:
         extra = "ignore"

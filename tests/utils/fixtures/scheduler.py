@@ -35,8 +35,10 @@ def mock_args_auto(workflow_keys):
 
 
 @pytest.fixture
-def workflow_keys():
-    return [
+def mock_workflow_manager():
+    """Mock WorkflowManager instance."""
+    workflow_manager = MagicMock()
+    workflow_manager.workflow_keys = [
         "include_black",
         "include_tests",
         "include_pep8",
@@ -44,4 +46,11 @@ def workflow_keys():
         "include_fix_pep8",
         "slash_command_dispatch",
         "pypi_publish",
+        "python_versions",
     ]
+    workflow_manager.build_actual_plan.return_value = {
+        "include_tests": True,
+        "include_black": False,
+        "python_versions": ["3.10"],
+    }
+    return workflow_manager

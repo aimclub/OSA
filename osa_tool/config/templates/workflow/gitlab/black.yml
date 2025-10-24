@@ -1,0 +1,7 @@
+black_formatter:
+  image: python:{python_version}
+  stage: lint
+  script:
+    - pip install black
+    - black {src} {black_options}
+  {branches_section}

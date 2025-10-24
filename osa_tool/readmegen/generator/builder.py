@@ -1,7 +1,7 @@
-import json
-
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.generator.base_builder import MarkdownBuilderBase
+from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
 from osa_tool.readmegen.utils import find_in_repo_tree
 
 
@@ -13,11 +13,12 @@ class MarkdownBuilder(MarkdownBuilderBase):
     def __init__(
         self,
         config_loader: ConfigLoader,
+        metadata: RepositoryMetadata,
         overview: str = None,
         core_features: str = None,
         getting_started: str = None,
     ):
-        super().__init__(config_loader, overview=overview, getting_started=getting_started)
+        super().__init__(config_loader, metadata, overview=overview, getting_started=getting_started)
         self._core_features_json = core_features
 
     @property
@@ -26,8 +27,8 @@ class MarkdownBuilder(MarkdownBuilderBase):
         if not self._core_features_json:
             return ""
 
-        features = json.loads(self._core_features_json)
-        critical = [f for f in features if f.get("is_critical") is True]
+        features = JsonProcessor.parse(self._core_features_json, expected_type=list)
+        critical = [f for f in features if isinstance(f, dict) and f.get("is_critical")]
         if not critical:
             return "_No critical features identified._"
 
