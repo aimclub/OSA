@@ -259,16 +259,13 @@ def load_table(table_path: str | None) -> DataFrame:
     ]:
         if col not in df.columns:
             if col in ["processed_stage1", "processed_docstring"]:
-                df[col] = False
+                df[col] = pd.Series([False] * len(df), dtype=bool)
             elif col in ["name", "stage1_time_str", "stage2_time_str"]:
-                df[col] = ""
-                df[col] = df[col].astype("string")
+                df[col] = pd.Series([""] * len(df), dtype="string")
             elif col in ["stage1_time", "stage2_time"]:
-                df[col] = 0.0
-                df[col] = df[col].astype(float)
+                df[col] = pd.Series([0.0] * len(df), dtype=float)
             else:
-                df[col] = None
-                df[col] = df[col].astype("object")
+                df[col] = pd.Series([None] * len(df), dtype="object")
     return df
 
 
