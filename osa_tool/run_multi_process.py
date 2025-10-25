@@ -17,8 +17,11 @@ from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent
 from osa_tool.readmegen.context.pypi_status_checker import PyPiPackageInspector
 from osa_tool.readmegen.readme_core import ReadmeAgent
 from osa_tool.readmegen.utils import format_time
-from osa_tool.run import load_configuration
-from osa_tool.utils import logger, rich_section, delete_repository, parse_git_url
+from osa_tool.run import load_configuration, generate_docstrings
+from osa_tool.utils import logger, rich_section, parse_git_url, delete_repository
+
+
+# === Stage 1: Generate report and README asynchronously ===
 
 
 async def generate_report(config: ConfigLoader, sourcerank: SourceRank, metadata: RepositoryMetadata, args) -> None:
@@ -49,28 +52,32 @@ async def run_async_tasks(config: ConfigLoader, sourcerank: SourceRank, git_agen
 
     if args.report:
         tasks.append(asyncio.create_task(generate_report(config, sourcerank, git_agent.metadata, args)))
-
     if args.readme:
         tasks.append(asyncio.create_task(generate_readme(config, git_agent.metadata, args)))
-
     if tasks:
         await asyncio.gather(*tasks)
 
 
-def process_repository(repo_url: str, args) -> dict:
-    """Process a single repository in a separate process (sync + async inside)."""
-    start_time = time.time()
+def process_repository_stage1(repo_url: str, args) -> dict:
+    """
+    Stage 1: Clone repository, generate report and README asynchronously.
+    This stage runs in multiple processes concurrently.
+    """
+    stage_start = time.time()
 
-    # Logging setup per repo
-    _, _, repo_name, _ = parse_git_url(repo_url)
+    # Setup working directories
+    repos_dir = os.path.join(os.path.dirname(args.table_path), "repositories")
     logs_dir = os.path.join(os.path.dirname(args.table_path), "logs")
     os.makedirs(logs_dir, exist_ok=True)
-    log_file = os.path.join(logs_dir, f"{repo_name}.log")
+    os.makedirs(repos_dir, exist_ok=True)
+    os.chdir(repos_dir)
 
+    # Setup logging per repository
+    _, _, repo_name, _ = parse_git_url(repo_url)
+    log_file = os.path.join(logs_dir, f"{repo_name}.log")
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
     file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     logger.addHandler(file_handler)
-
     logger.info(f"Started processing repository: {repo_url}")
 
     result = {
@@ -79,9 +86,10 @@ def process_repository(repo_url: str, args) -> dict:
         "forks": None,
         "stars": None,
         "downloads": None,
-        "processed": False,
-        "elapsed_time": 0.0,
-        "elapsed_time_str": None,
+        "processed_stage1": False,
+        "processed_docstring": False,
+        "stage1_time": 0.0,
+        "stage1_time_str": None,
     }
 
     try:
@@ -95,7 +103,7 @@ def process_repository(repo_url: str, args) -> dict:
             top_p=args.top_p,
         )
 
-        # Clone the repository
+        # Choose GIT agent based on platform
         if "github.com" in repo_url:
             git_agent = GitHubAgent(repo_url)
         elif "gitlab" in repo_url:
@@ -106,88 +114,172 @@ def process_repository(repo_url: str, args) -> dict:
             logger.error(f"Unsupported GIT platform: {repo_url}")
             return result
 
+        # Clone repository
         git_agent.clone_repository()
         sourcerank = SourceRank(config)
 
-        # Run async block inside process
+        # Run async stage (report + readme)
         asyncio.run(run_async_tasks(config, sourcerank, git_agent, args))
 
-        # Get PyPi info
+        # Collect PyPi info
         info = PyPiPackageInspector(sourcerank.tree, sourcerank.repo_path).get_info()
         downloads_count = info.get("downloads") if info else ""
 
-        # Collect metadata
+        stage_elapsed = time.time() - stage_start
+
+        # Update results
         result.update(
             {
                 "name": git_agent.metadata.name,
                 "forks": git_agent.metadata.forks_count,
                 "stars": git_agent.metadata.stars_count,
                 "downloads": downloads_count,
-                "processed": True,
+                "stage1_time": stage_elapsed,
+                "stage1_time_str": format_time(stage_elapsed),
+                "processed_stage1": True,
             }
         )
 
+        logger.info(f"Stage 1 completed successfully in {result['stage1_time_str']}")
+
     except Exception as e:
-        logger.error(f"Error while processing {repo_url}: {e}")
+        logger.error(f"Error during Stage 1 for {repo_url}: {e}")
 
     finally:
-        elapsed_seconds = time.time() - start_time
-        elapsed_str = format_time(elapsed_seconds)
-        result["elapsed_time"] = elapsed_seconds
-        result["elapsed_time_str"] = elapsed_str
-        logger.info(f"Finished repository {repo_url} in {elapsed_str}")
-        delete_repository(repo_url)
+        logger.removeHandler(file_handler)
+
+        # Remove cloned repo if docstring generation not required
+        if not args.docstring:
+            delete_repository(repo_url)
 
     return result
 
 
+# === Stage 2: Sequential docstring generation ===
+
+
+def process_docstrings_for_repo(repo_url: str, args, df: DataFrame) -> None:
+    """
+    Stage 2: Generate docstrings sequentially for each repository.
+    After processing each repository, immediately update the table file.
+    """
+    stage_start = time.time()
+
+    # Setup working directories
+    repos_dir = os.path.join(os.path.dirname(args.table_path), "repositories")
+    logs_dir = os.path.join(os.path.dirname(args.table_path), "logs")
+    os.chdir(repos_dir)
+
+    # Setup logging per repository
+    _, _, repo_name, _ = parse_git_url(repo_url)
+    log_file = os.path.join(logs_dir, f"{repo_name}.log")
+
+    # Append to existing log file
+    file_handler = logging.FileHandler(log_file, encoding="utf-8", mode="a")
+    file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    logger.addHandler(file_handler)
+
+    logger.info(f"Starting docstring generation for {repo_url}")
+
+    try:
+        config = load_configuration(
+            repo_url=repo_url,
+            api=args.api,
+            base_url=args.base_url,
+            model_name=args.model,
+            temperature=args.temperature,
+            max_tokens=args.max_tokens,
+            top_p=args.top_p,
+        )
+
+        # Generate docstrings
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            generate_docstrings(config, loop)
+        finally:
+            loop.close()
+
+        stage_elapsed = time.time() - stage_start
+        stage_elapsed_str = format_time(stage_elapsed)
+
+        df.loc[df["repository"] == repo_url, "stage2_time"] = stage_elapsed
+        df.loc[df["repository"] == repo_url, "stage2_time_str"] = stage_elapsed_str
+        df.loc[df["repository"] == repo_url, "processed_docstring"] = True
+
+        # Save progress immediately to avoid data loss
+        if args.table_path.endswith(".csv"):
+            df.to_csv(args.table_path, index=False)
+        else:
+            df.to_excel(args.table_path, index=False)
+
+        logger.info(f"Finished docstrings for {repo_url} in {stage_elapsed_str}")
+
+    except Exception as e:
+        logger.error(f"Error generating docstrings for {repo_url}: {e}")
+
+    finally:
+        logger.removeHandler(file_handler)
+
+
+# === Table management ===
+
+
 def load_table(table_path: str | None) -> DataFrame:
     """Load repository table."""
-    if table_path:
-        if not os.path.isfile(table_path):
-            logger.error(f"Table file not found: {table_path}")
-            sys.exit(1)
-        if not table_path.lower().endswith((".csv", "xlsx")):
-            logger.error(f"Table file must be in .csv or .xlsx format: {table_path}")
-            sys.exit(1)
-    else:
+    if not table_path:
         logger.error(f"Argument '--table-path' is required.")
         sys.exit(1)
+    if not os.path.isfile(table_path):
+        logger.error(f"Table file not found: {table_path}")
+        sys.exit(1)
+    if not table_path.lower().endswith((".csv", "xlsx")):
+        logger.error(f"Table must be .csv or .xlsx format: {table_path}")
+        sys.exit(1)
 
-    logger.info(f"Reading table from {table_path}")
+    logger.info(f"Loading repository table from {table_path}")
 
-    if table_path.endswith(".csv"):
-        df = pd.read_csv(table_path)
-    else:
-        df = pd.read_excel(table_path)
+    df = pd.read_csv(table_path) if table_path.endswith(".csv") else pd.read_excel(table_path)
 
     if "repository" not in df.columns:
         logger.error("Table must contain a 'repository' column.")
         sys.exit(1)
 
-    for col in ["name", "elapsed_time", "elapsed_time_str", "forks", "stars", "downloads", "processed"]:
+    for col in [
+        "name",
+        "forks",
+        "stars",
+        "downloads",
+        "processed_stage1",
+        "processed_docstring",
+        "stage1_time",
+        "stage1_time_str",
+        "stage2_time",
+        "stage2_time_str",
+    ]:
         if col not in df.columns:
-            if col == "processed":
-                df[col] = pd.Series([False] * len(df), dtype=bool)
-            elif col in ["name", "elapsed_time_str", "downloads"]:
-                df[col] = pd.Series([""] * len(df), dtype=str)
-            elif col == "elapsed_time":
-                df[col] = pd.Series([0.0] * len(df), dtype=float)
+            if col in ["processed_stage1", "processed_docstring"]:
+                df[col] = False
+            elif col in ["name", "stage1_time_str", "stage2_time_str"]:
+                df[col] = ""
+                df[col] = df[col].astype("string")
+            elif col in ["stage1_time", "stage2_time"]:
+                df[col] = 0.0
+                df[col] = df[col].astype(float)
             else:
-                df[col] = pd.Series([None] * len(df), dtype="Int64")
+                df[col] = None
+                df[col] = df[col].astype("object")
     return df
+
+
+# === Main entry point ===
 
 
 def main():
     """
     Main entry point for the pipeline.
-
-    Reads a table (CSV or Excel) containing repository URLs,
-    processes each repository by cloning, analyzing, and generating a PDF report,
-    and updates the table with repository metadata such as name, forks count, stars count,
-    and marks processed repositories to avoid duplication.
-
-    If the 'reports' directory next to the table does not exist, it will be created.
+    - Stage 1 (parallel): generate reports & READMEs for all repositories.
+    - Stage 2 (sequential): generate docstrings for repositories not yet processed.
     """
 
     # Create a command line argument parser
@@ -197,45 +289,48 @@ def main():
     # Load table containing repository URLs
     df = load_table(args.table_path)
     repositories = df["repository"].dropna().tolist()
-    unprocessed = [r for r in repositories if not df.loc[df["repository"] == r, "processed"].any()]
 
-    if not unprocessed:
-        rich_section("All repositories already processed.")
-        sys.exit(0)
+    # Stage 1: Parallel run for unprocessed repos
+    unprocessed_stage1 = [r for r in repositories if not df.loc[df["repository"] == r, "processed_stage1"].any()]
 
-    rich_section(f"Starting parallel processing of {len(unprocessed)} repositories")
-    overall_start = time.time()
-    results = []
+    if unprocessed_stage1:
+        rich_section(f"Starting Stage 1 for {len(unprocessed_stage1)} repositories (parallel mode)")
+        with ProcessPoolExecutor(max_workers=os.cpu_count() // 2 or 2) as executor:
+            futures = {executor.submit(process_repository_stage1, repo, args): repo for repo in unprocessed_stage1}
+            for future in as_completed(futures):
+                repo = futures[future]
+                try:
+                    result = future.result()
+                    for key, value in result.items():
+                        if key in df.columns:
+                            df.loc[df["repository"] == repo, key] = value
 
-    # Parallel processing
-    with ProcessPoolExecutor(max_workers=os.cpu_count() // 2 or 2) as executor:
-        future_to_repo = {executor.submit(process_repository, repo, args): repo for repo in unprocessed}
-        for future in as_completed(future_to_repo):
-            repo_url = future_to_repo[future]
-            try:
-                result = future.result()
-                results.append(result)
-                rich_section(f"Done: {repo_url} in {result['elapsed_time']}")
-            except Exception as e:
-                rich_section(f"Failed: {repo_url} — {e}")
+                    # Save progress incrementally
+                    if args.table_path.endswith(".csv"):
+                        df.to_csv(args.table_path, index=False)
+                    else:
+                        df.to_excel(args.table_path, index=False)
 
-    for res in results:
-        repo = res["repository"]
-        for key, value in res.items():
-            if key in df.columns:
-                df.loc[df["repository"] == repo, key] = value
+                    rich_section(f"Stage 1 done for {repo} ({result.get('stage1_time_str', 'N/A')})")
+                except Exception as e:
+                    rich_section(f"Stage 1 failed for {repo} — {e}")
 
-    # Safe table
-    if args.table_path.endswith(".csv"):
-        df.to_csv(args.table_path, index=False)
     else:
-        df.to_excel(args.table_path, index=False)
+        rich_section("All repositories already processed in Stage 1")
 
-    total_time = format_time(time.time() - overall_start)
-    rich_section(f"All repositories processed in total time: {total_time}")
-    rich_section(
-        f"Logs for individual repositories are saved in the {os.path.join(os.path.dirname(args.table_path), 'logs')} directory."
-    )
+    # Stage 2: Sequential docstring generation
+    if args.docstring:
+        unprocessed_stage2 = [r for r in repositories if not df.loc[df["repository"] == r, "processed_docstring"].any()]
+        if unprocessed_stage2:
+            rich_section(f"Starting Stage 2 (docstrings) for {len(unprocessed_stage2)} repositories (sequential mode)")
+            for repo_url in unprocessed_stage2:
+                process_docstrings_for_repo(repo_url, args, df)
+        else:
+            rich_section("All repositories already processed for docstrings")
+    else:
+        rich_section("Skipping Stage 2 — docstring generation disabled")
+
+    rich_section("Pipeline completed successfully.")
 
 
 if __name__ == "__main__":
