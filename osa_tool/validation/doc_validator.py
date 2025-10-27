@@ -6,6 +6,8 @@ import docx2txt
 
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
+from osa_tool.readmegen.context.article_content import PdfParser
+from osa_tool.readmegen.context.article_path import get_pdf_path
 from osa_tool.utils import logger
 from osa_tool.validation.code_analyzer import CodeAnalyzer
 from osa_tool.validation.prompt_builder import PromptBuilder
@@ -49,8 +51,14 @@ class DocValidator:
             raise e
 
     def process_doc(self, path_to_doc: str) -> str:
-        logger.info("Processing DOCX...")
-        raw_content = self.parse_docx(path_to_doc)
+        if path_to_doc.endswith(".docx"):
+            logger.info("Processing DOCX...")
+            raw_content = self._parse_docx(path_to_doc)
+        elif path_to_doc.endswith(".pdf"):
+            logger.info("Processing PDF...")
+            raw_content = self._parse_pdf(path_to_doc)
+        else:
+            raise ValueError(f"Unprocessable file format: {path_to_doc}")
         processed_content = self._preprocess_text(raw_content)
         logger.info("Sending request to process document's content ...")
         response = self.model_handler.send_request(
@@ -62,13 +70,20 @@ class DocValidator:
     def process_multiple_docs(self):
         pass
 
-    def parse_docx(self, path_to_docx: str) -> str:
-        logger.info(f"Extracting text from {path_to_docx} ...")
+    def _parse_docx(self, path_to_doc: str) -> str:
+        logger.info(f"Extracting text from {path_to_doc} ...")
         try:
-            docx_content = docx2txt.process(path_to_docx)
+            docx_content = docx2txt.process(path_to_doc)
         except Exception as e:
             raise Exception(f"Error in parsing .docx: {e}")
         return docx_content
+
+    def _parse_pdf(self, path_to_doc: str) -> str:
+        path_to_pdf = get_pdf_path(path_to_doc)
+        if not path_to_pdf:
+            raise ValueError(f"Invalid PDF source provided: {path_to_pdf}. Could not locate a valid PDF.")
+        logger.info("Extracting text from PDF ...")
+        return PdfParser(path_to_pdf).data_extractor()
 
     def _preprocess_text(self, raw_text: str) -> str:
         logger.info("Preprocessing extracted text ...")
