@@ -32,7 +32,7 @@ class CodeAnalyzer:
                 code_files.append(str(repo_path.joinpath(filename.replace(".ipynb", ".py"))))
             if filename.endswith(".py"):
                 code_files.append(str(repo_path.joinpath(filename)))
-        print(code_files)
+        logger.debug(code_files)
         return code_files
 
     def _is_file_ignored(self, filename: str) -> bool:

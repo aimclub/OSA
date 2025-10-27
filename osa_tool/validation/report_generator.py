@@ -8,18 +8,18 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer
 
-from osa_tool.analytics.metadata import load_data_metadata
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.utils import logger, osa_project_root
 
 
 class ReportGenerator:
-    def __init__(self, config_loader: ConfigLoader, sourcerank: SourceRank) -> None:
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata, sourcerank: SourceRank) -> None:
         self.config = config_loader.config
         self.sourcerank = sourcerank
         self.repo_url = self.config.git.repository
-        self.metadata = load_data_metadata(self.repo_url)
+        self.metadata = metadata
 
         self.osa_url = "https://github.com/aimclub/OSA"
         self.logo_path = os.path.join(osa_project_root(), "docs", "images", "osa_logo.PNG")

@@ -22,7 +22,11 @@ from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 from osa_tool.readmegen.readme_core import readme_agent
 from osa_tool.scheduler.scheduler import ModeScheduler
-from osa_tool.scheduler.workflow_manager import GitHubWorkflowManager, GitLabWorkflowManager, GitverseWorkflowManager
+from osa_tool.scheduler.workflow_manager import (
+    GitHubWorkflowManager,
+    GitLabWorkflowManager,
+    GitverseWorkflowManager,
+)
 from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.translation.readme_translator import ReadmeTranslator
 from osa_tool.utils import delete_repository, logger, parse_folder_name, rich_section
@@ -80,6 +84,8 @@ def main():
         elif "gitverse.ru" in args.repository:
             git_agent = GitverseAgent(args.repository, args.branch)
             workflow_manager = GitverseWorkflowManager(args.repository, git_agent.metadata, args)
+        else:
+            raise ValueError(f"Cannot initialize Git Agent and Workflow Manager for this platform: {args.repository}")
 
         if create_fork:
             git_agent.star_repository()
@@ -107,7 +113,7 @@ def main():
         if path_to_doc := plan.get("validate_doc"):
             rich_section("Document validation")
             content = DocValidator(config).validate(path_to_doc)
-            va_re_gen = ValidationReportGenerator(config, sourcerank)
+            va_re_gen = ValidationReportGenerator(config, git_agent.metadata, sourcerank)
             va_re_gen.build_pdf("Document", content)
             if create_fork:
                 git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
@@ -116,7 +122,7 @@ def main():
         if plan.get("validate_paper"):
             rich_section("Paper validation")
             content = PaperValidator(config).validate(plan.get("article"))
-            va_re_gen = ValidationReportGenerator(config, sourcerank)
+            va_re_gen = ValidationReportGenerator(config, git_agent.metadata, sourcerank)
             va_re_gen.build_pdf("Paper", content)
             if create_fork:
                 git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
