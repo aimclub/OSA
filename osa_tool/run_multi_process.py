@@ -82,14 +82,14 @@ def process_repository_stage1(repo_url: str, args) -> dict:
 
     result = {
         "repository": repo_url,
-        "name": None,
+        "name": "",
         "forks": None,
         "stars": None,
         "downloads": None,
         "processed_stage1": False,
         "processed_docstring": False,
         "stage1_time": 0.0,
-        "stage1_time_str": None,
+        "stage1_time_str": "",
     }
 
     try:
@@ -208,10 +208,17 @@ def process_docstrings_for_repo(repo_url: str, args, df: DataFrame) -> None:
         df.loc[df["repository"] == repo_url, "processed_docstring"] = True
 
         # Save progress immediately to avoid data loss
-        if args.table_path.endswith(".csv"):
-            df.to_csv(args.table_path, index=False)
-        else:
-            df.to_excel(args.table_path, index=False)
+        try:
+            if args.table_path.endswith(".csv"):
+                df.to_csv(args.table_path, index=False)
+            else:
+                df.to_excel(args.table_path, index=False)
+        except PermissionError:
+            logger.warning(
+                f"Cannot save table '{args.table_path}'."
+                "If you know you have access to this file, "
+                "try to close applications that are using it."
+            )
 
         logger.info(f"Finished docstrings for {repo_url} in {stage_elapsed_str}")
 
@@ -259,13 +266,16 @@ def load_table(table_path: str | None) -> DataFrame:
     ]:
         if col not in df.columns:
             if col in ["processed_stage1", "processed_docstring"]:
-                df[col] = pd.Series([False] * len(df), dtype=bool)
+                df[col] = False
             elif col in ["name", "stage1_time_str", "stage2_time_str"]:
-                df[col] = pd.Series([""] * len(df), dtype="string")
+                df[col] = ""
+                df[col] = df[col].astype("string")
             elif col in ["stage1_time", "stage2_time"]:
-                df[col] = pd.Series([0.0] * len(df), dtype=float)
+                df[col] = 0.0
+                df[col] = df[col].astype(float)
             else:
-                df[col] = pd.Series([None] * len(df), dtype="object")
+                df[col] = None
+                df[col] = df[col].astype("object")
     return df
 
 
@@ -303,14 +313,20 @@ def main():
                             df.loc[df["repository"] == repo, key] = value
 
                     # Save progress incrementally
-                    if args.table_path.endswith(".csv"):
-                        df.to_csv(args.table_path, index=False)
-                    else:
-                        df.to_excel(args.table_path, index=False)
+                    try:
+                        if args.table_path.endswith(".csv"):
+                            df.to_csv(args.table_path, index=False)
+                        else:
+                            df.to_excel(args.table_path, index=False)
+                    except PermissionError:
+                        logger.warning(
+                            f"Cannot save table '{args.table_path}'."
+                            "If you know you have access to this file, "
+                            "try to close applications that are using it."
+                        )
 
-                    rich_section(f"Stage 1 done for {repo} ({result.get('stage1_time_str', 'N/A')})")
                 except Exception as e:
-                    rich_section(f"Stage 1 failed for {repo} — {e}")
+                    logger.error(f"Stage 1 failed for {repo} — {e}")
 
     else:
         rich_section("All repositories already processed in Stage 1")
