@@ -15,7 +15,22 @@ from osa_tool.utils import logger, osa_project_root
 
 
 class ReportGenerator:
+    """
+    Generates a PDF validation report for a repository.
+
+    This class builds a PDF report summarizing repository analysis results, including correspondence,
+    percentage metrics, and conclusions. It adds branding, QR codes, and repository metadata to the report.
+    """
+
     def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata, sourcerank: SourceRank) -> None:
+        """
+        Initialize the ReportGenerator.
+
+        Args:
+            config_loader (ConfigLoader): Loader containing configuration settings.
+            metadata (RepositoryMetadata): Metadata about the repository.
+            sourcerank (SourceRank): SourceRank analytics object.
+        """
         self.config = config_loader.config
         self.sourcerank = sourcerank
         self.repo_url = self.config.git.repository
@@ -27,7 +42,17 @@ class ReportGenerator:
         self.filename = f"{self.metadata.name}_validation_report.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
 
-    def build_pdf(self, type: str, content: str):
+    def build_pdf(self, type: str, content: str) -> None:
+        """
+        Build and save the PDF validation report.
+
+        Args:
+            type (str): Type of validation (e.g., "Code", "Doc", "Paper").
+            content (str): JSON string containing report data.
+
+        Returns:
+            None
+        """
         parsed_content = json.loads(content)
         logger.info(f"Building validation report for repository {self.metadata.full_name} ...")
         try:
@@ -52,6 +77,16 @@ class ReportGenerator:
             logger.error("Error while building PDF report, %s", e, exc_info=True)
 
     def _draw_images(self, canvas_obj: Canvas, doc: SimpleDocTemplate) -> None:
+        """
+        Draws branding images, QR code, and lines on the first page of the PDF.
+
+        Args:
+            canvas_obj (Canvas): The canvas object for drawing.
+            doc (SimpleDocTemplate): The PDF document template.
+
+        Returns:
+            None
+        """
         # Logo OSA
         canvas_obj.drawImage(self.logo_path, 335, 700, width=130, height=120)
         canvas_obj.linkURL(self.osa_url, (335, 700, 465, 820), relative=0)
@@ -84,6 +119,9 @@ class ReportGenerator:
         """
         Generates the header section for the repository analysis report.
 
+        Args:
+            type (str): Type of validation (e.g., "Code", "Doc", "Paper").
+
         Returns:
             list: A list of Paragraph elements representing the header content.
         """
@@ -109,6 +147,16 @@ class ReportGenerator:
         return elements
 
     def _build_first_part(self, correspondence: bool, percentages: float) -> list[Paragraph]:
+        """
+        Builds the first section of the report with correspondence and percentage metrics.
+
+        Args:
+            correspondence (bool): Whether the repository corresponds to the documentation/paper.
+            percentages (float): Percentage metric for correspondence.
+
+        Returns:
+            list[Paragraph]: Paragraph elements for the section.
+        """
         styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(
             name="LeftAlignedNormal",
@@ -122,6 +170,15 @@ class ReportGenerator:
         return [correspondence_text, percentages_text]
 
     def _build_second_part(self, conclusion: str) -> list[Flowable]:
+        """
+        Builds the conclusion section of the report.
+
+        Args:
+            conclusion (str): Conclusion text for the report.
+
+        Returns:
+            list[Flowable]: Flowable elements for the section.
+        """
         styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(
             name="LeftAlignedNormal",
