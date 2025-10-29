@@ -10,7 +10,21 @@ from osa_tool.validation.prompt_builder import PromptBuilder
 
 
 class CodeAnalyzer:
+    """
+    Analyzes code files in a repository using a language model.
+
+    This class handles the retrieval and processing of code files from a repository,
+    including conversion of Jupyter notebooks to Python scripts, filtering ignored files,
+    and sending code content to a model for analysis.
+    """
+
     def __init__(self, config_loader: ConfigLoader):
+        """
+        Initialize the CodeAnalyzer.
+
+        Args:
+            config_loader (ConfigLoader): Loader containing configuration settings.
+        """
         self.config = config_loader.config
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.notebook_convertor = NotebookConverter()
@@ -19,6 +33,14 @@ class CodeAnalyzer:
         self.tree = self.sourcerank.tree
 
     def get_code_files(self) -> list[str]:
+        """
+        Retrieve a list of code files from the repository.
+
+        Converts Jupyter notebooks to Python scripts and filters out ignored files.
+
+        Returns:
+            list[str]: List of absolute paths to code files.
+        """
         repo_path = Path(parse_folder_name(str(self.config.git.repository))).resolve()
         code_files = []
         logger.info("Getting code files ...")
@@ -36,6 +58,15 @@ class CodeAnalyzer:
         return code_files
 
     def _is_file_ignored(self, filename: str) -> bool:
+        """
+        Check if a file should be ignored based on predefined patterns.
+
+        Args:
+            filename (str): Name of the file to check.
+
+        Returns:
+            bool: True if the file should be ignored, False otherwise.
+        """
         IGNORE_LIST = (
             "__init__.py",
             "setup.py",
@@ -52,6 +83,15 @@ class CodeAnalyzer:
         return any(pattern in filename for pattern in IGNORE_LIST)
 
     def process_code_files(self, code_files: list[str]) -> str:
+        """
+        Analyze the content of code files using the language model.
+
+        Args:
+            code_files (list[str]): List of code file paths.
+
+        Returns:
+            str: Aggregated analysis results for all code files.
+        """
         result = ""
         for file in code_files:
             logger.info(f"Getting {file} content ...")
