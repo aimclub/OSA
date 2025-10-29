@@ -8,13 +8,39 @@ from osa_tool.validation.prompt_builder import PromptBuilder
 
 
 class PaperValidator:
+    """
+    Validates a scientific paper (PDF) against the code repository.
+
+    This class extracts and processes the content of a paper, analyzes code files in the repository,
+    and validates the paper against the codebase using a language model.
+    """
+
     def __init__(self, config_loader: ConfigLoader):
+        """
+        Initialize the PaperValidator.
+
+        Args:
+            config_loader (ConfigLoader): Loader containing configuration settings.
+        """
         self.code_analyzer = CodeAnalyzer(config_loader)
         self.config = config_loader.config
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.prompts = PromptBuilder()
 
     def validate(self, article: str | None) -> str:
+        """
+        Validate a scientific paper against the code repository.
+
+        Args:
+            article (str | None): Path to the paper PDF file.
+
+        Returns:
+            str: Validation result from the language model.
+
+        Raises:
+            ValueError: If the article path is missing.
+            Exception: If an error occurs during validation.
+        """
         if not article:
             raise ValueError("Article is missing! Please pass it using --article argument.")
         try:
@@ -28,6 +54,18 @@ class PaperValidator:
             raise e
 
     def process_paper(self, article: str) -> str:
+        """
+        Extract and process content from a scientific paper (PDF).
+
+        Args:
+            article (str): Path to the paper PDF file.
+
+        Returns:
+            str: Processed paper content.
+
+        Raises:
+            ValueError: If the PDF source is invalid.
+        """
         logger.info("Loading PDF...")
         path_to_pdf = get_pdf_path(article)
         if not path_to_pdf:
@@ -40,6 +78,16 @@ class PaperValidator:
         return response
 
     def validate_paper_against_repo(self, paper_info: str, code_files_info: str) -> str:
+        """
+        Validate the processed paper content against the code repository.
+
+        Args:
+            paper_info (str): Processed paper information.
+            code_files_info (str): Aggregated code files analysis.
+
+        Returns:
+            str: Validation result from the language model.
+        """
         logger.info("Validating paper against repository ...")
         response = self.model_handler.send_request(
             self.prompts.get_prompt_to_validate_paper_against_repo(paper_info, code_files_info)
