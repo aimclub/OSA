@@ -166,6 +166,18 @@ about:
   type: flag
   description: "Generate About section with tags."
 
+validate_paper:
+  aliases: ["--validate-paper"]
+  type: flag
+  description: "Check whether the experiments proposed in an attached research paper can be reproduced using the selected repository."
+
+validate_doc:
+  aliases: ["--validate-doc"]
+  type: str
+  description: "Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository."
+  const: ""
+  example: "path/to/file"
+
 workflow:
   generate_workflows:
     aliases: [ "--generate-workflows" ]
