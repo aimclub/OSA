@@ -80,10 +80,10 @@ class MetadataLoader(ABC):
             RepositoryMetadata: Parsed repository metadata.
         """
         try:
-            return cls._load_platform_data(repo_url, use_token = False)
+            return cls._load_platform_data(repo_url, use_token=False)
         except:
             try:
-                return cls._load_platform_data(repo_url, use_token = True)
+                return cls._load_platform_data(repo_url, use_token=True)
 
             except HTTPError as http_exc:
                 status_code = getattr(http_exc.response, "status_code", None)
