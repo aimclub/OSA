@@ -306,12 +306,12 @@ class GitAgent(abc.ABC):
     
         Args:
             url: The URL to convert. If None, uses the original repository URL.
-            
+    
         Returns:
             The repository URL without authentication token.
         """
         repo_url = url if url else self.repo_url
-        
+    
         # Ensure the URL ends with .git
         if not repo_url.endswith(".git"):
             repo_url += ".git"
