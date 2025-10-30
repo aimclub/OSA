@@ -229,7 +229,7 @@ class GitLabMetadataLoader(MetadataLoader):
         headers = {
             "Content-Type": "application/json",
         }
-        
+
         if use_token:
             headers["Authorization"] = f"Bearer {os.getenv('GITLAB_TOKEN', os.getenv('GIT_TOKEN'))}"
 
