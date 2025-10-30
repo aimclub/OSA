@@ -313,9 +313,9 @@ class GitAgent(abc.ABC):
         repo_url = url if url else self.repo_url
         
         # Ensure the URL ends with .git
-        if not repo_url.endswith('.git'):
-            repo_url += '.git'
-            
+        if not repo_url.endswith(".git"):
+            repo_url += ".git"
+
         return repo_url
 
     def _get_auth_url(self, url: str = None) -> str:
