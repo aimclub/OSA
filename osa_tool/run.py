@@ -14,7 +14,7 @@ from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.arguments_parser import build_parser_from_yaml
 from osa_tool.config.settings import ConfigLoader, GitSettings
-from osa_tool.convertion.notebook_converter import NotebookConverter
+from osa_tool.conversion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.docs_generator.license import compile_license_file
 from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent
@@ -24,14 +24,18 @@ from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 from osa_tool.readmegen.readme_core import ReadmeAgent
 from osa_tool.readmegen.utils import format_time
 from osa_tool.scheduler.scheduler import ModeScheduler
-from osa_tool.scheduler.workflow_manager import GitHubWorkflowManager, GitLabWorkflowManager, GitverseWorkflowManager
+from osa_tool.scheduler.workflow_manager import (
+    GitHubWorkflowManager,
+    GitLabWorkflowManager,
+    GitverseWorkflowManager,
+)
 from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.translation.readme_translator import ReadmeTranslator
-from osa_tool.utils import (
-    delete_repository,
-    logger,
-    parse_folder_name,
-    rich_section,
+from osa_tool.utils import delete_repository, logger, parse_folder_name, rich_section
+from osa_tool.validation.doc_validator import DocValidator
+from osa_tool.validation.paper_validator import PaperValidator
+from osa_tool.validation.report_generator import (
+    ReportGenerator as ValidationReportGenerator,
 )
 
 
@@ -85,8 +89,7 @@ def main():
             git_agent = GitverseAgent(args.repository, args.branch)
             workflow_manager = GitverseWorkflowManager(args.repository, git_agent.metadata, args)
         else:
-            logger.error("Unsupported GIT platform")
-            sys.exit(1)
+            raise ValueError(f"Cannot initialize Git Agent and Workflow Manager for this platform: {args.repository}")
 
         if create_fork:
             git_agent.star_repository()
@@ -109,6 +112,24 @@ def main():
             analytics.build_pdf()
             if create_fork:
                 git_agent.upload_report(analytics.filename, analytics.output_path)
+
+        # NOTE: Must run first - switches GitHub branches
+        if path_to_doc := plan.get("validate_doc"):
+            rich_section("Document validation")
+            content = DocValidator(config).validate(path_to_doc)
+            va_re_gen = ValidationReportGenerator(config, git_agent.metadata, sourcerank)
+            va_re_gen.build_pdf("Document", content)
+            if create_fork:
+                git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
+
+        # NOTE: Must run first - switches GitHub branches
+        if plan.get("validate_paper"):
+            rich_section("Paper validation")
+            content = PaperValidator(config).validate(plan.get("article"))
+            va_re_gen = ValidationReportGenerator(config, git_agent.metadata, sourcerank)
+            va_re_gen.build_pdf("Paper", content)
+            if create_fork:
+                git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
 
         # .ipynb to .py conversion
         if notebook := plan.get("convert_notebooks"):
