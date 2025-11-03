@@ -10,7 +10,9 @@ from osa_tool.utils import logger, parse_folder_name
 
 
 class ReadmeAgent:
-    def __init__(self, config_loader: ConfigLoader, article: str | None, refine_readme: bool, metadata: RepositoryMetadata):
+    def __init__(
+        self, config_loader: ConfigLoader, article: str | None, refine_readme: bool, metadata: RepositoryMetadata
+    ):
         self.config_loader = config_loader
         self.article = article
         self.refine_readme = refine_readme
