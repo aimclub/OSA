@@ -3,13 +3,14 @@ import os
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.logger import logger
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
 from osa_tool.scheduler.prompts import PromptConfig, PromptLoader
 from osa_tool.scheduler.workflow_manager import WorkflowManager
 from osa_tool.ui.plan_editor import PlanEditor
 from osa_tool.ui.web_plan_editor import WebPlanEditor
-from osa_tool.utils import extract_readme_content, logger, parse_folder_name
+from osa_tool.utils import extract_readme_content, parse_folder_name
 
 
 class ModeScheduler:

@@ -2,8 +2,9 @@ import os
 import re
 
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.logger import logger
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
-from osa_tool.utils import logger, parse_folder_name
+from osa_tool.utils import parse_folder_name
 
 
 class DirectoryTranslator:

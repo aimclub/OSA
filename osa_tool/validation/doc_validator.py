@@ -8,7 +8,7 @@ from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.context.article_content import PdfParser
 from osa_tool.readmegen.context.article_path import get_pdf_path
-from osa_tool.utils import logger
+from osa_tool.logger import logger
 from osa_tool.validation.code_analyzer import CodeAnalyzer
 from osa_tool.validation.prompt_builder import PromptBuilder
 

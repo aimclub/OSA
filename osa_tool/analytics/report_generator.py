@@ -13,9 +13,10 @@ from osa_tool.analytics.prompt_builder import (
 )
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.logger import logger
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
-from osa_tool.utils import extract_readme_content, osa_project_root, parse_folder_name, logger
+from osa_tool.utils import extract_readme_content, osa_project_root, parse_folder_name
 
 
 class TextGenerator:

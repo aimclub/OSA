@@ -8,7 +8,7 @@ from osa_tool.readmegen.context.files_contents import FileProcessor
 from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
 from osa_tool.readmegen.prompts.prompts_builder import PromptBuilder
 from osa_tool.readmegen.utils import extract_example_paths
-from osa_tool.utils import logger
+from osa_tool.logger import logger
 
 
 class LLMClient:

@@ -4,7 +4,8 @@ import tomli
 
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.utils import osa_project_root, logger
+from osa_tool.logger import logger
+from osa_tool.utils import osa_project_root
 
 
 def compile_license_file(sourcerank: SourceRank, ensure_license, metadata: RepositoryMetadata):

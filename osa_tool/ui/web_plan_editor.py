@@ -4,7 +4,7 @@ import tempfile
 import time
 import uuid
 
-from osa_tool.utils import logger
+from osa_tool.logger import logger
 
 
 class WebPlanEditor:

@@ -2,7 +2,8 @@ import os
 import shutil
 from typing import List
 from fnmatch import fnmatch
-from osa_tool.utils import logger
+
+from osa_tool.logger import logger
 
 
 class RepoOrganizer:

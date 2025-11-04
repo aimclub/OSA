@@ -5,8 +5,9 @@ import tomli
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.logger import logger
 from osa_tool.readmegen.context.files_contents import FileContext
-from osa_tool.utils import extract_readme_content, logger, parse_folder_name, osa_project_root
+from osa_tool.utils import extract_readme_content, parse_folder_name, osa_project_root
 
 
 class PromptBuilder:

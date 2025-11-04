@@ -4,11 +4,12 @@ import shutil
 
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.logger import logger
 from osa_tool.models.models import ModelHandlerFactory, ModelHandler
 from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
 from osa_tool.readmegen.prompts.prompts_builder import PromptBuilder
 from osa_tool.readmegen.utils import read_file, save_sections, remove_extra_blank_lines
-from osa_tool.utils import parse_folder_name, logger
+from osa_tool.utils import parse_folder_name
 
 
 class ReadmeTranslator:

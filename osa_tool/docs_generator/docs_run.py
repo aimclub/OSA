@@ -2,7 +2,7 @@ from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.docs_generator.community import CommunityTemplateBuilder
 from osa_tool.docs_generator.contributing import ContributingBuilder
-from osa_tool.utils import logger
+from osa_tool.logger import logger
 
 
 def generate_documentation(config_loader: ConfigLoader, metadata: RepositoryMetadata) -> None:

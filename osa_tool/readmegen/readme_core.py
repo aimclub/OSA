@@ -2,11 +2,12 @@ import os
 
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.logger import logger
 from osa_tool.readmegen.generator.builder import MarkdownBuilder
 from osa_tool.readmegen.generator.builder_article import MarkdownBuilderArticle
 from osa_tool.readmegen.models.llm_service import LLMClient
 from osa_tool.readmegen.utils import remove_extra_blank_lines, save_sections
-from osa_tool.utils import logger, parse_folder_name
+from osa_tool.utils import parse_folder_name
 
 
 def readme_agent(
