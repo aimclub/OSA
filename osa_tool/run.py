@@ -78,7 +78,7 @@ def main():
         if "github.com" in args.repository:
             git_agent = GitHubAgent(args.repository, args.branch)
             workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
-        elif "gitlab" in args.repository:
+        elif "gitlab." in args.repository:
             git_agent = GitLabAgent(args.repository, args.branch)
             workflow_manager = GitLabWorkflowManager(args.repository, git_agent.metadata, args)
         elif "gitverse.ru" in args.repository:
