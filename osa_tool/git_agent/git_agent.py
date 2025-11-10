@@ -129,7 +129,7 @@ class GitAgent(abc.ABC):
                 )
                 logger.info("Cloning completed")
 
-            except:
+            except Exception:
                 try:
                     logger.info(
                         f"Cloning the '{self.base_branch}' branch from {self.repo_url} into directory {self.clone_dir}..."
