@@ -77,7 +77,7 @@ Here is a short video:
 4. **Various LLMs**: Use OSA with an LLM accessible via API (e.g., OpenAI, VseGPT, Ollama), a local server, or try
    an [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
 
-5. **GitHub Action Workflow Generator**: Automatically generates customizable CI/CD workflows for Python repositories,
+5. **Workflow Generator**: Automatically generates customizable CI/CD workflows for Python repositories,
    including unit tests, code formatting, PEP 8 compliance checks, and PyPI publication.
 
 ---
@@ -137,8 +137,9 @@ docker build --build-arg GIT_USER_NAME="your-user-name" --build-arg GIT_USER_EMA
 
 OSA requires Python 3.10 or higher.
 
-File `.env` is required to specify GitHub/GitLab/Gitverse token (GIT_TOKEN) and LLM API key (OPENAI_API_KEY or
-AUTHORIZATION_KEY)
+The .env file is required to specify the LLM API key (OPENAI_API_KEY or AUTHORIZATION_KEY) and optionally a Git token. The Git token (GIT_TOKEN) may be omitted if you plan to work with a public repository without creating a fork (using the --no-fork option).
+
+Alternatively, instead of GIT_TOKEN, you can use GITHUB_TOKEN, GITLAB_TOKEN, or GITVERSE_TOKEN for GitHub, GitLab, and Gitverse respectively.
 
 When running `osa-tool` from CLI, you need to set the GIT_TOKEN and API key first:
 
