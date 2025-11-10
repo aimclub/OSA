@@ -81,7 +81,7 @@ class MetadataLoader(ABC):
         """
         try:
             return cls._load_platform_data(repo_url, use_token=False)
-        except:
+        except Exception:
             try:
                 return cls._load_platform_data(repo_url, use_token=True)
 
