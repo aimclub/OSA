@@ -215,7 +215,7 @@ def process_docstrings_for_repo(repo_url: str, args, df: DataFrame) -> None:
                 df.to_excel(args.table_path, index=False)
         except PermissionError:
             logger.warning(
-                f"Cannot save table '{args.table_path}'."
+                f"Cannot save table '{args.table_path}'. "
                 "If you know you have access to this file, "
                 "try to close applications that are using it."
             )
@@ -240,7 +240,7 @@ def load_table(table_path: str | None) -> DataFrame:
     if not os.path.isfile(table_path):
         logger.error(f"Table file not found: {table_path}")
         sys.exit(1)
-    if not table_path.lower().endswith((".csv", "xlsx")):
+    if not table_path.lower().endswith((".csv", ".xlsx")):
         logger.error(f"Table must be .csv or .xlsx format: {table_path}")
         sys.exit(1)
 
@@ -320,7 +320,7 @@ def main():
                             df.to_excel(args.table_path, index=False)
                     except PermissionError:
                         logger.warning(
-                            f"Cannot save table '{args.table_path}'."
+                            f"Cannot save table '{args.table_path}'. "
                             "If you know you have access to this file, "
                             "try to close applications that are using it."
                         )
