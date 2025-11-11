@@ -246,3 +246,9 @@ workflow:
     aliases: [ "--include-codecov" ]
     type: flag
     description: "Include Codecov coverage step in a unit tests workflow."
+
+multi-run:
+  table_path:
+    aliases: [ "--table-path" ]
+    type: str
+    description: "Path to an Excel (.xlsx) or CSV file containing tabular data."

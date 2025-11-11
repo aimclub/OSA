@@ -3,6 +3,7 @@ import multiprocessing
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -20,7 +21,8 @@ from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent
 from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
-from osa_tool.readmegen.readme_core import readme_agent
+from osa_tool.readmegen.readme_core import ReadmeAgent
+from osa_tool.readmegen.utils import format_time
 from osa_tool.scheduler.scheduler import ModeScheduler
 from osa_tool.scheduler.workflow_manager import (
     GitHubWorkflowManager,
@@ -45,13 +47,15 @@ def main():
     """
 
     # Create a command line argument parser
-    parser = build_parser_from_yaml()
+    parser = build_parser_from_yaml(extra_sections=["workflow"])
     args = parser.parse_args()
     create_fork = not args.no_fork
     create_pull_request = not args.no_pull_request
 
     loop = asyncio.get_event_loop()
     asyncio.set_event_loop(loop)
+
+    start_time = time.time()
 
     try:
         # Switch to output directory if present
@@ -161,7 +165,8 @@ def main():
         # Readme generation
         if plan.get("readme"):
             rich_section("README generation")
-            readme_agent(config, plan.get("article"), plan.get("refine_readme"), git_agent.metadata)
+            readme_agent = ReadmeAgent(config, plan.get("article"), plan.get("refine_readme"), git_agent.metadata)
+            readme_agent.generate_readme()
 
         # Readme translation
         translate_readme = plan.get("translate_readme")
@@ -205,7 +210,8 @@ def main():
             rich_section("Repository deletion")
             delete_repository(args.repository)
 
-        rich_section("All operations completed successfully")
+        elapsed_time = time.time() - start_time
+        rich_section(f"All operations completed successfully in total time: {format_time(elapsed_time)}")
         sys.exit(0)
 
     except Exception as e:

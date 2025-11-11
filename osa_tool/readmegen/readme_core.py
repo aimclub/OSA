@@ -9,48 +9,47 @@ from osa_tool.readmegen.utils import remove_extra_blank_lines, save_sections
 from osa_tool.utils import logger, parse_folder_name
 
 
-def readme_agent(
-    config_loader: ConfigLoader, article: str | None, refine_readme: bool, metadata: RepositoryMetadata
-) -> None:
-    """Generates a README.md file for the specified GitHub repository.
+class ReadmeAgent:
+    def __init__(
+        self, config_loader: ConfigLoader, article: str | None, refine_readme: bool, metadata: RepositoryMetadata
+    ):
+        self.config_loader = config_loader
+        self.article = article
+        self.refine_readme = refine_readme
+        self.metadata = metadata
+        self.repo_url = self.config_loader.config.git.repository
+        self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.file_to_save = os.path.join(self.repo_path, "README.md")
+        self.llm_client = LLMClient(self.config_loader, self.metadata)
 
-    Args:
-        config_loader: The configuration object which contains settings for osa_tool.
-        article: Optional link to the pdf file of the article.
-        refine_readme: Optional flag for refinement README.
-        metadata: Git repository metadata.
+    def generate_readme(self):
+        logger.info("Started generating README.md. Processing the repository: %s", self.repo_url)
+        try:
+            if self.article is None:
+                builder = self.default_readme()
+            else:
+                builder = self.article_readme()
 
-    Raises:
-        Exception: If an error occurs during README.md generation.
-    """
-    repo_url = config_loader.config.git.repository
-    repo_path = os.path.join(os.getcwd(), parse_folder_name(repo_url))
-    file_to_save = os.path.join(repo_path, "README.md")
-    llm_client = LLMClient(config_loader, metadata)
+            readme_content = builder.build()
 
-    logger.info("Started generating README.md. Processing the repository: %s", repo_url)
-    try:
-        if article is None:
-            responses = llm_client.get_responses()
-            (core_features, overview, getting_started) = responses
+            if self.refine_readme:
+                readme_content = self.llm_client.refine_readme(readme_content)
 
-            builder = MarkdownBuilder(config_loader, metadata, overview, core_features, getting_started)
-        else:
-            responses = llm_client.get_responses_article(article)
-            (overview, content, algorithms, getting_started) = responses
+            readme_content = self.llm_client.clean(readme_content)
 
-            builder = MarkdownBuilderArticle(config_loader, metadata, overview, content, algorithms, getting_started)
+            save_sections(readme_content, self.file_to_save)
+            remove_extra_blank_lines(self.file_to_save)
+            logger.info(f"README.md successfully generated in folder {self.repo_path}")
+        except Exception as e:
+            logger.error("Error while generating: %s", repr(e), exc_info=True)
+            raise ValueError("Failed to generate README.md.")
 
-        readme_content = builder.build()
+    def default_readme(self) -> MarkdownBuilder:
+        responses = self.llm_client.get_responses()
+        (core_features, overview, getting_started) = responses
+        return MarkdownBuilder(self.config_loader, self.metadata, overview, core_features, getting_started)
 
-        if refine_readme:
-            readme_content = llm_client.refine_readme(readme_content)
-
-        readme_content = llm_client.clean(readme_content)
-
-        save_sections(readme_content, file_to_save)
-        remove_extra_blank_lines(file_to_save)
-        logger.info(f"README.md successfully generated in folder {repo_path}")
-    except Exception as e:
-        logger.error("Error while generating: %s", repr(e), exc_info=True)
-        raise ValueError("Failed to generate README.md.")
+    def article_readme(self) -> MarkdownBuilderArticle:
+        responses = self.llm_client.get_responses_article(self.article)
+        (overview, content, algorithms, getting_started) = responses
+        return MarkdownBuilderArticle(self.config_loader, self.metadata, overview, content, algorithms, getting_started)
