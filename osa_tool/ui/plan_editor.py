@@ -16,7 +16,8 @@ from rich.prompt import Prompt
 from rich.table import Table
 
 from osa_tool.arguments_parser import read_arguments_file_flat
-from osa_tool.utils import build_arguments_path, logger
+from osa_tool.logger import logger
+from osa_tool.utils import build_arguments_path
 
 console = Console()
 

@@ -14,7 +14,8 @@ from osa_tool.analytics.metadata import (
     GitLabMetadataLoader,
     GitverseMetadataLoader,
 )
-from osa_tool.utils import get_base_repo_url, logger, parse_folder_name
+from osa_tool.logger import logger
+from osa_tool.utils import get_base_repo_url, parse_folder_name
 
 
 class GitAgent(abc.ABC):

@@ -2,7 +2,8 @@ import os
 
 import tomli
 
-from osa_tool.utils import logger, osa_project_root
+from osa_tool.logger import logger
+from osa_tool.utils import osa_project_root
 
 
 class PromptBuilderError(Exception):

@@ -5,8 +5,9 @@ from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.arguments_parser import get_keys_from_group_in_yaml
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.logger import logger
 from osa_tool.workflow.workflow_generator import GitHubWorkflowGenerator, GitLabWorkflowGenerator
-from osa_tool.utils import parse_folder_name, logger
+from osa_tool.utils import parse_folder_name
 
 
 class WorkflowManager(ABC):

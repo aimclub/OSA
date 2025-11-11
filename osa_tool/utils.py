@@ -1,4 +1,3 @@
-import logging
 import os
 import re
 import shutil
@@ -7,16 +6,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from rich.console import Console
-from rich.logging import RichHandler
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler()],
-)
-
-logger = logging.getLogger("rich")
+from osa_tool.logger import logger
 
 console = Console()
 

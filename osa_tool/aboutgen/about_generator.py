@@ -5,8 +5,9 @@ from typing import List
 from osa_tool.aboutgen.prompts_about_config import PromptAboutLoader
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.git_agent.git_agent import GitAgent
+from osa_tool.logger import logger
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
-from osa_tool.utils import extract_readme_content, logger, parse_folder_name
+from osa_tool.utils import extract_readme_content, parse_folder_name
 
 HOMEPAGE_KEYS = [
     "documentation",
