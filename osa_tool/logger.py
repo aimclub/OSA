@@ -9,9 +9,19 @@ logger = logging.getLogger("rich")
 
 def setup_logging(repo_name: str, logs_dir: str) -> None:
     """
-    Configure logging:
-    - console output using RichHandler
-    - file output to logs/<repo_name>_<timestamp>.log
+    Configures logging for the application.
+
+    This function sets up:
+    - Console logging using `RichHandler` with INFO-level output.
+    - File logging with DEBUG-level output, saved to a timestamped log file
+      inside the specified logs directory.
+
+    Args:
+        repo_name (str): Name of the repository used as a prefix for the log filename.
+        logs_dir (str): Directory where the log file will be stored.
+
+    Returns:
+        None
     """
     logger.setLevel(logging.DEBUG)
 
