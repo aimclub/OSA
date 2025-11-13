@@ -68,7 +68,7 @@ def test_git_agent_clone_repository_success_new(git_agent_base_setup, mock_repo)
 
                 agent.clone_repository()
 
-                 # Assert
+                # Assert
                 assert mock_clone_from.call_count == 2
                 first_call = mock_clone_from.call_args_list[0]
                 second_call = mock_clone_from.call_args_list[1]
