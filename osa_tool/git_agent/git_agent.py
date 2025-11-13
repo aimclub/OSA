@@ -123,23 +123,36 @@ class GitAgent(abc.ABC):
                     f"Cloning the '{self.base_branch}' branch from {self.repo_url} into directory {self.clone_dir}..."
                 )
                 self.repo = Repo.clone_from(
-                    url=self._get_auth_url(),
+                    url=self._get_unauth_url(),
                     to_path=self.clone_dir,
                     branch=self.base_branch,
                     single_branch=True,
                 )
                 logger.info("Cloning completed")
-            except GitCommandError as e:
-                stderr = e.stderr or ""
-                logger.error(f"Cloning failed: {e}")
 
-                if "remote branch" in stderr and "not found" in stderr:
-                    logger.error(
-                        f"Branch '{self.base_branch}' not found in the remote repository. Please check the branch name."
+            except Exception:
+                try:
+                    logger.info(
+                        f"Cloning the '{self.base_branch}' branch from {self.repo_url} into directory {self.clone_dir}..."
                     )
-                else:
-                    logger.error("An unexpected Git error occurred while cloning the repository.")
-                raise Exception(f"Cannot clone the repository: {self.repo_url}") from e
+                    self.repo = Repo.clone_from(
+                        url=self._get_auth_url(),
+                        to_path=self.clone_dir,
+                        branch=self.base_branch,
+                        single_branch=True,
+                    )
+                    logger.info("Cloning completed")
+                except GitCommandError as e:
+                    stderr = e.stderr or ""
+                    logger.error(f"Cloning failed: {e}")
+
+                    if "remote branch" in stderr and "not found" in stderr:
+                        logger.error(
+                            f"Branch '{self.base_branch}' not found in the remote repository. Please check the branch name."
+                        )
+                    else:
+                        logger.error("An unexpected Git error occurred while cloning the repository.")
+                    raise Exception(f"Cannot clone the repository: {self.repo_url}") from e
 
     def create_and_checkout_branch(self, branch: str = None) -> None:
         """Creates and checks out a new branch.
@@ -288,6 +301,23 @@ class GitAgent(abc.ABC):
             about_content: Dictionary containing the metadata to update about section.
         """
         pass
+
+    def _get_unauth_url(self, url: str = None) -> str:
+        """Returns the repository URL without authentication token.
+
+        Args:
+            url: The URL to convert. If None, uses the original repository URL.
+
+        Returns:
+            The repository URL without authentication token.
+        """
+        repo_url = url if url else self.repo_url
+
+        # Ensure the URL ends with .git
+        if not repo_url.endswith(".git"):
+            repo_url += ".git"
+
+        return repo_url
 
     def _get_auth_url(self, url: str = None) -> str:
         """Converts the repository URL by adding a token for authentication.

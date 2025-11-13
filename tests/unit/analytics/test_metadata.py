@@ -57,7 +57,7 @@ def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_fa
     # Act
     with patch("osa_tool.analytics.metadata.requests.get", return_value=mock_response) as mock_get:
         with patch.dict(os.environ, TOKEN_ENVS[platform]):
-            result = loader_class._load_platform_data(repo_url)
+            result = loader_class._load_platform_data(repo_url, use_token=True)
 
     # Assert
     expected = loader_class._parse_metadata(raw_data)
