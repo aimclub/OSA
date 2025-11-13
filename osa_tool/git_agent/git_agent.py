@@ -670,7 +670,7 @@ class GitLabAgent(GitAgent):
     def validate_topics(self, topics: List[str]) -> List[str]:
         logger.info("Validating topics against GitLab Topics API...")
         validated_topics = []
-        base_url = f"https://gitlab.com/api/v4/topics"
+        base_url = "https://gitlab.com/api/v4/topics"
         headers = {"Accept": "application/json"}
 
         for topic in topics:
