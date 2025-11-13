@@ -58,17 +58,25 @@ def test_git_agent_clone_repository_success_new(git_agent_base_setup, mock_repo)
     clone_path = agent.clone_dir
 
     # Act
-    with patch.object(agent, "_get_auth_url", return_value="https://github.com/user/repo.git") as mock_auth:
-        with patch("git.Repo.clone_from", return_value=mock_repo) as mock_clone_from:
-            if os.path.exists(clone_path):
-                os.rmdir(clone_path)
-            agent.clone_repository()
+    with patch.object(agent, "_get_auth_url", return_value="https://token@github.com/user/repo.git") as mock_auth:
+        with patch.object(agent, "_get_unauth_url", return_value="https://github.com/user/repo.git") as mock_unauth:
+            with patch("git.Repo.clone_from") as mock_clone_from:
+                mock_clone_from.side_effect = [Exception("fail clone unauth"), mock_repo]
 
-            # Assert
-            mock_clone_from.assert_called_once_with(
-                url=mock_auth.return_value, to_path=clone_path, branch=agent.base_branch, single_branch=True
-            )
-            assert agent.repo == mock_repo
+                if os.path.exists(clone_path):
+                    os.rmdir(clone_path)
+
+                agent.clone_repository()
+
+                 # Assert
+                assert mock_clone_from.call_count == 2
+                first_call = mock_clone_from.call_args_list[0]
+                second_call = mock_clone_from.call_args_list[1]
+
+                assert first_call.kwargs["url"] == mock_unauth.return_value
+                assert second_call.kwargs["url"] == mock_auth.return_value
+
+                assert agent.repo == mock_repo
 
 
 def test_git_agent_clone_repository_success_existing(git_agent_base_setup, temp_clone_dir):
