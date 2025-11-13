@@ -2,7 +2,7 @@ import json
 import os
 import re
 
-from osa_tool.utils import logger
+from osa_tool.logger import logger
 
 
 def read_file(file_path: str) -> str:
@@ -170,3 +170,10 @@ def remove_extra_blank_lines(path: str) -> None:
 
     with open(path, "w", encoding="utf-8") as f:
         f.writelines(cleaned_lines)
+
+
+def format_time(seconds: float) -> str:
+    """Convert seconds into a human-readable HH:MM:SS format."""
+    hours, remainder = divmod(int(seconds), 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"

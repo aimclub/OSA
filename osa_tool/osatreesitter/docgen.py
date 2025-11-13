@@ -16,8 +16,9 @@ import yaml
 import tomli
 
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.logger import logger
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory, ProtollmHandler
-from osa_tool.utils import logger, osa_project_root
+from osa_tool.utils import osa_project_root
 
 dotenv.load_dotenv()
 

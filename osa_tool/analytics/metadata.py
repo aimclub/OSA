@@ -8,7 +8,8 @@ import requests
 from dotenv import load_dotenv
 from requests import HTTPError
 
-from osa_tool.utils import get_base_repo_url, logger
+from osa_tool.logger import logger
+from osa_tool.utils import get_base_repo_url
 
 load_dotenv()
 

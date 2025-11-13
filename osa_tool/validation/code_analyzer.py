@@ -3,9 +3,10 @@ from pathlib import Path
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.conversion.notebook_converter import NotebookConverter
+from osa_tool.logger import logger
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.utils import read_file
-from osa_tool.utils import logger, parse_folder_name
+from osa_tool.utils import parse_folder_name
 from osa_tool.validation.prompt_builder import PromptBuilder
 
 

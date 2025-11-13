@@ -3,7 +3,7 @@ from tempfile import NamedTemporaryFile
 
 import requests
 
-from osa_tool.utils import logger
+from osa_tool.logger import logger
 
 
 def get_pdf_path(pdf_source: str) -> str | None:
