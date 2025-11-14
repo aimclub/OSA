@@ -36,8 +36,6 @@ It also generates advices and recommendations for the repository.
 
 OSA is currently under development, so not all features are implemented.
 
-
-
 ---
 
 ## How it works?
@@ -170,18 +168,18 @@ Run Open-Source-Advisor using the following command:
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
 
 ```sh
-python -m osa_tool.run -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--article {article}] [--convert-notebooks {notebook_paths}]
+python -m osa_tool.run -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--attachment {article}] [--convert-notebooks {notebook_paths}]
 ```
 
 **Using `docker`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
-docker run --env-file .env {image-name} -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--article {article}] [--convert-notebooks {notebook_paths}]
+docker run --env-file .env {image-name} -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--attachment {article}] [--convert-notebooks {notebook_paths}]
 ```
 
-The --article option enables you to choose a README template for a repository based on an article. You can provide
-either a link to a PDF file of the article or a path to a local PDF file after the --article option. If you are using
+The --attachment option enables you to choose a README template for a repository based on an article. You can provide
+either a link to a PDF file of the article or a path to a local PDF file after the --attachment option. If you are using
 Docker, ensure that you upload the PDF file to the OSA folder before building the image, then, specify the path as
 /app/OSA/... or just use volume mounting to access the file.
 
@@ -201,7 +199,7 @@ documentation, see the [Workflow Generator README](./osa_tool/workflow/README.md
 | `--top_p`            | Nucleus sampling probability                                                        | `None`                      |
 | `--temperature`      | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).   | `None`                      |
 | `--max_tokens`       | Maximum number of tokens the model can generate in a single response                | `None`                      |
-| `--article`          | Link to the pdf file of the article                                                 | `None`                      |
+| `--attachment`       | Path to a local PDF or .docx file, or a URL to a PDF resource                       | `None`                      |
 | `-m`, `--mode`       | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`. | `auto`                      |
 | `--delete-dir`       | Enable deleting the downloaded repository after processing                          | `disabled`                  |
 | `--no-fork`          | Avoid create fork for target repository                                             | `False`                     |

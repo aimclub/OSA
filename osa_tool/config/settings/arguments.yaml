@@ -72,14 +72,14 @@ top_p:
   description: "Nucleus sampling probability (1.0 = all tokens considered)."
   example: 0.8, 0.95
 
-article:
-  aliases: [ "--article" ]
+attachment:
+  aliases: [ "--attachment" ]
   type: str
   description: |
-    Select a README template for a repository with an article.
-    Or provide a link to the pdf file.
+    Path to a local PDF file (for articles) or .docx file (for documents). 
+    Alternatively, accept a publicly accessible HTTP/HTTPS URL pointing to a PDF resource.
   const: ""
-  example: "path/to/file"
+  example: path/to/document.docx, "https://example.com/article.pdf"
 
 translate_dirs:
   aliases: [ "--translate-dirs" ]
@@ -173,10 +173,8 @@ validate_paper:
 
 validate_doc:
   aliases: ["--validate-doc"]
-  type: str
+  type: flag
   description: "Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository."
-  const: ""
-  example: "path/to/file"
 
 workflow:
   generate_workflows:

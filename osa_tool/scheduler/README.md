@@ -73,33 +73,33 @@ In **custom mode**:
 
 - A list of editable actions is displayed.
 - Available commands:
-    - `help` or `?` — displays a table with descriptions of all editable keys.
-    - `multi-bool` — enables batch editing of boolean-type keys.
-    - `done` — finishes the editing session and displays the current plan.
+  - `help` or `?` — displays a table with descriptions of all editable keys.
+  - `multi-bool` — enables batch editing of boolean-type keys.
+  - `done` — finishes the editing session and displays the current plan.
 - To edit an action, enter its name.
 - For each selected action:
-    - If it is a **boolean value** (True/False), a prompt will request setting it to:
-        - `y` — enable
-        - `n` — disable
-        - `skip` — leave unchanged
-    - If it is a **string** or **list**:
-        - A new value can be entered.
-        - Leave empty to skip.
-        - Enter `None` to explicitly disable the value.
-    - Before entering a new value, the system will display:
-        - A short description.
-        - Allowed values (if available).
-        - An example (if available).
-        - The current value.
+  - If it is a **boolean value** (True/False), a prompt will request setting it to:
+    - `y` — enable
+    - `n` — disable
+    - `skip` — leave unchanged
+  - If it is a **string** or **list**:
+    - A new value can be entered.
+    - Leave empty to skip.
+    - Enter `None` to explicitly disable the value.
+  - Before entering a new value, the system will display:
+    - A short description.
+    - Allowed values (if available).
+    - An example (if available).
+    - The current value.
 
 Once the user type `done`:
 
 - The updated tables with planned actions and inactive actions will be displayed again.
 - The program will prompt the user one more time to confirm the updated plan
 - Available options:
-    - Confirm with `y` or **Enter**
-    - Cancel with `n`
-    - Re-enter manual editing mode with `custom`
+  - Confirm with `y` or **Enter**
+  - Cancel with `n`
+  - Re-enter manual editing mode with `custom`
 
 This interactive loop continues until the user explicitly confirms or cancels the operation.
 
@@ -120,7 +120,7 @@ to the repository.
 | top_p                | `--top_p`                | str  | Nucleus sampling probability                                                                                                       | `null`                           | —                           |
 | temperature          | `--temperature`          | str  | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).                                                  | `null`                           | —                           |
 | max_tokens           | `--max_tokens`           | str  | Maximum number of tokens the model can generate in a single response                                                               | `1500`                           | —                           |
-| article              | `--article`              | str  | README template for a repository with an article, or a link to a PDF file                                                          | `null`                           | —                           |
+| attachment           | `--attachment`           | str  | Path to a local PDF or .docx file, or a URL to a PDF resource                                                                      | `null`                           | —                           |
 | translate_dirs       | `--translate-dirs`       | flag | Enable automatic translation of directory names into English                                                                       | `false`                          | —                           |
 | convert_notebooks    | `--convert-notebooks`    | list | Convert Jupyter notebooks to `.py` format. Provide paths, or leave empty for repo directory                                        | —                                | —                           |
 | delete_dir           | `--delete-dir`           | flag | Delete the downloaded repository after processing                                                                                  | `false`                          | —                           |
@@ -132,7 +132,7 @@ to the repository.
 | report               | `--report`               | flag | Analyze the repository and generate a PDF report                                                                                   | `false`                          | —                           |
 | readme               | `--readme`               | flag | Generate a `README.md` file based on repository content                                                                            | `false`                          | —                           |
 | refine_readme        | `--refine-readme`        | flag | Enable advanced README refinement. This process requires a powerful LLM model (such as GPT-4 or equivalent) for optimal results    | `false`                          | —                           |
-| requirements         | `--requirements `        | flag | Generate or refine a requirements.txt file based on repository content.                                                            | `false`                          | —                           |
+| requirements         | `--requirements`         | flag | Generate or refine a requirements.txt file based on repository content.                                                            | `false`                          | —                           |
 | organize             | `--organize`             | flag | Organize the repository by adding standard `tests` and `examples` directories if missing                                           | `false`                          | —                           |
 | about                | `--about`                | flag | Generate About section with tags                                                                                                   | `false`                          | —                           |
 | generate_workflows   | `--generate-workflows`   | flag | Generate GitHub Action workflows for the repository                                                                                | `false`                          | —                           |
@@ -149,3 +149,5 @@ to the repository.
 | branches             | `--branches`             | list | Branches to trigger workflows on                                                                                                   | `[]`                             | —                           |
 | codecov_token        | `--codecov-token`        | flag | Use Codecov token for coverage upload                                                                                              | `false`                          | —                           |
 | include_codecov      | `--include-codecov`      | flag | Include Codecov coverage step in unit tests workflow                                                                               | `true`                           | —                           |
+| validate_paper       | `--validate-paper`       | flag | Check whether the experiments proposed in an attached research paper can be reproduced using the selected repository               | `false`                          | —                           |
+| validate_doc         | `--validate-paper`       | flag | Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository           | `false`                          | —                           |

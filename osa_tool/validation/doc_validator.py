@@ -5,10 +5,10 @@ import re
 import docx2txt
 
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.logger import logger
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.context.article_content import PdfParser
 from osa_tool.readmegen.context.article_path import get_pdf_path
-from osa_tool.logger import logger
 from osa_tool.validation.code_analyzer import CodeAnalyzer
 from osa_tool.validation.prompt_builder import PromptBuilder
 
@@ -51,7 +51,7 @@ class DocValidator:
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode("utf-8")
 
-    def validate(self, path_to_doc: str) -> str:
+    def validate(self, path_to_doc: str | None) -> str:
         """
         Validate a documentation file against the code repository.
 
@@ -61,6 +61,8 @@ class DocValidator:
         Returns:
             str: Validation result from the language model.
         """
+        if not path_to_doc:
+            raise ValueError("Document is missing! Please pass it using --attachment argument.")
         try:
             # self.describe_image("/home/ilya/OSA/docx2txt-test-dir/image19.jpeg")
             doc_info = self.process_doc(path_to_doc)
