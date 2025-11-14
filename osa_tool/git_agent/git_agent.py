@@ -1,12 +1,12 @@
 import abc
 import os
 import re
-import requests
 import time
+from typing import List
 
+import requests
 from dotenv import load_dotenv
 from git import GitCommandError, InvalidGitRepositoryError, Repo
-from typing import List
 
 from osa_tool.analytics.metadata import (
     RepositoryMetadata,
@@ -14,8 +14,8 @@ from osa_tool.analytics.metadata import (
     GitLabMetadataLoader,
     GitverseMetadataLoader,
 )
-from osa_tool.logger import logger
-from osa_tool.utils import get_base_repo_url, parse_folder_name
+from osa_tool.utils.logger import logger
+from osa_tool.utils.utils import get_base_repo_url, parse_folder_name
 
 
 class GitAgent(abc.ABC):

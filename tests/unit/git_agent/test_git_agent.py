@@ -11,7 +11,7 @@ from osa_tool.analytics.metadata import (
     GitLabMetadataLoader,
 )
 from osa_tool.git_agent.git_agent import GitHubAgent, GitverseAgent, GitLabAgent
-from osa_tool.utils import parse_folder_name
+from osa_tool.utils.utils import parse_folder_name
 
 
 @pytest.fixture

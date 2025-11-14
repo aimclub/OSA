@@ -1,11 +1,11 @@
 import os
-import yaml
-
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
+import yaml
+
 from osa_tool.config.settings import WorkflowSettings
-from osa_tool.utils import osa_project_root
+from osa_tool.utils.utils import osa_project_root
 
 
 class WorkflowGenerator(ABC):

@@ -17,7 +17,7 @@ from pydantic import (
     PositiveInt,
 )
 
-from osa_tool.utils import parse_git_url, build_config_path
+from osa_tool.utils.utils import parse_git_url, build_config_path
 
 
 class GitSettings(BaseModel):

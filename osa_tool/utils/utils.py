@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from rich.console import Console
 
-from osa_tool.logger import logger
+from osa_tool.utils.logger import logger
 
 console = Console()
 

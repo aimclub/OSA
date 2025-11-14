@@ -3,8 +3,8 @@ import re
 
 import tomli
 
-from osa_tool.logger import logger
 from osa_tool.readmegen.utils import find_in_repo_tree
+from osa_tool.utils.logger import logger
 
 
 class DependencyExtractor:

@@ -2,12 +2,12 @@ import os
 import re
 from typing import List
 
-from osa_tool.aboutgen.prompts_about_config import PromptAboutLoader
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.git_agent.git_agent import GitAgent
-from osa_tool.logger import logger
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
-from osa_tool.utils import extract_readme_content, parse_folder_name
+from osa_tool.utils.logger import logger
+from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.utils.utils import extract_readme_content, parse_folder_name
 
 HOMEPAGE_KEYS = [
     "documentation",
@@ -24,16 +24,15 @@ HOMEPAGE_KEYS = [
 class AboutGenerator:
     """Generates Git repository About section content."""
 
-    def __init__(self, config_loader: ConfigLoader, git_agent: GitAgent):
+    def __init__(self, config_loader: ConfigLoader, prompts: PromptLoader, git_agent: GitAgent):
         self.config = config_loader.config
+        self.prompts = prompts
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.repo_url = self.config.git.repository
         self.metadata = git_agent.metadata
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.readme_content = extract_readme_content(self.base_path)
-        self.prompts = PromptAboutLoader().prompts
         self.validate_topics = git_agent.validate_topics
-
         self._content: dict | None = None
 
     def generate_about_content(self) -> None:
@@ -93,10 +92,13 @@ class AboutGenerator:
             logger.warning("No README content found. Cannot generate description.")
             return ""
 
-        formatted_prompt = self.prompts.description.format(readme_content=self.readme_content)
+        prompt = PromptBuilder.render(
+            self.prompts.get("about_section.description"),
+            readme_content=self.readme_content,
+        )
 
         try:
-            description = self.model_handler.send_request(formatted_prompt)
+            description = self.model_handler.send_request(prompt)
             logger.debug(f"Generated description: {description}")
             return description[:350]
         except Exception as e:
@@ -124,14 +126,15 @@ class AboutGenerator:
                 logger.warning(f"{amount} topics already exist in the metadata. Skipping generation.")
                 return existing_topics
 
-        formatted_prompt = self.prompts.topics.format(
+        prompt = PromptBuilder.render(
+            self.prompts.get("about_section.topics"),
+            readme_content=self.readme_content,
             amount=amount,
             topics=existing_topics,
-            readme_content=self.readme_content,
         )
 
         try:
-            response = self.model_handler.send_request(formatted_prompt)
+            response = self.model_handler.send_request(prompt)
             topics = [topic.strip().lower().replace(" ", "-") for topic in response.split(",") if topic.strip()]
             logger.debug(f"Generated topics from LLM: {topics}")
             validated_topics = self.validate_topics(topics)
@@ -182,8 +185,11 @@ class AboutGenerator:
     def _analyze_urls(self, urls: List[str]) -> List[str]:
         """Generates LLM prompt for URL analysis"""
         logger.info(f"Analyzing {len(urls)} project URLs...")
-        formatted_prompt = self.prompts.analyze_urls.format(project_url=self.repo_url, urls=", ".join(urls))
-        response = self.model_handler.send_request(formatted_prompt)
+
+        prompt = PromptBuilder.render(
+            self.prompts.get("about_section.analyze_urls"), project_url=self.repo_url, urls=", ".join(urls)
+        )
+        response = self.model_handler.send_request(prompt)
         if not response:
             return []
 

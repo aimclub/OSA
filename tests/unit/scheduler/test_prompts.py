@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from osa_tool.scheduler.prompts import PromptConfig, PromptLoader
+from osa_tool.scheduler.response_validation import PromptConfig, PromptLoader
 
 
 def test_prompt_config_default_values():

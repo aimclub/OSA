@@ -6,7 +6,7 @@ import pytest
 
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import Settings, GitSettings, ModelSettings, WorkflowSettings
-from osa_tool.utils import parse_folder_name
+from osa_tool.utils.utils import parse_folder_name
 from tests.data_factory import DataFactory
 from tests.utils.mocks.requests_mock import mock_requests_response
 
