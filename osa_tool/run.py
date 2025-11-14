@@ -18,7 +18,7 @@ from osa_tool.conversion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.docs_generator.license import compile_license_file
 from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent
-from osa_tool.logger import setup_logging, logger
+from osa_tool.logger import logger, setup_logging
 from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
@@ -32,7 +32,12 @@ from osa_tool.scheduler.workflow_manager import (
 )
 from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.translation.readme_translator import ReadmeTranslator
-from osa_tool.utils import delete_repository, parse_folder_name, rich_section, osa_project_root
+from osa_tool.utils import (
+    delete_repository,
+    osa_project_root,
+    parse_folder_name,
+    rich_section,
+)
 from osa_tool.validation.doc_validator import DocValidator
 from osa_tool.validation.paper_validator import PaperValidator
 from osa_tool.validation.report_generator import (
@@ -120,9 +125,9 @@ def main():
                 git_agent.upload_report(analytics.filename, analytics.output_path)
 
         # NOTE: Must run first - switches GitHub branches
-        if path_to_doc := plan.get("validate_doc"):
+        if plan.get("validate_doc"):
             rich_section("Document validation")
-            content = DocValidator(config).validate(path_to_doc)
+            content = DocValidator(config).validate(plan.get("attachment"))
             va_re_gen = ValidationReportGenerator(config, git_agent.metadata, sourcerank)
             va_re_gen.build_pdf("Document", content)
             if create_fork:
@@ -131,7 +136,7 @@ def main():
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_paper"):
             rich_section("Paper validation")
-            content = PaperValidator(config).validate(plan.get("article"))
+            content = PaperValidator(config).validate(plan.get("attachment"))
             va_re_gen = ValidationReportGenerator(config, git_agent.metadata, sourcerank)
             va_re_gen.build_pdf("Paper", content)
             if create_fork:
@@ -171,7 +176,7 @@ def main():
         # Readme generation
         if plan.get("readme"):
             rich_section("README generation")
-            readme_agent = ReadmeAgent(config, plan.get("article"), plan.get("refine_readme"), git_agent.metadata)
+            readme_agent = ReadmeAgent(config, plan.get("attachment"), plan.get("refine_readme"), git_agent.metadata)
             readme_agent.generate_readme()
 
         # Readme translation
