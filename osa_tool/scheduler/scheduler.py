@@ -3,14 +3,15 @@ import os
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.logger import logger
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
-from osa_tool.scheduler.prompts import PromptConfig, PromptLoader
+from osa_tool.scheduler.response_validation import PromptConfig
 from osa_tool.scheduler.workflow_manager import WorkflowManager
 from osa_tool.ui.plan_editor import PlanEditor
 from osa_tool.ui.web_plan_editor import WebPlanEditor
-from osa_tool.utils import extract_readme_content, parse_folder_name
+from osa_tool.utils.logger import logger
+from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.utils.utils import extract_readme_content, parse_folder_name
 
 
 class ModeScheduler:
@@ -23,6 +24,7 @@ class ModeScheduler:
         self,
         config: ConfigLoader,
         sourcerank: SourceRank,
+        prompts: PromptLoader,
         args,
         workflow_manager: WorkflowManager,
         metadata: RepositoryMetadata,
@@ -36,7 +38,7 @@ class ModeScheduler:
         self.repo_url = self.config.git.repository
         self.metadata = metadata
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
-        self.prompts = PromptLoader().prompts
+        self.prompts = prompts
         self.plan = self._select_plan()
 
     @staticmethod
@@ -104,15 +106,15 @@ class ModeScheduler:
         Returns:
             dict: Plan parsed from model response.
         """
-        main_prompt = self.prompts.get("main_prompt")
-        formatted_prompt = main_prompt.format(
+        prompt = PromptBuilder.render(
+            self.prompts.get("scheduler.main_prompt"),
             license_presence=self.sourcerank.license_presence(),
             about_section=self.metadata.description,
             repository_tree=self.sourcerank.tree,
             readme_content=extract_readme_content(self.base_path),
         )
 
-        response = self.model_handler.send_request(formatted_prompt)
+        response = self.model_handler.send_request(prompt)
         parsed_json = JsonProcessor.parse(response, expected_type=dict)
 
         validated_data = PromptConfig.safe_validate(parsed_json)

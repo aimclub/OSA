@@ -3,7 +3,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from osa_tool.arguments_parser import (
+from osa_tool.utils.arguments_parser import (
     build_parser_from_yaml,
     get_keys_from_group_in_yaml,
     read_arguments_file_flat,

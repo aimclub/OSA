@@ -2,7 +2,7 @@ import json
 import os
 import re
 
-from osa_tool.logger import logger
+from osa_tool.utils.logger import logger
 
 
 def read_file(file_path: str) -> str:

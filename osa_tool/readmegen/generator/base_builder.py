@@ -12,7 +12,7 @@ from osa_tool.readmegen.generator.header import HeaderBuilder
 from osa_tool.readmegen.generator.installation import InstallationSectionBuilder
 from osa_tool.readmegen.models.llm_service import LLMClient
 from osa_tool.readmegen.utils import find_in_repo_tree
-from osa_tool.utils import osa_project_root
+from osa_tool.utils.utils import osa_project_root
 
 
 class MarkdownBuilderBase:

@@ -5,7 +5,7 @@ import re
 import nbformat
 from nbconvert import PythonExporter
 
-from osa_tool.logger import logger
+from osa_tool.utils.logger import logger
 
 
 class NotebookConverter:

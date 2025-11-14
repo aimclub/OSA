@@ -4,7 +4,7 @@ from typing import Any
 import tomli
 import yaml
 
-from osa_tool.utils import build_arguments_path, build_config_path
+from osa_tool.utils.utils import build_arguments_path, build_config_path
 
 
 def build_parser_from_yaml(extra_sections: list[str] | None = None) -> argparse.ArgumentParser:

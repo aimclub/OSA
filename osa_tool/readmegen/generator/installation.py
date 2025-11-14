@@ -8,7 +8,7 @@ from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.context.dependencies import DependencyExtractor
 from osa_tool.readmegen.context.pypi_status_checker import PyPiPackageInspector
 from osa_tool.readmegen.utils import find_in_repo_tree
-from osa_tool.utils import osa_project_root, parse_folder_name
+from osa_tool.utils.utils import osa_project_root, parse_folder_name
 
 
 class InstallationSectionBuilder:

@@ -1,4 +1,4 @@
-from osa_tool.analytics.prompt_builder import (
+from osa_tool.analytics.response_validation import (
     RepositoryReport,
     RepositoryStructure,
     ReadmeEvaluation,

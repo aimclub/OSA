@@ -1,24 +1,24 @@
+import aiofiles
+import asyncio
 import os
 import re
-import asyncio, aiofiles
+import shutil
+import subprocess
 from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
 from typing import List, Dict, Callable
 
 import black
-from pathlib import Path
-import shutil
-import subprocess
-
 import black.report
 import dotenv
 import tiktoken
-import yaml
 import tomli
+import yaml
 
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.logger import logger
-from osa_tool.models.models import ModelHandler, ModelHandlerFactory, ProtollmHandler
-from osa_tool.utils import osa_project_root
+from osa_tool.models.models import ModelHandlerFactory, ProtollmHandler
+from osa_tool.utils.logger import logger
+from osa_tool.utils.utils import osa_project_root
 
 dotenv.load_dotenv()
 

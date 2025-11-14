@@ -1,7 +1,7 @@
 import json
 import re
 
-from osa_tool.logger import logger
+from osa_tool.utils.logger import logger
 
 
 class JsonProcessor:

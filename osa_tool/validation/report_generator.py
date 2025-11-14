@@ -11,8 +11,8 @@ from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.logger import logger
-from osa_tool.utils import osa_project_root
+from osa_tool.utils.logger import logger
+from osa_tool.utils.utils import osa_project_root
 
 
 class ReportGenerator:
