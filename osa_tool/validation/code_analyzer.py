@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import tiktoken
+
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.conversion.notebook_converter import NotebookConverter
@@ -96,10 +98,21 @@ class CodeAnalyzer:
         result = ""
         for file in code_files:
             logger.info(f"Getting {file} content ...")
-            file_content = read_file(file)
+            file_content = self._limit_tokens(read_file(file))
             logger.info("Analyzing file ...")
             response = self.model_handler.send_request(self.prompts.get_prompt_to_analyze_code_file(file_content))
             logger.debug(response)
             file_data = response
             result += file_data + "\n"
         return result
+
+    def _limit_tokens(self, text: str, max_tokens: int = 200000, encoding_name="cl100k_base"):
+        """Limit text to approximately max_tokens using tiktoken"""
+        encoding = tiktoken.get_encoding(encoding_name)
+        tokens = encoding.encode(text)
+
+        if len(tokens) <= max_tokens:
+            return text
+
+        truncated_tokens = tokens[:max_tokens]
+        return encoding.decode(truncated_tokens)
