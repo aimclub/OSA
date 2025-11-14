@@ -1,4 +1,3 @@
-import json
 import os
 
 import qrcode
@@ -12,6 +11,7 @@ from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.logger import logger
+from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
 from osa_tool.utils import osa_project_root
 
 
@@ -54,7 +54,7 @@ class ReportGenerator:
         Returns:
             None
         """
-        parsed_content = json.loads(content)
+        parsed_content = JsonProcessor.parse(content)
         logger.info(f"Building validation report for repository {self.metadata.full_name} ...")
         try:
             doc = SimpleDocTemplate(
