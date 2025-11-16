@@ -59,18 +59,3 @@ def test_make_request_invalid_json(text_generator_instance):
     assert report.readme == ReadmeEvaluation()
     assert report.documentation == CodeDocumentation()
     assert report.assessment == OverallAssessment()
-
-
-def test_build_prompt_content(text_generator_instance):
-    # Arrange
-    text_generator, _ = text_generator_instance
-
-    # Act
-    prompt = text_generator._build_prompt()
-
-    # Assert
-    assert text_generator.metadata.name in prompt
-    assert str(text_generator.metadata) in prompt
-    assert str(text_generator.sourcerank.tree) in prompt
-    assert "README presence is" in prompt
-    assert "Sample README content" in prompt

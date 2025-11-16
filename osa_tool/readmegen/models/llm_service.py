@@ -126,8 +126,8 @@ class LLMClient:
             PromptBuilder.render(
                 self.prompts.get("readme_article.content"),
                 project_name=self.metadata.name,
-                files_summary=files_summary,
                 pdf_summary=pdf_summary,
+                files_summary=files_summary,
                 readme_content=self.readme_content,
             )
         )
@@ -136,7 +136,7 @@ class LLMClient:
         logger.info("Generating algorithm description...")
         algorithms_raw = self.model_handler.send_request(
             PromptBuilder.render(
-                self.prompts.get("readme_article.content"),
+                self.prompts.get("readme_article.algorithms"),
                 project_name=self.metadata.name,
                 files_content=FileProcessor.serialize_file_contexts(key_files_content),
                 pdf_summary=pdf_summary,
@@ -185,7 +185,7 @@ class LLMClient:
         citation_raw = self.model_handler.send_request(
             PromptBuilder.render(
                 self.prompts.get("readme.citation"),
-                readme_content=self.readme_content,
+                readme=self.readme_content,
             )
         )
         citation = JsonProcessor.parse(citation_raw, expected_key="citation", expected_type=str)

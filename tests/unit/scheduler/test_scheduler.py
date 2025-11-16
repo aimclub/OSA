@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 from osa_tool.scheduler.scheduler import ModeScheduler
+from osa_tool.utils.prompts_builder import PromptLoader
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
@@ -41,6 +42,7 @@ def test_mode_scheduler_initialization_basic(
         scheduler = ModeScheduler(
             mock_config_loader,
             sourcerank_instance,
+            PromptLoader(),
             mock_args_basic,
             mock_workflow_manager,
             mock_repository_metadata,
@@ -74,6 +76,7 @@ def test_mode_scheduler_initialization_advanced(
         scheduler = ModeScheduler(
             mock_config_loader,
             sourcerank_instance,
+            PromptLoader(),
             mock_args_advanced,
             mock_workflow_manager,
             mock_repository_metadata,
@@ -118,6 +121,7 @@ def test_mode_scheduler_initialization_auto(
         scheduler = ModeScheduler(
             mock_config_loader,
             sourcerank_instance,
+            PromptLoader(),
             mock_args_auto,
             mock_workflow_manager,
             mock_repository_metadata,

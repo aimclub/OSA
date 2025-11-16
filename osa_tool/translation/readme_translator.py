@@ -31,7 +31,7 @@ class ReadmeTranslator:
     ) -> dict:
         """Asynchronous request to translate README content via LLM."""
         prompt = PromptBuilder.render(
-            self.prompts.get("readme.core_features"),
+            self.prompts.get("readme.translate"),
             target_language=target_language,
             readme_content=readme_content,
         )

@@ -47,7 +47,7 @@ def parse_folder_name(repo_url: str) -> str:
 
 def osa_project_root() -> Path:
     """Returns osa_tool project root folder."""
-    return Path(__file__).parent
+    return Path(__file__).parent.parent
 
 
 def build_arguments_path() -> str:
