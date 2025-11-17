@@ -1,5 +1,6 @@
 import os
 import logging
+from pathlib import Path
 import tree_sitter
 from tree_sitter import Parser, Language
 import tree_sitter_python as tspython
@@ -12,7 +13,7 @@ class OSA_TreeSitter(object):
         cwd: A current working directory with source code files.
     """
 
-    def __init__(self, scripts_path: str):
+    def __init__(self, scripts_path: str, ignore_list: list[str] = ['tests', '.venv', 'osa_tool']):
         """Initialization of the instance based on the provided path to the scripts.
 
         Args:
@@ -20,9 +21,9 @@ class OSA_TreeSitter(object):
         """
         self.cwd = scripts_path
         self.import_map = {}
+        self.ignore_list = ignore_list
 
-    @staticmethod
-    def files_list(path: str) -> tuple[list, 0] | tuple[list[str], 1]:
+    def files_list(self, path: str) -> tuple[list, 0] | tuple[list[str], 1]:
         """Method provides a list of files occuring in the provided path.
 
         If user provided a path to a file with a particular extension
@@ -43,7 +44,8 @@ class OSA_TreeSitter(object):
         if os.path.isdir(path):
             for root, _, files in os.walk(path):
                 for file in files:
-                    if file.endswith(".py"):
+                    p = Path(os.path.join(root, file)).resolve()
+                    if file.endswith(".py") and not self._is_ignored(p):
                         script_files.append(os.path.join(root, file))
             return script_files, 0
 
@@ -51,6 +53,16 @@ class OSA_TreeSitter(object):
             return ([os.path.abspath(path)], 1)
 
         return ([], 0)
+    
+    def _is_ignored(self, path: Path) -> bool:
+        for dir in self.ignore_list:
+            ignore_path = Path(dir).resolve()
+            try:
+                path.relative_to(ignore_path)
+                return True
+            except ValueError:
+                continue
+        return False
 
     @classmethod
     def _if_file_handler(cls, path: str) -> str:
