@@ -27,7 +27,6 @@ class ReadmeAgent:
         logger.info("Started generating README.md. Processing the repository: %s", self.repo_url)
         try:
             if self.article is None:
-                logger.warning("Article is missing! Please pass it using --attachment argument.")
                 builder = self.default_readme()
             else:
                 builder = self.article_readme()
