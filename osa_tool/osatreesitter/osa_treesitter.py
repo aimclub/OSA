@@ -56,7 +56,7 @@ class OSA_TreeSitter(object):
     
     def _is_ignored(self, path: Path) -> bool:
         for dir in self.ignore_list:
-            ignore_path = Path(dir).resolve()
+            ignore_path = Path(os.path.join(self.cwd, dir)).resolve()
             try:
                 path.relative_to(ignore_path)
                 return True

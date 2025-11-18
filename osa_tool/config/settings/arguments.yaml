@@ -142,6 +142,14 @@ docstring:
   type: flag
   description: "Automatically generate docstrings for all Python files in the repository."
 
+ignore_list:
+  aliases: [ "--ignore-list" ]
+  type: str
+  description: | 
+    List of the directories to be ignored while docstring generation.
+    directories should be listed relatively to the project root and comma-separated.
+  example: "tests,moduleA/featureB"
+
 report:
   aliases: [ "--report" ]
   type: flag
