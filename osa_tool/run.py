@@ -92,7 +92,7 @@ def main():
         if "github.com" in args.repository:
             git_agent = GitHubAgent(args.repository, args.branch)
             workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
-        elif "gitlab.com" in args.repository:
+        elif "gitlab." in args.repository:
             git_agent = GitLabAgent(args.repository, args.branch)
             workflow_manager = GitLabWorkflowManager(args.repository, git_agent.metadata, args)
         elif "gitverse.ru" in args.repository:
@@ -124,9 +124,9 @@ def main():
                 git_agent.upload_report(analytics.filename, analytics.output_path)
 
         # NOTE: Must run first - switches GitHub branches
-        if path_to_doc := plan.get("validate_doc"):
+        if plan.get("validate_doc"):
             rich_section("Document validation")
-            content = DocValidator(config, prompts).validate(path_to_doc)
+            content = DocValidator(config, prompts).validate(plan.get("attachment"))
             va_re_gen = ValidationReportGenerator(config, git_agent.metadata, sourcerank)
             va_re_gen.build_pdf("Document", content)
             if create_fork:
@@ -135,7 +135,7 @@ def main():
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_paper"):
             rich_section("Paper validation")
-            content = PaperValidator(config, prompts).validate(plan.get("article"))
+            content = PaperValidator(config, prompts).validate(plan.get("attachment"))
             va_re_gen = ValidationReportGenerator(config, git_agent.metadata, sourcerank)
             va_re_gen.build_pdf("Paper", content)
             if create_fork:
@@ -176,7 +176,7 @@ def main():
         if plan.get("readme"):
             rich_section("README generation")
             readme_agent = ReadmeAgent(
-                config, prompts, plan.get("article"), plan.get("refine_readme"), git_agent.metadata
+                config, prompts, plan.get("attachment"), plan.get("refine_readme"), git_agent.metadata
             )
             readme_agent.generate_readme()
 

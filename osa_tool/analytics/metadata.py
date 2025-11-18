@@ -81,34 +81,38 @@ class MetadataLoader(ABC):
             RepositoryMetadata: Parsed repository metadata.
         """
         try:
-            return cls._load_platform_data(repo_url)
+            return cls._load_platform_data(repo_url, use_token=False)
+        except Exception:
+            try:
+                return cls._load_platform_data(repo_url, use_token=True)
 
-        except HTTPError as http_exc:
-            status_code = getattr(http_exc.response, "status_code", None)
-            logger.error(f"Error while fetching repository metadata: {http_exc}")
+            except HTTPError as http_exc:
+                status_code = getattr(http_exc.response, "status_code", None)
+                logger.error(f"Error while fetching repository metadata: {http_exc}")
 
-            if status_code == 401:
-                logger.error("Authentication failed: please check your Git token (missing or expired).")
-            elif status_code == 404:
-                logger.error("Repository not found: please check the repository URL.")
-            elif status_code == 403:
-                logger.error("Access denied: your token may lack sufficient permissions or you hit a rate limit.")
-            else:
-                logger.error("Unexpected HTTP error occurred while accessing the repository metadata.")
-            raise
+                if status_code == 401:
+                    logger.error("Authentication failed: please check your Git token (missing or expired).")
+                elif status_code == 404:
+                    logger.error("Repository not found: please check the repository URL.")
+                elif status_code == 403:
+                    logger.error("Access denied: your token may lack sufficient permissions or you hit a rate limit.")
+                else:
+                    logger.error("Unexpected HTTP error occurred while accessing the repository metadata.")
+                raise
 
-        except Exception as exc:
-            logger.error(f"Unexpected error while fetching repository metadata: {exc}")
-            raise
+            except Exception as exc:
+                logger.error(f"Unexpected error while fetching repository metadata: {exc}")
+                raise
 
     @classmethod
     @abstractmethod
-    def _load_platform_data(cls, repo_url: str) -> RepositoryMetadata:
+    def _load_platform_data(cls, repo_url: str, use_token: bool) -> RepositoryMetadata:
         """
         Abstract method to load metadata from a platform-specific API.
 
         Args:
             repo_url (str): The full URL of the repository.
+            use_token (bool): Whether to use authentication token.
 
         Returns:
             RepositoryMetadata: Parsed repository metadata.
@@ -132,7 +136,7 @@ class MetadataLoader(ABC):
 
 class GitHubMetadataLoader(MetadataLoader):
     @classmethod
-    def _load_platform_data(cls, repo_url: str) -> RepositoryMetadata:
+    def _load_platform_data(cls, repo_url: str, use_token: bool) -> RepositoryMetadata:
         """
         Load GitHub repository metadata via GitHub API.
 
@@ -144,9 +148,12 @@ class GitHubMetadataLoader(MetadataLoader):
         """
         base_url = get_base_repo_url(repo_url)
         headers = {
-            "Authorization": f"token {os.getenv('GIT_TOKEN', os.getenv('GITHUB_TOKEN', ''))}",
             "Accept": "application/vnd.github.v3+json",
         }
+
+        if use_token:
+            headers["Authorization"] = f"token {os.getenv('GIT_TOKEN', os.getenv('GITHUB_TOKEN', ''))}"
+
         url = f"https://api.github.com/repos/{base_url}"
         response = requests.get(url=url, headers=headers)
         response.raise_for_status()
@@ -204,7 +211,7 @@ class GitHubMetadataLoader(MetadataLoader):
 
 class GitLabMetadataLoader(MetadataLoader):
     @classmethod
-    def _load_platform_data(cls, repo_url: str) -> RepositoryMetadata:
+    def _load_platform_data(cls, repo_url: str, use_token: bool) -> RepositoryMetadata:
         """
         Load GitLab repository metadata via GitLab API.
 
@@ -221,9 +228,12 @@ class GitLabMetadataLoader(MetadataLoader):
         gitlab_instance = gitlab_instance_match.group(1)
 
         headers = {
-            "Authorization": f"Bearer {os.getenv('GITLAB_TOKEN', os.getenv('GIT_TOKEN'))}",
             "Content-Type": "application/json",
         }
+
+        if use_token:
+            headers["Authorization"] = f"Bearer {os.getenv('GITLAB_TOKEN', os.getenv('GIT_TOKEN'))}"
+
         project_path = base_url.replace("/", "%2F")
         url = f"{gitlab_instance}/api/v4/projects/{project_path}"
 
@@ -290,7 +300,7 @@ class GitLabMetadataLoader(MetadataLoader):
 
 class GitverseMetadataLoader(MetadataLoader):
     @classmethod
-    def _load_platform_data(cls, repo_url: str) -> RepositoryMetadata:
+    def _load_platform_data(cls, repo_url: str, use_token: bool) -> RepositoryMetadata:
         """
         Load Gitverse repository metadata via Gitverse API.
 

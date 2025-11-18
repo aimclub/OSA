@@ -1,5 +1,8 @@
 from pathlib import Path
 
+import tiktoken
+from rich.progress import track
+
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.conversion.notebook_converter import NotebookConverter
@@ -44,13 +47,12 @@ class CodeAnalyzer:
         """
         repo_path = Path(parse_folder_name(str(self.config.git.repository))).resolve()
         code_files = []
-        logger.info("Getting code files ...")
-        for filename in self.tree.split("\n"):
+        for filename in track(self.tree.split("\n"), description="Getting code files ..."):
             if self._is_file_ignored(filename):
                 logger.debug(f"File '{filename}' is ignored")
                 continue
             if filename.endswith(".ipynb"):
-                logger.info("Found .ipynb file, converting ...")
+                logger.debug("Found .ipynb file, converting ...")
                 self.notebook_convertor.convert_notebook(str(repo_path.joinpath(filename)))
                 code_files.append(str(repo_path.joinpath(filename.replace(".ipynb", ".py"))))
             if filename.endswith(".py"):
@@ -94,10 +96,10 @@ class CodeAnalyzer:
             str: Aggregated analysis results for all code files.
         """
         result = ""
-        for file in code_files:
-            logger.info(f"Getting {file} content ...")
-            file_content = read_file(file)
-            logger.info("Analyzing file ...")
+        for file in track(code_files, description="Analyzing repository files..."):
+            logger.debug(f"Getting {file} content ...")
+            file_content = self._limit_tokens(read_file(file))
+            logger.info(f"Analyzing {file} ...")
             response = self.model_handler.send_request(
                 PromptBuilder.render(
                     self.prompts.get("validation.analyze_code_file"),
@@ -108,3 +110,14 @@ class CodeAnalyzer:
             file_data = response
             result += file_data + "\n"
         return result
+
+    def _limit_tokens(self, text: str, max_tokens: int = 200000, encoding_name="cl100k_base"):
+        """Limit text to approximately max_tokens using tiktoken"""
+        encoding = tiktoken.get_encoding(encoding_name)
+        tokens = encoding.encode(text)
+
+        if len(tokens) <= max_tokens:
+            return text
+
+        truncated_tokens = tokens[:max_tokens]
+        return encoding.decode(truncated_tokens)

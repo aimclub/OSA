@@ -36,8 +36,6 @@ It also generates advices and recommendations for the repository.
 
 OSA is currently under development, so not all features are implemented.
 
-
-
 ---
 
 ## How it works?
@@ -77,7 +75,7 @@ Here is a short video:
 4. **Various LLMs**: Use OSA with an LLM accessible via API (e.g., OpenAI, VseGPT, Ollama), a local server, or try
    an [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
 
-5. **GitHub Action Workflow Generator**: Automatically generates customizable CI/CD workflows for Python repositories,
+5. **Workflow Generator**: Automatically generates customizable CI/CD workflows for Python repositories,
    including unit tests, code formatting, PEP 8 compliance checks, and PyPI publication.
 
 ---
@@ -137,8 +135,9 @@ docker build --build-arg GIT_USER_NAME="your-user-name" --build-arg GIT_USER_EMA
 
 OSA requires Python 3.10 or higher.
 
-File `.env` is required to specify GitHub/GitLab/Gitverse token (GIT_TOKEN) and LLM API key (OPENAI_API_KEY or
-AUTHORIZATION_KEY)
+The .env file is required to specify the LLM API key (OPENAI_API_KEY or AUTHORIZATION_KEY) and optionally a Git token. The Git token (GIT_TOKEN) may be omitted if you plan to work with a public repository without creating a fork (using the --no-fork option).
+
+Alternatively, instead of GIT_TOKEN, you can use GITHUB_TOKEN, GITLAB_TOKEN, or GITVERSE_TOKEN for GitHub, GitLab, and Gitverse respectively.
 
 When running `osa-tool` from CLI, you need to set the GIT_TOKEN and API key first:
 
@@ -169,18 +168,18 @@ Run Open-Source-Advisor using the following command:
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
 
 ```sh
-python -m osa_tool.run -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--article {article}] [--convert-notebooks {notebook_paths}]
+python -m osa_tool.run -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--attachment {article}] [--convert-notebooks {notebook_paths}]
 ```
 
 **Using `docker`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
 ```sh
-docker run --env-file .env {image-name} -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--article {article}] [--convert-notebooks {notebook_paths}]
+docker run --env-file .env {image-name} -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--attachment {article}] [--convert-notebooks {notebook_paths}]
 ```
 
-The --article option enables you to choose a README template for a repository based on an article. You can provide
-either a link to a PDF file of the article or a path to a local PDF file after the --article option. If you are using
+The --attachment option enables you to choose a README template for a repository based on an article. You can provide
+either a link to a PDF file of the article or a path to a local PDF file after the --attachment option. If you are using
 Docker, ensure that you upload the PDF file to the OSA folder before building the image, then, specify the path as
 /app/OSA/... or just use volume mounting to access the file.
 
@@ -200,7 +199,7 @@ documentation, see the [Workflow Generator README](./osa_tool/workflow/README.md
 | `--top_p`            | Nucleus sampling probability                                                        | `None`                      |
 | `--temperature`      | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).   | `None`                      |
 | `--max_tokens`       | Maximum number of tokens the model can generate in a single response                | `None`                      |
-| `--article`          | Link to the pdf file of the article                                                 | `None`                      |
+| `--attachment`       | Path to a local PDF or .docx file, or a URL to a PDF resource                       | `None`                      |
 | `-m`, `--mode`       | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`. | `auto`                      |
 | `--delete-dir`       | Enable deleting the downloaded repository after processing                          | `disabled`                  |
 | `--no-fork`          | Avoid create fork for target repository                                             | `False`                     |

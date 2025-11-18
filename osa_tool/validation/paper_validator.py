@@ -42,7 +42,7 @@ class PaperValidator:
             Exception: If an error occurs during validation.
         """
         if not article:
-            raise ValueError("Article is missing! Please pass it using --article argument.")
+            raise ValueError("Article is missing! Please pass it using --attachment argument.")
         try:
             paper_info = self.process_paper(article)
             code_files = self.code_analyzer.get_code_files()
