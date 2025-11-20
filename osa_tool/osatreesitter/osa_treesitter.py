@@ -13,7 +13,7 @@ class OSA_TreeSitter(object):
         cwd: A current working directory with source code files.
     """
 
-    def __init__(self, scripts_path: str, ignore_list: list[str] = ['tests', '.venv', 'osa_tool']):
+    def __init__(self, scripts_path: str, ignore_list: list[str] = ["tests", ".venv", "osa_tool", "__init__.py"]):
         """Initialization of the instance based on the provided path to the scripts.
 
         Args:
@@ -53,7 +53,7 @@ class OSA_TreeSitter(object):
             return ([os.path.abspath(path)], 1)
 
         return ([], 0)
-    
+
     def _is_ignored(self, path: Path) -> bool:
         for dir in self.ignore_list:
             ignore_path = Path(os.path.join(self.cwd, dir)).resolve()

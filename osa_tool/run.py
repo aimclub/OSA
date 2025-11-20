@@ -276,7 +276,9 @@ def generate_requirements(repo_url):
         logger.error(f"Error while generating project's requirements: {e.stderr}")
 
 
-def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEventLoop, ignore_list: str = "test,tests,.venv,__init.py__") -> None:
+def generate_docstrings(
+    config_loader: ConfigLoader, loop: asyncio.AbstractEventLoop, ignore_list: str = "test,tests,.venv,__init.py__"
+) -> None:
     """Generates a docstrings for .py's classes and methods of the provided repository.
 
     Args:
