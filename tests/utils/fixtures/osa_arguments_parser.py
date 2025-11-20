@@ -58,7 +58,7 @@ def mock_yaml_file():
 
 @pytest.fixture()
 def mock_toml_file():
-    with patch("osa_tool.arguments_parser.read_config_file", return_value=TOML_CONFIG_EXAMPLE):
+    with patch("osa_tool.utils.arguments_parser.read_config_file", return_value=TOML_CONFIG_EXAMPLE):
         yield TOML_CONFIG_EXAMPLE
 
 

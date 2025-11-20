@@ -2,7 +2,7 @@ import os
 import re
 
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.utils import get_repo_tree, parse_folder_name
+from osa_tool.utils.utils import get_repo_tree, parse_folder_name
 
 
 class SourceRank:

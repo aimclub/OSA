@@ -21,17 +21,20 @@ from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.report_generator import TextGenerator
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.logger import logger
-from osa_tool.utils import osa_project_root
+from osa_tool.utils.logger import logger
+from osa_tool.utils.prompts_builder import PromptLoader
+from osa_tool.utils.utils import osa_project_root
 
 
 class ReportGenerator:
 
-    def __init__(self, config_loader: ConfigLoader, sourcerank: SourceRank, metadata: RepositoryMetadata):
+    def __init__(
+        self, config_loader: ConfigLoader, sourcerank: SourceRank, prompts: PromptLoader, metadata: RepositoryMetadata
+    ):
         self.config = config_loader.config
         self.sourcerank = sourcerank
         self.metadata = metadata
-        self.text_generator = TextGenerator(config_loader, self.sourcerank, self.metadata)
+        self.text_generator = TextGenerator(config_loader, self.sourcerank, prompts, self.metadata)
         self.repo_url = self.config.git.repository
         self.osa_url = "https://github.com/aimclub/OSA"
 

@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from osa_tool.readmegen.readme_core import ReadmeAgent
+from osa_tool.utils.prompts_builder import PromptLoader
 
 
 @patch("osa_tool.readmegen.readme_core.remove_extra_blank_lines")
@@ -29,6 +30,7 @@ def test_readme_agent_without_article(
 
     agent = ReadmeAgent(
         config_loader=mock_config_loader,
+        prompts=PromptLoader(),
         article=None,
         refine_readme=True,
         metadata=mock_repository_metadata,
@@ -79,6 +81,7 @@ def test_readme_agent_with_article(
 
     agent = ReadmeAgent(
         config_loader=mock_config_loader,
+        prompts=PromptLoader(),
         article=article_path,
         refine_readme=False,
         metadata=mock_repository_metadata,

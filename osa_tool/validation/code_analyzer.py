@@ -6,11 +6,11 @@ from rich.progress import track
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.conversion.notebook_converter import NotebookConverter
-from osa_tool.logger import logger
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.utils import read_file
-from osa_tool.utils import parse_folder_name
-from osa_tool.validation.prompt_builder import PromptBuilder
+from osa_tool.utils.logger import logger
+from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.utils.utils import parse_folder_name
 
 
 class CodeAnalyzer:
@@ -22,7 +22,7 @@ class CodeAnalyzer:
     and sending code content to a model for analysis.
     """
 
-    def __init__(self, config_loader: ConfigLoader):
+    def __init__(self, config_loader: ConfigLoader, prompts: PromptLoader):
         """
         Initialize the CodeAnalyzer.
 
@@ -30,9 +30,9 @@ class CodeAnalyzer:
             config_loader (ConfigLoader): Loader containing configuration settings.
         """
         self.config = config_loader.config
+        self.prompts = prompts
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.notebook_convertor = NotebookConverter()
-        self.prompts = PromptBuilder()
         self.sourcerank = SourceRank(config_loader)
         self.tree = self.sourcerank.tree
 
@@ -100,7 +100,12 @@ class CodeAnalyzer:
             logger.debug(f"Getting {file} content ...")
             file_content = self._limit_tokens(read_file(file))
             logger.info(f"Analyzing {file} ...")
-            response = self.model_handler.send_request(self.prompts.get_prompt_to_analyze_code_file(file_content))
+            response = self.model_handler.send_request(
+                PromptBuilder.render(
+                    self.prompts.get("validation.analyze_code_file"),
+                    file_content=file_content,
+                )
+            )
             logger.debug(response)
             file_data = response
             result += file_data + "\n"

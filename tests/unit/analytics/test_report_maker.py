@@ -4,11 +4,13 @@ from unittest.mock import patch, MagicMock
 from reportlab.platypus import Table, Paragraph, ListFlowable, Flowable
 
 from osa_tool.analytics.report_maker import ReportGenerator
+from osa_tool.utils.prompts_builder import PromptLoader
 
 
 def test_report_generator_init(mock_config_loader, mock_sourcerank, mock_repository_metadata):
     # Arrange
     expected_metadata = mock_repository_metadata
+    expected_prompt_loader = PromptLoader()
     expected_repo_url = mock_config_loader.config.git.repository
     expected_filename = f"{expected_metadata.name}_report.pdf"
     expected_output_path = Path.cwd() / expected_filename
@@ -20,7 +22,9 @@ def test_report_generator_init(mock_config_loader, mock_sourcerank, mock_reposit
         patch("osa_tool.analytics.report_maker.TextGenerator") as mock_text_generator,
     ):
         # Act
-        report_generator = ReportGenerator(mock_config_loader, sourcerank_instance, mock_repository_metadata)
+        report_generator = ReportGenerator(
+            mock_config_loader, sourcerank_instance, expected_prompt_loader, mock_repository_metadata
+        )
 
         # Assert
         assert report_generator.config == mock_config_loader.config
@@ -32,7 +36,9 @@ def test_report_generator_init(mock_config_loader, mock_sourcerank, mock_reposit
         assert report_generator.filename == expected_filename
         assert Path(report_generator.output_path) == expected_output_path
         assert Path(report_generator.logo_path) == expected_logo_path
-        mock_text_generator.assert_called_once_with(mock_config_loader, sourcerank_instance, mock_repository_metadata)
+        mock_text_generator.assert_called_once_with(
+            mock_config_loader, sourcerank_instance, expected_prompt_loader, mock_repository_metadata
+        )
 
 
 def test_table_builder_without_coloring():
@@ -66,7 +72,7 @@ def test_table_builder_with_coloring():
 def test_generate_qr_code(tmp_path, mock_config_loader, mock_sourcerank, monkeypatch, mock_repository_metadata):
     # Arrange
     monkeypatch.chdir(tmp_path)
-    report_generator = ReportGenerator(mock_config_loader, mock_sourcerank(), mock_repository_metadata)
+    report_generator = ReportGenerator(mock_config_loader, mock_sourcerank(), PromptLoader(), mock_repository_metadata)
 
     # Act
     qr_path = report_generator.generate_qr_code()
@@ -80,7 +86,7 @@ def test_generate_qr_code(tmp_path, mock_config_loader, mock_sourcerank, monkeyp
 
 def test_header(mock_config_loader, mock_sourcerank, mock_repository_metadata):
     # Arrange
-    report_generator = ReportGenerator(mock_config_loader, mock_sourcerank(), mock_repository_metadata)
+    report_generator = ReportGenerator(mock_config_loader, mock_sourcerank(), PromptLoader(), mock_repository_metadata)
 
     # Act
     header_elements = report_generator.header()
@@ -96,7 +102,7 @@ def test_header(mock_config_loader, mock_sourcerank, mock_repository_metadata):
 def test_draw_images_and_tables(tmp_path, mock_config_loader, mock_sourcerank, monkeypatch, mock_repository_metadata):
     # Arrange
     monkeypatch.chdir(tmp_path)
-    report_generator = ReportGenerator(mock_config_loader, mock_sourcerank(), mock_repository_metadata)
+    report_generator = ReportGenerator(mock_config_loader, mock_sourcerank(), PromptLoader(), mock_repository_metadata)
     canvas_mock = MagicMock()
     doc_mock = MagicMock()
     report_generator.table_generator = MagicMock(return_value=(MagicMock(), MagicMock()))
@@ -113,7 +119,7 @@ def test_draw_images_and_tables(tmp_path, mock_config_loader, mock_sourcerank, m
 
 def test_table_generator_returns_two_tables(mock_config_loader, mock_sourcerank, mock_repository_metadata):
     # Arrange
-    generator = ReportGenerator(mock_config_loader, mock_sourcerank(), mock_repository_metadata)
+    generator = ReportGenerator(mock_config_loader, mock_sourcerank(), PromptLoader(), mock_repository_metadata)
 
     # Act
     table1, table2 = generator.table_generator()
@@ -125,7 +131,7 @@ def test_table_generator_returns_two_tables(mock_config_loader, mock_sourcerank,
 
 def test_body_first_part_returns_bullet_list(mock_config_loader, mock_sourcerank, mock_repository_metadata):
     # Arrange
-    generator = ReportGenerator(mock_config_loader, mock_sourcerank(), mock_repository_metadata)
+    generator = ReportGenerator(mock_config_loader, mock_sourcerank(), PromptLoader(), mock_repository_metadata)
 
     # Act
     bullet_list = generator.body_first_part()
@@ -142,7 +148,7 @@ def test_body_second_part_returns_story_elements(
     mock_config_loader, mock_sourcerank, text_generator_instance, monkeypatch, mock_repository_metadata
 ):
     # Arrange
-    report_generator = ReportGenerator(mock_config_loader, mock_sourcerank(), mock_repository_metadata)
+    report_generator = ReportGenerator(mock_config_loader, mock_sourcerank(), PromptLoader(), mock_repository_metadata)
     report_generator.text_generator, _ = text_generator_instance
 
     # Act
@@ -161,7 +167,7 @@ def test_build_pdf_creates_output_file(
 ):
     # Arrange
     monkeypatch.chdir(tmp_path)
-    report_generator = ReportGenerator(mock_config_loader, mock_sourcerank(), mock_repository_metadata)
+    report_generator = ReportGenerator(mock_config_loader, mock_sourcerank(), PromptLoader(), mock_repository_metadata)
     report_generator.text_generator, _ = text_generator_instance
 
     # Act

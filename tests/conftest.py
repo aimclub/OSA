@@ -6,7 +6,7 @@ import pytest
 
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import Settings, GitSettings, ModelSettings, WorkflowSettings
-from osa_tool.utils import parse_folder_name
+from osa_tool.utils.utils import parse_folder_name
 from tests.data_factory import DataFactory
 from tests.utils.mocks.requests_mock import mock_requests_response
 
@@ -21,7 +21,6 @@ pytest_plugins = [
     "tests.utils.fixtures.readmegen_context_article",
     "tests.utils.fixtures.readmegen_llm_service",
     "tests.utils.fixtures.readmegen_markdown_builder",
-    "tests.utils.fixtures.readmegen_prompt_builder",
     "tests.utils.fixtures.readmegen_readme_refiner",
     "tests.utils.fixtures.scheduler",
     "tests.utils.fixtures.ui_plan_editor",

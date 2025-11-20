@@ -1,10 +1,10 @@
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.logger import logger
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.context.article_content import PdfParser
 from osa_tool.readmegen.context.article_path import get_pdf_path
+from osa_tool.utils.logger import logger
+from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
 from osa_tool.validation.code_analyzer import CodeAnalyzer
-from osa_tool.validation.prompt_builder import PromptBuilder
 
 
 class PaperValidator:
@@ -15,17 +15,17 @@ class PaperValidator:
     and validates the paper against the codebase using a language model.
     """
 
-    def __init__(self, config_loader: ConfigLoader):
+    def __init__(self, config_loader: ConfigLoader, prompts: PromptLoader):
         """
         Initialize the PaperValidator.
 
         Args:
             config_loader (ConfigLoader): Loader containing configuration settings.
         """
-        self.code_analyzer = CodeAnalyzer(config_loader)
+        self.code_analyzer = CodeAnalyzer(config_loader, prompts)
         self.config = config_loader.config
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
-        self.prompts = PromptBuilder()
+        self.prompts = prompts
 
     def validate(self, article: str | None) -> str:
         """
@@ -73,7 +73,12 @@ class PaperValidator:
         logger.info("Extracting text from PDF ...")
         pdf_content = PdfParser(path_to_pdf).data_extractor()
         logger.info("Sending request to extract sections ...")
-        response = self.model_handler.send_request(self.prompts.get_prompt_to_extract_sections_from_paper(pdf_content))
+        response = self.model_handler.send_request(
+            PromptBuilder.render(
+                self.prompts.get("validation.extract_paper_section"),
+                paper_content=pdf_content,
+            )
+        )
         logger.debug(response)
         return response
 
@@ -90,7 +95,11 @@ class PaperValidator:
         """
         logger.info("Validating paper against repository ...")
         response = self.model_handler.send_request(
-            self.prompts.get_prompt_to_validate_paper_against_repo(paper_info, code_files_info)
+            PromptBuilder.render(
+                self.prompts.get("validation.validate_paper_against_repo"),
+                paper_info=paper_info,
+                code_files_info=code_files_info,
+            )
         )
         logger.debug(response)
         return response

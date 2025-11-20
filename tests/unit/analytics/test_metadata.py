@@ -8,7 +8,7 @@ from osa_tool.analytics.metadata import (
     GitLabMetadataLoader,
     GitverseMetadataLoader,
 )
-from osa_tool.utils import get_base_repo_url
+from osa_tool.utils.utils import get_base_repo_url
 
 LOADER_CLASSES = {
     "github": GitHubMetadataLoader,

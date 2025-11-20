@@ -1,8 +1,6 @@
-import os
-
 import pytest
 
-from osa_tool.scheduler.prompts import PromptConfig, PromptLoader
+from osa_tool.scheduler.response_validation import PromptConfig
 
 
 def test_prompt_config_default_values():
@@ -156,56 +154,6 @@ def test_prompt_config_safe_validate_empty_data():
     assert config.about is False
 
 
-def test_prompt_loader_initialization():
-    # Arrange
-    loader = PromptLoader()
-
-    # Act
-    assert isinstance(loader.prompts, dict)
-    assert len(loader.prompts) >= 0
-
-
-def test_prompt_loader_load_prompts():
-    # Arrange
-    loader = PromptLoader()
-
-    # Act
-    prompts = loader.load_prompts()
-
-    # Assert
-    assert isinstance(prompts, dict)
-    assert prompts is not None
-
-
-def test_prompt_loader_get_prompts_path():
-    # Act
-    prompt_path = PromptLoader._get_prompts_path()
-
-    # Assert
-    assert isinstance(prompt_path, str)
-    assert os.path.exists(prompt_path)
-    assert "prompt_for_scheduler.toml" in prompt_path
-    assert "config" in prompt_path
-    assert "settings" in prompt_path
-
-
-def test_prompt_loader_file_exists():
-    # Act
-    prompt_path = PromptLoader._get_prompts_path()
-
-    # Assert
-    assert os.path.exists(prompt_path)
-    assert os.path.isfile(prompt_path)
-
-
-def test_prompt_loader_prompts_not_empty():
-    # Act
-    loader = PromptLoader()
-
-    # Arrange
-    assert isinstance(loader.prompts, dict)
-
-
 @pytest.mark.parametrize("license_value", ["bsd-3", "mit", "ap2", None, "gpl-3.0", "apache-2.0"])
 def test_prompt_config_ensure_license_valid_values(license_value):
     # Arrange
@@ -238,39 +186,3 @@ def test_prompt_config_boolean_fields_false(field_name):
 
     # Assert
     assert getattr(config, field_name) is False
-
-
-def test_prompt_loader_get_prompts_path_exists():
-    # Act
-    prompt_path = PromptLoader._get_prompts_path()
-
-    # Assert
-    assert os.path.exists(prompt_path)
-    assert os.path.isfile(prompt_path)
-
-
-def test_prompt_loader_load_prompts_returns_dict():
-    # Arrange
-    loader = PromptLoader()
-
-    # Act
-    prompts = loader.load_prompts()
-
-    # Assert
-    assert isinstance(prompts, dict)
-
-
-def test_prompt_loader_prompts_not_none():
-    # Arrange
-    loader = PromptLoader()
-
-    # Assert
-    assert loader.prompts is not None
-
-
-def test_prompt_loader_prompts_is_dict():
-    # Arrange
-    loader = PromptLoader()
-
-    # Assert
-    assert isinstance(loader.prompts, dict)

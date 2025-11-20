@@ -1,4 +1,4 @@
-from osa_tool.analytics.prompt_builder import (
+from osa_tool.analytics.response_validation import (
     RepositoryReport,
     RepositoryStructure,
     ReadmeEvaluation,
@@ -61,7 +61,7 @@ def test_repository_report_with_custom_data():
 
 def test_repository_report_enum_validation():
     # Act
-    readme_eval = ReadmeEvaluation(project_description="Yes")
+    readme_eval = ReadmeEvaluation(project_description=YesNoPartial.YES)
 
     # Assert
     assert readme_eval.project_description == YesNoPartial.YES

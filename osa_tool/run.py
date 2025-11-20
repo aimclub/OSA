@@ -12,13 +12,11 @@ from pydantic import ValidationError
 from osa_tool.aboutgen.about_generator import AboutGenerator
 from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.arguments_parser import build_parser_from_yaml
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.conversion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.docs_generator.license import compile_license_file
 from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent
-from osa_tool.logger import logger, setup_logging
 from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
@@ -32,12 +30,10 @@ from osa_tool.scheduler.workflow_manager import (
 )
 from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.translation.readme_translator import ReadmeTranslator
-from osa_tool.utils import (
-    delete_repository,
-    osa_project_root,
-    parse_folder_name,
-    rich_section,
-)
+from osa_tool.utils.arguments_parser import build_parser_from_yaml
+from osa_tool.utils.logger import setup_logging, logger
+from osa_tool.utils.prompts_builder import PromptLoader
+from osa_tool.utils.utils import delete_repository, parse_folder_name, rich_section, osa_project_root
 from osa_tool.validation.doc_validator import DocValidator
 from osa_tool.validation.paper_validator import PaperValidator
 from osa_tool.validation.report_generator import (
@@ -62,6 +58,9 @@ def main():
     logs_dir = os.path.join(os.path.dirname(osa_project_root()), "logs")
     repo_name = parse_folder_name(args.repository)
     setup_logging(repo_name, logs_dir)
+
+    # Load prompts
+    prompts = PromptLoader()
 
     loop = asyncio.get_event_loop()
     asyncio.set_event_loop(loop)
@@ -109,7 +108,7 @@ def main():
 
         # Initialize ModeScheduler
         sourcerank = SourceRank(config)
-        scheduler = ModeScheduler(config, sourcerank, args, workflow_manager, git_agent.metadata)
+        scheduler = ModeScheduler(config, sourcerank, prompts, args, workflow_manager, git_agent.metadata)
         plan = scheduler.plan
 
         if create_fork:
@@ -119,7 +118,7 @@ def main():
         # NOTE: Must run first - switches GitHub branches
         if plan.get("report"):
             rich_section("Report generation")
-            analytics = ReportGenerator(config, sourcerank, git_agent.metadata)
+            analytics = ReportGenerator(config, sourcerank, prompts, git_agent.metadata)
             analytics.build_pdf()
             if create_fork:
                 git_agent.upload_report(analytics.filename, analytics.output_path)
@@ -127,7 +126,7 @@ def main():
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_doc"):
             rich_section("Document validation")
-            content = DocValidator(config).validate(plan.get("attachment"))
+            content = DocValidator(config, prompts).validate(plan.get("attachment"))
             va_re_gen = ValidationReportGenerator(config, git_agent.metadata, sourcerank)
             va_re_gen.build_pdf("Document", content)
             if create_fork:
@@ -136,7 +135,7 @@ def main():
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_paper"):
             rich_section("Paper validation")
-            content = PaperValidator(config).validate(plan.get("attachment"))
+            content = PaperValidator(config, prompts).validate(plan.get("attachment"))
             va_re_gen = ValidationReportGenerator(config, git_agent.metadata, sourcerank)
             va_re_gen.build_pdf("Paper", content)
             if create_fork:
@@ -176,20 +175,22 @@ def main():
         # Readme generation
         if plan.get("readme"):
             rich_section("README generation")
-            readme_agent = ReadmeAgent(config, plan.get("attachment"), plan.get("refine_readme"), git_agent.metadata)
+            readme_agent = ReadmeAgent(
+                config, prompts, plan.get("attachment"), plan.get("refine_readme"), git_agent.metadata
+            )
             readme_agent.generate_readme()
 
         # Readme translation
         translate_readme = plan.get("translate_readme")
         if translate_readme:
             rich_section("README translation")
-            ReadmeTranslator(config, git_agent.metadata, translate_readme).translate_readme()
+            ReadmeTranslator(config, prompts, git_agent.metadata, translate_readme).translate_readme()
 
         # About section generation
         about_gen = None
         if plan.get("about"):
             rich_section("About Section generation")
-            about_gen = AboutGenerator(config, git_agent)
+            about_gen = AboutGenerator(config, prompts, git_agent)
             about_gen.generate_about_content()
             if create_fork:
                 git_agent.update_about_section(about_gen.get_about_content())

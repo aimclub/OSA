@@ -6,11 +6,12 @@ from unittest.mock import patch, AsyncMock
 import pytest
 
 import osa_tool.translation.readme_translator as rt
+from osa_tool.utils.prompts_builder import PromptLoader
 
 
 @pytest.fixture
 def translator(tmp_path, mock_config_loader, mock_repository_metadata):
-    t = rt.ReadmeTranslator(mock_config_loader, mock_repository_metadata, ["fr", "de"])
+    t = rt.ReadmeTranslator(mock_config_loader, PromptLoader(), mock_repository_metadata, ["fr", "de"])
     t.base_path = tmp_path
     return t
 

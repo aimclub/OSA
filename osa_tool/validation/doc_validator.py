@@ -5,12 +5,12 @@ import re
 import docx2txt
 
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.logger import logger
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.context.article_content import PdfParser
 from osa_tool.readmegen.context.article_path import get_pdf_path
+from osa_tool.utils.logger import logger
+from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
 from osa_tool.validation.code_analyzer import CodeAnalyzer
-from osa_tool.validation.prompt_builder import PromptBuilder
 
 
 class DocValidator:
@@ -21,17 +21,17 @@ class DocValidator:
     analyzes code files in the repository, and validates the documentation against the codebase using a language model.
     """
 
-    def __init__(self, config_loader: ConfigLoader):
+    def __init__(self, config_loader: ConfigLoader, prompts: PromptLoader):
         """
         Initialize the DocValidator.
 
         Args:
             config_loader (ConfigLoader): Loader containing configuration settings.
         """
-        self.code_analyzer = CodeAnalyzer(config_loader)
+        self.code_analyzer = CodeAnalyzer(config_loader, prompts)
         self.config = config_loader.config
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
-        self.prompts = PromptBuilder()
+        self.prompts = prompts
 
     def _describe_image(self, image_path: str):
         base64_image = self._encode_image(image_path)
@@ -95,7 +95,10 @@ class DocValidator:
         processed_content = self._preprocess_text(raw_content)
         logger.info("Sending request to process document's content ...")
         response = self.model_handler.send_request(
-            self.prompts.get_prompt_to_extract_sections_from_doc(processed_content)
+            PromptBuilder.render(
+                self.prompts.get("validation.extract_document_sections"),
+                doc_content=processed_content,
+            )
         )
         logger.debug(response)
         return response
@@ -170,7 +173,11 @@ class DocValidator:
         """
         logger.info("Validating doc against repository ...")
         response = self.model_handler.send_request(
-            self.prompts.get_prompt_to_validate_doc_against_repo(doc_info, code_files_info)
+            PromptBuilder.render(
+                self.prompts.get("validation.validate_doc_against_repo"),
+                doc_info=doc_info,
+                code_files_info=code_files_info,
+            )
         )
         logger.debug(response)
         return response

@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from rich.console import Console
 
-from osa_tool.logger import logger
+from osa_tool.utils.logger import logger
 
 console = Console()
 
@@ -47,7 +47,7 @@ def parse_folder_name(repo_url: str) -> str:
 
 def osa_project_root() -> Path:
     """Returns osa_tool project root folder."""
-    return Path(__file__).parent
+    return Path(__file__).parent.parent
 
 
 def build_arguments_path() -> str:

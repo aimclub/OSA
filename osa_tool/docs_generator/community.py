@@ -5,9 +5,9 @@ import tomli
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.logger import logger
 from osa_tool.readmegen.utils import find_in_repo_tree, save_sections
-from osa_tool.utils import osa_project_root, parse_folder_name
+from osa_tool.utils.logger import logger
+from osa_tool.utils.utils import osa_project_root, parse_folder_name
 
 
 class CommunityTemplateBuilder:

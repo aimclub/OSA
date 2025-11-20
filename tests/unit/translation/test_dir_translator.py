@@ -3,9 +3,9 @@ from unittest.mock import patch, Mock, mock_open, call
 
 import pytest
 
-from osa_tool.logger import logger
 from osa_tool.translation.dir_translator import DirectoryTranslator
-from osa_tool.utils import parse_folder_name
+from osa_tool.utils.logger import logger
+from osa_tool.utils.utils import parse_folder_name
 
 
 def test_init_sets_attributes(mock_config_loader):

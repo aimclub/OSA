@@ -3,7 +3,13 @@ from unittest.mock import patch, mock_open
 
 import pytest
 
-from osa_tool.utils import parse_folder_name, osa_project_root, get_base_repo_url, parse_git_url, extract_readme_content
+from osa_tool.utils.utils import (
+    parse_folder_name,
+    osa_project_root,
+    get_base_repo_url,
+    parse_git_url,
+    extract_readme_content,
+)
 
 
 def test_parse_folder_name_github():

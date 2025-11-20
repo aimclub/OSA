@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, Mock
 import pytest
 
 from osa_tool.readmegen.models.llm_service import LLMClient
+from osa_tool.utils.prompts_builder import PromptLoader
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
@@ -58,13 +59,11 @@ def mock_file_processor_factory(mock_file_contexts):
 
 
 @pytest.fixture
-def llm_client(
-    mock_config_loader, prompt_builder, sourcerank_with_repo_tree, mock_repository_metadata, mock_model_handler
-):
+def llm_client(mock_config_loader, sourcerank_with_repo_tree, mock_repository_metadata, mock_model_handler):
     repo_tree_data = get_mock_repo_tree("FULL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
-    client = LLMClient(mock_config_loader, mock_repository_metadata)
+    client = LLMClient(mock_config_loader, PromptLoader(), mock_repository_metadata)
     client.model_handler = mock_model_handler()
     client.sourcerank = sourcerank
     client.tree = sourcerank.tree
