@@ -45,7 +45,7 @@ class OSA_TreeSitter(object):
             for root, _, files in os.walk(path):
                 for file in files:
                     p = Path(os.path.join(root, file)).resolve()
-                    if file.endswith(".py") and not self._is_ignored(p):
+                    if file.endswith(".py") and not self._is_ignored(p) and p.name not in self.ignore_list:
                         script_files.append(os.path.join(root, file))
             return script_files, 0
 
