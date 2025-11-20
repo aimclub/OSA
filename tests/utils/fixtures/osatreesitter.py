@@ -25,6 +25,7 @@ def temp_dir_with_files(tmp_path):
 
     return str(tmp_path), [str(py1), str(py2)]
 
+
 @pytest.fixture
 def temp_dir_with_ignores(tmp_path):
     """Creates a temporary directory with multiple to be ignored entities."""
@@ -50,6 +51,7 @@ def temp_dir_with_ignores(tmp_path):
     expected_result = [str(tmp_path / "a.py"), str(tmp_path / "allow1" / "b_allow.py")]
 
     return str(tmp_path), expected_result
+
 
 class Node:
     """Lightweight stub to simulate tree_sitter.Node."""
