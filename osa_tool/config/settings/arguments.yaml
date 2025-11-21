@@ -92,7 +92,7 @@ convert_notebooks:
   description: |
     Convert Jupyter notebooks from .ipynb to .py format.
     Provide one or multiple paths, or leave empty for repo directory.
-  example: path/to/file1, path/to/file2
+  example: path/to/file1 path/to/file2
 
 translate_readme:
   aliases: [ "--translate-readme" ]
@@ -102,7 +102,7 @@ translate_readme:
     Each language should be specified by its name (e.g., "Russian", "Chinese").
     The translated README files will be saved separately in the repository folder
     with language-specific suffixes (e.g., README_ru.md, README_zh.md).
-  example: Russian, Chinese
+  example: Russian Chinese
 
 delete_dir:
   aliases: [ "--delete-dir" ]
@@ -167,12 +167,12 @@ about:
   description: "Generate About section with tags."
 
 validate_paper:
-  aliases: ["--validate-paper"]
+  aliases: [ "--validate-paper" ]
   type: flag
   description: "Check whether the experiments proposed in an attached research paper can be reproduced using the selected repository."
 
 validate_doc:
-  aliases: ["--validate-doc"]
+  aliases: [ "--validate-doc" ]
   type: flag
   description: "Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository."
 
@@ -233,7 +233,7 @@ workflow:
     aliases: [ "--branches" ]
     type: list
     description: "Branches to trigger the workflows on."
-    example: main, develop
+    example: main develop
 
   codecov_token:
     aliases: [ "--codecov-token" ]
