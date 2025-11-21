@@ -5,12 +5,12 @@ from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter  # adjust impor
 from tests.utils.fixtures.osatreesitter import Node
 
 
-def test_files_list_directory(temp_dir_with_files):
+def test_files_list_directory(tmp_path, temp_dir_with_files):
     # Arrange
     repo_path, expected_files = temp_dir_with_files
 
     # Act
-    files, status = OSA_TreeSitter.files_list(repo_path)
+    files, status = OSA_TreeSitter(tmp_path).files_list(repo_path)
 
     # Assert
     assert status == 0
@@ -18,9 +18,9 @@ def test_files_list_directory(temp_dir_with_files):
     assert not any(f.endswith(".txt") for f in files)
 
 
-def test_files_list_single_file(temp_py_file):
+def test_files_list_single_file(tmp_path, temp_py_file):
     # Aсt
-    files, status = OSA_TreeSitter.files_list(temp_py_file)
+    files, status = OSA_TreeSitter(tmp_path).files_list(temp_py_file)
 
     # Assert
     assert status == 1
@@ -33,11 +33,20 @@ def test_files_list_non_py_file(tmp_path):
     file.write_text("hello")
 
     # Act
-    files, status = OSA_TreeSitter.files_list(str(file))
+    files, status = OSA_TreeSitter(tmp_path).files_list(str(file))
 
     # Assert
     assert files == []
     assert status == 0
+
+
+def test_files_ignore_list(temp_dir_with_ignores):
+    repo_path, res = temp_dir_with_ignores
+    ignore_list = ["ignore1", "allow1/ignore2", "__init__.py"]
+
+    files, _ = OSA_TreeSitter(repo_path, ignore_list).files_list(repo_path)
+
+    assert files == res
 
 
 def test_if_file_handler_returns_dir(temp_py_file):
