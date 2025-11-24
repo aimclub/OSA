@@ -15,7 +15,7 @@ def mock_markdown_builder(mock_config_loader, mock_prompts, mock_repository_meta
     def _create_builder(core_features=None, overview=None, getting_started=None):
         builder = MarkdownBuilder(
             config_loader=mock_config_loader,
-            prompts = mock_prompts,
+            prompts=mock_prompts,
             metadata=mock_repository_metadata,
             core_features=core_features,
             overview=overview,
@@ -31,7 +31,7 @@ def mock_markdown_builder_article(mock_config_loader, mock_prompts, mock_reposit
     def _create_builder(overview=None, content=None, algorithms=None, getting_started=None):
         builder = MarkdownBuilderArticle(
             config_loader=mock_config_loader,
-            prompts = mock_prompts,
+            prompts=mock_prompts,
             metadata=mock_repository_metadata,
             overview=overview,
             content=content,

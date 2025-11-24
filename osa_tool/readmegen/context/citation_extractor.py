@@ -9,7 +9,9 @@ from osa_tool.utils.prompts_builder import PromptLoader
 
 
 class CitationExtractor:
-    def __init__(self, config_loader: ConfigLoader, prompts: PromptLoader, metadata: RepositoryMetadata, article_path: str):
+    def __init__(
+            self, config_loader: ConfigLoader, prompts: PromptLoader, metadata: RepositoryMetadata, article_path: str
+        ):
         """
         Initialize the CitationExtractor.
 

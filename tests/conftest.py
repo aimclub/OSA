@@ -112,12 +112,14 @@ def mock_sourcerank(mock_config_loader, mock_parse_folder_name, data_factory):
 
     return factory
 
+
 # -------------------
 # Prompts Fixtures
 # -------------------
 @pytest.fixture
 def mock_prompts():
     return PromptLoader()
+
 
 # -------------------
 # RepositoryMetadata Fixtures
