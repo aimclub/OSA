@@ -18,12 +18,12 @@ from osa_tool.utils.utils import osa_project_root
 
 class MarkdownBuilderBase:
     def __init__(
-            self, 
-            config_loader: ConfigLoader, 
-            prompts: PromptLoader, 
-            metadata: RepositoryMetadata, 
-            overview=None, 
-            getting_started=None
+        self, 
+        config_loader: ConfigLoader, 
+        prompts: PromptLoader, 
+        metadata: RepositoryMetadata, 
+        overview=None, 
+        getting_started=None
     ):
         self.config_loader = config_loader
         self.config = self.config_loader.config
