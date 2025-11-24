@@ -14,6 +14,7 @@ def test_readme_agent_without_article(
     mock_save,
     mock_clean,
     mock_config_loader,
+    mock_prompts,
     mock_repository_metadata,
 ):
     """Test README generation without article (default mode)."""
@@ -30,7 +31,7 @@ def test_readme_agent_without_article(
 
     agent = ReadmeAgent(
         config_loader=mock_config_loader,
-        prompts=PromptLoader(),
+        prompts=mock_prompts,
         article=None,
         refine_readme=True,
         metadata=mock_repository_metadata,
@@ -43,6 +44,7 @@ def test_readme_agent_without_article(
     mock_llm.return_value.get_responses.assert_called_once()
     mock_builder.assert_called_once_with(
         mock_config_loader,
+        mock_prompts,
         mock_repository_metadata,
         "overview_text",
         "core_features_text",
@@ -65,6 +67,7 @@ def test_readme_agent_with_article(
     mock_save,
     mock_clean,
     mock_config_loader,
+    mock_prompts,
     mock_repository_metadata,
 ):
     """Test README generation with article (scientific mode)."""
@@ -81,7 +84,7 @@ def test_readme_agent_with_article(
 
     agent = ReadmeAgent(
         config_loader=mock_config_loader,
-        prompts=PromptLoader(),
+        prompts=mock_prompts,
         article=article_path,
         refine_readme=False,
         metadata=mock_repository_metadata,
@@ -94,6 +97,7 @@ def test_readme_agent_with_article(
     mock_llm.return_value.get_responses_article.assert_called_once_with(article_path)
     mock_builder_article.assert_called_once_with(
         mock_config_loader,
+        mock_prompts,
         mock_repository_metadata,
         "overview_from_article",
         "content_from_article",

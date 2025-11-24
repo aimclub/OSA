@@ -7,8 +7,8 @@ from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
 @pytest.fixture
-def builder(mock_config_loader, mock_sourcerank, mock_repository_metadata):
-    return MarkdownBuilderBase(mock_config_loader, mock_repository_metadata)
+def builder(mock_config_loader, mock_prompts, mock_sourcerank, mock_repository_metadata):
+    return MarkdownBuilderBase(mock_config_loader, mock_prompts, mock_repository_metadata)
 
 
 def test_load_template_keys(builder):
