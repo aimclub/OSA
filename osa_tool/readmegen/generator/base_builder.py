@@ -23,7 +23,7 @@ class MarkdownBuilderBase:
         prompts: PromptLoader, 
         metadata: RepositoryMetadata, 
         overview=None, 
-        getting_started=None
+        getting_started=None,
     ):
         self.config_loader = config_loader
         self.config = self.config_loader.config
