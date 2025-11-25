@@ -1,7 +1,13 @@
 import pytest
 from pydantic import ValidationError
 
-from osa_tool.config.settings import Settings, GitSettings, ModelSettings, WorkflowSettings, ConfigLoader
+from osa_tool.config.settings import (
+    ConfigLoader,
+    GitSettings,
+    ModelSettings,
+    Settings,
+    WorkflowSettings,
+)
 
 
 def test_config_loader_success(mock_config_loader):
@@ -44,14 +50,14 @@ def test_config_loader_invalid_pep8_tool():
         "llm": {
             "api": "openai",
             "url": "https://api.openai.com/v1",
-            "context_window": 4096,
             "encoder": "cl100k_base",
             "host_name": "https://api.openai.com/v1",
             "localhost": "http://localhost:11434/",
             "model": "gpt-3.5-turbo",
             "path": "generate",
             "temperature": 0.05,
-            "tokens": 4096,
+            "max_tokens": 4096,
+            "context_window": 16385,
             "top_p": 0.95,
         },
         "workflows": {

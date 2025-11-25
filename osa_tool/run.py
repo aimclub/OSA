@@ -85,6 +85,7 @@ def main():
             model_name=args.model,
             temperature=args.temperature,
             max_tokens=args.max_tokens,
+            context_window=args.context_window,
             top_p=args.top_p,
         )
 
@@ -360,7 +361,8 @@ def load_configuration(
         base_url: URL of the provider compatible with API OpenAI
         model_name: Specific LLM model to use.
         temperature: Sampling temperature for the model.
-        max_tokens: Maximum number of tokens to generate.
+        max_tokens: Maximum number of output tokens to generate.
+        context_window: Total number of model context (Input + Output).
         top_p: Nucleus sampling value.
 
     Returns:
@@ -380,6 +382,7 @@ def load_configuration(
             "model": model_name,
             "temperature": temperature,
             "max_tokens": max_tokens,
+            "context_window": context_window,
             "top_p": top_p,
         }
     )

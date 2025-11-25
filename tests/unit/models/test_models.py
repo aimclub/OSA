@@ -1,6 +1,6 @@
 import pytest
 
-from osa_tool.models.models import PayloadFactory, ProtollmHandler, ModelHandlerFactory
+from osa_tool.models.models import ModelHandlerFactory, PayloadFactory, ProtollmHandler
 from tests.utils.fixtures.models import DummyLLMClient
 
 
@@ -15,7 +15,7 @@ def test_payload_factory_generates_expected_structure(mock_config_loader):
     # Assert
     assert set(payload.keys()) == {"job_id", "meta", "messages"}
     assert payload["meta"]["temperature"] == config.llm.temperature
-    assert payload["meta"]["tokens_limit"] == config.llm.tokens
+    assert payload["meta"]["tokens_limit"] == config.llm.max_tokens
     assert any("my test prompt" in str(msg) for msg in payload["messages"])
 
 

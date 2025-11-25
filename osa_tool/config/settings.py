@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os.path
 from pathlib import Path
-from typing import Any, Literal, List
+from typing import Any, List, Literal
 
 import tomli
 from pydantic import (
@@ -12,12 +12,12 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    model_validator,
     NonNegativeFloat,
     PositiveInt,
+    model_validator,
 )
 
-from osa_tool.utils.utils import parse_git_url, build_config_path
+from osa_tool.utils.utils import build_config_path, parse_git_url
 
 
 class GitSettings(BaseModel):
@@ -46,14 +46,14 @@ class ModelSettings(BaseModel):
     api: str
     rate_limit: PositiveInt
     base_url: str
-    context_window: PositiveInt
     encoder: str
     host_name: AnyHttpUrl
     localhost: AnyHttpUrl
     model: str
     path: str
     temperature: NonNegativeFloat
-    tokens: PositiveInt
+    max_tokens: PositiveInt
+    context_window: PositiveInt
     top_p: NonNegativeFloat
 
 

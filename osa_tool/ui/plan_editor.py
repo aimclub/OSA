@@ -38,6 +38,7 @@ class PlanEditor:
             "no_pull_request",
             "temperature",
             "max_tokens",
+            "context_window",
             "top_p",
         ]
         self.special_keys = ["convert_notebooks"]
