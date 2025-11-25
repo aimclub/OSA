@@ -196,9 +196,10 @@ documentation, see the [Workflow Generator README](./osa_tool/workflow/README.md
 | `--api`              | LLM API service provider                                                            | `itmo`                      |
 | `--base-url`         | URL of the provider compatible with API OpenAI                                      | `https://api.openai.com/v1` |
 | `--model`            | Specific LLM model to use                                                           | `gpt-3.5-turbo`             |
-| `--top_p`            | Nucleus sampling probability                                                        | `None`                      |
-| `--temperature`      | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).   | `None`                      |
-| `--max_tokens`       | Maximum number of tokens the model can generate in a single response                | `None`                      |
+| `--top_p`            | Nucleus sampling probability                                                        | `0.95`                      |
+| `--temperature`      | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).   | `0.05`                      |
+| `--max_tokens`       | Maximum number of output tokens the model can generate in a single response         | `4096`                      |
+| `--context_window`   | Total number of model context (Input + Output)                                      | `16385`                     |
 | `--attachment`       | Path to a local PDF or .docx file, or a URL to a PDF resource                       | `None`                      |
 | `-m`, `--mode`       | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`. | `auto`                      |
 | `--delete-dir`       | Enable deleting the downloaded repository after processing                          | `disabled`                  |
