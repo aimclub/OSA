@@ -22,7 +22,7 @@ class OSA_TreeSitter(object):
         self.cwd = scripts_path
         self.import_map = {}
         if ignore_list:
-            self.ignore_list = ignore_list 
+            self.ignore_list = ignore_list
         else:
             self.ignore_list = ["__init__.py"]
 
