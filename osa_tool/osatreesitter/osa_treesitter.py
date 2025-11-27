@@ -13,7 +13,7 @@ class OSA_TreeSitter(object):
         cwd: A current working directory with source code files.
     """
 
-    def __init__(self, scripts_path: str, ignore_list: list[str]):
+    def __init__(self, scripts_path: str, ignore_list: list[str] = None):
         """Initialization of the instance based on the provided path to the scripts.
 
         Args:
