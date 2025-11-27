@@ -31,9 +31,14 @@ from osa_tool.scheduler.workflow_manager import (
 from osa_tool.translation.dir_translator import DirectoryTranslator
 from osa_tool.translation.readme_translator import ReadmeTranslator
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
-from osa_tool.utils.logger import setup_logging, logger
+from osa_tool.utils.logger import logger, setup_logging
 from osa_tool.utils.prompts_builder import PromptLoader
-from osa_tool.utils.utils import delete_repository, parse_folder_name, rich_section, osa_project_root
+from osa_tool.utils.utils import (
+    delete_repository,
+    osa_project_root,
+    parse_folder_name,
+    rich_section,
+)
 from osa_tool.validation.doc_validator import DocValidator
 from osa_tool.validation.paper_validator import PaperValidator
 from osa_tool.validation.report_generator import (
@@ -78,13 +83,14 @@ def main():
             logger.info(f"Output path changed to {output_path}")
 
         # Load configurations and update
-        config = load_configuration(
+        config_loader = load_configuration(
             repo_url=args.repository,
             api=args.api,
             base_url=args.base_url,
             model_name=args.model,
             temperature=args.temperature,
             max_tokens=args.max_tokens,
+            context_window=args.context_window,
             top_p=args.top_p,
         )
 
@@ -107,8 +113,8 @@ def main():
         git_agent.clone_repository()
 
         # Initialize ModeScheduler
-        sourcerank = SourceRank(config)
-        scheduler = ModeScheduler(config, sourcerank, prompts, args, workflow_manager, git_agent.metadata)
+        sourcerank = SourceRank(config_loader)
+        scheduler = ModeScheduler(config_loader, sourcerank, prompts, args, workflow_manager, git_agent.metadata)
         plan = scheduler.plan
 
         if create_fork:
@@ -118,7 +124,7 @@ def main():
         # NOTE: Must run first - switches GitHub branches
         if plan.get("report"):
             rich_section("Report generation")
-            analytics = ReportGenerator(config, sourcerank, prompts, git_agent.metadata)
+            analytics = ReportGenerator(config_loader, sourcerank, prompts, git_agent.metadata)
             analytics.build_pdf()
             if create_fork:
                 git_agent.upload_report(analytics.filename, analytics.output_path)
@@ -126,8 +132,8 @@ def main():
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_doc"):
             rich_section("Document validation")
-            content = DocValidator(config, prompts).validate(plan.get("attachment"))
-            va_re_gen = ValidationReportGenerator(config, git_agent.metadata, sourcerank)
+            content = DocValidator(config_loader, prompts).validate(plan.get("attachment"))
+            va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata, sourcerank)
             va_re_gen.build_pdf("Document", content)
             if create_fork:
                 git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
@@ -135,8 +141,8 @@ def main():
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_paper"):
             rich_section("Paper validation")
-            content = PaperValidator(config, prompts).validate(plan.get("attachment"))
-            va_re_gen = ValidationReportGenerator(config, git_agent.metadata, sourcerank)
+            content = PaperValidator(config_loader, prompts).validate(plan.get("attachment"))
+            va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata, sourcerank)
             va_re_gen.build_pdf("Paper", content)
             if create_fork:
                 git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
@@ -149,13 +155,13 @@ def main():
         # Auto translating names of directories
         if plan.get("translate_dirs"):
             rich_section("Directory and file translation")
-            translation = DirectoryTranslator(config)
+            translation = DirectoryTranslator(config_loader)
             translation.rename_directories_and_files()
 
         # Docstring generation
         if plan.get("docstring"):
             rich_section("Docstrings generation")
-            generate_docstrings(config, loop)
+            generate_docstrings(config_loader, loop)
 
         # License compiling
         if license_type := plan.get("ensure_license"):
@@ -165,7 +171,7 @@ def main():
         # Generate community documentation
         if plan.get("community_docs"):
             rich_section("Community docs generation")
-            generate_documentation(config, git_agent.metadata)
+            generate_documentation(config_loader, git_agent.metadata)
 
         # Requirements generation
         if plan.get("requirements"):
@@ -176,7 +182,7 @@ def main():
         if plan.get("readme"):
             rich_section("README generation")
             readme_agent = ReadmeAgent(
-                config, prompts, plan.get("attachment"), plan.get("refine_readme"), git_agent.metadata
+                config_loader, prompts, plan.get("attachment"), plan.get("refine_readme"), git_agent.metadata
             )
             readme_agent.generate_readme()
 
@@ -184,13 +190,13 @@ def main():
         translate_readme = plan.get("translate_readme")
         if translate_readme:
             rich_section("README translation")
-            ReadmeTranslator(config, prompts, git_agent.metadata, translate_readme).translate_readme()
+            ReadmeTranslator(config_loader, prompts, git_agent.metadata, translate_readme).translate_readme()
 
         # About section generation
         about_gen = None
         if plan.get("about"):
             rich_section("About Section generation")
-            about_gen = AboutGenerator(config, prompts, git_agent)
+            about_gen = AboutGenerator(config_loader, prompts, git_agent)
             about_gen.generate_about_content()
             if create_fork:
                 git_agent.update_about_section(about_gen.get_about_content())
@@ -200,8 +206,8 @@ def main():
         # Generate platform-specified CI/CD files
         if plan.get("generate_workflows"):
             rich_section("Workflows generation")
-            workflow_manager.update_workflow_config(config, plan)
-            workflow_manager.generate_workflow(config)
+            workflow_manager.update_workflow_config(config_loader, plan)
+            workflow_manager.generate_workflow(config_loader)
 
         # Organize repository by adding 'tests' and 'examples' directories if they aren't exist
         if plan.get("organize"):
@@ -349,6 +355,7 @@ def load_configuration(
     model_name: str,
     temperature: Optional[str] = None,
     max_tokens: Optional[str] = None,
+    context_window: Optional[str] = None,
     top_p: Optional[str] = None,
 ) -> ConfigLoader:
     """
@@ -360,7 +367,8 @@ def load_configuration(
         base_url: URL of the provider compatible with API OpenAI
         model_name: Specific LLM model to use.
         temperature: Sampling temperature for the model.
-        max_tokens: Maximum number of tokens to generate.
+        max_tokens: Maximum number of output tokens to generate.
+        context_window: Total number of model context (Input + Output).
         top_p: Nucleus sampling value.
 
     Returns:
@@ -380,6 +388,7 @@ def load_configuration(
             "model": model_name,
             "temperature": temperature,
             "max_tokens": max_tokens,
+            "context_window": context_window,
             "top_p": top_p,
         }
     )

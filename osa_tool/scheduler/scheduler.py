@@ -10,7 +10,7 @@ from osa_tool.scheduler.workflow_manager import WorkflowManager
 from osa_tool.ui.plan_editor import PlanEditor
 from osa_tool.ui.web_plan_editor import WebPlanEditor
 from osa_tool.utils.logger import logger
-from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.utils.prompts_builder import PromptBuilder, PromptLoader
 from osa_tool.utils.utils import extract_readme_content, parse_folder_name
 
 
@@ -22,7 +22,7 @@ class ModeScheduler:
 
     def __init__(
         self,
-        config: ConfigLoader,
+        config_loader: ConfigLoader,
         sourcerank: SourceRank,
         prompts: PromptLoader,
         args,
@@ -31,7 +31,7 @@ class ModeScheduler:
     ):
         self.mode = args.mode
         self.args = args
-        self.config = config.config
+        self.config = config_loader.config
         self.sourcerank = sourcerank
         self.workflow_manager = workflow_manager
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)

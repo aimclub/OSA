@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from uuid import uuid4
 
 import dotenv
+import tiktoken
 from langchain.schema import SystemMessage
 from protollm.connectors import create_llm_connector
 
@@ -81,7 +82,7 @@ class PayloadFactory:
         """
         self.job_id = str(uuid4())
         self.temperature = config.llm.temperature
-        self.tokens_limit = config.llm.tokens
+        self.tokens_limit = config.llm.max_tokens
         self.prompt = prompt
         self.roles = [
             SystemMessage(content="You are a helpful assistant for analyzing open-source repositories."),
@@ -160,7 +161,8 @@ class ProtollmHandler(ModelHandler):
         Returns:
             str: The response received from the request.
         """
-        self.initialize_payload(self.config, prompt)
+        safe_prompt = self._limit_tokens(prompt)
+        self.initialize_payload(self.config, safe_prompt)
         messages = self.payload["messages"]
         response = self.client.invoke(messages)
         return response.content
@@ -176,7 +178,8 @@ class ProtollmHandler(ModelHandler):
         Returns:
             str: The response received from the request.
         """
-        self.initialize_payload(self.config, prompt)
+        safe_prompt = self._limit_tokens(prompt)
+        self.initialize_payload(self.config, safe_prompt)
         response = await self.client.ainvoke(self.payload["messages"])
         return response.content
 
@@ -228,6 +231,40 @@ class ProtollmHandler(ModelHandler):
         dotenv.load_dotenv()
 
         self.client = create_llm_connector(model_url=self._build_model_url(), **self._get_llm_params())
+
+    def _limit_tokens(self, text: str, safety_buffer: int = 100, mode: str = "middle-out") -> str:
+        """
+        Limits text to fit within the model's context window.
+
+        Calculates: Available Input = Total Context - Max Output - Safety Buffer
+        """
+        model_context_limit = getattr(self.config.llm, "context_window")
+        max_output_tokens = self.config.llm.max_tokens
+        encoding_name = self.config.llm.encoder
+
+        max_input_tokens = model_context_limit - max_output_tokens - safety_buffer
+
+        try:
+            encoding = tiktoken.get_encoding(encoding_name)
+        except ValueError:
+            encoding = tiktoken.get_encoding("cl100k_base")
+
+        tokens = encoding.encode(text)
+
+        if len(tokens) <= max_input_tokens:
+            return text
+
+        if mode == "start":
+            truncated_tokens = tokens[:max_input_tokens]
+        elif mode == "end":
+            truncated_tokens = tokens[-max_input_tokens:]
+        elif mode == "middle-out":
+            half_limit = max_input_tokens // 2
+            truncated_tokens = tokens[:half_limit] + tokens[-half_limit:]
+        else:
+            raise ValueError(f"Unknown mode: {mode}")
+
+        return encoding.decode(truncated_tokens)
 
 
 class ModelHandlerFactory:

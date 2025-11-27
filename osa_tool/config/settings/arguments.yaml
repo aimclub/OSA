@@ -56,19 +56,25 @@ model:
 
 temperature:
   aliases: [ "--temperature" ]
-  type: str
+  type: float
   description: "Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative)."
   example: 0.3, 0.9
 
-tokens:
+max_tokens:
   aliases: [ "--max-tokens" ]
-  type: str
-  description: "Maximum number of tokens the model can generate in a single response."
+  type: int
+  description: "Maximum number of output tokens the model can generate in a single response."
   example: 256, 1024
+
+context_window:
+  aliases: [ "--context-window" ]
+  type: int
+  description: "Total number of model context (Input + Output)."
+  example: 16000, 200000
 
 top_p:
   aliases: [ "--top-p" ]
-  type: str
+  type: float
   description: "Nucleus sampling probability (1.0 = all tokens considered)."
   example: 0.8, 0.95
 

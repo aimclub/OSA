@@ -43,14 +43,14 @@ class DataFactory:
             "api": "openai",
             "rate_limit": random.randint(5, 20),
             "base_url": f"https://api.openai.{random_word()}.com/v1",
-            "context_window": random.randint(2048, 8192),
             "encoder": f"{random_word()}_encoder",
             "host_name": f"https://api.{random_word()}.com",
             "localhost": f"http://localhost:{random.randint(8000, 9000)}",
             "model": f"{random.choice(model_types)}-{version}",
             "path": f"/v1/{random_word()}",
             "temperature": round(random.uniform(0.1, 1.0), 1),
-            "tokens": random.randint(512, 4096),
+            "max_tokens": random.randint(512, 4096),
+            "context_window": random.randint(8192, 16385),
             "top_p": round(random.uniform(0.1, 1.0), 1),
         }
 
