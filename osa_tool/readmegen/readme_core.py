@@ -55,9 +55,13 @@ class ReadmeAgent:
     def default_readme(self) -> MarkdownBuilder:
         responses = self.llm_client.get_responses()
         (core_features, overview, getting_started) = responses
-        return MarkdownBuilder(self.config_loader, self.metadata, overview, core_features, getting_started)
+        return MarkdownBuilder(
+            self.config_loader, self.prompts, self.metadata, overview, core_features, getting_started
+        )
 
     def article_readme(self) -> MarkdownBuilderArticle:
         responses = self.llm_client.get_responses_article(self.article)
         (overview, content, algorithms, getting_started) = responses
-        return MarkdownBuilderArticle(self.config_loader, self.metadata, overview, content, algorithms, getting_started)
+        return MarkdownBuilderArticle(
+            self.config_loader, self.prompts, self.metadata, overview, content, algorithms, getting_started
+        )

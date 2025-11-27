@@ -28,7 +28,7 @@ class ContributingBuilder:
         self.template_path = os.path.join(osa_project_root(), "docs", "templates", "contributing.toml")
         self.url_path = f"https://{self.config.git.host_domain}/{self.config.git.full_name}/"
         self.branch_path = f"tree/{self.metadata.default_branch}/"
-        self.issues_url = self.url_path + "issues"
+        self.issues_url = self.url_path + ("tasktracker" if "gitverse" in self.config.git.host else "issues")
         self._template = self.load_template()
 
         self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url), "." + self.config.git.host)

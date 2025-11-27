@@ -25,11 +25,13 @@ def generate_documentation(config_loader: ConfigLoader, metadata: RepositoryMeta
 
     community = CommunityTemplateBuilder(config_loader, metadata)
     community.build_code_of_conduct()
-    community.build_pull_request()
-    community.build_bug_issue()
-    community.build_documentation_issue()
-    community.build_feature_issue()
     community.build_security()
+
+    if config_loader.config.git.host in ["github", "gitlab"]:
+        community.build_pull_request()
+        community.build_bug_issue()
+        community.build_documentation_issue()
+        community.build_feature_issue()
 
     if config_loader.config.git.host == "gitlab":
         community.build_vulnerability_disclosure()

@@ -9,6 +9,7 @@ from osa_tool.config.settings import Settings, GitSettings, ModelSettings, Workf
 from osa_tool.utils.utils import parse_folder_name
 from tests.data_factory import DataFactory
 from tests.utils.mocks.requests_mock import mock_requests_response
+from osa_tool.utils.prompts_builder import PromptLoader
 
 pytest_plugins = [
     "tests.utils.fixtures.aboutgen",
@@ -110,6 +111,14 @@ def mock_sourcerank(mock_config_loader, mock_parse_folder_name, data_factory):
             return instance
 
     return factory
+
+
+# -------------------
+# Prompts Fixtures
+# -------------------
+@pytest.fixture
+def mock_prompts():
+    return PromptLoader()
 
 
 # -------------------

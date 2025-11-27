@@ -1,24 +1,32 @@
 from scholarly import scholarly
 
+from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.context.article_content import PdfParser
 from osa_tool.readmegen.context.article_path import get_pdf_path
 from osa_tool.readmegen.models.llm_service import LLMClient
+from osa_tool.utils.prompts_builder import PromptLoader
 
 
 class CitationExtractor:
-    def __init__(self, config_loader: ConfigLoader, article_path: str):
+    def __init__(
+        self, config_loader: ConfigLoader, prompts: PromptLoader, metadata: RepositoryMetadata, article_path: str
+    ):
         """
         Initialize the CitationExtractor.
 
         Args:
             config_loader (ConfigLoader): Loader for application configuration.
+            prompts: The batch of prompts to send on llm server endpoint.
+            metadata: Git repository metadata.
             article_path (str): Path to the input article (PDF file).
         """
         self.config_loader = config_loader
         self.config = self.config_loader.config
+        self.prompts = prompts
+        self.metadata = metadata
         self.article_path = article_path
-        self.llm_client = LLMClient(self.config_loader)
+        self.llm_client = LLMClient(self.config_loader, self.prompts, self.metadata)
 
     def get_citation(self):
         """

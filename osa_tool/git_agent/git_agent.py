@@ -414,24 +414,39 @@ class GitHubAgent(GitAgent):
             raise ValueError("GIT_TOKEN or GITHUB_TOKEN token is required to create a pull request.")
 
         base_repo = get_base_repo_url(self.repo_url)
+        head_branch = f"{self.fork_url.split('/')[-2]}:{self.branch_name}"
+
+        url = f"https://api.github.com/repos/{base_repo}/pulls"
+        headers = {
+            "Authorization": f"token {self.token}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+        params = {
+            "state": "open",
+            "head": head_branch,
+            "base": self.base_branch,
+        }
+        response = requests.get(url, headers=headers, params=params)
+        if response.status_code == 200:
+            prs = response.json()
+            if prs:
+                existing_pr = prs[0]
+                logger.info(f"Pull request already exists: {existing_pr['html_url']}")
+                return
+
         last_commit = self.repo.head.commit
         pr_title = title if title else last_commit.message
         pr_body = body if body else last_commit.message
         pr_body += self.pr_report_body
         pr_body += self.AGENT_SIGNATURE
-
         pr_data = {
             "title": pr_title,
-            "head": f"{self.fork_url.split('/')[-2]}:{self.branch_name}",
+            "head": head_branch,
             "base": self.base_branch,
             "body": pr_body,
             "maintainer_can_modify": True,
         }
-        headers = {
-            "Authorization": f"token {self.token}",
-            "Accept": "application/vnd.github.v3+json",
-        }
-        url = f"https://api.github.com/repos/{base_repo}/pulls"
+
         response = requests.post(url, json=pr_data, headers=headers)
         if response.status_code == 201:
             logger.info(f"GitHub pull request created successfully: {response.json()['html_url']}")
@@ -614,6 +629,21 @@ class GitLabAgent(GitAgent):
         else:
             raise ValueError(f"Failed to get project info: {response.status_code} - {response.text}")
 
+        mr_url = f"{gitlab_instance}/api/v4/projects/{source_project_path}/merge_requests"
+        params = {
+            "state": "opened",
+            "source_branch": self.branch_name,
+            "target_branch": self.base_branch,
+            "target_project_id": target_project_id,
+        }
+        response = requests.get(mr_url, headers=headers, params=params)
+        if response.status_code == 200:
+            mrs = response.json()
+            if mrs:
+                existing_mr = mrs[0]
+                logger.info(f"Merge request already exists: {existing_mr['web_url']}")
+                return
+
         last_commit = self.repo.head.commit
         mr_title = title if title else last_commit.message
         mr_body = body if body else last_commit.message
@@ -629,8 +659,7 @@ class GitLabAgent(GitAgent):
             "allow_collaboration": True,
         }
 
-        url = f"{gitlab_instance}/api/v4/projects/{source_project_path}/merge_requests"
-        response = requests.post(url, json=mr_data, headers=headers)
+        response = requests.post(mr_url, json=mr_data, headers=headers)
         if response.status_code == 201:
             logger.info(f"GitLab merge request created successfully: {response.json()['web_url']}")
         else:
@@ -782,6 +811,29 @@ class GitverseAgent(GitAgent):
             raise ValueError("Gitverse token is required to create a pull request.")
 
         base_repo = get_base_repo_url(self.repo_url)
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Accept": "application/vnd.gitverse.object+json;version=1",
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0",
+        }
+
+        url = f"https://api.gitverse.ru/repos/{base_repo}/pulls"
+        params = {
+            "state": "open",
+            "head": self.branch_name,
+            "base": self.base_branch,
+        }
+        response = requests.get(url, headers=headers, params=params)
+        if response.status_code == 200:
+            prs = response.json()
+            if prs:
+                existing_pr = prs[0]
+                pr_number = existing_pr["number"]
+                pr_url = f"https://gitverse.ru/{base_repo}/pulls/{pr_number}"
+                logger.info(f"Pull request already exists: {pr_url}")
+                return
+
         last_commit = self.repo.head.commit
         pr_title = title if title else last_commit.message
         pr_body = body if body else last_commit.message
@@ -794,16 +846,12 @@ class GitverseAgent(GitAgent):
             "base": self.base_branch,
             "body": pr_body,
         }
-        headers = {
-            "Authorization": f"Bearer {self.token}",
-            "Accept": "application/vnd.gitverse.object+json;version=1",
-            "Content-Type": "application/json",
-            "User-Agent": "Mozilla/5.0",
-        }
-        url = f"https://api.gitverse.ru/repos/{base_repo}/pulls"
+
         response = requests.post(url, json=pr_data, headers=headers)
         if response.status_code == 201:
-            logger.info(f"Gitverse pull request created successfully: {response.json()['html_url']}")
+            pr_number = response.json()["number"]
+            pr_url = f"https://gitverse.ru/{base_repo}/pulls/{pr_number}"
+            logger.info(f"Gitverse pull request created successfully: {pr_url}")
         else:
             logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
             if "pull request already exists" not in response.text:
