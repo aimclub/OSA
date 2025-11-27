@@ -144,11 +144,12 @@ docstring:
 
 ignore_list:
   aliases: [ "--ignore-list" ]
-  type: str
+  type: list
   description: | 
-    Comma-separated list of the directories and boilerplate files to be ignored while docstring generation.
+    Space-separated list of the directories and boilerplate files to be ignored while docstring generation.
     Directories should be listed relatively to the project root.
-  example: "tests,moduleA/featureB,__init__.py"
+    If flag omitted only __init__.py will be ignored.
+  example: "tests moduleA/featureB __init__.py"
 
 report:
   aliases: [ "--report" ]

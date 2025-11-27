@@ -13,7 +13,7 @@ class OSA_TreeSitter(object):
         cwd: A current working directory with source code files.
     """
 
-    def __init__(self, scripts_path: str, ignore_list: list[str] = ["tests", ".venv", "osa_tool", "__init__.py"]):
+    def __init__(self, scripts_path: str, ignore_list: list[str]):
         """Initialization of the instance based on the provided path to the scripts.
 
         Args:
@@ -21,7 +21,10 @@ class OSA_TreeSitter(object):
         """
         self.cwd = scripts_path
         self.import_map = {}
-        self.ignore_list = ignore_list
+        if ignore_list: 
+            self.ignore_list = ignore_list 
+        else: 
+            self.ignore_list = ["__init__.py"]
 
     def files_list(self, path: str) -> tuple[list, 0] | tuple[list[str], 1]:
         """Method provides a list of files occuring in the provided path.
@@ -55,6 +58,15 @@ class OSA_TreeSitter(object):
         return ([], 0)
 
     def _is_ignored(self, path: Path) -> bool:
+        """Method checks if current path is relative to any of the ignore list.
+
+        Args:
+            path: path to the script file.
+        
+        Returns:
+            True: file is relative to the ignored path.
+            False: file is not relative to the ignored path.
+        """
         for dir in self.ignore_list:
             ignore_path = Path(os.path.join(self.cwd, dir)).resolve()
             try:

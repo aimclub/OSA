@@ -277,7 +277,7 @@ def generate_requirements(repo_url):
 
 
 def generate_docstrings(
-    config_loader: ConfigLoader, loop: asyncio.AbstractEventLoop, ignore_list: str = "test,tests,.venv,__init.py__"
+    config_loader: ConfigLoader, loop: asyncio.AbstractEventLoop, ignore_list: list[str]
 ) -> None:
     """Generates a docstrings for .py's classes and methods of the provided repository.
 
@@ -290,11 +290,10 @@ def generate_docstrings(
     workers = multiprocessing.cpu_count()
     repo_url = config_loader.config.git.repository
     repo_path = parse_folder_name(repo_url)
-    ignore = ignore_list.split(",")
 
     try:
         rate_limit = config_loader.config.llm.rate_limit
-        ts = OSA_TreeSitter(repo_path, ignore)
+        ts = OSA_TreeSitter(repo_path, ignore_list)
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen(config_loader)
 
