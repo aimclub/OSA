@@ -21,9 +21,9 @@ class OSA_TreeSitter(object):
         """
         self.cwd = scripts_path
         self.import_map = {}
-        if ignore_list: 
+        if ignore_list:
             self.ignore_list = ignore_list 
-        else: 
+        else:
             self.ignore_list = ["__init__.py"]
 
     def files_list(self, path: str) -> tuple[list, 0] | tuple[list[str], 1]:
@@ -62,7 +62,7 @@ class OSA_TreeSitter(object):
 
         Args:
             path: path to the script file.
-        
+
         Returns:
             True: file is relative to the ignored path.
             False: file is not relative to the ignored path.
