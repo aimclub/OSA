@@ -1,186 +1,188 @@
-repository:
-  aliases: [ "-r", "--repository" ]
-  type: str
-  description: "URL of the GitHub repository"
-  required: true
+main_arguments:
+  attachment:
+    aliases: [ "--attachment" ]
+    type: str
+    description: |
+      Path to a local PDF file (for articles) or .docx file (for documents). 
+      Alternatively, accept a publicly accessible HTTP/HTTPS URL pointing to a PDF resource.
+    const: ""
+    example: path/to/document.docx, "https://example.com/article.pdf"
 
-mode:
-  aliases: [ "-m", "--mode" ]
-  type: str
-  description: |
-    Select the operation mode for repository processing:
-      basic           — run a minimal predefined set of tasks.
-      auto (default)  — automatically determine necessary actions based on repository analysis.
-      advanced        — run all enabled features based on provided flags.
-  choices: [ "basic", "auto", "advanced" ]
+  translate_dirs:
+    aliases: [ "--translate-dirs" ]
+    type: flag
+    description: "Enable automatic translation of the directory name into English."
 
-web_mode:
-  aliases: [ "--web-mode" ]
-  type: flag
-  description: |
-    Enable web interface mode. When set, the tool will generate the task plan
-    without launching the interactive CLI editor.
+  convert_notebooks:
+    aliases: [ "--convert-notebooks" ]
+    type: list
+    description: |
+      Convert Jupyter notebooks from .ipynb to .py format.
+      Provide one or multiple paths, or leave empty for repo directory.
+    example: path/to/file1 path/to/file2
 
-output:
-  aliases: [ "-o","--output" ]
-  type: str
-  description: "Path to the output directory"
-  example: "path/to/directory"
-  required: false
+  translate_readme:
+    aliases: [ "--translate-readme" ]
+    type: list
+    description: |
+      List of target languages to translate the project's main README into.
+      Each language should be specified by its name (e.g., "Russian", "Chinese").
+      The translated README files will be saved separately in the repository folder
+      with language-specific suffixes (e.g., README_ru.md, README_zh.md).
+    example: Russian Chinese
 
-branch:
-  aliases: [ "-b", "--branch" ]
-  type: str
-  description: "Branch name of the GitHub repository"
-  required: false
+  delete_dir:
+    aliases: [ "--delete-dir" ]
+    type: flag
+    description: "Enable deleting the downloaded repository after processing."
 
-api:
-  aliases: [ "--api" ]
-  type: str
-  description: "LLM API service provider"
-  choices: [ "itmo", "openai", "ollama" ]
+  ensure_license:
+    aliases: [ "--ensure-license" ]
+    type: str
+    choices: [ "bsd-3", "mit", "ap2" ]
+    description: "Enable LICENSE file compilation."
+    const: "bsd-3"
 
-base_url:
-  aliases: [ "--base-url" ]
-  type: str
-  description: |
-    URL of the service provider.
-    See: https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors
+  community_docs:
+    aliases: [ "--community-docs" ]
+    type: flag
+    description: "Generate community-related documentation files, such as Code of Conduct and Contributing guidelines."
 
-model:
-  aliases: [ "--model" ]
-  type: str
-  description: |
-    Specific LLM model to use. See available providers and models:
-    https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors
+  docstring:
+    aliases: [ "--docstring" ]
+    type: flag
+    description: "Automatically generate docstrings for all Python files in the repository."
 
-temperature:
-  aliases: [ "--temperature" ]
-  type: float
-  description: "Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative)."
-  example: 0.3, 0.9
+  report:
+    aliases: [ "--report" ]
+    type: flag
+    description: "Analyze the repository and generate a PDF report with project insights."
 
-max_tokens:
-  aliases: [ "--max-tokens" ]
-  type: int
-  description: "Maximum number of output tokens the model can generate in a single response."
-  example: 256, 1024
+  readme:
+    aliases: [ "--readme" ]
+    type: flag
+    description: "Generate a README.md file based on repository content and metadata."
 
-context_window:
-  aliases: [ "--context-window" ]
-  type: int
-  description: "Total number of model context (Input + Output)."
-  example: 16000, 200000
+  refine_readme:
+    aliases: [ "--refine-readme" ]
+    type: flag
+    description: "Enable advanced README refinement. This process requires a powerful LLM model (such as GPT-4 or equivalent) for optimal results."
 
-top_p:
-  aliases: [ "--top-p" ]
-  type: float
-  description: "Nucleus sampling probability (1.0 = all tokens considered)."
-  example: 0.8, 0.95
+  requirements:
+    aliases: [ "--requirements" ]
+    type: flag
+    description: "Generate or refine a requirements.txt file based on repository content."
 
-attachment:
-  aliases: [ "--attachment" ]
-  type: str
-  description: |
-    Path to a local PDF file (for articles) or .docx file (for documents). 
-    Alternatively, accept a publicly accessible HTTP/HTTPS URL pointing to a PDF resource.
-  const: ""
-  example: path/to/document.docx, "https://example.com/article.pdf"
+  organize:
+    aliases: [ "--organize" ]
+    type: flag
+    description: "Organize the repository structure by adding standard 'tests' and 'examples' directories if missing."
 
-translate_dirs:
-  aliases: [ "--translate-dirs" ]
-  type: flag
-  description: "Enable automatic translation of the directory name into English."
+  about:
+    aliases: [ "--about" ]
+    type: flag
+    description: "Generate About section with tags."
 
-convert_notebooks:
-  aliases: [ "--convert-notebooks" ]
-  type: list
-  description: |
-    Convert Jupyter notebooks from .ipynb to .py format.
-    Provide one or multiple paths, or leave empty for repo directory.
-  example: path/to/file1 path/to/file2
+  validate_paper:
+    aliases: [ "--validate-paper" ]
+    type: flag
+    description: "Check whether the experiments proposed in an attached research paper can be reproduced using the selected repository."
 
-translate_readme:
-  aliases: [ "--translate-readme" ]
-  type: list
-  description: |
-    List of target languages to translate the project's main README into.
-    Each language should be specified by its name (e.g., "Russian", "Chinese").
-    The translated README files will be saved separately in the repository folder
-    with language-specific suffixes (e.g., README_ru.md, README_zh.md).
-  example: Russian Chinese
+  validate_doc:
+    aliases: [ "--validate-doc" ]
+    type: flag
+    description: "Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository."
 
-delete_dir:
-  aliases: [ "--delete-dir" ]
-  type: flag
-  description: "Enable deleting the downloaded repository after processing."
+settings:
+  no_fork:
+    aliases: [ "--no-fork" ]
+    type: flag
+    description: "Do not create a public fork to the target repository."
 
-ensure_license:
-  aliases: [ "--ensure-license" ]
-  type: str
-  choices: [ "bsd-3", "mit", "ap2" ]
-  description: "Enable LICENSE file compilation."
-  const: "bsd-3"
+  no_pull_request:
+    aliases: [ "--no-pull-request" ]
+    type: flag
+    description: "Do not create a pull request to the target repository."
 
-no_fork:
-  aliases: [ "--no-fork" ]
-  type: flag
-  description: "Do not create a public fork to the target repository."
+  repository:
+    aliases: [ "-r", "--repository" ]
+    type: str
+    description: "URL of the GitHub repository"
+    required: true
 
-no_pull_request:
-  aliases: [ "--no-pull-request" ]
-  type: flag
-  description: "Do not create a pull request to the target repository."
+  mode:
+    aliases: [ "-m", "--mode" ]
+    type: str
+    description: |
+      Select the operation mode for repository processing:
+        basic           — run a minimal predefined set of tasks.
+        auto (default)  — automatically determine necessary actions based on repository analysis.
+        advanced        — run all enabled features based on provided flags.
+    choices: [ "basic", "auto", "advanced" ]
 
-community_docs:
-  aliases: [ "--community-docs" ]
-  type: flag
-  description: "Generate community-related documentation files, such as Code of Conduct and Contributing guidelines."
+  web_mode:
+    aliases: [ "--web-mode" ]
+    type: flag
+    description: |
+      Enable web interface mode. When set, the tool will generate the task plan
+      without launching the interactive CLI editor.
 
-docstring:
-  aliases: [ "--docstring" ]
-  type: flag
-  description: "Automatically generate docstrings for all Python files in the repository."
+  output:
+    aliases: [ "-o","--output" ]
+    type: str
+    description: "Path to the output directory"
+    example: "path/to/directory"
+    required: false
 
-report:
-  aliases: [ "--report" ]
-  type: flag
-  description: "Analyze the repository and generate a PDF report with project insights."
+  branch:
+    aliases: [ "-b", "--branch" ]
+    type: str
+    description: "Branch name of the GitHub repository"
+    required: false
 
-readme:
-  aliases: [ "--readme" ]
-  type: flag
-  description: "Generate a README.md file based on repository content and metadata."
+  api:
+    aliases: [ "--api" ]
+    type: str
+    description: "LLM API service provider"
+    choices: [ "itmo", "openai", "ollama" ]
 
-refine_readme:
-  aliases: [ "--refine-readme" ]
-  type: flag
-  description: "Enable advanced README refinement. This process requires a powerful LLM model (such as GPT-4 or equivalent) for optimal results."
+  base_url:
+    aliases: [ "--base-url" ]
+    type: str
+    description: |
+      URL of the service provider.
+      See: https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors
 
-requirements:
-  aliases: [ "--requirements" ]
-  type: flag
-  description: "Generate or refine a requirements.txt file based on repository content."
+  model:
+    aliases: [ "--model" ]
+    type: str
+    description: |
+      Specific LLM model to use. See available providers and models:
+      https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors
 
-organize:
-  aliases: [ "--organize" ]
-  type: flag
-  description: "Organize the repository structure by adding standard 'tests' and 'examples' directories if missing."
+  temperature:
+    aliases: [ "--temperature" ]
+    type: float
+    description: "Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative)."
+    example: 0.3, 0.9
 
-about:
-  aliases: [ "--about" ]
-  type: flag
-  description: "Generate About section with tags."
+  max_tokens:
+    aliases: [ "--max-tokens" ]
+    type: int
+    description: "Maximum number of output tokens the model can generate in a single response."
+    example: 256, 1024
 
-validate_paper:
-  aliases: [ "--validate-paper" ]
-  type: flag
-  description: "Check whether the experiments proposed in an attached research paper can be reproduced using the selected repository."
+  context_window:
+    aliases: [ "--context-window" ]
+    type: int
+    description: "Total number of model context (Input + Output)."
+    example: 16000, 200000
 
-validate_doc:
-  aliases: [ "--validate-doc" ]
-  type: flag
-  description: "Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository."
+  top_p:
+    aliases: [ "--top-p" ]
+    type: float
+    description: "Nucleus sampling probability (1.0 = all tokens considered)."
+    example: 0.8, 0.95
 
 workflow:
   generate_workflows:
