@@ -230,7 +230,11 @@ class ProtollmHandler(ModelHandler):
         """
         dotenv.load_dotenv()
 
-        self.client = create_llm_connector(model_url=self._build_model_url(), **self._get_llm_params())
+        self.client = create_llm_connector(
+            model_url=self._build_model_url(),
+            extra_body={"providers": {"only": self.config.llm.allowed_providers}},
+            **self._get_llm_params(),
+        )
 
     def _limit_tokens(self, text: str, safety_buffer: int = 100, mode: str = "middle-out") -> str:
         """
