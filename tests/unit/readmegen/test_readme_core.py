@@ -105,5 +105,5 @@ def test_readme_agent_with_article(
     )
     mock_builder_article.return_value.build.assert_called_once()
     mock_llm.return_value.refine_readme.assert_not_called()  # refine_readme=False
-    mock_llm.return_value.clean.assert_called_once_with("README from article")
     mock_save.assert_called_once()
+    mock_clean.assert_called_once()
