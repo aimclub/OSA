@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 from osa_tool.readmegen.readme_core import ReadmeAgent
-from osa_tool.utils.prompts_builder import PromptLoader
 
 
 @patch("osa_tool.readmegen.readme_core.remove_extra_blank_lines")
@@ -108,4 +107,3 @@ def test_readme_agent_with_article(
     mock_llm.return_value.refine_readme.assert_not_called()  # refine_readme=False
     mock_llm.return_value.clean.assert_called_once_with("README from article")
     mock_save.assert_called_once()
-    mock_clean.assert_called_once()

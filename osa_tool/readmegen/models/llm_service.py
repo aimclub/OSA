@@ -114,7 +114,7 @@ class LLMClient:
             PromptBuilder.render(
                 self.prompts.get("readme_article.overview"),
                 project_name=self.metadata.name,
-                files_summary=files_summary,
+                # todo files_summary=files_summary,
                 pdf_summary=pdf_summary,
                 readme_content=self.readme_content,
             )
@@ -178,7 +178,7 @@ class LLMClient:
                 examples_files_content=FileProcessor.serialize_file_contexts(examples_content),
             )
         )
-        return JsonProcessor.parse(getting_started_raw, expected_key="getting_started", expected_type=str)
+        return JsonProcessor.parse(getting_started_raw, expected_key="getting_started")
 
     def get_citation_from_readme(self) -> str:
         logger.info("Detecting citations in README...")

@@ -411,7 +411,6 @@ RULES:
   * configuration snippets,
   * links, badges, and image references.
 - Preserve original Markdown formatting.
-- Return only valid JSON, no explanations.
 - The "suffix" must be the correct ISO 639-1 or common abbreviation of the target language.
 
 OUTPUT FORMAT:
@@ -426,7 +425,5 @@ INPUT DATA:
 
 1. TARGET LANGUAGE: {target_language}
 
-2. README CONTENT:
-
-{readme_content}
+2. README CONTENT: {readme_content}
 """

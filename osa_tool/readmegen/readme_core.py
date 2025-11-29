@@ -43,7 +43,8 @@ class ReadmeAgent:
             if self.refine_readme:
                 readme_content = self.llm_client.refine_readme(readme_content)
 
-            readme_content = self.llm_client.clean(readme_content)
+            if self.article is None:
+                readme_content = self.llm_client.clean(readme_content)
 
             save_sections(readme_content, self.file_to_save)
             remove_extra_blank_lines(self.file_to_save)

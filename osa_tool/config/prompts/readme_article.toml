@@ -85,19 +85,17 @@ RULES:
 - Begin with a clear, impactful statement capturing the project's essence.
 - Avoid phrases like "This project" or "The repository".
 - Do not include code snippets, bullet points, or explicit file references.
+- PDF SUMMARIES section is the most important and authoritative source and must be prioritized over other sections.
+- FILE SUMMARIES is the least important source of information
 - Limit the response to 90-140 words.
 
 INPUT DATA:
 
 1. PROJECT NAME: {project_name}
 
-2. FILE SUMMARIES: {files_summary}
+2. PDF SUMMARIES: {pdf_summary}
 
-3. PDF SUMMARIES: {pdf_summary}
-
-4. README CONTENT:
-
-{readme_content}
+3. README CONTENT: {readme_content}
 """
 
 content = """
@@ -118,7 +116,7 @@ RULES:
 - Focus on each component's role within the overall project.
 - Avoid technical implementation details, code references, or file names.
 - Use clear, accessible, academic-style language.
-- Limit the description to 100-130 words.
+- Limit the description to 90-140 words.
 
 INPUT DATA:
 
@@ -128,9 +126,7 @@ INPUT DATA:
 
 3. PDF SUMMARIES: {pdf_summary}
 
-4. README CONTENT:
-
-{readme_content}
+4. README CONTENT: {readme_content}
 """
 
 algorithms = """
@@ -152,21 +148,17 @@ RULES:
 - Focus on each algorithm’s conceptual purpose and role within the workflow.
 - Avoid technical implementation details, code references, and file names.
 - Use clear, academic-oriented, accessible language.
-- Limit the description to 100-130 words.
+- Limit the description to 90-140 words.
 
 INPUT DATA:
 
 1. PROJECT NAME: {project_name}
 
-2. FILES CONTENT:
-
-{files_content}
+2. FILES CONTENT: {files_content}
 
 3. PDF SUMMARIES: {pdf_summary}
 
-4. README CONTENT:
-
-{readme_content}
+4. README CONTENT: {readme_content}
 """
 
 article_name_extraction = """

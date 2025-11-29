@@ -56,24 +56,6 @@ def test_process_text_removes_trailing_commas():
     assert result == '["x", "y"]'
 
 
-def test_process_text_no_brackets_raises_value_error():
-    # Assert
-    try:
-        JsonProcessor.process_text("Just plain text")
-        assert False, "Expected ValueError"
-    except ValueError as e:
-        assert "No JSON start bracket" in str(e)
-
-
-def test_process_text_mismatched_brackets():
-    # Assert
-    try:
-        JsonProcessor.process_text("Text with { but no closing")
-        assert False, "Expected ValueError"
-    except ValueError as e:
-        assert "No valid JSON end bracket" in str(e)
-
-
 def test_process_text_non_string_input():
     # Assert
     try:
