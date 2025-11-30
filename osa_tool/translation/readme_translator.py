@@ -38,15 +38,15 @@ class ReadmeTranslator:
 
         parsed = None
 
-        for attempt in range(3):
+        for attempt in range(5):
             async with semaphore:
                 response = await self.model_handler.async_request(prompt)
 
-            parsed = JsonProcessor.parse(response, expected_type=dict)
+            parsed = JsonProcessor.parse(response)
 
             if isinstance(parsed, dict):
                 break
-            logger.warning(f"Parse failed for lang={target_language}, attempt {attempt+1}/3 — retrying LLM request")
+            logger.warning(f"Parse failed for lang={target_language}, attempt {attempt+1}/5 — retrying LLM request")
 
         if not isinstance(parsed, dict):
             parsed = {"content": str(parsed).strip(), "suffix": target_language[:2].lower()}
@@ -131,12 +131,10 @@ class ReadmeTranslator:
             if os.path.exists(target_path):
                 os.remove(target_path)
 
-            os.symlink(source_path, target_path)
-            logger.info(f"Created symlink: {target_path} -> {source_path}")
-        except (OSError, NotImplementedError) as e:
-            logger.warning(f"Symlink not supported ({e}), copying file instead")
             shutil.copyfile(source_path, target_path)
             logger.info(f"Copied file: {target_path}")
+        except (OSError, NotImplementedError) as e:
+            logger.error(f"Error while copying file: {e}")
 
     def get_main_readme_file(self) -> str:
         """Return the content of the main README.md in the repository root, or empty string if not found."""
