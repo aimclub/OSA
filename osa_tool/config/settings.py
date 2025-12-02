@@ -56,6 +56,7 @@ class ModelSettings(BaseModel):
     context_window: PositiveInt
     top_p: NonNegativeFloat
     max_retries: PositiveInt
+    allowed_providers: list[str]
 
 
 class WorkflowSettings(BaseModel):

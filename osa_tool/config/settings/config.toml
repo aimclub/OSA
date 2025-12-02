@@ -19,6 +19,7 @@ max_tokens = 4096
 context_window = 16385
 top_p = 0.95
 max_retries = 3
+allowed_providers = ["google-vertex", "azure"]
 
 # General CLI-related defaults
 [general]

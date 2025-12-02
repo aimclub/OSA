@@ -53,6 +53,7 @@ class DataFactory:
             "context_window": random.randint(8192, 16385),
             "top_p": round(random.uniform(0.1, 1.0), 1),
             "max_retries": random.randint(3, 10),
+            "allowed_providers": random.sample(["google-vertex", "azure"], k=1),
         }
 
     @staticmethod

@@ -32,7 +32,9 @@ class JsonProcessor:
         candidates = [pos for pos in [start_obj, start_arr] if pos != -1]
 
         if not candidates:
-            raise ValueError("No JSON start bracket found in the input text.")
+            logger.error("No JSON start bracket found, adding '{' at the beginning")
+            text = "{" + text
+            candidates = [0]
 
         start = min(candidates)
         open_char = text[start]
@@ -40,7 +42,9 @@ class JsonProcessor:
 
         end = text.rfind(close_char)
         if end == -1 or end < start:
-            raise ValueError("No valid JSON end bracket found in the input text.")
+            logger.error(f"No valid JSON end bracket found, adding '{close_char}' at the end")
+            text = text + close_char
+            end = len(text) - 1
 
         return text[start : end + 1]
 
