@@ -3,6 +3,8 @@ from typing import Optional, List, Dict, Any
 
 from pydantic import BaseModel, Field
 
+from osa_tool.analytics.metadata import RepositoryMetadata
+
 
 class AgentStatus(str, Enum):
     INIT = "init"
@@ -11,6 +13,21 @@ class AgentStatus(str, Enum):
     WAITING_FOR_USER = "waiting_for_user"
     ERROR = "error"
     DONE = "done"
+
+
+class TaskStatus(str, Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class Task(BaseModel):
+    name: str
+    description: str
+    status: TaskStatus = TaskStatus.PENDING
+    dependencies: List[str] = Field(default_factory=list)
+    result: Optional[Dict[str, Any]] = None
 
 
 class OSAAgentState(BaseModel):
@@ -25,9 +42,8 @@ class OSAAgentState(BaseModel):
     status: AgentStatus = AgentStatus.INIT
 
     # Repository metadata / analysis results
-    detected_platform: Optional[str] = None
-    repo_metadata: Optional[Dict[str, Any]] = None
-    source_rank: Optional[Dict[str, Any]] = None
+    repo_metadata: Optional[RepositoryMetadata] = None
+    # todo нужно подумать над этим source_rank: Optional[Dict[str, Any]] = None
 
     # Workflow plan and execution state
     tasks: List[str] = Field(default_factory=list)

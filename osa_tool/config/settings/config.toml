@@ -15,9 +15,10 @@ localhost = "http://localhost:11434/"
 model = "gpt-3.5-turbo"
 path = "generate"
 temperature = 0.05
-max_tokens = 4096 
-context_window = 16385 
+max_tokens = 4096
+context_window = 16385
 top_p = 0.95
+max_retries = 3
 
 # General CLI-related defaults
 [general]

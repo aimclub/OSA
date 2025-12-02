@@ -184,6 +184,12 @@ settings:
     description: "Nucleus sampling probability (1.0 = all tokens considered)."
     example: 0.8, 0.95
 
+  max_retries:
+    aliases: [ "--max-retries" ]
+    type: int
+    description: "Maximum retry attempts for LLM API calls"
+    example: 5
+
 workflow:
   generate_workflows:
     aliases: [ "--generate-workflows" ]

@@ -1,72 +1,100 @@
-from typing import Any, Dict, List, Optional
+import json
+from typing import Optional, List
 
-from osa_tool.osa_agent.config import ToolSpec
-from osa_tool.osa_agent.state import OSAAgentState
-from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.analytics.metadata import RepositoryMetadata
+from osa_tool.models.models import ModelHandlerFactory
+from osa_tool.osa_agent.config import OSAAgentConfig
+from osa_tool.osa_agent.state import OSAAgentState, AgentStatus
+from osa_tool.utils.logger import logger
+from osa_tool.utils.prompts_builder import PromptBuilder
 
 
 class OSAPlannerNode:
     """
-    Node responsible for generating execution plans based on the user input.
-    Uses a LLM model and tool descriptions to create step-by-step plans.
+    Node responsible for generating execution plans based on the user input
+    and repository analysis. Creates a sequence of tasks for repository processing.
     """
 
-    def __init__(self, llm: Any, tools_description: List[ToolSpec], prompts: PromptLoader, max_retries: int = 1):
-        self.llm = llm
-        self.tools_description = tools_description
-        self.prompts = prompts
-        self.max_retries = max_retries
+    def __init__(self, osa_agent_config: OSAAgentConfig):
+        self.osa_agent_config = osa_agent_config
+        self.prompts = self.osa_agent_config.prompts
+        self.llm = ModelHandlerFactory.build(self.osa_agent_config.config_loader.config)
+        self.max_retries = self.osa_agent_config.config_loader.config.llm.max_retries
+        self.tools = self.osa_agent_config.tools
 
-    def __call__(self, state: OSAAgentState, config: Optional[Dict] = None) -> OSAAgentState:
+    def __call__(self, state: OSAAgentState) -> OSAAgentState:
         """
-        Generate a plan based on the state.input and optionally attached image.
-        Updates state.plan with list of steps.
+        Generate a plan based on user request and repository.
+        Updates state.tasks with the plan.
         """
-        # Gather input
-        user_input = state.input
-        last_memory = state.last_memory
-        attached_img = state.attachment
-
-        # Render tools description
-        tools_rendered = ", ".join([t.description for t in self.tools_description])
-
-        # Build prompt
-        prompt = PromptBuilder.render(
-            self.prompts.get("osa_agent.planner"),
-            tools_rendered=tools_rendered,
-            last_memory=last_memory,
-            additional_hints=self.prompts.additional_hints,
-            problem_statement=self.prompts.problem_statement,
-            rules=self.prompts.rules,
-            examples=self.prompts.examples,
-            desc_restrictions=self.prompts.desc_restrictions,
-            image_description=attached_img,
+        # Prepare planning context
+        plan = self._create_plan(
+            user_request=state.user_request,
+            repo_url=state.repo_url,
+            repo_metadata=state.repo_metadata,
+            attachment=state.attachment,
         )
 
-        # Call LLM and handle retries
-        plan_steps: List[List[str]] = []
-        for attempt in range(self.max_retries):
-            try:
-                llm_response = self.llm.invoke(prompt)
-                # Here we assume response has a .content attribute
-                plan_steps = self.parse_plan(llm_response.content)
-                state.plan = plan_steps
-                return state
-            except Exception as e:
-                print(f"Planner attempt {attempt+1} failed: {e}")
+        # Update state with plan
+        state.tasks = plan
+        state.status = AgentStatus.ANALYZING
 
-        # fallback if all retries fail
-        state.plan = []
         return state
 
-    @staticmethod
-    def parse_plan(raw_output: str) -> List[List[str]]:
-        """Parse raw LLM output into structured plan steps."""
-        try:
-            import json
+    def _create_plan(
+        self,
+        user_request: str,
+        repo_url: str,
+        repo_metadata: Optional[RepositoryMetadata],
+        attachment: Optional[str],
+    ) -> List[str]:
+        """
+        Create execution plan as a list of task descriptions.
+        """
+        # Format tools description
+        tools_description = self._format_tools_description()
 
-            parsed = json.loads(raw_output)
-            return parsed.get("steps", [])
-        except Exception:
-            # fallback: wrap raw text into one step
-            return [[raw_output]]
+        # Build planning prompt using configured prompts
+        prompt = PromptBuilder.render(
+            self.prompts.get("osa_agent.planner"),
+            user_request=user_request,
+            repo_url=repo_url,
+            attachment=attachment,
+            repo_metadata=repo_metadata,
+            tools_description=tools_description,
+        )
+
+        # Execute planning with retries
+        for attempt in range(self.max_retries):
+            try:
+                response = self.llm.send_request(prompt)
+
+                # Parse the plan from response
+                plan = json.loads(response)
+                if plan:
+                    return plan
+
+            except Exception as e:
+                logger.error(f"Planning attempt {attempt + 1} failed: {e}")
+
+        return []
+
+    def _format_tools_description(self) -> str:
+        """
+        Format ToolSpec objects into a string description for the prompt.
+        """
+        tools_lines = []
+        for tool in self.tools:
+            tool_desc = f"- {tool.name}: {tool.description}"
+            if tool.args_schema:
+                properties = tool.args_schema.get("properties", {})
+                if properties:
+                    args_list = []
+                    for param_name, param_info in properties.items():
+                        param_desc = param_info.get("description", "")
+                        args_list.append(f"{param_name}: {param_desc}")
+                    if args_list:
+                        tool_desc += f" (args: {', '.join(args_list)})"
+            tools_lines.append(tool_desc)
+
+        return "\n".join(tools_lines)

@@ -1,6 +1,11 @@
-from typing import Any, List, Optional
+from typing import List, Optional, Dict, Any
 
 from pydantic import BaseModel, Field
+
+from osa_tool.analytics.sourcerank import SourceRank
+from osa_tool.config.settings import ConfigLoader
+from osa_tool.git_agent.git_agent import GitAgent
+from osa_tool.utils.prompts_builder import PromptLoader
 
 
 class ToolSpec(BaseModel):
@@ -12,47 +17,33 @@ class ToolSpec(BaseModel):
     return_schema: Optional[dict] = None
 
 
-class PlannerPrompts(BaseModel):
-    """
-    Holds the text parts for planner prompt.
-    Loaded from external prompt storage (TOML/YAML).
-    """
-
-    problem_statement: str
-    rules: str
-    examples: str
-    desc_restrictions: str
-    additional_hints: Optional[str] = None
-
-
-class LLMBundle(BaseModel):
-    """
-    Wraps any LLM connector instance
-    """
-
-    name: str
-    instance: Any
-
-
 class OSAAgentConfig(BaseModel):
     """
     High-level agent config.
     Can be constructed from CLI + config file + internal defaults.
     """
 
-    llm: LLMBundle
-    visual_llm: Optional[LLMBundle] = None
+    config_loader: ConfigLoader
+    git_agent: GitAgent
+    sourcerank: SourceRank
 
     # Planner behavior
-    max_retries: int = 3
     enable_replanning: bool = True
     enable_memory: bool = True
 
     # Prompts
-    planner_prompts: PlannerPrompts
+    prompts: PromptLoader
+
+    # List of scenario agents
+    scenario_agents: List[str]
+    # Nodes for scenario agents
+    scenario_agents_funcs: Dict[str, Any]
 
     # Tools
     tools: List[ToolSpec] = Field(default_factory=list)
+
+    # Tasks
+    tasks: List[str] = Field(default_factory=list)
 
     class Config:
         arbitrary_types_allowed = True

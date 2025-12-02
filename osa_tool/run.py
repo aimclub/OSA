@@ -368,6 +368,7 @@ def load_configuration(args: argparse.Namespace) -> ConfigLoader:
                 - args.max_tokens    : Maximum number of output tokens
                 - args.context_window: Total context window size
                 - args.top_p         : Nucleus sampling parameter
+                - args.max_retries   : Maximum retry attempts for LLM API calls
 
     Returns:
         ConfigLoader:
@@ -393,6 +394,7 @@ def load_configuration(args: argparse.Namespace) -> ConfigLoader:
             "max_tokens": args.max_tokens,
             "context_window": args.context_window,
             "top_p": args.top_p,
+            "max_retries": args.max_retries,
         }
     )
     logger.info("Config successfully updated and loaded")
