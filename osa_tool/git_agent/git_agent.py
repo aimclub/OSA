@@ -421,6 +421,13 @@ class GitHubAgent(GitAgent):
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json",
         }
+
+        last_commit = self.repo.head.commit
+        pr_title = title if title else last_commit.message
+        pr_body = body if body else ""
+        pr_body += self.pr_report_body
+        pr_body += self.AGENT_SIGNATURE
+
         params = {
             "state": "open",
             "head": head_branch,
@@ -431,14 +438,21 @@ class GitHubAgent(GitAgent):
             prs = response.json()
             if prs:
                 existing_pr = prs[0]
-                logger.info(f"Pull request already exists: {existing_pr['html_url']}")
+                pr_number = existing_pr["number"]
+                logger.info(f"Pull request already exists. Updating PR #{pr_number}: {existing_pr['html_url']}")
+                update_url = f"https://api.github.com/repos/{base_repo}/pulls/{pr_number}"
+                update_data = {
+                    "title": pr_title,
+                    "body": pr_body,
+                }
+                update_response = requests.patch(update_url, json=update_data, headers=headers)
+                if update_response.status_code == 200:
+                    logger.info(f"Pull request #{pr_number} updated successfully.")
+                else:
+                    logger.error(
+                        f"Failed to update pull request: {update_response.status_code} - {update_response.text}")
                 return
 
-        last_commit = self.repo.head.commit
-        pr_title = title if title else last_commit.message
-        pr_body = body if body else last_commit.message
-        pr_body += self.pr_report_body
-        pr_body += self.AGENT_SIGNATURE
         pr_data = {
             "title": pr_title,
             "head": head_branch,
