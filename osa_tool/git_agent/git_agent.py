@@ -433,41 +433,41 @@ class GitHubAgent(GitAgent):
             "head": head_branch,
             "base": self.base_branch,
         }
+
         response = requests.get(url, headers=headers, params=params)
-        if response.status_code == 200:
-            prs = response.json()
-            if prs:
-                existing_pr = prs[0]
-                pr_number = existing_pr["number"]
-                logger.info(f"Pull request already exists. Updating PR #{pr_number}: {existing_pr['html_url']}")
-                update_url = f"https://api.github.com/repos/{base_repo}/pulls/{pr_number}"
-                update_data = {
-                    "title": pr_title,
-                    "body": pr_body,
-                }
-                update_response = requests.patch(update_url, json=update_data, headers=headers)
-                if update_response.status_code == 200:
-                    logger.info(f"Pull request #{pr_number} updated successfully.")
-                else:
-                    logger.error(
-                        f"Failed to update pull request: {update_response.status_code} - {update_response.text}")
-                return
 
-        pr_data = {
-            "title": pr_title,
-            "head": head_branch,
-            "base": self.base_branch,
-            "body": pr_body,
-            "maintainer_can_modify": True,
-        }
-
-        response = requests.post(url, json=pr_data, headers=headers)
-        if response.status_code == 201:
-            logger.info(f"GitHub pull request created successfully: {response.json()['html_url']}")
+        prs = response.json() if response.status_code == 200 else []
+        if prs:
+            existing_pr = prs[0]
+            pr_number = existing_pr["number"]
+            logger.info(f"Pull request already exists. Updating PR #{pr_number}: {existing_pr['html_url']}")
+            update_url = f"{url}/{pr_number}"
+            update_data = {
+                "title": pr_title,
+                "body": pr_body,
+            }
+            update_response = requests.patch(update_url, json=update_data, headers=headers)
+            if update_response.status_code == 200:
+                logger.info(f"Pull request #{pr_number} updated successfully.")
+            else:
+                logger.error(
+                    f"Failed to update pull request: {update_response.status_code} - {update_response.text}")
         else:
-            logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
-            if "pull request already exists" not in response.text:
-                raise ValueError("Failed to create pull request.")
+            pr_data = {
+                "title": pr_title,
+                "head": head_branch,
+                "base": self.base_branch,
+                "body": pr_body,
+                "maintainer_can_modify": True,
+            }
+
+            response = requests.post(url, json=pr_data, headers=headers)
+            if response.status_code == 201:
+                logger.info(f"GitHub pull request created successfully: {response.json()['html_url']}")
+            else:
+                logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
+                if "pull request already exists" not in response.text:
+                    raise ValueError("Failed to create pull request.")
 
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
         url = f"https://api.github.com/repos/{repo_path}"
