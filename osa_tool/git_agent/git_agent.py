@@ -655,7 +655,24 @@ class GitLabAgent(GitAgent):
             mrs = response.json()
             if mrs:
                 existing_mr = mrs[0]
-                logger.info(f"Merge request already exists: {existing_mr['web_url']}")
+                mr_iid = existing_mr.get("iid") or existing_mr.get("id")
+                update_url = f"{gitlab_instance}/api/v4/projects/{target_project_id}/merge_requests/{mr_iid}"
+                mr_title = title if title else self.repo.head.commit.message
+                mr_body = (body if body else self.repo.head.commit.message) + self.pr_report_body + self.AGENT_SIGNATURE
+                update_data = {
+                    "title": mr_title,
+                    "description": mr_body,
+                    "target_branch": self.base_branch,
+                }
+                try:
+                    update_response = requests.put(update_url, json=update_data, headers=headers)
+                    if update_response.status_code in {200, 201}:
+                        logger.info(f"Merge request updated successfully: {existing_mr.get('web_url')}")
+                    else:
+                        logger.error(
+                            f"Failed to update merge request: {update_response.status_code} - {update_response.text}")
+                except Exception as e:
+                    logger.error(f"Exception while updating merge request: {e}")
                 return
 
         last_commit = self.repo.head.commit
@@ -843,9 +860,21 @@ class GitverseAgent(GitAgent):
             prs = response.json()
             if prs:
                 existing_pr = prs[0]
-                pr_number = existing_pr["number"]
+                pr_number = existing_pr.get("number")
                 pr_url = f"https://gitverse.ru/{base_repo}/pulls/{pr_number}"
-                logger.info(f"Pull request already exists: {pr_url}")
+                update_url = f"https://api.gitverse.ru/repos/{base_repo}/pulls/{pr_number}"
+                pr_title = title if title else self.repo.head.commit.message
+                pr_body = (body if body else self.repo.head.commit.message) + self.pr_report_body + self.AGENT_SIGNATURE
+                try:
+                    update_response = requests.patch(update_url, json={"title": pr_title, "body": pr_body},
+                                                     headers=headers)
+                    if update_response.status_code in {200, 201}:
+                        logger.info(f"Pull request already exists. Updated PR: {pr_url}")
+                    else:
+                        logger.error(
+                            f"Failed to update pull request: {update_response.status_code} - {update_response.text}")
+                except Exception as e:
+                    logger.error(f"Exception while updating pull request: {e}")
                 return
 
         last_commit = self.repo.head.commit
