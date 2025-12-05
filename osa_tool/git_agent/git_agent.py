@@ -651,52 +651,53 @@ class GitLabAgent(GitAgent):
             "target_project_id": target_project_id,
         }
         response = requests.get(mr_url, headers=headers, params=params)
-        if response.status_code == 200:
-            mrs = response.json()
-            if mrs:
-                existing_mr = mrs[0]
-                mr_iid = existing_mr.get("iid") or existing_mr.get("id")
-                update_url = f"{gitlab_instance}/api/v4/projects/{target_project_id}/merge_requests/{mr_iid}"
-                mr_title = title if title else self.repo.head.commit.message
-                mr_body = (body if body else self.repo.head.commit.message) + self.pr_report_body + self.AGENT_SIGNATURE
-                update_data = {
-                    "title": mr_title,
-                    "description": mr_body,
-                    "target_branch": self.base_branch,
-                }
-                try:
-                    update_response = requests.put(update_url, json=update_data, headers=headers)
-                    if update_response.status_code in {200, 201}:
-                        logger.info(f"Merge request updated successfully: {existing_mr.get('web_url')}")
-                    else:
-                        logger.error(
-                            f"Failed to update merge request: {update_response.status_code} - {update_response.text}")
-                except Exception as e:
-                    logger.error(f"Exception while updating merge request: {e}")
-                return
 
-        last_commit = self.repo.head.commit
-        mr_title = title if title else last_commit.message
-        mr_body = body if body else last_commit.message
-        mr_body += self.pr_report_body
-        mr_body += self.AGENT_SIGNATURE
+        mrs = response.json() if response.status_code == 200 else []
+        if mrs:
+            existing_mr = mrs[0]
+            mr_iid = existing_mr.get("iid") or existing_mr.get("id")
+            update_url = f"{mr_url}/{mr_iid}"
+            mr_title = title if title else self.repo.head.commit.message
+            mr_body = (body if body else self.repo.head.commit.message) + self.pr_report_body + self.AGENT_SIGNATURE
+            update_data = {
+                "title": mr_title,
+                "description": mr_body,
+                "target_branch": self.base_branch,
+            }
+            try:
+                update_response = requests.put(update_url, json=update_data, headers=headers)
+                if update_response.status_code in {200, 201}:
+                    logger.info(f"Merge request updated successfully: {existing_mr.get('web_url')}")
+                else:
+                    logger.error(
+                        f"Failed to update merge request: {update_response.status_code} - {update_response.text}")
+            except Exception as e:
+                logger.error(f"Exception while updating merge request: {e}")
+            return
 
-        mr_data = {
-            "title": mr_title,
-            "source_branch": self.branch_name,
-            "target_branch": self.base_branch,
-            "target_project_id": target_project_id,
-            "description": mr_body,
-            "allow_collaboration": True,
-        }
-
-        response = requests.post(mr_url, json=mr_data, headers=headers)
-        if response.status_code == 201:
-            logger.info(f"GitLab merge request created successfully: {response.json()['web_url']}")
         else:
-            logger.error(f"Failed to create merge request: {response.status_code} - {response.text}")
-            if "merge request already exists" not in response.text:
-                raise ValueError("Failed to create merge request.")
+            last_commit = self.repo.head.commit
+            mr_title = title if title else last_commit.message
+            mr_body = body if body else last_commit.message
+            mr_body += self.pr_report_body
+            mr_body += self.AGENT_SIGNATURE
+
+            mr_data = {
+                "title": mr_title,
+                "source_branch": self.branch_name,
+                "target_branch": self.base_branch,
+                "target_project_id": target_project_id,
+                "description": mr_body,
+                "allow_collaboration": True,
+            }
+
+            response = requests.post(mr_url, json=mr_data, headers=headers)
+            if response.status_code == 201:
+                logger.info(f"GitLab merge request created successfully: {response.json()['web_url']}")
+            else:
+                logger.error(f"Failed to create merge request: {response.status_code} - {response.text}")
+                if "merge request already exists" not in response.text:
+                    raise ValueError("Failed to create merge request.")
 
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
         gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
@@ -856,49 +857,50 @@ class GitverseAgent(GitAgent):
             "base": self.base_branch,
         }
         response = requests.get(url, headers=headers, params=params)
-        if response.status_code == 200:
-            prs = response.json()
-            if prs:
-                existing_pr = prs[0]
-                pr_number = existing_pr.get("number")
-                pr_url = f"https://gitverse.ru/{base_repo}/pulls/{pr_number}"
-                update_url = f"https://api.gitverse.ru/repos/{base_repo}/pulls/{pr_number}"
-                pr_title = title if title else self.repo.head.commit.message
-                pr_body = (body if body else self.repo.head.commit.message) + self.pr_report_body + self.AGENT_SIGNATURE
-                try:
-                    update_response = requests.patch(update_url, json={"title": pr_title, "body": pr_body},
-                                                     headers=headers)
-                    if update_response.status_code in {200, 201}:
-                        logger.info(f"Pull request already exists. Updated PR: {pr_url}")
-                    else:
-                        logger.error(
-                            f"Failed to update pull request: {update_response.status_code} - {update_response.text}")
-                except Exception as e:
-                    logger.error(f"Exception while updating pull request: {e}")
-                return
 
-        last_commit = self.repo.head.commit
-        pr_title = title if title else last_commit.message
-        pr_body = body if body else last_commit.message
-        pr_body += self.pr_report_body
-        pr_body += self.AGENT_SIGNATURE
-
-        pr_data = {
-            "title": pr_title,
-            "head": self.branch_name,
-            "base": self.base_branch,
-            "body": pr_body,
-        }
-
-        response = requests.post(url, json=pr_data, headers=headers)
-        if response.status_code == 201:
-            pr_number = response.json()["number"]
+        prs = response.json() if response.status_code == 200 else []
+        if prs:
+            existing_pr = prs[0]
+            pr_number = existing_pr.get("number")
             pr_url = f"https://gitverse.ru/{base_repo}/pulls/{pr_number}"
-            logger.info(f"Gitverse pull request created successfully: {pr_url}")
+            update_url = f"https://api.gitverse.ru/repos/{base_repo}/pulls/{pr_number}"
+            pr_title = title if title else self.repo.head.commit.message
+            pr_body = (body if body else self.repo.head.commit.message) + self.pr_report_body + self.AGENT_SIGNATURE
+            try:
+                update_response = requests.patch(update_url, json={"title": pr_title, "body": pr_body},
+                                                 headers=headers)
+                if update_response.status_code in {200, 201}:
+                    logger.info(f"Pull request already exists. Updated PR: {pr_url}")
+                else:
+                    logger.error(
+                        f"Failed to update pull request: {update_response.status_code} - {update_response.text}")
+            except Exception as e:
+                logger.error(f"Exception while updating pull request: {e}")
+            return
+
         else:
-            logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
-            if "pull request already exists" not in response.text:
-                raise ValueError("Failed to create pull request.")
+            last_commit = self.repo.head.commit
+            pr_title = title if title else last_commit.message
+            pr_body = body if body else last_commit.message
+            pr_body += self.pr_report_body
+            pr_body += self.AGENT_SIGNATURE
+
+            pr_data = {
+                "title": pr_title,
+                "head": self.branch_name,
+                "base": self.base_branch,
+                "body": pr_body,
+            }
+
+            response = requests.post(url, json=pr_data, headers=headers)
+            if response.status_code == 201:
+                pr_number = response.json()["number"]
+                pr_url = f"https://gitverse.ru/{base_repo}/pulls/{pr_number}"
+                logger.info(f"Gitverse pull request created successfully: {pr_url}")
+            else:
+                logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
+                if "pull request already exists" not in response.text:
+                    raise ValueError("Failed to create pull request.")
 
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
         logger.warning(
