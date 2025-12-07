@@ -424,15 +424,10 @@ class GitHubAgent(GitAgent):
 
         last_commit = self.repo.head.commit
         pr_title = title if title else last_commit.message
-        pr_body = body if body else ""
-        pr_body += self.pr_report_body
-        pr_body += self.AGENT_SIGNATURE
 
-        params = {
-            "state": "open",
-            "head": head_branch,
-            "base": self.base_branch,
-        }
+        new_body_content = body if body else ""
+
+        params = {"state": "open", "head": head_branch, "base": self.base_branch}
 
         response = requests.get(url, headers=headers, params=params)
 
@@ -441,10 +436,24 @@ class GitHubAgent(GitAgent):
             existing_pr = prs[0]
             pr_number = existing_pr["number"]
             logger.info(f"Pull request already exists. Updating PR #{pr_number}: {existing_pr['html_url']}")
+
+            old_body = existing_pr.get("body", "") or ""
+
+            report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
+            old_reports = report_pattern.findall(old_body)
+
+            updated_body = new_body_content + self.pr_report_body
+
+            for report in old_reports:
+                if report not in updated_body:
+                    updated_body += f"\n{report}\n"
+
+            updated_body += self.AGENT_SIGNATURE
+
             update_url = f"{url}/{pr_number}"
             update_data = {
                 "title": pr_title,
-                "body": pr_body,
+                "body": updated_body,
             }
             update_response = requests.patch(update_url, json=update_data, headers=headers)
             if update_response.status_code == 200:
@@ -453,6 +462,7 @@ class GitHubAgent(GitAgent):
                 logger.error(
                     f"Failed to update pull request: {update_response.status_code} - {update_response.text}")
         else:
+            pr_body = new_body_content + self.pr_report_body + self.AGENT_SIGNATURE
             pr_data = {
                 "title": pr_title,
                 "head": head_branch,
@@ -636,12 +646,14 @@ class GitLabAgent(GitAgent):
         target_project_path = base_repo.replace("/", "%2F")
 
         project_url = f"{gitlab_instance}/api/v4/projects/{target_project_path}"
-        response = requests.get(project_url, headers=headers)
-        if response.status_code == 200:
-            project_info = response.json()
-            target_project_id = project_info["id"]
-        else:
-            raise ValueError(f"Failed to get project info: {response.status_code} - {response.text}")
+        proj_response = requests.get(project_url, headers=headers)
+        if proj_response.status_code != 200:
+            raise ValueError(f"Failed to get project info: {proj_response.status_code} - {proj_response.text}")
+        target_project_id = proj_response.json()["id"]
+
+        last_commit = self.repo.head.commit
+        mr_title = title if title else last_commit.message
+        new_body_content = body if body else ""
 
         mr_url = f"{gitlab_instance}/api/v4/projects/{source_project_path}/merge_requests"
         params = {
@@ -656,12 +668,22 @@ class GitLabAgent(GitAgent):
         if mrs:
             existing_mr = mrs[0]
             mr_iid = existing_mr.get("iid") or existing_mr.get("id")
+
+            old_body = existing_mr.get("description", "") or ""
+
+            report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
+            old_reports = report_pattern.findall(old_body)
+
+            updated_body = new_body_content + self.pr_report_body
+            for report in old_reports:
+                if report not in updated_body:
+                    updated_body += f"\n{report}\n"
+            updated_body += self.AGENT_SIGNATURE
+
             update_url = f"{mr_url}/{mr_iid}"
-            mr_title = title if title else self.repo.head.commit.message
-            mr_body = (body if body else self.repo.head.commit.message) + self.pr_report_body + self.AGENT_SIGNATURE
             update_data = {
                 "title": mr_title,
-                "description": mr_body,
+                "description": updated_body,
                 "target_branch": self.base_branch,
             }
             try:
@@ -676,12 +698,7 @@ class GitLabAgent(GitAgent):
             return
 
         else:
-            last_commit = self.repo.head.commit
-            mr_title = title if title else last_commit.message
-            mr_body = body if body else last_commit.message
-            mr_body += self.pr_report_body
-            mr_body += self.AGENT_SIGNATURE
-
+            mr_body = new_body_content + self.pr_report_body + self.AGENT_SIGNATURE
             mr_data = {
                 "title": mr_title,
                 "source_branch": self.branch_name,
@@ -851,11 +868,12 @@ class GitverseAgent(GitAgent):
         }
 
         url = f"https://api.gitverse.ru/repos/{base_repo}/pulls"
-        params = {
-            "state": "open",
-            "head": self.branch_name,
-            "base": self.base_branch,
-        }
+        last_commit = self.repo.head.commit
+        pr_title = title if title else last_commit.message
+        new_body_content = body if body else ""
+
+
+        params = {"state": "open", "head": self.branch_name, "base": self.base_branch}
         response = requests.get(url, headers=headers, params=params)
 
         prs = response.json() if response.status_code == 200 else []
@@ -863,28 +881,32 @@ class GitverseAgent(GitAgent):
             existing_pr = prs[0]
             pr_number = existing_pr.get("number")
             pr_url = f"https://gitverse.ru/{base_repo}/pulls/{pr_number}"
-            update_url = f"https://api.gitverse.ru/repos/{base_repo}/pulls/{pr_number}"
-            pr_title = title if title else self.repo.head.commit.message
-            pr_body = (body if body else self.repo.head.commit.message) + self.pr_report_body + self.AGENT_SIGNATURE
-            try:
-                update_response = requests.patch(update_url, json={"title": pr_title, "body": pr_body},
-                                                 headers=headers)
-                if update_response.status_code in {200, 201}:
-                    logger.info(f"Pull request already exists. Updated PR: {pr_url}")
-                else:
-                    logger.error(
-                        f"Failed to update pull request: {update_response.status_code} - {update_response.text}")
-            except Exception as e:
-                logger.error(f"Exception while updating pull request: {e}")
-            return
+            logger.info(f"Pull request already exists. Updating PR #{pr_number}: {pr_url}")
+
+            old_body = existing_pr.get("body", "") or ""
+
+            report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
+            old_reports = report_pattern.findall(old_body)
+
+            updated_body = new_body_content + self.pr_report_body
+            for report in old_reports:
+                if report not in updated_body:
+                    updated_body += f"\n{report}\n"
+            updated_body += self.AGENT_SIGNATURE
+
+            update_url = f"{url}/{pr_number}"
+            update_data = {"title": pr_title, "body": updated_body}
+
+            update_response = requests.patch(update_url, json=update_data, headers=headers)
+            if update_response.status_code == 200:
+                logger.info(f"Pull request #{pr_number} updated successfully.")
+            else:
+                logger.error(
+                    f"Failed to update pull request: {update_response.status_code} - {update_response.text}"
+                )
 
         else:
-            last_commit = self.repo.head.commit
-            pr_title = title if title else last_commit.message
-            pr_body = body if body else last_commit.message
-            pr_body += self.pr_report_body
-            pr_body += self.AGENT_SIGNATURE
-
+            pr_body = new_body_content + self.pr_report_body + self.AGENT_SIGNATURE
             pr_data = {
                 "title": pr_title,
                 "head": self.branch_name,
