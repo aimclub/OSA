@@ -199,7 +199,7 @@ def process_docstrings_for_repo(repo_url: str, args, df: DataFrame) -> None:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            generate_docstrings(config, loop)
+            generate_docstrings(config, loop, args.ignore_list)
         finally:
             loop.close()
 
