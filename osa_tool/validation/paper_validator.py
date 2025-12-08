@@ -4,6 +4,7 @@ from osa_tool.readmegen.context.article_content import PdfParser
 from osa_tool.readmegen.context.article_path import get_pdf_path
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.validation.code_analyzer import CodeAnalyzer
 
 
@@ -27,7 +28,7 @@ class PaperValidator:
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.prompts = prompts
 
-    def validate(self, article: str | None) -> str:
+    def validate(self, article: str | None) -> dict:
         """
         Validate a scientific paper against the code repository.
 
@@ -73,16 +74,17 @@ class PaperValidator:
         logger.info("Extracting text from PDF ...")
         pdf_content = PdfParser(path_to_pdf).data_extractor()
         logger.info("Sending request to extract sections ...")
-        response = self.model_handler.send_request(
-            PromptBuilder.render(
+        response = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
                 self.prompts.get("validation.extract_paper_section"),
                 paper_content=pdf_content,
-            )
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw),
         )
         logger.debug(response)
         return response
 
-    def validate_paper_against_repo(self, paper_info: str, code_files_info: str) -> str:
+    def validate_paper_against_repo(self, paper_info: str, code_files_info: str) -> dict:
         """
         Validate the processed paper content against the code repository.
 
@@ -94,12 +96,13 @@ class PaperValidator:
             str: Validation result from the language model.
         """
         logger.info("Validating paper against repository ...")
-        response = self.model_handler.send_request(
+        response = self.model_handler.send_and_parse(
             PromptBuilder.render(
                 self.prompts.get("validation.validate_paper_against_repo"),
                 paper_info=paper_info,
                 code_files_info=code_files_info,
-            )
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw),
         )
         logger.debug(response)
         return response

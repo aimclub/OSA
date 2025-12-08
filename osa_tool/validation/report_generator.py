@@ -10,7 +10,6 @@ from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 
@@ -43,18 +42,17 @@ class ReportGenerator:
         self.filename = f"{self.metadata.name}_validation_report.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
 
-    def build_pdf(self, type: str, content: str) -> None:
+    def build_pdf(self, type: str, content: dict) -> None:
         """
         Build and save the PDF validation report.
 
         Args:
             type (str): Type of validation (e.g., "Code", "Doc", "Paper").
-            content (str): JSON string containing report data.
+            content (dict): JSON containing report data.
 
         Returns:
             None
         """
-        parsed_content = JsonProcessor.parse(content)
         logger.info(f"Building validation report for repository {self.metadata.full_name} ...")
         try:
             doc = SimpleDocTemplate(
@@ -67,9 +65,9 @@ class ReportGenerator:
                 [
                     *self._build_header(type),
                     Spacer(0, 40),
-                    *self._build_first_part(parsed_content["correspondence"], parsed_content["percentage"]),
+                    *self._build_first_part(content["correspondence"], content["percentage"]),
                     Spacer(0, 35),
-                    *self._build_second_part(parsed_content["conclusion"]),
+                    *self._build_second_part(content["conclusion"]),
                 ],
                 onFirstPage=self._draw_images,
             )

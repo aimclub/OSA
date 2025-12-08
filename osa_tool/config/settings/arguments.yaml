@@ -1,4 +1,4 @@
-main_arguments:
+arguments:
   attachment:
     aliases: [ "--attachment" ]
     type: str

@@ -13,9 +13,9 @@ from osa_tool.analytics.response_validation import (
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
-from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.utils.response_cleaner import JsonProcessor, JsonParseError
 from osa_tool.utils.utils import extract_readme_content, parse_folder_name
 
 
@@ -38,23 +38,24 @@ class TextGenerator:
         Returns:
             str: The generated repository analysis response from the model.
         """
-        response = self.model_handler.send_request(
-            PromptBuilder.render(
-                self.prompts.get("analysis.main_prompt"),
-                project_name=self.metadata.name,
-                metadata=self.metadata,
-                repository_tree=self.sourcerank.tree,
-                presence_files=self._extract_presence_files(),
-                readme_content=extract_readme_content(self.base_path),
-            )
+        prompt = PromptBuilder.render(
+            self.prompts.get("analysis.main_prompt"),
+            project_name=self.metadata.name,
+            metadata=self.metadata,
+            repository_tree=self.sourcerank.tree,
+            presence_files=self._extract_presence_files(),
+            readme_content=extract_readme_content(self.base_path),
         )
-        parsed_data = JsonProcessor.parse(response, expected_type=dict)
-        try:
-            parsed_report = RepositoryReport.model_validate(parsed_data)
-            return parsed_report
 
-        except ValidationError as e:
-            logger.warning(f"Validation failed, fallback applied: {e}")
+        try:
+            data = self.model_handler.send_and_parse(
+                prompt=prompt,
+                parser=lambda raw: RepositoryReport.model_validate(JsonProcessor.parse(raw, expected_type=dict)),
+            )
+            return data
+
+        except (ValidationError, JsonParseError) as e:
+            logger.warning(f"Parsing failed, fallback applied: {e}")
 
             return RepositoryReport(
                 structure=RepositoryStructure(),
