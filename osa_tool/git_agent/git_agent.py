@@ -258,7 +258,8 @@ class GitAgent(abc.ABC):
         self.create_and_checkout_branch(self.branch_name)
 
         report_url = self._build_report_url(report_branch, report_filename)
-        self.pr_report_body = f"\nGenerated report - [{report_filename}]({report_url})\n"
+        report_link = f"\nGenerated report - [{report_filename}]({report_url})\n"
+        self.pr_report_body += report_link
 
     @abc.abstractmethod
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
@@ -409,6 +410,20 @@ class GitHubAgent(GitAgent):
             logger.error(f"Failed to star repository: {response_star.status_code} - {response_star.text}")
             raise ValueError("Failed to star repository.")
 
+    def post_comment(self, pr_number: int, comment_body: str):
+        base_repo = get_base_repo_url(self.repo_url)
+        url = f"https://api.github.com/repos/{base_repo}/issues/{pr_number}/comments"
+        headers = {
+            "Authorization": f"token {self.token}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+        data = {"body": comment_body}
+        response = requests.post(url, json=data, headers=headers)
+        if response.status_code == 201:
+            logger.info(f"Successfully posted a comment to PR #{pr_number}.")
+        else:
+            logger.error(f"Failed to post a comment to PR #{pr_number}: {response.status_code} - {response.text}")
+
     def create_pull_request(self, title: str = None, body: str = None) -> None:
         if not self.token:
             raise ValueError("GIT_TOKEN or GITHUB_TOKEN token is required to create a pull request.")
@@ -425,44 +440,43 @@ class GitHubAgent(GitAgent):
         last_commit = self.repo.head.commit
         pr_title = title if title else last_commit.message
 
-        new_body_content = body if body else ""
+        content_for_publish = (body if body else "") + self.pr_report_body
 
         params = {"state": "open", "head": head_branch, "base": self.base_branch}
-
         response = requests.get(url, headers=headers, params=params)
 
         prs = response.json() if response.status_code == 200 else []
         if prs:
             existing_pr = prs[0]
             pr_number = existing_pr["number"]
-            logger.info(f"Pull request already exists. Updating PR #{pr_number}: {existing_pr['html_url']}")
+            logger.info(f"Pull request #{pr_number} already exists. Posting new recommendations as a comment.")
 
-            old_body = existing_pr.get("body", "") or ""
+            if body and body.strip():
+                self.post_comment(pr_number, body)
 
-            report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
-            old_reports = report_pattern.findall(old_body)
+            if self.pr_report_body and self.pr_report_body.strip():
+                old_pr_body = existing_pr.get("body", "") or ""
 
-            updated_body = new_body_content + self.pr_report_body
+                report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
+                old_reports = report_pattern.findall(old_pr_body)
+                new_reports = report_pattern.findall(self.pr_report_body)
+                all_reports = sorted(list(set(old_reports + new_reports)))
 
-            for report in old_reports:
-                if report not in updated_body:
-                    updated_body += f"\n{report}\n"
+                clean_body = report_pattern.sub("", old_pr_body).replace(self.AGENT_SIGNATURE, "").strip()
 
-            updated_body += self.AGENT_SIGNATURE
+                updated_body = clean_body + "\n\n" + "\n".join(all_reports) + self.AGENT_SIGNATURE
 
-            update_url = f"{url}/{pr_number}"
-            update_data = {
-                "title": pr_title,
-                "body": updated_body,
-            }
-            update_response = requests.patch(update_url, json=update_data, headers=headers)
-            if update_response.status_code == 200:
-                logger.info(f"Pull request #{pr_number} updated successfully.")
-            else:
-                logger.error(
-                    f"Failed to update pull request: {update_response.status_code} - {update_response.text}")
+                update_url = f"{url}/{pr_number}"
+                update_data = {"body": updated_body.strip()}
+
+                update_response = requests.patch(update_url, json=update_data, headers=headers)
+                if update_response.status_code == 200:
+                    logger.info(f"Successfully added new reports to PR #{pr_number} description.")
+                else:
+                    logger.error(
+                        f"Failed to update PR #{pr_number} description with new reports: {update_response.status_code} - {update_response.text}")
         else:
-            pr_body = new_body_content + self.pr_report_body + self.AGENT_SIGNATURE
+            pr_body = content_for_publish  + self.AGENT_SIGNATURE
             pr_data = {
                 "title": pr_title,
                 "head": head_branch,
