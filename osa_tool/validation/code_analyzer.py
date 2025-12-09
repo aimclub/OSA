@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 
 from rich.progress import track
@@ -109,3 +110,52 @@ class CodeAnalyzer:
             file_data = response
             result += file_data + "\n"
         return result
+
+    async def process_code_files_async(self, code_files: list[str]) -> str:
+        """
+        Analyze the content of code files using the language model asynchronously.
+
+        Args:
+            code_files (list[str]): List of code file paths.
+
+        Returns:
+            str: Aggregated analysis results for all code files.
+        """
+        rate_limit = self.config.llm.rate_limit
+        semaphore = asyncio.Semaphore(rate_limit)
+        loop = asyncio.get_running_loop()
+
+        # track - синхронная библиотека, в асинхроне пока будет только logger?
+        logger.info(f"Starting async analysis of {len(code_files)} files with rate limit {rate_limit}...")
+
+        async def _process_single_file(file_path: str) -> str:
+            """
+            Safely process a single file asynchronously.
+
+            Args:
+                file_path (str): File path.
+
+            Returns:
+                str: File analysis result.
+
+            """
+            async with semaphore:
+                try:
+                    logger.debug(f"Getting {file_path} content ...")
+                    file_content = await loop.run_in_executor(None, read_file, file_path)
+                    logger.info(f"Analyzing {file_path} ...")
+                    response = await self.model_handler.async_request(
+                        PromptBuilder.render(
+                            self.prompts.get("validation.analyze_code_file"),
+                            file_content=file_content,
+                        )
+                    )
+                    logger.debug(f"Finished {file_path} analysis")
+                    return response
+                except Exception as e:
+                    logger.error(f"Failed to process {file_path}: {e}")
+                    return f"Error analyzing {file_path}: {e}"
+
+        tasks = [_process_single_file(file) for file in code_files]
+        results = await asyncio.gather(*tasks)
+        return "\n".join(results) + "\n"

@@ -132,7 +132,9 @@ def main():
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_doc"):
             rich_section("Document validation")
-            content = DocValidator(config_loader, prompts).validate(plan.get("attachment"))
+            content = loop.run_until_complete(
+                DocValidator(config_loader, prompts).validate_async(plan.get("attachment"))
+            )
             va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata, sourcerank)
             va_re_gen.build_pdf("Document", content)
             if create_fork:
@@ -141,7 +143,9 @@ def main():
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_paper"):
             rich_section("Paper validation")
-            content = PaperValidator(config_loader, prompts).validate(plan.get("attachment"))
+            content = loop.run_until_complete(
+                PaperValidator(config_loader, prompts).validate_async(plan.get("attachment"))
+            )
             va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata, sourcerank)
             va_re_gen.build_pdf("Paper", content)
             if create_fork:
