@@ -70,8 +70,7 @@ class DocValidator:
             raise ValueError("Document is missing! Please pass it using --attachment argument.")
         try:
             doc_info = await self.process_doc(path_to_doc)
-            code_files = await asyncio.to_thread(self.code_analyzer.get_code_files)
-            code_files_info = await self.code_analyzer.process_code_files(code_files)
+            code_files_info = await self.code_analyzer.process_code_files()
             result = await self.validate_doc_against_repo(doc_info, code_files_info)
             return result
         except Exception as e:

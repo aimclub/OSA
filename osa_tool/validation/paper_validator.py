@@ -48,8 +48,7 @@ class PaperValidator:
             raise ValueError("Article is missing! Please pass it using --attachment argument.")
         try:
             paper_info = await self.process_paper(article)
-            code_files = await asyncio.to_thread(self.code_analyzer.get_code_files)
-            code_files_info = await self.code_analyzer.process_code_files(code_files)
+            code_files_info = await self.code_analyzer.process_code_files()
             result = await self.validate_paper_against_repo(paper_info, code_files_info)
             return result
         except Exception as e:
