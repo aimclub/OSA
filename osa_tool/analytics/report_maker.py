@@ -389,7 +389,7 @@ class ReportGenerator(AbstractReportGenerator):
 
 class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
     def __init__(
-            self, config_loader: ConfigLoader, sourcerank: SourceRank, what_has_been_done: dict[str, bool],
+            self, config_loader: ConfigLoader, sourcerank: SourceRank, what_has_been_done: list[tuple[str, bool]],
             metadata: RepositoryMetadata
     ):
         super().__init__(config_loader, sourcerank, metadata)
@@ -409,11 +409,11 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
 
         story.append(Paragraph("<b>What has been done:</b>", custom_style))
 
-        for step in self.what_has_been_done.keys():
-            step_result = "Yes" if self.what_has_been_done[step] else "No"
+        for task, was_do in self.what_has_been_done:
+            task_result = "Yes" if was_do else "No"
             story.append(
                 Paragraph(
-                    f"• {step}: {step_result}",
+                    f"• {task}: {task_result}",
                     normal_style,
                 )
             )
