@@ -57,7 +57,7 @@ class DocValidator:
         Asynchronously validate a documentation file against the code repository.
 
         Args:
-            path_to_doc (str): Path to the documentation file (.docx or .pdf).
+            path_to_doc (str): Path to the documentation file (.docx or .pdf) or None.
 
         Returns:
             str: Validation result from the language model.
@@ -74,12 +74,12 @@ class DocValidator:
             logger.error(f"Error while validating doc against repo: {e}")
             return ""
 
-    async def process_doc(self, path_to_doc: str | None) -> str:
+    async def process_doc(self, path_to_doc: str) -> str:
         """
         Process and extract content from a documentation file asynchronously.
 
         Args:
-            path_to_doc (str): Path to the documentation file (.docx or .pdf) or None.
+            path_to_doc (str): Path to the documentation file (.docx or .pdf).
 
         Returns:
             str: Processed document content.
