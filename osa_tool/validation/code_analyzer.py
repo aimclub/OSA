@@ -85,33 +85,7 @@ class CodeAnalyzer:
         )
         return any(pattern in filename for pattern in IGNORE_LIST)
 
-    def process_code_files(self, code_files: list[str]) -> str:
-        """
-        Analyze the content of code files using the language model.
-
-        Args:
-            code_files (list[str]): List of code file paths.
-
-        Returns:
-            str: Aggregated analysis results for all code files.
-        """
-        result = ""
-        for file in track(code_files, description="Analyzing repository files..."):
-            logger.debug(f"Getting {file} content ...")
-            file_content = read_file(file)
-            logger.info(f"Analyzing {file} ...")
-            response = self.model_handler.send_request(
-                PromptBuilder.render(
-                    self.prompts.get("validation.analyze_code_file"),
-                    file_content=file_content,
-                )
-            )
-            logger.debug(response)
-            file_data = response
-            result += file_data + "\n"
-        return result
-
-    async def process_code_files_async(self, code_files: list[str]) -> str:
+    async def process_code_files(self, code_files: list[str]) -> str:
         """
         Analyze the content of code files using the language model asynchronously.
 
@@ -123,7 +97,6 @@ class CodeAnalyzer:
         """
         rate_limit = self.config.llm.rate_limit
         semaphore = asyncio.Semaphore(rate_limit)
-        loop = asyncio.get_running_loop()
 
         # track - синхронная библиотека, в асинхроне пока будет только logger?
         logger.info(f"Starting async analysis of {len(code_files)} files with rate limit {rate_limit}...")
@@ -142,7 +115,7 @@ class CodeAnalyzer:
             async with semaphore:
                 try:
                     logger.debug(f"Getting {file_path} content ...")
-                    file_content = await loop.run_in_executor(None, read_file, file_path)
+                    file_content = await asyncio.to_thread(read_file, file_path)
                     logger.info(f"Analyzing {file_path} ...")
                     response = await self.model_handler.async_request(
                         PromptBuilder.render(

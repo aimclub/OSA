@@ -133,7 +133,7 @@ def main():
         if plan.get("validate_doc"):
             rich_section("Document validation")
             content = loop.run_until_complete(
-                DocValidator(config_loader, prompts).validate_async(plan.get("attachment"))
+                DocValidator(config_loader, prompts).validate(plan.get("attachment"))
             )
             va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata, sourcerank)
             va_re_gen.build_pdf("Document", content)
@@ -144,7 +144,7 @@ def main():
         if plan.get("validate_paper"):
             rich_section("Paper validation")
             content = loop.run_until_complete(
-                PaperValidator(config_loader, prompts).validate_async(plan.get("attachment"))
+                PaperValidator(config_loader, prompts).validate(plan.get("attachment"))
             )
             va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata, sourcerank)
             va_re_gen.build_pdf("Paper", content)
