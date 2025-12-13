@@ -353,14 +353,14 @@ def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEvent
 
 
 def load_configuration(
-    repo_url: str,
-    api: str,
-    base_url: str,
-    model_name: str,
-    temperature: Optional[str] = None,
-    max_tokens: Optional[str] = None,
-    context_window: Optional[str] = None,
-    top_p: Optional[str] = None,
+        repo_url: str,
+        api: str,
+        base_url: str,
+        model_name: str,
+        temperature: Optional[str] = None,
+        max_tokens: Optional[str] = None,
+        context_window: Optional[str] = None,
+        top_p: Optional[str] = None,
 ) -> ConfigLoader:
     """
     Loads configuration for osa_tool.

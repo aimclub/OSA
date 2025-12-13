@@ -53,7 +53,7 @@ class PaperValidator:
             return result
         except Exception as e:
             logger.error(f"Error while validating paper against repo: {e}")
-            return "" # возвращаем пустую строку в случае ошибки?
+            return ""  # возвращаем пустую строку в случае ошибки?
 
     async def process_paper(self, article: str) -> str:
         """
