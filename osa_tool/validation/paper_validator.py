@@ -29,7 +29,7 @@ class PaperValidator:
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.prompts = prompts
 
-    async def validate(self, article: str | None) -> str:
+    async def validate(self, article: str | None) -> str | None:
         """
         Asynchronously validate a scientific paper against the code repository.
 
@@ -37,7 +37,7 @@ class PaperValidator:
             article (str | None): Path to the paper PDF file.
 
         Returns:
-            str: Validation result from the language model.
+            str | None: Validation result from the language model or none if an error occurs.
 
         Raises:
             ValueError: If the article path is missing.
@@ -53,7 +53,7 @@ class PaperValidator:
             return result
         except Exception as e:
             logger.error(f"Error while validating paper against repo: {e}")
-            return ""  # возвращаем пустую строку в случае ошибки?
+            return None
 
     async def process_paper(self, article: str) -> str:
         """

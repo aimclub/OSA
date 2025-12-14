@@ -52,7 +52,7 @@ class DocValidator:
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode("utf-8")
 
-    async def validate(self, path_to_doc: str | None) -> str:
+    async def validate(self, path_to_doc: str | None) -> str | None:
         """
         Asynchronously validate a documentation file against the code repository.
 
@@ -60,7 +60,7 @@ class DocValidator:
             path_to_doc (str): Path to the documentation file (.docx or .pdf) or None.
 
         Returns:
-            str: Validation result from the language model.
+            str | None: Validation result from the language model or None if an error occurred.
         """
         if not path_to_doc:
             raise ValueError("Document is missing! Please pass it using --attachment argument.")
@@ -72,7 +72,7 @@ class DocValidator:
             return result
         except Exception as e:
             logger.error(f"Error while validating doc against repo: {e}")
-            return ""
+            return None
 
     async def process_doc(self, path_to_doc: str) -> str:
         """
