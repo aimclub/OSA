@@ -589,12 +589,30 @@ class GitLabAgent(GitAgent):
         if user_response.status_code != 200:
             logger.error(f"Failed to get user info: {user_response.status_code} - {user_response.text}")
             raise ValueError("Failed to get user information.")
-        current_username = user_response.json().get("username", "")
 
-        if current_username == self.metadata.owner:
-            self.fork_url = self.repo_url
-            logger.info(f"User '{current_username}' already owns the repository. Using original URL: {self.fork_url}")
-            return
+
+        user_data = user_response.json()
+        current_user_id = user_data.get("id")
+        current_username = user_data.get("username")
+
+
+        # if current_username == self.metadata.owner:
+        #     self.fork_url = self.repo_url
+        #     logger.info(f"User '{current_username}' already owns the repository. Using original URL: {self.fork_url}")
+        #     return
+
+        project_url = f"{gitlab_instance}/api/v4/projects/{project_path}"
+        project_response = requests.get(project_url, headers=headers)
+        if project_response.status_code != 200:
+             logger.warning(f"Could not fetch project details to verify owner. Proceeding with fork logic. Status: {project_response.status_code}")
+        else:
+            project_data = project_response.json()
+            owner_id = project_data.get("owner", {}).get("id")
+
+            if current_user_id and owner_id and current_user_id == owner_id:
+                self.fork_url = self.repo_url
+                logger.info(f"User (ID: {current_user_id}) already owns the repository. Using original URL: {self.fork_url}")
+                return
 
         forks_url = f"{gitlab_instance}/api/v4/projects/{project_path}/forks"
         forks_response = requests.get(forks_url, headers=headers)
@@ -605,15 +623,15 @@ class GitLabAgent(GitAgent):
         forks = forks_response.json()
         for fork in forks:
             namespace = fork.get("namespace", {})
-            fork_owner = namespace.get("name") or namespace.get("path") or ""
-            if fork_owner == current_username:
+            fork_owner_username = namespace.get("path") or namespace.get("name") or ""
+            if fork_owner_username == current_username:
                 self.fork_url = fork["web_url"]
                 logger.info(f"Fork already exists: {self.fork_url}")
                 return
 
         fork_url = f"{gitlab_instance}/api/v4/projects/{project_path}/fork"
         fork_response = requests.post(fork_url, headers=headers)
-        if fork_response.status_code in {200, 201}:
+        if fork_response.status_code in {200, 201, 202}:
             fork_data = fork_response.json()
             self.fork_url = fork_data["web_url"]
             logger.info(f"GitLab fork created successfully: {self.fork_url}")
@@ -645,6 +663,20 @@ class GitLabAgent(GitAgent):
             return
         else:
             logger.error(f"Failed to star GitLab repository: {response.status_code} - {response.text}")
+
+    def post_note(self, project_id: int, mr_iid: int, note_body: str):
+        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
+        url = f"{gitlab_instance}/api/v4/projects/{project_id}/merge_requests/{mr_iid}/notes"
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json",
+        }
+        data = {"body": note_body}
+        response = requests.post(url, json=data, headers=headers)
+        if response.status_code == 201:
+            logger.info(f"Successfully posted a note to MR !{mr_iid}.")
+        else:
+            logger.error(f"Failed to post a note to MR !{mr_iid}: {response.status_code} - {response.text}")
 
     def create_pull_request(self, title: str = None, body: str = None) -> None:
         if not self.token:
@@ -682,37 +714,35 @@ class GitLabAgent(GitAgent):
         if mrs:
             existing_mr = mrs[0]
             mr_iid = existing_mr.get("iid") or existing_mr.get("id")
+            logger.info(f"Merge request !{mr_iid} already exists. Updating...")
 
-            old_body = existing_mr.get("description", "") or ""
+            if body and body.strip():
+                self.post_note(target_project_id, mr_iid, body)
 
-            report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
-            old_reports = report_pattern.findall(old_body)
+            if self.pr_report_body and self.pr_report_body.strip():
+                old_mr_body = existing_mr.get("description", "") or ""
 
-            updated_body = new_body_content + self.pr_report_body
-            for report in old_reports:
-                if report not in updated_body:
-                    updated_body += f"\n{report}\n"
-            updated_body += self.AGENT_SIGNATURE
+                report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
+                old_reports = report_pattern.findall(old_mr_body)
+                new_reports = report_pattern.findall(self.pr_report_body)
+                all_reports = sorted(list(set(old_reports + new_reports)))
 
-            update_url = f"{mr_url}/{mr_iid}"
-            update_data = {
-                "title": mr_title,
-                "description": updated_body,
-                "target_branch": self.base_branch,
-            }
-            try:
+                clean_body = report_pattern.sub("", old_mr_body).replace(self.AGENT_SIGNATURE, "").strip()
+
+                updated_body = clean_body + "\n\n" + "\n".join(all_reports) + self.AGENT_SIGNATURE
+
+                update_url = f"{gitlab_instance}/api/v4/projects/{target_project_id}/merge_requests/{mr_iid}"
+                update_data = {"description": updated_body.strip()}
+
                 update_response = requests.put(update_url, json=update_data, headers=headers)
-                if update_response.status_code in {200, 201}:
-                    logger.info(f"Merge request updated successfully: {existing_mr.get('web_url')}")
+                if update_response.status_code == 200:
+                    logger.info(f"Successfully added new reports to MR !{mr_iid} description.")
                 else:
                     logger.error(
-                        f"Failed to update merge request: {update_response.status_code} - {update_response.text}")
-            except Exception as e:
-                logger.error(f"Exception while updating merge request: {e}")
-            return
+                        f"Failed to update MR !{mr_iid} description: {update_response.status_code} - {update_response.text}")
 
         else:
-            mr_body = new_body_content + self.pr_report_body + self.AGENT_SIGNATURE
+            mr_body = (body if body else "") + self.pr_report_body + self.AGENT_SIGNATURE
             mr_data = {
                 "title": mr_title,
                 "source_branch": self.branch_name,
@@ -884,13 +914,46 @@ class GitverseAgent(GitAgent):
         url = f"https://api.gitverse.ru/repos/{base_repo}/pulls"
         last_commit = self.repo.head.commit
         pr_title = title if title else last_commit.message
-        new_body_content = body if body else ""
+        new_body_content = (body or "").strip()
 
+        report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
+
+        def extract_reports(text: str) -> list[str]:
+            return report_pattern.findall(text or "")
+
+        def strip_signature(text: str) -> str:
+            return (text or "").replace(self.AGENT_SIGNATURE, "").strip()
+
+        def remove_reports(text: str) -> str:
+            return report_pattern.sub("", text or "").strip()
+
+        def uniq_keep_order(items: list[str]) -> list[str]:
+            seen = set()
+            out = []
+            for x in items:
+                if x not in seen:
+                    seen.add(x)
+                    out.append(x)
+            return out
+
+        def next_iteration_number(text: str) -> int:
+            nums = [int(n) for n in re.findall(r"Iteration\s*(\d+)", text or "", flags=re.IGNORECASE)]
+            return (max(nums) + 1) if nums else 2
+
+        def build_body(initial_and_history: str, reports: list[str], iteration_append: str) -> str:
+            parts = []
+            if initial_and_history.strip():
+                parts.append(initial_and_history.strip())
+            if reports:
+                parts.append("\n".join(reports).strip())
+            if iteration_append.strip():
+                parts.append(iteration_append.strip())
+            return "\n\n".join(parts).strip() + self.AGENT_SIGNATURE
 
         params = {"state": "open", "head": self.branch_name, "base": self.base_branch}
         response = requests.get(url, headers=headers, params=params)
-
         prs = response.json() if response.status_code == 200 else []
+
         if prs:
             existing_pr = prs[0]
             pr_number = existing_pr.get("number")
@@ -899,36 +962,32 @@ class GitverseAgent(GitAgent):
 
             old_body = existing_pr.get("body", "") or ""
 
-            report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
-            old_reports = report_pattern.findall(old_body)
+            clean_text = remove_reports(strip_signature(old_body))
 
-            updated_body = new_body_content + self.pr_report_body
-            for report in old_reports:
-                if report not in updated_body:
-                    updated_body += f"\n{report}\n"
-            updated_body += self.AGENT_SIGNATURE
+            all_reports = uniq_keep_order(extract_reports(old_body) + extract_reports(self.pr_report_body))
+            iteration_append = ""
+            if new_body_content:
+                n = next_iteration_number(clean_text)
+                iteration_append = f"Iteration {n}\n{new_body_content}"
+
+            updated_body = build_body(clean_text, all_reports, iteration_append)
 
             update_url = f"{url}/{pr_number}"
             update_data = {"title": pr_title, "body": updated_body}
-
             update_response = requests.patch(update_url, json=update_data, headers=headers)
+
             if update_response.status_code == 200:
                 logger.info(f"Pull request #{pr_number} updated successfully.")
             else:
-                logger.error(
-                    f"Failed to update pull request: {update_response.status_code} - {update_response.text}"
-                )
+                logger.error(f"Failed to update pull request: {update_response.status_code} - {update_response.text}")
 
         else:
-            pr_body = new_body_content + self.pr_report_body + self.AGENT_SIGNATURE
-            pr_data = {
-                "title": pr_title,
-                "head": self.branch_name,
-                "base": self.base_branch,
-                "body": pr_body,
-            }
+            reports = uniq_keep_order(extract_reports(self.pr_report_body))
+            pr_body = build_body(new_body_content, reports, "")
 
+            pr_data = {"title": pr_title, "head": self.branch_name, "base": self.base_branch, "body": pr_body}
             response = requests.post(url, json=pr_data, headers=headers)
+
             if response.status_code == 201:
                 pr_number = response.json()["number"]
                 pr_url = f"https://gitverse.ru/{base_repo}/pulls/{pr_number}"

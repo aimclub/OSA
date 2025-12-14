@@ -217,7 +217,11 @@ def main():
 
         if create_fork and create_pull_request:
             rich_section("Publishing changes")
-            if git_agent.commit_and_push_changes(force=True):
+
+            pushed = git_agent.commit_and_push_changes(force=True)
+            has_reports = bool(git_agent.pr_report_body and git_agent.pr_report_body.strip())
+
+            if pushed or has_reports:
                 git_agent.create_pull_request(body=about_gen.get_about_section_message() if about_gen else "")
             else:
                 logger.warning("No changes were committed — pull request will not be created.")
