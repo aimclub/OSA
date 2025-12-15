@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import multiprocessing
 import os
@@ -5,7 +6,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 from pydantic import ValidationError
 
@@ -54,7 +54,7 @@ def main():
     """
 
     # Create a command line argument parser
-    parser = build_parser_from_yaml(extra_sections=["workflow"])
+    parser = build_parser_from_yaml(extra_sections=["settings", "arguments", "workflow"])
     args = parser.parse_args()
     create_fork = not args.no_fork
     create_pull_request = not args.no_pull_request
@@ -83,29 +83,10 @@ def main():
             logger.info(f"Output path changed to {output_path}")
 
         # Load configurations and update
-        config_loader = load_configuration(
-            repo_url=args.repository,
-            api=args.api,
-            base_url=args.base_url,
-            model_name=args.model,
-            temperature=args.temperature,
-            max_tokens=args.max_tokens,
-            context_window=args.context_window,
-            top_p=args.top_p,
-        )
+        config_loader = load_configuration(args)
 
         # Initialize Git agent and Workflow Manager for used platform, perform operations
-        if "github.com" in args.repository:
-            git_agent = GitHubAgent(args.repository, args.branch)
-            workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
-        elif "gitlab." in args.repository:
-            git_agent = GitLabAgent(args.repository, args.branch)
-            workflow_manager = GitLabWorkflowManager(args.repository, git_agent.metadata, args)
-        elif "gitverse.ru" in args.repository:
-            git_agent = GitverseAgent(args.repository, args.branch)
-            workflow_manager = GitverseWorkflowManager(args.repository, git_agent.metadata, args)
-        else:
-            raise ValueError(f"Cannot initialize Git Agent and Workflow Manager for this platform: {args.repository}")
+        git_agent, workflow_manager = initialize_git_platform(args)
 
         if create_fork:
             git_agent.star_repository()
@@ -240,6 +221,22 @@ def main():
         loop.close()
 
 
+def initialize_git_platform(args):
+    if "github.com" in args.repository:
+        git_agent = GitHubAgent(args.repository, args.branch)
+        workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
+    elif "gitlab." in args.repository:
+        git_agent = GitLabAgent(args.repository, args.branch)
+        workflow_manager = GitLabWorkflowManager(args.repository, git_agent.metadata, args)
+    elif "gitverse.ru" in args.repository:
+        git_agent = GitverseAgent(args.repository, args.branch)
+        workflow_manager = GitverseWorkflowManager(args.repository, git_agent.metadata, args)
+    else:
+        raise ValueError(f"Cannot initialize Git Agent and Workflow Manager for this platform: {args.repository}")
+
+    return git_agent, workflow_manager
+
+
 def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) -> None:
     """Converts Jupyter notebooks to Python scripts based on provided paths.
 
@@ -348,48 +345,56 @@ def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEvent
         logger.error("Error while generating codebase documentation: %s", repr(e), exc_info=True)
 
 
-def load_configuration(
-    repo_url: str,
-    api: str,
-    base_url: str,
-    model_name: str,
-    temperature: Optional[str] = None,
-    max_tokens: Optional[str] = None,
-    context_window: Optional[str] = None,
-    top_p: Optional[str] = None,
-) -> ConfigLoader:
+def load_configuration(args: argparse.Namespace) -> ConfigLoader:
     """
-    Loads configuration for osa_tool.
+    Load and update the osa_tool configuration using command-line arguments.
+
+    This function takes the parsed command-line arguments (argparse.Namespace)
+    generated from `build_parser_from_yaml` and updates the global configuration
+    object (`ConfigLoader`) accordingly.
+
+    It validates the provided repository URL via `GitSettings` and applies all
+    LLM-related settings such as model name, API provider, temperature, max tokens,
+    and other model parameters.
 
     Args:
-        repo_url: URL of the GitHub repository.
-        api: LLM API service provider.
-        base_url: URL of the provider compatible with API OpenAI
-        model_name: Specific LLM model to use.
-        temperature: Sampling temperature for the model.
-        max_tokens: Maximum number of output tokens to generate.
-        context_window: Total number of model context (Input + Output).
-        top_p: Nucleus sampling value.
+        args (argparse.Namespace):
+            Parsed arguments returned by `parser.parse_args()`. It must contain:
+                - args.repository    : URL of the repository to analyze
+                - args.api           : LLM API provider name
+                - args.base_url      : Base URL of an OpenAI-compatible API
+                - args.model         : LLM model name
+                - args.temperature   : Sampling temperature
+                - args.max_tokens    : Maximum number of output tokens
+                - args.context_window: Total context window size
+                - args.top_p         : Nucleus sampling parameter
+                - args.max_retries   : Maximum retry attempts for LLM API calls
 
     Returns:
-        config_loader: The configuration object which contains settings for osa_tool.
+        ConfigLoader:
+            The updated configuration object ready to be used by osa_tool.
+
+    Raises:
+        ValueError:
+            If the repository URL fails validation inside `GitSettings`.
     """
     config_loader = ConfigLoader()
 
     try:
-        config_loader.config.git = GitSettings(repository=repo_url)
+        config_loader.config.git = GitSettings(repository=args.repository)
     except ValidationError as es:
         first_error = es.errors()[0]
         raise ValueError(f"{first_error['msg']}{first_error['input']}")
     config_loader.config.llm = config_loader.config.llm.model_copy(
         update={
-            "api": api,
-            "base_url": base_url,
-            "model": model_name,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "context_window": context_window,
-            "top_p": top_p,
+            "api": args.api,
+            "base_url": args.base_url,
+            "model": args.model,
+            "temperature": args.temperature,
+            "max_tokens": args.max_tokens,
+            "context_window": args.context_window,
+            "top_p": args.top_p,
+            "max_retries": args.max_retries,
         }
     )
     logger.info("Config successfully updated and loaded")

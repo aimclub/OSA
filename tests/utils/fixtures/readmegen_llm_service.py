@@ -14,7 +14,7 @@ def mock_model_handler():
     def _factory(side_effect=None):
         handler = MagicMock()
         if side_effect is not None:
-            handler.send_request.side_effect = side_effect
+            handler.send_and_parse.side_effect = side_effect
         return handler
 
     return _factory

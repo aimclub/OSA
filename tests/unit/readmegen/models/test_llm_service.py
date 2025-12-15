@@ -3,7 +3,7 @@ from unittest.mock import patch, Mock
 
 def test_get_key_files_returns_list(llm_client, mock_model_handler):
     # Arrange
-    llm_client.model_handler = mock_model_handler(side_effect=['{"key_files": ["src/main.py", "README.md"]}'])
+    llm_client.model_handler = mock_model_handler(side_effect=[["src/main.py", "README.md"]])
 
     # Act
     result = llm_client.get_key_files()
@@ -20,20 +20,20 @@ def test_get_key_files_invalid_json_returns_fallback_list(llm_client, mock_model
     result = llm_client.get_key_files()
 
     # Assert
-    assert result == ["not a json"]
+    assert result == "not a json"
 
 
 def test_get_responses_article_returns_expected(llm_client, mock_model_handler, mock_file_processor_factory):
     # Arrange
     llm_client.model_handler = mock_model_handler(
         side_effect=[
-            '{"key_files": ["src/main.py", "README.md"]}',
+            ["src/main.py", "README.md"],
             "files_summary",
             "pdf_summary",
-            '{"overview": "overview_article"}',
-            '{"content": "content_article"}',
-            '{"algorithms": "algorithms_article"}',
-            '{"getting_started": "getting_started_article"}',
+            "overview_article",
+            "content_article",
+            "algorithms_article",
+            "getting_started_article",
         ]
     )
 
@@ -82,10 +82,10 @@ def test_get_responses_returns_expected(llm_client, mock_model_handler, mock_fil
     # Arrange
     llm_client.model_handler = mock_model_handler(
         side_effect=[
-            '{"key_files": ["src/main.py"]}',
+            ["src/main.py"],
             "Core features here",
-            '{"overview": "Project overview"}',
-            '{"getting_started": "Run it"}',
+            "Project overview",
+            "Run it",
         ]
     )
 
@@ -118,7 +118,7 @@ def test_get_responses_returns_expected(llm_client, mock_model_handler, mock_fil
 
 def test_get_citation_from_readme_returns_expected(llm_client, mock_model_handler):
     # Arrange
-    llm_client.model_handler = mock_model_handler(side_effect=['{"citation": "Some citation"}'])
+    llm_client.model_handler = mock_model_handler(side_effect=["Some citation"])
 
     # Act
     result = llm_client.get_citation_from_readme()
@@ -129,7 +129,7 @@ def test_get_citation_from_readme_returns_expected(llm_client, mock_model_handle
 
 def test_refine_readme_returns_expected(llm_client, mock_model_handler):
     # Arrange
-    llm_client.model_handler = mock_model_handler(side_effect=["step1", "step2", '{"readme": "refined_readme"}'])
+    llm_client.model_handler = mock_model_handler(side_effect=["step1", "step2", "refined_readme"])
 
     # Act
     result = llm_client.refine_readme("generated_readme")
@@ -140,7 +140,7 @@ def test_refine_readme_returns_expected(llm_client, mock_model_handler):
 
 def test_clean_returns_expected(llm_client, mock_model_handler):
     # Arrange
-    llm_client.model_handler = mock_model_handler(side_effect=["clean1", "clean2", '{"readme": "cleaned_readme"}'])
+    llm_client.model_handler = mock_model_handler(side_effect=["clean1", "clean2", "cleaned_readme"])
 
     # Act
     result = llm_client.clean("dirty_readme")
@@ -151,7 +151,7 @@ def test_clean_returns_expected(llm_client, mock_model_handler):
 
 def test_get_article_name_returns_expected(llm_client, mock_model_handler):
     # Arrange
-    llm_client.model_handler = mock_model_handler(side_effect=['{"article_name": "Deep Learning Paper"}'])
+    llm_client.model_handler = mock_model_handler(side_effect=["Deep Learning Paper"])
 
     # Act
     result = llm_client.get_article_name("pdf_content")

@@ -16,7 +16,7 @@ from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent
 from osa_tool.readmegen.context.pypi_status_checker import PyPiPackageInspector
 from osa_tool.readmegen.readme_core import ReadmeAgent
 from osa_tool.readmegen.utils import format_time
-from osa_tool.run import load_configuration, generate_docstrings
+from osa_tool.run import generate_docstrings, load_configuration
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.utils import logger, rich_section, parse_git_url, delete_repository
@@ -96,15 +96,8 @@ def process_repository_stage1(repo_url: str, prompts: PromptLoader, args) -> dic
     }
 
     try:
-        config = load_configuration(
-            repo_url=repo_url,
-            api=args.api,
-            base_url=args.base_url,
-            model_name=args.model,
-            temperature=args.temperature,
-            max_tokens=args.max_tokens,
-            top_p=args.top_p,
-        )
+        args.repository = repo_url
+        config = load_configuration(args)
 
         # Choose GIT agent based on platform
         if "github.com" in repo_url:
@@ -185,15 +178,8 @@ def process_docstrings_for_repo(repo_url: str, args, df: DataFrame) -> None:
     logger.info(f"Starting docstring generation for {repo_url}")
 
     try:
-        config = load_configuration(
-            repo_url=repo_url,
-            api=args.api,
-            base_url=args.base_url,
-            model_name=args.model,
-            temperature=args.temperature,
-            max_tokens=args.max_tokens,
-            top_p=args.top_p,
-        )
+        args.repository = repo_url
+        config = load_configuration(args)
 
         # Generate docstrings
         loop = asyncio.new_event_loop()
@@ -293,7 +279,7 @@ def main():
     """
 
     # Create a command line argument parser
-    parser = build_parser_from_yaml(extra_sections=["multi-run"])
+    parser = build_parser_from_yaml(extra_sections=["settings", "arguments", "multi-run"])
     args = parser.parse_args()
 
     # Load table containing repository URLs

@@ -10,6 +10,7 @@ from osa_tool.readmegen.context.article_content import PdfParser
 from osa_tool.readmegen.context.article_path import get_pdf_path
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.validation.code_analyzer import CodeAnalyzer
 
 
@@ -44,14 +45,17 @@ class DocValidator:
                 "mime_type": "image/jpeg",
             },
         ]
-        response = self.model_handler.send_request(json.dumps(prompt))
+        response = self.model_handler.send_and_parse(
+            prompt=json.dumps(prompt),
+            parser=lambda raw: JsonProcessor.parse(raw),
+        )
         logger.info(response)
 
     def _encode_image(self, image_path: str):
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode("utf-8")
 
-    def validate(self, path_to_doc: str | None) -> str:
+    def validate(self, path_to_doc: str | None) -> dict:
         """
         Validate a documentation file against the code repository.
 
@@ -94,11 +98,12 @@ class DocValidator:
             raise ValueError(f"Unprocessable file format: {path_to_doc}")
         processed_content = self._preprocess_text(raw_content)
         logger.info("Sending request to process document's content ...")
-        response = self.model_handler.send_request(
-            PromptBuilder.render(
+        response = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
                 self.prompts.get("validation.extract_document_sections"),
                 doc_content=processed_content,
-            )
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw),
         )
         logger.debug(response)
         return response
@@ -160,7 +165,7 @@ class DocValidator:
 
         return text.strip()
 
-    def validate_doc_against_repo(self, doc_info: str, code_files_info: str) -> str:
+    def validate_doc_against_repo(self, doc_info: str, code_files_info: str) -> dict:
         """
         Validate the processed document content against the code repository.
 
@@ -172,12 +177,13 @@ class DocValidator:
             str: Validation result from the language model.
         """
         logger.info("Validating doc against repository ...")
-        response = self.model_handler.send_request(
-            PromptBuilder.render(
+        response = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
                 self.prompts.get("validation.validate_doc_against_repo"),
                 doc_info=doc_info,
                 code_files_info=code_files_info,
-            )
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw),
         )
         logger.debug(response)
         return response
