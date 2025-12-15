@@ -142,7 +142,7 @@ def main():
         # Docstring generation
         if plan.get("docstring"):
             rich_section("Docstrings generation")
-            generate_docstrings(config_loader, loop)
+            generate_docstrings(config_loader, loop, args.ignore_list)
 
         # License compiling
         if license_type := plan.get("ensure_license"):
@@ -273,7 +273,7 @@ def generate_requirements(repo_url):
         logger.error(f"Error while generating project's requirements: {e.stderr}")
 
 
-def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEventLoop) -> None:
+def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEventLoop, ignore_list: list[str]) -> None:
     """Generates a docstrings for .py's classes and methods of the provided repository.
 
     Args:
@@ -288,7 +288,7 @@ def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEvent
 
     try:
         rate_limit = config_loader.config.llm.rate_limit
-        ts = OSA_TreeSitter(repo_path)
+        ts = OSA_TreeSitter(repo_path, ignore_list)
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen(config_loader)
 

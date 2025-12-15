@@ -52,6 +52,15 @@ arguments:
     aliases: [ "--docstring" ]
     type: flag
     description: "Automatically generate docstrings for all Python files in the repository."
+  
+  ignore_list:
+    aliases: [ "--ignore-list" ]
+    type: list
+    description: | 
+      Space-separated list of the directories and boilerplate files to be ignored while docstring generation.
+      Directories should be listed relatively to the project root.
+      If flag omitted only __init__.py will be ignored.
+    example: "tests moduleA/featureB __init__.py"
 
   report:
     aliases: [ "--report" ]
