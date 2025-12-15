@@ -19,6 +19,7 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.models.models import ModelHandlerFactory, ProtollmHandler
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
+from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 
 dotenv.load_dotenv()
 
@@ -77,6 +78,7 @@ class DocGen(object):
         self.model_settings = self.config_manager.get_model_settings("docstrings")
         self.model_handler: ProtollmHandler = ModelHandlerFactory.build(self.model_settings)
         self.main_idea = None
+        self._function_index_cache = None
 
     @staticmethod
     def format_structure_openai(structure: dict) -> str:
@@ -525,59 +527,65 @@ class DocGen(object):
 
         return updated_code
 
-    def context_extractor(self, method_details: dict, structure: dict) -> str:
+    def _build_function_index(self, parsed_structure: dict) -> dict:
         """
-            Extracts the context of method calls and functions from given method_details and code structure.
+        Builds function index using OSA_TreeSitter's static method.
+        Caches result to avoid rebuilding on every call.
 
-            Parameters:
-            - method_details: A dictionary containing details about the method calls.
-            - structure: A dictionary representing the code structure.
+        Args:
+            parsed_structure: Complete parsed structure from analyze_directory()
 
-            Returns:
-            A string containing the context of the method calls and functions in the format:
-            - If a method call is found:
-              "# Method {method_name} in class {class_name}
-        {source_code}"
-            - If a function call is found:
-              "# Function {class_name}
-        {source_code}"
+        Returns:
+            Dictionary mapping function names to their details
+        """
+        if self._function_index_cache is None:
+            self._function_index_cache = OSA_TreeSitter.build_function_index(parsed_structure)
+        return self._function_index_cache
 
-            Note:
-            - This method iterates over the method calls in method_details and searches for the corresponding methods and functions
-              in the code structure. It constructs the context of the found methods and functions by appending their source code
-              along with indicator comments.
-            - The returned string contains the structured context of all the detected methods and functions.
+    def context_extractor(self, method_details: dict, structure: dict, function_index: dict = None) -> str:
+        """
+        Extracts the context of function calls from given method_details using method_calls field.
+
+        Parameters:
+        - method_details: A dictionary containing details about the method, including 'method_calls' list.
+        - structure: A dictionary representing the code structure (for fallback search) - НЕ ИСПОЛЬЗУЕТСЯ при наличии function_index.
+        - function_index: Optional index built by osa_treesitter.build_function_index() for fast O(1) lookup.
+
+        Returns:
+        A string containing the context of called functions in the format:
+        "Function {function_name} (from {file})
+        {source_code}
+        Args: {arguments}
+        Return: {return_type}
+        "
         """
 
-        def is_target_class(item, call):
-            return item["type"] == "class" and item["name"] == call["class"]
+        called_functions = method_details.get("method_calls", [])
 
-        def is_target_method(method, call):
-            return method["method_name"] == call["function"]
+        if not called_functions:
+            return ""
 
-        def is_constructor(method, call):
-            return method["method_name"] == "__init__" and call["function"] is None
-
-        def is_target_function(item, call):
-            return item["type"] == "function" and item["details"]["method_name"] == call["class"]
+        if not function_index:
+            return ""
 
         context = []
 
-        for call in method_details.get("method_calls", []):
-            file_data = structure.get(call["path"], {})
-            if not file_data:
-                continue
+        for func_name in called_functions:
+            # Handle "self.method_name" format by extracting just "method_name"
+            search_name = func_name.split(".")[-1] if "." in func_name else func_name
 
-            for item in file_data.get("structure", []):
-                if is_target_class(item, call):
-                    for method in item.get("methods", []):
-                        if is_target_method(method, call) or is_constructor(method, call):
-                            method_name = call["function"] if call["function"] else "__init__"
-                            context.append(
-                                f"# Method {method_name} in class {call['class']}\n" + method.get("source_code", "")
-                            )
-                elif is_target_function(item, call):
-                    context.append(f"# Function {call['class']}\n" + item["details"].get("source_code", ""))
+            if search_name in function_index:
+                func_info = function_index[search_name]
+                class_name = func_info.get("class", "")
+                file_path = func_info.get("file", "")
+                display_name = f"{class_name}.{search_name}" if class_name else search_name
+
+                context_block = f"Function {display_name} (from {file_path})\n"
+                context_block += f"{func_info.get('source_code', '')}\n"
+                context_block += f"Args: {func_info.get('arguments', [])}\n"
+                context_block += f"Return: {func_info.get('return_type', 'None')}\n"
+
+                context.append(context_block)
 
         return "\n".join(context)
 
@@ -817,6 +825,8 @@ class DocGen(object):
 
         _coroutines = {"methods": [], "functions": []}
 
+        function_index = self._build_function_index(project)
+
         # iterating over given file metadata dictionary
         for item in file_meta["structure"]:
 
@@ -834,7 +844,7 @@ class DocGen(object):
                                 f"""Requesting for docstrings {"update" if self.main_idea else "generation"} for the method: {method["method_name"]} of class {item["name"]} at {file}"""
                             )
 
-                            context = self.context_extractor(method, project)
+                            context = self.context_extractor(method, project, function_index)
 
                             request_coroutine = (
                                 self.generate_method_documentation(method, semaphore, context)
@@ -856,10 +866,12 @@ class DocGen(object):
                             f"""Requesting for docstrings {"update" if self.main_idea else "generation"} for the function: {function_metadata["method_name"]} at {file}"""
                         )
 
+                        context = self.context_extractor(function_metadata, project, function_index)
+
                         request_coroutine = (
-                            self.generate_method_documentation(function_metadata, semaphore)
+                            self.generate_method_documentation(function_metadata, semaphore, context)
                             if not self.main_idea
-                            else self.update_method_documentation(function_metadata, semaphore)
+                            else self.update_method_documentation(function_metadata, semaphore, context)
                         )
 
                         # just add new coroutine and function metadata to a task list
