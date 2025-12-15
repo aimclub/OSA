@@ -54,17 +54,14 @@ class JsonProcessor:
         text: str,
         expected_key: str | None = None,
         expected_type: type | None = None,
-        wrap_in_list: bool = False,
     ):
         """
-        Attempts to safely parse JSON from LLM response. If extraction or parsing fails,
-        returns a fallback structure based on expected_type.
+        Attempts to safely parse JSON from LLM response. If extraction or parsing fails, raises Error.
 
         Args:
             text: Raw model response.
             expected_key: Optional JSON key to extract (e.g. 'overview', 'key_files').
             expected_type: Expected type of parsed content (dict, list, str).
-            wrap_in_list: If True, fallback result is wrapped in a list.
 
         Returns:
             Parsed content (dict | list | str) depending on context.
@@ -82,10 +79,9 @@ class JsonProcessor:
             return parsed
 
         except Exception as e:
-            logger.warning(f"Failed to parse JSON: {e}. Applying fallback.")
-            if expected_type is list or wrap_in_list:
-                return [text.strip()]
-            if expected_type is dict:
-                key = expected_key or "raw"
-                return {key: text.strip()}
-            return text.strip()
+            logger.error(f"JSON strict parse failed: {e}")
+            raise JsonParseError(str(e)) from e
+
+
+class JsonParseError(RuntimeError):
+    pass

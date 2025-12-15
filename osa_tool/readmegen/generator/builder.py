@@ -1,7 +1,6 @@
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.readmegen.generator.base_builder import MarkdownBuilderBase
-from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
 from osa_tool.readmegen.utils import find_in_repo_tree
 from osa_tool.utils.prompts_builder import PromptLoader
 
@@ -29,8 +28,7 @@ class MarkdownBuilder(MarkdownBuilderBase):
         if not self._core_features_json:
             return ""
 
-        features = JsonProcessor.parse(self._core_features_json, expected_type=list)
-        critical = [f for f in features if isinstance(f, dict) and f.get("is_critical")]
+        critical = [f for f in self._core_features_json if isinstance(f, dict) and f.get("is_critical")]
         if not critical:
             return "_No critical features identified._"
 

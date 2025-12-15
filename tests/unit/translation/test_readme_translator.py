@@ -88,27 +88,27 @@ def test_set_default_translated_readme_copy_on_error(translator):
 @pytest.mark.asyncio
 async def test_translate_readme_request_async_valid_json(translator):
     # Arrange
-    response = json.dumps({"content": "text", "suffix": "fr"})
-    translator.model_handler.async_request = AsyncMock(return_value=response)
+    response = {"content": "text", "suffix": "fr"}
+    translator.model_handler.async_send_and_parse = AsyncMock(return_value=response)
 
     # Act
     result = await translator.translate_readme_request_async("hello", "French", asyncio.Semaphore(1))
 
     # Assert
     assert result["content"] == "text"
+    assert result["suffix"] == "fr"
     assert result["target_language"] == "French"
 
 
 @pytest.mark.asyncio
 async def test_translate_readme_request_async_invalid_json(translator, caplog):
     # Arrange
-    translator.model_handler.async_request = AsyncMock(return_value="not a json")
+    translator.model_handler.async_send_and_parse = AsyncMock(return_value={})
 
     # Act
     result = await translator.translate_readme_request_async("hello", "French", asyncio.Semaphore(1))
 
     # Assert
-    assert "fallback" in caplog.text.lower()
     assert result["suffix"] == "fr"
     assert result["target_language"] == "French"
 

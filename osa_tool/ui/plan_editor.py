@@ -40,6 +40,7 @@ class PlanEditor:
             "max_tokens",
             "context_window",
             "top_p",
+            "max_retries",
         ]
         self.special_keys = ["convert_notebooks"]
         self.arguments_metadata = read_arguments_file_flat(build_arguments_path())

@@ -6,6 +6,7 @@ from osa_tool.readmegen.context.article_content import PdfParser
 from osa_tool.readmegen.context.article_path import get_pdf_path
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.validation.code_analyzer import CodeAnalyzer
 
 
@@ -79,7 +80,8 @@ class PaperValidator:
             PromptBuilder.render(
                 self.prompts.get("validation.extract_paper_section"),
                 paper_content=pdf_content,
-            )
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw),
         )
         logger.debug(response)
         return response
@@ -101,7 +103,8 @@ class PaperValidator:
                 self.prompts.get("validation.validate_paper_against_repo"),
                 paper_info=paper_info,
                 code_files_info=code_files_info,
-            )
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw),
         )
         logger.debug(response)
         return response

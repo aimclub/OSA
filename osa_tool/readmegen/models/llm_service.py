@@ -7,10 +7,10 @@ from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.readmegen.context.article_content import PdfParser
 from osa_tool.readmegen.context.article_path import get_pdf_path
 from osa_tool.readmegen.context.files_contents import FileProcessor
-from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
 from osa_tool.readmegen.utils import extract_example_paths
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.utils.utils import parse_folder_name, extract_readme_content
 
 
@@ -47,28 +47,28 @@ class LLMClient:
         key_files_content = FileProcessor(self.config_loader, key_files).process_files()
 
         logger.info("Generating core features of the project...")
-        core_raw = self.model_handler.send_request(
-            PromptBuilder.render(
+        core_features = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
                 self.prompts.get("readme.core_features"),
                 project_name=self.metadata.name,
                 metadata=self.metadata,
                 readme_content=self.readme_content,
                 key_files_content=FileProcessor.serialize_file_contexts(key_files_content),
-            )
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw),
         )
-        core_features = JsonProcessor.parse(core_raw, expected_type=str)
 
         logger.info("Generating project overview...")
-        overview_raw = self.model_handler.send_request(
-            PromptBuilder.render(
+        overview = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
                 self.prompts.get("readme.overview"),
                 project_name=self.metadata.name,
                 description=self.metadata.description,
                 readme_content=self.readme_content,
                 core_features=core_features,
-            )
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw, expected_key="overview", expected_type=str),
         )
-        overview = JsonProcessor.parse(overview_raw, expected_key="overview", expected_type=str)
 
         getting_started = self.get_getting_started()
 
@@ -93,57 +93,58 @@ class LLMClient:
         key_files_content = FileProcessor(self.config_loader, key_files).process_files()
 
         logger.info("Generating summary of key files...")
-        files_summary = self.model_handler.send_request(
-            PromptBuilder.render(
+        files_summary = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
                 self.prompts.get("readme_article.file_summary"),
                 files_content=FileProcessor.serialize_file_contexts(key_files_content),
                 readme_content=self.readme_content,
-            )
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw, expected_key="file_summary", expected_type=str),
         )
 
         path_to_pdf = get_pdf_path(article)
         pdf_content = PdfParser(path_to_pdf).data_extractor()
 
         logger.info("Generating summary of PDF content...")
-        pdf_summary = self.model_handler.send_request(
-            PromptBuilder.render(self.prompts.get("readme_article.pdf_summary"), pdf_content=pdf_content)
+        pdf_summary = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(self.prompts.get("readme_article.pdf_summary"), pdf_content=pdf_content),
+            parser=lambda raw: JsonProcessor.parse(raw, expected_key="pdf_summary", expected_type=str),
         )
 
         logger.info("Generating project overview from combined sources...")
-        overview_raw = self.model_handler.send_request(
-            PromptBuilder.render(
+        overview = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
                 self.prompts.get("readme_article.overview"),
                 project_name=self.metadata.name,
-                # todo files_summary=files_summary,
                 pdf_summary=pdf_summary,
                 readme_content=self.readme_content,
-            )
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw, expected_key="overview", expected_type=str),
         )
-        overview = JsonProcessor.parse(overview_raw, expected_key="overview", expected_type=str)
 
         logger.info("Generating content section...")
-        content_raw = self.model_handler.send_request(
-            PromptBuilder.render(
+        content = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
                 self.prompts.get("readme_article.content"),
                 project_name=self.metadata.name,
                 pdf_summary=pdf_summary,
                 files_summary=files_summary,
                 readme_content=self.readme_content,
-            )
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw, expected_key="content", expected_type=str),
         )
-        content = JsonProcessor.parse(content_raw, expected_key="content", expected_type=str)
 
         logger.info("Generating algorithm description...")
-        algorithms_raw = self.model_handler.send_request(
-            PromptBuilder.render(
+        algorithms = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
                 self.prompts.get("readme_article.algorithms"),
                 project_name=self.metadata.name,
                 files_content=FileProcessor.serialize_file_contexts(key_files_content),
                 pdf_summary=pdf_summary,
                 readme_content=self.readme_content,
-            )
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw, expected_key="algorithms", expected_type=str),
         )
-        algorithms = JsonProcessor.parse(algorithms_raw, expected_key="algorithms", expected_type=str)
 
         getting_started = self.get_getting_started()
 
@@ -152,17 +153,17 @@ class LLMClient:
 
     def get_key_files(self) -> list:
         """Identifies key files from the project repository using model analysis."""
-        response = self.model_handler.send_request(
-            PromptBuilder.render(
+        data = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
                 self.prompts.get("readme.preanalysis"),
                 repository_tree=self.tree,
                 readme_content=self.readme_content,
-            )
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw, expected_key="key_files", expected_type=list),
         )
-        data = JsonProcessor.parse(response, expected_key="key_files", expected_type=list)
         return data or []
 
-    def get_getting_started(self) -> str:
+    def get_getting_started(self) -> str | None:
         """
         Attempting to generate Getting Started section using
         information from README, examples and docs directories
@@ -170,71 +171,83 @@ class LLMClient:
         logger.info("Attempting to generate Getting Started section...")
         examples_files = extract_example_paths(self.tree)
         examples_content = FileProcessor(self.config_loader, examples_files).process_files()
-        getting_started_raw = self.model_handler.send_request(
-            PromptBuilder.render(
+        return self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
                 self.prompts.get("readme.getting_started"),
                 project_name=self.metadata.name,
                 readme_content=self.readme_content,
                 examples_files_content=FileProcessor.serialize_file_contexts(examples_content),
-            )
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw, expected_key="getting_started"),
         )
-        return JsonProcessor.parse(getting_started_raw, expected_key="getting_started")
 
     def get_citation_from_readme(self) -> str:
         logger.info("Detecting citations in README...")
-        citation_raw = self.model_handler.send_request(
-            PromptBuilder.render(
+        return self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
                 self.prompts.get("readme.citation"),
                 readme=self.readme_content,
-            )
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw, expected_key="citation", expected_type=str),
         )
-        citation = JsonProcessor.parse(citation_raw, expected_key="citation", expected_type=str)
-        return citation
 
     def refine_readme(self, generated_readme: str) -> str:
         logger.info("Refining README files...")
-        refine_step1 = self.model_handler.send_request(
-            PromptBuilder.render(
+        refine_step1 = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
                 self.prompts.get("readme.refine_step1"),
                 old_readme=self.readme_content,
                 new_readme=generated_readme,
-            )
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw, expected_key="readme", expected_type=str),
         )
-        refine_step1 = JsonProcessor.parse(refine_step1, expected_key="readme", expected_type=str)
-
-        refine_step2 = self.model_handler.send_request(
-            PromptBuilder.render(self.prompts.get("readme.refine_step2"), readme=refine_step1)
+        refine_step2 = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
+                self.prompts.get("readme.refine_step2"),
+                readme=refine_step1,
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw, expected_key="readme", expected_type=str),
         )
-        refine_step2 = JsonProcessor.parse(refine_step2, expected_key="readme", expected_type=str)
-
-        refine_step3 = self.model_handler.send_request(
-            PromptBuilder.render(self.prompts.get("readme.refine_step3"), readme=refine_step2)
+        refine_step3 = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
+                self.prompts.get("readme.refine_step3"),
+                readme=refine_step2,
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw, expected_key="readme", expected_type=str),
         )
-        refine_step3 = JsonProcessor.parse(refine_step3, expected_key="readme", expected_type=str)
         return refine_step3
 
     def clean(self, readme: str) -> str:
         logger.info("Cleaning README...")
-        clean_step1 = self.model_handler.send_request(
-            PromptBuilder.render(self.prompts.get("readme.clean_step1"), readme=readme)
+        clean_step1 = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
+                self.prompts.get("readme.clean_step1"),
+                readme=readme,
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw, expected_key="readme", expected_type=str),
         )
-        clean_step1 = JsonProcessor.parse(clean_step1, expected_key="readme", expected_type=str)
-
-        clean_step2 = self.model_handler.send_request(
-            PromptBuilder.render(self.prompts.get("readme.clean_step2"), readme=clean_step1)
+        clean_step2 = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
+                self.prompts.get("readme.clean_step2"),
+                readme=clean_step1,
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw, expected_key="readme", expected_type=str),
         )
-        clean_step2 = JsonProcessor.parse(clean_step2, expected_key="readme", expected_type=str)
-
-        clean_step3 = self.model_handler.send_request(
-            PromptBuilder.render(self.prompts.get("readme.clean_step3"), readme=clean_step2)
+        clean_step3 = self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
+                self.prompts.get("readme.clean_step3"),
+                readme=clean_step2,
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw, expected_key="readme", expected_type=str),
         )
-        clean_step3 = JsonProcessor.parse(clean_step3, expected_key="readme", expected_type=str)
         return clean_step3
 
     def get_article_name(self, pdf_content: str) -> str:
         logger.info("Getting article name from pdf...")
-        article_name = self.model_handler.send_request(
-            PromptBuilder.render(self.prompts.get("readme_article.article_name_extraction"), pdf_content=pdf_content)
+        return self.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
+                self.prompts.get("readme_article.article_name_extraction"),
+                pdf_content=pdf_content,
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw, expected_key="article_name", expected_type=str),
         )
-        article_name = JsonProcessor.parse(article_name, expected_key="article_name", expected_type=str)
-        return article_name
