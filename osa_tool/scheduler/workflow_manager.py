@@ -6,6 +6,7 @@ import yaml
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.scheduler.todo_list import ToDoList
 from osa_tool.utils.arguments_parser import get_keys_from_group_in_yaml
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
@@ -35,7 +36,7 @@ class WorkflowManager(ABC):
         "pypi-publish": ["pypi_publish", "pypi-publish"],
     }
 
-    def __init__(self, repo_url: str, metadata: RepositoryMetadata, args):
+    def __init__(self, repo_url: str, metadata: RepositoryMetadata, args, todo_list: ToDoList | None = None):
         self.repo_url = repo_url
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(repo_url))
         self.metadata = metadata
@@ -43,6 +44,7 @@ class WorkflowManager(ABC):
         self.workflow_plan = {key: value for key, value in vars(args).items() if key in self.workflow_keys}
         self.workflow_path = self._locate_workflow_path()
         self.existing_jobs = self._find_existing_jobs()
+        self.todo_list = todo_list
 
     @abstractmethod
     def _locate_workflow_path(self) -> str | None:
@@ -219,7 +221,7 @@ class GitHubWorkflowManager(WorkflowManager):
 
     def _generate_files(self, workflow_settings, output_dir) -> list[str]:
         generator = GitHubWorkflowGenerator(output_dir)
-        return generator.generate_selected_jobs(workflow_settings)
+        return generator.generate_selected_jobs(workflow_settings, self.todo_list)
 
 
 class GitLabWorkflowManager(WorkflowManager):
@@ -271,7 +273,7 @@ class GitLabWorkflowManager(WorkflowManager):
 
     def _generate_files(self, workflow_settings, output_dir) -> list[str]:
         generator = GitLabWorkflowGenerator(output_dir)
-        return generator.generate_selected_jobs(workflow_settings)
+        return generator.generate_selected_jobs(workflow_settings, self.todo_list)
 
 
 class GitverseWorkflowManager(WorkflowManager):
@@ -323,4 +325,4 @@ class GitverseWorkflowManager(WorkflowManager):
 
     def _generate_files(self, workflow_settings, output_dir) -> list[str]:
         generator = GitHubWorkflowGenerator(output_dir)
-        return generator.generate_selected_jobs(workflow_settings)
+        return generator.generate_selected_jobs(workflow_settings, self.todo_list)
