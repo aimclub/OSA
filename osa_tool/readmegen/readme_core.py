@@ -20,7 +20,7 @@ class ReadmeAgent:
         article: str | None,
         refine_readme: bool,
         metadata: RepositoryMetadata,
-        todo_list: ToDoList | None = None
+        todo_list: ToDoList | None = None,
     ):
         self.config_loader = config_loader
         self.prompts = prompts

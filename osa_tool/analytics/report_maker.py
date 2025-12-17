@@ -28,9 +28,7 @@ from osa_tool.utils.utils import osa_project_root
 
 
 class AbstractReportGenerator(ABC):
-    def __init__(
-            self, config_loader: ConfigLoader, sourcerank: SourceRank, metadata: RepositoryMetadata
-    ):
+    def __init__(self, config_loader: ConfigLoader, sourcerank: SourceRank, metadata: RepositoryMetadata):
         self.config = config_loader.config
         self.sourcerank = sourcerank
         self.metadata = metadata
@@ -44,10 +42,10 @@ class AbstractReportGenerator(ABC):
 
     @staticmethod
     def table_builder(
-            data: list,
-            w_first_col: int,
-            w_second_col: int,
-            coloring: bool = False,
+        data: list,
+        w_first_col: int,
+        w_second_col: int,
+        coloring: bool = False,
     ) -> Table:
         """
         Builds a styled table with customizable column widths and optional row coloring.
@@ -312,7 +310,10 @@ class AbstractReportGenerator(ABC):
 class ReportGenerator(AbstractReportGenerator):
 
     def __init__(
-            self, config_loader: ConfigLoader, sourcerank: SourceRank, prompts: PromptLoader,
+            self,
+            config_loader: ConfigLoader,
+            sourcerank: SourceRank,
+            prompts: PromptLoader,
             metadata: RepositoryMetadata
     ):
         super().__init__(config_loader, sourcerank, metadata)
@@ -389,8 +390,11 @@ class ReportGenerator(AbstractReportGenerator):
 
 class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
     def __init__(
-            self, config_loader: ConfigLoader, sourcerank: SourceRank, what_has_been_done: list[tuple[str, bool]],
-            metadata: RepositoryMetadata
+        self,
+        config_loader: ConfigLoader,
+        sourcerank: SourceRank,
+        what_has_been_done: list[tuple[str, bool]],
+        metadata: RepositoryMetadata,
     ):
         super().__init__(config_loader, sourcerank, metadata)
         self.filename = f"{self.metadata.name}_what_has_been_done_report.pdf"
@@ -418,4 +422,3 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
                 )
             )
         return story
-

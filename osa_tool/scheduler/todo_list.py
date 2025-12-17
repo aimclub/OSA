@@ -16,7 +16,7 @@ EXCLUDED_TASK = {
     "no_fork",
     "no_pull_request",
     "branches",
-    "codecov_token"
+    "codecov_token",
 }
 
 
@@ -35,5 +35,5 @@ class ToDoList:
             if planned not in EXCLUDED_TASK:
                 formatted_name = planned.split("_")
                 formatted_name[0] = formatted_name[0][0].upper() + formatted_name[0][1:]
-                tasks.append((' '.join(formatted_name), planned in self.did))
+                tasks.append((" ".join(formatted_name), planned in self.did))
         return tasks

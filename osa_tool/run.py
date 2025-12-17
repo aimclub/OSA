@@ -232,10 +232,7 @@ def main():
 
         new_source_rank = SourceRank(config_loader)
         WhatHasBeenDoneReportGenerator(
-            config_loader,
-            new_source_rank,
-            what_has_been_done.list_for_report,
-            git_agent.metadata
+            config_loader, new_source_rank, what_has_been_done.list_for_report, git_agent.metadata
         ).build_pdf()
 
         elapsed_time = time.time() - start_time
