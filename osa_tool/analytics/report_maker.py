@@ -310,11 +310,7 @@ class AbstractReportGenerator(ABC):
 class ReportGenerator(AbstractReportGenerator):
 
     def __init__(
-            self,
-            config_loader: ConfigLoader,
-            sourcerank: SourceRank,
-            prompts: PromptLoader,
-            metadata: RepositoryMetadata
+        self, config_loader: ConfigLoader, sourcerank: SourceRank, prompts: PromptLoader, metadata: RepositoryMetadata
     ):
         super().__init__(config_loader, sourcerank, metadata)
         self.text_generator = TextGenerator(config_loader, self.sourcerank, prompts, self.metadata)
