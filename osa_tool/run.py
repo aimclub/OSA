@@ -219,7 +219,9 @@ def main():
         if create_fork and create_pull_request:
             rich_section("Publishing changes")
             changes = git_agent.commit_and_push_changes(force=True)
-            git_agent.create_pull_request(body=about_gen.get_about_section_message() if about_gen else "", changes=changes)
+            git_agent.create_pull_request(
+                body=about_gen.get_about_section_message() if about_gen else "", changes=changes
+            )
 
         if plan.get("delete_dir"):
             rich_section("Repository deletion")
