@@ -324,6 +324,7 @@ def test_gitlab_agent_create_fork_success(
     expected_api_url = f"https://gitlab.com/api/v4/projects/{expected_project_path}/fork"
 
     mock_user_response = mock_requests_response_factory(status_code=200, json_data={"username": "other_user"})
+    mock_project_response = mock_requests_response_factory(status_code=200, json_data={"owner": {"id": 123}})
     mock_forks_response = mock_requests_response_factory(status_code=200, json_data=[])
     expected_fork_web_url = f"https://gitlab.com/other_user/{repo_name}"
     mock_fork_response = mock_requests_response_factory(status_code=201, json_data={"web_url": expected_fork_web_url})
@@ -331,14 +332,14 @@ def test_gitlab_agent_create_fork_success(
     # Act
     with patch.dict(os.environ, {"GITLAB_TOKEN": "any_token_for_env"}):
         with (
-            patch("requests.get", side_effect=[mock_user_response, mock_forks_response]) as mock_get,
+            patch("requests.get", side_effect=[mock_user_response, mock_project_response, mock_forks_response]) as mock_get,
             patch("requests.post", return_value=mock_fork_response) as mock_post,
         ):
 
             gitlab_agent_instance.create_fork()
 
             # Assert
-            assert mock_get.call_count == 2
+            assert mock_get.call_count == 3
             mock_post.assert_called_once()
             args, kwargs = mock_post.call_args
             assert expected_api_url == args[0]
