@@ -332,7 +332,9 @@ def test_gitlab_agent_create_fork_success(
     # Act
     with patch.dict(os.environ, {"GITLAB_TOKEN": "any_token_for_env"}):
         with (
-            patch("requests.get", side_effect=[mock_user_response, mock_project_response, mock_forks_response]) as mock_get,
+            patch(
+                "requests.get", side_effect=[mock_user_response, mock_project_response, mock_forks_response]
+            ) as mock_get,
             patch("requests.post", return_value=mock_fork_response) as mock_post,
         ):
 
