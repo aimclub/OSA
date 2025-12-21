@@ -571,7 +571,20 @@ class GitHubAgent(GitAgent):
         else:
             logger.error(f"Failed to post a comment to PR #{pr_number}: {response.status_code} - {response.text}")
 
-    def create_pull_request(self, title: str = None, body: str = None) -> None:
+    def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
+        """Creates or updates a pull request on GitHub.
+        
+        This method implements intelligent PR management:
+        1. Checks if an open PR already exists for the current branch
+        2. If PR exists and there are new reports, updates the PR description
+           with all unique report links (removing duplicates)
+        3. If no PR exists, creates a new one with all available reports
+           from the attachment branch
+        
+        Args:
+            title: Optional title for the PR. Uses last commit message if not provided.
+            body: Optional body/description for the PR.
+        """
         if not self.token:
             raise ValueError("GIT_TOKEN or GITHUB_TOKEN token is required to create a pull request.")
 
@@ -587,8 +600,6 @@ class GitHubAgent(GitAgent):
         last_commit = self.repo.head.commit
         pr_title = title if title else last_commit.message
 
-        content_for_publish = (body if body else "") + self.pr_report_body
-
         params = {"state": "open", "head": head_branch, "base": self.base_branch}
         response = requests.get(url, headers=headers, params=params)
 
@@ -596,34 +607,47 @@ class GitHubAgent(GitAgent):
         if prs:
             existing_pr = prs[0]
             pr_number = existing_pr["number"]
-            logger.info(f"Pull request #{pr_number} already exists. Posting new recommendations as a comment.")
+            logger.info(f"Pull request #{pr_number} already exists.")
 
             if body and body.strip():
                 self.post_comment(pr_number, body)
-
-            if self.pr_report_body and self.pr_report_body.strip():
+            
+            if self.pr_report_body.strip():
                 old_pr_body = existing_pr.get("body", "") or ""
-
+                
                 report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
                 old_reports = report_pattern.findall(old_pr_body)
-                new_reports = report_pattern.findall(self.pr_report_body)
+                new_reports = report_pattern.findall(self.pr_report_body)           
                 all_reports = sorted(list(set(old_reports + new_reports)))
-
+                
                 clean_body = report_pattern.sub("", old_pr_body).replace(self.AGENT_SIGNATURE, "").strip()
-
-                updated_body = clean_body + "\n\n" + "\n".join(all_reports) + self.AGENT_SIGNATURE
-
+                
+                updated_body = clean_body
+                if all_reports:
+                    updated_body += "\n\n" + "\n".join(all_reports)
+                updated_body += self.AGENT_SIGNATURE
+                
                 update_url = f"{url}/{pr_number}"
                 update_data = {"body": updated_body.strip()}
-
+                
                 update_response = requests.patch(update_url, json=update_data, headers=headers)
                 if update_response.status_code == 200:
-                    logger.info(f"Successfully added new reports to PR #{pr_number} description.")
+                    logger.info(f"Successfully updated PR #{pr_number} with new reports.")
                 else:
                     logger.error(
-                        f"Failed to update PR #{pr_number} description with new reports: {update_response.status_code} - {update_response.text}")
-        else:
-            pr_body = content_for_publish  + self.AGENT_SIGNATURE
+                        f"Failed to update PR #{pr_number} description: {update_response.status_code} - {update_response.text}")
+        elif changes:
+            report_files = self.get_attachment_branch_files()
+            report_branch = "osa_tool_attachments"
+            for report_file in report_files:
+                report_url = self._build_report_url(report_branch, report_file)
+                report_link = f"\nGenerated report - [{report_file}]({report_url})\n"
+                if report_link not in self.pr_report_body:
+                    self.pr_report_body += report_link
+            
+            content_for_publish = (body if body else "") + self.pr_report_body
+            pr_body = content_for_publish + self.AGENT_SIGNATURE
+            
             pr_data = {
                 "title": pr_title,
                 "head": head_branch,
@@ -637,8 +661,7 @@ class GitHubAgent(GitAgent):
                 logger.info(f"GitHub pull request created successfully: {response.json()['html_url']}")
             else:
                 logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
-                if "pull request already exists" not in response.text:
-                    raise ValueError("Failed to create pull request.")
+                raise ValueError("Failed to create pull request.")
 
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
         url = f"https://api.github.com/repos/{repo_path}"
@@ -741,12 +764,6 @@ class GitLabAgent(GitAgent):
         user_data = user_response.json()
         current_user_id = user_data.get("id")
         current_username = user_data.get("username")
-
-
-        # if current_username == self.metadata.owner:
-        #     self.fork_url = self.repo_url
-        #     logger.info(f"User '{current_username}' already owns the repository. Using original URL: {self.fork_url}")
-        #     return
 
         project_url = f"{gitlab_instance}/api/v4/projects/{project_path}"
         project_response = requests.get(project_url, headers=headers)
@@ -856,7 +873,21 @@ class GitLabAgent(GitAgent):
         else:
             logger.error(f"Failed to post a note to MR !{mr_iid}: {response.status_code} - {response.text}")
 
-    def create_pull_request(self, title: str = None, body: str = None) -> None:
+    def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
+        """Creates or updates a merge request on GitLab.
+        
+        This method implements intelligent MR management:
+        1. Checks if an open MR already exists for the current branch
+        2. If MR exists and there are new reports, updates the MR description
+           with all unique report links (removing duplicates)
+        3. If no MR exists, creates a new one with all available reports
+           from the attachment branch
+        
+        Args:
+            title: Optional title for the MR. Uses last commit message if not provided.
+            body: Optional body/description for the MR.
+            changes: Flag indicating whether there are changes to commit.
+        """
         if not self.token:
             raise ValueError("GitLab token is required to create a merge request.")
 
@@ -877,7 +908,7 @@ class GitLabAgent(GitAgent):
 
         last_commit = self.repo.head.commit
         mr_title = title if title else last_commit.message
-        new_body_content = body if body else ""
+        new_body_content = (body if body else "").strip()
 
         mr_url = f"{gitlab_instance}/api/v4/projects/{source_project_path}/merge_requests"
         params = {
@@ -889,38 +920,51 @@ class GitLabAgent(GitAgent):
         response = requests.get(mr_url, headers=headers, params=params)
 
         mrs = response.json() if response.status_code == 200 else []
+        
         if mrs:
             existing_mr = mrs[0]
             mr_iid = existing_mr.get("iid") or existing_mr.get("id")
-            logger.info(f"Merge request !{mr_iid} already exists. Updating...")
+            logger.info(f"Merge request !{mr_iid} already exists.")
 
-            if body and body.strip():
-                self.post_note(target_project_id, mr_iid, body)
-
-            if self.pr_report_body and self.pr_report_body.strip():
+            if new_body_content:
+                self.post_note(target_project_id, mr_iid, new_body_content)
+            
+            if self.pr_report_body.strip():
                 old_mr_body = existing_mr.get("description", "") or ""
-
+                
                 report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
                 old_reports = report_pattern.findall(old_mr_body)
                 new_reports = report_pattern.findall(self.pr_report_body)
                 all_reports = sorted(list(set(old_reports + new_reports)))
-
+                
                 clean_body = report_pattern.sub("", old_mr_body).replace(self.AGENT_SIGNATURE, "").strip()
-
-                updated_body = clean_body + "\n\n" + "\n".join(all_reports) + self.AGENT_SIGNATURE
-
+                
+                updated_body = clean_body
+                if all_reports:
+                    updated_body += "\n\n" + "\n".join(all_reports)
+                updated_body += self.AGENT_SIGNATURE
+                
                 update_url = f"{gitlab_instance}/api/v4/projects/{target_project_id}/merge_requests/{mr_iid}"
                 update_data = {"description": updated_body.strip()}
-
+                
                 update_response = requests.put(update_url, json=update_data, headers=headers)
                 if update_response.status_code == 200:
-                    logger.info(f"Successfully added new reports to MR !{mr_iid} description.")
+                    logger.info(f"Successfully updated MR !{mr_iid} with new reports.")
                 else:
                     logger.error(
                         f"Failed to update MR !{mr_iid} description: {update_response.status_code} - {update_response.text}")
-
-        else:
-            mr_body = (body if body else "") + self.pr_report_body + self.AGENT_SIGNATURE
+        elif changes:
+            report_files = self.get_attachment_branch_files()
+            report_branch = "osa_tool_attachments"
+            for report_file in report_files:
+                report_url = self._build_report_url(report_branch, report_file)
+                report_link = f"\nGenerated report - [{report_file}]({report_url})\n"
+                if report_link not in self.pr_report_body:
+                    self.pr_report_body += report_link
+            
+            content_for_publish = new_body_content + self.pr_report_body
+            mr_body = content_for_publish + self.AGENT_SIGNATURE
+            
             mr_data = {
                 "title": mr_title,
                 "source_branch": self.branch_name,
@@ -1105,7 +1149,21 @@ class GitverseAgent(GitAgent):
             logger.warning(f"Failed to check Gitverse branch: {e}")
             return False
 
-    def create_pull_request(self, title: str = None, body: str = None) -> None:
+    def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
+        """Creates or updates a pull request on Gitverse.
+        
+        This method implements intelligent PR management:
+        1. Checks if an open PR already exists for the current branch
+        2. If PR exists and there are new reports, updates the PR description
+           with all unique report links (removing duplicates)
+        3. If no PR exists, creates a new one with all available reports
+           from the attachment branch
+        
+        Args:
+            title: Optional title for the PR. Uses last commit message if not provided.
+            body: Optional body/description for the PR.
+            changes: Flag indicating whether there are changes to commit.
+        """
         if not self.token:
             raise ValueError("Gitverse token is required to create a pull request.")
 
@@ -1142,18 +1200,12 @@ class GitverseAgent(GitAgent):
                     out.append(x)
             return out
 
-        def next_iteration_number(text: str) -> int:
-            nums = [int(n) for n in re.findall(r"Iteration\s*(\d+)", text or "", flags=re.IGNORECASE)]
-            return (max(nums) + 1) if nums else 2
-
-        def build_body(initial_and_history: str, reports: list[str], iteration_append: str) -> str:
+        def build_body(initial_and_history: str, reports: list[str]) -> str:
             parts = []
             if initial_and_history.strip():
                 parts.append(initial_and_history.strip())
             if reports:
                 parts.append("\n".join(reports).strip())
-            if iteration_append.strip():
-                parts.append(iteration_append.strip())
             return "\n\n".join(parts).strip() + self.AGENT_SIGNATURE
 
         params = {"state": "open", "head": self.branch_name, "base": self.base_branch}
@@ -1167,16 +1219,15 @@ class GitverseAgent(GitAgent):
             logger.info(f"Pull request already exists. Updating PR #{pr_number}: {pr_url}")
 
             old_body = existing_pr.get("body", "") or ""
-
+            
             clean_text = remove_reports(strip_signature(old_body))
-
+            
             all_reports = uniq_keep_order(extract_reports(old_body) + extract_reports(self.pr_report_body))
-            iteration_append = ""
-            if new_body_content:
-                n = next_iteration_number(clean_text)
-                iteration_append = f"Iteration {n}\n{new_body_content}"
-
-            updated_body = build_body(clean_text, all_reports, iteration_append)
+            
+            if new_body_content and new_body_content not in clean_text:
+                clean_text = (clean_text + "\n\n" + new_body_content).strip()
+            
+            updated_body = build_body(clean_text, all_reports)
 
             update_url = f"{url}/{pr_number}"
             update_data = {"title": pr_title, "body": updated_body}
@@ -1187,11 +1238,24 @@ class GitverseAgent(GitAgent):
             else:
                 logger.error(f"Failed to update pull request: {update_response.status_code} - {update_response.text}")
 
-        else:
+        elif changes:
+            report_files = self.get_attachment_branch_files()
+            report_branch = "osa_tool_attachments"
+            for report_file in report_files:
+                report_url = self._build_report_url(report_branch, report_file)
+                report_link = f"\nGenerated report - [{report_file}]({report_url})\n"
+                if report_link not in self.pr_report_body:
+                    self.pr_report_body += report_link
+            
             reports = uniq_keep_order(extract_reports(self.pr_report_body))
-            pr_body = build_body(new_body_content, reports, "")
+            pr_body = build_body(new_body_content, reports)
 
-            pr_data = {"title": pr_title, "head": self.branch_name, "base": self.base_branch, "body": pr_body}
+            pr_data = {
+                "title": pr_title,
+                "head": self.branch_name,
+                "base": self.base_branch,
+                "body": pr_body
+            }
             response = requests.post(url, json=pr_data, headers=headers)
 
             if response.status_code == 201:
