@@ -55,6 +55,7 @@ class ModelSettings(BaseModel):
     max_tokens: PositiveInt
     context_window: PositiveInt
     top_p: NonNegativeFloat
+    max_retries: PositiveInt
     allowed_providers: list[str]
 
 

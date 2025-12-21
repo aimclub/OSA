@@ -7,12 +7,11 @@ from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 def test_core_features_with_critical_features(mock_markdown_builder):
     # Arrange
-    core_features_json = json.dumps(
-        [
-            {"feature_name": "Feature 1", "feature_description": "Description 1", "is_critical": True},
-            {"feature_name": "Feature 2", "feature_description": "Description 2", "is_critical": False},
-        ]
-    )
+    core_features_json = [
+        {"feature_name": "Feature 1", "feature_description": "Description 1", "is_critical": True},
+        {"feature_name": "Feature 2", "feature_description": "Description 2", "is_critical": False},
+    ]
+
     builder = mock_markdown_builder(
         core_features=core_features_json, overview="Test overview", getting_started="Test getting started"
     )
@@ -29,9 +28,7 @@ def test_core_features_with_critical_features(mock_markdown_builder):
 
 def test_core_features_no_critical_features(mock_markdown_builder):
     # Arrange
-    core_features_json = json.dumps(
-        [{"feature_name": "Feature 1", "feature_description": "Description 1", "is_critical": False}]
-    )
+    core_features_json = [{"feature_name": "Feature 1", "feature_description": "Description 1", "is_critical": False}]
     builder = mock_markdown_builder(
         core_features=core_features_json, overview="Test overview", getting_started="Test getting started"
     )
@@ -58,13 +55,11 @@ def test_core_features_empty_json(mock_markdown_builder):
 
 def test_core_features_multiple_critical_features(mock_markdown_builder):
     # Arrange
-    core_features_json = json.dumps(
-        [
-            {"feature_name": "Feature 1", "feature_description": "Description 1", "is_critical": True},
-            {"feature_name": "Feature 2", "feature_description": "Description 2", "is_critical": True},
-            {"feature_name": "Feature 3", "feature_description": "Description 3", "is_critical": False},
-        ]
-    )
+    core_features_json = [
+        {"feature_name": "Feature 1", "feature_description": "Description 1", "is_critical": True},
+        {"feature_name": "Feature 2", "feature_description": "Description 2", "is_critical": True},
+        {"feature_name": "Feature 3", "feature_description": "Description 3", "is_critical": False},
+    ]
     builder = mock_markdown_builder(
         core_features=core_features_json, overview="Test overview", getting_started="Test getting started"
     )

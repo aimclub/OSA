@@ -95,15 +95,135 @@ class GitAgent(abc.ABC):
         """
         pass
 
-    def clone_repository(self) -> None:
-        """Clones the repository into the specified directory.
-
-        If the repository already exists locally, it initializes the repository.
-        If the directory exists but is not a valid Git repository, an error is raised.
-
+    def _check_branch_existence(self, branch: str = 'osa_tool') -> bool:
+        """
+        Checks if a branch exists in the remote repository using platform-specific APIs.
+        
+        This method attempts to determine whether the specified branch exists in the
+        remote repository before attempting to clone it. It uses different API endpoints
+        depending on the Git platform (GitHub, GitLab, or Gitverse).
+        
+        Args:
+            branch: The name of the branch to check. If None, uses the default branch name
+                    configured for this agent (typically "osa_tool").
+        
+        Returns:
+            True if the branch exists in the remote repository, False otherwise.
+            False and logs a warning if the platform is not recognized.
+        """
+        if branch is None:
+            branch = self.branch_name
+        
+        if "github.com" in self.repo_url:
+            return self._check_github_branch_exists(branch)
+        elif "gitlab." in self.repo_url:
+            return self._check_gitlab_branch_exists(branch)
+        elif "gitverse.ru" in self.repo_url:
+            return self._check_gitverse_branch_exists(branch)
+        
+        logger.warning(f"Cannot check branch existence for platform: {self.repo_url}")
+        return False
+        
+    def _clone_chosen_branch(self, branch: str = 'osa_tool') -> None:
+        """Clones an existing branch from the remote repository.
+        
+        Args:
+            branch: The name of the branch to clone. Defaults to `branch_name`.
+        
+        Returns:
+            True if cloning was successful, False otherwise.
+        """
+        if branch is None:
+            branch = self.branch_name
+        
+        try:
+            logger.info(f"Cloning existing branch '{branch}' from {self.fork_url or self.repo_url}...")
+            self.repo = Repo.clone_from(
+                url=self._get_auth_url(self.fork_url or self.repo_url),
+                to_path=self.clone_dir,
+                branch=branch,
+                single_branch=True
+            )
+            logger.info(f"Successfully cloned branch '{branch}'")
+        except Exception as e:
+            raise Exception(f"Failed to clone branch '{branch}': {e}") from e
+        
+    def _clone_default_branch(self) -> None:
+        """
+        Clones the default branch of the repository.
+        
+        This method implements the standard cloning logic with fallback mechanisms:
+        1. First attempts unauthenticated cloning (for public repositories)
+        2. Falls back to authenticated cloning if unauthenticated fails
+        3. Provides detailed error messages for common Git errors
+        
         Raises:
-            InvalidGitRepositoryError: If the local directory is not a valid Git repository.
-            GitCommandError: If cloning the repository fails.
+            GitCommandError: If both cloning attempts fail with Git-specific errors.
+            Exception: If an unexpected error occurs during cloning.
+        
+        Note:
+            The 'single_branch=True' parameter is used to clone only the requested
+            branch, which is more efficient than cloning all branches.
+        """
+        try:
+            logger.info(
+                f"Cloning the '{self.base_branch}' branch from {self.repo_url} into directory {self.clone_dir}..."
+            )
+            
+            # First attempt: unauthenticated cloning (works for public repos)
+            self.repo = Repo.clone_from(
+                url=self._get_unauth_url(),
+                to_path=self.clone_dir,
+                branch=self.base_branch,
+                single_branch=True,
+            )
+            logger.info("Cloning completed")
+
+        except Exception as e:
+            # Second attempt: authenticated cloning (for private repos or rate limits)
+            try:
+                logger.info(
+                    f"Cloning the '{self.base_branch}' branch from {self.repo_url} into directory {self.clone_dir}..."
+                )
+                self.repo = Repo.clone_from(
+                    url=self._get_auth_url(),
+                    to_path=self.clone_dir,
+                    branch=self.base_branch,
+                    single_branch=True,
+                )
+                logger.info("Cloning completed")
+                
+            except GitCommandError as e:
+                stderr = e.stderr or ""
+                logger.error(f"Cloning failed: {e}")
+
+                if "remote branch" in stderr and "not found" in stderr:
+                    logger.error(
+                        f"Branch '{self.base_branch}' not found in the remote repository. Please check the branch name."
+                    )
+                else:
+                    logger.error("An unexpected Git error occurred while cloning the repository.")
+                
+                raise Exception(f"Cannot clone the repository: {self.repo_url}") from e
+
+    def clone_repository(self) -> None:
+        """
+        Clones or initializes the Git repository in the local filesystem.
+        
+        This is the main entry point for obtaining a local copy of the repository.
+        It implements a multi-step strategy:
+        1. If the repository is already initialized, returns early.
+        2. If the directory exists locally, initializes from existing files.
+        3. If cloning is needed, checks for existing 'osa_tool' branch first.
+        4. Falls back to cloning the default branch if 'osa_tool' doesn't exist.
+        
+        Raises:
+            InvalidGitRepositoryError: If the local directory exists but is not a valid Git repository.
+            Exception: If all cloning attempts fail.
+        
+        Note:
+            This method handles both authenticated and unauthenticated cloning attempts
+            for the default branch. It prefers the fork URL when available.
         """
         if self.repo:
             logger.warning(f"Repository is already initialized ({self.repo_url})")
@@ -117,43 +237,41 @@ class GitAgent(abc.ABC):
             except InvalidGitRepositoryError:
                 logger.error(f"Directory {self.clone_dir} exists but is not a valid Git repository")
                 raise
+        
+        elif self._check_branch_existence():
+            self._clone_chosen_branch()
         else:
-            try:
-                logger.info(
-                    f"Cloning the '{self.base_branch}' branch from {self.repo_url} into directory {self.clone_dir}..."
-                )
-                self.repo = Repo.clone_from(
-                    url=self._get_unauth_url(),
-                    to_path=self.clone_dir,
-                    branch=self.base_branch,
-                    single_branch=True,
-                )
-                logger.info("Cloning completed")
+            self._clone_default_branch()
 
-            except Exception:
-                try:
-                    logger.info(
-                        f"Cloning the '{self.base_branch}' branch from {self.repo_url} into directory {self.clone_dir}..."
-                    )
-                    self.repo = Repo.clone_from(
-                        url=self._get_auth_url(),
-                        to_path=self.clone_dir,
-                        branch=self.base_branch,
-                        single_branch=True,
-                    )
-                    logger.info("Cloning completed")
-                except GitCommandError as e:
-                    stderr = e.stderr or ""
-                    logger.error(f"Cloning failed: {e}")
 
-                    if "remote branch" in stderr and "not found" in stderr:
-                        logger.error(
-                            f"Branch '{self.base_branch}' not found in the remote repository. Please check the branch name."
-                        )
-                    else:
-                        logger.error("An unexpected Git error occurred while cloning the repository.")
-                    raise Exception(f"Cannot clone the repository: {self.repo_url}") from e
+    def get_attachment_branch_files(self, branch: str = "osa_tool_attachments") -> List[str]:
+        """Gets list of report files from attachment branch.
+        
+        Args:
+            branch: The name of the attachment branch.
+        
+        Returns:
+            List of report filenames found in the branch.
+        """
+        try:
+            remote_refs = self.repo.git.ls_remote("--heads", self._get_unauth_url(self.fork_url or self.repo_url))
 
+            if f"refs/heads/{branch}" not in remote_refs:
+                return []
+
+            self.repo.git.fetch("origin", f"{branch}:{branch}_tmp", depth=1)
+            
+            files_output = self.repo.git.ls_tree("-r", "--name-only", f"{branch}_tmp")
+            report_files = [f for f in files_output.split('\n') if f and f.endswith('report.pdf')]
+            
+            self.repo.git.branch("-D", f"{branch}_tmp")
+            
+            logger.debug(f"Found {len(report_files)} report files in branch '{branch}'")
+            return report_files
+        except Exception as e:
+            logger.warning(f"Failed to get files from attachment branch: {e}")
+            return []
+    
     def create_and_checkout_branch(self, branch: str = None) -> None:
         """Creates and checks out a new branch.
 
@@ -410,6 +528,35 @@ class GitHubAgent(GitAgent):
             logger.error(f"Failed to star repository: {response_star.status_code} - {response_star.text}")
             raise ValueError("Failed to star repository.")
 
+    def _check_github_branch_exists(self, branch: str) -> bool:
+        """Check if branch exists on GitHub using API."""
+        if not self.fork_url:
+            repo_to_check = get_base_repo_url(self.repo_url)
+            url = f"https://api.github.com/repos/{repo_to_check}/branches/{branch}"
+        else:
+            repo_to_check = get_base_repo_url(self.fork_url)
+            url = f"https://api.github.com/repos/{repo_to_check}/branches/{branch}"
+        
+        headers = {
+            "Accept": "application/vnd.github.v3+json",
+        }
+
+        if self.token:
+            headers["Authorization"] = f"token {self.token}"
+        
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                return True
+            elif response.status_code == 404:
+                return False
+            else:
+                logger.warning(f"GitHub API returned {response.status_code} for branch check")
+                return False
+        except Exception as e:
+            logger.warning(f"Failed to check GitHub branch: {e}")
+            return False
+
     def post_comment(self, pr_number: int, comment_body: str):
         base_repo = get_base_repo_url(self.repo_url)
         url = f"https://api.github.com/repos/{base_repo}/issues/{pr_number}/comments"
@@ -664,6 +811,37 @@ class GitLabAgent(GitAgent):
         else:
             logger.error(f"Failed to star GitLab repository: {response.status_code} - {response.text}")
 
+    def _check_gitlab_branch_exists(self, branch: str) -> bool:
+        """Check if branch exists on GitLab using API."""
+        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
+        
+        if not self.fork_url:
+            repo_to_check = get_base_repo_url(self.repo_url)
+        else:
+            repo_to_check = get_base_repo_url(self.fork_url)
+        
+        project_path = repo_to_check.replace("/", "%2F")
+        url = f"{gitlab_instance}/api/v4/projects/{project_path}/repository/branches/{branch}"
+        
+        headers = {
+            "Accept": "application/json",
+        }
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+        
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                return True
+            elif response.status_code == 404:
+                return False
+            else:
+                logger.warning(f"GitLab API returned {response.status_code} for branch check")
+                return False
+        except Exception as e:
+            logger.warning(f"Failed to check GitLab branch: {e}")
+            return False
+
     def post_note(self, project_id: int, mr_iid: int, note_body: str):
         gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
         url = f"{gitlab_instance}/api/v4/projects/{project_id}/merge_requests/{mr_iid}/notes"
@@ -898,6 +1076,34 @@ class GitverseAgent(GitAgent):
             logger.info(f"Gitverse repository '{base_repo}' has been starred successfully.")
         else:
             logger.error(f"Failed to star Gitverse repository: {response_star.status_code} - {response_star.text}")
+
+    def _check_gitverse_branch_exists(self, branch: str) -> bool:
+        """Check if branch exists on Gitverse using API."""
+        if not self.fork_url:
+            repo_to_check = get_base_repo_url(self.repo_url)
+        else:
+            repo_to_check = get_base_repo_url(self.fork_url)
+
+        url = f"https://api.gitverse.ru/repos/{repo_to_check}/branches"
+        
+        headers = {
+            "Accept": "application/vnd.gitverse.object+json;version=1",
+            "User-Agent": "Mozilla/5.0",
+        }
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                branches = response.json()
+                return any(b.get("name") == branch for b in branches)
+            else:
+                logger.warning(f"Gitverse API returned {response.status_code} for branch check")
+                return False
+        except Exception as e:
+            logger.warning(f"Failed to check Gitverse branch: {e}")
+            return False
 
     def create_pull_request(self, title: str = None, body: str = None) -> None:
         if not self.token:

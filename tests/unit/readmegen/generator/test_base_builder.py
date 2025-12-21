@@ -148,7 +148,7 @@ def test_citation_section_with_llm(builder, sourcerank_with_repo_tree, llm_clien
     repo_tree_data = get_mock_repo_tree("MINIMAL")
     builder.sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
-    llm_client.model_handler = mock_model_handler(side_effect=['{"citation": "LLM CITATION"}'])
+    llm_client.model_handler = mock_model_handler(side_effect=["LLM CITATION"])
 
     with patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client):
         # Act
@@ -164,7 +164,7 @@ def test_citation_section_fallback(builder, sourcerank_with_repo_tree, llm_clien
     repo_tree_data = get_mock_repo_tree("MINIMAL")
     builder.sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
-    llm_client.model_handler = mock_model_handler(side_effect=['{"citation": ""}'])
+    llm_client.model_handler = mock_model_handler(side_effect=[""])
 
     with patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client):
         # Act
