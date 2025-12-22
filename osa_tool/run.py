@@ -10,7 +10,10 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
-from osa_tool.analytics.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
+from osa_tool.analytics.report_maker import (
+    ReportGenerator,
+    WhatHasBeenDoneReportGenerator,
+)
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.conversion.notebook_converter import NotebookConverter
@@ -219,7 +222,9 @@ def main():
         if create_fork and create_pull_request:
             rich_section("Publishing changes")
             if git_agent.commit_and_push_changes(force=True):
-                git_agent.create_pull_request(body=about_gen.get_about_section_message() if about_gen else "")
+                git_agent.create_pull_request(
+                    body=about_gen.get_about_section_message() if about_gen else "", author=args.author
+                )
             else:
                 logger.warning("No changes were committed — pull request will not be created.")
                 if about_gen:

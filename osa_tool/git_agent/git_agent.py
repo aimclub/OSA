@@ -9,10 +9,10 @@ from dotenv import load_dotenv
 from git import GitCommandError, InvalidGitRepositoryError, Repo
 
 from osa_tool.analytics.metadata import (
-    RepositoryMetadata,
     GitHubMetadataLoader,
     GitLabMetadataLoader,
     GitverseMetadataLoader,
+    RepositoryMetadata,
 )
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import get_base_repo_url, parse_folder_name
@@ -86,12 +86,13 @@ class GitAgent(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def create_pull_request(self, title: str = None, body: str = None) -> None:
+    def create_pull_request(self, title: str = None, body: str = None, author: str = None) -> None:
         """Create a pull request / merge request on the platform.
 
         Args:
             title: The title of the PR. If None, the commit message will be used.
             body: The body/description of the PR. If None, the commit message with agent signature will be used.
+            author: The author of the PR.
         """
         pass
 
@@ -409,7 +410,7 @@ class GitHubAgent(GitAgent):
             logger.error(f"Failed to star repository: {response_star.status_code} - {response_star.text}")
             raise ValueError("Failed to star repository.")
 
-    def create_pull_request(self, title: str = None, body: str = None) -> None:
+    def create_pull_request(self, title: str = None, body: str = None, author: str = None) -> None:
         if not self.token:
             raise ValueError("GIT_TOKEN or GITHUB_TOKEN token is required to create a pull request.")
 
@@ -438,6 +439,7 @@ class GitHubAgent(GitAgent):
         pr_title = title if title else last_commit.message
         pr_body = body if body else last_commit.message
         pr_body += self.pr_report_body
+        pr_body += author
         pr_body += self.AGENT_SIGNATURE
         pr_data = {
             "title": pr_title,
@@ -608,7 +610,7 @@ class GitLabAgent(GitAgent):
         else:
             logger.error(f"Failed to star GitLab repository: {response.status_code} - {response.text}")
 
-    def create_pull_request(self, title: str = None, body: str = None) -> None:
+    def create_pull_request(self, title: str = None, body: str = None, author: str = None) -> None:
         if not self.token:
             raise ValueError("GitLab token is required to create a merge request.")
 
@@ -648,6 +650,7 @@ class GitLabAgent(GitAgent):
         mr_title = title if title else last_commit.message
         mr_body = body if body else last_commit.message
         mr_body += self.pr_report_body
+        mr_body += author
         mr_body += self.AGENT_SIGNATURE
 
         mr_data = {
@@ -806,7 +809,7 @@ class GitverseAgent(GitAgent):
         else:
             logger.error(f"Failed to star Gitverse repository: {response_star.status_code} - {response_star.text}")
 
-    def create_pull_request(self, title: str = None, body: str = None) -> None:
+    def create_pull_request(self, title: str = None, body: str = None, author: str = None) -> None:
         if not self.token:
             raise ValueError("Gitverse token is required to create a pull request.")
 
@@ -838,6 +841,7 @@ class GitverseAgent(GitAgent):
         pr_title = title if title else last_commit.message
         pr_body = body if body else last_commit.message
         pr_body += self.pr_report_body
+        pr_body += author
         pr_body += self.AGENT_SIGNATURE
 
         pr_data = {
