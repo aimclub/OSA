@@ -222,9 +222,7 @@ def main():
         if create_fork and create_pull_request:
             rich_section("Publishing changes")
             if git_agent.commit_and_push_changes(force=True):
-                git_agent.create_pull_request(
-                    body=about_gen.get_about_section_message() if about_gen else "", author=args.author
-                )
+                git_agent.create_pull_request(body=about_gen.get_about_section_message() if about_gen else "")
             else:
                 logger.warning("No changes were committed — pull request will not be created.")
                 if about_gen:
@@ -254,13 +252,13 @@ def main():
 
 def initialize_git_platform(args):
     if "github.com" in args.repository:
-        git_agent = GitHubAgent(args.repository, args.branch)
+        git_agent = GitHubAgent(args.repository, args.branch, author=args.author)
         workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
     elif "gitlab." in args.repository:
-        git_agent = GitLabAgent(args.repository, args.branch)
+        git_agent = GitLabAgent(args.repository, args.branch, author=args.author)
         workflow_manager = GitLabWorkflowManager(args.repository, git_agent.metadata, args)
     elif "gitverse.ru" in args.repository:
-        git_agent = GitverseAgent(args.repository, args.branch)
+        git_agent = GitverseAgent(args.repository, args.branch, author=args.author)
         workflow_manager = GitverseWorkflowManager(args.repository, git_agent.metadata, args)
     else:
         raise ValueError(f"Cannot initialize Git Agent and Workflow Manager for this platform: {args.repository}")

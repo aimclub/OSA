@@ -25,7 +25,8 @@ class GitAgent(abc.ABC):
     commit and push changes, and create pull requests.
 
     Attributes:
-        AGENT_SIGNATURE: A signature string appended to pull request descriptions.
+        agent_signature: A signature string appended to a pull request descriptions.
+        author: An author name that appended to a pull request description.
         repo_url: The URL of the Git repository.
         clone_dir: The directory where the repository will be cloned.
         branch_name: The name of the branch to be created.
@@ -37,20 +38,17 @@ class GitAgent(abc.ABC):
         pr_report_body: A formatted message for a pull request.
     """
 
-    AGENT_SIGNATURE = (
-        "\n\n---\n*This PR was created by [osa_tool](https://github.com/aimclub/OSA).*"
-        "\n_OSA just makes your open source project better!_"
-    )
-
-    def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool"):
+    def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool", author: str = None):
         """Initializes the agent with repository info.
 
         Args:
             repo_url: The URL of the GitHub repository.
             repo_branch_name: The name of the repository's branch to be checked out.
             branch_name: The name of the branch to be created. Defaults to "osa_tool".
+            author: The name of the author of the pull request.
         """
         load_dotenv()
+        self.author = author
         self.repo_url = repo_url
         self.clone_dir = os.path.join(os.getcwd(), parse_folder_name(repo_url))
         self.branch_name = branch_name
@@ -60,6 +58,17 @@ class GitAgent(abc.ABC):
         self.metadata = self._load_metadata(self.repo_url)
         self.base_branch = repo_branch_name or self.metadata.default_branch
         self.pr_report_body = ""
+
+    @property
+    def agent_signature(self) -> str:
+        signature = "\n\n---"
+        if self.author:
+            signature += f"\n*Author: {self.author}.*"
+        signature += (
+            "\n*This PR was created by [osa_tool](https://github.com/aimclub/OSA).*"
+            "\n_OSA just makes your open source project better!_"
+        )
+        return signature
 
     @abc.abstractmethod
     def _get_token(self) -> str:
@@ -86,13 +95,12 @@ class GitAgent(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def create_pull_request(self, title: str = None, body: str = None, author: str = None) -> None:
+    def create_pull_request(self, title: str = None, body: str = None) -> None:
         """Create a pull request / merge request on the platform.
 
         Args:
             title: The title of the PR. If None, the commit message will be used.
             body: The body/description of the PR. If None, the commit message with agent signature will be used.
-            author: The author of the PR.
         """
         pass
 
@@ -410,7 +418,7 @@ class GitHubAgent(GitAgent):
             logger.error(f"Failed to star repository: {response_star.status_code} - {response_star.text}")
             raise ValueError("Failed to star repository.")
 
-    def create_pull_request(self, title: str = None, body: str = None, author: str = None) -> None:
+    def create_pull_request(self, title: str = None, body: str = None) -> None:
         if not self.token:
             raise ValueError("GIT_TOKEN or GITHUB_TOKEN token is required to create a pull request.")
 
@@ -439,8 +447,7 @@ class GitHubAgent(GitAgent):
         pr_title = title if title else last_commit.message
         pr_body = body if body else last_commit.message
         pr_body += self.pr_report_body
-        pr_body += author
-        pr_body += self.AGENT_SIGNATURE
+        pr_body += self.agent_signature
         pr_data = {
             "title": pr_title,
             "head": head_branch,
@@ -610,7 +617,7 @@ class GitLabAgent(GitAgent):
         else:
             logger.error(f"Failed to star GitLab repository: {response.status_code} - {response.text}")
 
-    def create_pull_request(self, title: str = None, body: str = None, author: str = None) -> None:
+    def create_pull_request(self, title: str = None, body: str = None) -> None:
         if not self.token:
             raise ValueError("GitLab token is required to create a merge request.")
 
@@ -650,8 +657,7 @@ class GitLabAgent(GitAgent):
         mr_title = title if title else last_commit.message
         mr_body = body if body else last_commit.message
         mr_body += self.pr_report_body
-        mr_body += author
-        mr_body += self.AGENT_SIGNATURE
+        mr_body += self.agent_signature
 
         mr_data = {
             "title": mr_title,
@@ -809,7 +815,7 @@ class GitverseAgent(GitAgent):
         else:
             logger.error(f"Failed to star Gitverse repository: {response_star.status_code} - {response_star.text}")
 
-    def create_pull_request(self, title: str = None, body: str = None, author: str = None) -> None:
+    def create_pull_request(self, title: str = None, body: str = None) -> None:
         if not self.token:
             raise ValueError("Gitverse token is required to create a pull request.")
 
@@ -841,8 +847,7 @@ class GitverseAgent(GitAgent):
         pr_title = title if title else last_commit.message
         pr_body = body if body else last_commit.message
         pr_body += self.pr_report_body
-        pr_body += author
-        pr_body += self.AGENT_SIGNATURE
+        pr_body += self.agent_signature
 
         pr_data = {
             "title": pr_title,
