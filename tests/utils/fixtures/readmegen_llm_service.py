@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
-from osa_tool.readmegen.models.llm_service import LLMClient
+from osa_tool.operations.docs.readme_generation.models.llm_service import LLMClient
 from osa_tool.utils.prompts_builder import PromptLoader
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 

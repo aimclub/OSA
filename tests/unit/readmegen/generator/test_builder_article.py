@@ -1,7 +1,7 @@
 import json
 from unittest.mock import patch
 
-from osa_tool.readmegen.generator.builder_article import MarkdownBuilderArticle
+from osa_tool.operations.docs.readme_generation.generator.builder_article import MarkdownBuilderArticle
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
@@ -81,7 +81,7 @@ def test_toc_generation_article(mock_markdown_builder_article, llm_client, mock_
     )
     llm_client.model_handler = mock_model_handler(side_effect=['{"citation": ""}'])
 
-    with patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client):
+    with patch("osa_tool.readme_generation.generator.base_builder.LLMClient", return_value=llm_client):
         # Act
         result = builder.toc
 
@@ -135,7 +135,7 @@ def test_build_method_article_minimal(
     llm_client.model_handler = mock_model_handler(side_effect=['{"citation": null}'])
 
     with (
-        patch("osa_tool.readmegen.generator.base_builder.LLMClient", return_value=llm_client),
+        patch("osa_tool.readme_generation.generator.base_builder.LLMClient", return_value=llm_client),
         patch.object(MarkdownBuilderArticle, "_check_url", return_value=False),
     ):
         # Act

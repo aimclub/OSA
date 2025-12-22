@@ -1,12 +1,12 @@
 from unittest.mock import patch
 
-from osa_tool.readmegen.readme_core import ReadmeAgent
+from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
 
 
-@patch("osa_tool.readmegen.readme_core.remove_extra_blank_lines")
-@patch("osa_tool.readmegen.readme_core.save_sections")
-@patch("osa_tool.readmegen.readme_core.MarkdownBuilder")
-@patch("osa_tool.readmegen.readme_core.LLMClient")
+@patch("osa_tool.readme_generation.readme_core.remove_extra_blank_lines")
+@patch("osa_tool.readme_generation.readme_core.save_sections")
+@patch("osa_tool.readme_generation.readme_core.MarkdownBuilder")
+@patch("osa_tool.readme_generation.readme_core.LLMClient")
 def test_readme_agent_without_article(
     mock_llm,
     mock_builder,
@@ -56,10 +56,10 @@ def test_readme_agent_without_article(
     mock_clean.assert_called_once()
 
 
-@patch("osa_tool.readmegen.readme_core.remove_extra_blank_lines")
-@patch("osa_tool.readmegen.readme_core.save_sections")
-@patch("osa_tool.readmegen.readme_core.MarkdownBuilderArticle")
-@patch("osa_tool.readmegen.readme_core.LLMClient")
+@patch("osa_tool.readme_generation.readme_core.remove_extra_blank_lines")
+@patch("osa_tool.readme_generation.readme_core.save_sections")
+@patch("osa_tool.readme_generation.readme_core.MarkdownBuilderArticle")
+@patch("osa_tool.readme_generation.readme_core.LLMClient")
 def test_readme_agent_with_article(
     mock_llm,
     mock_builder_article,

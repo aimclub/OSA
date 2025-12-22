@@ -5,7 +5,7 @@ from unittest.mock import patch, AsyncMock
 
 import pytest
 
-import osa_tool.translation.readme_translator as rt
+import osa_tool.operations.docs.readme_translation.readme_translator as rt
 from osa_tool.utils.prompts_builder import PromptLoader
 
 

@@ -4,7 +4,7 @@ import re
 import requests
 import tomli
 
-from osa_tool.readmegen.utils import find_in_repo_tree, read_file
+from osa_tool.operations.docs.readme_generation.utils import find_in_repo_tree, read_file
 from osa_tool.utils.logger import logger
 
 

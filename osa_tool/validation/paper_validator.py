@@ -1,9 +1,10 @@
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
-from osa_tool.readmegen.context.article_content import PdfParser
-from osa_tool.readmegen.context.article_path import get_pdf_path
+from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
+from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
+
 from osa_tool.utils.logger import logger
-from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.validation.code_analyzer import CodeAnalyzer
 
@@ -16,17 +17,17 @@ class PaperValidator:
     and validates the paper against the codebase using a language model.
     """
 
-    def __init__(self, config_loader: ConfigLoader, prompts: PromptLoader):
+    def __init__(self, config_loader: ConfigLoader):
         """
         Initialize the PaperValidator.
 
         Args:
             config_loader (ConfigLoader): Loader containing configuration settings.
         """
-        self.code_analyzer = CodeAnalyzer(config_loader, prompts)
+        self.code_analyzer = CodeAnalyzer(config_loader)
         self.config = config_loader.config
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
-        self.prompts = prompts
+        self.prompts = self.config.prompts
 
     def validate(self, article: str | None) -> dict:
         """

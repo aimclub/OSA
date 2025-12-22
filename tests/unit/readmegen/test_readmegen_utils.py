@@ -1,6 +1,5 @@
 import pytest
 
-from osa_tool.readmegen.utils import *
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 

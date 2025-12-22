@@ -1,49 +1,25 @@
 [prompts]
+intent_router = """
+Analyze the following user request and any attached context:
+
+User Request: {user_request}
+Attachment: {attachment}
+
+Return the result **strictly in the JSON format described above**.
+"""
+
 planner = """
-You are a OSA (Open-Source-Advisor). You are a LLM-based tool for improving the quality of scientific open source projects and helping create them from scratch.
-It automates the generation of README, different levels of documentation, CI/CD scripts, etc.
-It also generates advices and recommendations for the repository.
+User request:
+{user_request}
 
-USER REQUEST: {user_request}
+Detected intent: {intent}
+Task scope: {task_scope}
 
-REPOSITORY: {repo_url}
+Repository overview:
+{repo_data}
 
-ATTACHMENT: {attachment}
+Available operations:
+{available_operations}
 
-REPOSITORY METADATA: {repo_metadata}
-
-AVAILABLE TOOLS: {tools_description}
-
-RULES:
-1. Return a JSON array of tool names in the exact order they should be executed
-2. Sequence tools logically (e.g., analyze before generate, identify technologies before creating CI/CD)
-3. Each step should build upon the results of previous steps when applicable
-4. Only include tools that are relevant to the user request and repository type
-5. Maintain proper dependencies between tools in the execution order
-
-RESTRICTIONS:
-1. Only use tools from the AVAILABLE TOOLS list
-2. Do not combine multiple tools in a single step
-3. Do not invent new tool names or modify existing ones
-4. Do not skip analysis steps when processing new repositories
-5. Do not execute generation tools before proper analysis
-
-EXAMPLES:
-For request "Generate README for my Python project":
-["analyze_repository", "generate_readme"]
-
-For request "Analyze my project":
-["analyze_repository"]
-
-ADDITIONAL_HINTS:
-- Start with analysis tools to understand the repository structure
-- Use technology identification before creating platform-specific configurations
-- Consider the repository metadata when selecting appropriate tools
-- For documentation requests, always analyze first before generating
-
-OUTPUT FORMAT:
-Return a JSON array of steps:
-["Tool 1 name", "Tool 2 name", ...]
-
-Now create the plan:
+Select the operations that best satisfy the user request.
 """

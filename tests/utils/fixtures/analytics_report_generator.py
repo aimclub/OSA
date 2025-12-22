@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from osa_tool.analytics.report_generator import TextGenerator
+from osa_tool.operations.analysis.repository_report.report_generator import TextGenerator
 from osa_tool.utils.prompts_builder import PromptLoader
 
 

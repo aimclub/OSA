@@ -2,11 +2,14 @@ import asyncio
 import os
 import time
 from abc import ABC, abstractmethod
+from typing import Any
 from uuid import uuid4
 
 import dotenv
 import tiktoken
 from langchain.schema import SystemMessage
+from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from protollm.connectors import create_llm_connector
 from pydantic import ValidationError
 
@@ -33,26 +36,37 @@ class ModelHandler(ABC):
     payload: dict
 
     @abstractmethod
-    def send_request(self, prompt: str) -> str: ...
+    def send_request(self, prompt: str, system_message: str = None) -> str: ...
 
     @abstractmethod
-    def send_and_parse(self, prompt: str, parser: callable, retry_delay: float = 0.5): ...
+    def send_and_parse(self, prompt: str, parser: callable, system_message: str = None, retry_delay: float = 0.5): ...
 
     @abstractmethod
-    async def async_request(self, prompt: str) -> str: ...
+    async def async_request(self, prompt: str, system_message: str = None) -> str: ...
 
     @abstractmethod
     async def async_send_and_parse(
         self,
         prompt: str,
         parser: callable,
+        system_message: str = None,
         retry_delay: float = 0.5,
     ): ...
 
     @abstractmethod
-    async def generate_concurrently(self, prompts: list[str]) -> list: ...
+    async def generate_concurrently(self, prompts: list[str], system_message: str = None) -> list: ...
 
-    def initialize_payload(self, config: Settings, prompt: str) -> None:
+    @abstractmethod
+    def run_chain(
+        self, prompt: str, parser: PydanticOutputParser, system_message: str = None, retry_delay: float = 0.5
+    ) -> Any: ...
+
+    @abstractmethod
+    async def async_run_chain(
+        self, prompt: str, parser: PydanticOutputParser, system_message: str = None, retry_delay: float = 0.5
+    ) -> Any: ...
+
+    def initialize_payload(self, config: Settings, system_message: str | None, prompt: str) -> None:
         """
         Initializes the payload for the instance.
 
@@ -61,12 +75,13 @@ class ModelHandler(ABC):
 
         Args:
             config: The configuration settings to be used for payload generation.
+            system_message: The system message to be used for payload generation.
             prompt: The prompt to be used for payload generation.
 
         Returns:
             None
         """
-        self.payload = PayloadFactory(config, prompt).to_payload_completions()
+        self.payload = PayloadFactory(config, system_message, prompt).to_payload_completions()
 
 
 class PayloadFactory:
@@ -83,7 +98,7 @@ class PayloadFactory:
         Converts the instance variables to a dictionary payload for completions. This method returns a dictionary with keys 'job_id', 'meta', and 'messages'. The 'meta' key contains a nested dictionary with keys 'temperature' and 'tokens_limit'. The values for these keys are taken from the instance variables of the same names.
     """
 
-    def __init__(self, config: Settings, prompt: str):
+    def __init__(self, config: Settings, system_message: str | None, prompt: str):
         """
         Initializes the instance with a unique job ID, temperature, tokens limit, prompt, and roles.
 
@@ -98,10 +113,11 @@ class PayloadFactory:
         self.job_id = str(uuid4())
         self.temperature = config.llm.temperature
         self.tokens_limit = config.llm.max_tokens
+        self.system_message = system_message or config.llm.system_prompt
         self.prompt = prompt
         self.roles = [
-            SystemMessage(content="You are a helpful assistant for analyzing open-source repositories."),
-            {"role": "user", "content": prompt},
+            SystemMessage(content=self.system_message),
+            {"role": "user", "content": self.prompt},
         ]
 
     def to_payload_completions(self) -> dict:
@@ -164,7 +180,7 @@ class ProtollmHandler(ModelHandler):
         self.max_retries = config.llm.max_retries
         self._configure_api(config.llm.api, model_name=config.llm.model)
 
-    def send_request(self, prompt: str) -> str:
+    def send_request(self, prompt: str, system_message: str = None) -> str:
         """
         Sends a request to a specified URL with a payload initialized with a given prompt.
 
@@ -172,18 +188,19 @@ class ProtollmHandler(ModelHandler):
         sends a POST request to a specified URL with this payload, and logs the response.
 
         Args:
-            prompt: The prompt to initialize the payload with.
+            prompt (str): The prompt to initialize the payload with.
+            system_message (str, optional): The system message to initialize the payload with.
 
         Returns:
             str: The response received from the request.
         """
         safe_prompt = self._limit_tokens(prompt)
-        self.initialize_payload(self.config, safe_prompt)
+        self.initialize_payload(self.config, safe_prompt, system_message)
         messages = self.payload["messages"]
         response = self.client.invoke(messages)
         return response.content
 
-    def send_and_parse(self, prompt: str, parser: callable, retry_delay: float = 0.5):
+    def send_and_parse(self, prompt: str, parser: callable, system_message: str = None, retry_delay: float = 0.5):
         """
         Sends a prompt to the LLM, applies a parser to the response, and retries on parsing or validation errors.
 
@@ -195,6 +212,7 @@ class ProtollmHandler(ModelHandler):
         Args:
             prompt (str): The prompt to send to the LLM.
             parser (callable): A function that parses and validates the raw LLM response.
+            system_message (str, optional): The system message to initialize the payload with.
             retry_delay (float, optional): Delay in seconds between retry attempts. Defaults to 0.5.
 
         Returns:
@@ -208,10 +226,13 @@ class ProtollmHandler(ModelHandler):
         last_raw = None
 
         for attempt in range(1, self.max_retries + 1):
-            last_raw = self.send_request(prompt)
+            last_raw = self.send_request(prompt, system_message)
 
             try:
-                return parser(last_raw)
+                result = parser(last_raw)
+
+                logger.info(f"Send and parse request success on attempt {attempt}/{self.max_retries}.")
+                return result
             except (JsonParseError, ValidationError) as e:
                 last_error = e
                 logger.warning(f"Parse failed (attempt {attempt}/{self.max_retries}): {e}")
@@ -220,22 +241,23 @@ class ProtollmHandler(ModelHandler):
                     time.sleep(retry_delay)
 
         logger.debug("Final failed LLM response after retries:\n%s", last_raw)
+        logger.debug(repr(last_error))
+        raise
 
-        raise last_error
-
-    async def async_request(self, prompt: str) -> str:
+    async def async_request(self, prompt: str, system_message: str = None) -> str:
         """
         Asynchronous alternative of send_request method.
         This method do the same things in general.
 
         Args:
-            prompt: The prompt to initialize the payload with.
+            prompt (str): The prompt to initialize the payload with.
+            system_message (str, optional): The system message to initialize the payload with.
 
         Returns:
             str: The response received from the request.
         """
         safe_prompt = self._limit_tokens(prompt)
-        self.initialize_payload(self.config, safe_prompt)
+        self.initialize_payload(self.config, safe_prompt, system_message)
         response = await self.client.ainvoke(self.payload["messages"])
         return response.content
 
@@ -243,6 +265,7 @@ class ProtollmHandler(ModelHandler):
         self,
         prompt: str,
         parser: callable,
+        system_message: str = None,
         retry_delay: float = 0.5,
     ):
         """
@@ -257,6 +280,7 @@ class ProtollmHandler(ModelHandler):
         Args:
             prompt (str): The prompt to send to the LLM.
             parser (callable): A function that parses and validates the raw LLM response.
+            system_message (str, optional): The system message to initialize the payload with.
             retry_delay (float, optional): Delay in seconds between retry attempts. Defaults to 0.5.
 
         Returns:
@@ -270,10 +294,13 @@ class ProtollmHandler(ModelHandler):
         last_raw = None
 
         for attempt in range(1, self.max_retries + 1):
-            last_raw = await self.async_request(prompt)
+            last_raw = await self.async_request(prompt, system_message)
 
             try:
-                return parser(last_raw)
+                result = parser(last_raw)
+
+                logger.info(f"Async send and parse request success on attempt {attempt}/{self.max_retries}.")
+                return result
 
             except JsonParseError as e:
                 last_error = e
@@ -283,21 +310,124 @@ class ProtollmHandler(ModelHandler):
                     await asyncio.sleep(retry_delay)
 
         logger.debug("Final failed async LLM response after retries:\n%s", last_raw)
-        raise last_error
+        logger.debug(repr(last_error))
+        raise
 
-    async def generate_concurrently(self, prompts: list[str]) -> list[str]:
+    async def generate_concurrently(self, prompts: list[str], system_message: str = None) -> list[str]:
         """
         Sends a batch of requests to the specified llm server endpoint.
         Requests would be sent in concurrent format and processed in the order of their input.
 
         Args:
             prompts: The batch of prompts to send on llm server endpoint.
+            system_message (str, optional): The system message to initialize the payload with.
 
         Returns:
             list[str]: The list of responses from awaited coroutines.
         """
-        coroutines = [self.async_request(p) for p in prompts]
+        coroutines = [self.async_request(p, system_message) for p in prompts]
         return await asyncio.gather(*coroutines)
+
+    def run_chain(
+        self, prompt: str, parser: PydanticOutputParser, system_message: str = None, retry_delay: float = 0.5
+    ) -> Any:
+        """
+        Runs a structured LLM chain synchronously, parses the output, and retries on errors.
+
+        The chain follows the sequence:
+            prompt → system prompt → LLM → parser → validated object
+
+        Args:
+            prompt (str): The user input prompt to send to the LLM.
+            parser (PydanticOutputParser): The parser used to validate and transform the LLM output.
+            system_message (str, optional): Optional system message to provide context to the LLM.
+            retry_delay (float, optional): Delay in seconds between retry attempts. Defaults to 0.5.
+
+        Returns:
+            Any: The successfully parsed object returned by the parser.
+
+        Raises:
+            Exception: The last exception encountered if all retry attempts fail.
+        """
+        chain = (
+            ChatPromptTemplate.from_messages(
+                [("system", system_message or self.config.llm.system_prompt), ("user", "{input}")]
+            )
+            | self.client
+            | parser
+        )
+
+        last_error = None
+
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                result = chain.invoke({"input": prompt})
+
+                logger.info(
+                    f"Run chain success on attempt {attempt}/{self.max_retries}. " f"Parser={parser.__class__.__name__}"
+                )
+                return result
+
+            except Exception as e:
+                last_error = e
+                logger.warning(f"Run chain failed (attempt {attempt}/{self.max_retries}): {e}")
+
+                if attempt < self.max_retries:
+                    time.sleep(retry_delay)
+
+        logger.debug(repr(last_error))
+        raise
+
+    async def async_run_chain(
+        self, prompt: str, parser: PydanticOutputParser, system_message: str = None, retry_delay: float = 0.5
+    ) -> Any:
+        """
+        Runs a structured LLM chain asynchronously, parses the output, and retries on errors.
+
+        The chain follows the sequence:
+            prompt → system prompt → LLM → parser → validated object
+
+        Args:
+            prompt (str): The user input prompt to send to the LLM.
+            parser (PydanticOutputParser): The parser used to validate and transform the LLM output.
+            system_message (str, optional): Optional system message to provide context to the LLM.
+            retry_delay (float, optional): Delay in seconds between retry attempts. Defaults to 0.5.
+
+        Returns:
+            Any: The successfully parsed object returned by the parser.
+
+        Raises:
+            Exception: The last exception encountered if all retry attempts fail.
+        """
+        chain = (
+            ChatPromptTemplate.from_messages(
+                [("system", system_message or self.config.llm.system_prompt), ("user", "{input}")]
+            )
+            | self.client
+            | parser
+        )
+
+        last_error = None
+
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                result = await chain.ainvoke({"input": prompt})
+
+                logger.info(
+                    f"Async chain success on attempt {attempt}/{self.max_retries}. "
+                    f"Parser={parser.__class__.__name__}"
+                )
+                return result
+
+            except Exception as e:
+                last_error = e
+                logger.warning(f"Async run_chain failed (attempt {attempt}/{self.max_retries}): {e}")
+
+                if attempt < self.max_retries:
+                    await asyncio.sleep(retry_delay)
+
+        logger.debug(repr(last_error))
+        raise
 
     def _build_model_url(self) -> str:
         """Builds the model URL based on the LLM API type."""

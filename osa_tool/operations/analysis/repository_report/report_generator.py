@@ -3,29 +3,27 @@ import os
 from pydantic import ValidationError
 
 from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.analytics.response_validation import (
+from osa_tool.analytics.sourcerank import SourceRank
+from osa_tool.config.settings import ConfigLoader
+from osa_tool.models.models import ModelHandler, ModelHandlerFactory
+from osa_tool.operations.analysis.repository_report.response_validation import (
     RepositoryReport,
     RepositoryStructure,
     ReadmeEvaluation,
     CodeDocumentation,
     OverallAssessment,
 )
-from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.config.settings import ConfigLoader
-from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.utils.logger import logger
-from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor, JsonParseError
 from osa_tool.utils.utils import extract_readme_content, parse_folder_name
 
 
 class TextGenerator:
-    def __init__(
-        self, config_loader: ConfigLoader, sourcerank: SourceRank, prompts: PromptLoader, metadata: RepositoryMetadata
-    ):
+    def __init__(self, config_loader: ConfigLoader, sourcerank: SourceRank, metadata: RepositoryMetadata):
         self.config = config_loader.config
         self.sourcerank = sourcerank
-        self.prompts = prompts
+        self.prompts = self.config.prompts
         self.metadata = metadata
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.repo_url = self.config.git.repository

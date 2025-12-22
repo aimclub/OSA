@@ -6,8 +6,8 @@ import tomli
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.readmegen.context.dependencies import DependencyExtractor
-from osa_tool.readmegen.context.pypi_status_checker import PyPiPackageInspector
+from osa_tool.operations.docs.readme_generation.context.pypi_status_checker import PyPiPackageInspector
+from osa_tool.tools.repository_analysis.dependencies import DependencyExtractor
 from osa_tool.utils.utils import osa_project_root, parse_folder_name
 
 
@@ -22,7 +22,7 @@ class HeaderBuilder:
         self.template_path = os.path.join(osa_project_root(), "config", "templates", "template.toml")
         self.icons_tech_path = os.path.join(
             osa_project_root(),
-            "readmegen",
+            "readme_generation",
             "generator",
             "icons",
             "shieldsio_icons.json",

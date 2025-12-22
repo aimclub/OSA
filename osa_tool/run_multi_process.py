@@ -9,13 +9,13 @@ import pandas as pd
 from pandas import DataFrame
 
 from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent
-from osa_tool.readmegen.context.pypi_status_checker import PyPiPackageInspector
-from osa_tool.readmegen.readme_core import ReadmeAgent
-from osa_tool.readmegen.utils import format_time
+from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator
+from osa_tool.operations.docs.readme_generation.context.pypi_status_checker import PyPiPackageInspector
+from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
+from osa_tool.operations.docs.readme_generation.utils import format_time
 from osa_tool.run import generate_docstrings, load_configuration
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.prompts_builder import PromptLoader

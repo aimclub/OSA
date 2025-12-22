@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from osa_tool.readmegen.generator.installation import InstallationSectionBuilder
+from osa_tool.operations.docs.readme_generation.generator.installation import InstallationSectionBuilder
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
@@ -84,7 +84,7 @@ def test_generate_install_command_with_requirements_txt(mock_installation_builde
     builder = mock_installation_builder
     builder.info = None
 
-    with patch("osa_tool.readmegen.generator.installation.find_in_repo_tree", return_value="requirements.txt"):
+    with patch("osa_tool.readme_generation.generator.installation.find_in_repo_tree", return_value="requirements.txt"):
 
         # Act
         command = builder._generate_install_command()

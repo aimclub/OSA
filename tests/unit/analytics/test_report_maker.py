@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 
 from reportlab.platypus import Table, Paragraph, ListFlowable, Flowable
 
-from osa_tool.analytics.report_maker import ReportGenerator
+from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator
 from osa_tool.utils.prompts_builder import PromptLoader
 
 

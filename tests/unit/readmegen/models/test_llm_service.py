@@ -50,10 +50,10 @@ def test_get_responses_article_returns_expected(llm_client, mock_model_handler, 
     )
 
     with (
-        patch("osa_tool.readmegen.context.files_contents.FileProcessor") as MockFP,
-        patch("osa_tool.readmegen.utils.extract_example_paths") as mock_extract_examples,
-        patch("osa_tool.readmegen.context.article_path.get_pdf_path") as mock_pdf_path,
-        patch("osa_tool.readmegen.context.article_content.PdfParser.data_extractor") as mock_pdf_extract,
+        patch("osa_tool.readme_generation.context.files_contents.FileProcessor") as MockFP,
+        patch("osa_tool.readme_generation.utils.extract_example_paths") as mock_extract_examples,
+        patch("osa_tool.readme_generation.context.article_path.get_pdf_path") as mock_pdf_path,
+        patch("osa_tool.readme_generation.context.article_content.PdfParser.data_extractor") as mock_pdf_extract,
     ):
 
         def fp_side_effect(config_loader, file_paths):
@@ -93,8 +93,8 @@ def test_get_responses_returns_expected(llm_client, mock_model_handler, mock_fil
     example_files_mock = mock_file_processor_factory([("demo.py", "examples/demo.py", "main()")])
 
     with (
-        patch("osa_tool.readmegen.context.files_contents.FileProcessor") as MockFP,
-        patch("osa_tool.readmegen.utils.extract_example_paths") as mock_extract,
+        patch("osa_tool.readme_generation.context.files_contents.FileProcessor") as MockFP,
+        patch("osa_tool.readme_generation.utils.extract_example_paths") as mock_extract,
     ):
 
         def fp_side_effect(config_loader, files_list):

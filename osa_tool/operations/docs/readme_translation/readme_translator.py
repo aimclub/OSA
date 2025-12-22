@@ -5,20 +5,30 @@ import shutil
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandlerFactory, ModelHandler
-from osa_tool.readmegen.utils import read_file, save_sections, remove_extra_blank_lines
+from osa_tool.operations.docs.readme_generation.utils import read_file, save_sections, remove_extra_blank_lines
+from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.utils.logger import logger
-from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.utils.utils import parse_folder_name
 
 
+class TranslateReadmeOperation(Operation):
+    name = "translate_readme"
+    description = "Translate README.md into another language"
+    supported_intents = ["new_task", "feedback"]
+    supported_scopes = ["full_repo", "docs"]
+    priority = 75
+
+
+OperationRegistry.register(TranslateReadmeOperation())
+
+
 class ReadmeTranslator:
-    def __init__(
-        self, config_loader: ConfigLoader, prompts: PromptLoader, metadata: RepositoryMetadata, languages: list[str]
-    ):
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata, languages: list[str]):
         self.config_loader = config_loader
         self.config = self.config_loader.config
-        self.prompts = prompts
+        self.prompts = self.config.prompts
         self.rate_limit = self.config.llm.rate_limit
         self.languages = languages
         self.metadata = metadata
