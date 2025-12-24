@@ -60,6 +60,23 @@ def build_config_path() -> str:
     return os.path.join(osa_project_root(), "config", "settings", "config.toml")
 
 
+def switch_to_output_directory(path: str | Path) -> Path:
+    """
+    Ensure the given output directory exists and change current working directory to it.
+    Returns the resolved Path object.
+    """
+    output_path = Path(path).resolve()
+
+    if not output_path.exists():
+        output_path.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Created directory: {output_path}")
+
+    os.chdir(output_path)
+    logger.info(f"Output path changed to {output_path}")
+
+    return output_path
+
+
 def get_base_repo_url(repo_url: str) -> str:
     """
     Extracts the base repository URL path from a given Git URL.

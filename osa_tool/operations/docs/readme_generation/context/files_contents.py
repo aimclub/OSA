@@ -3,7 +3,7 @@ import os
 from pydantic import BaseModel
 
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.readmegen.utils import read_file
+from osa_tool.operations.docs.readme_generation.utils import read_file
 from osa_tool.utils.utils import parse_folder_name
 
 

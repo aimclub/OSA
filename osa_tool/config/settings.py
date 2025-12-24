@@ -17,6 +17,7 @@ from pydantic import (
     model_validator,
 )
 
+from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.utils import build_config_path, parse_git_url
 
 
@@ -57,6 +58,7 @@ class ModelSettings(BaseModel):
     top_p: NonNegativeFloat
     max_retries: PositiveInt
     allowed_providers: list[str]
+    system_prompt: str
 
 
 class WorkflowSettings(BaseModel):
@@ -91,21 +93,23 @@ class WorkflowSettings(BaseModel):
 
 class Settings(BaseModel):
     """
-    Pydantic settings model for the readmegen package.
+    Pydantic settings model for the readme_generation package.
     """
 
     git: GitSettings
     llm: ModelSettings
     workflows: WorkflowSettings
+    prompts: PromptLoader = Field(default_factory=PromptLoader)
 
     model_config = ConfigDict(
         validate_assignment=True,
+        arbitrary_types_allowed=True,
     )
 
 
 class ConfigLoader:
     """
-    Loads the configuration settings for the readmegen package.
+    Loads the configuration settings for the readme_generation package.
     """
 
     def __init__(self) -> None:

@@ -6,7 +6,7 @@ from osa_tool.config.settings import ConfigLoader
 from osa_tool.git_agent.git_agent import GitAgent
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.utils.logger import logger
-from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.utils import extract_readme_content, parse_folder_name
 
 HOMEPAGE_KEYS = [
@@ -24,9 +24,9 @@ HOMEPAGE_KEYS = [
 class AboutGenerator:
     """Generates Git repository About section content."""
 
-    def __init__(self, config_loader: ConfigLoader, prompts: PromptLoader, git_agent: GitAgent):
+    def __init__(self, config_loader: ConfigLoader, git_agent: GitAgent):
         self.config = config_loader.config
-        self.prompts = prompts
+        self.prompts = self.config.prompts
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.repo_url = self.config.git.repository
         self.metadata = git_agent.metadata

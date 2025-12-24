@@ -1,4 +1,4 @@
-from osa_tool.analytics.response_validation import (
+from osa_tool.operations.analysis.repository_report.response_validation import (
     RepositoryReport,
     RepositoryStructure,
     ReadmeEvaluation,

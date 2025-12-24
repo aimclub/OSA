@@ -1,6 +1,6 @@
 import textwrap
 
-from osa_tool.readmegen.context.dependencies import DependencyExtractor
+from osa_tool.tools.repository_analysis.dependencies import DependencyExtractor
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 

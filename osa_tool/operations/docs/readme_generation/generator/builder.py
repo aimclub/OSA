@@ -1,8 +1,7 @@
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.readmegen.generator.base_builder import MarkdownBuilderBase
-from osa_tool.readmegen.utils import find_in_repo_tree
-from osa_tool.utils.prompts_builder import PromptLoader
+from osa_tool.operations.docs.readme_generation.generator.base_builder import MarkdownBuilderBase
+from osa_tool.operations.docs.readme_generation.utils import find_in_repo_tree
 
 
 class MarkdownBuilder(MarkdownBuilderBase):
@@ -13,13 +12,12 @@ class MarkdownBuilder(MarkdownBuilderBase):
     def __init__(
         self,
         config_loader: ConfigLoader,
-        prompts: PromptLoader,
         metadata: RepositoryMetadata,
         overview: str = None,
         core_features: str = None,
         getting_started: str = None,
     ):
-        super().__init__(config_loader, prompts, metadata, overview=overview, getting_started=getting_started)
+        super().__init__(config_loader, metadata, overview=overview, getting_started=getting_started)
         self._core_features_json = core_features
 
     @property

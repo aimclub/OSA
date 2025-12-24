@@ -8,11 +8,10 @@ import tomli
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.readmegen.generator.header import HeaderBuilder
-from osa_tool.readmegen.generator.installation import InstallationSectionBuilder
-from osa_tool.readmegen.models.llm_service import LLMClient
-from osa_tool.readmegen.utils import find_in_repo_tree
-from osa_tool.utils.prompts_builder import PromptLoader
+from osa_tool.operations.docs.readme_generation.generator.header import HeaderBuilder
+from osa_tool.operations.docs.readme_generation.generator.installation import InstallationSectionBuilder
+from osa_tool.operations.docs.readme_generation.models.llm_service import LLMClient
+from osa_tool.operations.docs.readme_generation.utils import find_in_repo_tree
 from osa_tool.utils.utils import osa_project_root
 
 
@@ -20,7 +19,6 @@ class MarkdownBuilderBase:
     def __init__(
         self,
         config_loader: ConfigLoader,
-        prompts: PromptLoader,
         metadata: RepositoryMetadata,
         overview=None,
         getting_started=None,
@@ -28,7 +26,7 @@ class MarkdownBuilderBase:
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.sourcerank = SourceRank(self.config_loader)
-        self.prompts = prompts
+        self.prompts = self.config.prompts
         self.repo_url = self.config.git.repository
         self.metadata = metadata
         self.url_path = f"https://{self.config.git.host_domain}/{self.config.git.full_name}/"
@@ -111,7 +109,7 @@ class MarkdownBuilderBase:
             path = self.url_path + self.branch_path + find_in_repo_tree(self.sourcerank.tree, pattern)
             return self._template["citation"] + self._template["citation_v1"].format(path=path)
 
-        llm_client = LLMClient(self.config_loader, self.prompts, self.metadata)
+        llm_client = LLMClient(self.config_loader, self.metadata)
         citation_from_readme = llm_client.get_citation_from_readme()
 
         if citation_from_readme:

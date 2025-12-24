@@ -5,7 +5,7 @@ import tomli
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.readmegen.utils import (
+from osa_tool.operations.docs.readme_generation.utils import (
     find_in_repo_tree,
     remove_extra_blank_lines,
     save_sections,

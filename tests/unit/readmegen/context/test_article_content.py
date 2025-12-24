@@ -2,11 +2,11 @@ from unittest.mock import MagicMock, patch
 
 from pdfminer.layout import LTTextContainer
 
-from osa_tool.readmegen.context.article_content import PdfParser
+from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
 
 
-@patch("osa_tool.readmegen.context.article_content.pdfplumber.open")
-@patch("osa_tool.readmegen.context.article_content.extract_pages")
+@patch("osa_tool.operations.docs.readme_generation.context.article_content.pdfplumber.open")
+@patch("osa_tool.operations.docs.readme_generation.context.article_content.extract_pages")
 def test_basic_text_extraction(mock_extract_pages, mock_pdfplumber_open, mock_lt_element, tmp_path):
     # Arrange
     pdf_file = tmp_path / "sample.pdf"
@@ -38,8 +38,10 @@ def test_ignore_short_text(tmp_path):
     element.bbox = (0, 0, 1, 1)
 
     with (
-        patch("osa_tool.readmegen.context.article_content.pdfplumber.open") as mock_open,
-        patch("osa_tool.readmegen.context.article_content.extract_pages", return_value=[[element]]),
+        patch("osa_tool.operations.docs.readme_generation.context.article_content.pdfplumber.open") as mock_open,
+        patch(
+            "osa_tool.operations.docs.readme_generation.context.article_content.extract_pages", return_value=[[element]]
+        ),
         patch.object(PdfParser, "is_table_text_lines", return_value=False),
         patch.object(PdfParser, "is_table_text_standard", return_value=False),
     ):
@@ -61,8 +63,11 @@ def test_ignore_table_text_lines(mock_lt_element, tmp_path):
     pdf_file.write_text("dummy content")
 
     with (
-        patch("osa_tool.readmegen.context.article_content.pdfplumber.open") as mock_open,
-        patch("osa_tool.readmegen.context.article_content.extract_pages", return_value=[[mock_lt_element]]),
+        patch("osa_tool.operations.docs.readme_generation.context.article_content.pdfplumber.open") as mock_open,
+        patch(
+            "osa_tool.operations.docs.readme_generation.context.article_content.extract_pages",
+            return_value=[[mock_lt_element]],
+        ),
         patch.object(PdfParser, "is_table_text_lines", return_value=True),
         patch.object(PdfParser, "is_table_text_standard", return_value=False),
     ):
@@ -89,8 +94,10 @@ def test_file_removal(tmp_path):
     element.bbox = (0, 0, 10, 10)
 
     with (
-        patch("osa_tool.readmegen.context.article_content.pdfplumber.open") as mock_open,
-        patch("osa_tool.readmegen.context.article_content.extract_pages", return_value=[[element]]),
+        patch("osa_tool.operations.docs.readme_generation.context.article_content.pdfplumber.open") as mock_open,
+        patch(
+            "osa_tool.operations.docs.readme_generation.context.article_content.extract_pages", return_value=[[element]]
+        ),
         patch.object(PdfParser, "is_table_text_lines", return_value=False),
         patch.object(PdfParser, "is_table_text_standard", return_value=False),
     ):

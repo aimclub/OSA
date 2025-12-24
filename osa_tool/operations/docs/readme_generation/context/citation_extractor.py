@@ -2,9 +2,9 @@ from scholarly import scholarly
 
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.readmegen.context.article_content import PdfParser
-from osa_tool.readmegen.context.article_path import get_pdf_path
-from osa_tool.readmegen.models.llm_service import LLMClient
+from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
+from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
+from osa_tool.operations.docs.readme_generation.models.llm_service import LLMClient
 from osa_tool.utils.prompts_builder import PromptLoader
 
 

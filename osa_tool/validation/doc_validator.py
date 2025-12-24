@@ -7,10 +7,10 @@ import docx2txt
 
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
-from osa_tool.readmegen.context.article_content import PdfParser
-from osa_tool.readmegen.context.article_path import get_pdf_path
+from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
+from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
 from osa_tool.utils.logger import logger
-from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.validation.code_analyzer import CodeAnalyzer
 
@@ -23,17 +23,17 @@ class DocValidator:
     analyzes code files in the repository, and validates the documentation against the codebase using a language model.
     """
 
-    def __init__(self, config_loader: ConfigLoader, prompts: PromptLoader):
+    def __init__(self, config_loader: ConfigLoader):
         """
         Initialize the DocValidator.
 
         Args:
             config_loader (ConfigLoader): Loader containing configuration settings.
         """
-        self.code_analyzer = CodeAnalyzer(config_loader, prompts)
         self.config = config_loader.config
+        self.code_analyzer = CodeAnalyzer(config_loader)
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
-        self.prompts = prompts
+        self.prompts = self.config.prompts
 
     def _describe_image(self, image_path: str):
         base64_image = self._encode_image(image_path)
@@ -56,7 +56,7 @@ class DocValidator:
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode("utf-8")
 
-    async def validate(self, path_to_doc: str | None) -> str | None:
+    async def validate(self, path_to_doc: str | None) -> dict | None:
         """
         Asynchronously validate a documentation file against the code repository.
 
@@ -64,7 +64,7 @@ class DocValidator:
             path_to_doc (str): Path to the documentation file (.docx or .pdf) or None.
 
         Returns:
-            str | None: Validation result from the language model or None if an error occurred.
+            dict | None: Validation result from the language model or None if an error occurred.
         """
         if not path_to_doc:
             raise ValueError("Document is missing! Please pass it using --attachment argument.")
@@ -98,7 +98,7 @@ class DocValidator:
             raise ValueError(f"Unprocessable file format: {path_to_doc}")
         processed_content = self._preprocess_text(raw_content)
         logger.info("Sending request to process document's content ...")
-        response = await self.model_handler.async_request(
+        response = await self.model_handler.async_send_and_parse(
             PromptBuilder.render(
                 self.prompts.get("validation.extract_document_sections"),
                 doc_content=processed_content,
@@ -165,7 +165,7 @@ class DocValidator:
 
         return text.strip()
 
-    async def validate_doc_against_repo(self, doc_info: str, code_files_info: str) -> str:
+    async def validate_doc_against_repo(self, doc_info: str, code_files_info: str) -> dict:
         """
         Asynchronously validate the processed document content against the code repository.
 
@@ -174,10 +174,10 @@ class DocValidator:
             code_files_info (str): Aggregated code files analysis.
 
         Returns:
-            str: Validation result from the language model.
+            dict: Validation result from the language model.
         """
         logger.info("Validating doc against repository ...")
-        response = await self.model_handler.async_request(
+        response = await self.model_handler.async_send_and_parse(
             PromptBuilder.render(
                 self.prompts.get("validation.validate_doc_against_repo"),
                 doc_info=doc_info,

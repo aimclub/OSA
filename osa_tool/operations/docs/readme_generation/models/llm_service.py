@@ -4,22 +4,22 @@ from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
-from osa_tool.readmegen.context.article_content import PdfParser
-from osa_tool.readmegen.context.article_path import get_pdf_path
-from osa_tool.readmegen.context.files_contents import FileProcessor
-from osa_tool.readmegen.utils import extract_example_paths
+from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
+from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
+from osa_tool.operations.docs.readme_generation.context.files_contents import FileProcessor
+from osa_tool.operations.docs.readme_generation.utils import extract_example_paths
 from osa_tool.utils.logger import logger
-from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.utils.utils import parse_folder_name, extract_readme_content
 
 
 class LLMClient:
-    def __init__(self, config_loader: ConfigLoader, prompts: PromptLoader, metadata: RepositoryMetadata):
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
         self.config_loader = config_loader
-        self.prompts = prompts
         self.metadata = metadata
         self.config = self.config_loader.config
+        self.prompts = self.config.prompts
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.sourcerank = SourceRank(config_loader)
         self.tree = self.sourcerank.tree

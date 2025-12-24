@@ -19,12 +19,13 @@ class PromptFormatError(PromptBuilderError):
 
 class PromptBuilder:
     @staticmethod
-    def render(template: str, **kwargs) -> str:
+    def render(template: str, safe: bool = False, **kwargs) -> str:
         """
-        Render template using Python's format().
-        Raises PromptBuilderError if any placeholder is missing.
+        Render template using Python's format(), unless safe=True.
         """
         try:
+            if safe:
+                return template
             return template.format(**kwargs)
         except KeyError as e:
             missing = e.args[0]
