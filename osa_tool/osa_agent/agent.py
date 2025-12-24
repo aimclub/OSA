@@ -137,6 +137,22 @@ class OSAAgent:
 
         return state
 
+    def executor(self, state: OSAState) -> OSAState:
+        state.active_agent = "Executor"
+        state.status = AgentStatus.GENERATING
+        state.current_step_index = len(state.plan)
+        return state
+
+    def reviewer(self, state: OSAState) -> OSAState:
+        state.active_agent = "ReviewAgent"
+        state.review_decision = "approved"
+        return state
+
+    def finalizer(self, state: OSAState) -> OSAState:
+        state.active_agent = "Finalizer"
+        state.status = AgentStatus.COMPLETED
+        return state
+
     @classmethod
     def build_graph(cls, agent_config: OSAConfig):
         osa_agent = cls(agent_config)
@@ -145,16 +161,32 @@ class OSAAgent:
         graph.add_node("intent_router", osa_agent.intent_router)
         graph.add_node("repo_analysis", osa_agent.repo_analysis)
         graph.add_node("planner", osa_agent.planner)
+        graph.add_node("executor", osa_agent.executor)
+        graph.add_node("reviewer", osa_agent.reviewer)
+        graph.add_node("finalizer", osa_agent.finalizer)
 
         graph.set_entry_point("intent_router")
 
         graph.add_conditional_edges(
             "intent_router",
             lambda state: ("intent_router" if state.status == AgentStatus.WAITING_FOR_USER else "repo_analysis"),
+            {
+                "need_clarification": "intent_router",
+                "intent_detected": "repo_analysis",
+            },
         )
-
         graph.add_edge("repo_analysis", "planner")
-        graph.add_edge("planner", END)
+        graph.add_edge("planner", "executor")
+        graph.add_edge("executor", "reviewer")
+        graph.add_conditional_edges(
+            "reviewer",
+            lambda state: ("finalizer" if state.review_decision == "approved" else "planner"),
+            {
+                "approved": "finalizer",
+                "needs_changes": "planner",
+            },
+        )
+        graph.add_edge("finalizer", END)
 
         return graph.compile()
 

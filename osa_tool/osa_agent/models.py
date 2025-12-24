@@ -37,7 +37,7 @@ class AgentStatus(str, Enum):
     GENERATING = "generating"
     WAITING_FOR_USER = "waiting_for_user"
     ERROR = "error"
-    DONE = "done"
+    COMPLETED = "completed"
 
 
 class TaskStatus(str, Enum):
