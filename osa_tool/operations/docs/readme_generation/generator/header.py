@@ -22,6 +22,8 @@ class HeaderBuilder:
         self.template_path = os.path.join(osa_project_root(), "config", "templates", "template.toml")
         self.icons_tech_path = os.path.join(
             osa_project_root(),
+            "operations",
+            "docs",
             "readme_generation",
             "generator",
             "icons",

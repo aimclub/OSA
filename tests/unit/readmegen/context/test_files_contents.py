@@ -15,7 +15,7 @@ def test_file_processor_initialization(mock_config_loader):
     assert processor.length_of_content == 50_000
 
 
-@patch("osa_tool.readme_generation.context.files_contents.read_file")
+@patch("osa_tool.operations.docs.readme_generation.context.files_contents.read_file")
 def test_create_file_context_truncates_content(mock_read_file, mock_config_loader):
     # Arrange
     mock_read_file.return_value = "a" * 100_000
@@ -33,7 +33,7 @@ def test_create_file_context_truncates_content(mock_read_file, mock_config_loade
     assert file_context.content == "a" * processor.length_of_content
 
 
-@patch("osa_tool.readme_generation.context.files_contents.read_file")
+@patch("osa_tool.operations.docs.readme_generation.context.files_contents.read_file")
 def test_process_files_returns_file_context_list(mock_read_file, mock_config_loader):
     # Arrange
     mock_read_file.side_effect = ["content1", "content2"]

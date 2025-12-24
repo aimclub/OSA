@@ -84,7 +84,10 @@ def test_generate_install_command_with_requirements_txt(mock_installation_builde
     builder = mock_installation_builder
     builder.info = None
 
-    with patch("osa_tool.readme_generation.generator.installation.find_in_repo_tree", return_value="requirements.txt"):
+    with patch(
+        "osa_tool.operations.docs.readme_generation.generator.installation.find_in_repo_tree",
+        return_value="requirements.txt",
+    ):
 
         # Act
         command = builder._generate_install_command()

@@ -4,7 +4,6 @@ from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
 from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
-
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor
@@ -31,7 +30,7 @@ class PaperValidator:
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.prompts = self.config.prompts
 
-    async def validate(self, article: str | None) -> str | None:
+    async def validate(self, article: str | None) -> dict | None:
         """
         Asynchronously validate a scientific paper against the code repository.
 
@@ -39,7 +38,7 @@ class PaperValidator:
             article (str | None): Path to the paper PDF file.
 
         Returns:
-            str | None: Validation result from the language model or none if an error occurs.
+            dict | None: Validation result from the language model or none if an error occurs.
 
         Raises:
             ValueError: If the article path is missing.
@@ -77,7 +76,7 @@ class PaperValidator:
         logger.info("Extracting text from PDF ...")
         pdf_content = await asyncio.to_thread(PdfParser(path_to_pdf).data_extractor)
         logger.info("Sending request to extract sections ...")
-        response = await self.model_handler.async_request(
+        response = await self.model_handler.async_send_and_parse(
             PromptBuilder.render(
                 self.prompts.get("validation.extract_paper_section"),
                 paper_content=pdf_content,
@@ -87,7 +86,7 @@ class PaperValidator:
         logger.debug(response)
         return response
 
-    async def validate_paper_against_repo(self, paper_info: str, code_files_info: str) -> str:
+    async def validate_paper_against_repo(self, paper_info: str, code_files_info: str) -> dict:
         """
         Asynchronously validate the processed paper content against the code repository.
 
@@ -96,10 +95,10 @@ class PaperValidator:
             code_files_info (str): Aggregated code files analysis.
 
         Returns:
-            str: Validation result from the language model.
+            dict: Validation result from the language model.
         """
         logger.info("Validating paper against repository ...")
-        response = await self.model_handler.async_request(
+        response = await self.model_handler.async_send_and_parse(
             PromptBuilder.render(
                 self.prompts.get("validation.validate_paper_against_repo"),
                 paper_info=paper_info,

@@ -12,7 +12,7 @@ def test_get_published_package_name(tree_type, mock_requests_response_factory):
     inspector = PyPiPackageInspector(get_mock_repo_tree(tree_type), base_path=".")
 
     with (
-        patch("osa_tool.readme_generation.context.pypi_status_checker.read_file") as mock_read_file,
+        patch("osa_tool.operations.docs.readme_generation.context.pypi_status_checker.read_file") as mock_read_file,
         patch("requests.get") as mock_get,
     ):
 
@@ -57,7 +57,7 @@ def test_get_info_success(mock_requests_response_factory):
     inspector = PyPiPackageInspector(get_mock_repo_tree("WITH_PYPROJECT"), base_path=".")
 
     with (
-        patch("osa_tool.readme_generation.context.pypi_status_checker.read_file") as mock_read_file,
+        patch("osa_tool.operations.docs.readme_generation.context.pypi_status_checker.read_file") as mock_read_file,
         patch("requests.get") as mock_get,
     ):
 

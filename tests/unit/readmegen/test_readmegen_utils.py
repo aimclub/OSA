@@ -1,5 +1,18 @@
+import json
+import os
+
 import pytest
 
+from osa_tool.operations.docs.readme_generation.utils import (
+    read_file,
+    read_ipynb_file,
+    save_sections,
+    extract_relative_paths,
+    find_in_repo_tree,
+    clean_code_block_indents,
+    remove_extra_blank_lines,
+    extract_example_paths,
+)
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 

@@ -159,7 +159,7 @@ def test_toc_generation(mock_markdown_builder, llm_client, mock_model_handler):
 
     llm_client.model_handler = mock_model_handler(side_effect=['{"citation": null}'])
 
-    with patch("osa_tool.readme_generation.generator.base_builder.LLMClient", return_value=llm_client):
+    with patch("osa_tool.operations.docs.readme_generation.generator.base_builder.LLMClient", return_value=llm_client):
 
         # Act
         result = builder.toc
@@ -210,7 +210,7 @@ def test_build_method_minimal(mock_markdown_builder, sourcerank_with_repo_tree, 
     llm_client.model_handler = mock_model_handler(side_effect=['{"citation": ""}'])
 
     with (
-        patch("osa_tool.readme_generation.generator.base_builder.LLMClient", return_value=llm_client),
+        patch("osa_tool.operations.docs.readme_generation.generator.base_builder.LLMClient", return_value=llm_client),
         patch.object(MarkdownBuilder, "_check_url", return_value=False),
     ):
         # Act

@@ -20,9 +20,9 @@ from osa_tool.utils.utils import extract_readme_content, parse_folder_name
 
 
 class TextGenerator:
-    def __init__(self, config_loader: ConfigLoader, sourcerank: SourceRank, metadata: RepositoryMetadata):
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
         self.config = config_loader.config
-        self.sourcerank = sourcerank
+        self.sourcerank = SourceRank(config_loader)
         self.prompts = self.config.prompts
         self.metadata = metadata
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)

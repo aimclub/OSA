@@ -66,7 +66,7 @@ class ModelHandler(ABC):
         self, prompt: str, parser: PydanticOutputParser, system_message: str = None, retry_delay: float = 0.5
     ) -> Any: ...
 
-    def initialize_payload(self, config: Settings, system_message: str | None, prompt: str) -> None:
+    def initialize_payload(self, config: Settings, prompt: str, system_message: str = None) -> None:
         """
         Initializes the payload for the instance.
 
@@ -81,7 +81,9 @@ class ModelHandler(ABC):
         Returns:
             None
         """
-        self.payload = PayloadFactory(config, system_message, prompt).to_payload_completions()
+        self.payload = PayloadFactory(
+            config=config, prompt=prompt, system_message=system_message
+        ).to_payload_completions()
 
 
 class PayloadFactory:
@@ -98,7 +100,7 @@ class PayloadFactory:
         Converts the instance variables to a dictionary payload for completions. This method returns a dictionary with keys 'job_id', 'meta', and 'messages'. The 'meta' key contains a nested dictionary with keys 'temperature' and 'tokens_limit'. The values for these keys are taken from the instance variables of the same names.
     """
 
-    def __init__(self, config: Settings, system_message: str | None, prompt: str):
+    def __init__(self, config: Settings, prompt: str, system_message: str = None):
         """
         Initializes the instance with a unique job ID, temperature, tokens limit, prompt, and roles.
 

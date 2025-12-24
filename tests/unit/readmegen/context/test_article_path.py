@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import requests
 
-from osa_tool.operations.docs.readme_generation.context import get_pdf_path, fetch_pdf_from_url
+from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path, fetch_pdf_from_url
 
 
 def test_get_pdf_path_local_valid(temp_pdf_file):
@@ -31,7 +31,9 @@ def test_get_pdf_path_local_missing():
     assert get_pdf_path("nonexistent.pdf") is None
 
 
-@patch("osa_tool.readme_generation.context.article_path.fetch_pdf_from_url", return_value="/tmp/fake.pdf")
+@patch(
+    "osa_tool.operations.docs.readme_generation.context.article_path.fetch_pdf_from_url", return_value="/tmp/fake.pdf"
+)
 def test_get_pdf_path_url_valid(mock_fetch):
     # Act
     result = get_pdf_path("http://example.com/file.pdf")
@@ -41,7 +43,7 @@ def test_get_pdf_path_url_valid(mock_fetch):
     mock_fetch.assert_called_once()
 
 
-@patch("osa_tool.readme_generation.context.article_path.fetch_pdf_from_url", return_value=None)
+@patch("osa_tool.operations.docs.readme_generation.context.article_path.fetch_pdf_from_url", return_value=None)
 def test_get_pdf_path_url_invalid(mock_fetch):
     # Act
     result = get_pdf_path("http://example.com/invalid.pdf")

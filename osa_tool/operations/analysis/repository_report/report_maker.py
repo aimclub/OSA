@@ -44,7 +44,6 @@ class AbstractReportGenerator(ABC):
         self.config = config_loader.config
         self.sourcerank = SourceRank(config_loader)
         self.metadata = metadata
-        self.text_generator = TextGenerator(config_loader, self.sourcerank, self.metadata)
         self.repo_url = self.config.git.repository
         self.osa_url = "https://github.com/aimclub/OSA"
 
@@ -322,11 +321,9 @@ class AbstractReportGenerator(ABC):
 
 class ReportGenerator(AbstractReportGenerator):
 
-    def __init__(
-        self, config_loader: ConfigLoader, sourcerank: SourceRank, prompts: PromptLoader, metadata: RepositoryMetadata
-    ):
-        super().__init__(config_loader, sourcerank, metadata)
-        self.text_generator = TextGenerator(config_loader, self.sourcerank, prompts, self.metadata)
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
+        super().__init__(config_loader, metadata)
+        self.text_generator = TextGenerator(config_loader, self.metadata)
 
     def body_second_part(self) -> list[Flowable]:
         """
@@ -401,11 +398,10 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
     def __init__(
         self,
         config_loader: ConfigLoader,
-        sourcerank: SourceRank,
         what_has_been_done: list[tuple[str, bool]],
         metadata: RepositoryMetadata,
     ):
-        super().__init__(config_loader, sourcerank, metadata)
+        super().__init__(config_loader, metadata)
         self.filename = f"{self.metadata.name}_what_has_been_done_report.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
         self.what_has_been_done = what_has_been_done

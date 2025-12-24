@@ -7,8 +7,8 @@ from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
 @pytest.fixture
-def builder(mock_config_loader, mock_prompts, mock_sourcerank, mock_repository_metadata):
-    return MarkdownBuilderBase(mock_config_loader, mock_prompts, mock_repository_metadata)
+def builder(mock_config_loader, mock_sourcerank, mock_repository_metadata):
+    return MarkdownBuilderBase(mock_config_loader, mock_repository_metadata)
 
 
 def test_load_template_keys(builder):
@@ -23,7 +23,7 @@ def test_load_template_keys(builder):
 
 
 def test_load_template_file_not_found(builder):
-    with patch("osa_tool.readme_generation.generator.base_builder.open", side_effect=FileNotFoundError):
+    with patch("osa_tool.operations.docs.readme_generation.generator.base_builder.open", side_effect=FileNotFoundError):
         with pytest.raises(FileNotFoundError):
             builder.load_template()
 
@@ -150,7 +150,7 @@ def test_citation_section_with_llm(builder, sourcerank_with_repo_tree, llm_clien
 
     llm_client.model_handler = mock_model_handler(side_effect=["LLM CITATION"])
 
-    with patch("osa_tool.readme_generation.generator.base_builder.LLMClient", return_value=llm_client):
+    with patch("osa_tool.operations.docs.readme_generation.generator.base_builder.LLMClient", return_value=llm_client):
         # Act
         result = builder.citation
 
@@ -166,7 +166,7 @@ def test_citation_section_fallback(builder, sourcerank_with_repo_tree, llm_clien
 
     llm_client.model_handler = mock_model_handler(side_effect=[""])
 
-    with patch("osa_tool.readme_generation.generator.base_builder.LLMClient", return_value=llm_client):
+    with patch("osa_tool.operations.docs.readme_generation.generator.base_builder.LLMClient", return_value=llm_client):
         # Act
         result = builder.citation
 

@@ -10,17 +10,13 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
-from osa_tool.analytics.report_maker import (
-    ReportGenerator,
-    WhatHasBeenDoneReportGenerator,
-)
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.conversion.notebook_converter import NotebookConverter
 from osa_tool.docs_generator.docs_run import generate_documentation
 from osa_tool.docs_generator.license import compile_license_file
 from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent
-from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator
+from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
 from osa_tool.operations.docs.readme_generation.utils import format_time
 from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
@@ -227,9 +223,8 @@ def main():
             delete_repository(args.repository)
             what_has_been_done.mark_did("delete_dir")
 
-        new_source_rank = SourceRank(config_loader)
         WhatHasBeenDoneReportGenerator(
-            config_loader, new_source_rank, what_has_been_done.list_for_report, git_agent.metadata
+            config_loader, what_has_been_done.list_for_report, git_agent.metadata
         ).build_pdf()
 
         elapsed_time = time.time() - start_time
