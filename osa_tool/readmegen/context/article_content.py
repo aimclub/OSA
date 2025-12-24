@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -57,6 +58,22 @@ class PdfParser:
                 pass
 
         return extracted_data
+
+    @staticmethod
+    def extract_section_headings(pdf_path: str) -> list[str]:
+        """Extract list of the headings by searching for the section numbering"""
+
+        headings = []
+ 
+        with pdfplumber.open(pdf_path) as doc:
+            for page_num, page in enumerate(doc.pages):
+                text = page.extract_text()
+                if not text:
+                    return headings
+                for line in text.split("\n"):
+                    match = re.match(r"^(\d+(\.\d+)*)\.?\s+(\D{10,60})$", line.strip())
+                    match and headings.append(f"{match.group(1)} {match.group(3)}")
+            return headings
 
     @staticmethod
     def extract_table_bboxes(doc) -> dict[int, list[tuple[float, float, float, float]]]:
@@ -118,15 +135,16 @@ class PdfParser:
     def is_table_text_standard(
         element,
         table_boxes: list[tuple[float, float, float, float]],
-        tol: float = 2.0,
+        tolerance: float = 2.0,
     ) -> bool:
         """Check table membership using pdfplumber standard table boxes"""
         x0, y0, x1, y1 = element.bbox
-        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
-        for box in table_boxes:
-            if box[0] - tol <= cx <= box[2] + tol and box[1] - tol <= cy <= box[3] + tol:
-                return True
-        return False
+        center_x, center_y = (x0 + x1) / 2, (y0 + y1) / 2
+        return any(
+            box[0] - tolerance <= center_x <= box[2] + tolerance
+            and box[1] - tolerance <= center_y <= box[3] + tolerance
+            for box in table_boxes
+        )
 
     @staticmethod
     def extract_text_from_pdf(pdf_path: str) -> str:
