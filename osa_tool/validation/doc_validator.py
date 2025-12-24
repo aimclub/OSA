@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 import re
@@ -55,32 +56,31 @@ class DocValidator:
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode("utf-8")
 
-    def validate(self, path_to_doc: str | None) -> dict:
+    async def validate(self, path_to_doc: str | None) -> str | None:
         """
-        Validate a documentation file against the code repository.
+        Asynchronously validate a documentation file against the code repository.
 
         Args:
-            path_to_doc (str): Path to the documentation file (.docx or .pdf).
+            path_to_doc (str): Path to the documentation file (.docx or .pdf) or None.
 
         Returns:
-            str: Validation result from the language model.
+            str | None: Validation result from the language model or None if an error occurred.
         """
         if not path_to_doc:
             raise ValueError("Document is missing! Please pass it using --attachment argument.")
         try:
-            # self.describe_image("/home/ilya/OSA/docx2txt-test-dir/image19.jpeg")
-            doc_info = self.process_doc(path_to_doc)
-            code_files = self.code_analyzer.get_code_files()
-            code_files_info = self.code_analyzer.process_code_files(code_files)
-            result = self.validate_doc_against_repo(doc_info, code_files_info)
+            doc_info = await self.process_doc(path_to_doc)
+            code_files = await asyncio.to_thread(self.code_analyzer.get_code_files)
+            code_files_info = await self.code_analyzer.process_code_files(code_files)
+            result = await self.validate_doc_against_repo(doc_info, code_files_info)
             return result
         except Exception as e:
             logger.error(f"Error while validating doc against repo: {e}")
-            raise e
+            return None
 
-    def process_doc(self, path_to_doc: str) -> str:
+    async def process_doc(self, path_to_doc: str) -> str:
         """
-        Process and extract content from a documentation file.
+        Process and extract content from a documentation file asynchronously.
 
         Args:
             path_to_doc (str): Path to the documentation file (.docx or .pdf).
@@ -90,16 +90,16 @@ class DocValidator:
         """
         if path_to_doc.endswith(".docx"):
             logger.info("Processing DOCX...")
-            raw_content = self._parse_docx(path_to_doc)
+            raw_content = await asyncio.to_thread(self._parse_docx, path_to_doc)
         elif path_to_doc.endswith(".pdf"):
             logger.info("Processing PDF...")
-            raw_content = self._parse_pdf(path_to_doc)
+            raw_content = await asyncio.to_thread(self._parse_pdf, path_to_doc)
         else:
             raise ValueError(f"Unprocessable file format: {path_to_doc}")
         processed_content = self._preprocess_text(raw_content)
         logger.info("Sending request to process document's content ...")
-        response = self.model_handler.send_and_parse(
-            prompt=PromptBuilder.render(
+        response = await self.model_handler.async_request(
+            PromptBuilder.render(
                 self.prompts.get("validation.extract_document_sections"),
                 doc_content=processed_content,
             ),
@@ -165,9 +165,9 @@ class DocValidator:
 
         return text.strip()
 
-    def validate_doc_against_repo(self, doc_info: str, code_files_info: str) -> dict:
+    async def validate_doc_against_repo(self, doc_info: str, code_files_info: str) -> str:
         """
-        Validate the processed document content against the code repository.
+        Asynchronously validate the processed document content against the code repository.
 
         Args:
             doc_info (str): Processed document information.
@@ -177,8 +177,8 @@ class DocValidator:
             str: Validation result from the language model.
         """
         logger.info("Validating doc against repository ...")
-        response = self.model_handler.send_and_parse(
-            prompt=PromptBuilder.render(
+        response = await self.model_handler.async_request(
+            PromptBuilder.render(
                 self.prompts.get("validation.validate_doc_against_repo"),
                 doc_info=doc_info,
                 code_files_info=code_files_info,

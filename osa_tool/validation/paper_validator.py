@@ -1,3 +1,5 @@
+import asyncio
+
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
@@ -29,15 +31,15 @@ class PaperValidator:
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.prompts = self.config.prompts
 
-    def validate(self, article: str | None) -> dict:
+    async def validate(self, article: str | None) -> str | None:
         """
-        Validate a scientific paper against the code repository.
+        Asynchronously validate a scientific paper against the code repository.
 
         Args:
             article (str | None): Path to the paper PDF file.
 
         Returns:
-            str: Validation result from the language model.
+            str | None: Validation result from the language model or none if an error occurs.
 
         Raises:
             ValueError: If the article path is missing.
@@ -46,18 +48,18 @@ class PaperValidator:
         if not article:
             raise ValueError("Article is missing! Please pass it using --attachment argument.")
         try:
-            paper_info = self.process_paper(article)
-            code_files = self.code_analyzer.get_code_files()
-            code_files_info = self.code_analyzer.process_code_files(code_files)
-            result = self.validate_paper_against_repo(paper_info, code_files_info)
+            paper_info = await self.process_paper(article)
+            code_files = await asyncio.to_thread(self.code_analyzer.get_code_files)
+            code_files_info = await self.code_analyzer.process_code_files(code_files)
+            result = await self.validate_paper_against_repo(paper_info, code_files_info)
             return result
         except Exception as e:
             logger.error(f"Error while validating paper against repo: {e}")
-            raise e
+            return None
 
-    def process_paper(self, article: str) -> str:
+    async def process_paper(self, article: str) -> str:
         """
-        Extract and process content from a scientific paper (PDF).
+        Asynchronously extract and process content from a scientific paper (PDF).
 
         Args:
             article (str): Path to the paper PDF file.
@@ -73,10 +75,10 @@ class PaperValidator:
         if not path_to_pdf:
             raise ValueError(f"Invalid PDF source provided: {path_to_pdf}. Could not locate a valid PDF.")
         logger.info("Extracting text from PDF ...")
-        pdf_content = PdfParser(path_to_pdf).data_extractor()
+        pdf_content = await asyncio.to_thread(PdfParser(path_to_pdf).data_extractor)
         logger.info("Sending request to extract sections ...")
-        response = self.model_handler.send_and_parse(
-            prompt=PromptBuilder.render(
+        response = await self.model_handler.async_request(
+            PromptBuilder.render(
                 self.prompts.get("validation.extract_paper_section"),
                 paper_content=pdf_content,
             ),
@@ -85,9 +87,9 @@ class PaperValidator:
         logger.debug(response)
         return response
 
-    def validate_paper_against_repo(self, paper_info: str, code_files_info: str) -> dict:
+    async def validate_paper_against_repo(self, paper_info: str, code_files_info: str) -> str:
         """
-        Validate the processed paper content against the code repository.
+        Asynchronously validate the processed paper content against the code repository.
 
         Args:
             paper_info (str): Processed paper information.
@@ -97,7 +99,7 @@ class PaperValidator:
             str: Validation result from the language model.
         """
         logger.info("Validating paper against repository ...")
-        response = self.model_handler.send_and_parse(
+        response = await self.model_handler.async_request(
             PromptBuilder.render(
                 self.prompts.get("validation.validate_paper_against_repo"),
                 paper_info=paper_info,

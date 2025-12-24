@@ -1,4 +1,5 @@
 import os
+from abc import ABC, abstractmethod
 from datetime import datetime
 
 import qrcode
@@ -38,8 +39,7 @@ class GenerateReportOperation(Operation):
 OperationRegistry.register(GenerateReportOperation())
 
 
-class ReportGenerator:
-
+class AbstractReportGenerator(ABC):
     def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
         self.config = config_loader.config
         self.sourcerank = SourceRank(config_loader)
@@ -258,13 +258,8 @@ class ReportGenerator:
         )
         return bullet_list
 
-    def body_second_part(self) -> list[Flowable]:
-        """
-        Generates the second part of the report, which contains the analysis of the repository.
-
-        Returns:
-            list: A list of Paragraph objects for the PDF report.
-        """
+    @staticmethod
+    def get_styles() -> tuple[ParagraphStyle, ParagraphStyle]:
         styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(
             name="LeftAlignedNormal",
@@ -281,9 +276,68 @@ class ReportGenerator:
             spaceBefore=6,
             spaceAfter=2,
         )
+        return normal_style, custom_style
+
+    @abstractmethod
+    def body_second_part(self) -> list[Flowable]:
+        pass
+
+    def build_pdf(self) -> None:
+        """
+        Generates and builds the PDF report for the repository analysis.
+
+        This method initializes the PDF document, adds the header, body content (first and second parts),
+        and then generates the PDF file. The `draw_images_and_tables` method is used to draw images and tables
+        on the first page of the document.
+
+        Returns:
+            None
+
+        Raises:
+            Exception: If there is an error during the PDF creation process.
+        """
+        logger.info(f"Starting analysis for repository {self.metadata.full_name}")
+
+        try:
+            doc = SimpleDocTemplate(
+                self.output_path,
+                pagesize=A4,
+                topMargin=50,
+                bottomMargin=40,
+            )
+            doc.build(
+                [
+                    *self.header(),
+                    Spacer(0, 40),
+                    self.body_first_part(),
+                    Spacer(0, 110),
+                    *self.body_second_part(),
+                ],
+                onFirstPage=self.draw_images_and_tables,
+            )
+            logger.info(f"PDF report successfully created in {self.output_path}")
+        except Exception as e:
+            logger.error("Error while building PDF report, %s", e, exc_info=True)
+
+
+class ReportGenerator(AbstractReportGenerator):
+
+    def __init__(
+        self, config_loader: ConfigLoader, sourcerank: SourceRank, prompts: PromptLoader, metadata: RepositoryMetadata
+    ):
+        super().__init__(config_loader, sourcerank, metadata)
+        self.text_generator = TextGenerator(config_loader, self.sourcerank, prompts, self.metadata)
+
+    def body_second_part(self) -> list[Flowable]:
+        """
+        Generates the second part of the report, which contains the analysis of the repository.
+
+        Returns:
+            list: A list of Paragraph objects for the PDF report.
+        """
 
         parsed_report = self.text_generator.make_request()
-
+        normal_style, custom_style = self.get_styles()
         story = []
 
         # Repository Structure
@@ -342,39 +396,38 @@ class ReportGenerator:
 
         return story
 
-    def build_pdf(self) -> None:
-        """
-        Generates and builds the PDF report for the repository analysis.
 
-        This method initializes the PDF document, adds the header, body content (first and second parts),
-        and then generates the PDF file. The `draw_images_and_tables` method is used to draw images and tables
-        on the first page of the document.
+class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
+    def __init__(
+        self,
+        config_loader: ConfigLoader,
+        sourcerank: SourceRank,
+        what_has_been_done: list[tuple[str, bool]],
+        metadata: RepositoryMetadata,
+    ):
+        super().__init__(config_loader, sourcerank, metadata)
+        self.filename = f"{self.metadata.name}_what_has_been_done_report.pdf"
+        self.output_path = os.path.join(os.getcwd(), self.filename)
+        self.what_has_been_done = what_has_been_done
+
+    def body_second_part(self) -> list[Flowable]:
+        """
+        Generates the second part of the report, which contains the steps for improving repository taken by the OSA.
 
         Returns:
-            None
-
-        Raises:
-            Exception: If there is an error during the PDF creation process.
+            list: A list of Paragraph objects for the PDF report.
         """
-        logger.info(f"Starting analysis for repository {self.metadata.full_name}")
+        normal_style, custom_style = self.get_styles()
+        story = []
 
-        try:
-            doc = SimpleDocTemplate(
-                self.output_path,
-                pagesize=A4,
-                topMargin=50,
-                bottomMargin=40,
+        story.append(Paragraph("<b>What has been done:</b>", custom_style))
+
+        for task, was_do in self.what_has_been_done:
+            task_result = "Yes" if was_do else "No"
+            story.append(
+                Paragraph(
+                    f"• {task}: {task_result}",
+                    normal_style,
+                )
             )
-            doc.build(
-                [
-                    *self.header(),
-                    Spacer(0, 40),
-                    self.body_first_part(),
-                    Spacer(0, 110),
-                    *self.body_second_part(),
-                ],
-                onFirstPage=self.draw_images_and_tables,
-            )
-            logger.info(f"PDF report successfully created in {self.output_path}")
-        except Exception as e:
-            logger.error("Error while building PDF report, %s", e, exc_info=True)
+        return story
