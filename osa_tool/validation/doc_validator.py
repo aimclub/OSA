@@ -70,8 +70,7 @@ class DocValidator:
             raise ValueError("Document is missing! Please pass it using --attachment argument.")
         try:
             doc_info = await self.process_doc(path_to_doc)
-            code_files = await asyncio.to_thread(self.code_analyzer.get_code_files)
-            code_files_info = await self.code_analyzer.process_code_files(code_files)
+            code_files_info = await self.code_analyzer.process_code_files()
             result = await self.validate_doc_against_repo(doc_info, code_files_info)
             return result
         except Exception as e:
@@ -98,7 +97,7 @@ class DocValidator:
             raise ValueError(f"Unprocessable file format: {path_to_doc}")
         processed_content = self._preprocess_text(raw_content)
         logger.info("Sending request to process document's content ...")
-        response = await self.model_handler.async_request(
+        response = await self.model_handler.async_send_and_parse(
             PromptBuilder.render(
                 self.prompts.get("validation.extract_document_sections"),
                 doc_content=processed_content,
@@ -177,7 +176,7 @@ class DocValidator:
             str: Validation result from the language model.
         """
         logger.info("Validating doc against repository ...")
-        response = await self.model_handler.async_request(
+        response = await self.model_handler.async_send_and_parse(
             PromptBuilder.render(
                 self.prompts.get("validation.validate_doc_against_repo"),
                 doc_info=doc_info,

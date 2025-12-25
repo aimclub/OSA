@@ -1,5 +1,6 @@
 import asyncio
 from pathlib import Path
+from typing import Iterator
 
 from rich.progress import track
 
@@ -22,6 +23,23 @@ class CodeAnalyzer:
     and sending code content to a model for analysis.
     """
 
+    __SOURCEFILE_EXTENSIONS_LIST = "py", "ipynb", "c", "cpp"
+    __IGNORE_LIST = (
+        "__init__.py",
+        "setup.py",
+        "conftest.py",
+        "manage.py",
+        "examples",
+        "migrations",
+        "tests",
+        "test",
+        "test_",
+        "__pycache__",
+        ".pytest_cache",
+        ".pyo",
+        ".pyc",
+    )
+
     def __init__(self, config_loader: ConfigLoader, prompts: PromptLoader):
         """
         Initialize the CodeAnalyzer.
@@ -36,70 +54,46 @@ class CodeAnalyzer:
         self.sourcerank = SourceRank(config_loader)
         self.tree = self.sourcerank.tree
 
-    def get_code_files(self) -> list[str]:
+    def __get_code_files(self) -> Iterator[str]:
         """
         Retrieve a list of code files from the repository.
 
-        Converts Jupyter notebooks to Python scripts and filters out ignored files.
+        Converts Jupyter notebooks to Python scripts and filters with white- and blacklists.
 
         Returns:
             list[str]: List of absolute paths to code files.
         """
         repo_path = Path(parse_folder_name(str(self.config.git.repository))).resolve()
-        code_files = []
         for filename in track(self.tree.split("\n"), description="Getting code files ..."):
-            if self._is_file_ignored(filename):
-                logger.debug(f"File '{filename}' is ignored")
-                continue
-            if filename.endswith(".ipynb"):
-                logger.debug("Found .ipynb file, converting ...")
-                self.notebook_convertor.convert_notebook(str(repo_path.joinpath(filename)))
-                code_files.append(str(repo_path.joinpath(filename.replace(".ipynb", ".py"))))
-            if filename.endswith(".py"):
-                code_files.append(str(repo_path.joinpath(filename)))
-        logger.debug(code_files)
-        return code_files
+            if self.__is_sourcefile(filename) and not self.__is_blacklisted:
+                if filename.endswith(".ipynb"):  # for now it's the only type of file that needs preprocessing
+                    logger.debug("Found .ipynb file, converting ...")
+                    self.notebook_convertor.convert_notebook(str(repo_path.joinpath(filename)))
+                    yield str(repo_path.joinpath(filename.replace(".ipynb", ".py")))
+                else:
+                    yield str(repo_path.joinpath(filename))
 
-    def _is_file_ignored(self, filename: str) -> bool:
-        """
-        Check if a file should be ignored based on predefined patterns.
+    @classmethod
+    def __is_blacklisted(cls, filename: str) -> bool:
+        return any(pattern in filename for pattern in cls.__IGNORE_LIST)
 
-        Args:
-            filename (str): Name of the file to check.
+    @classmethod
+    def __is_sourcefile(cls, filename: str) -> bool:
+        return any(filename.endswith(f".{pattern}") for pattern in cls.__SOURCEFILE_EXTENSIONS_LIST)
 
-        Returns:
-            bool: True if the file should be ignored, False otherwise.
-        """
-        IGNORE_LIST = (
-            "__init__.py",
-            "setup.py",
-            "conftest.py",
-            "manage.py",
-            "migrations",
-            "tests",
-            "test",
-            "test_" "__pycache__",
-            ".pytest_cache",
-            ".pyo",
-            ".pyc",
-        )
-        return any(pattern in filename for pattern in IGNORE_LIST)
-
-    async def process_code_files(self, code_files: list[str]) -> str:
+    async def process_code_files(self) -> str:
         """
         Analyze the content of code files using the language model asynchronously.
-
-        Args:
-            code_files (list[str]): List of code file paths.
 
         Returns:
             str: Aggregated analysis results for all code files.
         """
+        code_files = self.__get_code_files()
         rate_limit = self.config.llm.rate_limit
         semaphore = asyncio.Semaphore(rate_limit)
 
         # track - синхронная библиотека, в асинхроне пока будет только logger?
-        logger.info(f"Starting async analysis of {len(code_files)} files with rate limit {rate_limit}...")
+        logger.info(f"Starting async file analysis with rate limit {rate_limit}...")
 
         async def _process_single_file(file_path: str) -> str:
             """

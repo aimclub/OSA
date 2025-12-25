@@ -48,8 +48,7 @@ class PaperValidator:
             raise ValueError("Article is missing! Please pass it using --attachment argument.")
         try:
             paper_info = await self.process_paper(article)
-            code_files = await asyncio.to_thread(self.code_analyzer.get_code_files)
-            code_files_info = await self.code_analyzer.process_code_files(code_files)
+            code_files_info = await self.code_analyzer.process_code_files()
             result = await self.validate_paper_against_repo(paper_info, code_files_info)
             return result
         except Exception as e:
@@ -76,7 +75,7 @@ class PaperValidator:
         logger.info("Extracting text from PDF ...")
         pdf_content = await asyncio.to_thread(PdfParser(path_to_pdf).data_extractor)
         logger.info("Sending request to extract sections ...")
-        response = await self.model_handler.async_request(
+        response = await self.model_handler.async_send_and_parse(
             PromptBuilder.render(
                 self.prompts.get("validation.extract_paper_section"),
                 paper_content=pdf_content,
@@ -98,7 +97,7 @@ class PaperValidator:
             str: Validation result from the language model.
         """
         logger.info("Validating paper against repository ...")
-        response = await self.model_handler.async_request(
+        response = await self.model_handler.async_send_and_parse(
             PromptBuilder.render(
                 self.prompts.get("validation.validate_paper_against_repo"),
                 paper_info=paper_info,
