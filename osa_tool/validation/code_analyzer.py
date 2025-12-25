@@ -23,7 +23,7 @@ class CodeAnalyzer:
     and sending code content to a model for analysis.
     """
 
-    __SOURCEFILE_EXTENTIONS_LIST = "py", "ipynb", "c", "cpp"
+    __SOURCEFILE_EXTENSIONS_LIST = "py", "ipynb", "c", "cpp"
     __IGNORE_LIST = (
         "__init__.py",
         "setup.py",
@@ -79,7 +79,7 @@ class CodeAnalyzer:
 
     @classmethod
     def __is_sourcefile(cls, filename: str) -> bool:
-        return any(filename.endswith(f".{pattern}") for pattern in cls.__SOURCEFILE_EXTENTIONS_LIST)
+        return any(filename.endswith(f".{pattern}") for pattern in cls.__SOURCEFILE_EXTENSIONS_LIST)
 
     async def process_code_files(self) -> str:
         """
