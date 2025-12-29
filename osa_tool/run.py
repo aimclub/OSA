@@ -3,14 +3,16 @@ import os
 import sys
 import time
 
-from osa_tool.config.settings import ConfigManager
-from osa_tool.conversion.notebook_converter import NotebookConverter
 from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent
-from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
 from osa_tool.operations.codebase.requirements_generation.requirements_generation import RequirementsGenerator
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
+
+from osa_tool.config.settings import ConfigManager
+from osa_tool.conversion.notebook_converter import NotebookConverter
+from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
 from osa_tool.operations.docs.community_docs_generation.license_generation import LicenseCompiler
 from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
@@ -24,7 +26,6 @@ from osa_tool.scheduler.workflow_manager import (
     GitverseWorkflowManager,
     WorkflowManager,
 )
-from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.logger import logger, setup_logging
 from osa_tool.utils.utils import (
@@ -105,7 +106,7 @@ def main():
             content = asyncio.run((DocValidator(config_manager).validate(plan.get("attachment"))))
             if content:
                 va_re_gen = ValidationReportGenerator(config_manager, git_agent.metadata)
-                va_re_gen.build_pdf("Document", content)
+                va_re_gen.build_pdf("Document", content)  # TODO: add enum for types
                 if create_fork:
                     git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
                 plan.mark_done("validate_doc")
