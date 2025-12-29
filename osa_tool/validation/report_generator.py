@@ -1,6 +1,8 @@
 import os
+from typing import Iterable
 
 import qrcode
+from osa_tool.core.git.metadata import RepositoryMetadata
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -8,7 +10,6 @@ from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 
@@ -60,19 +61,20 @@ class ReportGenerator:
             )
             doc.build(
                 [
-                    *self._build_header(type),
+                    *self.__build_header(type),
                     Spacer(0, 40),
-                    *self._build_first_part(content["correspondence"], content["percentage"]),
+                    *self.__build_brief(content["correspondence"], content["percentage"]),
                     Spacer(0, 35),
-                    *self._build_second_part(content["conclusion"]),
+                    *self.__build_table(content["assessment"]),
+                    *self.__build_conclusion(content["conclusion"]),
                 ],
-                onFirstPage=self._draw_images,
+                onFirstPage=self.__draw_images,
             )
             logger.info(f"PDF report successfully created in {self.output_path}")
         except Exception as e:
             logger.error("Error while building PDF report, %s", e, exc_info=True)
 
-    def _draw_images(self, canvas_obj: Canvas, doc: SimpleDocTemplate) -> None:
+    def __draw_images(self, canvas_obj: Canvas, doc: SimpleDocTemplate) -> None:
         """
         Draws branding images, QR code, and lines on the first page of the PDF.
 
@@ -88,7 +90,7 @@ class ReportGenerator:
         canvas_obj.linkURL(self.osa_url, (335, 700, 465, 820), relative=0)
 
         # QR OSA
-        qr_path = self._generate_qr_code()
+        qr_path = self.__generate_qr_code()
         canvas_obj.drawImage(qr_path, 450, 707, width=100, height=100)
         canvas_obj.linkURL(self.osa_url, (450, 707, 550, 807), relative=0)
         os.remove(qr_path)
@@ -99,7 +101,7 @@ class ReportGenerator:
         canvas_obj.line(30, 705, 570, 705)
         canvas_obj.line(30, 640, 570, 640)
 
-    def _generate_qr_code(self) -> str:
+    def __generate_qr_code(self) -> str:
         """
         Generates a QR code for the given URL and saves it as an image file.
 
@@ -111,7 +113,7 @@ class ReportGenerator:
         qr.save(qr_path)  # type: ignore
         return qr_path
 
-    def _build_header(self, type: str) -> list:
+    def __build_header(self, type: str) -> tuple:
         """
         Generates the header section for the repository analysis report.
 
@@ -139,11 +141,10 @@ class ReportGenerator:
             title_style,
         )
 
-        elements = [title_line1, title_line2]
-        return elements
+        return title_line1, title_line2
 
     @staticmethod
-    def _build_first_part(correspondence: bool, percentages: float) -> list[Paragraph]:
+    def __build_brief(correspondence: bool, percentages: float) -> tuple:
         """
         Builds the first section of the report with correspondence and percentage metrics.
 
@@ -164,10 +165,22 @@ class ReportGenerator:
         )
         correspondence_text = Paragraph(f"<b>Correspondence: {'Yes' if correspondence  else 'No'}</b>", normal_style)
         percentages_text = Paragraph(f"<b>Percentages: {percentages}%</b>", normal_style)
-        return [correspondence_text, percentages_text]
+        return correspondence_text, percentages_text
 
     @staticmethod
-    def _build_second_part(conclusion: str) -> list[Flowable]:
+    def __build_table(results: list[dict]) -> Iterable[Paragraph]:
+        return (
+            Paragraph(
+                f"""<b>Experiment {i + 1}.</b>
+                <b>Formulation stated: </b><p>"{elem['proposed_experiment_description']}"</p>
+                <b>Assessment: </b><p>{elem['assessment']}</p>
+                """
+            )
+            for i, elem in enumerate(results)
+        )
+
+    @staticmethod
+    def __build_conclusion(self, conclusion: str) -> tuple:
         """
         Builds the conclusion section of the report.
 
@@ -190,4 +203,4 @@ class ReportGenerator:
             conclusion,
             normal_style,
         )
-        return [conclusion_header, Spacer(0, 5), conclusion_text]
+        return Spacer(0, 10), conclusion_header, Spacer(0, 5), conclusion_text
