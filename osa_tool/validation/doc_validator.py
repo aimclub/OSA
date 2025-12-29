@@ -12,7 +12,7 @@ from osa_tool.operations.docs.readme_generation.context.article_path import get_
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor
-from osa_tool.validation.code_analyzer import CodeAnalyzer
+from osa_tool.validation.analyze.code_analyzer import CodeAnalyzer
 
 
 class DocValidator:
