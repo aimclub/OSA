@@ -104,15 +104,135 @@ class GitAgent(abc.ABC):
         """
         pass
 
-    def clone_repository(self) -> None:
-        """Clones the repository into the specified directory.
+    def _check_branch_existence(self, branch: str = "osa_tool") -> bool:
+        """
+        Checks if a branch exists in the remote repository using platform-specific APIs.
 
-        If the repository already exists locally, it initializes the repository.
-        If the directory exists but is not a valid Git repository, an error is raised.
+        This method attempts to determine whether the specified branch exists in the
+        remote repository before attempting to clone it. It uses different API endpoints
+        depending on the Git platform (GitHub, GitLab, or Gitverse).
+
+        Args:
+            branch: The name of the branch to check. If None, uses the default branch name
+                    configured for this agent (typically "osa_tool").
+
+        Returns:
+            True if the branch exists in the remote repository, False otherwise.
+            False and logs a warning if the platform is not recognized.
+        """
+        if branch is None:
+            branch = self.branch_name
+
+        if "github.com" in self.repo_url:
+            return self._check_github_branch_exists(branch)
+        elif "gitlab." in self.repo_url:
+            return self._check_gitlab_branch_exists(branch)
+        elif "gitverse.ru" in self.repo_url:
+            return self._check_gitverse_branch_exists(branch)
+
+        logger.warning(f"Cannot check branch existence for platform: {self.repo_url}")
+        return False
+
+    def _clone_chosen_branch(self, branch: str = "osa_tool") -> None:
+        """Clones an existing branch from the remote repository.
+
+        Args:
+            branch: The name of the branch to clone. Defaults to `branch_name`.
+
+        Returns:
+            True if cloning was successful, False otherwise.
+        """
+        if branch is None:
+            branch = self.branch_name
+
+        try:
+            logger.info(f"Cloning existing branch '{branch}' from {self.fork_url or self.repo_url}...")
+            self.repo = Repo.clone_from(
+                url=self._get_auth_url(self.fork_url or self.repo_url),
+                to_path=self.clone_dir,
+                branch=branch,
+                single_branch=True,
+            )
+            logger.info(f"Successfully cloned branch '{branch}'")
+        except Exception as e:
+            raise Exception(f"Failed to clone branch '{branch}': {e}") from e
+
+    def _clone_default_branch(self) -> None:
+        """
+        Clones the default branch of the repository.
+
+        This method implements the standard cloning logic with fallback mechanisms:
+        1. First attempts unauthenticated cloning (for public repositories)
+        2. Falls back to authenticated cloning if unauthenticated fails
+        3. Provides detailed error messages for common Git errors
 
         Raises:
-            InvalidGitRepositoryError: If the local directory is not a valid Git repository.
-            GitCommandError: If cloning the repository fails.
+            GitCommandError: If both cloning attempts fail with Git-specific errors.
+            Exception: If an unexpected error occurs during cloning.
+
+        Note:
+            The 'single_branch=True' parameter is used to clone only the requested
+            branch, which is more efficient than cloning all branches.
+        """
+        try:
+            logger.info(
+                f"Cloning the '{self.base_branch}' branch from {self.repo_url} into directory {self.clone_dir}..."
+            )
+
+            # First attempt: unauthenticated cloning (works for public repos)
+            self.repo = Repo.clone_from(
+                url=self._get_unauth_url(),
+                to_path=self.clone_dir,
+                branch=self.base_branch,
+                single_branch=True,
+            )
+            logger.info("Cloning completed")
+
+        except Exception as e:
+            # Second attempt: authenticated cloning (for private repos or rate limits)
+            try:
+                logger.info(
+                    f"Cloning the '{self.base_branch}' branch from {self.repo_url} into directory {self.clone_dir}..."
+                )
+                self.repo = Repo.clone_from(
+                    url=self._get_auth_url(),
+                    to_path=self.clone_dir,
+                    branch=self.base_branch,
+                    single_branch=True,
+                )
+                logger.info("Cloning completed")
+
+            except GitCommandError as e:
+                stderr = e.stderr or ""
+                logger.error(f"Cloning failed: {e}")
+
+                if "remote branch" in stderr and "not found" in stderr:
+                    logger.error(
+                        f"Branch '{self.base_branch}' not found in the remote repository. Please check the branch name."
+                    )
+                else:
+                    logger.error("An unexpected Git error occurred while cloning the repository.")
+
+                raise Exception(f"Cannot clone the repository: {self.repo_url}") from e
+
+    def clone_repository(self) -> None:
+        """
+        Clones or initializes the Git repository in the local filesystem.
+
+        This is the main entry point for obtaining a local copy of the repository.
+        It implements a multi-step strategy:
+        1. If the repository is already initialized, returns early.
+        2. If the directory exists locally, initializes from existing files.
+        3. If cloning is needed, checks for existing 'osa_tool' branch first.
+        4. Falls back to cloning the default branch if 'osa_tool' doesn't exist.
+
+        Raises:
+            InvalidGitRepositoryError: If the local directory exists but is not a valid Git repository.
+            Exception: If all cloning attempts fail.
+
+        Note:
+            This method handles both authenticated and unauthenticated cloning attempts
+            for the default branch. It prefers the fork URL when available.
         """
         if self.repo:
             logger.warning(f"Repository is already initialized ({self.repo_url})")
@@ -126,42 +246,39 @@ class GitAgent(abc.ABC):
             except InvalidGitRepositoryError:
                 logger.error(f"Directory {self.clone_dir} exists but is not a valid Git repository")
                 raise
+
+        elif self._check_branch_existence():
+            self._clone_chosen_branch()
         else:
-            try:
-                logger.info(
-                    f"Cloning the '{self.base_branch}' branch from {self.repo_url} into directory {self.clone_dir}..."
-                )
-                self.repo = Repo.clone_from(
-                    url=self._get_unauth_url(),
-                    to_path=self.clone_dir,
-                    branch=self.base_branch,
-                    single_branch=True,
-                )
-                logger.info("Cloning completed")
+            self._clone_default_branch()
 
-            except Exception:
-                try:
-                    logger.info(
-                        f"Cloning the '{self.base_branch}' branch from {self.repo_url} into directory {self.clone_dir}..."
-                    )
-                    self.repo = Repo.clone_from(
-                        url=self._get_auth_url(),
-                        to_path=self.clone_dir,
-                        branch=self.base_branch,
-                        single_branch=True,
-                    )
-                    logger.info("Cloning completed")
-                except GitCommandError as e:
-                    stderr = e.stderr or ""
-                    logger.error(f"Cloning failed: {e}")
+    def get_attachment_branch_files(self, branch: str = "osa_tool_attachments") -> List[str]:
+        """Gets list of report files from attachment branch.
 
-                    if "remote branch" in stderr and "not found" in stderr:
-                        logger.error(
-                            f"Branch '{self.base_branch}' not found in the remote repository. Please check the branch name."
-                        )
-                    else:
-                        logger.error("An unexpected Git error occurred while cloning the repository.")
-                    raise Exception(f"Cannot clone the repository: {self.repo_url}") from e
+        Args:
+            branch: The name of the attachment branch.
+
+        Returns:
+            List of report filenames found in the branch.
+        """
+        try:
+            remote_refs = self.repo.git.ls_remote("--heads", self._get_unauth_url(self.fork_url or self.repo_url))
+
+            if f"refs/heads/{branch}" not in remote_refs:
+                return []
+
+            self.repo.git.fetch("origin", f"{branch}:{branch}_tmp", depth=1)
+
+            files_output = self.repo.git.ls_tree("-r", "--name-only", f"{branch}_tmp")
+            report_files = [f for f in files_output.split("\n") if f and f.endswith("report.pdf")]
+
+            self.repo.git.branch("-D", f"{branch}_tmp")
+
+            logger.debug(f"Found {len(report_files)} report files in branch '{branch}'")
+            return report_files
+        except Exception as e:
+            logger.warning(f"Failed to get files from attachment branch: {e}")
+            return []
 
     def create_and_checkout_branch(self, branch: str = None) -> None:
         """Creates and checks out a new branch.
@@ -267,7 +384,8 @@ class GitAgent(abc.ABC):
         self.create_and_checkout_branch(self.branch_name)
 
         report_url = self._build_report_url(report_branch, report_filename)
-        self.pr_report_body = f"\nGenerated report - [{report_filename}]({report_url})\n"
+        report_link = f"\nGenerated report - [{report_filename}]({report_url})\n"
+        self.pr_report_body += report_link
 
     @abc.abstractmethod
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
@@ -418,7 +536,63 @@ class GitHubAgent(GitAgent):
             logger.error(f"Failed to star repository: {response_star.status_code} - {response_star.text}")
             raise ValueError("Failed to star repository.")
 
-    def create_pull_request(self, title: str = None, body: str = None) -> None:
+    def _check_github_branch_exists(self, branch: str) -> bool:
+        """Check if branch exists on GitHub using API."""
+        if not self.fork_url:
+            repo_to_check = get_base_repo_url(self.repo_url)
+            url = f"https://api.github.com/repos/{repo_to_check}/branches/{branch}"
+        else:
+            repo_to_check = get_base_repo_url(self.fork_url)
+            url = f"https://api.github.com/repos/{repo_to_check}/branches/{branch}"
+
+        headers = {
+            "Accept": "application/vnd.github.v3+json",
+        }
+
+        if self.token:
+            headers["Authorization"] = f"token {self.token}"
+
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                return True
+            elif response.status_code == 404:
+                return False
+            else:
+                logger.warning(f"GitHub API returned {response.status_code} for branch check")
+                return False
+        except Exception as e:
+            logger.warning(f"Failed to check GitHub branch: {e}")
+            return False
+
+    def post_comment(self, pr_number: int, comment_body: str):
+        base_repo = get_base_repo_url(self.repo_url)
+        url = f"https://api.github.com/repos/{base_repo}/issues/{pr_number}/comments"
+        headers = {
+            "Authorization": f"token {self.token}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+        data = {"body": comment_body}
+        response = requests.post(url, json=data, headers=headers)
+        if response.status_code == 201:
+            logger.info(f"Successfully posted a comment to PR #{pr_number}.")
+        else:
+            logger.error(f"Failed to post a comment to PR #{pr_number}: {response.status_code} - {response.text}")
+
+    def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
+        """Creates or updates a pull request on GitHub.
+
+        This method implements intelligent PR management:
+        1. Checks if an open PR already exists for the current branch
+        2. If PR exists and there are new reports, updates the PR description
+           with all unique report links (removing duplicates)
+        3. If no PR exists, creates a new one with all available reports
+           from the attachment branch
+
+        Args:
+            title: Optional title for the PR. Uses last commit message if not provided.
+            body: Optional body/description for the PR.
+        """
         if not self.token:
             raise ValueError("GIT_TOKEN or GITHUB_TOKEN token is required to create a pull request.")
 
@@ -430,38 +604,72 @@ class GitHubAgent(GitAgent):
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json",
         }
-        params = {
-            "state": "open",
-            "head": head_branch,
-            "base": self.base_branch,
-        }
-        response = requests.get(url, headers=headers, params=params)
-        if response.status_code == 200:
-            prs = response.json()
-            if prs:
-                existing_pr = prs[0]
-                logger.info(f"Pull request already exists: {existing_pr['html_url']}")
-                return
 
         last_commit = self.repo.head.commit
         pr_title = title if title else last_commit.message
-        pr_body = body if body else last_commit.message
-        pr_body += self.pr_report_body
-        pr_body += self.agent_signature
-        pr_data = {
-            "title": pr_title,
-            "head": head_branch,
-            "base": self.base_branch,
-            "body": pr_body,
-            "maintainer_can_modify": True,
-        }
 
-        response = requests.post(url, json=pr_data, headers=headers)
-        if response.status_code == 201:
-            logger.info(f"GitHub pull request created successfully: {response.json()['html_url']}")
-        else:
-            logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
-            if "pull request already exists" not in response.text:
+        params = {"state": "open", "head": head_branch, "base": self.base_branch}
+        response = requests.get(url, headers=headers, params=params)
+
+        prs = response.json() if response.status_code == 200 else []
+        if prs:
+            existing_pr = prs[0]
+            pr_number = existing_pr["number"]
+            logger.info(f"Pull request #{pr_number} already exists.")
+
+            if body and body.strip():
+                self.post_comment(pr_number, body)
+
+            if self.pr_report_body.strip():
+                old_pr_body = existing_pr.get("body", "") or ""
+
+                report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
+                old_reports = report_pattern.findall(old_pr_body)
+                new_reports = report_pattern.findall(self.pr_report_body)
+                all_reports = sorted(list(set(old_reports + new_reports)))
+
+                clean_body = report_pattern.sub("", old_pr_body).replace(self.AGENT_SIGNATURE, "").strip()
+
+                updated_body = clean_body
+                if all_reports:
+                    updated_body += "\n\n" + "\n".join(all_reports)
+                updated_body += self.AGENT_SIGNATURE
+
+                update_url = f"{url}/{pr_number}"
+                update_data = {"body": updated_body.strip()}
+
+                update_response = requests.patch(update_url, json=update_data, headers=headers)
+                if update_response.status_code == 200:
+                    logger.info(f"Successfully updated PR #{pr_number} with new reports.")
+                else:
+                    logger.error(
+                        f"Failed to update PR #{pr_number} description: {update_response.status_code} - {update_response.text}"
+                    )
+        elif changes:
+            report_files = self.get_attachment_branch_files()
+            report_branch = "osa_tool_attachments"
+            for report_file in report_files:
+                report_url = self._build_report_url(report_branch, report_file)
+                report_link = f"\nGenerated report - [{report_file}]({report_url})\n"
+                if report_link not in self.pr_report_body:
+                    self.pr_report_body += report_link
+
+            content_for_publish = (body if body else "") + self.pr_report_body
+            pr_body = content_for_publish + self.agent_signature
+
+            pr_data = {
+                "title": pr_title,
+                "head": head_branch,
+                "base": self.base_branch,
+                "body": pr_body,
+                "maintainer_can_modify": True,
+            }
+
+            response = requests.post(url, json=pr_data, headers=headers)
+            if response.status_code == 201:
+                logger.info(f"GitHub pull request created successfully: {response.json()['html_url']}")
+            else:
+                logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
                 raise ValueError("Failed to create pull request.")
 
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
@@ -560,12 +768,27 @@ class GitLabAgent(GitAgent):
         if user_response.status_code != 200:
             logger.error(f"Failed to get user info: {user_response.status_code} - {user_response.text}")
             raise ValueError("Failed to get user information.")
-        current_username = user_response.json().get("username", "")
 
-        if current_username == self.metadata.owner:
-            self.fork_url = self.repo_url
-            logger.info(f"User '{current_username}' already owns the repository. Using original URL: {self.fork_url}")
-            return
+        user_data = user_response.json()
+        current_user_id = user_data.get("id")
+        current_username = user_data.get("username")
+
+        project_url = f"{gitlab_instance}/api/v4/projects/{project_path}"
+        project_response = requests.get(project_url, headers=headers)
+        if project_response.status_code != 200:
+            logger.warning(
+                f"Could not fetch project details to verify owner. Proceeding with fork logic. Status: {project_response.status_code}"
+            )
+        else:
+            project_data = project_response.json()
+            owner_id = project_data.get("owner", {}).get("id")
+
+            if current_user_id and owner_id and current_user_id == owner_id:
+                self.fork_url = self.repo_url
+                logger.info(
+                    f"User (ID: {current_user_id}) already owns the repository. Using original URL: {self.fork_url}"
+                )
+                return
 
         forks_url = f"{gitlab_instance}/api/v4/projects/{project_path}/forks"
         forks_response = requests.get(forks_url, headers=headers)
@@ -576,15 +799,15 @@ class GitLabAgent(GitAgent):
         forks = forks_response.json()
         for fork in forks:
             namespace = fork.get("namespace", {})
-            fork_owner = namespace.get("name") or namespace.get("path") or ""
-            if fork_owner == current_username:
+            fork_owner_username = namespace.get("path") or namespace.get("name") or ""
+            if fork_owner_username == current_username:
                 self.fork_url = fork["web_url"]
                 logger.info(f"Fork already exists: {self.fork_url}")
                 return
 
         fork_url = f"{gitlab_instance}/api/v4/projects/{project_path}/fork"
         fork_response = requests.post(fork_url, headers=headers)
-        if fork_response.status_code in {200, 201}:
+        if fork_response.status_code in {200, 201, 202}:
             fork_data = fork_response.json()
             self.fork_url = fork_data["web_url"]
             logger.info(f"GitLab fork created successfully: {self.fork_url}")
@@ -617,7 +840,66 @@ class GitLabAgent(GitAgent):
         else:
             logger.error(f"Failed to star GitLab repository: {response.status_code} - {response.text}")
 
-    def create_pull_request(self, title: str = None, body: str = None) -> None:
+    def _check_gitlab_branch_exists(self, branch: str) -> bool:
+        """Check if branch exists on GitLab using API."""
+        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
+
+        if not self.fork_url:
+            repo_to_check = get_base_repo_url(self.repo_url)
+        else:
+            repo_to_check = get_base_repo_url(self.fork_url)
+
+        project_path = repo_to_check.replace("/", "%2F")
+        url = f"{gitlab_instance}/api/v4/projects/{project_path}/repository/branches/{branch}"
+
+        headers = {
+            "Accept": "application/json",
+        }
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                return True
+            elif response.status_code == 404:
+                return False
+            else:
+                logger.warning(f"GitLab API returned {response.status_code} for branch check")
+                return False
+        except Exception as e:
+            logger.warning(f"Failed to check GitLab branch: {e}")
+            return False
+
+    def post_note(self, project_id: int, mr_iid: int, note_body: str):
+        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
+        url = f"{gitlab_instance}/api/v4/projects/{project_id}/merge_requests/{mr_iid}/notes"
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json",
+        }
+        data = {"body": note_body}
+        response = requests.post(url, json=data, headers=headers)
+        if response.status_code == 201:
+            logger.info(f"Successfully posted a note to MR !{mr_iid}.")
+        else:
+            logger.error(f"Failed to post a note to MR !{mr_iid}: {response.status_code} - {response.text}")
+
+    def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
+        """Creates or updates a merge request on GitLab.
+
+        This method implements intelligent MR management:
+        1. Checks if an open MR already exists for the current branch
+        2. If MR exists and there are new reports, updates the MR description
+           with all unique report links (removing duplicates)
+        3. If no MR exists, creates a new one with all available reports
+           from the attachment branch
+
+        Args:
+            title: Optional title for the MR. Uses last commit message if not provided.
+            body: Optional body/description for the MR.
+            changes: Flag indicating whether there are changes to commit.
+        """
         if not self.token:
             raise ValueError("GitLab token is required to create a merge request.")
 
@@ -631,12 +913,14 @@ class GitLabAgent(GitAgent):
         target_project_path = base_repo.replace("/", "%2F")
 
         project_url = f"{gitlab_instance}/api/v4/projects/{target_project_path}"
-        response = requests.get(project_url, headers=headers)
-        if response.status_code == 200:
-            project_info = response.json()
-            target_project_id = project_info["id"]
-        else:
-            raise ValueError(f"Failed to get project info: {response.status_code} - {response.text}")
+        proj_response = requests.get(project_url, headers=headers)
+        if proj_response.status_code != 200:
+            raise ValueError(f"Failed to get project info: {proj_response.status_code} - {proj_response.text}")
+        target_project_id = proj_response.json()["id"]
+
+        last_commit = self.repo.head.commit
+        mr_title = title if title else last_commit.message
+        new_body_content = (body if body else "").strip()
 
         mr_url = f"{gitlab_instance}/api/v4/projects/{source_project_path}/merge_requests"
         params = {
@@ -646,35 +930,69 @@ class GitLabAgent(GitAgent):
             "target_project_id": target_project_id,
         }
         response = requests.get(mr_url, headers=headers, params=params)
-        if response.status_code == 200:
-            mrs = response.json()
-            if mrs:
-                existing_mr = mrs[0]
-                logger.info(f"Merge request already exists: {existing_mr['web_url']}")
-                return
+        mrs = response.json() if response.status_code == 200 else []
 
-        last_commit = self.repo.head.commit
-        mr_title = title if title else last_commit.message
-        mr_body = body if body else last_commit.message
-        mr_body += self.pr_report_body
-        mr_body += self.agent_signature
+        if mrs:
+            existing_mr = mrs[0]
+            mr_iid = existing_mr.get("iid") or existing_mr.get("id")
+            logger.info(f"Merge request !{mr_iid} already exists.")
 
-        mr_data = {
-            "title": mr_title,
-            "source_branch": self.branch_name,
-            "target_branch": self.base_branch,
-            "target_project_id": target_project_id,
-            "description": mr_body,
-            "allow_collaboration": True,
-        }
+            if new_body_content:
+                self.post_note(target_project_id, mr_iid, new_body_content)
 
-        response = requests.post(mr_url, json=mr_data, headers=headers)
-        if response.status_code == 201:
-            logger.info(f"GitLab merge request created successfully: {response.json()['web_url']}")
-        else:
-            logger.error(f"Failed to create merge request: {response.status_code} - {response.text}")
-            if "merge request already exists" not in response.text:
-                raise ValueError("Failed to create merge request.")
+            if self.pr_report_body.strip():
+                old_mr_body = existing_mr.get("description", "") or ""
+
+                report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
+                old_reports = report_pattern.findall(old_mr_body)
+                new_reports = report_pattern.findall(self.pr_report_body)
+                all_reports = sorted(list(set(old_reports + new_reports)))
+
+                clean_body = report_pattern.sub("", old_mr_body).replace(self.AGENT_SIGNATURE, "").strip()
+
+                updated_body = clean_body
+                if all_reports:
+                    updated_body += "\n\n" + "\n".join(all_reports)
+                updated_body += self.AGENT_SIGNATURE
+
+                update_url = f"{gitlab_instance}/api/v4/projects/{target_project_id}/merge_requests/{mr_iid}"
+                update_data = {"description": updated_body.strip()}
+
+                update_response = requests.put(update_url, json=update_data, headers=headers)
+                if update_response.status_code == 200:
+                    logger.info(f"Successfully updated MR !{mr_iid} with new reports.")
+                else:
+                    logger.error(
+                        f"Failed to update MR !{mr_iid} description: {update_response.status_code} - {update_response.text}"
+                    )
+        elif changes:
+            report_files = self.get_attachment_branch_files()
+            report_branch = "osa_tool_attachments"
+            for report_file in report_files:
+                report_url = self._build_report_url(report_branch, report_file)
+                report_link = f"\nGenerated report - [{report_file}]({report_url})\n"
+                if report_link not in self.pr_report_body:
+                    self.pr_report_body += report_link
+
+            content_for_publish = new_body_content + self.pr_report_body
+            mr_body = content_for_publish + self.agent_signature
+
+            mr_data = {
+                "title": mr_title,
+                "source_branch": self.branch_name,
+                "target_branch": self.base_branch,
+                "target_project_id": target_project_id,
+                "description": mr_body,
+                "allow_collaboration": True,
+            }
+
+            response = requests.post(mr_url, json=mr_data, headers=headers)
+            if response.status_code == 201:
+                logger.info(f"GitLab merge request created successfully: {response.json()['web_url']}")
+            else:
+                logger.error(f"Failed to create merge request: {response.status_code} - {response.text}")
+                if "merge request already exists" not in response.text:
+                    raise ValueError("Failed to create merge request.")
 
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
         gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
@@ -815,7 +1133,49 @@ class GitverseAgent(GitAgent):
         else:
             logger.error(f"Failed to star Gitverse repository: {response_star.status_code} - {response_star.text}")
 
-    def create_pull_request(self, title: str = None, body: str = None) -> None:
+    def _check_gitverse_branch_exists(self, branch: str) -> bool:
+        """Check if branch exists on Gitverse using API."""
+        if not self.fork_url:
+            repo_to_check = get_base_repo_url(self.repo_url)
+        else:
+            repo_to_check = get_base_repo_url(self.fork_url)
+
+        url = f"https://api.gitverse.ru/repos/{repo_to_check}/branches"
+
+        headers = {
+            "Accept": "application/vnd.gitverse.object+json;version=1",
+            "User-Agent": "Mozilla/5.0",
+        }
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                branches = response.json()
+                return any(b.get("name") == branch for b in branches)
+            else:
+                logger.warning(f"Gitverse API returned {response.status_code} for branch check")
+                return False
+        except Exception as e:
+            logger.warning(f"Failed to check Gitverse branch: {e}")
+            return False
+
+    def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
+        """Creates or updates a pull request on Gitverse.
+
+        This method implements intelligent PR management:
+        1. Checks if an open PR already exists for the current branch
+        2. If PR exists and there are new reports, updates the PR description
+           with all unique report links (removing duplicates)
+        3. If no PR exists, creates a new one with all available reports
+           from the attachment branch
+
+        Args:
+            title: Optional title for the PR. Uses last commit message if not provided.
+            body: Optional body/description for the PR.
+            changes: Flag indicating whether there are changes to commit.
+        """
         if not self.token:
             raise ValueError("Gitverse token is required to create a pull request.")
 
@@ -828,43 +1188,91 @@ class GitverseAgent(GitAgent):
         }
 
         url = f"https://api.gitverse.ru/repos/{base_repo}/pulls"
-        params = {
-            "state": "open",
-            "head": self.branch_name,
-            "base": self.base_branch,
-        }
-        response = requests.get(url, headers=headers, params=params)
-        if response.status_code == 200:
-            prs = response.json()
-            if prs:
-                existing_pr = prs[0]
-                pr_number = existing_pr["number"]
-                pr_url = f"https://gitverse.ru/{base_repo}/pulls/{pr_number}"
-                logger.info(f"Pull request already exists: {pr_url}")
-                return
-
         last_commit = self.repo.head.commit
         pr_title = title if title else last_commit.message
-        pr_body = body if body else last_commit.message
-        pr_body += self.pr_report_body
-        pr_body += self.agent_signature
+        new_body_content = (body or "").strip()
 
-        pr_data = {
-            "title": pr_title,
-            "head": self.branch_name,
-            "base": self.base_branch,
-            "body": pr_body,
-        }
+        report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
 
-        response = requests.post(url, json=pr_data, headers=headers)
-        if response.status_code == 201:
-            pr_number = response.json()["number"]
+        def extract_reports(text: str) -> list[str]:
+            return report_pattern.findall(text or "")
+
+        def strip_signature(text: str) -> str:
+            return (text or "").replace(self.agent_signature, "").strip()
+
+        def remove_reports(text: str) -> str:
+            return report_pattern.sub("", text or "").strip()
+
+        def uniq_keep_order(items: list[str]) -> list[str]:
+            seen = set()
+            out = []
+            for x in items:
+                if x not in seen:
+                    seen.add(x)
+                    out.append(x)
+            return out
+
+        def build_body(initial_and_history: str, reports: list[str]) -> str:
+            parts = []
+            if initial_and_history.strip():
+                parts.append(initial_and_history.strip())
+            if reports:
+                parts.append("\n".join(reports).strip())
+            return "\n\n".join(parts).strip() + self.AGENT_SIGNATURE
+
+        params = {"state": "open", "head": self.branch_name, "base": self.base_branch}
+        response = requests.get(url, headers=headers, params=params)
+        prs = response.json() if response.status_code == 200 else []
+
+        if prs:
+            existing_pr = prs[0]
+            pr_number = existing_pr.get("number")
             pr_url = f"https://gitverse.ru/{base_repo}/pulls/{pr_number}"
-            logger.info(f"Gitverse pull request created successfully: {pr_url}")
-        else:
-            logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
-            if "pull request already exists" not in response.text:
-                raise ValueError("Failed to create pull request.")
+            logger.info(f"Pull request already exists. Updating PR #{pr_number}: {pr_url}")
+
+            old_body = existing_pr.get("body", "") or ""
+
+            clean_text = remove_reports(strip_signature(old_body))
+
+            all_reports = uniq_keep_order(extract_reports(old_body) + extract_reports(self.pr_report_body))
+
+            if new_body_content and new_body_content not in clean_text:
+                clean_text = (clean_text + "\n\n" + new_body_content).strip()
+
+            updated_body = build_body(clean_text, all_reports)
+
+            update_url = f"{url}/{pr_number}"
+            update_data = {"title": pr_title, "body": updated_body}
+            update_response = requests.patch(update_url, json=update_data, headers=headers)
+
+            if update_response.status_code == 200:
+                logger.info(f"Pull request #{pr_number} updated successfully.")
+            else:
+                logger.error(f"Failed to update pull request: {update_response.status_code} - {update_response.text}")
+
+        elif changes:
+            report_files = self.get_attachment_branch_files()
+            report_branch = "osa_tool_attachments"
+            for report_file in report_files:
+                report_url = self._build_report_url(report_branch, report_file)
+                report_link = f"\nGenerated report - [{report_file}]({report_url})\n"
+                if report_link not in self.pr_report_body:
+                    self.pr_report_body += report_link
+
+            reports = uniq_keep_order(extract_reports(self.pr_report_body))
+            pr_body = build_body(new_body_content, reports)
+
+            pr_data = {"title": pr_title, "head": self.branch_name, "base": self.base_branch, "body": pr_body}
+            response = requests.post(url, json=pr_data, headers=headers)
+
+            if response.status_code == 201:
+                pr_number = response.json()["number"]
+                pr_url = f"https://gitverse.ru/{base_repo}/pulls/{pr_number}"
+                logger.info(f"Gitverse pull request created successfully: {pr_url}")
+            else:
+                logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
+                if "pull request already exists" not in response.text:
+                    raise ValueError("Failed to create pull request.")
 
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
         logger.warning(
