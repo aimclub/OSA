@@ -121,13 +121,13 @@ class GitAgent(abc.ABC):
         # 401/403: Auth/Permission error
         # вроде все пойманные мной сообщения включил
         if (
-                "authentication failed" in stderr
-                or "could not read username" in stderr
-                or "access denied" in stderr
-                or "permission denied" in stderr
-                or "unable to access" in stderr
-                or "403" in stderr
-                or "401" in stderr
+            "authentication failed" in stderr
+            or "could not read username" in stderr
+            or "access denied" in stderr
+            or "permission denied" in stderr
+            or "unable to access" in stderr
+            or "403" in stderr
+            or "401" in stderr
         ):
             logger.error(f"Auth/Permission Error during {action}.")
             logger.error(f"Details: {stderr}")
@@ -455,11 +455,11 @@ class GitAgent(abc.ABC):
             return False
 
     def upload_report(
-            self,
-            report_filename: str,
-            report_filepath: str,
-            report_branch: str = "osa_tool_attachments",
-            commit_message: str = "docs: upload pdf report",
+        self,
+        report_filename: str,
+        report_filepath: str,
+        report_branch: str = "osa_tool_attachments",
+        commit_message: str = "docs: upload pdf report",
     ) -> None:
         """Uploads the generated PDF report to a separate branch.
 
@@ -800,7 +800,7 @@ class GitHubAgent(GitAgent):
 
     def _build_auth_url(self, repo_url: str) -> str:
         if repo_url.startswith("https://github.com/"):
-            repo_path = repo_url[len("https://github.com/"):]
+            repo_path = repo_url[len("https://github.com/") :]
             return f"https://{self.token}@github.com/{repo_path}.git"
         raise ValueError(f"Unsupported repository URL format for GitHub: {repo_url}")
 
@@ -1381,7 +1381,7 @@ class GitverseAgent(GitAgent):
 
     def _build_auth_url(self, repo_url: str) -> str:
         if repo_url.startswith("https://gitverse.ru/"):
-            repo_path = repo_url[len("https://gitverse.ru/"):]
+            repo_path = repo_url[len("https://gitverse.ru/") :]
             return f"https://{self.token}@gitverse.ru/{repo_path}.git"
         raise ValueError(f"Unsupported repository URL format for Gitverse: {repo_url}")
 
