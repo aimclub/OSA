@@ -9,10 +9,10 @@ from dotenv import load_dotenv
 from git import GitCommandError, InvalidGitRepositoryError, Repo
 
 from osa_tool.analytics.metadata import (
-    RepositoryMetadata,
     GitHubMetadataLoader,
     GitLabMetadataLoader,
     GitverseMetadataLoader,
+    RepositoryMetadata,
 )
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import get_base_repo_url, parse_folder_name
@@ -25,7 +25,8 @@ class GitAgent(abc.ABC):
     commit and push changes, and create pull requests.
 
     Attributes:
-        AGENT_SIGNATURE: A signature string appended to pull request descriptions.
+        agent_signature: A signature string appended to a pull request descriptions.
+        author: An author name that appended to a pull request description.
         repo_url: The URL of the Git repository.
         clone_dir: The directory where the repository will be cloned.
         branch_name: The name of the branch to be created.
@@ -37,20 +38,17 @@ class GitAgent(abc.ABC):
         pr_report_body: A formatted message for a pull request.
     """
 
-    AGENT_SIGNATURE = (
-        "\n\n---\n*This PR was created by [osa_tool](https://github.com/aimclub/OSA).*"
-        "\n_OSA just makes your open source project better!_"
-    )
-
-    def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool"):
+    def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool", author: str = None):
         """Initializes the agent with repository info.
 
         Args:
             repo_url: The URL of the GitHub repository.
             repo_branch_name: The name of the repository's branch to be checked out.
             branch_name: The name of the branch to be created. Defaults to "osa_tool".
+            author: The name of the author of the pull request.
         """
         load_dotenv()
+        self.author = author
         self.repo_url = repo_url
         self.clone_dir = os.path.join(os.getcwd(), parse_folder_name(repo_url))
         self.branch_name = branch_name
@@ -60,6 +58,17 @@ class GitAgent(abc.ABC):
         self.metadata = self._load_metadata(self.repo_url)
         self.base_branch = repo_branch_name or self.metadata.default_branch
         self.pr_report_body = ""
+
+    @property
+    def agent_signature(self) -> str:
+        signature = "\n\n---"
+        if self.author:
+            signature += f"\n*Author: {self.author}.*"
+        signature += (
+            "\n*This PR was created by [osa_tool](https://github.com/aimclub/OSA).*"
+            "\n_OSA just makes your open source project better!_"
+        )
+        return signature
 
     @abc.abstractmethod
     def _get_token(self) -> str:
@@ -646,7 +655,7 @@ class GitHubAgent(GitAgent):
                     self.pr_report_body += report_link
 
             content_for_publish = (body if body else "") + self.pr_report_body
-            pr_body = content_for_publish + self.AGENT_SIGNATURE
+            pr_body = content_for_publish + self.agent_signature
 
             pr_data = {
                 "title": pr_title,
@@ -921,7 +930,6 @@ class GitLabAgent(GitAgent):
             "target_project_id": target_project_id,
         }
         response = requests.get(mr_url, headers=headers, params=params)
-
         mrs = response.json() if response.status_code == 200 else []
 
         if mrs:
@@ -967,7 +975,7 @@ class GitLabAgent(GitAgent):
                     self.pr_report_body += report_link
 
             content_for_publish = new_body_content + self.pr_report_body
-            mr_body = content_for_publish + self.AGENT_SIGNATURE
+            mr_body = content_for_publish + self.agent_signature
 
             mr_data = {
                 "title": mr_title,
@@ -1190,7 +1198,7 @@ class GitverseAgent(GitAgent):
             return report_pattern.findall(text or "")
 
         def strip_signature(text: str) -> str:
-            return (text or "").replace(self.AGENT_SIGNATURE, "").strip()
+            return (text or "").replace(self.agent_signature, "").strip()
 
         def remove_reports(text: str) -> str:
             return report_pattern.sub("", text or "").strip()
