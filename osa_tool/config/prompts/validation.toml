@@ -175,3 +175,82 @@ OUTPUT FORMAT:
   "conclusion": str
 }}
 """
+
+extract_paper_experiments_list = """
+INPUT DATA:
+{paper_content}
+
+TASK:
+1. Identify the section(s) of the paper describing experiments (titles may include "Experiments", "Experimental Setup", "Methodology", "Materials and Methods", or similar).
+2. Extract the full text of those section(s) and concatenate them in order into one plain text string.
+3. From that text, list each explicitly described experiment in the order presented, using a direct description from the text.
+4. Experiments have to be described clearly, so it would be possible to tell wheather or not this experiment can be reproduced with code.
+5. Replace ONLY non-askii characters with its askii variant.
+
+RULES:
+- Return ONLY a valid JSON object with no additional text, explanations, or formatting.
+- If no experiment section exists, return {{"experiment_list": []}}.
+- Do not paraphrase, infer, or add any content not present in the input.
+- Do NOT include section titles unless they appear in the original text.
+
+OUTPUT FORMAT:
+Return a valid JSON object with the following structure:
+{{
+  "experiment_list": ["string", "string"]
+}}
+"""
+
+validate_paper_by_experiments_list = """
+INPUT DATA:
+{experiments_list}
+
+{code_files_info}
+
+TASK:
+For each experiment in the provided experiments_list, create a dictionary with the following structure:
+{{
+  "proposed_experiment_description": "EXACT text from experiments_list",
+  "assessment": "assessment of how much of the proposed experiment is actually present in the code base"
+}}
+
+RULES:
+- Return ONLY a valid JSON object with no additional text, explanations, or formatting.
+- The output must be a list of dictionaries, one for each experiment in experiments_list.
+- For "proposed_experiment_description", use the EXACT text from experiments_list without any changes.
+- For "assessment", provide a brief assessment of how much of that specific experiment is implemented in the code base.
+- Assessments should focus on: whether the code implements the methods/models described, uses correct datasets/evaluation metrics, and allows reproduction of the experiment.
+- Base assessments solely on comparing the experiment description with the provided code_files_info.
+
+OUTPUT FORMAT:
+Return a valid JSON array of objects with the following structure:
+{{[
+  {{
+    "proposed_experiment_description": "string",
+    "assessment": "string"
+  }},
+  ...
+]}}
+"""
+
+validate_correspondence_summary = """
+INPUT DATA:
+{experiment_assessments}
+
+TASK:
+Based on the provided experiment assessments, determine the overall correspondence between proposed experiments and code implementation, then output a structured summary.
+
+RULES:
+- Return ONLY a valid JSON object with no additional text, explanations, or formatting.
+- Evaluate "correspondence" as True if at least 80% of proposed experiments are substantially implemented in the code base.
+- Calculate "percentage" as the estimated percentage of proposed experiments that are adequately implemented (0.0 to 100.0).
+- For "conclusion", provide a concise one-sentence summary of the overall match between proposed and implemented experiments.
+- Base your judgment solely on the provided paper excerpts and code analysis.
+
+OUTPUT FORMAT:
+Return a valid JSON with the following structure:
+{{
+  "correspondence": bool,
+  "percentage": float,
+  "conclusion": str
+}}
+"""
