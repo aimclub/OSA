@@ -10,7 +10,10 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
-from osa_tool.analytics.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
+from osa_tool.analytics.report_maker import (
+    ReportGenerator,
+    WhatHasBeenDoneReportGenerator,
+)
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.conversion.notebook_converter import NotebookConverter
@@ -247,13 +250,13 @@ def main():
 
 def initialize_git_platform(args):
     if "github.com" in args.repository:
-        git_agent = GitHubAgent(args.repository, args.branch)
+        git_agent = GitHubAgent(args.repository, args.branch, author=args.author)
         workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
     elif "gitlab." in args.repository:
-        git_agent = GitLabAgent(args.repository, args.branch)
+        git_agent = GitLabAgent(args.repository, args.branch, author=args.author)
         workflow_manager = GitLabWorkflowManager(args.repository, git_agent.metadata, args)
     elif "gitverse.ru" in args.repository:
-        git_agent = GitverseAgent(args.repository, args.branch)
+        git_agent = GitverseAgent(args.repository, args.branch, author=args.author)
         workflow_manager = GitverseWorkflowManager(args.repository, git_agent.metadata, args)
     else:
         raise ValueError(f"Cannot initialize Git Agent and Workflow Manager for this platform: {args.repository}")

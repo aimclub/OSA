@@ -129,6 +129,12 @@ settings:
         advanced        — run all enabled features based on provided flags.
     choices: [ "basic", "auto", "advanced" ]
 
+  author:
+    aliases: [ "--author" ]
+    type: str
+    description: |
+      Primarily used for web interface. When set, the tool will add Author to the Pull Request body.
+
   web_mode:
     aliases: [ "--web-mode" ]
     type: flag
