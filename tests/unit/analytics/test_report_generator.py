@@ -5,6 +5,7 @@ from osa_tool.analytics.response_validation import (
     CodeDocumentation,
     OverallAssessment,
 )
+from osa_tool.utils.response_cleaner import JsonParseError
 
 
 def test_make_request_success(text_generator_instance):
@@ -31,7 +32,7 @@ def test_make_request_success(text_generator_instance):
             "recommendations": ["Add a CONTRIBUTING.md file with guidelines"],
         },
     }
-    mock_model_handler.send_request.return_value = str(valid_response).replace("'", '"')
+    mock_model_handler.send_and_parse.return_value = RepositoryReport.model_validate(valid_response)
 
     # Act
     report = text_generator.make_request()
@@ -47,10 +48,9 @@ def test_make_request_success(text_generator_instance):
 def test_make_request_invalid_json(text_generator_instance):
     # Arrange
     text_generator, mock_model_handler = text_generator_instance
-    mock_model_handler.send_request.return_value = "{INVALID_JSON}"
+    mock_model_handler.send_and_parse.side_effect = JsonParseError("Invalid JSON")
 
     # Act
-
     report = text_generator.make_request()
 
     # Assert

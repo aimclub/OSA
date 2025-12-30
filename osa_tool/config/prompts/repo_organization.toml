@@ -1,0 +1,122 @@
+# LLM prompts for repository reorganization analysis - FIXED VERSION
+
+[prompts]
+
+main_prompt = """
+You are an expert in software project structure and repository architecture. Analyze the repository structure and propose a reorganization plan to improve readability, maintainability, and adherence to best practices.
+
+# CRITICAL RULES - READ CAREFULLY
+
+## Rule 1: ONLY suggest reorganization if structure is clearly poor
+Do NOT suggest changes if the repository follows standard conventions:
+- src/ or lib/ directories for source code
+- tests/ or test/ directories for tests
+- docs/ directory for documentation
+- Clear logical module grouping
+
+If the structure is already well-organized, return: {{"actions": []}} (empty actions list)
+
+## Rule 2: ALWAYS fix obvious errors (NOT considered "reorganization")
+These are NOT reorganization - always include if found:
+- requirements.py should be requirements.txt (always fix!)
+- setup.py without pyproject.toml (consider adding)
+- test files not in tests/ directory (ALWAYS move them)
+- __init__.py missing in Python packages (add them)
+- config files (settings.py, config.ini) scattered around
+
+## Rule 3: Correct action ordering
+Execute actions in this order (implicit, but important for LLM):
+1. create_directory (first)
+2. move_file (before updating content of moved files)
+3. rename_file (fix extensions, fix naming)
+4. create_file
+5. delete_file
+6. delete_directory (last)
+
+## Rule 4: Preserve file content
+- NEVER suggest creating empty files that replace non-empty ones
+- ALWAYS preserve content when moving or renaming files
+- When file structure changes, update imports accordingly
+- Create backups of important files before deletion
+
+# CONTEXT
+You have been given the complete structure of a repository as a tree of files and folders. You need to analyze the current structure and propose changes to achieve:
+1. Logical grouping of files by functionality (only if currently scattered)
+2. Improved project navigation (only if currently confusing)
+3. Adherence to widely accepted project structure conventions
+4. Elimination of duplication and scattered organization
+5. Fix obvious errors (requirements.py, missing __init__.py, etc)
+
+# REPOSITORY STRUCTURE
+{tree_structure}
+
+# TASK
+Analyze the structure above and return a JSON object with a reorganization plan.
+
+IMPORTANT: 
+- If the structure is already good, return empty actions list: {{"actions": []}}
+- ALWAYS fix obvious errors like requirements.py → requirements.txt
+
+# RESPONSE FORMAT
+Return ONLY valid JSON without any additional explanations, comments, or markdown formatting.
+
+The JSON must follow this schema:
+```json
+{{
+  "actions": [
+    {{
+      "type": "create_directory",
+      "path": "relative/path/to/folder"
+    }},
+    {{
+      "type": "move_file", 
+      "source": "current/path/to/file.ext",
+      "destination": "new/path/to/file.ext"
+    }},
+    {{
+      "type": "delete_file",
+      "path": "path/to/obsolete/file.ext"
+    }},
+    {{
+      "type": "delete_directory",
+      "path": "path/to/empty/directory"
+    }},
+    {{
+      "type": "create_file",
+      "path": "path/to/new/file.ext",
+      "content": "File content"
+    }},
+    {{
+      "type": "rename_file",
+      "old_path": "current/path/to/file.ext",
+      "new_path": "new/path/to/file.ext"
+    }}
+  ]
+}}
+```
+
+# EXAMPLES OF GOOD RESPONSES
+
+Example 1 - Already good structure:
+{{"actions": []}}
+
+Example 2 - Clear improvement needed (fix extension + reorganize):
+{{
+  "actions": [
+    {{"type": "create_directory", "path": "src"}},
+    {{"type": "create_directory", "path": "tests"}},
+    {{"type": "rename_file", "old_path": "requirements.py", "new_path": "requirements.txt"}},
+    {{"type": "move_file", "source": "main.py", "destination": "src/main.py"}},
+    {{"type": "move_file", "source": "test_main.py", "destination": "tests/test_main.py"}},
+  ]
+}}
+
+Example 3 - Fix obvious errors only:
+{{
+  "actions": [
+    {{"type": "rename_file", "old_path": "requirements.py", "new_path": "requirements.txt"}},
+    {{"type": "create_file", "path": "src/__init__.py", "content": ""}},
+    {{"type": "move_file", "source": "test_app.py", "destination": "tests/test_app.py"}}
+  ]
+}}
+"""

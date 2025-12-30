@@ -5,10 +5,10 @@ import shutil
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandlerFactory, ModelHandler
-from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
 from osa_tool.readmegen.utils import read_file, save_sections, remove_extra_blank_lines
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptLoader, PromptBuilder
+from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.utils.utils import parse_folder_name
 
 
@@ -36,21 +36,13 @@ class ReadmeTranslator:
             readme_content=readme_content,
         )
 
-        parsed = None
+        async with semaphore:
+            parsed = await self.model_handler.async_send_and_parse(
+                prompt=prompt,
+                parser=lambda raw: JsonProcessor.parse(raw, expected_type=dict),
+            )
 
-        for attempt in range(3):
-            async with semaphore:
-                response = await self.model_handler.async_request(prompt)
-
-            parsed = JsonProcessor.parse(response, expected_type=dict)
-
-            if isinstance(parsed, dict):
-                break
-            logger.warning(f"Parse failed for lang={target_language}, attempt {attempt+1}/3 — retrying LLM request")
-
-        if not isinstance(parsed, dict):
-            parsed = {"content": str(parsed).strip(), "suffix": target_language[:2].lower()}
-
+        # Ensure required fields after validation
         parsed.setdefault("content", parsed.get("raw", "").strip())
         parsed.setdefault("suffix", target_language[:2].lower())
         parsed["target_language"] = target_language
@@ -131,12 +123,10 @@ class ReadmeTranslator:
             if os.path.exists(target_path):
                 os.remove(target_path)
 
-            os.symlink(source_path, target_path)
-            logger.info(f"Created symlink: {target_path} -> {source_path}")
-        except (OSError, NotImplementedError) as e:
-            logger.warning(f"Symlink not supported ({e}), copying file instead")
             shutil.copyfile(source_path, target_path)
             logger.info(f"Copied file: {target_path}")
+        except (OSError, NotImplementedError) as e:
+            logger.error(f"Error while copying file: {e}")
 
     def get_main_readme_file(self) -> str:
         """Return the content of the main README.md in the repository root, or empty string if not found."""

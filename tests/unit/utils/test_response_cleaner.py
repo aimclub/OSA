@@ -1,6 +1,6 @@
-from unittest.mock import patch
+import pytest
 
-from osa_tool.readmegen.postprocessor.response_cleaner import JsonProcessor
+from osa_tool.utils.response_cleaner import JsonProcessor, JsonParseError
 
 
 def test_process_text_valid_json_object():
@@ -58,11 +58,8 @@ def test_process_text_removes_trailing_commas():
 
 def test_process_text_non_string_input():
     # Assert
-    try:
+    with pytest.raises(ValueError, match="Input must be a string."):
         JsonProcessor.process_text(123)
-        assert False, "Expected ValueError"
-    except ValueError as e:
-        assert str(e) == "Input must be a string."
 
 
 def test_parse_success_extract_key():
@@ -87,58 +84,22 @@ def test_parse_success_array_extraction():
     assert result == ["main.py", "utils.py"]
 
 
-def test_parse_fallback_to_list_when_expected_type_list():
-    # Arrange
-    text = "Not JSON at all"
-
-    # Act
-    result = JsonProcessor.parse(text, expected_type=list)
-
-    # Assert
-    assert result == ["Not JSON at all"]
-
-
-def test_parse_fallback_wrap_in_list():
-    # Arrange
-    text = "Error occurred"
-
-    # Act
-    result = JsonProcessor.parse(text, wrap_in_list=True)
-
-    # Assert
-    assert result == ["Error occurred"]
-
-
-def test_parse_fallback_to_dict():
-    # Arrange
-    text = "Raw response"
-
-    # Act
-    result = JsonProcessor.parse(text, expected_type=dict)
-
-    # Assert
-    assert result == {"raw": "Raw response"}
-
-
-def test_parse_fallback_dict_with_custom_key():
-    # Arrange
-    text = "Fallback content"
-
-    # Act
-    result = JsonProcessor.parse(text, expected_key="summary", expected_type=dict)
-
-    # Assert
-    assert result == {"summary": "Fallback content"}
-
-
-def test_parse_type_mismatch_triggers_fallback():
+def test_parse_type_mismatch_raises_error():
     # Arrange
     text = '{"value": "string"}'
 
-    # Act
-    result = JsonProcessor.parse(text, expected_type=list)
     # Assert
-    assert result == [text.strip()]
+    with pytest.raises(JsonParseError):
+        JsonProcessor.parse(text, expected_type=list)
+
+
+def test_parse_invalid_json_raises_error():
+    # Arrange
+    text = "Not JSON at all"
+
+    # Assert
+    with pytest.raises(JsonParseError):
+        JsonProcessor.parse(text)
 
 
 def test_parse_nested_valid_json():
@@ -151,13 +112,3 @@ def test_parse_nested_valid_json():
     # Assert
     expected = {"data": [1, {"flag": True}], "null_val": None}
     assert result == expected
-
-
-def test_parse_logs_warning_on_failure():
-    with patch("osa_tool.readmegen.postprocessor.response_cleaner.logger") as mock_logger:
-        # Act
-        JsonProcessor.parse("invalid", expected_type=dict)
-
-        # Assert
-        mock_logger.warning.assert_called_once()
-        assert "Failed to parse JSON" in mock_logger.warning.call_args[0][0]

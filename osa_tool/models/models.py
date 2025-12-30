@@ -1,5 +1,6 @@
 import asyncio
 import os
+import time
 from abc import ABC, abstractmethod
 from uuid import uuid4
 
@@ -7,8 +8,11 @@ import dotenv
 import tiktoken
 from langchain.schema import SystemMessage
 from protollm.connectors import create_llm_connector
+from pydantic import ValidationError
 
 from osa_tool.config.settings import Settings
+from osa_tool.utils.logger import logger
+from osa_tool.utils.response_cleaner import JsonParseError
 
 
 class ModelHandler(ABC):
@@ -32,7 +36,18 @@ class ModelHandler(ABC):
     def send_request(self, prompt: str) -> str: ...
 
     @abstractmethod
+    def send_and_parse(self, prompt: str, parser: callable, retry_delay: float = 0.5): ...
+
+    @abstractmethod
     async def async_request(self, prompt: str) -> str: ...
+
+    @abstractmethod
+    async def async_send_and_parse(
+        self,
+        prompt: str,
+        parser: callable,
+        retry_delay: float = 0.5,
+    ): ...
 
     @abstractmethod
     async def generate_concurrently(self, prompts: list[str]) -> list: ...
@@ -146,6 +161,7 @@ class ProtollmHandler(ModelHandler):
             None
         """
         self.config = config
+        self.max_retries = config.llm.max_retries
         self._configure_api(config.llm.api, model_name=config.llm.model)
 
     def send_request(self, prompt: str) -> str:
@@ -167,6 +183,46 @@ class ProtollmHandler(ModelHandler):
         response = self.client.invoke(messages)
         return response.content
 
+    def send_and_parse(self, prompt: str, parser: callable, retry_delay: float = 0.5):
+        """
+        Sends a prompt to the LLM, applies a parser to the response, and retries on parsing or validation errors.
+
+        This method attempts to send the request up to `self.max_retries` times.
+        If the parser raises `JsonParseError` or `pydantic.ValidationError`,
+        the request is retried with a delay. If all attempts fail, the last raw
+        LLM response is logged at DEBUG level and the last exception is raised.
+
+        Args:
+            prompt (str): The prompt to send to the LLM.
+            parser (callable): A function that parses and validates the raw LLM response.
+            retry_delay (float, optional): Delay in seconds between retry attempts. Defaults to 0.5.
+
+        Returns:
+            Any: The successfully parsed result from the parser.
+
+        Raises:
+            JsonParseError: If JSON parsing fails after all retries.
+            ValidationError: If pydantic validation fails after all retries.
+        """
+        last_error = None
+        last_raw = None
+
+        for attempt in range(1, self.max_retries + 1):
+            last_raw = self.send_request(prompt)
+
+            try:
+                return parser(last_raw)
+            except (JsonParseError, ValidationError) as e:
+                last_error = e
+                logger.warning(f"Parse failed (attempt {attempt}/{self.max_retries}): {e}")
+
+                if attempt < self.max_retries:
+                    time.sleep(retry_delay)
+
+        logger.debug("Final failed LLM response after retries:\n%s", last_raw)
+
+        raise last_error
+
     async def async_request(self, prompt: str) -> str:
         """
         Asynchronous alternative of send_request method.
@@ -182,6 +238,52 @@ class ProtollmHandler(ModelHandler):
         self.initialize_payload(self.config, safe_prompt)
         response = await self.client.ainvoke(self.payload["messages"])
         return response.content
+
+    async def async_send_and_parse(
+        self,
+        prompt: str,
+        parser: callable,
+        retry_delay: float = 0.5,
+    ):
+        """
+        Asynchronously sends a prompt to the LLM, applies a parser to the response,
+        and retries on parsing errors.
+
+        This method attempts to send the request up to `self.max_retries` times.
+        If the parser raises `JsonParseError` or `pydantic.ValidationError`,
+        the request is retried with a delay. If all attempts fail, the last raw
+        LLM response is logged at DEBUG level and the last exception is raised.
+
+        Args:
+            prompt (str): The prompt to send to the LLM.
+            parser (callable): A function that parses and validates the raw LLM response.
+            retry_delay (float, optional): Delay in seconds between retry attempts. Defaults to 0.5.
+
+        Returns:
+            Any: The successfully parsed result from the parser.
+
+        Raises:
+            JsonParseError: If JSON parsing fails after all retries.
+            ValidationError: If pydantic validation fails after all retries.
+        """
+        last_error = None
+        last_raw = None
+
+        for attempt in range(1, self.max_retries + 1):
+            last_raw = await self.async_request(prompt)
+
+            try:
+                return parser(last_raw)
+
+            except JsonParseError as e:
+                last_error = e
+                logger.warning(f"Async parse failed (attempt {attempt}/{self.max_retries}): {e}")
+
+                if attempt < self.max_retries:
+                    await asyncio.sleep(retry_delay)
+
+        logger.debug("Final failed async LLM response after retries:\n%s", last_raw)
+        raise last_error
 
     async def generate_concurrently(self, prompts: list[str]) -> list[str]:
         """
@@ -230,7 +332,11 @@ class ProtollmHandler(ModelHandler):
         """
         dotenv.load_dotenv()
 
-        self.client = create_llm_connector(model_url=self._build_model_url(), **self._get_llm_params())
+        self.client = create_llm_connector(
+            model_url=self._build_model_url(),
+            extra_body={"providers": {"only": self.config.llm.allowed_providers}},
+            **self._get_llm_params(),
+        )
 
     def _limit_tokens(self, text: str, safety_buffer: int = 100, mode: str = "middle-out") -> str:
         """

@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import multiprocessing
 import os
@@ -5,12 +6,14 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 from pydantic import ValidationError
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
-from osa_tool.analytics.report_maker import ReportGenerator
+from osa_tool.analytics.report_maker import (
+    ReportGenerator,
+    WhatHasBeenDoneReportGenerator,
+)
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.conversion.notebook_converter import NotebookConverter
@@ -23,6 +26,7 @@ from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 from osa_tool.readmegen.readme_core import ReadmeAgent
 from osa_tool.readmegen.utils import format_time
 from osa_tool.scheduler.scheduler import ModeScheduler
+from osa_tool.scheduler.todo_list import ToDoList
 from osa_tool.scheduler.workflow_manager import (
     GitHubWorkflowManager,
     GitLabWorkflowManager,
@@ -54,7 +58,7 @@ def main():
     """
 
     # Create a command line argument parser
-    parser = build_parser_from_yaml(extra_sections=["workflow"])
+    parser = build_parser_from_yaml(extra_sections=["settings", "arguments", "workflow"])
     args = parser.parse_args()
     create_fork = not args.no_fork
     create_pull_request = not args.no_pull_request
@@ -71,7 +75,6 @@ def main():
     asyncio.set_event_loop(loop)
 
     start_time = time.time()
-
     try:
         # Switch to output directory if present
         if args.output:
@@ -83,29 +86,10 @@ def main():
             logger.info(f"Output path changed to {output_path}")
 
         # Load configurations and update
-        config_loader = load_configuration(
-            repo_url=args.repository,
-            api=args.api,
-            base_url=args.base_url,
-            model_name=args.model,
-            temperature=args.temperature,
-            max_tokens=args.max_tokens,
-            context_window=args.context_window,
-            top_p=args.top_p,
-        )
+        config_loader = load_configuration(args)
 
         # Initialize Git agent and Workflow Manager for used platform, perform operations
-        if "github.com" in args.repository:
-            git_agent = GitHubAgent(args.repository, args.branch)
-            workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
-        elif "gitlab." in args.repository:
-            git_agent = GitLabAgent(args.repository, args.branch)
-            workflow_manager = GitLabWorkflowManager(args.repository, git_agent.metadata, args)
-        elif "gitverse.ru" in args.repository:
-            git_agent = GitverseAgent(args.repository, args.branch)
-            workflow_manager = GitverseWorkflowManager(args.repository, git_agent.metadata, args)
-        else:
-            raise ValueError(f"Cannot initialize Git Agent and Workflow Manager for this platform: {args.repository}")
+        git_agent, workflow_manager = initialize_git_platform(args)
 
         if create_fork:
             git_agent.star_repository()
@@ -116,6 +100,7 @@ def main():
         sourcerank = SourceRank(config_loader)
         scheduler = ModeScheduler(config_loader, sourcerank, prompts, args, workflow_manager, git_agent.metadata)
         plan = scheduler.plan
+        what_has_been_done = ToDoList(scheduler.plan)
 
         if create_fork:
             git_agent.create_and_checkout_branch()
@@ -128,55 +113,69 @@ def main():
             analytics.build_pdf()
             if create_fork:
                 git_agent.upload_report(analytics.filename, analytics.output_path)
+            what_has_been_done.mark_did("report")
 
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_doc"):
             rich_section("Document validation")
-            content = DocValidator(config_loader, prompts).validate(plan.get("attachment"))
-            va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata, sourcerank)
-            va_re_gen.build_pdf("Document", content)
-            if create_fork:
-                git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
-
+            content = loop.run_until_complete(DocValidator(config_loader, prompts).validate(plan.get("attachment")))
+            if content:
+                va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata, sourcerank)
+                va_re_gen.build_pdf("Document", content)
+                if create_fork:
+                    git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
+                what_has_been_done.mark_did("validate_doc")
+            else:
+                logger.warning("Document validation returned no content. Skipping report generation.")
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_paper"):
             rich_section("Paper validation")
-            content = PaperValidator(config_loader, prompts).validate(plan.get("attachment"))
-            va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata, sourcerank)
-            va_re_gen.build_pdf("Paper", content)
-            if create_fork:
-                git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
+            content = loop.run_until_complete(PaperValidator(config_loader, prompts).validate(plan.get("attachment")))
+            if content:
+                va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata, sourcerank)
+                va_re_gen.build_pdf("Paper", content)
+                if create_fork:
+                    git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
+                what_has_been_done.mark_did("validate_paper")
+            else:
+                logger.warning("Paper validation returned no content. Skipping report generation.")
 
         # .ipynb to .py conversion
         if notebook := plan.get("convert_notebooks"):
             rich_section("Jupyter notebooks conversion")
             convert_notebooks(args.repository, notebook)
+            what_has_been_done.mark_did("convert_notebooks")
 
         # Auto translating names of directories
         if plan.get("translate_dirs"):
             rich_section("Directory and file translation")
             translation = DirectoryTranslator(config_loader)
             translation.rename_directories_and_files()
+            what_has_been_done.mark_did("translate_dirs")
 
         # Docstring generation
         if plan.get("docstring"):
             rich_section("Docstrings generation")
-            generate_docstrings(config_loader, loop)
+            generate_docstrings(config_loader, loop, args.ignore_list)
+            what_has_been_done.mark_did("docstring")
 
         # License compiling
         if license_type := plan.get("ensure_license"):
             rich_section("License generation")
             compile_license_file(sourcerank, license_type, git_agent.metadata)
+            what_has_been_done.mark_did("ensure_license")
 
         # Generate community documentation
         if plan.get("community_docs"):
             rich_section("Community docs generation")
             generate_documentation(config_loader, git_agent.metadata)
+            what_has_been_done.mark_did("community_docs")
 
         # Requirements generation
         if plan.get("requirements"):
             rich_section("Requirements generation")
             generate_requirements(args.repository)
+            what_has_been_done.mark_did("requirements")
 
         # Readme generation
         if plan.get("readme"):
@@ -185,12 +184,14 @@ def main():
                 config_loader, prompts, plan.get("attachment"), plan.get("refine_readme"), git_agent.metadata
             )
             readme_agent.generate_readme()
+            what_has_been_done.mark_did("readme")
 
         # Readme translation
         translate_readme = plan.get("translate_readme")
         if translate_readme:
             rich_section("README translation")
             ReadmeTranslator(config_loader, prompts, git_agent.metadata, translate_readme).translate_readme()
+            what_has_been_done.mark_did("translate_readme")
 
         # About section generation
         about_gen = None
@@ -202,31 +203,38 @@ def main():
                 git_agent.update_about_section(about_gen.get_about_content())
             if not create_pull_request:
                 logger.info("About section:\n" + about_gen.get_about_section_message())
+            what_has_been_done.mark_did("about")
 
         # Generate platform-specified CI/CD files
         if plan.get("generate_workflows"):
             rich_section("Workflows generation")
             workflow_manager.update_workflow_config(config_loader, plan)
             workflow_manager.generate_workflow(config_loader)
+            what_has_been_done.mark_did("generate_workflows")
 
         # Organize repository by adding 'tests' and 'examples' directories if they aren't exist
         if plan.get("organize"):
             rich_section("Repository organization")
-            organizer = RepoOrganizer(os.path.join(os.getcwd(), parse_folder_name(args.repository)))
+            organizer = RepoOrganizer(config_loader, prompts)
             organizer.organize()
+            what_has_been_done.mark_did("organize")
 
         if create_fork and create_pull_request:
             rich_section("Publishing changes")
-            if git_agent.commit_and_push_changes(force=True):
-                git_agent.create_pull_request(body=about_gen.get_about_section_message() if about_gen else "")
-            else:
-                logger.warning("No changes were committed — pull request will not be created.")
-                if about_gen:
-                    logger.info("About section:\n" + about_gen.get_about_section_message())
+            changes = git_agent.commit_and_push_changes(force=True)
+            git_agent.create_pull_request(
+                body=about_gen.get_about_section_message() if about_gen else "", changes=changes
+            )
 
         if plan.get("delete_dir"):
             rich_section("Repository deletion")
             delete_repository(args.repository)
+            what_has_been_done.mark_did("delete_dir")
+
+        new_source_rank = SourceRank(config_loader)
+        WhatHasBeenDoneReportGenerator(
+            config_loader, new_source_rank, what_has_been_done.list_for_report, git_agent.metadata
+        ).build_pdf()
 
         elapsed_time = time.time() - start_time
         rich_section(f"All operations completed successfully in total time: {format_time(elapsed_time)}")
@@ -238,6 +246,22 @@ def main():
 
     finally:
         loop.close()
+
+
+def initialize_git_platform(args):
+    if "github.com" in args.repository:
+        git_agent = GitHubAgent(args.repository, args.branch, author=args.author)
+        workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
+    elif "gitlab." in args.repository:
+        git_agent = GitLabAgent(args.repository, args.branch, author=args.author)
+        workflow_manager = GitLabWorkflowManager(args.repository, git_agent.metadata, args)
+    elif "gitverse.ru" in args.repository:
+        git_agent = GitverseAgent(args.repository, args.branch, author=args.author)
+        workflow_manager = GitverseWorkflowManager(args.repository, git_agent.metadata, args)
+    else:
+        raise ValueError(f"Cannot initialize Git Agent and Workflow Manager for this platform: {args.repository}")
+
+    return git_agent, workflow_manager
 
 
 def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) -> None:
@@ -276,7 +300,7 @@ def generate_requirements(repo_url):
         logger.error(f"Error while generating project's requirements: {e.stderr}")
 
 
-def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEventLoop) -> None:
+def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEventLoop, ignore_list: list[str]) -> None:
     """Generates a docstrings for .py's classes and methods of the provided repository.
 
     Args:
@@ -291,7 +315,7 @@ def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEvent
 
     try:
         rate_limit = config_loader.config.llm.rate_limit
-        ts = OSA_TreeSitter(repo_path)
+        ts = OSA_TreeSitter(repo_path, ignore_list)
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen(config_loader)
 
@@ -348,48 +372,56 @@ def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEvent
         logger.error("Error while generating codebase documentation: %s", repr(e), exc_info=True)
 
 
-def load_configuration(
-    repo_url: str,
-    api: str,
-    base_url: str,
-    model_name: str,
-    temperature: Optional[str] = None,
-    max_tokens: Optional[str] = None,
-    context_window: Optional[str] = None,
-    top_p: Optional[str] = None,
-) -> ConfigLoader:
+def load_configuration(args: argparse.Namespace) -> ConfigLoader:
     """
-    Loads configuration for osa_tool.
+    Load and update the osa_tool configuration using command-line arguments.
+
+    This function takes the parsed command-line arguments (argparse.Namespace)
+    generated from `build_parser_from_yaml` and updates the global configuration
+    object (`ConfigLoader`) accordingly.
+
+    It validates the provided repository URL via `GitSettings` and applies all
+    LLM-related settings such as model name, API provider, temperature, max tokens,
+    and other model parameters.
 
     Args:
-        repo_url: URL of the GitHub repository.
-        api: LLM API service provider.
-        base_url: URL of the provider compatible with API OpenAI
-        model_name: Specific LLM model to use.
-        temperature: Sampling temperature for the model.
-        max_tokens: Maximum number of output tokens to generate.
-        context_window: Total number of model context (Input + Output).
-        top_p: Nucleus sampling value.
+        args (argparse.Namespace):
+            Parsed arguments returned by `parser.parse_args()`. It must contain:
+                - args.repository    : URL of the repository to analyze
+                - args.api           : LLM API provider name
+                - args.base_url      : Base URL of an OpenAI-compatible API
+                - args.model         : LLM model name
+                - args.temperature   : Sampling temperature
+                - args.max_tokens    : Maximum number of output tokens
+                - args.context_window: Total context window size
+                - args.top_p         : Nucleus sampling parameter
+                - args.max_retries   : Maximum retry attempts for LLM API calls
 
     Returns:
-        config_loader: The configuration object which contains settings for osa_tool.
+        ConfigLoader:
+            The updated configuration object ready to be used by osa_tool.
+
+    Raises:
+        ValueError:
+            If the repository URL fails validation inside `GitSettings`.
     """
     config_loader = ConfigLoader()
 
     try:
-        config_loader.config.git = GitSettings(repository=repo_url)
+        config_loader.config.git = GitSettings(repository=args.repository)
     except ValidationError as es:
         first_error = es.errors()[0]
         raise ValueError(f"{first_error['msg']}{first_error['input']}")
     config_loader.config.llm = config_loader.config.llm.model_copy(
         update={
-            "api": api,
-            "base_url": base_url,
-            "model": model_name,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "context_window": context_window,
-            "top_p": top_p,
+            "api": args.api,
+            "base_url": args.base_url,
+            "model": args.model,
+            "temperature": args.temperature,
+            "max_tokens": args.max_tokens,
+            "context_window": args.context_window,
+            "top_p": args.top_p,
+            "max_retries": args.max_retries,
         }
     )
     logger.info("Config successfully updated and loaded")
