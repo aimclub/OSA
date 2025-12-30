@@ -215,7 +215,7 @@ def main():
         # Organize repository by adding 'tests' and 'examples' directories if they aren't exist
         if plan.get("organize"):
             rich_section("Repository organization")
-            organizer = RepoOrganizer(os.path.join(os.getcwd(), parse_folder_name(args.repository)))
+            organizer = RepoOrganizer(config_loader, prompts)
             organizer.organize()
             what_has_been_done.mark_did("organize")
 
