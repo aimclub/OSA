@@ -26,7 +26,6 @@ from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 from osa_tool.readmegen.readme_core import ReadmeAgent
 from osa_tool.readmegen.utils import format_time
 from osa_tool.scheduler.scheduler import ModeScheduler
-from osa_tool.scheduler.todo_list import ToDoList
 from osa_tool.scheduler.workflow_manager import (
     GitHubWorkflowManager,
     GitLabWorkflowManager,
@@ -100,7 +99,6 @@ def main():
         sourcerank = SourceRank(config_loader)
         scheduler = ModeScheduler(config_loader, sourcerank, prompts, args, workflow_manager, git_agent.metadata)
         plan = scheduler.plan
-        what_has_been_done = ToDoList(scheduler.plan)
 
         if create_fork:
             git_agent.create_and_checkout_branch()
@@ -109,14 +107,19 @@ def main():
         # NOTE: Must run first - switches GitHub branches
         if plan.get("report"):
             rich_section("Report generation")
+            plan.mark_started("report")
             analytics = ReportGenerator(config_loader, sourcerank, prompts, git_agent.metadata)
-            analytics.build_pdf()
-            if create_fork:
-                git_agent.upload_report(analytics.filename, analytics.output_path)
-            what_has_been_done.mark_did("report")
+            try:
+                analytics.build_pdf()
+                if create_fork:
+                    git_agent.upload_report(analytics.filename, analytics.output_path)
+                plan.mark_done("report")
+            except ValueError:
+                plan.mark_failed("report")
 
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_doc"):
+            plan.mark_started("validate_doc")
             rich_section("Document validation")
             content = loop.run_until_complete(DocValidator(config_loader, prompts).validate(plan.get("attachment")))
             if content:
@@ -124,11 +127,13 @@ def main():
                 va_re_gen.build_pdf("Document", content)
                 if create_fork:
                     git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
-                what_has_been_done.mark_did("validate_doc")
+                plan.mark_done("validate_doc")
             else:
+                plan.mark_failed("validate_doc")
                 logger.warning("Document validation returned no content. Skipping report generation.")
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_paper"):
+            plan.mark_started("validate_paper")
             rich_section("Paper validation")
             content = loop.run_until_complete(PaperValidator(config_loader, prompts).validate(plan.get("attachment")))
             if content:
@@ -136,88 +141,121 @@ def main():
                 va_re_gen.build_pdf("Paper", content)
                 if create_fork:
                     git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
-                what_has_been_done.mark_did("validate_paper")
+                plan.mark_done("validate_paper")
             else:
+                plan.mark_failed("validate_paper")
                 logger.warning("Paper validation returned no content. Skipping report generation.")
 
         # .ipynb to .py conversion
         if notebook := plan.get("convert_notebooks"):
+            plan.mark_started("convert_notebooks")
             rich_section("Jupyter notebooks conversion")
-            convert_notebooks(args.repository, notebook)
-            what_has_been_done.mark_did("convert_notebooks")
+            if convert_notebooks(args.repository, notebook):
+                plan.mark_done("convert_notebooks")
+            else:
+                plan.mark_failed("convert_notebooks")
 
         # Auto translating names of directories
         if plan.get("translate_dirs"):
             rich_section("Directory and file translation")
+            plan.mark_started("translate_dirs")
             translation = DirectoryTranslator(config_loader)
-            translation.rename_directories_and_files()
-            what_has_been_done.mark_did("translate_dirs")
+            if translation.rename_directories_and_files():
+                plan.mark_done("translate_dirs")
+            else:
+                plan.mark_failed("translate_dirs")
 
         # Docstring generation
         if plan.get("docstring"):
             rich_section("Docstrings generation")
-            generate_docstrings(config_loader, loop, args.ignore_list)
-            what_has_been_done.mark_did("docstring")
+            plan.mark_started("docstring")
+            if generate_docstrings(config_loader, loop, args.ignore_list):
+                plan.mark_done("docstring")
+            else:
+                plan.mark_failed("docstring")
 
         # License compiling
         if license_type := plan.get("ensure_license"):
             rich_section("License generation")
-            compile_license_file(sourcerank, license_type, git_agent.metadata)
-            what_has_been_done.mark_did("ensure_license")
+            plan.mark_started("ensure_license")
+            if compile_license_file(sourcerank, license_type, git_agent.metadata):
+                plan.mark_done("ensure_license")
+            else:
+                plan.mark_failed("ensure_license")
 
         # Generate community documentation
         if plan.get("community_docs"):
             rich_section("Community docs generation")
-            generate_documentation(config_loader, git_agent.metadata)
-            what_has_been_done.mark_did("community_docs")
+            plan.mark_started("community_docs")
+            if generate_documentation(config_loader, git_agent.metadata):
+                plan.mark_done("community_docs")
+            else:
+                plan.mark_failed("community_docs")
 
         # Requirements generation
         if plan.get("requirements"):
             rich_section("Requirements generation")
-            generate_requirements(args.repository)
-            what_has_been_done.mark_did("requirements")
+            plan.mark_started("requirements")
+            if generate_requirements(args.repository):
+                plan.mark_done("requirements")
+            else:
+                plan.mark_failed("requirements")
 
         # Readme generation
         if plan.get("readme"):
             rich_section("README generation")
+            plan.mark_started("readme")
             readme_agent = ReadmeAgent(
-                config_loader, prompts, plan.get("attachment"), plan.get("refine_readme"), git_agent.metadata
+                config_loader, prompts, git_agent.metadata, plan
             )
-            readme_agent.generate_readme()
-            what_has_been_done.mark_did("readme")
+            try:
+                readme_agent.generate_readme()
+                plan.mark_done("readme")
+            except ValueError:
+                plan.mark_failed("readme")
 
         # Readme translation
         translate_readme = plan.get("translate_readme")
-        if translate_readme:
+        if plan.get("translate_readme"):
             rich_section("README translation")
-            ReadmeTranslator(config_loader, prompts, git_agent.metadata, translate_readme).translate_readme()
-            what_has_been_done.mark_did("translate_readme")
+            plan.mark_started("translate_readme") #? А как отслеживать ошибки
+            if ReadmeTranslator(config_loader, prompts, git_agent.metadata, translate_readme).translate_readme():
+                plan.mark_done("translate_readme")
+            else:
+                plan.mark_failed("translate_readme")
 
         # About section generation
         about_gen = None
         if plan.get("about"):
             rich_section("About Section generation")
             about_gen = AboutGenerator(config_loader, prompts, git_agent)
-            about_gen.generate_about_content()
+            if about_gen.generate_about_content():
+                plan.mark_done("about")
+            else:
+                plan.mark_failed("about")
+
             if create_fork:
                 git_agent.update_about_section(about_gen.get_about_content())
             if not create_pull_request:
                 logger.info("About section:\n" + about_gen.get_about_section_message())
-            what_has_been_done.mark_did("about")
 
         # Generate platform-specified CI/CD files
         if plan.get("generate_workflows"):
             rich_section("Workflows generation")
+            plan.mark_started("generate_workflows")
             workflow_manager.update_workflow_config(config_loader, plan)
-            workflow_manager.generate_workflow(config_loader)
-            what_has_been_done.mark_did("generate_workflows")
+            if workflow_manager.generate_workflow(config_loader):
+                plan.mark_done("generate_workflows")
+            else:
+                plan.mark_failed("generate_workflows")
 
         # Organize repository by adding 'tests' and 'examples' directories if they aren't exist
         if plan.get("organize"):
             rich_section("Repository organization")
+            plan.mark_started("organize")
             organizer = RepoOrganizer(os.path.join(os.getcwd(), parse_folder_name(args.repository)))
             organizer.organize()
-            what_has_been_done.mark_did("organize")
+            plan.mark_done("organize")
 
         if create_fork and create_pull_request:
             rich_section("Publishing changes")
@@ -228,12 +266,13 @@ def main():
 
         if plan.get("delete_dir"):
             rich_section("Repository deletion")
+            plan.mark_started("delete_dir")
             delete_repository(args.repository)
-            what_has_been_done.mark_did("delete_dir")
+            plan.mark_done("delete_dir")
 
         new_source_rank = SourceRank(config_loader)
         WhatHasBeenDoneReportGenerator(
-            config_loader, new_source_rank, what_has_been_done.list_for_report, git_agent.metadata
+            config_loader, new_source_rank, plan.list_for_report, git_agent.metadata, prompts
         ).build_pdf()
 
         elapsed_time = time.time() - start_time
@@ -264,7 +303,7 @@ def initialize_git_platform(args):
     return git_agent, workflow_manager
 
 
-def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) -> None:
+def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) -> bool:
     """Converts Jupyter notebooks to Python scripts based on provided paths.
 
     Args:
@@ -279,12 +318,13 @@ def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) ->
         else:
             for path in notebook_paths:
                 converter.process_path(path)
-
+        return True
     except Exception as e:
         logger.error("Error while converting notebooks: %s", repr(e), exc_info=True)
+    return False
 
 
-def generate_requirements(repo_url):
+def generate_requirements(repo_url) -> bool:
     logger.info(f"Starting the generation of requirements")
     repo_path = Path(parse_folder_name(repo_url)).resolve()
     try:
@@ -298,9 +338,11 @@ def generate_requirements(repo_url):
         logger.debug(result)
     except subprocess.CalledProcessError as e:
         logger.error(f"Error while generating project's requirements: {e.stderr}")
+        return False
+    return True
 
 
-def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEventLoop, ignore_list: list[str]) -> None:
+def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEventLoop, ignore_list: list[str]) -> bool:
     """Generates a docstrings for .py's classes and methods of the provided repository.
 
     Args:
@@ -370,7 +412,8 @@ def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEvent
     except Exception as e:
         dg._purge_temp_files(repo_path)
         logger.error("Error while generating codebase documentation: %s", repr(e), exc_info=True)
-
+        return False
+    return True
 
 def load_configuration(args: argparse.Namespace) -> ConfigLoader:
     """

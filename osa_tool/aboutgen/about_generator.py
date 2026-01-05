@@ -35,20 +35,25 @@ class AboutGenerator:
         self.validate_topics = git_agent.validate_topics
         self._content: dict | None = None
 
-    def generate_about_content(self) -> None:
+    def generate_about_content(self) -> bool:
         """
         Generates content for About section.
+        Returns:
+            Has the task been completed successfully
         """
         if self._content is not None:
             logger.warning("About section content already generated. Skipping generation.")
-            return
+            return False
         logger.info("Generating 'About' section...")
+        description = self.generate_description()
+        homepage = self.detect_homepage()
+        topics = self.generate_topics()
         self._content = {
-            "description": self.generate_description(),
-            "homepage": self.detect_homepage(),
-            "topics": self.generate_topics(),
+            "description": description,
+            "homepage": homepage,
+            "topics": topics,
         }
-
+        return all([description != "", homepage != "", topics != ""])
     def get_about_content(self) -> dict:
         """
         Returns the generated About section content.

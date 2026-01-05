@@ -48,3 +48,132 @@ RULES:
 - Prioritize 3 most critical recommendations
 
 """
+
+after_report_text_prompt = """
+DEFINITIONS:
+
+translate_dirs — Translate directory names to English
+convert_notebooks — Convert Jupyter notebooks to Python scripts
+translate_readme — Translate README file to English
+ensure_license — Ensure a LICENSE file is present
+community_docs — Add or update community documentation files
+docstring — Add or update docstrings in source code
+ignore_list — Add or update ignore files such as .gitignore
+report — Generate refactoring report
+readme — Create a README file
+refine_readme — Improve and extend existing README
+requirements — Add or update requirements file
+organize — Reorganize project structure
+about — Add project description or about section
+validate_paper — Validate academic paper files
+validate_doc — Validate documentation files
+generate_workflows — Generate CI or automation workflows
+include_tests — Add or include tests
+include_black — Add Black code formatter
+include_pep8 — Add PEP8 compliance checks
+include_autopep8 — Add autopep8 formatter
+include_fix_pep8 — Automatically fix PEP8 issues
+include_pypi — Prepare project for PyPI publishing
+python_versions — Specify supported Python versions
+pep8_tool — Configure PEP8 checking tool
+use_poetry — Use Poetry for dependency management
+include_codecov — Add Codecov integration
+
+
+INPUT DATA (tasks list):
+
+{tasks_list}
+
+TASK:
+
+Write a connected textual summary of the repository refactoring.
+
+REQUIREMENTS:
+- Write approximately two paragraphs
+- Use plain text only
+- Do not use markdown
+- Do not use bullet points or lists
+- Do not mention task names or task numbers
+- Describe what was done and what was intentionally not done
+- Use neutral technical language
+- Base the text ONLY on the input tasks and their definitions
+
+STYLE:
+- Clear and concise
+- Past tense
+- No assumptions beyond provided data
+
+OUTPUT:
+Return only the text summary.
+Do not add any explanations or extra text.
+"""
+
+after_report_blocks_prompt = """
+TASK DEFINITIONS:
+
+translate_dirs — Translate directory names to English
+convert_notebooks — Convert Jupyter notebooks to Python scripts
+translate_readme — Translate README file to English
+ensure_license — Ensure a LICENSE file is present
+community_docs — Add or update community documentation files
+docstring — Add or update docstrings in source code
+ignore_list — Add or update ignore files such as .gitignore
+report — Generate refactoring report
+readme — Create a README file
+refine_readme — Improve and extend existing README
+requirements — Add or update requirements file
+organize — Reorganize project structure
+about — Add project description or about section
+validate_paper — Validate academic paper files
+validate_doc — Validate documentation files
+generate_workflows — Generate CI or automation workflows
+include_tests — Add or include tests
+include_black — Add Black code formatter
+include_pep8 — Add PEP8 compliance checks
+include_autopep8 — Add autopep8 formatter
+include_fix_pep8 — Automatically fix PEP8 issues
+include_pypi — Prepare project for PyPI publishing
+python_versions — Specify supported Python versions
+pep8_tool — Configure PEP8 checking tool
+use_poetry — Use Poetry for dependency management
+include_codecov — Add Codecov integration
+
+
+INPUT DATA (tasks list):
+
+{tasks_list}
+
+TASK:
+
+You must summarize the result of repository refactoring based ONLY on the tasks listed above.
+
+Group tasks into logical blocks.
+Each logical block must contain:
+- a short name (plain sentence)
+- a short description (plain sentence)
+- a list of task numbers that belong to this block
+
+OUTPUT FORMAT:
+
+Return ONLY valid JSON.
+No extra text, no explanations, no markdown.
+
+JSON structure:
+[
+  {{
+    "name": "Block name as a plain sentence",
+    "description": "Short description as a plain sentence",
+    "tasks": [1, 2]
+  }}
+]
+
+RULES (IMPORTANT):
+
+1. Use double quotes only
+2. Output must be valid JSON
+3. Use ONLY task numbers from the input list
+4. Every task from 1 to 7 MUST be used exactly once
+5. Do NOT invent new tasks
+7. "tasks" must contain only numbers
+
+"""

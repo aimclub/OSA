@@ -6,7 +6,7 @@ from osa_tool.readmegen.generator.builder import MarkdownBuilder
 from osa_tool.readmegen.generator.builder_article import MarkdownBuilderArticle
 from osa_tool.readmegen.models.llm_service import LLMClient
 from osa_tool.readmegen.utils import remove_extra_blank_lines, save_sections
-from osa_tool.scheduler.todo_list import ToDoList
+from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.utils import parse_folder_name
@@ -17,21 +17,19 @@ class ReadmeAgent:
         self,
         config_loader: ConfigLoader,
         prompts: PromptLoader,
-        article: str | None,
-        refine_readme: bool,
         metadata: RepositoryMetadata,
-        todo_list: ToDoList | None = None,
+        plan: Plan = None,
     ):
         self.config_loader = config_loader
         self.prompts = prompts
-        self.article = article
-        self.refine_readme = refine_readme
+        self.article = plan.get("attachment")
+        self.refine_readme = plan.get("refine_readme")
         self.metadata = metadata
         self.repo_url = self.config_loader.config.git.repository
         self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.file_to_save = os.path.join(self.repo_path, "README.md")
         self.llm_client = LLMClient(self.config_loader, self.prompts, self.metadata)
-        self.todo_list = todo_list
+        self.plan = plan
 
     def generate_readme(self):
         logger.info("Started generating README.md. Processing the repository: %s", self.repo_url)
@@ -44,9 +42,12 @@ class ReadmeAgent:
             readme_content = builder.build()
 
             if self.refine_readme:
-                readme_content = self.llm_client.refine_readme(readme_content)
-                if self.todo_list is not None:
-                    self.todo_list.mark_did("refine_readme")
+                self.plan.mark_started("refine_readme")
+                try:
+                    readme_content = self.llm_client.refine_readme(readme_content)
+                    self.plan.mark_done("refine_readme")
+                except:
+                    self.plan.mark_failed("refine_readme")
 
             if self.article is None:
                 readme_content = self.llm_client.clean(readme_content)

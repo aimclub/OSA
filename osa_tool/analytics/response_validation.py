@@ -64,3 +64,12 @@ class RepositoryReport(BaseModel):
 
     class Config:
         extra = "ignore"
+
+class AfterReportBlock(BaseModel):
+    name: str
+    description: str
+    tasks: list[tuple[str, bool]]
+
+class AfterReport(BaseModel):
+    summary: str
+    blocks: list[AfterReportBlock]

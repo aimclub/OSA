@@ -5,7 +5,7 @@ from typing import List, Optional
 import yaml
 
 from osa_tool.config.settings import WorkflowSettings
-from osa_tool.scheduler.todo_list import ToDoList
+from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.utils import osa_project_root
 
 
@@ -72,7 +72,7 @@ class WorkflowGenerator(ABC):
         pass
 
     @abstractmethod
-    def generate_selected_jobs(self, settings: WorkflowSettings, todo_list: ToDoList | None = None) -> List[str]:
+    def generate_selected_jobs(self, settings: WorkflowSettings, plan: Plan) -> List[str]:
         """Generate selected jobs based on settings.
 
         Args:
@@ -494,7 +494,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
 
         return file_path
 
-    def generate_selected_jobs(self, settings: WorkflowSettings, todo_list: ToDoList | None = None) -> List[str]:
+    def generate_selected_jobs(self, settings: WorkflowSettings, plan: Plan) -> List[str]:
         """
         Generate a complete set of workflows.
 
@@ -510,8 +510,8 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
         if settings.include_black:
             file_path = self.generate_black_formatter(branches=settings.branches)
             generated_files.append(file_path)
-            if todo_list is not None:
-                todo_list.mark_did("include_black")
+            if plan is not None:
+                plan.mark_done("include_black")
 
         if settings.include_tests:
             file_path = self.generate_unit_test(
@@ -521,8 +521,8 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
                 coverage=settings.include_codecov,
             )
             generated_files.append(file_path)
-            if todo_list is not None:
-                todo_list.mark_did("include_tests")
+            if plan is not None:
+                plan.mark_done("include_tests")
 
         if settings.include_pep8:
             file_path = self.generate_pep8(
@@ -532,8 +532,8 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
                 branches=settings.branches,
             )
             generated_files.append(file_path)
-            if todo_list is not None:
-                todo_list.mark_did("include_pep8")
+            if plan is not None:
+                plan.mark_done("include_pep8")
 
         if settings.include_autopep8:
             file_path = self.generate_autopep8(branches=settings.branches)
@@ -542,10 +542,10 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
             if settings.include_fix_pep8:
                 file_path = self.generate_fix_pep8_command()
                 generated_files.append(file_path)
-                if todo_list is not None:
-                    todo_list.mark_did("include_fix_pep8")
-            if todo_list is not None:
-                todo_list.mark_did("include_autopep8")
+                if plan is not None:
+                    plan.mark_done("include_fix_pep8")
+            if plan is not None:
+                plan.mark_done("include_autopep8")
 
         if settings.include_pypi:
             file_path = self.generate_pypi_publish(
@@ -554,8 +554,8 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
                 use_poetry=settings.use_poetry,
             )
             generated_files.append(file_path)
-            if todo_list is not None:
-                todo_list.mark_did("include_pypi")
+            if plan is not None:
+                plan.mark_done("include_pypi")
 
         return generated_files
 
@@ -707,7 +707,7 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
             return ""
         return f"only:\n" + "\n".join([f"  - {branch}" for branch in branches])
 
-    def generate_selected_jobs(self, settings: WorkflowSettings, todo_list: ToDoList | None = None) -> List[str]:
+    def generate_selected_jobs(self, settings: WorkflowSettings, plan: Plan) -> List[str]:
         """
         Generate a complete set of workflows.
 
@@ -735,8 +735,8 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
                     branches=settings.branches,
                 )
             )
-            if todo_list is not None:
-                todo_list.mark_did("include_black")
+            if plan is not None:
+                plan.mark_done("include_black")
 
         if settings.include_tests:
             yaml_parts.append(
@@ -745,8 +745,8 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
                     branches=settings.branches,
                 )
             )
-            if todo_list is not None:
-                todo_list.mark_did("include_tests")
+            if plan is not None:
+                plan.mark_done("include_tests")
 
         if settings.include_pep8:
             yaml_parts.append(
@@ -756,8 +756,8 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
                     branches=settings.branches,
                 )
             )
-            if todo_list is not None:
-                todo_list.mark_did("include_pep8")
+            if plan is not None:
+                plan.mark_done("include_pep8")
 
         if settings.include_autopep8:
             yaml_parts.append(
@@ -774,17 +774,17 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
                         branches=settings.branches,
                     )
                 )
-                if todo_list is not None:
-                    todo_list.mark_did("include_fix_pep8")
-            if todo_list is not None:
-                todo_list.mark_did("include_autopep8")
+                if plan is not None:
+                    plan.mark_done("include_fix_pep8")
+            if plan is not None:
+                plan.mark_done("include_autopep8")
 
         if settings.include_pypi:
             yaml_parts.append(
                 self.generate_pypi_publish(python_version=settings.python_versions[-1], use_poetry=settings.use_poetry)
             )
-            if todo_list is not None:
-                todo_list.mark_did("include_pypi")
+            if plan is not None:
+                plan.mark_done("include_pypi")
 
         content = "\n".join(part for part in yaml_parts if part) + "\n"
         file_path = os.path.join(self.output_dir, ".gitlab-ci.yml")

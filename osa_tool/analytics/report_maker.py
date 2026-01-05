@@ -19,7 +19,7 @@ from reportlab.platypus import (
 )
 
 from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.analytics.report_generator import TextGenerator
+from osa_tool.analytics.report_generator import TextGenerator, AfterReportTextGenerator
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.utils.logger import logger
@@ -39,6 +39,8 @@ class AbstractReportGenerator(ABC):
 
         self.filename = f"{self.metadata.name}_report.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
+        self.start_log = f"Starting analysis for repository {self.metadata.full_name}"
+        self.report_header = "Repository Analysis Report"
 
     @staticmethod
     def table_builder(
@@ -143,7 +145,7 @@ class AbstractReportGenerator(ABC):
             alignment=0,
             leftIndent=-20,
         )
-        title_line1 = Paragraph(f"Repository Analysis Report", title_style)
+        title_line1 = Paragraph(self.report_header, title_style)
 
         name = self.metadata.name
         if len(self.metadata.name) > 20:
@@ -283,7 +285,7 @@ class AbstractReportGenerator(ABC):
         Raises:
             Exception: If there is an error during the PDF creation process.
         """
-        logger.info(f"Starting analysis for repository {self.metadata.full_name}")
+        logger.info(self.start_log)
 
         try:
             doc = SimpleDocTemplate(
@@ -391,11 +393,15 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         sourcerank: SourceRank,
         what_has_been_done: list[tuple[str, bool]],
         metadata: RepositoryMetadata,
+        prompts: PromptLoader,
     ):
         super().__init__(config_loader, sourcerank, metadata)
-        self.filename = f"{self.metadata.name}_what_has_been_done_report.pdf"
+        self.filename = f"{self.metadata.name}_work_summary.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
         self.what_has_been_done = what_has_been_done
+        self.text_generator = AfterReportTextGenerator(config_loader, prompts, self.what_has_been_done)
+        self.start_log = f"Starting creating summary for OSA work"
+        self.report_header = "OSA Work Summary"
 
     def body_second_part(self) -> list[Flowable]:
         """
@@ -404,17 +410,21 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         Returns:
             list: A list of Paragraph objects for the PDF report.
         """
+        response = self.text_generator.make_request()
         normal_style, custom_style = self.get_styles()
         story = []
-
         story.append(Paragraph("<b>What has been done:</b>", custom_style))
-
-        for task, was_do in self.what_has_been_done:
-            task_result = "Yes" if was_do else "No"
-            story.append(
-                Paragraph(
-                    f"• {task}: {task_result}",
-                    normal_style,
+        story.append(Paragraph(response.summary, normal_style))
+        story.append(Paragraph("<b>Report by tasks:</b>", custom_style))
+        for block in response.blocks:
+            story.append(Paragraph(f"<b>{block.name}</b>", custom_style))
+            story.append(Paragraph(block.description, normal_style))
+            for task, was_do in block.tasks:
+                task_result = "Yes" if was_do else "No"
+                story.append(
+                    Paragraph(
+                        f"• {task}: {task_result}",
+                        normal_style,
+                    )
                 )
-            )
         return story

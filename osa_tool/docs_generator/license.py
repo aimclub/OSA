@@ -8,7 +8,7 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 
 
-def compile_license_file(sourcerank: SourceRank, ensure_license, metadata: RepositoryMetadata):
+def compile_license_file(sourcerank: SourceRank, ensure_license, metadata: RepositoryMetadata) -> bool:
     """
     Compiles a license file for a software project using a specified template.
 
@@ -22,7 +22,7 @@ def compile_license_file(sourcerank: SourceRank, ensure_license, metadata: Repos
         - metadata: Git repository metadata.
 
     Returns:
-        None. The compiled license file is saved in the repository directory of the SourceRank object.
+        Has the task been completed successfully. The compiled license file is saved in the repository directory of the SourceRank object.
     """
     try:
         if sourcerank.license_presence():
@@ -50,3 +50,5 @@ def compile_license_file(sourcerank: SourceRank, ensure_license, metadata: Repos
                 )
     except Exception as e:
         logger.error("Error while compiling LICENSE: %s", e, exc_info=True)
+        return False
+    return True

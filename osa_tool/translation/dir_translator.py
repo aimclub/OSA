@@ -239,9 +239,11 @@ class DirectoryTranslator:
 
         return rename_map, rename_map_code
 
-    def rename_files(self) -> None:
+    def rename_files(self) -> bool:
         """
         Translates all file names into English, preserving their extensions.
+        Returns:
+            Has the task been completed successfully
         """
         logger.info("Starting files renaming process...")
 
@@ -258,13 +260,17 @@ class DirectoryTranslator:
                 logger.info(f'Renamed: "{old_name}" → "{new_name}"')
         except Exception as e:
             logger.error("Error while renaming files: %s", e, exc_info=True)
+            return False
 
         logger.info("Files renaming completed successfully")
+        return True
 
-    def rename_directories(self) -> None:
+    def rename_directories(self) -> bool:
         """
         Translates directory names into English
         and updates code to reflect changes.
+        Returns:
+            Has the task been completed successfully
         """
         logger.info("Starting directory renaming process...")
 
@@ -284,12 +290,15 @@ class DirectoryTranslator:
                     logger.info(f'Renamed: "{old_name}" → "{new_name}"')
         except Exception as e:
             logger.error("Error while renaming directories: %s", e, exc_info=True)
+            return False
 
         logger.info("Directory renaming completed successfully")
+        return True
 
-    def rename_directories_and_files(self) -> None:
+    def rename_directories_and_files(self) -> bool:
         """
         The complete process of translating directories and files in the repository.
+        Returns:
+            Has the task been completed successfully
         """
-        self.rename_directories()
-        self.rename_files()
+        return self.rename_directories() and self.rename_files()

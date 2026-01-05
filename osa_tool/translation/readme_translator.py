@@ -49,25 +49,33 @@ class ReadmeTranslator:
 
         return parsed
 
-    async def translate_readme_async(self) -> None:
+    async def translate_readme_async(self) -> bool:
         """
         Asynchronously translate the main README into all target languages.
+        Returns:
+            Has the task been completed successfully
         """
         readme_content = self.get_main_readme_file()
         if not readme_content:
             logger.warning("No README content found, skipping translation")
-            return
+            return False
 
         semaphore = asyncio.Semaphore(self.rate_limit)
 
         results = {}
 
         async def translate_and_save(lang: str):
-            translation = await self.translate_readme_request_async(readme_content, lang, semaphore)
-            self.save_translated_readme(translation)
-            results[lang] = translation
+            try:
+                translation = await self.translate_readme_request_async(readme_content, lang, semaphore)
+                self.save_translated_readme(translation)
+                results[lang] = translation
+            except ConnectionError:
+                logger.warning(f"Connection error for language '{lang}'")
 
         await asyncio.gather(*(translate_and_save(lang) for lang in self.languages))
+
+        if not results:
+            return False
 
         if self.languages:
             first_lang = self.languages[0]
@@ -75,6 +83,7 @@ class ReadmeTranslator:
                 self.set_default_translated_readme(results[first_lang])
             else:
                 logger.warning(f"No translation found for first language '{first_lang}'")
+        return True
 
     def save_translated_readme(self, translation: dict) -> None:
         """
@@ -133,6 +142,10 @@ class ReadmeTranslator:
         readme_path = os.path.join(self.base_path, "README.md")
         return read_file(readme_path)
 
-    def translate_readme(self) -> None:
-        """Synchronous wrapper around async translation."""
-        asyncio.run(self.translate_readme_async())
+    def translate_readme(self) -> bool:
+        """
+        Synchronous wrapper around async translation.
+        Returns:
+            Has the task been completed successfully
+        """
+        return asyncio.run(self.translate_readme_async())
