@@ -9,7 +9,7 @@ from osa_tool.scheduler.workflow_manager import WorkflowManager
 from osa_tool.ui.plan_editor import PlanEditor
 from osa_tool.ui.web_plan_editor import WebPlanEditor
 from osa_tool.utils.logger import logger
-from osa_tool.utils.prompts_builder import PromptBuilder, PromptLoader
+from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.utils.utils import extract_readme_content, parse_folder_name
 
@@ -24,7 +24,6 @@ class ModeScheduler:
         self,
         config_loader: ConfigLoader,
         sourcerank: SourceRank,
-        prompts: PromptLoader,
         args,
         workflow_manager: WorkflowManager,
         metadata: RepositoryMetadata,
@@ -38,7 +37,7 @@ class ModeScheduler:
         self.repo_url = self.config.git.repository
         self.metadata = metadata
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
-        self.prompts = prompts
+        self.prompts = self.config.prompts
         self.plan = self._select_plan()
 
     @staticmethod

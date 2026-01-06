@@ -19,18 +19,30 @@ from reportlab.platypus import (
 )
 
 from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.analytics.report_generator import TextGenerator
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.operations.analysis.repository_report.report_generator import TextGenerator
+from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.utils.logger import logger
-from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.utils import osa_project_root
 
 
+class GenerateReportOperation(Operation):
+    name = "generate_report"
+    description = "Generate repository quality report as PDF"
+    supported_intents = ["new_task"]
+    supported_scopes = ["analysis", "full_repo"]
+    priority = 5
+    uses_git = True
+
+
+OperationRegistry.register(GenerateReportOperation())
+
+
 class AbstractReportGenerator(ABC):
-    def __init__(self, config_loader: ConfigLoader, sourcerank: SourceRank, metadata: RepositoryMetadata):
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
         self.config = config_loader.config
-        self.sourcerank = sourcerank
+        self.sourcerank = SourceRank(config_loader)
         self.metadata = metadata
         self.repo_url = self.config.git.repository
         self.osa_url = "https://github.com/aimclub/OSA"
@@ -309,11 +321,9 @@ class AbstractReportGenerator(ABC):
 
 class ReportGenerator(AbstractReportGenerator):
 
-    def __init__(
-        self, config_loader: ConfigLoader, sourcerank: SourceRank, prompts: PromptLoader, metadata: RepositoryMetadata
-    ):
-        super().__init__(config_loader, sourcerank, metadata)
-        self.text_generator = TextGenerator(config_loader, self.sourcerank, prompts, self.metadata)
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
+        super().__init__(config_loader, metadata)
+        self.text_generator = TextGenerator(config_loader, self.metadata)
 
     def body_second_part(self) -> list[Flowable]:
         """
@@ -388,11 +398,10 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
     def __init__(
         self,
         config_loader: ConfigLoader,
-        sourcerank: SourceRank,
         what_has_been_done: list[tuple[str, bool]],
         metadata: RepositoryMetadata,
     ):
-        super().__init__(config_loader, sourcerank, metadata)
+        super().__init__(config_loader, metadata)
         self.filename = f"{self.metadata.name}_what_has_been_done_report.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
         self.what_has_been_done = what_has_been_done

@@ -1,4 +1,4 @@
-from osa_tool.readmegen.generator.header import HeaderBuilder
+from osa_tool.operations.docs.readme_generation.generator.header import HeaderBuilder
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
