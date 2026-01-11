@@ -443,41 +443,44 @@ class OSA_TreeSitter(object):
         if not block_node:
             return []
 
-        # Process only direct statements in the block
-        for child in block_node.children:
-            if child.type in ("expression_statement", "return_statement"):
-                for subchild in child.children:
-                    if subchild.type == "call":
-                        call_target = subchild.child_by_field_name("function")
-                        if call_target:
-                            call_text = source_code[call_target.start_byte : call_target.end_byte].strip()
+        def extract_calls_recursive(node):
+            """Recursively extract calls from all nodes, including nested blocks."""
+            # Skip nested function definitions
+            if node.type == "function_definition" and node != function_node:
+                return
 
-                            # Filter out empty or invalid calls
-                            if not call_text or call_text in ('', ' '):
-                                continue
+            # Process call nodes
+            if node.type == "call":
+                call_target = node.child_by_field_name("function")
+                if call_target:
+                    call_text = source_code[call_target.start_byte : call_target.end_byte].strip()
 
-                            # Only include:
-                            # 1. Simple function names (no dots): foo()
-                            # 2. self.method(): self.xxx
-                            # 3. ClassName.method(): CapitalizedName.xxx
-                            if '.' not in call_text:
-                                # Simple function call
-                                function_calls.add(call_text)
-                            elif call_text.startswith('self.'):
-                                # self.method() calls
-                                function_calls.add(call_text)
-                            else:
-                                # Check if it's a class method (starts with capital letter)
-                                parts = call_text.split('.')
-                                if parts and parts[0] and parts[0][0].isupper():
-                                    # ClassName.method() pattern
-                                    function_calls.add(call_text)
-                                # else: skip instance method calls like obj.method()
+                    # Filter out empty or invalid calls
+                    if not call_text or call_text in ("", " "):
+                        return
 
-            # Also check assignment statements for imported class instantiation
-            elif child.type == "assignment":
+                    # Only include:
+                    # 1. Simple function names (no dots): foo()
+                    # 2. self.method(): self.xxx
+                    # 3. ClassName.method(): CapitalizedName.xxx
+                    if "." not in call_text:
+                        # Simple function call
+                        function_calls.add(call_text)
+                    elif call_text.startswith("self."):
+                        # self.method() calls
+                        function_calls.add(call_text)
+                    else:
+                        # Check if it's a class method (starts with capital letter)
+                        parts = call_text.split(".")
+                        if parts and parts[0] and parts[0][0].isupper():
+                            # ClassName.method() pattern
+                            function_calls.add(call_text)
+                        # else: skip instance method calls like obj.method()
+
+            # Check assignments for imported class instantiation
+            elif node.type == "assignment":
                 alias = None
-                for subchild in child.children:
+                for subchild in node.children:
                     if subchild.type == "identifier":
                         alias = subchild.text.decode("utf-8")
                     elif subchild.type == "call":
@@ -487,6 +490,13 @@ class OSA_TreeSitter(object):
                             resolved = self._resolve_import(call_text, alias, imports, alias_map)
                             if resolved and resolved.get("path"):
                                 function_calls.add(call_text)
+
+            # Recursively process children
+            for child in node.children:
+                extract_calls_recursive(child)
+
+        # Start recursive extraction from block node
+        extract_calls_recursive(block_node)
 
         return sorted(list(function_calls))
 
@@ -599,15 +609,36 @@ class OSA_TreeSitter(object):
         arguments = []
         if parameters_node:
             for param_node in parameters_node.children:
+                # Handle typed parameters (e.g., param: int)
                 if param_node.type == "typed_parameter":
                     for typed_param_node in param_node.children:
                         if typed_param_node.type == "identifier":
                             arguments.append(typed_param_node.text.decode("utf-8"))
-                if param_node.type == "typed_default_parameter":
+                # Handle typed parameters with defaults (e.g., param: int = 5)
+                elif param_node.type == "typed_default_parameter":
                     for typed_param_node in param_node.children:
                         if typed_param_node.type == "identifier":
                             arguments.append(typed_param_node.text.decode("utf-8"))
-                if param_node.type == "identifier":
+                # Handle parameters with defaults but no type (e.g., param=None)
+                elif param_node.type == "default_parameter":
+                    for child in param_node.children:
+                        if child.type == "identifier":
+                            arguments.append(child.text.decode("utf-8"))
+                            break  # Take only the first identifier (parameter name)
+                # Handle **kwargs
+                elif param_node.type == "dictionary_splat_pattern":
+                    for child in param_node.children:
+                        if child.type == "identifier":
+                            arguments.append(f"**{child.text.decode('utf-8')}")
+                            break
+                # Handle *args
+                elif param_node.type == "list_splat_pattern":
+                    for child in param_node.children:
+                        if child.type == "identifier":
+                            arguments.append(f"*{child.text.decode('utf-8')}")
+                            break
+                # Handle simple identifiers (e.g., param)
+                elif param_node.type == "identifier":
                     arguments.append(param_node.text.decode("utf-8"))
 
         source_bytes = source_code.encode("utf-8")

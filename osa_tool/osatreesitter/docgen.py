@@ -281,10 +281,10 @@ class DocGen(object):
             "```\n"
             "-List of arguments:\n"
             f"""{method_details['arguments']}\n"""
-            f"""{"- Use provided source code of imported methods, functions to describe their usage." if context_code else ""}\n"""
+            f"""{"- Context: Below is source code of functions called by this method. Use this context ONLY to understand logic - DO NOT copy parameters from these functions into Args section." if context_code else ""}\n"""
             "Method Details:\n"
             f"- Method decorators: {method_details['decorators']}\n"
-            f"""{"- Imported methods source code:" if context_code else ""}\n"""
+            f"""{"- Called functions source code (for context only - DO NOT extract parameters from it):" if context_code else ""}\n"""
             f"""{context_code if context_code else ""}\n\n"""
             "Note: DO NOT RETURN METHOD'S BODY. DO NOT count parameters which are not listed in the parameters list. DO NOT lose any parameter. DO NOT wrap any sections of the docstring into <any_tag> clear those parts out."
             "Return only docstring without any quotation. Follow such format:\n <triple_quotes>\ncontent\n<triple_quotes>"
@@ -305,7 +305,7 @@ class DocGen(object):
             """Based on the provided context and main idea give an answer to the question WHY method doing what it is doing\n"""
             """If original docstring provides only description update it with Args and Return sections based on provided source code as well\n"""
             f"""Original docstring: {docstring}\n\n"""
-            f"""{"- Use provided source code of imported methods, functions to understand their usage." if context_code else ""}\n"""
+            f"""{"- Context: Below is source code of functions called by this method. Use this context ONLY to understand logic - DO NOT copy information from these functions into the docstring." if context_code else ""}\n"""
             """Method Details:\n"""
             f"""- Method Name: {method_details["method_name"]} {("located inside " + class_name + " class") if class_name else ""}\n"""
             f"""- Method decorators: {method_details["decorators"]}\n"""
@@ -313,7 +313,7 @@ class DocGen(object):
             "```\n"
             f"""{method_details["source_code"]}\n"""
             "```\n"
-            f"""{"- Imported methods source code:" if context_code else ""}\n"""
+            f"""{"- Called functions source code (for context only - DO NOT describe these functions):" if context_code else ""}\n"""
             f"""{context_code if context_code else ""}\n\n"""
             f"The main idea: {self.main_idea}\n"
             "Return only pure changed docstring - DO NOT RETURN ANY CODE, DO NOT RETURN other parts of docs"
@@ -548,7 +548,7 @@ class DocGen(object):
 
         Parameters:
         - method_details: A dictionary containing details about the method, including 'method_calls' list.
-        - structure: A dictionary representing the code structure (for fallback search) - НЕ ИСПОЛЬЗУЕТСЯ при наличии function_index.
+        - structure: A dictionary representing the code structure (for fallback search)
         - function_index: Optional index built by osa_treesitter.build_function_index() for fast O(1) lookup.
 
         Returns:
@@ -568,24 +568,28 @@ class DocGen(object):
         if not function_index:
             return ""
 
-        context = []
+        if not called_functions:
+            return ""
+
+        context = [
+            "Referenced functions (for context understanding only):"
+        ]
 
         for func_name in called_functions:
-            # Handle "self.method_name" format by extracting just "method_name"
             search_name = func_name.split(".")[-1] if "." in func_name else func_name
 
             if search_name in function_index:
                 func_info = function_index[search_name]
                 class_name = func_info.get("class", "")
-                file_path = func_info.get("file", "")
                 display_name = f"{class_name}.{search_name}" if class_name else search_name
 
-                context_block = f"Function {display_name} (from {file_path})\n"
-                context_block += f"{func_info.get('source_code', '')}\n"
-                context_block += f"Args: {func_info.get('arguments', [])}\n"
-                context_block += f"Return: {func_info.get('return_type', 'None')}\n"
-
-                context.append(context_block)
+                instance_prompt = (
+                    f"obj: {display_name}\n"
+                    f"Document: \n{func_info.get('docstring', 'None')}\n"
+                    f"Raw code:```\n{func_info.get('source_code', '')}\n```\n"
+                    + "=" * 10
+                )
+                context.append(instance_prompt)
 
         return "\n".join(context)
 
