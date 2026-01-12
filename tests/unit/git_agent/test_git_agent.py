@@ -211,7 +211,7 @@ def test_git_agent_upload_report(git_agent_base_setup, mock_repo, temp_clone_dir
 
     # Act
     with patch.object(
-            agent, "_build_report_url", return_value=f"https://fork_url/blob/{report_branch}/{report_filename}"
+        agent, "_build_report_url", return_value=f"https://fork_url/blob/{report_branch}/{report_filename}"
     ):
         agent.upload_report(report_filename, report_filepath, report_branch=report_branch)
 
@@ -239,7 +239,9 @@ def test_github_agent_load_metadata(github_agent_instance, mock_repository_metad
     assert github_agent_instance.metadata == mock_repository_metadata
 
 
-def test_github_agent_create_fork_success(github_agent_instance, mock_requests_response_factory, repo_info):
+def test_github_agent_create_fork_success(
+        github_agent_instance, mock_requests_response_factory, repo_info
+):
     # Arrange
     platform, owner, repo_name, repo_url = repo_info
     expected_api_url = f"https://api.github.com/repos/{owner}/{repo_name}/forks"
@@ -333,7 +335,7 @@ def gitlab_agent_instance(temp_clone_dir, mock_repository_metadata, repo_info, m
 
 @pytest.mark.parametrize("mock_config_loader", ["gitlab"], indirect=True)
 def test_gitlab_agent_create_fork_success(
-        gitlab_agent_instance, mock_requests_response_factory, mock_repository_metadata, repo_info, mock_config_loader
+    gitlab_agent_instance, mock_requests_response_factory, mock_repository_metadata, repo_info, mock_config_loader
 ):
     # Arrange
     platform, owner, repo_name, repo_url = repo_info
@@ -425,7 +427,7 @@ def test_gitverse_agent_star_repository_success(gitverse_agent_instance, mock_re
 
 
 def test_gitverse_agent_star_repository_already_starred(
-        gitverse_agent_instance, mock_requests_response_factory, repo_info
+    gitverse_agent_instance, mock_requests_response_factory, repo_info
 ):
     # Arrange
     mock_response_check = mock_requests_response_factory(status_code=204)
