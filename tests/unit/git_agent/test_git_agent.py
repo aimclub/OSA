@@ -239,9 +239,7 @@ def test_github_agent_load_metadata(github_agent_instance, mock_repository_metad
     assert github_agent_instance.metadata == mock_repository_metadata
 
 
-def test_github_agent_create_fork_success(
-    github_agent_instance, mock_requests_response_factory, repo_info
-):
+def test_github_agent_create_fork_success(github_agent_instance, mock_requests_response_factory, repo_info):
     # Arrange
     platform, owner, repo_name, repo_url = repo_info
     expected_api_url = f"https://api.github.com/repos/{owner}/{repo_name}/forks"
