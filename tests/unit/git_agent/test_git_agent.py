@@ -101,8 +101,10 @@ def test_git_agent_clone_repository_failure_git_error(git_agent_base_setup):
     agent, platform, repo_url, temp_dir = git_agent_base_setup
 
     # Act / Assert
-    with patch("git.Repo.clone_from", side_effect=GitCommandError("clone", "error output")):
-        with pytest.raises(Exception, match="Cannot clone the repository"):
+    git_error = GitCommandError("clone", 128, b"fatal: repository not found")
+    with patch("git.Repo.clone_from", side_effect=git_error):
+        # Изменился match: теперь мы ловим сообщение от _handle_git_error
+        with pytest.raises(Exception, match=r"Git operation 'cloning repository.*' failed"):
             agent.clone_repository()
 
 
@@ -264,7 +266,7 @@ def test_github_agent_create_fork_failure(github_agent_instance, mock_requests_r
     # Act / Assert
     with patch.dict(os.environ, {"GIT_TOKEN": "any_token_for_env"}):
         with patch("requests.post", return_value=mock_response):
-            with pytest.raises(ValueError, match="Failed to create fork."):
+            with pytest.raises(ValueError, match=r"API operation 'creating GitHub fork' failed with status 401"):
                 github_agent_instance.create_fork()
 
 
@@ -303,6 +305,17 @@ def test_github_agent_star_repository_success(github_agent_instance, mock_reques
             mock_get.assert_called_once_with(expected_api_url, headers=ANY)
             mock_put.assert_called_once_with(expected_api_url, headers=ANY)
 
+def test_github_agent_star_repository_failure_non_critical(github_agent_instance, mock_requests_response_factory, repo_info):
+    # Arrange
+    # 403 - не роняет выполнение
+    mock_response_check = mock_requests_response_factory(status_code=403, text_data="Forbidden")
+
+    # Act
+    with patch.dict(os.environ, {"GIT_TOKEN": "any_token_for_env"}):
+        with patch("requests.get", return_value=mock_response_check) as mock_get:
+            github_agent_instance.star_repository()
+            # Assert
+            mock_get.assert_called_once()
 
 @pytest.fixture
 def gitlab_agent_instance(temp_clone_dir, mock_repository_metadata, repo_info, monkeypatch):
