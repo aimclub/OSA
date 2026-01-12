@@ -211,7 +211,7 @@ def test_git_agent_upload_report(git_agent_base_setup, mock_repo, temp_clone_dir
 
     # Act
     with patch.object(
-        agent, "_build_report_url", return_value=f"https://fork_url/blob/{report_branch}/{report_filename}"
+            agent, "_build_report_url", return_value=f"https://fork_url/blob/{report_branch}/{report_filename}"
     ):
         agent.upload_report(report_filename, report_filepath, report_branch=report_branch)
 
@@ -305,7 +305,10 @@ def test_github_agent_star_repository_success(github_agent_instance, mock_reques
             mock_get.assert_called_once_with(expected_api_url, headers=ANY)
             mock_put.assert_called_once_with(expected_api_url, headers=ANY)
 
-def test_github_agent_star_repository_failure_non_critical(github_agent_instance, mock_requests_response_factory, repo_info):
+
+def test_github_agent_star_repository_failure_non_critical(
+        github_agent_instance, mock_requests_response_factory, repo_info
+):
     # Arrange
     # 403 - не роняет выполнение
     mock_response_check = mock_requests_response_factory(status_code=403, text_data="Forbidden")
@@ -316,6 +319,7 @@ def test_github_agent_star_repository_failure_non_critical(github_agent_instance
             github_agent_instance.star_repository()
             # Assert
             mock_get.assert_called_once()
+
 
 @pytest.fixture
 def gitlab_agent_instance(temp_clone_dir, mock_repository_metadata, repo_info, monkeypatch):
@@ -329,7 +333,7 @@ def gitlab_agent_instance(temp_clone_dir, mock_repository_metadata, repo_info, m
 
 @pytest.mark.parametrize("mock_config_loader", ["gitlab"], indirect=True)
 def test_gitlab_agent_create_fork_success(
-    gitlab_agent_instance, mock_requests_response_factory, mock_repository_metadata, repo_info, mock_config_loader
+        gitlab_agent_instance, mock_requests_response_factory, mock_repository_metadata, repo_info, mock_config_loader
 ):
     # Arrange
     platform, owner, repo_name, repo_url = repo_info
@@ -350,7 +354,6 @@ def test_gitlab_agent_create_fork_success(
             ) as mock_get,
             patch("requests.post", return_value=mock_fork_response) as mock_post,
         ):
-
             gitlab_agent_instance.create_fork()
 
             # Assert
@@ -386,7 +389,6 @@ def test_gitverse_agent_create_fork_success(gitverse_agent_instance, mock_reques
             patch("requests.get", side_effect=[mock_user_response, mock_fork_check_response]) as mock_get,
             patch("requests.post", return_value=mock_fork_response) as mock_post,
         ):
-
             # Act
             gitverse_agent_instance.create_fork()
 
@@ -414,7 +416,6 @@ def test_gitverse_agent_star_repository_success(gitverse_agent_instance, mock_re
             patch("requests.get", return_value=mock_response_check) as mock_get,
             patch("requests.put", return_value=mock_response_put) as mock_put,
         ):
-
             # Act
             gitverse_agent_instance.star_repository()
 
@@ -424,14 +425,13 @@ def test_gitverse_agent_star_repository_success(gitverse_agent_instance, mock_re
 
 
 def test_gitverse_agent_star_repository_already_starred(
-    gitverse_agent_instance, mock_requests_response_factory, repo_info
+        gitverse_agent_instance, mock_requests_response_factory, repo_info
 ):
     # Arrange
     mock_response_check = mock_requests_response_factory(status_code=204)
 
     with patch.dict(os.environ, {"GITVERSE_TOKEN": "any_token_for_env"}):
         with patch("requests.get", return_value=mock_response_check) as mock_get, patch("requests.put") as mock_put:
-
             # Act
             gitverse_agent_instance.star_repository()
 
