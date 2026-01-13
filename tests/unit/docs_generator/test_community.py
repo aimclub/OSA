@@ -9,7 +9,7 @@ from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 @pytest.fixture(autouse=True)
 def mock_os_makedirs():
-    with patch("osa_tool.docs_generator.community.os.makedirs"):
+    with patch("osa_tool.operations.docs.community_docs_generation.community.os.makedirs"):
         yield
 
 
@@ -48,7 +48,7 @@ def test_build_code_of_conduct(mock_config_loader, mock_repository_metadata, tmp
     builder.code_of_conduct_to_save = builder.repo_path / "CODE_OF_CONDUCT.md"
     caplog.set_level("INFO")
 
-    with patch("osa_tool.docs_generator.community.save_sections") as mock_save_sections:
+    with patch("osa_tool.operations.docs.community_docs_generation.community.save_sections") as mock_save_sections:
         mock_save_sections.return_value = None
 
         # Act
@@ -73,7 +73,7 @@ def test_build_pull_request(mock_config_loader, mock_repository_metadata, source
         builder.pr_to_save = builder.repo_path / "MERGE_REQUEST_TEMPLATE.md"
     caplog.set_level("INFO")
 
-    with patch("osa_tool.docs_generator.community.save_sections") as mock_save_sections:
+    with patch("osa_tool.operations.docs.community_docs_generation.community.save_sections") as mock_save_sections:
         mock_save_sections.return_value = None
 
         # Act
@@ -100,7 +100,7 @@ def test_build_documentation_issue_with_docs_present(
     builder.docs_issue_to_save = builder.repo_path / "DOCUMENTATION_ISSUE.md"
     caplog.set_level("INFO")
 
-    with patch("osa_tool.docs_generator.community.save_sections") as mock_save_sections:
+    with patch("osa_tool.operations.docs.community_docs_generation.community.save_sections") as mock_save_sections:
         mock_save_sections.return_value = None
 
         # Act
@@ -123,7 +123,7 @@ def test_build_documentation_issue_without_docs_present(
     builder.repo_path = tmp_path / f".{mock_config_loader.config.git.host}"
     builder.docs_issue_to_save = builder.repo_path / "DOCUMENTATION_ISSUE.md"
 
-    with patch("osa_tool.docs_generator.community.save_sections") as mock_save_sections:
+    with patch("osa_tool.operations.docs.community_docs_generation.community.save_sections") as mock_save_sections:
         # Act
         builder.build_documentation_issue()
 
@@ -138,7 +138,7 @@ def test_build_feature_issue(mock_config_loader, mock_repository_metadata, tmp_p
     builder.feature_issue_to_save = builder.repo_path / "FEATURE_ISSUE.md"
     caplog.set_level("INFO")
 
-    with patch("osa_tool.docs_generator.community.save_sections") as mock_save_sections:
+    with patch("osa_tool.operations.docs.community_docs_generation.community.save_sections") as mock_save_sections:
         mock_save_sections.return_value = None
 
         # Act
@@ -156,7 +156,7 @@ def test_build_bug_issue(mock_config_loader, mock_repository_metadata, tmp_path,
     builder.bug_issue_to_save = builder.repo_path / "BUG_ISSUE.md"
     caplog.set_level("INFO")
 
-    with patch("osa_tool.docs_generator.community.save_sections") as mock_save_sections:
+    with patch("osa_tool.operations.docs.community_docs_generation.community.save_sections") as mock_save_sections:
         mock_save_sections.return_value = None
 
         # Act
@@ -187,7 +187,10 @@ def test_builder_methods_log_errors_on_exception(
     builder.sourcerank = sourcerank
     caplog.set_level("ERROR")
 
-    with patch("osa_tool.docs_generator.community.save_sections", side_effect=Exception("save failed")):
+    with patch(
+        "osa_tool.operations.docs.community_docs_generation.community.save_sections",
+        side_effect=Exception("save failed"),
+    ):
         # Act
         method = getattr(builder, method_name)
         method()

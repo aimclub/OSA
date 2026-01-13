@@ -186,8 +186,10 @@ def test_build_creates_dir_and_saves_file(mock_config_loader, mock_repository_me
     caplog.set_level("INFO")
 
     with (
-        patch("osa_tool.docs_generator.contributing.save_sections") as mock_save_sections,
-        patch("osa_tool.docs_generator.contributing.remove_extra_blank_lines") as mock_remove_blank_lines,
+        patch("osa_tool.operations.docs.community_docs_generation.contributing.save_sections") as mock_save_sections,
+        patch(
+            "osa_tool.operations.docs.community_docs_generation.contributing.remove_extra_blank_lines"
+        ) as mock_remove_blank_lines,
     ):
         mock_save_sections.return_value = None
         mock_remove_blank_lines.return_value = None

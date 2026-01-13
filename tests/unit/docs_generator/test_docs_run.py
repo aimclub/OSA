@@ -5,8 +5,10 @@ from osa_tool.operations.docs.community_docs_generation.docs_run import generate
 
 def test_generate_documentation_calls_builders_methods(mock_config_loader, mock_repository_metadata, caplog):
     with (
-        patch("osa_tool.docs_generator.docs_run.CommunityTemplateBuilder") as mock_community_cls,
-        patch("osa_tool.docs_generator.docs_run.ContributingBuilder") as mock_contrib_cls,
+        patch(
+            "osa_tool.operations.docs.community_docs_generation.docs_run.CommunityTemplateBuilder"
+        ) as mock_community_cls,
+        patch("osa_tool.operations.docs.community_docs_generation.docs_run.ContributingBuilder") as mock_contrib_cls,
     ):
         # Arrange
         mock_contributing_instance = MagicMock()
