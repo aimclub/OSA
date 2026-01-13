@@ -1,7 +1,9 @@
 from abc import ABC
-from typing import List, Optional
+from typing import List, Optional, Type, Union, Callable, Any
 
-from osa_tool.osa_agent.models import Task
+from pydantic import BaseModel
+
+from osa_tool.core.models.task import Task
 from osa_tool.osa_agent.state import OSAState
 
 
@@ -17,12 +19,25 @@ class Operation(ABC):
     # Planning
     supported_intents: List[str]
     supported_scopes: List[str]
+    # possible values:
+    # - "analysis"  # only analysis, reports
+    # - "docs",  # documentation (README, LICENSE, community, about)
+    # - "codebase",  # code + structure + files
+    # - "full_repo",  # all
+    priority: int = 100  # order of execution (lower = earlier)
+    args_schema: Optional[Type[BaseModel]] = None
+    args_policy: str = "auto"
+    # possible values:
+    # - "auto"           = infer silently
+    # - "ask_if_missing" = WAITING_FOR_USER
+    # - "required"       = error if not resolved
+    prompt_for_args: Optional[str] = None
 
-    # Order of execution (lower = earlier)
-    priority: int = 100
-
-    # Necessity of GitAgent
-    uses_git: bool = False
+    # Execution
+    executor: Optional[Union[Callable[..., Any], Type[Any]]] = None
+    executor_method: Optional[str] = None  # class-style method
+    executor_dependencies: List[str] = []
+    state_dependencies: List[str] = []
 
     def is_applicable(self, state: OSAState) -> bool:
         """
@@ -43,12 +58,7 @@ class Operation(ABC):
         Prototype-level planning:
         1 operation = 1 task
         """
-        return [
-            Task(
-                id=self.name,
-                description=self.description,
-            )
-        ]
+        return [Task(id=self.name, description=self.description)]
 
 
 class OperationRegistry:
@@ -59,13 +69,31 @@ class OperationRegistry:
         cls._operations[operation.name] = operation
 
     @classmethod
-    def all(cls) -> list[Operation]:
-        return list(cls._operations.values())
-
-    @classmethod
     def get(cls, name: str) -> Optional[Operation]:
         return cls._operations.get(name)
 
     @classmethod
+    def all(cls) -> list[Operation]:
+        return list(cls._operations.values())
+
+    @classmethod
     def applicable(cls, state: OSAState) -> list[Operation]:
         return [op for op in cls._operations.values() if op.is_applicable(state)]
+
+    @classmethod
+    def get_execution_descriptor(cls, name: str) -> dict:
+        """
+        Returns a descriptor for execution with keys:
+        - executor: callable or class
+        - method: method name if class-style
+        - dependencies: list of names to extract from AgentContext
+        """
+        op = cls.get(name)
+        if not op:
+            raise ValueError(f"Unknown operation {name}")
+        return {
+            "executor": op.executor,
+            "dependencies": op.executor_dependencies,
+            "state_dependencies": op.state_dependencies,
+            "method": op.executor_method,
+        }

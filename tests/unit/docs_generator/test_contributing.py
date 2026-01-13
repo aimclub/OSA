@@ -2,7 +2,7 @@ import os
 from unittest.mock import patch
 
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.docs_generator.contributing import ContributingBuilder
+from osa_tool.operations.docs.community_docs_generation.contributing import ContributingBuilder
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 

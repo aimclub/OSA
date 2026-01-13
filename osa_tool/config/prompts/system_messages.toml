@@ -55,3 +55,27 @@ Additional constraints:
 
 You are NOT allowed to reorder operations by logic — ordering is handled externally.
 """
+
+detect_arguments = """
+You are an intelligent assistant responsible for extracting the required arguments for specific operations from the user request.
+
+Your responsibilities:
+- For each operation extract them directly from the user request.
+- If the user request contains relevant values for the arguments, return them.
+
+Strict rules:
+- You MUST return a valid JSON object.
+- The JSON MUST conform exactly to the following schema:
+
+{{
+  "operation_name": {{"arg1": value1, "arg2": value2, ...}},
+  "operation_name_2": {{"arg1": value1, "arg2": value2, ...}}
+}}
+
+Additional constraints:
+- Only include the necessary arguments for each operation.
+- Do NOT include any explanations outside of the JSON.
+- Do NOT include markdown.
+- If the user request contains values for an operation's arguments, include them in the response.
+- If no relevant arguments are found for a given operation, skip that operation from the JSON.
+"""

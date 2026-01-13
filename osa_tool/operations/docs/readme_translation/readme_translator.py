@@ -1,6 +1,9 @@
 import asyncio
 import os
 import shutil
+from typing import List
+
+from pydantic import BaseModel
 
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
@@ -11,17 +14,6 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.utils.utils import parse_folder_name
-
-
-class TranslateReadmeOperation(Operation):
-    name = "translate_readme"
-    description = "Translate README.md into another language"
-    supported_intents = ["new_task", "feedback"]
-    supported_scopes = ["full_repo", "docs"]
-    priority = 75
-
-
-OperationRegistry.register(TranslateReadmeOperation())
 
 
 class ReadmeTranslator:
@@ -51,7 +43,6 @@ class ReadmeTranslator:
                 prompt=prompt,
                 parser=lambda raw: JsonProcessor.parse(raw, expected_type=dict),
             )
-
         # Ensure required fields after validation
         parsed.setdefault("content", parsed.get("raw", "").strip())
         parsed.setdefault("suffix", target_language[:2].lower())
@@ -146,3 +137,29 @@ class ReadmeTranslator:
     def translate_readme(self) -> None:
         """Synchronous wrapper around async translation."""
         asyncio.run(self.translate_readme_async())
+
+
+class TranslateReadmeArgs(BaseModel):
+    languages: List[str]
+
+
+class TranslateReadmeOperation(Operation):
+    name = "translate_readme"
+    description = "Translate README.md into another language"
+
+    supported_intents = ["new_task", "feedback"]
+    supported_scopes = ["full_repo", "docs"]
+    priority = 75
+
+    args_schema = TranslateReadmeArgs
+    args_policy = "ask_if_missing"
+    prompt_for_args = (
+        "For operation 'translate_readme' provide a list of languages " "(e.g., {'languages': ['Russian', 'Swedish']})."
+    )
+
+    executor = ReadmeTranslator
+    executor_method = "translate_readme"
+    executor_dependencies = ["config_loader", "metadata"]
+
+
+OperationRegistry.register(TranslateReadmeOperation())

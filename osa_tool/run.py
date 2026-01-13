@@ -13,10 +13,10 @@ from osa_tool.aboutgen.about_generator import AboutGenerator
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.conversion.notebook_converter import NotebookConverter
-from osa_tool.docs_generator.docs_run import generate_documentation
-from osa_tool.docs_generator.license import compile_license_file
 from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
+from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
+from osa_tool.operations.docs.community_docs_generation.license_generation import compile_license_file
 from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
 from osa_tool.operations.docs.readme_generation.utils import format_time
 from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
@@ -152,7 +152,7 @@ def main():
         # License compiling
         if license_type := plan.get("ensure_license"):
             rich_section("License generation")
-            compile_license_file(sourcerank, license_type, git_agent.metadata)
+            compile_license_file(config_loader, git_agent.metadata, license_type)
             what_has_been_done.mark_did("ensure_license")
 
         # Generate community documentation
@@ -171,7 +171,7 @@ def main():
         if plan.get("readme"):
             rich_section("README generation")
             readme_agent = ReadmeAgent(
-                config_loader, plan.get("attachment"), plan.get("refine_readme"), git_agent.metadata
+                config_loader, git_agent.metadata, plan.get("attachment"), plan.get("refine_readme")
             )
             readme_agent.generate_readme()
             what_has_been_done.mark_did("readme")

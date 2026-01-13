@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from osa_tool.docs_generator.community import CommunityTemplateBuilder
+from osa_tool.operations.docs.community_docs_generation.community import CommunityTemplateBuilder
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 

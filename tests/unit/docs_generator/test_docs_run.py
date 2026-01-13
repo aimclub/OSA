@@ -1,6 +1,6 @@
 from unittest.mock import patch, MagicMock
 
-from osa_tool.docs_generator.docs_run import generate_documentation
+from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
 
 
 def test_generate_documentation_calls_builders_methods(mock_config_loader, mock_repository_metadata, caplog):

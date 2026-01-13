@@ -1,14 +1,18 @@
 import os
+from typing import Literal
 
 import tomli
+from pydantic import BaseModel
 
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
+from osa_tool.config.settings import ConfigLoader
+from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 
 
-def compile_license_file(sourcerank: SourceRank, ensure_license, metadata: RepositoryMetadata):
+def compile_license_file(config_loader: ConfigLoader, metadata: RepositoryMetadata, ensure_license):
     """
     Compiles a license file for a software project using a specified template.
 
@@ -17,13 +21,15 @@ def compile_license_file(sourcerank: SourceRank, ensure_license, metadata: Repos
     directory of the SourceRank object.
 
     Parameters:
-        - sourcerank: SourceRank object containing metadata about the software project.
-        - ensure_license: License type provided by user.
+        - config_loader: Loader containing configuration settings.
         - metadata: Git repository metadata.
+        - ensure_license: License type provided by user.
 
     Returns:
         None. The compiled license file is saved in the repository directory of the SourceRank object.
     """
+    sourcerank = SourceRank(config_loader)
+
     try:
         if sourcerank.license_presence():
             logger.info("LICENSE file already exists.")
@@ -50,3 +56,32 @@ def compile_license_file(sourcerank: SourceRank, ensure_license, metadata: Repos
                 )
     except Exception as e:
         logger.error("Error while compiling LICENSE: %s", e, exc_info=True)
+
+
+class EnsureLicenseArgs(BaseModel):
+    ensure_license: Literal["bsd-3", "mit", "ap2"] = "bsd-3"
+
+
+class EnsureLicenseOperation(Operation):
+    name = "ensure_license"
+    description = "Ensure LICENSE file exists"
+
+    supported_intents = ["new_task"]
+    supported_scopes = ["full_repo", "docs"]
+    priority = 60
+
+    args_schema = EnsureLicenseArgs
+    args_policy = "auto"
+    prompt_for_args = (
+        "For operation 'ensure_license' provide a license type. "
+        "Expected key: 'ensure_license'."
+        "Allowed values: 'bsd-3', 'mit', 'ap2'."
+        "If not specified, use 'bsd-3'."
+    )
+
+    executor = staticmethod(compile_license_file)
+    executor_method = None
+    executor_dependencies = ["config_loader", "metadata"]
+
+
+OperationRegistry.register(EnsureLicenseOperation())
