@@ -1,8 +1,9 @@
 import os
 import time
 
-from osa_tool.osa_agent.agent import OSAAgent
-from osa_tool.osa_agent.config import OSAConfig
+from osa_tool.config.osa_config import OSAConfig
+from osa_tool.osa_agent.context import AgentContext
+from osa_tool.osa_agent.graph import build_graph
 from osa_tool.osa_agent.state import AgentStatus, OSAState
 from osa_tool.run import load_configuration, initialize_git_platform
 from osa_tool.ui.input_for_chat import InitialChatInput, collect_user_input
@@ -42,6 +43,7 @@ def main():
         enable_replanning=True,
         enable_memory=True,
     )
+    context = AgentContext(agent_config)
 
     # Create initial state from user input
     initial_state = OSAState(
@@ -53,7 +55,7 @@ def main():
     )
 
     # Create the graph
-    graph = OSAAgent.build_graph(agent_config)
+    graph = build_graph(context)
 
     # Execute the graph
     result_state_dict = graph.invoke(initial_state)

@@ -27,18 +27,6 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 
 
-class GenerateReportOperation(Operation):
-    name = "generate_report"
-    description = "Generate repository quality report as PDF"
-    supported_intents = ["new_task"]
-    supported_scopes = ["analysis", "full_repo"]
-    priority = 5
-    uses_git = True
-
-
-OperationRegistry.register(GenerateReportOperation())
-
-
 class AbstractReportGenerator(ABC):
     def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
         self.config = config_loader.config
@@ -427,3 +415,19 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
                 )
             )
         return story
+
+
+class GenerateReportOperation(Operation):
+    name = "generate_report"
+    description = "Generate repository quality report as PDF"
+
+    supported_intents = ["new_task"]
+    supported_scopes = ["full_repo", "analysis"]
+    priority = 5
+
+    executor = ReportGenerator
+    executor_method = "build_pdf"
+    executor_dependencies = ["config_loader", "metadata"]
+
+
+OperationRegistry.register(GenerateReportOperation())

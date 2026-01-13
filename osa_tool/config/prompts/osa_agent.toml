@@ -23,3 +23,11 @@ Available operations:
 
 Select the operations that best satisfy the user request.
 """
+
+detect_arguments = """
+User request:
+{user_request}
+
+Operations with additional arguments:
+{operations}
+"""

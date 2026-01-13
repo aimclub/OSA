@@ -1,4 +1,7 @@
 import os
+from typing import Optional
+
+from pydantic import BaseModel
 
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
@@ -12,28 +15,18 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
 
-class GenerateReadmeOperation(Operation):
-    name = "generate_readme"
-    description = "Generate or improve README.md for the repository"
-    supported_intents = ["new_task", "feedback"]
-    supported_scopes = ["full_repo", "docs"]
-    priority = 70
-
-
-OperationRegistry.register(GenerateReadmeOperation())
-
-
 class ReadmeAgent:
+
     def __init__(
         self,
         config_loader: ConfigLoader,
-        article: str | None,
-        refine_readme: bool,
         metadata: RepositoryMetadata,
+        attachment: str | None = None,
+        refine_readme: bool = False,
         todo_list: ToDoList | None = None,
     ):
         self.config_loader = config_loader
-        self.article = article
+        self.article = attachment
         self.refine_readme = refine_readme
         self.metadata = metadata
         self.repo_url = self.config_loader.config.git.repository
@@ -76,3 +69,28 @@ class ReadmeAgent:
         responses = self.llm_client.get_responses_article(self.article)
         (overview, content, algorithms, getting_started) = responses
         return MarkdownBuilderArticle(self.config_loader, self.metadata, overview, content, algorithms, getting_started)
+
+
+class GenerateReadmeArgs(BaseModel):
+    article: Optional[str] = None
+
+
+class GenerateReadmeOperation(Operation):
+    name = "generate_readme"
+    description = "Generate or improve README.md for the repository"
+
+    supported_intents = ["new_task", "feedback"]
+    supported_scopes = ["full_repo", "docs"]
+    priority = 70
+
+    args_schema = GenerateReadmeArgs
+    args_policy = "auto"
+    prompt_for_args = "Provide the content for README.md if you want to override default generation."
+
+    executor = ReadmeAgent
+    executor_method = "generate_readme"
+    executor_dependencies = ["config_loader", "metadata"]
+    state_dependencies = ["attachment"]
+
+
+OperationRegistry.register(GenerateReadmeOperation())

@@ -115,6 +115,7 @@ class PayloadFactory:
         self.job_id = str(uuid4())
         self.temperature = config.llm.temperature
         self.tokens_limit = config.llm.max_tokens
+        self.context_window = config.llm.context_window
         self.system_message = system_message or config.llm.system_prompt
         self.prompt = prompt
         self.roles = [
@@ -139,6 +140,7 @@ class PayloadFactory:
             "meta": {
                 "temperature": self.temperature,
                 "tokens_limit": self.tokens_limit,
+                "context_window": self.context_window,
             },
             "messages": self.roles,
         }

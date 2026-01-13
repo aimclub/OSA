@@ -1,7 +1,8 @@
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.docs_generator.community import CommunityTemplateBuilder
-from osa_tool.docs_generator.contributing import ContributingBuilder
+from osa_tool.operations.docs.community_docs_generation.community import CommunityTemplateBuilder
+from osa_tool.operations.docs.community_docs_generation.contributing import ContributingBuilder
+from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.utils.logger import logger
 
 
@@ -37,3 +38,19 @@ def generate_documentation(config_loader: ConfigLoader, metadata: RepositoryMeta
         community.build_vulnerability_disclosure()
 
     logger.info("All additional documentation successfully generated.")
+
+
+class GenerateCommunityDocsOperation(Operation):
+    name = "generate_documentation"
+    description = "Generate additional documentation files (e.g., CONTRIBUTING, CODE_OF_CONDUCT)."
+
+    supported_intents = ["new_task"]
+    supported_scopes = ["full_repo", "docs"]
+    priority = 65
+
+    executor = staticmethod(generate_documentation)
+    executor_method = None
+    executor_dependencies = ["config_loader", "metadata"]
+
+
+OperationRegistry.register(GenerateCommunityDocsOperation())

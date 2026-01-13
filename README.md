@@ -135,9 +135,12 @@ docker build --build-arg GIT_USER_NAME="your-user-name" --build-arg GIT_USER_EMA
 
 OSA requires Python 3.10 or higher.
 
-The .env file is required to specify the LLM API key (OPENAI_API_KEY or AUTHORIZATION_KEY) and optionally a Git token. The Git token (GIT_TOKEN) may be omitted if you plan to work with a public repository without creating a fork (using the --no-fork option).
+The .env file is required to specify the LLM API key (OPENAI_API_KEY or AUTHORIZATION_KEY) and optionally a Git token.
+The Git token (GIT_TOKEN) may be omitted if you plan to work with a public repository without creating a fork (using the
+--no-fork option).
 
-Alternatively, instead of GIT_TOKEN, you can use GITHUB_TOKEN, GITLAB_TOKEN, or GITVERSE_TOKEN for GitHub, GitLab, and Gitverse respectively.
+Alternatively, instead of GIT_TOKEN, you can use GITHUB_TOKEN, GITLAB_TOKEN, or GITVERSE_TOKEN for GitHub, GitLab, and
+Gitverse respectively.
 
 When running `osa-tool` from CLI, you need to set the GIT_TOKEN and API key first:
 
@@ -323,8 +326,6 @@ If you use this software, please cite it as below.
     author={Nikitin, Nikolay and Getmanov, Andrey and Popov, Zakhar and 
         Ulyanova Ekaterina and Aksenkin, Yaroslav and 
         Sokolov, Ilya and Boukhanovsky, Alexander},
-    booktitle={Championing Open-source DEvelopment in ML Workshop@ ICML25}
-
-}
+    booktitle={Championing Open-source DEvelopment in ML Workshop@ ICML25}}
 
 ---

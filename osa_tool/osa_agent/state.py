@@ -3,7 +3,8 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 
 from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.osa_agent.models import Task, AgentStatus
+from osa_tool.core.models.agent import AgentStatus
+from osa_tool.core.models.task import Task
 from osa_tool.tools.repository_analysis.models import RepositoryData
 
 
