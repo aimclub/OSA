@@ -11,9 +11,33 @@ from osa_tool.utils.utils import rich_section
 
 
 class IntentRouterAgent(BaseAgent):
+    """
+    Agent responsible for intent and task scope detection.
+
+    The IntentRouterAgent:
+    - determines the user's intent and task scope using an LLM
+    - requests clarification if the intent confidence is low
+    - updates the workflow state accordingly
+    """
+
     name = "IntentRouter"
 
     def run(self, state: OSAState) -> OSAState:
+        """
+        Route the user's request to the appropriate workflow path.
+
+        This method:
+        1. Handles user clarification if the system is waiting for input
+        2. Uses an LLM to detect intent and task scope
+        3. Updates state status based on confidence score
+        4. Decides whether to continue analysis or wait for user input
+
+        Args:
+            state (OSAState): Current workflow state.
+
+        Returns:
+            OSAState: Updated state with detected intent and routing status.
+        """
         rich_section("Intent Router Agent")
 
         if state.status == AgentStatus.WAITING_FOR_USER:
@@ -47,6 +71,7 @@ class IntentRouterAgent(BaseAgent):
         state.intent = decision.intent
         state.task_scope = decision.task_scope
         state.intent_confidence = decision.confidence
+
         # Low confidence → wait for user clarification
         state.status = (
             AgentStatus.WAITING_FOR_USER

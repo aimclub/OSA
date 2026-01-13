@@ -3,6 +3,14 @@ from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 
 
 class AgentContext:
+    """
+    Shared execution context passed to all agents.
+
+    This object aggregates configuration, repository metadata,
+    model handlers, and workflow-related utilities so that agents
+    do not need to resolve or construct these dependencies themselves.
+    """
+
     def __init__(self, agent_config: OSAConfig):
         self.agent_config = agent_config
         self.config_loader = self.agent_config.config_loader

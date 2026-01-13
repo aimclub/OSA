@@ -13,6 +13,26 @@ from osa_tool.osa_agent.state import OSAState
 
 
 def build_graph(context: AgentContext):
+    """
+    Build and compile the OSA agent execution graph.
+
+    The graph defines the full workflow lifecycle, including:
+    - intent routing
+    - repository analysis
+    - task planning
+    - task execution
+    - review and approval
+    - finalization
+
+    Transitions between nodes may be conditional based on the current
+    workflow state.
+
+    Args:
+        context (AgentContext): Shared execution context for all agents.
+
+    Returns:
+        Compiled StateGraph executable for running the workflow.
+    """
     # instantiate agents
     intent_router = IntentRouterAgent(context)
     repo_analysis = RepoAnalysisAgent(context)

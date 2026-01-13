@@ -9,24 +9,31 @@ from osa_tool.utils.utils import rich_section
 
 class ExecutorAgent(BaseAgent):
     """
-    ExecutorAgent is responsible for executing tasks in the agent's plan.
+    Agent responsible for executing planned tasks.
 
-    It iterates over the tasks in the plan, resolves their arguments,
-    calls the executor (function or class-style), and updates task status
-    and results. All results are also stored in the state's artifacts.
+    The ExecutorAgent:
+    - iterates over the execution plan
+    - resolves executor dependencies and task arguments
+    - invokes operation executors (function-style or class-style)
+    - updates task statuses and stores execution results
+    - persists artifacts into the shared agent state
     """
 
     name = "Executor"
 
     def run(self, state: OSAState) -> OSAState:
         """
-        Runs all pending tasks in the current state.
+        Execute all pending tasks in the current plan.
+
+        Tasks are executed sequentially in plan order. Each task:
+        - transitions through PENDING → IN_PROGRESS → COMPLETED / FAILED
+        - stores its execution result in both the task and state artifacts
 
         Args:
-            state (OSAState): The current agent state containing the plan.
+            state (OSAState): Current workflow state containing the execution plan.
 
         Returns:
-            OSAState: Updated state with tasks executed and results saved.
+            OSAState: Updated state with executed tasks and collected artifacts.
         """
         rich_section("Executor Agent")
 
@@ -44,13 +51,19 @@ class ExecutorAgent(BaseAgent):
 
         return state
 
-    def _run_task(self, task: Task, state: OSAState):
+    def _run_task(self, task: Task, state: OSAState) -> None:
         """
-        Executes a single task and updates its status.
+        Execute a single task and update its lifecycle status.
+
+        This method:
+        - marks the task as IN_PROGRESS
+        - executes the task via its registered operation executor
+        - captures execution results or errors
+        - updates task status accordingly
 
         Args:
-            task (Task): Task to execute.
-            state (OSAState): The current agent state containing the plan.
+            task (Task): Task to be executed.
+            state (OSAState): Current workflow state.
         """
         task.status = TaskStatus.IN_PROGRESS
         logger.info(f"Task '{task.id}' in progress")
@@ -68,17 +81,24 @@ class ExecutorAgent(BaseAgent):
 
     def _execute_task(self, task: Task, state: OSAState) -> dict:
         """
-        Executes a single task based on its operation descriptor from OperationRegistry.
+        Execute a task using its operation execution descriptor.
 
-        Supports function-style and class-style executors. Dependencies are automatically
-        resolved from the agent's context based on executor_dependencies.
+        This method:
+        - resolves the operation executor from the OperationRegistry
+        - injects dependencies from AgentContext and workflow state
+        - supports both function-style and class-style executors
+        - normalizes the execution result
 
         Args:
             task (Task): Task to execute.
-            state (OSAState): The current agent state containing the plan.
+            state (OSAState): Current workflow state.
 
         Returns:
-            dict: The execution result.
+            dict: Normalized execution result.
+
+        Raises:
+            ValueError: If the operation has no executor or misconfigured method.
+            TypeError: If the executor type is invalid.
         """
         desc = OperationRegistry.get_execution_descriptor(task.id)
         executor = desc["executor"]
@@ -118,13 +138,16 @@ class ExecutorAgent(BaseAgent):
     @staticmethod
     def _normalize_result(result) -> dict:
         """
-        Ensures task.result is always a dict.
+        Normalize executor output to a dictionary.
+
+        Ensures consistent task result format regardless of
+        executor return type.
 
         Args:
-            result (Any): Result returned by the executor.
+            result (Any): Raw executor result.
 
         Returns:
-            dict: Normalized result.
+            dict: Normalized result dictionary.
         """
         if result is None:
             return {}
