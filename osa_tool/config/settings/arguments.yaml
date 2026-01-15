@@ -102,6 +102,11 @@ arguments:
     type: flag
     description: "Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository."
 
+  validate_report:
+    aliases: [ "--validate-report" ]
+    type: flag
+    description: "Check whether the experiments proposed in an attached report file can be reproduced using the selected repository."
+
 settings:
   no_fork:
     aliases: [ "--no-fork" ]

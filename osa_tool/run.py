@@ -43,6 +43,7 @@ from osa_tool.utils.utils import (
 )
 from osa_tool.validation.doc_validator import DocValidator
 from osa_tool.validation.paper_validator import PaperValidator
+from osa_tool.validation.report_validator import ReportValidator
 from osa_tool.validation.report_generator import (
     ReportGenerator as ValidationReportGenerator,
 )
@@ -129,7 +130,19 @@ def main():
                 what_has_been_done.mark_did("validate_paper")
             else:
                 logger.warning("Paper validation returned no content. Skipping report generation.")
-
+        # NOTE: Must run first - switches GitHub branches
+        if plan.get("validate_report"):
+            rich_section("Document validation")
+            content = loop.run_until_complete(ReportValidator(config_loader).validate(plan.get("attachment")))
+            if content:
+                va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata)
+                va_re_gen.build_pdf("Document", content)
+                if create_fork:
+                    git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
+                what_has_been_done.mark_did("validate_report")
+            else:
+                logger.warning("Document validation returned no content. Skipping report generation.")
+        
         # .ipynb to .py conversion
         if notebook := plan.get("convert_notebooks"):
             rich_section("Jupyter notebooks conversion")
