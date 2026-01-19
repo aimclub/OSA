@@ -19,7 +19,7 @@ from osa_tool.utils.utils import parse_folder_name
 class ReadmeTranslator:
     def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata, languages: list[str]):
         self.config_manager = config_manager
-        self.model_settings = self.config_manager.get_model_settings('readme')
+        self.model_settings = self.config_manager.get_model_settings("readme")
         self.prompts = self.config_manager.get_prompts()
         self.rate_limit = self.model_settings.rate_limit
         self.languages = languages

@@ -25,7 +25,9 @@ class CommunityTemplateBuilder:
         self.branch_path = f"tree/{self.metadata.default_branch}/"
         self._template = self.load_template()
 
-        self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url), "." + self.config_manager.get_git_settings().host)
+        self.repo_path = os.path.join(
+            os.getcwd(), parse_folder_name(self.repo_url), "." + self.config_manager.get_git_settings().host
+        )
         self.code_of_conduct_to_save = os.path.join(self.repo_path, "CODE_OF_CONDUCT.md")
         self.security_to_save = os.path.join(self.repo_path, "SECURITY.md")
         self._setup_paths_depends_on_platform()
@@ -139,7 +141,9 @@ class CommunityTemplateBuilder:
     def build_security(self) -> None:
         """Generates and saves the SECURITY.md file."""
         try:
-            content = self._template[f"security_{self.config_manager.get_git_settings().host}"].format(repo_url=self.repo_url)
+            content = self._template[f"security_{self.config_manager.get_git_settings().host}"].format(
+                repo_url=self.repo_url
+            )
             save_sections(content, self.security_to_save)
             logger.info(f"SECURITY.md successfully generated in folder {self.repo_path}")
         except Exception as e:

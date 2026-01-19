@@ -30,7 +30,7 @@ class CodeAnalyzer:
             config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
         """
         self.config_manager = config_manager
-        self.model_settings = self.config_manager.get_model_settings('validation')
+        self.model_settings = self.config_manager.get_model_settings("validation")
         self.prompts = self.config_manager.get_prompts()
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
         self.notebook_convertor = NotebookConverter()

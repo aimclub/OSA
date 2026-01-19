@@ -22,7 +22,7 @@ from osa_tool.utils.utils import extract_readme_content, parse_folder_name
 class TextGenerator:
     def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata):
         self.config_manager = config_manager
-        self.model_settings = self.config_manager.get_model_settings('general')
+        self.model_settings = self.config_manager.get_model_settings("general")
         self.sourcerank = SourceRank(self.config_manager)
         self.prompts = self.config_manager.get_prompts()
         self.metadata = metadata

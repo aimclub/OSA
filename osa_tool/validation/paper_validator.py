@@ -27,7 +27,7 @@ class PaperValidator:
         """
         self.config_manager = config_manager
         self.code_analyzer = CodeAnalyzer(config_manager)
-        self.model_settings = config_manager.get_model_settings('validation')
+        self.model_settings = config_manager.get_model_settings("validation")
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
         self.prompts = self.config_manager.get_prompts()
 

@@ -68,7 +68,9 @@ class ReadmeAgent:
     def article_readme(self) -> MarkdownBuilderArticle:
         responses = self.llm_client.get_responses_article(self.article)
         (overview, content, algorithms, getting_started) = responses
-        return MarkdownBuilderArticle(self.config_manager, self.metadata, overview, content, algorithms, getting_started)
+        return MarkdownBuilderArticle(
+            self.config_manager, self.metadata, overview, content, algorithms, getting_started
+        )
 
 
 class GenerateReadmeArgs(BaseModel):

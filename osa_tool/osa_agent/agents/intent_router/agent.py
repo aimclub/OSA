@@ -60,7 +60,7 @@ class IntentRouterAgent(BaseAgent):
             attachment=state.attachment,
         )
 
-        decision: IntentDecision = self.context.get_model_handler('general').run_chain(
+        decision: IntentDecision = self.context.get_model_handler("general").run_chain(
             prompt=prompt,
             parser=parser,
             system_message=system_message,

@@ -17,7 +17,7 @@ from osa_tool.utils.utils import parse_folder_name, extract_readme_content
 class LLMClient:
     def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata):
         self.config_manager = config_manager
-        self.model_settings = self.config_manager.get_model_settings('readme')
+        self.model_settings = self.config_manager.get_model_settings("readme")
         self.metadata = metadata
         self.prompts = self.config_manager.get_prompts()
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)

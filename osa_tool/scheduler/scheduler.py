@@ -31,7 +31,7 @@ class ModeScheduler:
         self.mode = args.mode
         self.args = args
         self.config_manager = config_manager
-        self.model_settings = self.config_manager.get_model_settings('general')
+        self.model_settings = self.config_manager.get_model_settings("general")
         self.sourcerank = sourcerank
         self.workflow_manager = workflow_manager
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)

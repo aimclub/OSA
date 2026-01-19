@@ -25,10 +25,10 @@ class AgentContext:
     def get_model_handler(self, task_type: str = "general"):
         """
         Get a model handler configured for a specific task type.
-        
+
         Args:
             task_type: Type of task (docstring, readme, validation, general)
-            
+
         Returns:
             ModelHandler instance configured for the specified task
         """

@@ -10,7 +10,7 @@ from osa_tool.utils.utils import parse_folder_name
 class DirectoryTranslator:
     def __init__(self, config_manager: ConfigManager):
         self.config_manager = config_manager
-        self.model_settings = self.config_manager.get_model_settings('general')
+        self.model_settings = self.config_manager.get_model_settings("general")
         self.repo_url = self.config_manager.get_git_settings().repository
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))

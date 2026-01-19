@@ -303,7 +303,7 @@ def generate_docstrings(config_manager: ConfigManager, loop: asyncio.AbstractEve
     repo_path = parse_folder_name(repo_url)
 
     try:
-        rate_limit = config_manager.get_model_settings('docstrings').rate_limit
+        rate_limit = config_manager.get_model_settings("docstrings").rate_limit
         ts = OSA_TreeSitter(repo_path, ignore_list)
         res = ts.analyze_directory(ts.cwd)
         dg = DocGen(config_manager)

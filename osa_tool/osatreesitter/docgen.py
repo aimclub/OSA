@@ -74,7 +74,7 @@ class DocGen(object):
         This method is a constructor that initializes the object by setting the 'api_key' attribute to the value of the 'OPENAI_API_KEY' environment variable.
         """
         self.config_manager = config_manager
-        self.model_settings = self.config_manager.get_model_settings('docstrings')
+        self.model_settings = self.config_manager.get_model_settings("docstrings")
         self.model_handler: ProtollmHandler = ModelHandlerFactory.build(self.model_settings)
         self.main_idea = None
 

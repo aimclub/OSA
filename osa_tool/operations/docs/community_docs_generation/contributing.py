@@ -27,10 +27,14 @@ class ContributingBuilder:
         self.template_path = os.path.join(osa_project_root(), "docs", "templates", "contributing.toml")
         self.url_path = f"https://{self.config_manager.get_git_settings().host_domain}/{self.config_manager.get_git_settings().full_name}/"
         self.branch_path = f"tree/{self.metadata.default_branch}/"
-        self.issues_url = self.url_path + ("tasktracker" if "gitverse" in self.config_manager.get_git_settings().host else "issues")
+        self.issues_url = self.url_path + (
+            "tasktracker" if "gitverse" in self.config_manager.get_git_settings().host else "issues"
+        )
         self._template = self.load_template()
 
-        self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url), "." + self.config_manager.get_git_settings().host)
+        self.repo_path = os.path.join(
+            os.getcwd(), parse_folder_name(self.repo_url), "." + self.config_manager.get_git_settings().host
+        )
         self.file_to_save = os.path.join(self.repo_path, "CONTRIBUTING.md")
 
     def load_template(self) -> dict:
