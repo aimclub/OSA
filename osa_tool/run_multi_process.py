@@ -20,7 +20,6 @@ from osa_tool.run import generate_docstrings, load_configuration
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.utils import logger, rich_section, parse_git_url, delete_repository
 
-
 # === Stage 1: Generate report and README asynchronously ===
 
 
