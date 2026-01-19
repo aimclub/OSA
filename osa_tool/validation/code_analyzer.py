@@ -1,5 +1,6 @@
 import asyncio
 from pathlib import Path
+from typing import Iterable, Iterator
 
 from rich.progress import track
 
@@ -22,6 +23,22 @@ class CodeAnalyzer:
     and sending code content to a model for analysis.
     """
 
+    SOURCEFILE_EXTENSIONS_LIST = "py", "c", "cpp"
+    IGNORE_LIST = (
+        "__init__.py",
+        "setup.py",
+        "conftest.py",
+        "manage.py",
+        "migrations",
+        "tests",
+        "test",
+        "test_",
+        "__pycache__",
+        ".pytest_cache",
+        ".pyo",
+        ".pyc",
+    )
+
     def __init__(self, config_manager: ConfigManager):
         """
         Initialize the CodeAnalyzer.
@@ -37,7 +54,7 @@ class CodeAnalyzer:
         self.sourcerank = SourceRank(self.config_manager)
         self.tree = self.sourcerank.tree
 
-    def get_code_files(self) -> list[str]:
+    def get_code_files(self) -> Iterator[str]:
         """
         Retrieve a list of code files from the repository.
 
@@ -47,51 +64,32 @@ class CodeAnalyzer:
             list[str]: List of absolute paths to code files.
         """
         repo_path = Path(parse_folder_name(str(self.config_manager.get_git_settings().repository))).resolve()
-        code_files = []
         for filename in track(self.tree.split("\n"), description="Getting code files ..."):
-            if self._is_file_ignored(filename):
-                logger.debug(f"File '{filename}' is ignored")
+            if self.__is_blacklisted(filename):
+                logger.debug(f"File '{filename}' is ignored. Skipping")
+                continue
+            if self.__is_sourcefile(filename):
+                yield str(repo_path.joinpath(filename))
                 continue
             if filename.endswith(".ipynb"):
                 logger.debug("Found .ipynb file, converting ...")
                 self.notebook_convertor.convert_notebook(str(repo_path.joinpath(filename)))
-                code_files.append(str(repo_path.joinpath(filename.replace(".ipynb", ".py"))))
-            if filename.endswith(".py"):
-                code_files.append(str(repo_path.joinpath(filename)))
-        logger.debug(code_files)
-        return code_files
+                yield str(repo_path.joinpath(filename.replace(".ipynb", ".py")))
 
-    def _is_file_ignored(self, filename: str) -> bool:
-        """
-        Check if a file should be ignored based on predefined patterns.
+    @classmethod
+    def __is_blacklisted(cls, filename: str) -> bool:
+        return any(pattern in filename for pattern in cls.IGNORE_LIST)
 
-        Args:
-            filename (str): Name of the file to check.
+    @classmethod
+    def __is_sourcefile(cls, filename: str) -> bool:
+        return any(filename.endswith(f".{pattern}") for pattern in cls.SOURCEFILE_EXTENSIONS_LIST)
 
-        Returns:
-            bool: True if the file should be ignored, False otherwise.
-        """
-        IGNORE_LIST = (
-            "__init__.py",
-            "setup.py",
-            "conftest.py",
-            "manage.py",
-            "migrations",
-            "tests",
-            "test",
-            "test_" "__pycache__",
-            ".pytest_cache",
-            ".pyo",
-            ".pyc",
-        )
-        return any(pattern in filename for pattern in IGNORE_LIST)
-
-    async def process_code_files(self, code_files: list[str]) -> str:
+    async def process_code_files(self, code_files: Iterable[str]) -> str:
         """
         Analyze the content of code files using the language model asynchronously.
 
         Args:
-            code_files (list[str]): List of code file paths.
+            code_files (Iterable[str]): List of code file paths.
 
         Returns:
             str: Aggregated analysis results for all code files.
@@ -100,7 +98,7 @@ class CodeAnalyzer:
         semaphore = asyncio.Semaphore(rate_limit)
 
         # track - синхронная библиотека, в асинхроне пока будет только logger?
-        logger.info(f"Starting async analysis of {len(code_files)} files with rate limit {rate_limit}...")
+        logger.info(f"Starting async analysis of files with rate limit {rate_limit}...")
 
         async def _process_single_file(file_path: str) -> str:
             """
