@@ -10,7 +10,7 @@ from pandas import DataFrame
 
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator
 from osa_tool.operations.docs.readme_generation.context.pypi_status_checker import PyPiPackageInspector
@@ -24,36 +24,36 @@ from osa_tool.utils.utils import logger, rich_section, parse_git_url, delete_rep
 # === Stage 1: Generate report and README asynchronously ===
 
 
-async def generate_report(config: ConfigLoader, metadata: RepositoryMetadata, args) -> None:
+async def generate_report(config_manager: ConfigManager, metadata: RepositoryMetadata, args) -> None:
     """Async wrapper for generating PDF report."""
     reports_dir = os.path.join(os.path.dirname(args.table_path), "reports")
     os.makedirs(reports_dir, exist_ok=True)
 
-    report_gen = ReportGenerator(config, metadata)
+    report_gen = ReportGenerator(config_manager, metadata)
     report_gen.output_path = os.path.join(reports_dir, f"{metadata.name}_report.pdf")
 
     await asyncio.to_thread(report_gen.build_pdf)
 
 
-async def generate_readme(config: ConfigLoader, metadata: RepositoryMetadata, args) -> None:
+async def generate_readme(config_manager: ConfigManager, metadata: RepositoryMetadata, args) -> None:
     """Async wrapper for generating README."""
     readmes_dir = os.path.join(os.path.dirname(args.table_path), "readmes")
     os.makedirs(readmes_dir, exist_ok=True)
 
-    readme_agent = ReadmeAgent(config, metadata, None, args.refine_readme)
+    readme_agent = ReadmeAgent(config_manager, metadata, None, args.refine_readme)
     readme_agent.file_to_save = os.path.join(readmes_dir, f"{metadata.name}_README.md")
 
     await asyncio.to_thread(readme_agent.generate_readme)
 
 
-async def run_async_tasks(config: ConfigLoader, git_agent, args):
+async def run_async_tasks(config_manager: ConfigManager, git_agent, args):
     """Run report and readme generation concurrently inside a process."""
     tasks = []
 
     if args.report:
-        tasks.append(asyncio.create_task(generate_report(config, git_agent.metadata, args)))
+        tasks.append(asyncio.create_task(generate_report(config_manager, git_agent.metadata, args)))
     if args.readme:
-        tasks.append(asyncio.create_task(generate_readme(config, git_agent.metadata, args)))
+        tasks.append(asyncio.create_task(generate_readme(config_manager, git_agent.metadata, args)))
     if tasks:
         await asyncio.gather(*tasks)
 
@@ -94,7 +94,7 @@ def process_repository_stage1(repo_url: str, args) -> dict:
 
     try:
         args.repository = repo_url
-        config = load_configuration(args)
+        config_manager = ConfigManager(args)
 
         # Choose GIT agent based on platform
         if "github.com" in repo_url:
@@ -109,10 +109,10 @@ def process_repository_stage1(repo_url: str, args) -> dict:
 
         # Clone repository
         git_agent.clone_repository()
-        sourcerank = SourceRank(config)
+        sourcerank = SourceRank(config_manager)
 
         # Run async stage (report + readme)
-        asyncio.run(run_async_tasks(config, git_agent, args))
+        asyncio.run(run_async_tasks(config_manager, git_agent, args))
 
         # Collect PyPi info
         info = PyPiPackageInspector(sourcerank.tree, sourcerank.repo_path).get_info()
@@ -176,13 +176,13 @@ def process_docstrings_for_repo(repo_url: str, args, df: DataFrame) -> None:
 
     try:
         args.repository = repo_url
-        config = load_configuration(args)
+        config_manager = ConfigManager(args)
 
         # Generate docstrings
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            generate_docstrings(config, loop, args.ignore_list)
+            generate_docstrings(config_manager, loop, args.ignore_list)
         finally:
             loop.close()
 

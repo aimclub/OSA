@@ -2,7 +2,7 @@ import os
 
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
 from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
@@ -15,16 +15,16 @@ from osa_tool.utils.utils import parse_folder_name, extract_readme_content
 
 
 class LLMClient:
-    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
-        self.config_loader = config_loader
+    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata):
+        self.config_manager = config_manager
+        self.model_settings = self.config_manager.get_model_settings('readme')
         self.metadata = metadata
-        self.config = self.config_loader.config
-        self.prompts = self.config.prompts
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
-        self.sourcerank = SourceRank(config_loader)
+        self.prompts = self.config_manager.get_prompts()
+        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
+        self.sourcerank = SourceRank(self.config_manager)
         self.tree = self.sourcerank.tree
 
-        self.repo_url = self.config.git.repository
+        self.repo_url = self.config_manager.get_git_settings().repository
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.readme_content = extract_readme_content(self.base_path)
 
@@ -44,7 +44,7 @@ class LLMClient:
         """
         logger.info("Started generating README-style summary.")
         key_files = self.get_key_files()
-        key_files_content = FileProcessor(self.config_loader, key_files).process_files()
+        key_files_content = FileProcessor(self.config_manager, key_files).process_files()
 
         logger.info("Generating core features of the project...")
         core_features = self.model_handler.send_and_parse(
@@ -90,7 +90,7 @@ class LLMClient:
         """
         logger.info("Started generating Article-style summary.")
         key_files = self.get_key_files()
-        key_files_content = FileProcessor(self.config_loader, key_files).process_files()
+        key_files_content = FileProcessor(self.config_manager, key_files).process_files()
 
         logger.info("Generating summary of key files...")
         files_summary = self.model_handler.send_and_parse(
@@ -170,7 +170,7 @@ class LLMClient:
         """
         logger.info("Attempting to generate Getting Started section...")
         examples_files = extract_example_paths(self.tree)
-        examples_content = FileProcessor(self.config_loader, examples_files).process_files()
+        examples_content = FileProcessor(self.config_manager, examples_files).process_files()
         return self.model_handler.send_and_parse(
             prompt=PromptBuilder.render(
                 self.prompts.get("readme.getting_started"),

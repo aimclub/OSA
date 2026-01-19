@@ -4,7 +4,7 @@ from pathlib import Path
 from rich.progress import track
 
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.conversion.notebook_converter import NotebookConverter
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.operations.docs.readme_generation.utils import read_file
@@ -22,18 +22,19 @@ class CodeAnalyzer:
     and sending code content to a model for analysis.
     """
 
-    def __init__(self, config_loader: ConfigLoader):
+    def __init__(self, config_manager: ConfigManager):
         """
         Initialize the CodeAnalyzer.
 
         Args:
-            config_loader (ConfigLoader): Loader containing configuration settings.
+            config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
         """
-        self.config = config_loader.config
-        self.prompts = self.config.prompts
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
+        self.config_manager = config_manager
+        self.model_settings = self.config_manager.get_model_settings('validation')
+        self.prompts = self.config_manager.get_prompts()
+        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
         self.notebook_convertor = NotebookConverter()
-        self.sourcerank = SourceRank(config_loader)
+        self.sourcerank = SourceRank(self.config_manager)
         self.tree = self.sourcerank.tree
 
     def get_code_files(self) -> list[str]:
@@ -45,7 +46,7 @@ class CodeAnalyzer:
         Returns:
             list[str]: List of absolute paths to code files.
         """
-        repo_path = Path(parse_folder_name(str(self.config.git.repository))).resolve()
+        repo_path = Path(parse_folder_name(str(self.config_manager.get_git_settings().repository))).resolve()
         code_files = []
         for filename in track(self.tree.split("\n"), description="Getting code files ..."):
             if self._is_file_ignored(filename):
@@ -95,7 +96,7 @@ class CodeAnalyzer:
         Returns:
             str: Aggregated analysis results for all code files.
         """
-        rate_limit = self.config.llm.rate_limit
+        rate_limit = self.model_settings.rate_limit
         semaphore = asyncio.Semaphore(rate_limit)
 
         # track - синхронная библиотека, в асинхроне пока будет только logger?

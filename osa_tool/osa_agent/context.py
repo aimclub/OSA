@@ -13,11 +13,24 @@ class AgentContext:
 
     def __init__(self, agent_config: OSAConfig):
         self.agent_config = agent_config
-        self.config_loader = self.agent_config.config_loader
+        self.config_manager = self.agent_config.config_manager
         self.git_agent = self.agent_config.git_agent
         self.metadata = self.git_agent.metadata
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config_loader.config)
+        self.model_handler_factory = ModelHandlerFactory
         self.workflow_manager = self.agent_config.workflow_manager
-        self.prompts = self.config_loader.config.prompts
+        self.prompts = self.config_manager.get_prompts()
         self.create_fork = self.agent_config.create_fork
         self.create_pull_request = self.agent_config.create_pull_request
+
+    def get_model_handler(self, task_type: str = "general"):
+        """
+        Get a model handler configured for a specific task type.
+        
+        Args:
+            task_type: Type of task (docstring, readme, validation, general)
+            
+        Returns:
+            ModelHandler instance configured for the specified task
+        """
+        model_settings = self.config_manager.get_model_settings(task_type)
+        return ModelHandlerFactory.build(model_settings)

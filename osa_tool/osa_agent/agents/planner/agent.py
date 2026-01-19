@@ -93,7 +93,7 @@ class PlannerAgent(BaseAgent):
             available_operations="\n".join(f"- {op.name}: {op.description}" for op in available_ops),
         )
 
-        return self.context.model_handler.run_chain(
+        return self.context.get_model_handler('general').run_chain(
             prompt=prompt,
             parser=parser,
             system_message=system_message,
@@ -165,7 +165,7 @@ class PlannerAgent(BaseAgent):
             operations=operations_str,
         )
 
-        response = self.context.model_handler.run_chain(
+        response = self.context.get_model_handler('general').run_chain(
             prompt=prompt,
             parser=parser,
             system_message=system_message,
