@@ -57,7 +57,7 @@ class NotebookConverter:
             with open(notebook_path, "r") as f:
                 notebook_content = nbformat.read(f, as_version=4)
 
-            (body, _) = self.exporter.from_notebook_node(notebook_content)
+            body, _ = self.exporter.from_notebook_node(notebook_content)
 
             notebook_name = os.path.splitext(os.path.basename(notebook_path))[0]
             body = self.process_code(notebook_name, body)

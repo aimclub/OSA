@@ -29,9 +29,9 @@ def test_readme_agent_without_article(
 
     agent = ReadmeAgent(
         config_loader=mock_config_loader,
-        article=None,
-        refine_readme=True,
         metadata=mock_repository_metadata,
+        attachment=None,
+        refine_readme=True,
     )
 
     # Act
@@ -79,9 +79,9 @@ def test_readme_agent_with_article(
 
     agent = ReadmeAgent(
         config_loader=mock_config_loader,
-        article=article_path,
-        refine_readme=False,
         metadata=mock_repository_metadata,
+        attachment=article_path,
+        refine_readme=False,
     )
 
     # Act
