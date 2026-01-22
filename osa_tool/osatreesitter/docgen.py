@@ -9,7 +9,6 @@ from typing import List, Dict, Callable
 
 import aiofiles
 import black
-import black.report
 import dotenv
 import tiktoken
 import tomli
@@ -20,6 +19,7 @@ from osa_tool.models.models import ModelHandlerFactory, ProtollmHandler
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
+from osa_tool.osatreesitter.topology import build_dependency_graph
 
 dotenv.load_dotenv()
 
@@ -72,7 +72,8 @@ class DocGen(object):
         """
         Instantiates the object of the class.
 
-        This method is a constructor that initializes the object by setting the 'api_key' attribute to the value of the 'OPENAI_API_KEY' environment variable.
+        Args:
+            config_loader: Configuration loader instance
         """
         self.config_manager = config_manager
         self.model_settings = self.config_manager.get_model_settings("docstrings")
@@ -268,60 +269,118 @@ class DocGen(object):
         """
         Generate documentation for a single method.
         """
+        arguments = [a for a in method_details['arguments'] if a not in ("self", "cls")]
         prompt = (
             "Generate a Python docstring for the following method. The docstring should follow Google-style format and include:\n"
-            "- A short summary of what the method does\n."
+            "- A short summary of what the method does.\n"
             "- A description of its parameters without types.\n"
-            "- If the method is a class constructor, explicitly list all class fields (object properties) that are initialized, including their names and purposes. These fields should match the attributes assigned within the constructor (e.g., this.field = ..., self.field = ...). This information will be used to generate the class-level documentation.\n"
-            "- The return type and description.\n"
-            f"- Method Name: {method_details['method_name']}\n"
-            "Method source code: You are given only the body of a single method, without its signature. All visible code, including any inner functions or nested logic, belongs to this single method. Do not write separate docstrings for inner functions — they are part of the main method's logic.\n"
+            "- If the method is a class constructor, explicitly list all class fields (object properties) that are initialized, "
+            "including their names and purposes. These fields should match the attributes assigned within the constructor "
+            "(e.g., this.field = ..., self.field = ...). This information will be used to generate the class-level documentation.\n"
+            "- The return type and description (omit Returns section if the method does not return a value).\n\n"
+
+            f"- Method Name: {method_details['method_name']}\n\n"
+
+            "Method source code: You are given only the body of a single method, without its signature. "
+            "All visible code, including any inner functions or nested logic, belongs to this single method. "
+            "Do not write separate docstrings for inner functions — they are part of the main method's logic.\n"
             "```\n"
-            f"""{method_details['source_code']}\n"""
-            "```\n"
-            "-List of arguments:\n"
-            f"""{method_details['arguments']}\n"""
-            f"""{"- Context: Below is source code of functions called by this method. Use this context ONLY to understand logic - DO NOT copy parameters from these functions into Args section." if context_code else ""}\n"""
+            f"{method_details['source_code']}\n"
+            "```\n\n"
+
+            "- List of arguments:\n"
+            f"{arguments}\n\n"
+
             "Method Details:\n"
-            f"- Method decorators: {method_details['decorators']}\n"
-            f"""{"- Called functions source code (for context only - DO NOT extract parameters from it):" if context_code else ""}\n"""
-            f"""{context_code if context_code else ""}\n\n"""
-            "Note: DO NOT RETURN METHOD'S BODY. DO NOT count parameters which are not listed in the parameters list. DO NOT lose any parameter. DO NOT wrap any sections of the docstring into <any_tag> clear those parts out."
-            "Return only docstring without any quotation. Follow such format:\n <triple_quotes>\ncontent\n<triple_quotes>"
+            f"- Method decorators: {method_details['decorators']}\n\n"
         )
+
+        if context_code:
+            prompt += (
+                "Related functions documentation (for context only):\n"
+                f"{context_code}\n\n"
+                "Use this documentation ONLY to understand what the current method does.\n"
+                "Do NOT document helper functions.\n"
+                "Do NOT add their parameters to the Args section.\n"
+                "Do NOT describe their internal implementation.\n\n"
+            )
+
+        prompt += (
+            "Note:\n"
+            "- DO NOT return the method body.\n"
+            "- DO NOT invent parameters or behavior.\n"
+            "- DO NOT count parameters which are not listed in the parameters list.\n"
+            "- DO NOT lose any parameter.\n"
+            "- DO NOT wrap any sections of the docstring into <any_tag> — remove such tags if generated.\n\n"
+            "Return only the docstring without any quotation marks.\n"
+            "Follow this format exactly:\n"
+            "<triple_quotes>\n"
+            "content\n"
+            "<triple_quotes>\n"
+        )
+
         async with semaphore:
             return await self.model_handler.async_request(prompt)
 
+
     async def update_method_documentation(
-        self, method_details: dict, semaphore: asyncio.Semaphore, context_code: str = None, class_name: str = None
+        self,
+        method_details: dict,
+        semaphore: asyncio.Semaphore,
+        context_code: str = None,
+        class_name: str = None,
     ) -> str:
         """
-        Generate documentation for a single method.
+        Update documentation for a single method.
         """
         docstring = method_details["docstring"]
-        prompt = (
-            """Update the provided docstring description for the following Python method using the main idea of the project.\n"""
-            """Do not pay too much attention to the provided main idea - try not to mention it explicitly\n"""
-            """Based on the provided context and main idea give an answer to the question WHY method doing what it is doing\n"""
-            """If original docstring provides only description update it with Args and Return sections based on provided source code as well\n"""
-            f"""Original docstring: {docstring}\n\n"""
-            f"""{"- Context: Below is source code of functions called by this method. Use this context ONLY to understand logic - DO NOT copy information from these functions into the docstring." if context_code else ""}\n"""
-            """Method Details:\n"""
-            f"""- Method Name: {method_details["method_name"]} {("located inside " + class_name + " class") if class_name else ""}\n"""
-            f"""- Method decorators: {method_details["decorators"]}\n"""
-            "- Source Code:\n"
-            "```\n"
-            f"""{method_details["source_code"]}\n"""
-            "```\n"
-            f"""{"- Called functions source code (for context only - DO NOT describe these functions):" if context_code else ""}\n"""
-            f"""{context_code if context_code else ""}\n\n"""
-            f"The main idea: {self.main_idea}\n"
-            "Return only pure changed docstring - DO NOT RETURN ANY CODE, DO NOT RETURN other parts of docs"
-        )
-        async with semaphore:
-            new_desc = await self.model_handler.async_request(prompt)
 
-        return new_desc
+        prompt = (
+            "Update the provided docstring for the following Python method.\n"
+            "Preserve correct existing information and add missing details based on the source code.\n\n"
+
+            "Guidelines:\n"
+            "- Improve clarity and completeness without rewriting everything from scratch.\n"
+            "- Answer WHY the method does what it does when it is not obvious.\n"
+            "- If the original docstring contains only a description, add Args and Returns sections if needed.\n"
+            "- Describe parameters without types.\n"
+            "- Omit Returns section if the method does not return a value.\n"
+            "- Do NOT invent parameters or behavior.\n\n"
+
+            f"Original docstring:\n{docstring}\n\n"
+
+            "Method Details:\n"
+            f"- Method Name: {method_details['method_name']}"
+            f"{f' (located inside {class_name} class)' if class_name else ''}\n"
+            f"- Method decorators: {method_details['decorators']}\n\n"
+
+            "Source Code:\n"
+            "```\n"
+            f"{method_details['source_code']}\n"
+            "```\n\n"
+        )
+
+        if context_code:
+            prompt += (
+                "Imported methods / helper functions source code:\n"
+                "```\n"
+                f"{context_code}\n"
+                "```\n\n"
+                "Use this context ONLY to better understand the method behavior.\n"
+                "Do NOT document helper functions.\n"
+                "Do NOT mention their parameters explicitly.\n\n"
+            )
+
+        prompt += (
+            f"The main idea of the project (for context only): {self.main_idea}\n\n"
+            "Return only the updated docstring.\n"
+            "DO NOT return code.\n"
+            "DO NOT return other documentation sections.\n"
+            "Use triple quotes format.\n"
+        )
+
+        async with semaphore:
+            return await self.model_handler.async_request(prompt)
 
     @staticmethod
     def extract_pure_docstring(gpt_response: str) -> str:
@@ -542,7 +601,13 @@ class DocGen(object):
             self._function_index_cache = OSA_TreeSitter.build_function_index(parsed_structure)
         return self._function_index_cache
 
-    def context_extractor(self, method_details: dict, structure: dict, function_index: dict = None) -> str:
+    def context_extractor(
+        self,
+        method_details: dict,
+        structure: dict,
+        function_index: dict = None,
+        generated_docstrings: dict = None,
+    ) -> str:
         """
         Extracts the context of function calls from given method_details using method_calls field.
 
@@ -550,6 +615,7 @@ class DocGen(object):
         - method_details: A dictionary containing details about the method, including 'method_calls' list.
         - structure: A dictionary representing the code structure (for fallback search)
         - function_index: Optional index built by osa_treesitter.build_function_index() for fast O(1) lookup.
+        - generated_docstrings: Optional dict mapping node_id to generated docstring (from topological sort)
 
         Returns:
         A string containing the context of called functions in the format:
@@ -568,12 +634,7 @@ class DocGen(object):
         if not function_index:
             return ""
 
-        if not called_functions:
-            return ""
-
-        context = [
-            "Referenced functions (for context understanding only):"
-        ]
+        context = []
 
         for func_name in called_functions:
             search_name = func_name.split(".")[-1] if "." in func_name else func_name
@@ -583,15 +644,42 @@ class DocGen(object):
                 class_name = func_info.get("class", "")
                 display_name = f"{class_name}.{search_name}" if class_name else search_name
 
+                # Use generated docstring if available (from topological sort)
+                docstring = None
+                if generated_docstrings:
+                    # Try to find in generated_docstrings by node_id
+                    file_path = func_info.get("file", "")
+                    if class_name:
+                        node_id = f"{file_path}:{class_name}.{search_name}"
+                    else:
+                        node_id = f"{file_path}:{search_name}"
+
+                    docstring = generated_docstrings.get(node_id)
+
+                # Fallback to original docstring
+                if not docstring:
+                    docstring = func_info.get("docstring")
+
+                if not docstring:
+                    continue
+
+                separator = "=" * 10
                 instance_prompt = (
-                    f"obj: {display_name}\n"
-                    f"Document: \n{func_info.get('docstring', 'None')}\n"
-                    f"Raw code:```\n{func_info.get('source_code', '')}\n```\n"
-                    + "=" * 10
+                    separator + "\n"
+                    f"Helper function name: {display_name}\n"
+                    f"Documentation:\n{docstring}\n"
                 )
+
                 context.append(instance_prompt)
 
-        return "\n".join(context)
+        if not context:
+            return ""
+
+        return (
+            "Referenced helper functions (for context understanding only):\n"
+            + "\n".join(context)
+            + "\nEnd of referenced helper functions\n"
+        )
 
     def format_with_black(self, filename):
         """
@@ -716,37 +804,15 @@ class DocGen(object):
 
         logger.info(f"Docstrings {'update' if self.main_idea else 'generation'} for the project has started!")
 
-        # generation strategy choice
         match docstring_type:
-
-            case "functions", "methods":
-
-                generating_results = await _iterate_and_collect(
-                    parsed_structure, self._fetch_docstrings, parsed_structure, semaphore
+            case ("functions", "methods") | ("functions", "methods", "classes"):
+                generating_results = await self._fetch_docstrings(
+                    parsed_structure, docstring_type, semaphore, rate_limit
                 )
-
             case "classes":
-
                 generating_results = await _iterate_and_collect(
                     parsed_structure, self._fetch_docstrings_for_class, semaphore
                 )
-
-            case "functions", "methods", "classes":
-
-                # fetch generation results for functions and methods
-                fn_results = await _iterate_and_collect(
-                    parsed_structure, self._fetch_docstrings, parsed_structure, semaphore
-                )
-
-                # then fetch for classes
-                cl_results = await _iterate_and_collect(parsed_structure, self._fetch_docstrings_for_class, semaphore)
-
-                assert fn_results.keys() == cl_results.keys(), "Filenames for each type of the result must be the same."
-
-                # merge the results of generation for each result type. following dict structure is {file: results}
-                generating_results = {
-                    f: fn_results[f] | cl_results[f] for f, s in parsed_structure.items() if s.get("structure")
-                }
 
             case _:
                 raise ValueError(
@@ -755,6 +821,24 @@ class DocGen(object):
 
         logger.info(f"Docstrings generation for the project is complete!")
         return generating_results
+
+    async def _generate_class_docstrings(
+        self, parsed_structure: dict, rate_limit: int
+    ) -> dict[str, dict]:
+        semaphore = asyncio.Semaphore(rate_limit)
+        results = {}
+
+        for filename, structure in parsed_structure.items():
+            if structure.get("structure"):
+                results[filename] = await self._fetch_docstrings_for_class(
+                    filename, structure, semaphore
+                )
+            else:
+                logger.info(
+                    f"File {filename} does not contain any functions, methods or class constructions."
+                )
+
+        return results
 
     @staticmethod
     async def _get_project_source_code(parsed_structure: dict, sem: asyncio.Semaphore) -> dict[str, str]:
@@ -808,89 +892,202 @@ class DocGen(object):
         # executing coroutines concurrently
         await asyncio.gather(*[_write_code(f, augmented_code[i][f]) for i, f in enumerate(structure)])
 
+    async def _generate_node(
+        self,
+        node_id: str,
+        dep_graph,
+        parsed_structure: dict,
+        function_index: dict,
+        generated_docstrings: dict,
+        semaphore: asyncio.Semaphore,
+        docstring_type: tuple | str,
+        progress: dict,
+    ):
+        """Generate docstring for a single node with context from completed dependencies."""
+        node_info = dep_graph.get_node_metadata(node_id)
+        if not node_info:
+            return None
+
+        node_type = node_info["type"]
+        metadata = node_info["metadata"]
+        file_path = node_info["file"]
+
+        if metadata.get("docstring") and not self.main_idea:
+            logger.debug(f"Skipping {node_id}: already has docstring")
+            return None
+
+        if node_type == "method" and docstring_type not in [("functions", "methods"), ("functions", "methods", "classes")]:
+            return None
+        if node_type == "function" and docstring_type not in [("functions", "methods"), ("functions", "methods", "classes")]:
+            return None
+
+        progress["count"] += 1
+        progress_label = f"[{progress['count']}/{progress['total']}]"
+
+        if node_type == "method":
+            logger.info(
+                f"""{progress_label} Requesting for docstrings {"update" if self.main_idea else "generation"} for the method: {metadata["method_name"]} of class {node_info.get("class", "")} at {file_path}"""
+            )
+        elif node_type == "function":
+            logger.info(
+                f"""{progress_label} Requesting for docstrings {"update" if self.main_idea else "generation"} for the function: {metadata["method_name"]} at {file_path}"""
+            )
+
+        context = self.context_extractor(
+            metadata,
+            parsed_structure,
+            function_index,
+            generated_docstrings
+        )
+
+        try:
+            if self.main_idea:
+                if node_type == "method":
+                    class_name = node_info.get("class", "")
+                    docstring = await self.update_method_documentation(
+                        metadata, semaphore, context, class_name
+                    )
+                else:
+                    docstring = await self.update_method_documentation(
+                        metadata, semaphore, context
+                    )
+            else:
+                docstring = await self.generate_method_documentation(
+                    metadata, semaphore, context
+                )
+
+            return (node_id, node_type, file_path, docstring, metadata) if docstring else None
+
+        except Exception as e:
+            logger.error(f"Error generating docstring for {node_id}: {e}")
+            return None
+
     async def _fetch_docstrings(
-        self, file: str, file_meta: dict, project: dict, semaphore: asyncio.Semaphore
-    ) -> dict[str, list]:
+        self,
+        parsed_structure: dict,
+        docstring_type: tuple | str,
+        semaphore: asyncio.Semaphore,
+        rate_limit: int,
+    ) -> dict[str, dict]:
         """
-        Collects a batch of requests for each method/function object in given file by its metadata.
-        Then concurrently executes a batch of requests and wraps the results to the dict structure.
+        Generates docstrings for functions and methods using dependency-first processing.
+
+        Builds a dependency graph from parsed_structure, then generates docstrings in
+        topological order while propagating context from already generated docstrings.
+        Optionally adds class docstrings when docstring_type includes "classes".
 
         Args:
-            file: The name of the file for which the generation will be performed.
-            file_meta: Dictionary which contains metadata about file from project parsed structure.
-            project: Parsed structure of current project that contains all files and their metadata.
+            parsed_structure: Parsed structure of current project that contains all files and their metadata.
+            docstring_type: Defines docstrings generation strategy by given value.
             semaphore: Synchronous primitive for preventing the overload external LLM-server API.
+            rate_limit: Maximum number of concurrent requests to the LLM.
 
         Returns:
-            dict[str, list]
+            dict[str, dict]: {file: {"methods": [...], "functions": [...], "classes": [...]}}
         """
+        logger.info("Using topological sorting with context propagation for dependency-first generation")
+        logger.info("Building dependency graph for topological sort...")
 
-        result = {}
+        # Build dependency graph
+        dep_graph = build_dependency_graph(parsed_structure)
 
-        _coroutines = {"methods": [], "functions": []}
+        # Build function index for context extraction
+        function_index = self._build_function_index(parsed_structure)
 
-        function_index = self._build_function_index(project)
+        # Storage for generated docstrings (node_id -> docstring)
+        generated_docstrings = {}
 
-        # iterating over given file metadata dictionary
-        for item in file_meta["structure"]:
+        # Storage for results in original format: {file: {"methods": [...], "functions": [...], "classes": [...]}}
+        results = {file: {"methods": [], "functions": [], "classes": []} for file in parsed_structure.keys()}
+        total_nodes = len(dep_graph.nodes)
+        progress = {"count": 0, "total": total_nodes}
 
-            _type = item["type"]
+        in_degree = {node: len(dep_graph.get_dependencies(node)) for node in dep_graph.nodes}
+        queue = [node for node, degree in in_degree.items() if degree == 0]
 
-            match _type:
-                case "class":
+        in_progress = {}
+        completed = set()
 
-                    for method in item["methods"]:
+        logger.info(f"Starting eager topological processing: {len(queue)} nodes ready, {total_nodes} total")
 
-                        # produce different request type based on main_idea presence or docstring absence
-                        if not method.get("docstring") or self.main_idea:
+        while queue or in_progress:
+            while queue and len(in_progress) < rate_limit:
+                node_id = queue.pop(0)
+                task = asyncio.create_task(
+                    self._generate_node(
+                        node_id,
+                        dep_graph,
+                        parsed_structure,
+                        function_index,
+                        generated_docstrings,
+                        semaphore,
+                        docstring_type,
+                        progress,
+                    )
+                )
+                in_progress[node_id] = task
 
-                            logger.info(
-                                f"""Requesting for docstrings {"update" if self.main_idea else "generation"} for the method: {method["method_name"]} of class {item["name"]} at {file}"""
-                            )
+            if not in_progress:
+                break
 
-                            context = self.context_extractor(method, project, function_index)
+            done, _ = await asyncio.wait(
+                in_progress.values(),
+                return_when=asyncio.FIRST_COMPLETED
+            )
 
-                            request_coroutine = (
-                                self.generate_method_documentation(method, semaphore, context)
-                                if not self.main_idea
-                                else self.update_method_documentation(method, semaphore, context, item["name"])
-                            )
+            for task in done:
+                completed_node_id = None
+                for node_id, t in in_progress.items():
+                    if t == task:
+                        completed_node_id = node_id
+                        break
 
-                            # just add new coroutine and method metadata to a task list
-                            _coroutines["methods"].append((method, request_coroutine))
+                if completed_node_id is None:
+                    continue
 
-                case "function":
+                del in_progress[completed_node_id]
+                completed.add(completed_node_id)
 
-                    function_metadata = item["details"]
+                try:
+                    result = await task
 
-                    # produce different request type based on main_idea presence or docstring absence
-                    if not function_metadata.get("docstring") or self.main_idea:
+                    if result and not isinstance(result, Exception):
+                        node_id, node_type, file_path, docstring, metadata = result
 
-                        logger.info(
-                            f"""Requesting for docstrings {"update" if self.main_idea else "generation"} for the function: {function_metadata["method_name"]} at {file}"""
-                        )
+                        generated_docstrings[node_id] = docstring
 
-                        context = self.context_extractor(function_metadata, project, function_index)
+                        if node_type == "method":
+                            results[file_path]["methods"].append((docstring, metadata))
+                        elif node_type == "function":
+                            results[file_path]["functions"].append((docstring, metadata))
 
-                        request_coroutine = (
-                            self.generate_method_documentation(function_metadata, semaphore, context)
-                            if not self.main_idea
-                            else self.update_method_documentation(function_metadata, semaphore, context)
-                        )
+                except Exception as e:
+                    logger.error(f"Task failed for {completed_node_id}: {e}")
 
-                        # just add new coroutine and function metadata to a task list
-                        _coroutines["functions"].append((function_metadata, request_coroutine))
+                for dependent_id in dep_graph.reverse_graph.get(completed_node_id, set()):
+                    deps = dep_graph.get_dependencies(dependent_id)
+                    if all(dep in completed for dep in deps):
+                        if dependent_id not in queue and dependent_id not in in_progress and dependent_id not in completed:
+                            queue.append(dependent_id)
 
-        # getting and collecting the requests batch result for each object type
-        for key in _coroutines.keys():
+        if docstring_type == ("functions", "methods", "classes"):
+            logger.info("Generating class docstrings...")
+            class_results = {}
 
-            fetched_docstrings = await asyncio.gather(*[task[1] for task in _coroutines[key]])
-            structure_names = [name[0] for name in _coroutines[key]]
+            for file_path, file_meta in parsed_structure.items():
+                if not file_meta.get("structure"):
+                    continue
 
-            # clear pairs if LLM returns an empty docstring generation response
-            result[key] = [pair for pair in zip(fetched_docstrings, structure_names) if pair[0]]
+                class_results[file_path] = await self._fetch_docstrings_for_class(
+                    file_path, file_meta, semaphore
+                )
 
-        return result
+            for file_path in results.keys():
+                if file_path in class_results:
+                    results[file_path]["classes"] = class_results[file_path].get("classes", [])
+
+        return results
+
 
     async def _fetch_docstrings_for_class(
         self, file: str, file_meta: dict, semaphore: asyncio.Semaphore

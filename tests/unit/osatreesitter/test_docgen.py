@@ -759,8 +759,11 @@ async def test_generate_docstrings_for_functions_methods(mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)
 
-    async def mock_fetch_docstrings(filename, structure, parsed_structure, semaphore):
-        return {"functions": [("docstring", "func1")], "methods": [("docstring", "method1")]}
+    async def mock_fetch_docstrings(parsed_structure, docstring_type, semaphore, rate_limit):
+        return {
+            file: {"functions": [("docstring", "func1")], "methods": [("docstring", "method1")], "classes": []}
+            for file in parsed_structure
+        }
 
     docgen._fetch_docstrings = mock_fetch_docstrings
     parsed_structure = {
@@ -804,14 +807,17 @@ async def test_generate_docstrings_for_all_types(mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)
 
-    async def mock_fetch_docstrings(filename, structure, parsed_structure, semaphore):
-        return {"functions": [("docstring", "func1")], "methods": [("docstring", "method1")]}
-
-    async def mock_fetch_docstrings_for_class(filename, structure, semaphore):
-        return {"classes": [("docstring", "Class1")]}
+    async def mock_fetch_docstrings(parsed_structure, docstring_type, semaphore, rate_limit):
+        return {
+            file: {
+                "functions": [("docstring", "func1")],
+                "methods": [("docstring", "method1")],
+                "classes": [("docstring", "Class1")],
+            }
+            for file in parsed_structure
+        }
 
     docgen._fetch_docstrings = mock_fetch_docstrings
-    docgen._fetch_docstrings_for_class = mock_fetch_docstrings_for_class
     parsed_structure = {
         "file1.py": {"structure": True},
         "file2.py": {"structure": True},
