@@ -48,7 +48,7 @@ class DependencyGraph:
                             "file": file_path,
                             "class": class_name,
                             "name": method_name,
-                            "metadata": method
+                            "metadata": method,
                         }
                         self.node_to_file[node_id] = file_path
 
@@ -60,7 +60,7 @@ class DependencyGraph:
                         "type": "function",
                         "file": file_path,
                         "name": function_name,
-                        "metadata": item["details"]
+                        "metadata": item["details"],
                     }
                     self.node_to_file[node_id] = file_path
 
@@ -142,7 +142,7 @@ class DependencyGraph:
             "total_edges": total_edges,
             "nodes_with_dependencies": nodes_with_deps,
             "max_dependencies_per_node": max_deps,
-            "average_dependencies": total_edges / total_nodes if total_nodes > 0 else 0
+            "average_dependencies": total_edges / total_nodes if total_nodes > 0 else 0,
         }
 
 

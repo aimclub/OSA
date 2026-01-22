@@ -269,7 +269,7 @@ class DocGen(object):
         """
         Generate documentation for a single method.
         """
-        arguments = [a for a in method_details['arguments'] if a not in ("self", "cls")]
+        arguments = [a for a in method_details["arguments"] if a not in ("self", "cls")]
         prompt = (
             "Generate a Python docstring for the following method. The docstring should follow Google-style format and include:\n"
             "- A short summary of what the method does.\n"
@@ -278,19 +278,15 @@ class DocGen(object):
             "including their names and purposes. These fields should match the attributes assigned within the constructor "
             "(e.g., this.field = ..., self.field = ...). This information will be used to generate the class-level documentation.\n"
             "- The return type and description (omit Returns section if the method does not return a value).\n\n"
-
             f"- Method Name: {method_details['method_name']}\n\n"
-
             "Method source code: You are given only the body of a single method, without its signature. "
             "All visible code, including any inner functions or nested logic, belongs to this single method. "
             "Do not write separate docstrings for inner functions — they are part of the main method's logic.\n"
             "```\n"
             f"{method_details['source_code']}\n"
             "```\n\n"
-
             "- List of arguments:\n"
             f"{arguments}\n\n"
-
             "Method Details:\n"
             f"- Method decorators: {method_details['decorators']}\n\n"
         )
@@ -322,7 +318,6 @@ class DocGen(object):
         async with semaphore:
             return await self.model_handler.async_request(prompt)
 
-
     async def update_method_documentation(
         self,
         method_details: dict,
@@ -338,7 +333,6 @@ class DocGen(object):
         prompt = (
             "Update the provided docstring for the following Python method.\n"
             "Preserve correct existing information and add missing details based on the source code.\n\n"
-
             "Guidelines:\n"
             "- Improve clarity and completeness without rewriting everything from scratch.\n"
             "- Answer WHY the method does what it does when it is not obvious.\n"
@@ -346,14 +340,11 @@ class DocGen(object):
             "- Describe parameters without types.\n"
             "- Omit Returns section if the method does not return a value.\n"
             "- Do NOT invent parameters or behavior.\n\n"
-
             f"Original docstring:\n{docstring}\n\n"
-
             "Method Details:\n"
             f"- Method Name: {method_details['method_name']}"
             f"{f' (located inside {class_name} class)' if class_name else ''}\n"
             f"- Method decorators: {method_details['decorators']}\n\n"
-
             "Source Code:\n"
             "```\n"
             f"{method_details['source_code']}\n"
@@ -665,9 +656,7 @@ class DocGen(object):
 
                 separator = "=" * 10
                 instance_prompt = (
-                    separator + "\n"
-                    f"Helper function name: {display_name}\n"
-                    f"Documentation:\n{docstring}\n"
+                    separator + "\n" f"Helper function name: {display_name}\n" f"Documentation:\n{docstring}\n"
                 )
 
                 context.append(instance_prompt)
@@ -822,21 +811,15 @@ class DocGen(object):
         logger.info(f"Docstrings generation for the project is complete!")
         return generating_results
 
-    async def _generate_class_docstrings(
-        self, parsed_structure: dict, rate_limit: int
-    ) -> dict[str, dict]:
+    async def _generate_class_docstrings(self, parsed_structure: dict, rate_limit: int) -> dict[str, dict]:
         semaphore = asyncio.Semaphore(rate_limit)
         results = {}
 
         for filename, structure in parsed_structure.items():
             if structure.get("structure"):
-                results[filename] = await self._fetch_docstrings_for_class(
-                    filename, structure, semaphore
-                )
+                results[filename] = await self._fetch_docstrings_for_class(filename, structure, semaphore)
             else:
-                logger.info(
-                    f"File {filename} does not contain any functions, methods or class constructions."
-                )
+                logger.info(f"File {filename} does not contain any functions, methods or class constructions.")
 
         return results
 
@@ -916,9 +899,15 @@ class DocGen(object):
             logger.debug(f"Skipping {node_id}: already has docstring")
             return None
 
-        if node_type == "method" and docstring_type not in [("functions", "methods"), ("functions", "methods", "classes")]:
+        if node_type == "method" and docstring_type not in [
+            ("functions", "methods"),
+            ("functions", "methods", "classes"),
+        ]:
             return None
-        if node_type == "function" and docstring_type not in [("functions", "methods"), ("functions", "methods", "classes")]:
+        if node_type == "function" and docstring_type not in [
+            ("functions", "methods"),
+            ("functions", "methods", "classes"),
+        ]:
             return None
 
         progress["count"] += 1
@@ -933,28 +922,17 @@ class DocGen(object):
                 f"""{progress_label} Requesting for docstrings {"update" if self.main_idea else "generation"} for the function: {metadata["method_name"]} at {file_path}"""
             )
 
-        context = self.context_extractor(
-            metadata,
-            parsed_structure,
-            function_index,
-            generated_docstrings
-        )
+        context = self.context_extractor(metadata, parsed_structure, function_index, generated_docstrings)
 
         try:
             if self.main_idea:
                 if node_type == "method":
                     class_name = node_info.get("class", "")
-                    docstring = await self.update_method_documentation(
-                        metadata, semaphore, context, class_name
-                    )
+                    docstring = await self.update_method_documentation(metadata, semaphore, context, class_name)
                 else:
-                    docstring = await self.update_method_documentation(
-                        metadata, semaphore, context
-                    )
+                    docstring = await self.update_method_documentation(metadata, semaphore, context)
             else:
-                docstring = await self.generate_method_documentation(
-                    metadata, semaphore, context
-                )
+                docstring = await self.generate_method_documentation(metadata, semaphore, context)
 
             return (node_id, node_type, file_path, docstring, metadata) if docstring else None
 
@@ -1030,10 +1008,7 @@ class DocGen(object):
             if not in_progress:
                 break
 
-            done, _ = await asyncio.wait(
-                in_progress.values(),
-                return_when=asyncio.FIRST_COMPLETED
-            )
+            done, _ = await asyncio.wait(in_progress.values(), return_when=asyncio.FIRST_COMPLETED)
 
             for task in done:
                 completed_node_id = None
@@ -1067,7 +1042,11 @@ class DocGen(object):
                 for dependent_id in dep_graph.reverse_graph.get(completed_node_id, set()):
                     deps = dep_graph.get_dependencies(dependent_id)
                     if all(dep in completed for dep in deps):
-                        if dependent_id not in queue and dependent_id not in in_progress and dependent_id not in completed:
+                        if (
+                            dependent_id not in queue
+                            and dependent_id not in in_progress
+                            and dependent_id not in completed
+                        ):
                             queue.append(dependent_id)
 
         if docstring_type == ("functions", "methods", "classes"):
@@ -1078,16 +1057,13 @@ class DocGen(object):
                 if not file_meta.get("structure"):
                     continue
 
-                class_results[file_path] = await self._fetch_docstrings_for_class(
-                    file_path, file_meta, semaphore
-                )
+                class_results[file_path] = await self._fetch_docstrings_for_class(file_path, file_meta, semaphore)
 
             for file_path in results.keys():
                 if file_path in class_results:
                     results[file_path]["classes"] = class_results[file_path].get("classes", [])
 
         return results
-
 
     async def _fetch_docstrings_for_class(
         self, file: str, file_meta: dict, semaphore: asyncio.Semaphore
