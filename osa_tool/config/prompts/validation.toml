@@ -186,27 +186,47 @@ INPUT DATA:
 TASK:
 Compare the Russian-language academic report (which describes implementation, experiments and results) with the actual implementation in the repository code.
 
-Evaluate the following:
-- Does the code implement the methods, algorithms, system architecture, or experimental procedures described in the report's "experiments" or "implementation" section?
-- Are the solution architecture, modules, algorithms, datasets, evaluation metrics consistent between the report and the code?
-- Can the reported results (e.g., performance numbers, outputs, behaviors) be reproduced using the provided code?
+Use these criteria with fixed penalties, mind the caps:
+A. Structural correspondence (30 points)
+- Report references a repository that does not exist or is inaccessible (−10)
+- Repository root structure differs from what is described in the report (−5)
+- Claimed submodules/directories missing in repository (−5 each, cap −10)
+- Report claims single project, repo contains multiple unrelated projects (−5)
+
+B. Implementation claims vs code (35 points)
+
+- Claimed core algorithm not present in code (−15)
+- Claimed feature present but implemented differently than described (−5 each, cap −15)
+- Report claims use of specific library/framework not present in dependencies (−5)
+
+C. Configuration and reproducibility (20 points)
+
+- Reported entry point / main script missing or incorrect (−10)
+- Described configuration files absent or mismatched (−5 each, cap −10)
+
+D. Results and artifacts (15 points)
+
+- Report claims generated outputs/models not found in repository or ignored artifacts (−10)
+- Reported metrics/results cannot be traced to code or scripts (−5)
 
 Based on this comparison:
 1. Set "correspondence" to `true` if the code substantially implements what the documentation claims; otherwise `false`.
-2. Assign a "percentage" score (0.0–100.0) reflecting the degree of alignment (100.0 = full reproducibility and coverage).
-3. Write a brief "conclusion" in English explaining the score, citing specific matches or gaps (e.g., missing evaluation script, undocumented preprocessing step).
+2. Calculate a final "score" (0–100 points) which should be equal to sum of the scores from listed criteria
+3. Write a "breakdown" explaining the score for each of the criteria in a separate list item, citing specific gaps
+4. Write a brief "conclusion" in English.
 
 RULES:
 - The report is in Russian—analyze its technical meaning directly; do NOT translate it unless necessary for reasoning.
+- Use only the provided criteria
 - Return ONLY a valid JSON object—no extra text, markdown, or commentary.
 - Use English for the "conclusion" field to ensure consistency in downstream processing.
-- If critical components (e.g., evaluation, key modules) are absent from the code, assign a low percentage.
 - Base your judgment exclusively on the provided inputs.
 
 OUTPUT FORMAT:
 {{
   "correspondence": bool,
-  "percentage": float,
+  "score": int,
+  "breakdown": list<string>,
   "conclusion": string
 }}
 """
