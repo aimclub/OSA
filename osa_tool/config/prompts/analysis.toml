@@ -89,19 +89,23 @@ TASK:
 Write a connected textual summary of the repository refactoring.
 
 REQUIREMENTS:
-- Write approximately two paragraphs
+- Write approximately two short paragraphs
 - Use plain text only
 - Do not use markdown
 - Do not use bullet points or lists
-- Do not mention task names or task numbers
-- Describe what was done and what was intentionally not done
-- Use neutral technical language
-- Base the text ONLY on the input tasks and their definitions
+- Do NOT mention tasks that were not performed
+- Do NOT explain why something was not done
+- Do NOT use modal or speculative language (avoid words like "may", "might", "likely")
+- Describe only actions that were actually performed
+- Use neutral but natural technical language
+- Write in confident past tense
+- Base the text ONLY on tasks with value "Yes"
 
 STYLE:
-- Clear and concise
-- Past tense
-- No assumptions beyond provided data
+- Clear and readable
+- Slightly narrative, but professional
+- No bureaucratic or legalistic phrasing
+- No assumptions or interpretation beyond task definitions
 
 OUTPUT:
 Return only the text summary.

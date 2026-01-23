@@ -270,10 +270,11 @@ def main():
             delete_repository(args.repository)
             plan.mark_done("delete_dir")
 
-        new_source_rank = SourceRank(config_loader)
-        WhatHasBeenDoneReportGenerator(
-            config_loader, new_source_rank, plan.list_for_report, git_agent.metadata, prompts
-        ).build_pdf()
+        if plan.get("report"):
+            new_source_rank = SourceRank(config_loader)
+            WhatHasBeenDoneReportGenerator(
+                config_loader, new_source_rank, plan.list_for_report, git_agent.metadata, prompts
+            ).build_pdf()
 
         elapsed_time = time.time() - start_time
         rich_section(f"All operations completed successfully in total time: {format_time(elapsed_time)}")
