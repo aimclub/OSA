@@ -62,7 +62,7 @@ class ReportGenerator:
                 [
                     *self._build_header(type),
                     Spacer(0, 40),
-                    *self._build_first_part(content),
+                    *self._build_first_part(content, type),
                     Spacer(0, 35),
                     *self._build_second_part(content["conclusion"]),
                 ],
@@ -142,7 +142,7 @@ class ReportGenerator:
         elements = [title_line1, title_line2]
         return elements
 
-    def _build_first_part(self, content) -> list[Paragraph]:
+    def _build_first_part(self, content, type) -> list[Paragraph]:
         """
         Builds the first section of the report with correspondence and percentage metrics.
 
@@ -161,21 +161,25 @@ class ReportGenerator:
             leading=16,
             alignment=0,
         )
-        # TODO: fixme
-        if 'score' in content:
-            score = content['score'] 
-        else:
-            score = content['percentage']
 
-        correspondence_text = Paragraph(f"<b>Correspondence: {'Yes' if content['correspondence']  else 'No'}</b>", normal_style)
-        percentages_text = Paragraph(f"<b>Final score: {score}</b>", normal_style)
+        if type == "Thesis":
+            score = content["score"]
+            correspondence_text = Paragraph(
+                f"<b>Correspondence: {'Yes' if content['correspondence']  else 'No'}</b>", normal_style
+            )
+            percentages_text = Paragraph(f"<b>Final score: {score}</b>", normal_style)
+            result = [correspondence_text, percentages_text]
 
-        result = [correspondence_text, percentages_text]
-
-        if 'breakdown' in content:
-            for crit in content['breakdown']:
+            for crit in content["breakdown"]:
                 result.append(Paragraph(f"<p>{crit}</p>", normal_style))
                 result.append(Spacer(0, 20))
+        else:
+            score = content["percentage"]
+            correspondence_text = Paragraph(
+                f"<b>Correspondence: {'Yes' if content['correspondence']  else 'No'}</b>", normal_style
+            )
+            percentages_text = Paragraph(f"<b>Percentages: {score}</b>", normal_style)
+            result = [correspondence_text, percentages_text]
 
         return result
 

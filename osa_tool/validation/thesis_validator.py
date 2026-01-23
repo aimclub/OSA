@@ -16,17 +16,17 @@ from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.validation.doc_validator import DocValidator
 
 
-class ReportValidator(DocValidator):
+class ThesisValidator(DocValidator):
     """
-    Validates report files against the code repository.
+    Validates thesis files against the code repository.
 
-    This class processes report files (DOCX or PDF), extracts and preprocesses their content,
-    analyzes code files in the repository, and validates the report against the codebase using a language model.
+    This class processes thesis files (DOCX or PDF), extracts and preprocesses their content,
+    analyzes code files in the repository, and validates the thesis against the codebase using a language model.
     """
 
     def __init__(self, config_loader: ConfigLoader):
         """
-        Initialize the ReportValidator.
+        Initialize the ThesisValidator.
 
         Args:
             config_loader (ConfigLoader): Loader containing configuration settings.
@@ -110,7 +110,7 @@ class ReportValidator(DocValidator):
         logger.info("Validating doc against repository ...")
         response = await self.model_handler.async_send_and_parse(
             PromptBuilder.render(
-                self.prompts.get("validation.validate_report_against_repo"),
+                self.prompts.get("validation.validate_thesis_against_repo"),
                 doc_info=doc_info,
                 code_files_info=code_files_info,
             ),

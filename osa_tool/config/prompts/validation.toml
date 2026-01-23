@@ -111,6 +111,7 @@ OUTPUT FORMAT:
 }}
 """
 
+
 extract_paper_section = """
 INPUT DATA:
 {paper_content}
@@ -177,7 +178,7 @@ OUTPUT FORMAT:
 """
 
 
-validate_report_against_repo = """
+validate_thesis_against_repo = """
 INPUT DATA:
 {doc_info}
 
@@ -186,33 +187,31 @@ INPUT DATA:
 TASK:
 Compare the Russian-language academic report (which describes implementation, experiments and results) with the actual implementation in the repository code.
 
-Use these criteria with fixed penalties, mind the caps:
+Use these criteria with fixed maximum scores and penalties:
 A. Structural correspondence (30 points)
-- Report references a repository that does not exist or is inaccessible (−10)
-- Repository root structure differs from what is described in the report (−5)
-- Claimed submodules/directories missing in repository (−5 each, cap −10)
-- Report claims single project, repo contains multiple unrelated projects (−5)
-
+Penalties:
+- Report references a repository that does not exist or is inaccessible (10)
+- Repository root structure differs from what is described in the report (5)
+- Claimed submodules/directories missing in repository (5 each, cap 10)
+- Report claims single project, repo contains multiple unrelated projects (5)
 B. Implementation claims vs code (35 points)
-
-- Claimed core algorithm not present in code (−15)
-- Claimed feature present but implemented differently than described (−5 each, cap −15)
-- Report claims use of specific library/framework not present in dependencies (−5)
-
+Penalties:
+- Claimed core algorithm not present in code (15)
+- Claimed feature present but implemented differently than described (5 each, cap 15)
+- Report claims use of specific library/framework not present in dependencies (5)
 C. Configuration and reproducibility (20 points)
-
-- Reported entry point / main script missing or incorrect (−10)
-- Described configuration files absent or mismatched (−5 each, cap −10)
-
+Penalties:
+- Reported entry point / main script missing or incorrect (10)
+- Described configuration files absent or mismatched (5 each, cap 10)
 D. Results and artifacts (15 points)
-
-- Report claims generated outputs/models not found in repository or ignored artifacts (−10)
-- Reported metrics/results cannot be traced to code or scripts (−5)
+Penalties:
+- Report claims generated outputs/models not found in repository or ignored artifacts (10)
+- Reported metrics/results cannot be traced to code or scripts (5)
 
 Based on this comparison:
 1. Set "correspondence" to `true` if the code substantially implements what the documentation claims; otherwise `false`.
 2. Calculate a final "score" (0–100 points) which should be equal to sum of the scores from listed criteria
-3. Write a "breakdown" explaining the score for each of the criteria in a separate list item, citing specific gaps
+3. Write a "breakdown" explaining the score for each of the criteria in a separate list item, citing specific gaps and deductions.
 4. Write a brief "conclusion" in English.
 
 RULES:
