@@ -190,9 +190,7 @@ def main():
         # Readme generation
         if plan.get("readme"):
             rich_section("README generation")
-            readme_agent = ReadmeAgent(
-                config_loader, git_agent.metadata, plan
-            )
+            readme_agent = ReadmeAgent(config_loader, git_agent.metadata, plan)
             readme_agent.generate_readme()
 
         # Readme translation
@@ -246,9 +244,7 @@ def main():
             plan.mark_done("delete_dir")
 
         if plan.get("report"):
-            WhatHasBeenDoneReportGenerator(
-                config_loader, plan.list_for_report, git_agent.metadata
-            ).build_pdf()
+            WhatHasBeenDoneReportGenerator(config_loader, plan.list_for_report, git_agent.metadata).build_pdf()
 
         elapsed_time = time.time() - start_time
         rich_section(f"All operations completed successfully in total time: {format_time(elapsed_time)}")
@@ -397,6 +393,7 @@ def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEvent
         logger.error("Error while generating codebase documentation: %s", repr(e), exc_info=True)
         return False
     return True
+
 
 def load_configuration(args: argparse.Namespace) -> ConfigLoader:
     """

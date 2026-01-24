@@ -54,6 +54,7 @@ class AboutGenerator:
             "topics": topics,
         }
         return all([description != "", homepage != "", topics != ""])
+
     def get_about_content(self) -> dict:
         """
         Returns the generated About section content.

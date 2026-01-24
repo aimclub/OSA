@@ -44,8 +44,18 @@ def generate_documentation(config_loader: ConfigLoader, metadata: RepositoryMeta
         vulnerability_disclosure_result = community.build_vulnerability_disclosure()
 
     logger.info("All additional documentation successfully generated.")
-    return all([contributing_result, code_of_conduct_result, security_result, pull_request_result, bug_issue_result,
-                documentation_issue_result, feature_issue_result, vulnerability_disclosure_result])
+    return all(
+        [
+            contributing_result,
+            code_of_conduct_result,
+            security_result,
+            pull_request_result,
+            bug_issue_result,
+            documentation_issue_result,
+            feature_issue_result,
+            vulnerability_disclosure_result,
+        ]
+    )
 
 
 class GenerateCommunityDocsOperation(Operation):
