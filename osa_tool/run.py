@@ -165,10 +165,9 @@ def main():
                 plan.mark_failed("docstring")
 
         # License compiling
-        if license_type := plan.get("ensure_license"):
+        if plan.get("ensure_license"):
             rich_section("License generation")
-            LicenseCompiler(config_loader, git_agent.metadata, license_type).run() # TODO: Добавить план
-            # what_has_been_done.mark_did("ensure_license")
+            LicenseCompiler(config_loader, git_agent.metadata, plan).run()
 
         # Generate community documentation
         if plan.get("community_docs"):
@@ -191,26 +190,16 @@ def main():
         # Readme generation
         if plan.get("readme"):
             rich_section("README generation")
-            plan.mark_started("readme")
             readme_agent = ReadmeAgent(
                 config_loader, git_agent.metadata, plan
-            ) # TODO: Посмотреть кодом
-            try:
-                readme_agent.generate_readme()
-                plan.mark_done("readme")
-            except ValueError:
-                plan.mark_failed("readme")
+            )
+            readme_agent.generate_readme()
 
         # Readme translation
         translate_readme = plan.get("translate_readme")
         if translate_readme:
             rich_section("README translation")
-            plan.mark_started("translate_readme") # TODO: А я вроде поменял
-            if ReadmeTranslator(config_loader, git_agent.metadata, translate_readme).translate_readme():
-                plan.mark_done("translate_readme")
-            else:
-                plan.mark_failed("translate_readme")
-
+            ReadmeTranslator(config_loader, git_agent.metadata, plan).translate_readme()
         # About section generation
         about_gen = None
         if plan.get("about"):
@@ -259,7 +248,7 @@ def main():
         if plan.get("report"):
             WhatHasBeenDoneReportGenerator(
                 config_loader, plan.list_for_report, git_agent.metadata
-            ).build_pdf() # TODO: Глянуть
+            ).build_pdf()
 
         elapsed_time = time.time() - start_time
         rich_section(f"All operations completed successfully in total time: {format_time(elapsed_time)}")

@@ -56,6 +56,7 @@ class ReadmeTranslator:
         """
         Asynchronously translate the main README into all target languages.
         """
+        self.plan.mark_started("translate_readme")
         readme_content = self.get_main_readme_file()
         if not readme_content:
             logger.warning("No README content found, skipping translation")

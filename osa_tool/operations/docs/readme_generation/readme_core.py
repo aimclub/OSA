@@ -35,6 +35,7 @@ class ReadmeAgent:
 
     def generate_readme(self):
         logger.info("Started generating README.md. Processing the repository: %s", self.repo_url)
+        self.plan.mark_started("readme")
         try:
             if self.article is None:
                 builder = self.default_readme()
@@ -57,8 +58,10 @@ class ReadmeAgent:
             save_sections(readme_content, self.file_to_save)
             remove_extra_blank_lines(self.file_to_save)
             logger.info(f"README.md successfully generated in folder {self.repo_path}")
+            self.plan.mark_done("readme")
         except Exception as e:
             logger.error("Error while generating: %s", repr(e), exc_info=True)
+            self.plan.mark_failed("readme")
             raise ValueError("Failed to generate README.md.")
 
     def default_readme(self) -> MarkdownBuilder:

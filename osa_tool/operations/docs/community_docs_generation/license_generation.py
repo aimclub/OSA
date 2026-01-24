@@ -8,6 +8,7 @@ from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.operations.registry import Operation, OperationRegistry
+from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 
@@ -26,17 +27,19 @@ class LicenseCompiler:
         self,
         config_loader: ConfigLoader,
         metadata: RepositoryMetadata,
-        license_type: str,
+        plan: Plan,
     ):
         self.sourcerank = SourceRank(config_loader)
         self.metadata = metadata
-        self.license_type = license_type
+        self.license_type = plan.get("ensure_license")
+        self.plan = plan
         self.license_template_path = os.path.join(osa_project_root(), "docs", "templates", "licenses.toml")
 
     def run(self) -> None:
         """
         Executes the license compilation process.
         """
+        self.plan.mark_started("ensure_license")
         try:
             if self.sourcerank.license_presence():
                 logger.info("LICENSE file already exists.")
@@ -58,15 +61,16 @@ class LicenseCompiler:
                     f.write(license_text)
 
                 logger.info(f"LICENSE has been successfully compiled at {license_output_path}.")
-
+                self.plan.mark_done("ensure_license")
             except KeyError:
                 logger.error(
                     f"Couldn't resolve {self.license_type} license type, "
                     "try to look up available licenses at documentation."
                 )
-
+            self.plan.mark_failed("ensure_license")
         except Exception as e:
             logger.error("Error while compiling LICENSE: %s", e, exc_info=True)
+            self.plan.mark_failed("ensure_license")
 
 
 class EnsureLicenseArgs(BaseModel):
