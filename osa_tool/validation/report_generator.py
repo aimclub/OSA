@@ -8,7 +8,6 @@ from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer
 
 from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
@@ -22,17 +21,15 @@ class ReportGenerator:
     percentage metrics, and conclusions. It adds branding, QR codes, and repository metadata to the report.
     """
 
-    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata, sourcerank: SourceRank) -> None:
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata) -> None:
         """
         Initialize the ReportGenerator.
 
         Args:
             config_loader (ConfigLoader): Loader containing configuration settings.
             metadata (RepositoryMetadata): Metadata about the repository.
-            sourcerank (SourceRank): SourceRank analytics object.
         """
         self.config = config_loader.config
-        self.sourcerank = sourcerank
         self.repo_url = self.config.git.repository
         self.metadata = metadata
 

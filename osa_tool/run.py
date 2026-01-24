@@ -10,37 +10,35 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from osa_tool.aboutgen.about_generator import AboutGenerator
-from osa_tool.analytics.report_maker import (
-    ReportGenerator,
-    WhatHasBeenDoneReportGenerator,
-)
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader, GitSettings
 from osa_tool.conversion.notebook_converter import NotebookConverter
-from osa_tool.docs_generator.docs_run import generate_documentation
-from osa_tool.docs_generator.license import compile_license_file
-from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent
+from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent
+from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
+from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
+from osa_tool.operations.docs.community_docs_generation.license_generation import LicenseCompiler
+from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
+from osa_tool.operations.docs.readme_generation.utils import format_time
+from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
 from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
-from osa_tool.readmegen.readme_core import ReadmeAgent
-from osa_tool.readmegen.utils import format_time
 from osa_tool.scheduler.scheduler import ModeScheduler
 from osa_tool.scheduler.workflow_manager import (
     GitHubWorkflowManager,
     GitLabWorkflowManager,
     GitverseWorkflowManager,
+    WorkflowManager,
 )
 from osa_tool.translation.dir_translator import DirectoryTranslator
-from osa_tool.translation.readme_translator import ReadmeTranslator
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.logger import logger, setup_logging
-from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.utils import (
     delete_repository,
     osa_project_root,
     parse_folder_name,
     rich_section,
+    switch_to_output_directory,
 )
 from osa_tool.validation.doc_validator import DocValidator
 from osa_tool.validation.paper_validator import PaperValidator
@@ -67,9 +65,6 @@ def main():
     repo_name = parse_folder_name(args.repository)
     setup_logging(repo_name, logs_dir)
 
-    # Load prompts
-    prompts = PromptLoader()
-
     loop = asyncio.get_event_loop()
     asyncio.set_event_loop(loop)
 
@@ -77,12 +72,7 @@ def main():
     try:
         # Switch to output directory if present
         if args.output:
-            output_path = Path(args.output).resolve()
-            if not output_path.exists():
-                output_path.mkdir(parents=True, exist_ok=True)
-                logger.info(f"Created directory: {output_path}")
-            os.chdir(output_path)
-            logger.info(f"Output path changed to {output_path}")
+            switch_to_output_directory(args.output)
 
         # Load configurations and update
         config_loader = load_configuration(args)
@@ -97,7 +87,7 @@ def main():
 
         # Initialize ModeScheduler
         sourcerank = SourceRank(config_loader)
-        scheduler = ModeScheduler(config_loader, sourcerank, prompts, args, workflow_manager, git_agent.metadata)
+        scheduler = ModeScheduler(config_loader, sourcerank, args, workflow_manager, git_agent.metadata)
         plan = scheduler.plan
 
         if create_fork:
@@ -108,7 +98,7 @@ def main():
         if plan.get("report"):
             rich_section("Report generation")
             plan.mark_started("report")
-            analytics = ReportGenerator(config_loader, sourcerank, prompts, git_agent.metadata)
+            analytics = ReportGenerator(config_loader, git_agent.metadata)
             try:
                 analytics.build_pdf()
                 if create_fork:
@@ -121,9 +111,9 @@ def main():
         if plan.get("validate_doc"):
             plan.mark_started("validate_doc")
             rich_section("Document validation")
-            content = loop.run_until_complete(DocValidator(config_loader, prompts).validate(plan.get("attachment")))
+            content = loop.run_until_complete(DocValidator(config_loader).validate(plan.get("attachment")))
             if content:
-                va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata, sourcerank)
+                va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata)
                 va_re_gen.build_pdf("Document", content)
                 if create_fork:
                     git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
@@ -135,9 +125,9 @@ def main():
         if plan.get("validate_paper"):
             plan.mark_started("validate_paper")
             rich_section("Paper validation")
-            content = loop.run_until_complete(PaperValidator(config_loader, prompts).validate(plan.get("attachment")))
+            content = loop.run_until_complete(PaperValidator(config_loader).validate(plan.get("attachment")))
             if content:
-                va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata, sourcerank)
+                va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata)
                 va_re_gen.build_pdf("Paper", content)
                 if create_fork:
                     git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
@@ -177,11 +167,8 @@ def main():
         # License compiling
         if license_type := plan.get("ensure_license"):
             rich_section("License generation")
-            plan.mark_started("ensure_license")
-            if compile_license_file(sourcerank, license_type, git_agent.metadata):
-                plan.mark_done("ensure_license")
-            else:
-                plan.mark_failed("ensure_license")
+            LicenseCompiler(config_loader, git_agent.metadata, license_type).run() # TODO: Добавить план
+            # what_has_been_done.mark_did("ensure_license")
 
         # Generate community documentation
         if plan.get("community_docs"):
@@ -206,8 +193,8 @@ def main():
             rich_section("README generation")
             plan.mark_started("readme")
             readme_agent = ReadmeAgent(
-                config_loader, prompts, git_agent.metadata, plan
-            )
+                config_loader, git_agent.metadata, plan
+            ) # TODO: Посмотреть кодом
             try:
                 readme_agent.generate_readme()
                 plan.mark_done("readme")
@@ -216,10 +203,10 @@ def main():
 
         # Readme translation
         translate_readme = plan.get("translate_readme")
-        if plan.get("translate_readme"):
+        if translate_readme:
             rich_section("README translation")
-            plan.mark_started("translate_readme") #? А как отслеживать ошибки
-            if ReadmeTranslator(config_loader, prompts, git_agent.metadata, translate_readme).translate_readme():
+            plan.mark_started("translate_readme") # TODO: А я вроде поменял
+            if ReadmeTranslator(config_loader, git_agent.metadata, translate_readme).translate_readme():
                 plan.mark_done("translate_readme")
             else:
                 plan.mark_failed("translate_readme")
@@ -228,12 +215,11 @@ def main():
         about_gen = None
         if plan.get("about"):
             rich_section("About Section generation")
-            about_gen = AboutGenerator(config_loader, prompts, git_agent)
+            about_gen = AboutGenerator(config_loader, git_agent)
             if about_gen.generate_about_content():
                 plan.mark_done("about")
             else:
                 plan.mark_failed("about")
-
             if create_fork:
                 git_agent.update_about_section(about_gen.get_about_content())
             if not create_pull_request:
@@ -271,10 +257,9 @@ def main():
             plan.mark_done("delete_dir")
 
         if plan.get("report"):
-            new_source_rank = SourceRank(config_loader)
             WhatHasBeenDoneReportGenerator(
-                config_loader, new_source_rank, plan.list_for_report, git_agent.metadata, prompts
-            ).build_pdf()
+                config_loader, plan.list_for_report, git_agent.metadata
+            ).build_pdf() # TODO: Глянуть
 
         elapsed_time = time.time() - start_time
         rich_section(f"All operations completed successfully in total time: {format_time(elapsed_time)}")
@@ -288,7 +273,7 @@ def main():
         loop.close()
 
 
-def initialize_git_platform(args):
+def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
     if "github.com" in args.repository:
         git_agent = GitHubAgent(args.repository, args.branch, author=args.author)
         workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
@@ -311,6 +296,8 @@ def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) ->
         repo_url: Repository url.
         notebook_paths: A list of paths to the notebooks to be converted (or None).
                         If empty, the converter will process the current repository.
+    Returns:
+        Has the task been completed successfully
     """
     try:
         converter = NotebookConverter()
@@ -326,6 +313,10 @@ def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) ->
 
 
 def generate_requirements(repo_url) -> bool:
+    """
+    Returns:
+        Has the task been completed successfully
+    """
     logger.info(f"Starting the generation of requirements")
     repo_path = Path(parse_folder_name(repo_url)).resolve()
     try:
@@ -349,6 +340,8 @@ def generate_docstrings(config_loader: ConfigLoader, loop: asyncio.AbstractEvent
     Args:
         config_loader: The configuration object which contains settings for osa_tool.
         loop: Link to the event loop in the main thread.
+    Returns:
+        Has the task been completed successfully
     """
 
     sem = asyncio.Semaphore(100)
@@ -455,7 +448,8 @@ def load_configuration(args: argparse.Namespace) -> ConfigLoader:
         config_loader.config.git = GitSettings(repository=args.repository)
     except ValidationError as es:
         first_error = es.errors()[0]
-        raise ValueError(f"{first_error['msg']}{first_error['input']}")
+        logger.error(f"Value error, Provided URL is not correct: {first_error['input']}")
+        sys.exit(1)
     config_loader.config.llm = config_loader.config.llm.model_copy(
         update={
             "api": args.api,

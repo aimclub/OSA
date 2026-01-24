@@ -1,57 +1,53 @@
-from enum import Enum
 from typing import Optional, List, Dict, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from osa_tool.analytics.metadata import RepositoryMetadata
+from osa_tool.core.models.agent import AgentStatus
+from osa_tool.core.models.task import Task
+from osa_tool.tools.repository_analysis.models import RepositoryData
 
 
-class AgentStatus(str, Enum):
-    INIT = "init"
-    ANALYZING = "analyzing"
-    GENERATING = "generating"
-    WAITING_FOR_USER = "waiting_for_user"
-    ERROR = "error"
-    DONE = "done"
-
-
-class TaskStatus(str, Enum):
-    PENDING = "pending"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
-    FAILED = "failed"
-
-
-class Task(BaseModel):
-    name: str
-    description: str
-    status: TaskStatus = TaskStatus.PENDING
-    dependencies: List[str] = Field(default_factory=list)
-    result: Optional[Dict[str, Any]] = None
-
-
-class OSAAgentState(BaseModel):
-    # Input data from the user
+class OSAState(BaseModel):
+    # User input
     repo_url: Optional[str] = None
     user_request: Optional[str] = None
     attachment: Optional[str] = None
 
-    # System-level metadata
+    # User input memory
+    last_attachment: Optional[str] = None
+
+    # Intent
+    intent: Optional[str] = None
+    task_scope: Optional[str] = None
+    intent_confidence: Optional[float] = None
+
+    # Execution metadata
     session_id: str
     step: int = 0
     status: AgentStatus = AgentStatus.INIT
+    active_agent: Optional[str] = None
 
-    # Repository metadata / analysis results
+    # Retry loop:
+    intent_retry_counter: int = 0
+
+    # Repository
+    repo_path: Optional[str] = None
+    repo_prepared: bool = False
+    repo_data: Optional[RepositoryData] = None
     repo_metadata: Optional[RepositoryMetadata] = None
-    # todo нужно подумать над этим source_rank: Optional[Dict[str, Any]] = None
 
-    # Workflow plan and execution state
-    tasks: List[str] = Field(default_factory=list)
-    current_task_index: Optional[int] = None
+    # Planning
+    plan: List[Task] = Field(default_factory=list)
+    current_step_index: Optional[int] = None
 
-    # Conversation and LLM traces
-    conversation_history: List[Dict[str, str]] = Field(default_factory=list)
-    llm_trace: List[Dict[str, Any]] = Field(default_factory=list)
+    # Artifacts & memory
+    artifacts: Dict[str, Any] = Field(default_factory=dict)
+    session_memory: List[Dict[str, Any]] = Field(default_factory=list)
+    module_memory: Dict[str, List[Any]] = Field(default_factory=dict)
 
-    # Additional contextual data
-    extra: Dict[str, Any] = Field(default_factory=dict)
+    # Review
+    approval: bool = False
+    delivery_result: Optional[Dict[str, Any]] = None
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
