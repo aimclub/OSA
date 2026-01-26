@@ -8,13 +8,13 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
 
-def test_init_sets_attributes(mock_config_loader):
+def test_init_sets_attributes(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_loader)
+    translator = DirectoryTranslator(mock_config_manager)
 
     # Assert
-    assert translator.config == mock_config_loader.config
-    assert translator.repo_url == mock_config_loader.config.git.repository
+    assert translator.config_manager == mock_config_manager
+    assert translator.repo_url == mock_config_manager.config.git.repository
     assert translator.base_path.endswith(parse_folder_name(translator.repo_url))
     assert translator.excluded_dirs == {".git", ".venv"}
     assert translator.extensions_code_files == {".py"}
@@ -22,18 +22,18 @@ def test_init_sets_attributes(mock_config_loader):
     assert hasattr(translator.model_handler, "send_request")
 
 
-def test_translate_text_excluded_name_returns_same(mock_config_loader):
+def test_translate_text_excluded_name_returns_same(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_loader)
+    translator = DirectoryTranslator(mock_config_manager)
 
     # Assert
     for name in translator.excluded_names:
         assert translator._translate_text(name) == name
 
 
-def test_translate_text_calls_model_handler(mock_config_loader):
+def test_translate_text_calls_model_handler(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_loader)
+    translator = DirectoryTranslator(mock_config_manager)
     translator.model_handler.send_request = Mock(return_value="some text")
 
     # Act
@@ -45,9 +45,9 @@ def test_translate_text_calls_model_handler(mock_config_loader):
 
 
 @patch("os.walk")
-def test_get_python_files_collects_py_files(mock_walk, mock_config_loader):
+def test_get_python_files_collects_py_files(mock_walk, mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_loader)
+    translator = DirectoryTranslator(mock_config_manager)
     mock_walk.return_value = [
         ("/repo", ("subdir",), ("file1.py", "file2.txt")),
         ("/repo/subdir", (), ("file3.py", "README.md")),
@@ -62,9 +62,9 @@ def test_get_python_files_collects_py_files(mock_walk, mock_config_loader):
 
 
 @patch("os.walk")
-def test_get_all_files_excludes_dirs(mock_walk, mock_config_loader):
+def test_get_all_files_excludes_dirs(mock_walk, mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_loader)
+    translator = DirectoryTranslator(mock_config_manager)
     mock_walk.return_value = [
         ("/repo", (".git", "src"), ("file1.py", "file2.txt")),
         ("/repo/src", (), ("file3.py", "file4.txt")),
@@ -80,9 +80,9 @@ def test_get_all_files_excludes_dirs(mock_walk, mock_config_loader):
 
 
 @patch("os.walk")
-def test_get_all_directories_excludes_dirs(mock_walk, mock_config_loader):
+def test_get_all_directories_excludes_dirs(mock_walk, mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_loader)
+    translator = DirectoryTranslator(mock_config_manager)
     mock_walk.return_value = [
         ("/repo", [".git", "src", "docs"], []),
         ("/repo/src", ["sub"], []),
@@ -134,9 +134,9 @@ def test_update_code_parametrized(file_content, rename_map, expected_content):
     mock_logger.info.assert_called_once()
 
 
-def test_cycle_update_code_calls_update_code_for_all_files(mock_config_loader):
+def test_cycle_update_code_calls_update_code_for_all_files(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_loader)
+    translator = DirectoryTranslator(mock_config_manager)
     rename_map = {"a": "b"}
     files = ["file1.py", "file2.py"]
 
@@ -151,9 +151,9 @@ def test_cycle_update_code_calls_update_code_for_all_files(mock_config_loader):
     mock_update.assert_has_calls(expected_calls, any_order=True)
 
 
-def test_translate_directories(mock_config_loader):
+def test_translate_directories(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_loader)
+    translator = DirectoryTranslator(mock_config_manager)
     translator.base_path = Path("/repo")
 
     all_dirs = [Path("/repo/folder1"), Path("/repo/folder2")]
@@ -172,9 +172,9 @@ def test_translate_directories(mock_config_loader):
     mock_logger.assert_called_with(f"Finished generating new names for {len(expected)} directories")
 
 
-def test_translate_files(mock_config_loader):
+def test_translate_files(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_loader)
+    translator = DirectoryTranslator(mock_config_manager)
 
     all_files = [Path("/repo/folder1/file1.py"), Path("/repo/folder2/file2.txt")]
 
@@ -198,9 +198,9 @@ def test_translate_files(mock_config_loader):
     assert rename_map_code == expected_rename_map_code
 
 
-def test_rename_files_calls_os_rename_and_cycle_update(mock_config_loader):
+def test_rename_files_calls_os_rename_and_cycle_update(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_loader)
+    translator = DirectoryTranslator(mock_config_manager)
     translator.extensions_code_files = [".py"]
 
     files = [Path("/repo/folder1/file1.py"), Path("/repo/folder2/file2.txt")]
@@ -231,9 +231,9 @@ def test_rename_files_calls_os_rename_and_cycle_update(mock_config_loader):
     mock_logger.assert_any_call("Files renaming completed successfully")
 
 
-def test_rename_directories_calls_os_rename_and_cycle_update(mock_config_loader):
+def test_rename_directories_calls_os_rename_and_cycle_update(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_loader)
+    translator = DirectoryTranslator(mock_config_manager)
     translator.base_path = Path("/repo")
 
     all_dirs = [Path("/repo/folder1"), Path("/repo/folder2"), Path("/repo")]
@@ -255,9 +255,9 @@ def test_rename_directories_calls_os_rename_and_cycle_update(mock_config_loader)
     mock_logger.assert_any_call("Directory renaming completed successfully")
 
 
-def test_rename_directories_and_files_calls_both_methods(mock_config_loader):
+def test_rename_directories_and_files_calls_both_methods(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_loader)
+    translator = DirectoryTranslator(mock_config_manager)
 
     with (
         patch.object(translator, "rename_directories") as mock_dirs,

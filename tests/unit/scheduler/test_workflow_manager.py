@@ -30,10 +30,10 @@ def mock_args():
     return args
 
 
-def test_has_python_code_true(mock_repository_metadata, mock_config_loader, mock_args):
+def test_has_python_code_true(mock_repository_metadata, mock_config_manager, mock_args):
     # Arrange
     manager = GitHubWorkflowManager(
-        repo_url=mock_config_loader.config.git.repository,
+        repo_url=mock_config_manager.config.git.repository,
         metadata=mock_repository_metadata,
         args=mock_args,
     )
@@ -43,10 +43,10 @@ def test_has_python_code_true(mock_repository_metadata, mock_config_loader, mock
     assert manager.has_python_code() is True
 
 
-def test_has_python_code_false(mock_repository_metadata, mock_config_loader, mock_args):
+def test_has_python_code_false(mock_repository_metadata, mock_config_manager, mock_args):
     # Arrange
     manager = GitHubWorkflowManager(
-        repo_url=mock_config_loader.config.git.repository,
+        repo_url=mock_config_manager.config.git.repository,
         metadata=mock_repository_metadata,
         args=mock_args,
     )
@@ -56,10 +56,10 @@ def test_has_python_code_false(mock_repository_metadata, mock_config_loader, moc
     assert manager.has_python_code() is False
 
 
-def test_build_actual_plan_no_python(mock_repository_metadata, mock_config_loader, mock_args):
+def test_build_actual_plan_no_python(mock_repository_metadata, mock_config_manager, mock_args):
     # Arrange
     manager = GitHubWorkflowManager(
-        repo_url=mock_config_loader.config.git.repository,
+        repo_url=mock_config_manager.config.git.repository,
         metadata=mock_repository_metadata,
         args=mock_args,
     )
@@ -76,10 +76,10 @@ def test_build_actual_plan_no_python(mock_repository_metadata, mock_config_loade
     assert plan["generate_workflows"] is False
 
 
-def test_build_actual_plan_with_existing_jobs(mock_repository_metadata, mock_config_loader, mock_args):
+def test_build_actual_plan_with_existing_jobs(mock_repository_metadata, mock_config_manager, mock_args):
     # Arrange
     manager = GitHubWorkflowManager(
-        repo_url=mock_config_loader.config.git.repository,
+        repo_url=mock_config_manager.config.git.repository,
         metadata=mock_repository_metadata,
         args=mock_args,
     )
@@ -99,18 +99,18 @@ def test_build_actual_plan_with_existing_jobs(mock_repository_metadata, mock_con
     assert plan["generate_workflows"] is True
 
 
-def test_update_workflow_config(mock_config_loader, mock_repository_metadata, mock_args):
+def test_update_workflow_config(mock_config_manager, mock_repository_metadata, mock_args):
     # Arrange
     manager = GitHubWorkflowManager(
-        repo_url=mock_config_loader.config.git.repository,
+        repo_url=mock_config_manager.config.git.repository,
         metadata=mock_repository_metadata,
         args=mock_args,
     )
     plan = {"include_tests": True, "include_black": False, "python_versions": ["3.10"]}
 
     # Act
-    manager.update_workflow_config(mock_config_loader, plan)
-    updated = mock_config_loader.config.workflows
+    manager.update_workflow_config(mock_config_manager, plan)
+    updated = mock_config_manager.config.workflows
 
     # Assert
     assert updated.include_tests is True
@@ -118,7 +118,7 @@ def test_update_workflow_config(mock_config_loader, mock_repository_metadata, mo
     assert updated.python_versions == ["3.10"]
 
 
-def test_github_locate_workflow_path_exists(mock_config_loader, mock_repository_metadata, mock_args):
+def test_github_locate_workflow_path_exists(mock_config_manager, mock_repository_metadata, mock_args):
     # Arrange
     with (
         patch("osa_tool.scheduler.workflow_manager.os.path.isdir", return_value=True),
@@ -127,7 +127,7 @@ def test_github_locate_workflow_path_exists(mock_config_loader, mock_repository_
         patch("osa_tool.scheduler.workflow_manager.yaml.safe_load", return_value={}),
     ):
         manager = GitHubWorkflowManager(
-            repo_url=mock_config_loader.config.git.repository,
+            repo_url=mock_config_manager.config.git.repository,
             metadata=mock_repository_metadata,
             args=mock_args,
         )
@@ -137,7 +137,7 @@ def test_github_locate_workflow_path_exists(mock_config_loader, mock_repository_
         assert ".github/workflows" in manager.workflow_path.replace("\\", "/")
 
 
-def test_github_find_existing_jobs(mock_config_loader, mock_repository_metadata, mock_args):
+def test_github_find_existing_jobs(mock_config_manager, mock_repository_metadata, mock_args):
     # Arrange
     yaml_content = {"jobs": {"test": {}, "lint": {}}}
     with (
@@ -147,7 +147,7 @@ def test_github_find_existing_jobs(mock_config_loader, mock_repository_metadata,
         patch("osa_tool.scheduler.workflow_manager.yaml.safe_load", return_value=yaml_content),
     ):
         manager = GitHubWorkflowManager(
-            repo_url=mock_config_loader.config.git.repository,
+            repo_url=mock_config_manager.config.git.repository,
             metadata=mock_repository_metadata,
             args=mock_args,
         )
@@ -159,8 +159,8 @@ def test_github_find_existing_jobs(mock_config_loader, mock_repository_metadata,
         assert jobs == {"test", "lint"}
 
 
-@pytest.mark.parametrize("mock_config_loader", ["gitlab"], indirect=True)
-def test_gitlab_locate_workflow_path_exists(mock_config_loader, mock_repository_metadata, mock_args):
+@pytest.mark.parametrize("mock_config_manager", ["gitlab"], indirect=True)
+def test_gitlab_locate_workflow_path_exists(mock_config_manager, mock_repository_metadata, mock_args):
     # Arrange
     with (
         patch("osa_tool.scheduler.workflow_manager.os.path.isfile", return_value=True),
@@ -168,7 +168,7 @@ def test_gitlab_locate_workflow_path_exists(mock_config_loader, mock_repository_
         patch("osa_tool.scheduler.workflow_manager.yaml.safe_load", return_value={}),
     ):
         manager = GitLabWorkflowManager(
-            repo_url=mock_config_loader.config.git.repository,
+            repo_url=mock_config_manager.config.git.repository,
             metadata=mock_repository_metadata,
             args=mock_args,
         )
@@ -178,8 +178,8 @@ def test_gitlab_locate_workflow_path_exists(mock_config_loader, mock_repository_
         assert manager.workflow_path.endswith(".gitlab-ci.yml")
 
 
-@pytest.mark.parametrize("mock_config_loader", ["gitlab"], indirect=True)
-def test_gitlab_find_existing_jobs(mock_config_loader, mock_repository_metadata, mock_args):
+@pytest.mark.parametrize("mock_config_manager", ["gitlab"], indirect=True)
+def test_gitlab_find_existing_jobs(mock_config_manager, mock_repository_metadata, mock_args):
     # Arrange
     yaml_content = {
         "stages": ["test"],
@@ -193,7 +193,7 @@ def test_gitlab_find_existing_jobs(mock_config_loader, mock_repository_metadata,
         patch("osa_tool.scheduler.workflow_manager.yaml.safe_load", return_value=yaml_content),
     ):
         manager = GitLabWorkflowManager(
-            repo_url=mock_config_loader.config.git.repository,
+            repo_url=mock_config_manager.config.git.repository,
             metadata=mock_repository_metadata,
             args=mock_args,
         )
@@ -205,8 +205,8 @@ def test_gitlab_find_existing_jobs(mock_config_loader, mock_repository_metadata,
         assert jobs == {"test_job", "build"}
 
 
-@pytest.mark.parametrize("mock_config_loader", ["gitverse"], indirect=True)
-def test_gitverse_locate_workflow_path_gitverse_exists(mock_config_loader, mock_repository_metadata, mock_args):
+@pytest.mark.parametrize("mock_config_manager", ["gitverse"], indirect=True)
+def test_gitverse_locate_workflow_path_gitverse_exists(mock_config_manager, mock_repository_metadata, mock_args):
     # Arrange
     def isdir_side_effect(path):
         return ".gitverse/workflows" in path.replace("\\", "/")
@@ -218,7 +218,7 @@ def test_gitverse_locate_workflow_path_gitverse_exists(mock_config_loader, mock_
         patch("osa_tool.scheduler.workflow_manager.yaml.safe_load", return_value={}),
     ):
         manager = GitverseWorkflowManager(
-            repo_url=mock_config_loader.config.git.repository,
+            repo_url=mock_config_manager.config.git.repository,
             metadata=mock_repository_metadata,
             args=mock_args,
         )
@@ -228,8 +228,8 @@ def test_gitverse_locate_workflow_path_gitverse_exists(mock_config_loader, mock_
         assert ".gitverse/workflows" in manager.workflow_path.replace("\\", "/")
 
 
-@pytest.mark.parametrize("mock_config_loader", ["gitverse"], indirect=True)
-def test_gitverse_locate_workflow_path_fallback_to_github(mock_config_loader, mock_repository_metadata, mock_args):
+@pytest.mark.parametrize("mock_config_manager", ["gitverse"], indirect=True)
+def test_gitverse_locate_workflow_path_fallback_to_github(mock_config_manager, mock_repository_metadata, mock_args):
     # Arrange
     def isdir_side_effect(path):
         return ".github/workflows" in path.replace("\\", "/")
@@ -241,7 +241,7 @@ def test_gitverse_locate_workflow_path_fallback_to_github(mock_config_loader, mo
         patch("osa_tool.scheduler.workflow_manager.yaml.safe_load", return_value={}),
     ):
         manager = GitverseWorkflowManager(
-            repo_url=mock_config_loader.config.git.repository,
+            repo_url=mock_config_manager.config.git.repository,
             metadata=mock_repository_metadata,
             args=mock_args,
         )

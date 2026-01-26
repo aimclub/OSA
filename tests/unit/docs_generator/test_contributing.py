@@ -6,12 +6,12 @@ from osa_tool.operations.docs.community_docs_generation.contributing import Cont
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
-def test_contributing_builder_initialization(mock_config_loader, mock_repository_metadata):
+def test_contributing_builder_initialization(mock_config_manager, mock_repository_metadata):
     # Arrange
-    builder = ContributingBuilder(mock_config_loader, mock_repository_metadata)
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
 
     # Assert
-    assert builder.repo_url == mock_config_loader.config.git.repository
+    assert builder.repo_url == mock_config_manager.config.git.repository
     assert builder.metadata == mock_repository_metadata
 
     assert isinstance(builder.sourcerank, SourceRank)
@@ -34,9 +34,9 @@ def test_contributing_builder_initialization(mock_config_loader, mock_repository
     assert builder._template == template
 
 
-def test_introduction_property(mock_config_loader, mock_repository_metadata):
+def test_introduction_property(mock_config_manager, mock_repository_metadata):
     # Arrange
-    builder = ContributingBuilder(mock_config_loader, mock_repository_metadata)
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
 
     # Act
     intro_text = builder.introduction
@@ -46,9 +46,9 @@ def test_introduction_property(mock_config_loader, mock_repository_metadata):
     assert builder.issues_url in intro_text
 
 
-def test_guide_property(mock_config_loader, mock_repository_metadata):
+def test_guide_property(mock_config_manager, mock_repository_metadata):
     # Arrange
-    builder = ContributingBuilder(mock_config_loader, mock_repository_metadata)
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
 
     # Act
     guide_text = builder.guide
@@ -58,9 +58,9 @@ def test_guide_property(mock_config_loader, mock_repository_metadata):
     assert mock_repository_metadata.name in guide_text
 
 
-def test_before_pr_property(mock_config_loader, mock_repository_metadata):
+def test_before_pr_property(mock_config_manager, mock_repository_metadata):
     # Arrange
-    builder = ContributingBuilder(mock_config_loader, mock_repository_metadata)
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
 
     # Act
     before_pr_text = builder.before_pr
@@ -72,12 +72,14 @@ def test_before_pr_property(mock_config_loader, mock_repository_metadata):
     assert builder.tests in before_pr_text
 
 
-def test_documentation_with_docs_presence_true(mock_config_loader, mock_repository_metadata, sourcerank_with_repo_tree):
+def test_documentation_with_docs_presence_true(
+    mock_config_manager, mock_repository_metadata, sourcerank_with_repo_tree
+):
     # Arrange
     repo_tree_data = get_mock_repo_tree("FULL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
-    builder = ContributingBuilder(mock_config_loader, mock_repository_metadata)
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
     builder.sourcerank = sourcerank
 
     # Act
@@ -88,13 +90,13 @@ def test_documentation_with_docs_presence_true(mock_config_loader, mock_reposito
 
 
 def test_documentation_with_docs_presence_false_and_no_homepage(
-    mock_config_loader, mock_repository_metadata, sourcerank_with_repo_tree
+    mock_config_manager, mock_repository_metadata, sourcerank_with_repo_tree
 ):
     # Arrange
     repo_tree_data = get_mock_repo_tree("MINIMAL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
-    builder = ContributingBuilder(mock_config_loader, mock_repository_metadata)
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
     builder.sourcerank = sourcerank
     builder.metadata.homepage_url = ""
 
@@ -105,12 +107,12 @@ def test_documentation_with_docs_presence_false_and_no_homepage(
     assert doc_section == ""
 
 
-def test_readme_with_readme_presence_true(mock_config_loader, mock_repository_metadata, sourcerank_with_repo_tree):
+def test_readme_with_readme_presence_true(mock_config_manager, mock_repository_metadata, sourcerank_with_repo_tree):
     # Arrange
     repo_tree_data = get_mock_repo_tree("FULL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
-    builder = ContributingBuilder(mock_config_loader, mock_repository_metadata)
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
     builder.sourcerank = sourcerank
 
     # Act
@@ -120,12 +122,12 @@ def test_readme_with_readme_presence_true(mock_config_loader, mock_repository_me
     assert "README" in readme_section
 
 
-def test_readme_with_readme_presence_false(mock_config_loader, mock_repository_metadata, sourcerank_with_repo_tree):
+def test_readme_with_readme_presence_false(mock_config_manager, mock_repository_metadata, sourcerank_with_repo_tree):
     # Arrange
     repo_tree_data = get_mock_repo_tree("MINIMAL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
-    builder = ContributingBuilder(mock_config_loader, mock_repository_metadata)
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
     builder.sourcerank = sourcerank
 
     # Act
@@ -135,12 +137,12 @@ def test_readme_with_readme_presence_false(mock_config_loader, mock_repository_m
     assert readme_section == ""
 
 
-def test_tests_property_with_tests_presence(mock_config_loader, mock_repository_metadata, sourcerank_with_repo_tree):
+def test_tests_property_with_tests_presence(mock_config_manager, mock_repository_metadata, sourcerank_with_repo_tree):
     # Arrange
     repo_tree_data = get_mock_repo_tree("FULL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
-    builder = ContributingBuilder(mock_config_loader, mock_repository_metadata)
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
     builder.sourcerank = sourcerank
 
     # Act
@@ -151,12 +153,14 @@ def test_tests_property_with_tests_presence(mock_config_loader, mock_repository_
     assert tests_section != ""
 
 
-def test_tests_property_without_tests_presence(mock_config_loader, mock_repository_metadata, sourcerank_with_repo_tree):
+def test_tests_property_without_tests_presence(
+    mock_config_manager, mock_repository_metadata, sourcerank_with_repo_tree
+):
     # Arrange
     repo_tree_data = get_mock_repo_tree("MINIMAL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
-    builder = ContributingBuilder(mock_config_loader, mock_repository_metadata)
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
     builder.sourcerank = sourcerank
 
     # Act
@@ -166,9 +170,9 @@ def test_tests_property_without_tests_presence(mock_config_loader, mock_reposito
     assert tests_section == ""
 
 
-def test_acknowledgements_property(mock_config_loader, mock_repository_metadata):
+def test_acknowledgements_property(mock_config_manager, mock_repository_metadata):
     # Arrange
-    builder = ContributingBuilder(mock_config_loader, mock_repository_metadata)
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
 
     # Act
     acknowledgements = builder.acknowledgements
@@ -178,9 +182,9 @@ def test_acknowledgements_property(mock_config_loader, mock_repository_metadata)
     assert len(acknowledgements) > 0
 
 
-def test_build_creates_dir_and_saves_file(mock_config_loader, mock_repository_metadata, tmp_path, caplog):
+def test_build_creates_dir_and_saves_file(mock_config_manager, mock_repository_metadata, tmp_path, caplog):
     # Arrange
-    builder = ContributingBuilder(mock_config_loader, mock_repository_metadata)
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
     builder.repo_path = tmp_path / ".github"
     builder.file_to_save = builder.repo_path / "CONTRIBUTING.md"
     caplog.set_level("INFO")
@@ -204,9 +208,9 @@ def test_build_creates_dir_and_saves_file(mock_config_loader, mock_repository_me
         assert f"CONTRIBUTING.md successfully generated in folder {builder.repo_path}" in caplog.text
 
 
-def test_build_handles_exception_and_logs_error(mock_config_loader, mock_repository_metadata, caplog):
+def test_build_handles_exception_and_logs_error(mock_config_manager, mock_repository_metadata, caplog):
     # Arrange
-    builder = ContributingBuilder(mock_config_loader, mock_repository_metadata)
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
     caplog.set_level("ERROR")
 
     with (patch("os.path.exists", side_effect=Exception("test error")),):
