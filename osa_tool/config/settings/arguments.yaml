@@ -103,6 +103,16 @@ arguments:
     description: "Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository."
 
 settings:
+  use_single_model:
+      aliases: [ "--use-single-model" ]
+      type: flag
+      description: "Use the same model for all tasks (from default configuration)."
+
+  config_file:
+    aliases: [ "--config-file" ]
+    type: str
+    description: "Path to custom configuration file (TOML format)."
+
   no_fork:
     aliases: [ "--no-fork" ]
     type: flag
@@ -174,6 +184,26 @@ settings:
     description: |
       Specific LLM model to use. See available providers and models:
       https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors
+
+  model_docstring:
+    aliases: [ "--model-docstring" ]
+    type: str
+    description: "Specific LLM model for docstring generation tasks."
+
+  model_readme:
+    aliases: [ "--model-readme" ]
+    type: str
+    description: "Specific LLM model for README generation tasks."
+
+  model_validation:
+    aliases: [ "--model-validation" ]
+    type: str
+    description: "Specific LLM model for validation tasks."
+
+  model_general:
+    aliases: [ "--model-general" ]
+    type: str
+    description: "Specific LLM model for general tasks such as About section generation or reorganization."
 
   temperature:
     aliases: [ "--temperature" ]

@@ -2,7 +2,7 @@ import os
 
 from pydantic import BaseModel
 
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.operations.docs.readme_generation.utils import read_file
 from osa_tool.utils.utils import parse_folder_name
 
@@ -22,10 +22,10 @@ class FileProcessor:
     File processor class to process files in a repository.
     """
 
-    def __init__(self, config_loader: ConfigLoader, core_files: list[str]):
-        self.config = config_loader.config
+    def __init__(self, config_manager: ConfigManager, core_files: list[str]):
+        self.config_manager = config_manager
         self.core_files = core_files
-        self.repo_url = self.config.git.repository
+        self.repo_url = self.config_manager.get_git_settings().repository
         self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.length_of_content = 50_000
 

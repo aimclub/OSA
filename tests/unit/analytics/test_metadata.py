@@ -46,7 +46,7 @@ HEADERS = {
 }
 
 
-@pytest.mark.parametrize("mock_config_loader", ["github", "gitlab", "gitverse"], indirect=True)
+@pytest.mark.parametrize("mock_config_manager", ["github", "gitlab", "gitverse"], indirect=True)
 def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_factory, repo_info):
     # Arrange
     platform, owner, repo_name, repo_url = repo_info
@@ -76,7 +76,7 @@ def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_fa
     )
 
 
-@pytest.mark.parametrize("mock_config_loader", ["github", "gitlab", "gitverse"], indirect=True)
+@pytest.mark.parametrize("mock_config_manager", ["github", "gitlab", "gitverse"], indirect=True)
 @pytest.mark.parametrize("status_code", [401, 403, 404, 500])
 def test_load_data_http_errors(status_code, mock_requests_response_factory, repo_info):
     # Arrange

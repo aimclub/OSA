@@ -9,8 +9,8 @@ import osa_tool.operations.docs.readme_translation.readme_translator as rt
 
 
 @pytest.fixture
-def translator(tmp_path, mock_config_loader, mock_repository_metadata):
-    t = rt.ReadmeTranslator(mock_config_loader, mock_repository_metadata, ["fr", "de"])
+def translator(tmp_path, mock_config_manager, mock_repository_metadata):
+    t = rt.ReadmeTranslator(mock_config_manager, mock_repository_metadata, ["fr", "de"])
     t.base_path = tmp_path
     return t
 

@@ -3,24 +3,24 @@ from unittest.mock import patch
 from osa_tool.operations.docs.readme_generation.context.files_contents import FileProcessor, FileContext
 
 
-def test_file_processor_initialization(mock_config_loader):
+def test_file_processor_initialization(mock_config_manager):
     # Arrange
     core_files = ["file1.py", "dir/file2.txt"]
-    processor = FileProcessor(mock_config_loader, core_files)
+    processor = FileProcessor(mock_config_manager, core_files)
 
     # Assert
-    assert processor.config == mock_config_loader.config
+    assert processor.config_manager == mock_config_manager
     assert processor.core_files == core_files
-    assert processor.repo_url == mock_config_loader.config.git.repository
+    assert processor.repo_url == mock_config_manager.config.git.repository
     assert processor.length_of_content == 50_000
 
 
 @patch("osa_tool.operations.docs.readme_generation.context.files_contents.read_file")
-def test_create_file_context_truncates_content(mock_read_file, mock_config_loader):
+def test_create_file_context_truncates_content(mock_read_file, mock_config_manager):
     # Arrange
     mock_read_file.return_value = "a" * 100_000
     core_files = ["file1.py"]
-    processor = FileProcessor(mock_config_loader, core_files)
+    processor = FileProcessor(mock_config_manager, core_files)
 
     # Act
     file_context = processor._create_file_context("file1.py")
@@ -34,11 +34,11 @@ def test_create_file_context_truncates_content(mock_read_file, mock_config_loade
 
 
 @patch("osa_tool.operations.docs.readme_generation.context.files_contents.read_file")
-def test_process_files_returns_file_context_list(mock_read_file, mock_config_loader):
+def test_process_files_returns_file_context_list(mock_read_file, mock_config_manager):
     # Arrange
     mock_read_file.side_effect = ["content1", "content2"]
     core_files = ["file1.py", "file2.py"]
-    processor = FileProcessor(mock_config_loader, core_files)
+    processor = FileProcessor(mock_config_manager, core_files)
 
     # Act
     result = processor.process_files()

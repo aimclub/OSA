@@ -4,39 +4,39 @@ from osa_tool.models.models import ModelHandlerFactory, PayloadFactory, Protollm
 from tests.utils.fixtures.models import DummyLLMClient
 
 
-def test_payload_factory_generates_expected_structure(mock_config_loader):
+def test_payload_factory_generates_expected_structure(mock_config_manager):
     # Arrange
-    config = mock_config_loader.config
-    factory = PayloadFactory(config, "my test prompt")
+    model_settings = mock_config_manager.get_model_settings("general")
+    factory = PayloadFactory(model_settings, "my test prompt")
 
     # Act
     payload = factory.to_payload_completions()
 
     # Assert
     assert set(payload.keys()) == {"job_id", "meta", "messages"}
-    assert payload["meta"]["temperature"] == config.llm.temperature
-    assert payload["meta"]["tokens_limit"] == config.llm.max_tokens
+    assert payload["meta"]["temperature"] == model_settings.temperature
+    assert payload["meta"]["tokens_limit"] == model_settings.max_tokens
     assert any("my test prompt" in str(msg) for msg in payload["messages"])
 
 
-def test_initialize_payload_sets_payload(mock_config_loader):
+def test_initialize_payload_sets_payload(mock_config_manager):
     # Arrange
-    config = mock_config_loader.config
-    handler = ProtollmHandler(config)
+    model_settings = mock_config_manager.get_model_settings("general")
+    handler = ProtollmHandler(model_settings)
     handler.client = DummyLLMClient()
 
     # Act
-    handler.initialize_payload(config, "init prompt")
+    handler.initialize_payload(model_settings, "init prompt")
 
     # Assert
     assert "messages" in handler.payload
     assert any("init prompt" in str(m) for m in handler.payload["messages"])
 
 
-def test_send_request_calls_llm(monkeypatch, mock_config_loader, patch_llm_connector):
+def test_send_request_calls_llm(monkeypatch, mock_config_manager, patch_llm_connector):
     # Arrange
-    config = mock_config_loader.config
-    handler = ProtollmHandler(config)
+    model_settings = mock_config_manager.get_model_settings("general")
+    handler = ProtollmHandler(model_settings)
 
     # Act
     result = handler.send_request("hello world")
@@ -46,10 +46,10 @@ def test_send_request_calls_llm(monkeypatch, mock_config_loader, patch_llm_conne
 
 
 @pytest.mark.asyncio
-async def test_async_request_calls_llm(mock_config_loader, patch_llm_connector):
+async def test_async_request_calls_llm(mock_config_manager, patch_llm_connector):
     # Arrange
-    config = mock_config_loader.config
-    handler = ProtollmHandler(config)
+    model_settings = mock_config_manager.get_model_settings("general")
+    handler = ProtollmHandler(model_settings)
 
     # Act
     result = await handler.async_request("async hello")
@@ -59,10 +59,10 @@ async def test_async_request_calls_llm(mock_config_loader, patch_llm_connector):
 
 
 @pytest.mark.asyncio
-async def test_generate_concurrently_orders_results(mock_config_loader, patch_llm_connector):
+async def test_generate_concurrently_orders_results(mock_config_manager, patch_llm_connector):
     # Arrange
-    config = mock_config_loader.config
-    handler = ProtollmHandler(config)
+    model_settings = mock_config_manager.get_model_settings("general")
+    handler = ProtollmHandler(model_settings)
     prompts = ["p1", "p2", "p3"]
 
     # Act
@@ -77,14 +77,14 @@ async def test_generate_concurrently_orders_results(mock_config_loader, patch_ll
     [
         ("itmo", "self_hosted;"),
         ("ollama", "ollama;"),
-        ("other", ""),  # fallback to llm.url
+        ("other", ""),
     ],
 )
-def test_build_model_url_varies_with_api(mock_config_loader, patch_llm_connector, api, expected_prefix):
+def test_build_model_url_varies_with_api(mock_config_manager, patch_llm_connector, api, expected_prefix):
     # Arrange
-    config = mock_config_loader.config
-    config.llm.api = api
-    handler = ProtollmHandler(config)
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.api = api
+    handler = ProtollmHandler(model_settings)
 
     # Act
     url = handler._build_model_url()
@@ -93,10 +93,10 @@ def test_build_model_url_varies_with_api(mock_config_loader, patch_llm_connector
     assert url.startswith(expected_prefix) or expected_prefix == ""
 
 
-def test_get_llm_params_filters_none(mock_config_loader, patch_llm_connector):
+def test_get_llm_params_filters_none(mock_config_manager, patch_llm_connector):
     # Arrange
-    config = mock_config_loader.config
-    handler = ProtollmHandler(config)
+    model_settings = mock_config_manager.get_model_settings("general")
+    handler = ProtollmHandler(model_settings)
 
     # Act
     params = handler._get_llm_params()
@@ -106,9 +106,60 @@ def test_get_llm_params_filters_none(mock_config_loader, patch_llm_connector):
     assert all(v is not None for v in params.values())
 
 
-def test_model_handler_factory_builds_correct_type(mock_config_loader, patch_llm_connector):
+def test_model_handler_factory_builds_correct_type(mock_config_manager):
+    # Arrange
+    model_settings = mock_config_manager.get_model_settings("general")
+
     # Act
-    handler = ModelHandlerFactory.build(mock_config_loader.config)
+    handler = ModelHandlerFactory.build(model_settings)
 
     # Assert
     assert isinstance(handler, ProtollmHandler)
+
+
+def test_protollm_handler_init(mock_config_manager):
+    # Arrange
+    model_settings = mock_config_manager.get_model_settings("general")
+
+    # Act
+    handler = ProtollmHandler(model_settings)
+
+    # Assert
+    assert handler.model_settings == model_settings
+    assert handler.max_retries == model_settings.max_retries
+    assert hasattr(handler, "client")
+
+
+def test_payload_factory_with_system_message(mock_config_manager):
+    # Arrange
+    model_settings = mock_config_manager.get_model_settings("general")
+    custom_system_message = "Custom system message"
+    user_prompt = "User prompt"
+
+    # Act
+    factory = PayloadFactory(model_settings, user_prompt, custom_system_message)
+    payload = factory.to_payload_completions()
+
+    # Assert
+    assert factory.system_message == custom_system_message
+    assert len(factory.roles) == 2
+    assert "Custom system message" in str(factory.roles[0])
+    assert "User prompt" in str(factory.roles[1])
+    assert payload["meta"]["context_window"] == model_settings.context_window
+
+
+def test_payload_factory_without_system_message(mock_config_manager):
+    # Arrange
+    model_settings = mock_config_manager.get_model_settings("general")
+    user_prompt = "User prompt"
+
+    # Act
+    factory = PayloadFactory(model_settings, user_prompt)
+    payload = factory.to_payload_completions()
+
+    # Assert
+    assert factory.system_message == model_settings.system_prompt
+    assert len(factory.roles) == 2
+    assert model_settings.system_prompt in str(factory.roles[0])
+    assert "User prompt" in str(factory.roles[1])
+    assert payload["job_id"]

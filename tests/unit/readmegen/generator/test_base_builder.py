@@ -7,8 +7,8 @@ from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
 @pytest.fixture
-def builder(mock_config_loader, mock_sourcerank, mock_repository_metadata):
-    return MarkdownBuilderBase(mock_config_loader, mock_repository_metadata)
+def builder(mock_config_manager, mock_sourcerank, mock_repository_metadata):
+    return MarkdownBuilderBase(mock_config_manager, mock_repository_metadata)
 
 
 def test_load_template_keys(builder):
@@ -93,7 +93,7 @@ def test_documentation_section_with_local_docs(builder, sourcerank_with_repo_tre
     result = builder.documentation
 
     # Assert
-    expected = builder.config.git.repository + "/tree/" + builder.metadata.default_branch + "/docs/"
+    expected = builder.config_manager.config.git.repository + "/tree/" + builder.metadata.default_branch + "/docs/"
     assert expected in result
 
 

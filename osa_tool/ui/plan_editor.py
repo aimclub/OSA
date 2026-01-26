@@ -26,12 +26,18 @@ class PlanEditor:
     def __init__(self, workflow_keys: list):
         self.workflow_keys = workflow_keys
         self.info_keys = [
+            "use_single_model",
+            "config_file",
             "repository",
             "mode",
             "web_mode",
             "api",
             "base_url",
             "model",
+            "model_docstring",
+            "model_readme",
+            "model_validation",
+            "model_general",
             "branch",
             "output",
             "no_fork",

@@ -5,7 +5,7 @@ import yaml
 
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.scheduler.todo_list import ToDoList
 from osa_tool.utils.arguments_parser import get_keys_from_group_in_yaml
 from osa_tool.utils.logger import logger
@@ -121,26 +121,26 @@ class WorkflowManager(ABC):
 
         return result_plan
 
-    def update_workflow_config(self, config_loader: ConfigLoader, plan: dict) -> None:
+    def update_workflow_config(self, config_manager: ConfigManager, plan: dict) -> None:
         """
         Update workflow configuration settings in the config loader based on the given plan.
 
         Args:
-            config_loader: Configuration loader object containing settings.
+            config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
             plan: Final workflow plan.
         """
         workflow_settings = {}
         for key in self.workflow_keys:
             workflow_settings[key] = plan.get(key)
-        config_loader.config.workflows = config_loader.config.workflows.model_copy(update=workflow_settings)
+        config_manager.config.workflows = config_manager.config.workflows.model_copy(update=workflow_settings)
         logger.info("Config successfully updated with workflow settings")
 
-    def generate_workflow(self, config_loader: ConfigLoader) -> None:
+    def generate_workflow(self, config_manager: ConfigManager) -> None:
         """
         Generate CI/CD files according to the updated configuration settings.
 
         Args:
-            config_loader (ConfigLoader): Configuration loader object with updated settings.
+            config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
 
         Raises:
             Logs error on failure but does not raise.
@@ -149,7 +149,7 @@ class WorkflowManager(ABC):
             logger.info("Generating CI/CD files...")
 
             output_dir = self._get_output_dir()
-            workflow_settings = config_loader.config.workflows
+            workflow_settings = config_manager.get_workflow_settings()
             created_files = self._generate_files(workflow_settings, output_dir)
 
             if created_files:

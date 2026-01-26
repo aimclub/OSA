@@ -18,7 +18,7 @@ def test_basic_plan_logic():
 
 
 def test_mode_scheduler_initialization_basic(
-    mock_config_loader,
+    mock_config_manager,
     mock_sourcerank,
     mock_repository_metadata,
     mock_args_basic,
@@ -38,7 +38,7 @@ def test_mode_scheduler_initialization_basic(
 
         # Act
         scheduler = ModeScheduler(
-            mock_config_loader,
+            mock_config_manager,
             sourcerank_instance,
             mock_args_basic,
             mock_workflow_manager,
@@ -50,7 +50,7 @@ def test_mode_scheduler_initialization_basic(
 
 
 def test_mode_scheduler_initialization_advanced(
-    mock_config_loader,
+    mock_config_manager,
     mock_sourcerank,
     mock_repository_metadata,
     mock_args_advanced,
@@ -70,7 +70,7 @@ def test_mode_scheduler_initialization_advanced(
 
         # Act
         scheduler = ModeScheduler(
-            mock_config_loader,
+            mock_config_manager,
             sourcerank_instance,
             mock_args_advanced,
             mock_workflow_manager,
@@ -82,7 +82,7 @@ def test_mode_scheduler_initialization_advanced(
 
 
 def test_mode_scheduler_initialization_auto(
-    mock_config_loader,
+    mock_config_manager,
     mock_sourcerank,
     mock_repository_metadata,
     mock_args_auto,
@@ -112,7 +112,7 @@ def test_mode_scheduler_initialization_auto(
 
         # Act
         scheduler = ModeScheduler(
-            mock_config_loader,
+            mock_config_manager,
             sourcerank_instance,
             mock_args_auto,
             mock_workflow_manager,

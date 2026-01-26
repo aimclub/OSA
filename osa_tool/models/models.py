@@ -13,7 +13,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from protollm.connectors import create_llm_connector
 from pydantic import ValidationError
 
-from osa_tool.config.settings import Settings
+from osa_tool.config.settings import ModelSettings
 from osa_tool.utils.logger import logger
 from osa_tool.utils.response_cleaner import JsonParseError
 
@@ -66,7 +66,7 @@ class ModelHandler(ABC):
         self, prompt: str, parser: PydanticOutputParser, system_message: str = None, retry_delay: float = 0.5
     ) -> Any: ...
 
-    def initialize_payload(self, config: Settings, prompt: str, system_message: str = None) -> None:
+    def initialize_payload(self, model_settings: ModelSettings, prompt: str, system_message: str = None) -> None:
         """
         Initializes the payload for the instance.
 
@@ -74,7 +74,7 @@ class ModelHandler(ABC):
         The generated payload is then converted to payload completions and stored in the instance's payload attribute.
 
         Args:
-            config: The configuration settings to be used for payload generation.
+            model_settings: The model settings to use for payload generation.
             system_message: The system message to be used for payload generation.
             prompt: The prompt to be used for payload generation.
 
@@ -82,7 +82,7 @@ class ModelHandler(ABC):
             None
         """
         self.payload = PayloadFactory(
-            config=config, prompt=prompt, system_message=system_message
+            model_settings=model_settings, prompt=prompt, system_message=system_message
         ).to_payload_completions()
 
 
@@ -100,23 +100,22 @@ class PayloadFactory:
         Converts the instance variables to a dictionary payload for completions. This method returns a dictionary with keys 'job_id', 'meta', and 'messages'. The 'meta' key contains a nested dictionary with keys 'temperature' and 'tokens_limit'. The values for these keys are taken from the instance variables of the same names.
     """
 
-    def __init__(self, config: Settings, prompt: str, system_message: str = None):
+    def __init__(self, model_settings: ModelSettings, prompt: str, system_message: str = None):
         """
         Initializes the instance with a unique job ID, temperature, tokens limit, prompt, and roles.
 
         Args:
-            config: The configuration settings for the instance. It should include 'llm'
-                               with 'temperature' and 'tokens' attributes.
+            model_settings: The model settings for the instance.
             prompt: The initial user prompt.
 
         Returns:
             None
         """
         self.job_id = str(uuid4())
-        self.temperature = config.llm.temperature
-        self.tokens_limit = config.llm.max_tokens
-        self.context_window = config.llm.context_window
-        self.system_message = system_message or config.llm.system_prompt
+        self.temperature = model_settings.temperature
+        self.tokens_limit = model_settings.max_tokens
+        self.context_window = model_settings.context_window
+        self.system_message = system_message or model_settings.system_prompt
         self.prompt = prompt
         self.roles = [
             SystemMessage(content=self.system_message),
@@ -170,19 +169,19 @@ class ProtollmHandler(ModelHandler):
             and initializes the ProtoLLM connector with the set URL and API key.
     """
 
-    def __init__(self, config: Settings):
+    def __init__(self, model_settings: ModelSettings):
         """
         Initializes the instance with the provided configuration settings.
         This method sets up the instance by assigning the provided configuration settings to the instance's config attribute.
         It also retrieves the API from the configuration settings and passes it to the _configure_api method.
         Args:
-            config: The configuration settings to be used for setting up the instance.
+            model_settings: The model settings to use for this handler.
         Returns:
             None
         """
-        self.config = config
-        self.max_retries = config.llm.max_retries
-        self._configure_api(config.llm.api, model_name=config.llm.model)
+        self.model_settings = model_settings
+        self.max_retries = model_settings.max_retries
+        self._configure_api(model_settings.api, model_name=model_settings.model)
 
     def send_request(self, prompt: str, system_message: str = None) -> str:
         """
@@ -199,7 +198,7 @@ class ProtollmHandler(ModelHandler):
             str: The response received from the request.
         """
         safe_prompt = self._limit_tokens(prompt)
-        self.initialize_payload(self.config, safe_prompt, system_message)
+        self.initialize_payload(self.model_settings, safe_prompt, system_message)
         messages = self.payload["messages"]
         response = self.client.invoke(messages)
         return response.content
@@ -261,7 +260,7 @@ class ProtollmHandler(ModelHandler):
             str: The response received from the request.
         """
         safe_prompt = self._limit_tokens(prompt)
-        self.initialize_payload(self.config, safe_prompt, system_message)
+        self.initialize_payload(self.model_settings, safe_prompt, system_message)
         response = await self.client.ainvoke(self.payload["messages"])
         return response.content
 
@@ -355,7 +354,7 @@ class ProtollmHandler(ModelHandler):
         """
         chain = (
             ChatPromptTemplate.from_messages(
-                [("system", system_message or self.config.llm.system_prompt), ("user", "{input}")]
+                [("system", system_message or self.model_settings.system_prompt), ("user", "{input}")]
             )
             | self.client
             | parser
@@ -405,7 +404,7 @@ class ProtollmHandler(ModelHandler):
         """
         chain = (
             ChatPromptTemplate.from_messages(
-                [("system", system_message or self.config.llm.system_prompt), ("user", "{input}")]
+                [("system", system_message or self.model_settings.system_prompt), ("user", "{input}")]
             )
             | self.client
             | parser
@@ -436,19 +435,19 @@ class ProtollmHandler(ModelHandler):
     def _build_model_url(self) -> str:
         """Builds the model URL based on the LLM API type."""
         url_templates = {
-            "itmo": f"self_hosted;{os.getenv('ITMO_MODEL_URL', self.config.llm.base_url)};{self.config.llm.model}",
-            "ollama": f"ollama;{self.config.llm.localhost};{self.config.llm.model}",
+            "itmo": f"self_hosted;{os.getenv('ITMO_MODEL_URL', self.model_settings.base_url)};{self.model_settings.model}",
+            "ollama": f"ollama;{self.model_settings.localhost};{self.model_settings.model}",
         }
-        return url_templates.get(self.config.llm.api, f"{self.config.llm.base_url};{self.config.llm.model}")
+        return url_templates.get(self.model_settings.api, f"{self.model_settings.base_url};{self.model_settings.model}")
 
     def _get_llm_params(self):
         """Extract LLM parameters from config"""
         llm_params = ["temperature", "max_tokens", "top_p"]
 
         return {
-            name: getattr(self.config.llm, name)
+            name: getattr(self.model_settings, name)
             for name in llm_params
-            if getattr(self.config.llm, name, None) is not None
+            if getattr(self.model_settings, name, None) is not None
         }
 
     def _configure_api(self, api: str, model_name: str) -> None:
@@ -468,7 +467,7 @@ class ProtollmHandler(ModelHandler):
 
         self.client = create_llm_connector(
             model_url=self._build_model_url(),
-            extra_body={"providers": {"only": self.config.llm.allowed_providers}},
+            extra_body={"providers": {"only": self.model_settings.allowed_providers}},
             **self._get_llm_params(),
         )
 
@@ -478,9 +477,9 @@ class ProtollmHandler(ModelHandler):
 
         Calculates: Available Input = Total Context - Max Output - Safety Buffer
         """
-        model_context_limit = getattr(self.config.llm, "context_window")
-        max_output_tokens = self.config.llm.max_tokens
-        encoding_name = self.config.llm.encoder
+        model_context_limit = getattr(self.model_settings, "context_window")
+        max_output_tokens = self.model_settings.max_tokens
+        encoding_name = self.model_settings.encoder
 
         max_input_tokens = model_context_limit - max_output_tokens - safety_buffer
 
@@ -519,7 +518,7 @@ class ModelHandlerFactory:
     """
 
     @classmethod
-    def build(cls, config: Settings) -> ProtollmHandler:
+    def build(cls, model_settings: ModelSettings) -> ProtollmHandler:
         """
         Builds and returns a handler based on the configuration of the class.
 
@@ -527,10 +526,10 @@ class ModelHandlerFactory:
         and then creates and returns a handler using the configuration.
 
         Args:
-            config: The configuration object which contains the model information.
+            model_settings: The model settings to use for the handler.
             cls: The class from which the configuration is retrieved.
 
         Returns:
             ModelHandler: An instance of the appropriate model handler.
         """
-        return ProtollmHandler(config)
+        return ProtollmHandler(model_settings)

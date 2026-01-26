@@ -4,7 +4,7 @@ import tomli
 
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.operations.docs.readme_generation.context.pypi_status_checker import PyPiPackageInspector
 from osa_tool.operations.docs.readme_generation.utils import find_in_repo_tree
 from osa_tool.tools.repository_analysis.dependencies import DependencyExtractor
@@ -12,11 +12,10 @@ from osa_tool.utils.utils import osa_project_root, parse_folder_name
 
 
 class InstallationSectionBuilder:
-    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
-        self.config_loader = config_loader
-        self.config = self.config_loader.config
-        self.repo_url = self.config.git.repository
-        self.tree = SourceRank(self.config_loader).tree
+    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata):
+        self.config_manager = config_manager
+        self.repo_url = self.config_manager.get_git_settings().repository
+        self.tree = SourceRank(self.config_manager).tree
         self.metadata = metadata
         self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.template_path = os.path.join(osa_project_root(), "config", "templates", "template.toml")
@@ -36,7 +35,7 @@ class InstallationSectionBuilder:
 
         return self._template["installation"].format(
             prerequisites=python_requirements,
-            project=self.config.git.name,
+            project=self.config_manager.get_git_settings().name,
             steps=install_cmd,
         )
 
@@ -54,7 +53,7 @@ class InstallationSectionBuilder:
 
         steps = (
             f"**Build from source:**\n\n"
-            f"1. Clone the {self.config.git.name} repository:\n"
+            f"1. Clone the {self.config_manager.get_git_settings().name} repository:\n"
             f"```sh\ngit clone {self.repo_url}\n```\n\n"
             f"2. Navigate to the project directory:\n"
             f"```sh\ncd {parse_folder_name(self.repo_url)}\n```\n\n"

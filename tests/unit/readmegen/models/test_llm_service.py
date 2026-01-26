@@ -58,7 +58,7 @@ def test_get_responses_article_returns_expected(llm_client, mock_model_handler, 
         ) as mock_pdf_extract,
     ):
 
-        def fp_side_effect(config_loader, file_paths):
+        def fp_side_effect(config_manager, file_paths):
             if any(f in file_paths for f in ["src/main.py", "README.md"]):
                 return key_files_mock
             if "examples/demo.py" in file_paths:
@@ -99,7 +99,7 @@ def test_get_responses_returns_expected(llm_client, mock_model_handler, mock_fil
         patch("osa_tool.operations.docs.readme_generation.utils.extract_example_paths") as mock_extract,
     ):
 
-        def fp_side_effect(config_loader, files_list):
+        def fp_side_effect(config_manager, files_list):
             if "src/main.py" in files_list:
                 return key_files_mock
             if "examples/demo.py" in files_list:

@@ -2,10 +2,11 @@ import os
 import time
 
 from osa_tool.config.osa_config import OSAConfig
+from osa_tool.config.settings import ConfigManager
 from osa_tool.osa_agent.context import AgentContext
 from osa_tool.osa_agent.graph import build_graph
 from osa_tool.osa_agent.state import AgentStatus, OSAState
-from osa_tool.run import load_configuration, initialize_git_platform
+from osa_tool.run import initialize_git_platform
 from osa_tool.ui.input_for_chat import InitialChatInput, collect_user_input
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.logger import setup_logging
@@ -31,11 +32,11 @@ def main():
 
     # Initialize infrastructure
     args.repository = user_input.repo_url
-    config_loader = load_configuration(args)
+    config_manager = ConfigManager(args)
     git_agent, workflow_manager = initialize_git_platform(args)
 
     agent_config = OSAConfig(
-        config_loader=config_loader,
+        config_manager=config_manager,
         git_agent=git_agent,
         workflow_manager=workflow_manager,
         create_fork=not args.no_fork,

@@ -8,7 +8,7 @@ from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer
 
 from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 
@@ -21,16 +21,16 @@ class ReportGenerator:
     percentage metrics, and conclusions. It adds branding, QR codes, and repository metadata to the report.
     """
 
-    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata) -> None:
+    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata) -> None:
         """
         Initialize the ReportGenerator.
 
         Args:
-            config_loader (ConfigLoader): Loader containing configuration settings.
+            config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
             metadata (RepositoryMetadata): Metadata about the repository.
         """
-        self.config = config_loader.config
-        self.repo_url = self.config.git.repository
+        self.config_manager = config_manager
+        self.repo_url = self.config_manager.get_git_settings().repository
         self.metadata = metadata
 
         self.osa_url = "https://github.com/aimclub/OSA"
