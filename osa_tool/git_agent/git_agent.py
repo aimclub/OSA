@@ -119,7 +119,6 @@ class GitAgent(abc.ABC):
         stderr = (error.stderr or "").lower()
 
         # 401/403: Auth/Permission error
-        # вроде все пойманные мной сообщения включил
         if (
             "authentication failed" in stderr
             or "could not read username" in stderr
@@ -160,6 +159,10 @@ class GitAgent(abc.ABC):
         if raise_exception:
             raise Exception(f"Git operation '{action}' failed.") from error
         else:
+            # Doesn't raise an error for Non-critical errors.
+            # For example: starring a repository (star_repository), checking for updates, or posting non-essential
+            # comments. If these fail due to API limits or lack of scopes, the tool should log a warning but continue
+            # the README/documentation generation.
             logger.warning(f"Non-critical error during '{action}'. Continuing execution.")
 
     def _handle_api_error(self, response: requests.Response, action: str, raise_exception: bool = True) -> None:
@@ -440,10 +443,7 @@ class GitAgent(abc.ABC):
             logger.info("Push completed.")
             return True
         except GitCommandError as e:
-            stderr = (e.stderr or "").lower()
-            if any(x in stderr for x in ["403", "401", "404", "auth", "denied", "unable to access"]):
-                self._handle_git_error(e, f"pushing to {branch}")
-            # если ни одна из ошибок не покрыла наш кейс - старая логика
+            self._handle_git_error(e, f"pushing to {branch}")
             logger.error(
                 f"""Push failed: Branch '{branch}' already exists in the fork.
                  To resolve this, please either:
@@ -708,7 +708,6 @@ class GitHubAgent(GitAgent):
         response = requests.get(url, headers=headers, params=params)
 
         if response.status_code != 200:
-            # не смогли получить список PR - ошибка прав или сети
             self._handle_api_error(response, "checking existing pull requests", False)
 
         prs = response.json() if response.status_code == 200 else []

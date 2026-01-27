@@ -103,7 +103,7 @@ def test_git_agent_clone_repository_failure_git_error(git_agent_base_setup):
     # Act / Assert
     git_error = GitCommandError("clone", 128, b"fatal: repository not found")
     with patch("git.Repo.clone_from", side_effect=git_error):
-        # Изменился match: теперь мы ловим сообщение от _handle_git_error
+        # Match changed: now we catch the message from _handle_git_error
         with pytest.raises(Exception, match=r"Git operation 'cloning repository.*' failed"):
             agent.clone_repository()
 
@@ -310,7 +310,7 @@ def test_github_agent_star_repository_failure_non_critical(
     github_agent_instance, mock_requests_response_factory, repo_info
 ):
     # Arrange
-    # 403 - не роняет выполнение
+    # 403 - does not fail the execution
     mock_response_check = mock_requests_response_factory(status_code=403, text_data="Forbidden")
 
     # Act
