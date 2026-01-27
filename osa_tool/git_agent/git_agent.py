@@ -422,11 +422,23 @@ class GitAgent(abc.ABC):
             self.repo.git.commit("-m", commit_message)
             logger.info("Commit completed.")
         except GitCommandError as e:
+            stderr = (e.stderr or "").lower()
+
             if "nothing to commit" in str(e):
                 logger.warning("Nothing to commit: working tree clean")
                 if self.pr_report_body:
                     logger.info(self.pr_report_body)
                 return False
+            elif "bad tree object" in stderr or "invalid object" in stderr:
+                logger.warning("Git index corruption detected. Attempting to repair and retry...")
+                try:
+                    self.repo.git.reset() # reset to staging area
+                    self.repo.git.add(".")  # re-indexing all the files again
+                    self.repo.git.commit("-m", commit_message)
+                    logger.info("Index repaired and changes committed.")
+                except GitCommandError as retry_e:
+                    # if the reset didn't help
+                    self._handle_git_error(retry_e, "git commit repair retry")
             else:
                 self._handle_git_error(e, "git commit")
 
