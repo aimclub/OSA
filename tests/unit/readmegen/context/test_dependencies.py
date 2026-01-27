@@ -29,7 +29,7 @@ def test_extract_from_pyproject_pep621(tmp_path):
             "requests"
         ]
         requires-python = ">=3.9"
-        """ )
+        """)
     (tmp_path / "pyproject.toml").write_text(pyproj)
 
     extractor = DependencyExtractor(get_mock_repo_tree("WITH_PYPROJECT"), str(tmp_path))
