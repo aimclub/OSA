@@ -432,7 +432,7 @@ class GitAgent(abc.ABC):
             elif "bad tree object" in stderr or "invalid object" in stderr:
                 logger.warning("Git index corruption detected. Attempting to repair and retry...")
                 try:
-                    self.repo.git.reset() # reset to staging area
+                    self.repo.git.reset()  # reset to staging area
                     self.repo.git.add(".")  # re-indexing all the files again
                     self.repo.git.commit("-m", commit_message)
                     logger.info("Index repaired and changes committed.")
@@ -456,14 +456,12 @@ class GitAgent(abc.ABC):
             return True
         except GitCommandError as e:
             self._handle_git_error(e, f"pushing to {branch}")
-            logger.error(
-                f"""Push failed: Branch '{branch}' already exists in the fork.
+            logger.error(f"""Push failed: Branch '{branch}' already exists in the fork.
                  To resolve this, please either:
                    1. Choose a different branch name that doesn't exist in the fork 
                       by modifying the `branch_name` parameter.
                    2. Delete the existing branch from forked repository.
-                   3. Delete the fork entirely."""
-            )
+                   3. Delete the fork entirely.""")
             return False
 
     def upload_report(
