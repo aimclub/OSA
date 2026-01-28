@@ -42,6 +42,7 @@ from osa_tool.utils.utils import (
     switch_to_output_directory,
 )
 from osa_tool.validation.doc_validator import DocValidator
+from osa_tool.validation.experiment import Experiment
 from osa_tool.validation.paper_validator import PaperValidator
 from osa_tool.validation.report_generator import (
     ReportGenerator as ValidationReportGenerator,
@@ -111,7 +112,7 @@ def main():
             content = loop.run_until_complete(DocValidator(config_loader).validate(plan.get("attachment")))
             if content:
                 va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata)
-                va_re_gen.build_pdf("Document", content)
+                va_re_gen.build_pdf("Document", content)  # TODO: add enum for types
                 if create_fork:
                     git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
                 what_has_been_done.mark_did("validate_doc")
@@ -120,7 +121,9 @@ def main():
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_paper"):
             rich_section("Paper validation")
-            content = loop.run_until_complete(PaperValidator(config_loader).validate(plan.get("attachment")))
+            content: tuple[Experiment] = loop.run_until_complete(
+                PaperValidator(config_loader).validate(plan.get("attachment"))
+            )
             if content:
                 va_re_gen = ValidationReportGenerator(config_loader, git_agent.metadata)
                 va_re_gen.build_pdf("Paper", content)
