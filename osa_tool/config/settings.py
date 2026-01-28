@@ -18,7 +18,11 @@ from pydantic import (
 )
 
 from osa_tool.utils.prompts_builder import PromptLoader
-from osa_tool.utils.utils import build_config_path, parse_git_url
+from osa_tool.utils.utils import (
+    build_config_path,
+    detect_provider_from_url,
+    parse_git_url,
+)
 
 
 class GitSettings(BaseModel):
@@ -44,7 +48,7 @@ class ModelSettings(BaseModel):
     LLM API model settings and parameters.
     """
 
-    api: str
+    api: str | None = None
     rate_limit: PositiveInt
     base_url: str
     encoder: str
@@ -59,6 +63,12 @@ class ModelSettings(BaseModel):
     max_retries: PositiveInt
     allowed_providers: list[str]
     system_prompt: str
+
+    @model_validator(mode="after")
+    def set_model_api(self):
+        if not self.api:
+            self.api = detect_provider_from_url(self.base_url)
+        return self
 
 
 class WorkflowSettings(BaseModel):

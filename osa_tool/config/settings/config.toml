@@ -6,7 +6,7 @@ no_pull_request = false
 
 # Language Model API Settings
 [llm]
-api = "itmo"
+# api = "itmo"
 rate_limit = 10
 base_url = "https://api.openai.com/v1"
 encoder = "cl100k_base"

@@ -294,3 +294,41 @@ def extract_readme_content(repo_path: str) -> str:
                 return f.read()
     else:
         return "No README.md file"
+
+
+def detect_provider_from_url(url) -> str | None:
+    """
+    Detect the LLM provider from a given URL.
+
+    Args:
+        url (str): The API URL to analyze
+
+    Returns:
+        str: Detected provider name or 'None' if not recognized
+    """
+    if not url or not isinstance(url, str):
+        return None
+
+    providers = {
+        "openai": [
+            r".*openai\.com.*",
+            r".*api\.openai\.com.*",
+            r".*openrouter\.ai.*",
+            r".*openrouter\.ai/api/v1.*",
+            r".*vsegpt\.ru.*",
+            r".*gigachat.*",
+        ],
+        "ollama": [r".*ollama\.com.*", r".*ollama.*", r"localhost.*:11434.*", r"\d*.*:11434.*"],
+        "llama": [
+            r".*llama.*",
+            r".*llamacpp.*",
+        ],
+    }
+
+    for provider, patterns in providers.items():
+        for pattern in patterns:
+            if re.search(pattern, url):
+                logger.debug(f"Detected provider '{provider}' from URL '{url}'")
+                return provider
+
+    return None
