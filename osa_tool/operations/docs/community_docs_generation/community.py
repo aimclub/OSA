@@ -62,16 +62,22 @@ class CommunityTemplateBuilder:
         with open(self.template_path, "rb") as file:
             return tomli.load(file)
 
-    def build_code_of_conduct(self) -> None:
-        """Generates and saves the CODE_OF_CONDUCT.md file."""
+    def build_code_of_conduct(self) -> bool:
+        """
+        Generates and saves the CODE_OF_CONDUCT.md file.
+        Returns:
+            Has the task been completed successfully
+        """
         try:
             content = self._template["code_of_conduct"]
             save_sections(content, self.code_of_conduct_to_save)
             logger.info(f"CODE_OF_CONDUCT.md successfully generated in folder {self.repo_path}")
         except Exception as e:
             logger.error("Error while generating CODE_OF_CONDUCT.md: %s", repr(e), exc_info=True)
+            return False
+        return True
 
-    def build_pull_request(self) -> None:
+    def build_pull_request(self) -> bool:
         """Generates and saves the PULL_REQUEST_TEMPLATE.md file."""
         try:
             if self.sourcerank.contributing_presence():
@@ -89,9 +95,15 @@ class CommunityTemplateBuilder:
                 repr(e),
                 exc_info=True,
             )
+            return False
+        return True
 
-    def build_documentation_issue(self) -> None:
-        """Generates and saves the DOCUMENTATION_ISSUE.md file if documentation is present."""
+    def build_documentation_issue(self) -> bool:
+        """
+        Generates and saves the DOCUMENTATION_ISSUE.md file if documentation is present.
+        Returns:
+            Has the task been completed successfully
+        """
         try:
             if self.sourcerank.docs_presence():
                 content = self._template["docs_issue"]
@@ -105,9 +117,15 @@ class CommunityTemplateBuilder:
                 repr(e),
                 exc_info=True,
             )
+            return False
+        return True
 
-    def build_feature_issue(self) -> None:
-        """Generates and saves the FEATURE_ISSUE.md file."""
+    def build_feature_issue(self) -> bool:
+        """
+        Generates and saves the FEATURE_ISSUE.md file.
+        Returns:
+            Has the task been completed successfully
+        """
         try:
             content = self._template["feature_issue"].format(project_name=self.metadata.name)
             save_sections(content, self.feature_issue_to_save)
@@ -116,18 +134,30 @@ class CommunityTemplateBuilder:
             )
         except Exception as e:
             logger.error("Error while generating FEATURE_ISSUE.md: %s", repr(e), exc_info=True)
+            return False
+        return True
 
-    def build_bug_issue(self) -> None:
-        """Generates and saves the BUG_ISSUE.md file."""
+    def build_bug_issue(self) -> bool:
+        """
+        Generates and saves the BUG_ISSUE.md file.
+        Returns:
+            Has the task been completed successfully
+        """
         try:
             content = self._template["bug_issue"].format(project_name=self.metadata.name)
             save_sections(content, self.bug_issue_to_save)
             logger.info(f"BUG_ISSUE.md successfully generated in folder {os.path.dirname(self.bug_issue_to_save)}")
         except Exception as e:
             logger.error("Error while generating BUG_ISSUE.md: %s", repr(e), exc_info=True)
+            return False
+        return True
 
-    def build_vulnerability_disclosure(self) -> None:
-        """Generates and saves the Vulnerability Disclosure.md file."""
+    def build_vulnerability_disclosure(self) -> bool:
+        """
+        Generates and saves the Vulnerability Disclosure.md file.
+        Returns:
+            Has the task been completed successfully
+        """
         try:
             content = self._template["vulnerability_disclosure"]
             save_sections(content, self.vulnerability_disclosure_to_save)
@@ -136,12 +166,20 @@ class CommunityTemplateBuilder:
             )
         except Exception as e:
             logger.error("Error while generating Vulnerability Disclosure.md: %s", repr(e), exc_info=True)
+            return False
+        return True
 
-    def build_security(self) -> None:
-        """Generates and saves the SECURITY.md file."""
+    def build_security(self) -> bool:
+        """
+        Generates and saves the SECURITY.md file.
+        Returns:
+            Has the task been completed successfully
+        """
         try:
             content = self._template[f"security_{self.config.git.host}"].format(repo_url=self.repo_url)
             save_sections(content, self.security_to_save)
             logger.info(f"SECURITY.md successfully generated in folder {self.repo_path}")
         except Exception as e:
             logger.error("Error while generating SECURITY.md: %s", repr(e), exc_info=True)
+            return False
+        return True
