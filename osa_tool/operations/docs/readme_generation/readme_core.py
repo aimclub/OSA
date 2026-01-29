@@ -3,8 +3,9 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.core.git.metadata import RepositoryMetadata
+from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.operations.docs.readme_generation.generator.builder import MarkdownBuilder
 from osa_tool.operations.docs.readme_generation.generator.builder_article import MarkdownBuilderArticle
 from osa_tool.operations.docs.readme_generation.models.llm_service import LLMClient
@@ -35,8 +36,18 @@ class ReadmeAgent:
         self.llm_client = LLMClient(self.config_loader, self.metadata)
         self.todo_list = todo_list
 
-    def generate_readme(self):
+    def generate_readme(self) -> dict:
+        """
+        Generate README.md file.
+
+        Returns:
+            dict: Standardized operation output containing:
+                - result: Information about generated README
+                - events: List of OperationEvent
+        """
         logger.info("Started generating README.md. Processing the repository: %s", self.repo_url)
+        events: list[OperationEvent] = []
+
         try:
             if self.article is None:
                 builder = self.default_readme()
@@ -45,8 +56,11 @@ class ReadmeAgent:
 
             readme_content = builder.build()
 
+            events.append(OperationEvent(kind=EventKind.GENERATED, target="README.md"))
+
             if self.refine_readme:
                 readme_content = self.llm_client.refine_readme(readme_content)
+                events.append(OperationEvent(kind=EventKind.REFINED, target="README.md"))
                 if self.todo_list is not None:
                     self.todo_list.mark_did("refine_readme")
 
@@ -56,9 +70,33 @@ class ReadmeAgent:
             save_sections(readme_content, self.file_to_save)
             remove_extra_blank_lines(self.file_to_save)
             logger.info(f"README.md successfully generated in folder {self.repo_path}")
+
+            return {
+                "result": {
+                    "file": "README.md",
+                    "path": self.file_to_save,
+                    "refined": self.refine_readme,
+                },
+                "events": events,
+            }
         except Exception as e:
             logger.error("Error while generating: %s", repr(e), exc_info=True)
-            raise ValueError("Failed to generate README.md.")
+
+            events.append(
+                OperationEvent(
+                    kind=EventKind.FAILED,
+                    target="README.md",
+                    data={
+                        "reason": "generation_error",
+                        "error": repr(e),
+                    },
+                )
+            )
+
+            return {
+                "result": None,
+                "events": events,
+            }
 
     def default_readme(self) -> MarkdownBuilder:
         responses = self.llm_client.get_responses()

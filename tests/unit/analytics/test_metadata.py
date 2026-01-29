@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from osa_tool.analytics.metadata import (
+from osa_tool.core.git.metadata import (
     GitHubMetadataLoader,
     GitLabMetadataLoader,
     GitverseMetadataLoader,

@@ -1,5 +1,5 @@
 from osa_tool.config.osa_config import OSAConfig
-from osa_tool.models.models import ModelHandler, ModelHandlerFactory
+from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 
 
 class AgentContext:
@@ -21,3 +21,4 @@ class AgentContext:
         self.prompts = self.config_loader.config.prompts
         self.create_fork = self.agent_config.create_fork
         self.create_pull_request = self.agent_config.create_pull_request
+        self.delete_repo = self.agent_config.delete_dir

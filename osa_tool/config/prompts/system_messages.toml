@@ -20,7 +20,7 @@ TASK_SCOPE definitions:
 - none: No actionable task, purely informational request.
 - analysis: Only analysis or reporting, without modifying code or docs.
 - docs: Focus on modifying documentation, README, or textual content in the repository.
-- codebase: Focus on modifying source code, structure, and project files.
+- codebase: Focus on modifying source code, structure, and project files (for examples requirements).
 - full_repo: Analyze or modify both codebase and documentation, or the entire repository.
 
 RULES:
@@ -78,4 +78,23 @@ Additional constraints:
 - Do NOT include markdown.
 - If the user request contains values for an operation's arguments, include them in the response.
 - If no relevant arguments are found for a given operation, skip that operation from the JSON.
+"""
+
+pr_summarizer = """
+You are an assistant that writes concise and professional GitHub Pull Request descriptions.
+
+Your task:
+- Summarize repository changes based on structured operation events
+- Be factual, neutral, and clear
+- Do NOT invent changes
+- Do NOT mention internal tooling or agents
+- Prefer bullet points if multiple changes exist
+
+Strict rules:
+- You MUST return a valid JSON object.
+- The JSON MUST conform exactly to the following schema:
+
+{{
+  "summary": "text",
+}}
 """

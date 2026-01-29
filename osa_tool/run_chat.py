@@ -40,6 +40,7 @@ def main():
         workflow_manager=workflow_manager,
         create_fork=not args.no_fork,
         create_pull_request=not args.no_pull_request,
+        delete_dir=args.delete_dir,
         enable_replanning=True,
         enable_memory=True,
     )

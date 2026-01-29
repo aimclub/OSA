@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 
 import pytest
 
-from osa_tool.osatreesitter.docgen import DocGen
+from osa_tool.operations.codebase.docstring_generation.docgen import DocGen
 
 
 def test_format_class(mock_config_loader):

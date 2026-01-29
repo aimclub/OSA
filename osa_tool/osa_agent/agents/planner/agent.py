@@ -7,6 +7,7 @@ from osa_tool.operations.registry import OperationRegistry, Operation
 from osa_tool.osa_agent.agents.planner.models import PlannerDecision, ArgumentDetectionResponse
 from osa_tool.osa_agent.base import BaseAgent
 from osa_tool.osa_agent.state import OSAState
+from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.utils import rich_section
 
@@ -42,6 +43,8 @@ class PlannerAgent(BaseAgent):
             OSAState: Updated state containing the execution plan.
         """
         rich_section("Planner Agent")
+        state.active_agent = self.name
+        state.status = AgentStatus.GENERATING
 
         available_ops = OperationRegistry.applicable(state)
 
@@ -52,8 +55,6 @@ class PlannerAgent(BaseAgent):
         detect_args_prompt = self._detect_additional_arguments(state)
 
         state.current_step_index = 0
-        state.status = AgentStatus.GENERATING
-        state.active_agent = self.name
 
         state.session_memory.append(
             {
@@ -63,6 +64,8 @@ class PlannerAgent(BaseAgent):
                 "detect_args_prompt": detect_args_prompt,
             }
         )
+
+        logger.debug(state)
 
         return state
 

@@ -7,8 +7,8 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer
 
-from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 

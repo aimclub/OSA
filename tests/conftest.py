@@ -4,15 +4,15 @@ from unittest.mock import Mock, patch, MagicMock
 
 import pytest
 
-from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import Settings, GitSettings, ModelSettings, WorkflowSettings
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
+from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.utils import parse_folder_name
 from tests.data_factory import DataFactory
 from tests.utils.mocks.requests_mock import mock_requests_response
-from osa_tool.utils.prompts_builder import PromptLoader
 
 pytest_plugins = [
-    "tests.utils.fixtures.aboutgen",
+    "tests.utils.fixtures.about_generation",
     "tests.utils.fixtures.analytics_load_metadata",
     "tests.utils.fixtures.analytics_report_generator",
     "tests.utils.fixtures.analytics_sourcerank",

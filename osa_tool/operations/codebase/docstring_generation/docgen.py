@@ -16,7 +16,7 @@ import tomli
 import yaml
 
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.models.models import ModelHandlerFactory, ProtollmHandler
+from osa_tool.core.llm.llm import ModelHandlerFactory, ProtollmHandler
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 

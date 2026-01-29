@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter  # adjust import path
+from osa_tool.operations.codebase.docstring_generation.osa_treesitter import OSA_TreeSitter  # adjust import path
 from tests.utils.fixtures.osatreesitter import Node
 
 

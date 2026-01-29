@@ -18,11 +18,11 @@ from reportlab.platypus import (
     Flowable,
 )
 
-from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.analysis.repository_report.report_generator import TextGenerator
 from osa_tool.operations.registry import Operation, OperationRegistry
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 

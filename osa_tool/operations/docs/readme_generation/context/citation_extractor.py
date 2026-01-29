@@ -1,7 +1,7 @@
 from scholarly import scholarly
 
-from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
 from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
 from osa_tool.operations.docs.readme_generation.models.llm_service import LLMClient

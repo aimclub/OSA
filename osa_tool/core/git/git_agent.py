@@ -8,7 +8,7 @@ import requests
 from dotenv import load_dotenv
 from git import GitCommandError, InvalidGitRepositoryError, Repo
 
-from osa_tool.analytics.metadata import (
+from osa_tool.core.git.metadata import (
     GitHubMetadataLoader,
     GitLabMetadataLoader,
     GitverseMetadataLoader,

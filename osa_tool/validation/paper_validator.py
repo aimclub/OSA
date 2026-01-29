@@ -1,7 +1,7 @@
 import asyncio
 
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.models.models import ModelHandler, ModelHandlerFactory
+from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
 from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
 from osa_tool.utils.logger import logger

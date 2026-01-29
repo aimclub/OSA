@@ -1,5 +1,5 @@
-from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.docs.readme_generation.generator.base_builder import MarkdownBuilderBase
 from osa_tool.operations.docs.readme_generation.utils import find_in_repo_tree
 

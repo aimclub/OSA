@@ -31,3 +31,12 @@ User request:
 Operations with additional arguments:
 {operations}
 """
+
+pr_summarizer = """
+Summarize the following repository changes into a Pull Request description.
+
+Operation events:
+{events}
+
+Write a short summary suitable for a PR body.
+"""

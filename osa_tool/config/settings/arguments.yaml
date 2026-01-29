@@ -31,11 +31,6 @@ arguments:
       with language-specific suffixes (e.g., README_ru.md, README_zh.md).
     example: Russian Chinese
 
-  delete_dir:
-    aliases: [ "--delete-dir" ]
-    type: flag
-    description: "Enable deleting the downloaded repository after processing."
-
   ensure_license:
     aliases: [ "--ensure-license" ]
     type: str
@@ -112,6 +107,11 @@ settings:
     aliases: [ "--no-pull-request" ]
     type: flag
     description: "Do not create a pull request to the target repository."
+
+  delete_dir:
+    aliases: [ "--delete-dir" ]
+    type: flag
+    description: "Enable deleting the downloaded repository after processing."
 
   repository:
     aliases: [ "-r", "--repository" ]

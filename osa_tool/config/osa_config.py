@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.git_agent.git_agent import GitAgent
+from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.scheduler.workflow_manager import WorkflowManager
 
 
@@ -18,6 +18,9 @@ class OSAConfig(BaseModel):
     # For git_agent
     create_fork: bool = True
     create_pull_request: bool = True
+
+    # Clean
+    delete_dir: bool = False
 
     enable_replanning: bool = True
     enable_memory: bool = True
