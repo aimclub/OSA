@@ -6,6 +6,14 @@ from osa_tool.utils.utils import get_repo_tree, parse_folder_name
 
 
 class SourceRank:
+    """
+    Lightweight analyzer for a local repository structure.
+
+    This class inspects the repository file tree and provides
+    boolean signals indicating the presence of commonly expected
+    project artifacts such as README, LICENSE, documentation,
+    examples, tests, and metadata files.
+    """
 
     def __init__(self, config_loader: ConfigLoader):
         self.config = config_loader.config

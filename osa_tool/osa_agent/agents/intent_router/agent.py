@@ -39,6 +39,7 @@ class IntentRouterAgent(BaseAgent):
             OSAState: Updated state with detected intent and routing status.
         """
         rich_section("Intent Router Agent")
+        state.active_agent = self.name
 
         if state.status == AgentStatus.WAITING_FOR_USER:
             clarification = clarify_user_input()
@@ -81,5 +82,4 @@ class IntentRouterAgent(BaseAgent):
 
         logger.info(f"Updated state after intent_router: {state.status}")
 
-        state.active_agent = self.name
         return state

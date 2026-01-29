@@ -3,7 +3,7 @@ from unittest.mock import patch, Mock, mock_open, call
 
 import pytest
 
-from osa_tool.translation.dir_translator import DirectoryTranslator
+from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import DirectoryTranslator
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 

@@ -7,6 +7,7 @@ from osa_tool.operations.registry import OperationRegistry, Operation
 from osa_tool.osa_agent.agents.planner.models import PlannerDecision, ArgumentDetectionResponse
 from osa_tool.osa_agent.base import BaseAgent
 from osa_tool.osa_agent.state import OSAState
+from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.utils import rich_section
 
@@ -63,6 +64,8 @@ class PlannerAgent(BaseAgent):
                 "detect_args_prompt": detect_args_prompt,
             }
         )
+
+        logger.debug(state)
 
         return state
 

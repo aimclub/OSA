@@ -8,17 +8,19 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import pandas as pd
 from pandas import DataFrame
 
-from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
-from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent
+from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent
+from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator
+from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
 from osa_tool.operations.docs.readme_generation.context.pypi_status_checker import PyPiPackageInspector
 from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
 from osa_tool.operations.docs.readme_generation.utils import format_time
-from osa_tool.run import generate_docstrings, load_configuration
+from osa_tool.run import load_configuration
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.utils import logger, rich_section, parse_git_url, delete_repository
+
 
 # === Stage 1: Generate report and README asynchronously ===
 
@@ -178,12 +180,7 @@ def process_docstrings_for_repo(repo_url: str, args, df: DataFrame) -> None:
         config = load_configuration(args)
 
         # Generate docstrings
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            generate_docstrings(config, loop, args.ignore_list)
-        finally:
-            loop.close()
+        DocstringsGenerator(config, args.ignore_list).run()
 
         stage_elapsed = time.time() - stage_start
         stage_elapsed_str = format_time(stage_elapsed)

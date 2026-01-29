@@ -2,7 +2,7 @@ import random
 import string
 from datetime import datetime, timedelta, timezone
 
-from osa_tool.analytics.metadata import RepositoryMetadata
+from osa_tool.core.git.metadata import RepositoryMetadata
 
 
 def random_string(length: int = 10) -> str:

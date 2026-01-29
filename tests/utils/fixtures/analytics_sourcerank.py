@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from osa_tool.analytics.sourcerank import SourceRank
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 
 
 @pytest.fixture

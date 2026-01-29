@@ -1,3 +1,5 @@
+from typing import Any
+
 from osa_tool.core.models.agent import AgentStatus
 from osa_tool.core.models.task import TaskStatus, Task
 from osa_tool.operations.registry import OperationRegistry
@@ -47,7 +49,7 @@ class ExecutorAgent(BaseAgent):
             state.current_step_index = idx
             self._run_task(task, state)
 
-            state.artifacts[task.id] = task.result
+            state.artifacts[task.id] = {"result": task.result, "events": task.events}
 
         return state
 
@@ -70,16 +72,24 @@ class ExecutorAgent(BaseAgent):
 
         try:
             result = self._execute_task(task, state)
-            task.result = result
+            task.result = result.get("result")
+            task.events = result.get("events", [])
             task.status = TaskStatus.COMPLETED
             logger.info(f"Task '{task.id}' completed")
 
         except Exception as e:
             task.status = TaskStatus.FAILED
-            task.result = {"error": str(e)}
+
+            if isinstance(e, dict):
+                task.result = e.get("result")
+                task.events = e.get("events", [])
+            else:
+                task.result = {"error": str(e)}
+                task.events = []
+
             logger.error(f"Task '{task.id}' failed", exc_info=True)
 
-    def _execute_task(self, task: Task, state: OSAState) -> dict:
+    def _execute_task(self, task: Task, state: OSAState) -> dict[str, Any]:
         """
         Execute a task using its operation execution descriptor.
 
@@ -150,9 +160,12 @@ class ExecutorAgent(BaseAgent):
             dict: Normalized result dictionary.
         """
         if result is None:
-            return {}
+            return {"result": None, "events": []}
 
         if isinstance(result, dict):
-            return result
+            return {
+                "result": result.get("result"),
+                "events": result.get("events", []),
+            }
 
-        return {"result": result}
+        return {"result": result, "events": []}

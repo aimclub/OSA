@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from osa_tool.aboutgen.about_generator import AboutGenerator
+from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
 from osa_tool.utils.prompts_builder import PromptBuilder
 
 

@@ -4,10 +4,11 @@ from typing import Literal
 import tomli
 from pydantic import BaseModel
 
-from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
+from osa_tool.core.git.metadata import RepositoryMetadata
+from osa_tool.core.models.event import EventKind, OperationEvent
 from osa_tool.operations.registry import Operation, OperationRegistry
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 
@@ -33,40 +34,97 @@ class LicenseCompiler:
         self.license_type = license_type
         self.license_template_path = os.path.join(osa_project_root(), "docs", "templates", "licenses.toml")
 
-    def run(self) -> None:
+        self.events: list[OperationEvent] = []
+
+    def run(self) -> dict:
         """
         Executes the license compilation process.
+
+        Returns:
+        dict: A dictionary containing:
+            - 'result': Optional dictionary with 'license' (license type) and 'path' (file path)
+            - 'events': List of emitted events during execution
+
+        Raises:
+            KeyError: If the specified license_type is not found in the license templates.
         """
+
+        if self.sourcerank.license_presence():
+            logger.info("LICENSE file already exists.")
+            self.events.append(
+                OperationEvent(
+                    kind=EventKind.EXISTS,
+                    target="LICENSE",
+                )
+            )
+            return self._out(None)
+
+        logger.info("LICENSE was not resolved, compiling started...")
+
+        license_text = self._render_license()
+        license_path = os.path.join(self.sourcerank.repo_path, "LICENSE")
+
+        with open(license_path, "w", encoding="utf-8") as f:
+            f.write(license_text)
+
+        logger.info("LICENSE has been successfully compiled.")
+        self.events.append(
+            OperationEvent(
+                kind=EventKind.WRITTEN,
+                target="LICENSE",
+                data={
+                    "license": self.license_type,
+                    "path": license_path,
+                },
+            )
+        )
+
+        result = {
+            "license": self.license_type,
+            "path": license_path,
+        }
+
+        return self._out(result)
+
+    def _render_license(self) -> str:
+        """
+        Render the license text based on the selected license type and repository metadata.
+
+        Returns:
+            str: The formatted license text.
+
+        Raises:
+            KeyError: If the license type does not exist in the templates.
+        """
+        with open(self.license_template_path, "rb") as f:
+            templates = tomli.load(f)
+
         try:
-            if self.sourcerank.license_presence():
-                logger.info("LICENSE file already exists.")
-                return
+            return templates[self.license_type]["template"].format(
+                year=self.metadata.created_at[:4],
+                author=self.metadata.owner,
+            )
+        except KeyError:
+            logger.error(
+                f"Couldn't resolve {self.license_type} license type, "
+                "try to look up available licenses at documentation."
+            )
+            raise
 
-            logger.info("LICENSE was not resolved, compiling started...")
+    def _out(self, result: dict | None) -> dict:
+        """
+        Format the standardized operation output.
 
-            with open(self.license_template_path, "rb") as f:
-                license_template = tomli.load(f)
+        Args:
+            result (dict | None): Operation result payload.
 
-            try:
-                license_text = license_template[self.license_type]["template"].format(
-                    year=self.metadata.created_at[:4],
-                    author=self.metadata.owner,
-                )
-                license_output_path = os.path.join(self.sourcerank.repo_path, "LICENSE")
-
-                with open(license_output_path, "w", encoding="utf-8") as f:
-                    f.write(license_text)
-
-                logger.info(f"LICENSE has been successfully compiled at {license_output_path}.")
-
-            except KeyError:
-                logger.error(
-                    f"Couldn't resolve {self.license_type} license type, "
-                    "try to look up available licenses at documentation."
-                )
-
-        except Exception as e:
-            logger.error("Error while compiling LICENSE: %s", e, exc_info=True)
+        Returns:
+            dict: Standardized operation output.
+        """
+        return {
+            "result": result,
+            "events": self.events,
+        }
 
 
 class EnsureLicenseArgs(BaseModel):
