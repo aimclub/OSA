@@ -43,6 +43,8 @@ class PlannerAgent(BaseAgent):
             OSAState: Updated state containing the execution plan.
         """
         rich_section("Planner Agent")
+        state.active_agent = self.name
+        state.status = AgentStatus.GENERATING
 
         available_ops = OperationRegistry.applicable(state)
 
@@ -53,8 +55,6 @@ class PlannerAgent(BaseAgent):
         detect_args_prompt = self._detect_additional_arguments(state)
 
         state.current_step_index = 0
-        state.status = AgentStatus.GENERATING
-        state.active_agent = self.name
 
         state.session_memory.append(
             {

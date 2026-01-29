@@ -1,12 +1,15 @@
 from typing import Any
 
+from rich import box
+from rich.table import Table
+
 from osa_tool.core.models.agent import AgentStatus
 from osa_tool.core.models.task import TaskStatus, Task
 from osa_tool.operations.registry import OperationRegistry
 from osa_tool.osa_agent.base import BaseAgent
 from osa_tool.osa_agent.state import OSAState
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import rich_section
+from osa_tool.utils.utils import rich_section, console
 
 
 class ExecutorAgent(BaseAgent):
@@ -38,6 +41,8 @@ class ExecutorAgent(BaseAgent):
             OSAState: Updated state with executed tasks and collected artifacts.
         """
         rich_section("Executor Agent")
+
+        self._render_plan_cli(state)
 
         state.active_agent = self.name
         state.status = AgentStatus.GENERATING
@@ -169,3 +174,34 @@ class ExecutorAgent(BaseAgent):
             }
 
         return {"result": result, "events": []}
+
+    @staticmethod
+    def _render_plan_cli(state: OSAState) -> None:
+        """
+        Render execution plan as a Rich table for CLI users.
+        """
+
+        if not state.plan:
+            console.print("[bold red]No tasks in the execution plan.[/]")
+            return
+
+        table = Table(
+            title="Execution Plan",
+            box=box.ROUNDED,
+            show_lines=True,
+            title_style="bold cyan",
+            header_style="bold white",
+        )
+
+        table.add_column("#", justify="right", style="bold yellow")
+        table.add_column("Task ID", style="bold")
+        table.add_column("Special Arguments", style="dim")
+
+        for i, task in enumerate(state.plan, start=1):
+            table.add_row(
+                str(i),
+                f"[cyan]{task.id}[/]",
+                str(task.args),
+            )
+
+        console.print(table)
