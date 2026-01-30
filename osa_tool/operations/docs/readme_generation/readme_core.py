@@ -10,7 +10,7 @@ from osa_tool.operations.docs.readme_generation.generator.builder_article import
 from osa_tool.operations.docs.readme_generation.models.llm_service import LLMClient
 from osa_tool.operations.docs.readme_generation.utils import remove_extra_blank_lines, save_sections
 from osa_tool.operations.registry import Operation, OperationRegistry
-from osa_tool.scheduler.todo_list import ToDoList
+from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
@@ -21,22 +21,21 @@ class ReadmeAgent:
         self,
         config_loader: ConfigLoader,
         metadata: RepositoryMetadata,
-        attachment: str | None = None,
-        refine_readme: bool = False,
-        todo_list: ToDoList | None = None,
+        plan: Plan,
     ):
         self.config_loader = config_loader
-        self.article = attachment
-        self.refine_readme = refine_readme
+        self.article = plan.get("attachment")
+        self.refine_readme = plan.get("refine_readme")
         self.metadata = metadata
         self.repo_url = self.config_loader.config.git.repository
         self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.file_to_save = os.path.join(self.repo_path, "README.md")
         self.llm_client = LLMClient(self.config_loader, self.metadata)
-        self.todo_list = todo_list
+        self.plan = plan
 
     def generate_readme(self):
         logger.info("Started generating README.md. Processing the repository: %s", self.repo_url)
+        self.plan.mark_started("readme")
         try:
             if self.article is None:
                 builder = self.default_readme()
@@ -46,9 +45,12 @@ class ReadmeAgent:
             readme_content = builder.build()
 
             if self.refine_readme:
-                readme_content = self.llm_client.refine_readme(readme_content)
-                if self.todo_list is not None:
-                    self.todo_list.mark_did("refine_readme")
+                self.plan.mark_started("refine_readme")
+                try:
+                    readme_content = self.llm_client.refine_readme(readme_content)
+                    self.plan.mark_done("refine_readme")
+                except:
+                    self.plan.mark_failed("refine_readme")
 
             if self.article is None:
                 readme_content = self.llm_client.clean(readme_content)
@@ -56,8 +58,10 @@ class ReadmeAgent:
             save_sections(readme_content, self.file_to_save)
             remove_extra_blank_lines(self.file_to_save)
             logger.info(f"README.md successfully generated in folder {self.repo_path}")
+            self.plan.mark_done("readme")
         except Exception as e:
             logger.error("Error while generating: %s", repr(e), exc_info=True)
+            self.plan.mark_failed("readme")
             raise ValueError("Failed to generate README.md.")
 
     def default_readme(self) -> MarkdownBuilder:

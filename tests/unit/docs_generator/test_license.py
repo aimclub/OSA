@@ -1,4 +1,5 @@
 from osa_tool.operations.docs.community_docs_generation.license_generation import LicenseCompiler
+from osa_tool.scheduler.plan import Plan
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
@@ -11,11 +12,12 @@ def test_license_already_exists(
     # Arrange
     repo_tree_data = get_mock_repo_tree("FULL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+    plan = Plan({"ensure_license": "mit"})
 
     compiler = LicenseCompiler(
         config_loader=mock_config_loader,
         metadata=mock_repository_metadata,
-        license_type="mit",
+        plan=plan,
     )
     compiler.sourcerank = sourcerank
 
@@ -39,11 +41,12 @@ def test_license_generated_successfully(
     repo_tree_data = get_mock_repo_tree("MINIMAL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
     sourcerank.repo_path = tmp_path
+    plan = Plan({"ensure_license": "mit"})
 
     compiler = LicenseCompiler(
         config_loader=mock_config_loader,
         metadata=mock_repository_metadata,
-        license_type="mit",
+        plan=plan,
     )
     compiler.sourcerank = sourcerank
 
@@ -70,13 +73,12 @@ def test_unknown_license_type(
     repo_tree_data = get_mock_repo_tree("MINIMAL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
     sourcerank.repo_path = tmp_path
-
-    unknown_license = "unknown_license"
+    plan = Plan({"ensure_license": "unknown_license"})
 
     compiler = LicenseCompiler(
         config_loader=mock_config_loader,
         metadata=mock_repository_metadata,
-        license_type=unknown_license,
+        plan=plan,
     )
     compiler.sourcerank = sourcerank
 
@@ -86,4 +88,4 @@ def test_unknown_license_type(
     compiler.run()
 
     # Assert
-    assert f"Couldn't resolve {unknown_license} license type" in caplog.text
+    assert f"Couldn't resolve {plan.get('ensure_license')} license type" in caplog.text

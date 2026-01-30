@@ -10,6 +10,7 @@ from osa_tool.config.settings import ConfigLoader
 from osa_tool.models.models import ModelHandlerFactory, ModelHandler
 from osa_tool.operations.docs.readme_generation.utils import read_file, save_sections, remove_extra_blank_lines
 from osa_tool.operations.registry import Operation, OperationRegistry
+from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor
@@ -17,16 +18,17 @@ from osa_tool.utils.utils import parse_folder_name
 
 
 class ReadmeTranslator:
-    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata, languages: list[str]):
+    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata, plan: Plan):
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.prompts = self.config.prompts
         self.rate_limit = self.config.llm.rate_limit
-        self.languages = languages
+        self.languages = plan.get("translate_readme")
         self.metadata = metadata
         self.repo_url = self.config.git.repository
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.plan = plan
 
     async def translate_readme_request_async(
         self, readme_content: str, target_language: str, semaphore: asyncio.Semaphore
@@ -54,9 +56,11 @@ class ReadmeTranslator:
         """
         Asynchronously translate the main README into all target languages.
         """
+        self.plan.mark_started("translate_readme")
         readme_content = self.get_main_readme_file()
         if not readme_content:
             logger.warning("No README content found, skipping translation")
+            self.plan.mark_failed("translate_readme")
             return
 
         semaphore = asyncio.Semaphore(self.rate_limit)
@@ -64,11 +68,18 @@ class ReadmeTranslator:
         results = {}
 
         async def translate_and_save(lang: str):
-            translation = await self.translate_readme_request_async(readme_content, lang, semaphore)
-            self.save_translated_readme(translation)
-            results[lang] = translation
+            try:
+                translation = await self.translate_readme_request_async(readme_content, lang, semaphore)
+                self.save_translated_readme(translation)
+                results[lang] = translation
+            except ConnectionError:
+                logger.warning(f"Connection error for language '{lang}'")
 
         await asyncio.gather(*(translate_and_save(lang) for lang in self.languages))
+
+        if not results:
+            self.plan.mark_failed("translate_readme")
+            return
 
         if self.languages:
             first_lang = self.languages[0]
@@ -76,6 +87,7 @@ class ReadmeTranslator:
                 self.set_default_translated_readme(results[first_lang])
             else:
                 logger.warning(f"No translation found for first language '{first_lang}'")
+        self.plan.mark_done("translate_readme")
 
     def save_translated_readme(self, translation: dict) -> None:
         """
