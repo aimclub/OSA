@@ -58,10 +58,8 @@ translate_readme — Translate README file to English
 ensure_license — Ensure a LICENSE file is present
 community_docs — Add or update community documentation files
 docstring — Add or update docstrings in source code
-ignore_list — Add or update ignore files such as .gitignore
 report — Generate refactoring report
 readme — Create a README file
-refine_readme — Improve and extend existing README
 requirements — Add or update requirements file
 organize — Reorganize project structure
 about — Add project description or about section
@@ -121,10 +119,8 @@ translate_readme — Translate README file to English
 ensure_license — Ensure a LICENSE file is present
 community_docs — Add or update community documentation files
 docstring — Add or update docstrings in source code
-ignore_list — Add or update ignore files such as .gitignore
 report — Generate refactoring report
 readme — Create a README file
-refine_readme — Improve and extend existing README
 requirements — Add or update requirements file
 organize — Reorganize project structure
 about — Add project description or about section

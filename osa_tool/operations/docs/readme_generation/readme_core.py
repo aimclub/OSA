@@ -21,7 +21,7 @@ class ReadmeAgent:
         self,
         config_loader: ConfigLoader,
         metadata: RepositoryMetadata,
-        plan: Plan = None,
+        plan: Plan,
     ):
         self.config_loader = config_loader
         self.article = plan.get("attachment")
