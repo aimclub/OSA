@@ -47,37 +47,39 @@ class ThesisValidator(DocValidator):
         doc = converter.convert(path_to_doc).document
         chunker = HybridChunker()
         chunks = list(chunker.chunk(dl_doc=doc))
+        print(f'Found {len(chunks)} chunks in document')
+
         headings = set()
         for chunk in chunks:
-            logger.debug(f"Section Headings: {chunk.meta.headings}")
-            headings.update(chunk.meta.headings)
+            if chunk.meta.headings:
+                headings.update(chunk.meta.headings)
 
-        # TODO: move to constants
+        if not headings:
+            logger.warning("No headings found in document")
+            return ""
+
         model = SentenceTransformer("all-mpnet-base-v2")
         target_labels = [
-            "Методы",
-            "Методология",
-            "Реализация",
-            "Подход",
-            "Эксперименты",
-            "Оценка",
-            "Результаты",
-            "Анализ",
+            "Методы", "Методология", "Реализация", "Подход",
+            "Эксперименты", "Оценка", "Результаты", "Анализ"
         ]
-        threshold = 0.6
-
+        threshold = 0.5
+        
         titles = list(headings)
         title_embs = model.encode(titles, convert_to_tensor=True, normalize_embeddings=True)
         label_embs = model.encode(target_labels, convert_to_tensor=True, normalize_embeddings=True)
         scores = util.cos_sim(title_embs, label_embs)
         max_scores, max_idx = scores.max(dim=1)
 
-        filtered_sections = [titles[i] for i in range(len(titles)) if max_scores[i] >= threshold]
+        filtered_sections = {titles[i] for i in range(len(titles)) if max_scores[i] >= threshold}
+        logger.info(f"Matched {len(filtered_sections)} section headings with threshold {threshold}")
+        
         result = ""
         for chunk in chunks:
-            if any(heading in filtered_sections for heading in chunk.meta.headings):
-                result += chunk.text
-        return result
+            if any(heading in filtered_sections for heading in chunk.meta.headings or []):
+                result += chunk.text + "\n"
+        
+        return result if result else ""
 
     async def process_doc(self, path_to_doc: str) -> str:
         """
@@ -95,6 +97,24 @@ class ThesisValidator(DocValidator):
         logger.info(f"Reduced to {len(filtered_content)}.")
 
         return filtered_content
+    
+    async def extract_quotes(self, doc_info: str) -> str:
+        """
+        Process and extract content from a documentation file asynchronously.
+
+        Returns:
+            list: List of extracted quotes.
+        """
+        response = await self.model_handler.async_send_and_parse(
+            PromptBuilder.render(
+                self.prompts.get("validation.extract_details_from_thesis"),
+                doc_info=doc_info,
+            ),
+            parser=lambda raw: JsonProcessor.parse(raw),
+        )
+        logger.debug(response)
+        return response['quotes']
+
 
     async def validate_doc_against_repo(self, doc_info: str, code_files_info: str) -> str:
         """
@@ -108,13 +128,18 @@ class ThesisValidator(DocValidator):
             str: Validation result from the language model.
         """
         logger.info("Validating doc against repository ...")
+        quotes = await self.extract_quotes(doc_info)
+        logger.info(f"Extracted {len(quotes)} quotes from the document for validation.")
+
         response = await self.model_handler.async_send_and_parse(
             PromptBuilder.render(
                 self.prompts.get("validation.validate_thesis_against_repo"),
-                doc_info=doc_info,
+                # doc_info=doc_info,
+                quotes=quotes,
                 code_files_info=code_files_info,
             ),
             parser=lambda raw: JsonProcessor.parse(raw),
         )
         logger.debug(response)
+        response['quotes'] = quotes
         return response

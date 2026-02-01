@@ -11,6 +11,16 @@ from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
+from reportlab.pdfbase import pdfmetrics
+
+from reportlab.pdfbase.ttfonts import TTFont
+
+
+styles = getSampleStyleSheet() 
+styles['Normal'].fontName='DejaVuSerif'
+styles['Heading1'].fontName='DejaVuSerif'
+
+pdfmetrics.registerFont(TTFont('DejaVuSerif','DejaVuSerif.ttf', 'UTF-8'))
 
 
 class ReportGenerator:
@@ -121,7 +131,7 @@ class ReportGenerator:
         Returns:
             list: A list of Paragraph elements representing the header content.
         """
-        styles = getSampleStyleSheet()
+        # styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
             name="LeftAligned",
             parent=styles["Title"],
@@ -153,7 +163,7 @@ class ReportGenerator:
         Returns:
             list[Paragraph]: Paragraph elements for the section.
         """
-        styles = getSampleStyleSheet()
+        # styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(
             name="LeftAlignedNormal",
             parent=styles["Normal"],
@@ -170,8 +180,11 @@ class ReportGenerator:
             percentages_text = Paragraph(f"<b>Final score: {score}</b>", normal_style)
             result = [correspondence_text, percentages_text]
 
-            for crit in content["breakdown"]:
-                result.append(Paragraph(f"<p>{crit}</p>", normal_style))
+            for quote, crit in zip(content["quotes"], content["breakdown"]):
+                result.append(Paragraph(f"<p>Quote:     {quote}</p>", normal_style))
+                result.append(Paragraph(f"<b>Penalty:   {crit[1]}</b>", normal_style))
+                result.append(Paragraph(f"<p>Explanation: {crit[0]}</p>", normal_style))
+
                 result.append(Spacer(0, 20))
         else:
             score = content["percentage"]
@@ -193,7 +206,7 @@ class ReportGenerator:
         Returns:
             list[Flowable]: Flowable elements for the section.
         """
-        styles = getSampleStyleSheet()
+        # styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(
             name="LeftAlignedNormal",
             parent=styles["Normal"],
