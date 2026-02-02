@@ -20,6 +20,7 @@ context_window = 16385
 top_p = 0.95
 max_retries = 3
 allowed_providers = ["google-vertex", "azure"]
+system_prompt = "You are a helpful assistant for analyzing open-source repositories."
 
 # General CLI-related defaults
 [general]

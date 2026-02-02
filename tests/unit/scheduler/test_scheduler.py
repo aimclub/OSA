@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock, patch
 
 from osa_tool.scheduler.scheduler import ModeScheduler
-from osa_tool.utils.prompts_builder import PromptLoader
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
@@ -31,7 +30,6 @@ def test_mode_scheduler_initialization_basic(
 
     with (
         patch("osa_tool.scheduler.scheduler.ModelHandlerFactory.build"),
-        patch("osa_tool.scheduler.scheduler.PromptLoader"),
         patch("osa_tool.scheduler.scheduler.PlanEditor") as mock_plan_editor,
     ):
         mock_plan_editor_instance = MagicMock()
@@ -42,7 +40,6 @@ def test_mode_scheduler_initialization_basic(
         scheduler = ModeScheduler(
             mock_config_loader,
             sourcerank_instance,
-            PromptLoader(),
             mock_args_basic,
             mock_workflow_manager,
             mock_repository_metadata,
@@ -65,7 +62,6 @@ def test_mode_scheduler_initialization_advanced(
 
     with (
         patch("osa_tool.scheduler.scheduler.ModelHandlerFactory.build"),
-        patch("osa_tool.scheduler.scheduler.PromptLoader"),
         patch("osa_tool.scheduler.scheduler.PlanEditor") as mock_plan_editor,
     ):
         mock_plan_editor_instance = MagicMock()
@@ -76,7 +72,6 @@ def test_mode_scheduler_initialization_advanced(
         scheduler = ModeScheduler(
             mock_config_loader,
             sourcerank_instance,
-            PromptLoader(),
             mock_args_advanced,
             mock_workflow_manager,
             mock_repository_metadata,
@@ -99,7 +94,6 @@ def test_mode_scheduler_initialization_auto(
 
     with (
         patch("osa_tool.scheduler.scheduler.ModelHandlerFactory.build") as mock_model_factory,
-        patch("osa_tool.scheduler.scheduler.PromptLoader") as mock_prompt_loader,
         patch("osa_tool.scheduler.scheduler.extract_readme_content") as mock_extract_readme,
         patch("osa_tool.scheduler.scheduler.PlanEditor") as mock_plan_editor,
     ):
@@ -109,7 +103,6 @@ def test_mode_scheduler_initialization_auto(
 
         mock_prompt_loader_instance = MagicMock()
         mock_prompt_loader_instance.prompts = {"main_prompt": "Test prompt"}
-        mock_prompt_loader.return_value = mock_prompt_loader_instance
 
         mock_extract_readme.return_value = "Test README"
 
@@ -121,7 +114,6 @@ def test_mode_scheduler_initialization_auto(
         scheduler = ModeScheduler(
             mock_config_loader,
             sourcerank_instance,
-            PromptLoader(),
             mock_args_auto,
             mock_workflow_manager,
             mock_repository_metadata,

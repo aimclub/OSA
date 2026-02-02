@@ -1,4 +1,3 @@
-import aiofiles
 import asyncio
 import os
 import re
@@ -8,6 +7,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import List, Dict, Callable
 
+import aiofiles
 import black
 import black.report
 import dotenv

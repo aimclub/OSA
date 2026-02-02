@@ -9,58 +9,55 @@ import pandas as pd
 from pandas import DataFrame
 
 from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.analytics.report_maker import ReportGenerator
 from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent
-from osa_tool.readmegen.context.pypi_status_checker import PyPiPackageInspector
-from osa_tool.readmegen.readme_core import ReadmeAgent
-from osa_tool.readmegen.utils import format_time
+from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator
+from osa_tool.operations.docs.readme_generation.context.pypi_status_checker import PyPiPackageInspector
+from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
+from osa_tool.operations.docs.readme_generation.utils import format_time
 from osa_tool.run import generate_docstrings, load_configuration
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
-from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.utils import logger, rich_section, parse_git_url, delete_repository
 
 # === Stage 1: Generate report and README asynchronously ===
 
 
-async def generate_report(
-    config: ConfigLoader, sourcerank: SourceRank, prompts: PromptLoader, metadata: RepositoryMetadata, args
-) -> None:
+async def generate_report(config: ConfigLoader, metadata: RepositoryMetadata, args) -> None:
     """Async wrapper for generating PDF report."""
     reports_dir = os.path.join(os.path.dirname(args.table_path), "reports")
     os.makedirs(reports_dir, exist_ok=True)
 
-    report_gen = ReportGenerator(config, sourcerank, prompts, metadata)
+    report_gen = ReportGenerator(config, metadata)
     report_gen.output_path = os.path.join(reports_dir, f"{metadata.name}_report.pdf")
 
     await asyncio.to_thread(report_gen.build_pdf)
 
 
-async def generate_readme(config: ConfigLoader, prompts: PromptLoader, metadata: RepositoryMetadata, args) -> None:
+async def generate_readme(config: ConfigLoader, metadata: RepositoryMetadata, args) -> None:
     """Async wrapper for generating README."""
     readmes_dir = os.path.join(os.path.dirname(args.table_path), "readmes")
     os.makedirs(readmes_dir, exist_ok=True)
 
-    readme_agent = ReadmeAgent(config, prompts, None, args.refine_readme, metadata)
+    readme_agent = ReadmeAgent(config, metadata, None, args.refine_readme)
     readme_agent.file_to_save = os.path.join(readmes_dir, f"{metadata.name}_README.md")
 
     await asyncio.to_thread(readme_agent.generate_readme)
 
 
-async def run_async_tasks(config: ConfigLoader, sourcerank: SourceRank, prompts: PromptLoader, git_agent, args):
+async def run_async_tasks(config: ConfigLoader, git_agent, args):
     """Run report and readme generation concurrently inside a process."""
     tasks = []
 
     if args.report:
-        tasks.append(asyncio.create_task(generate_report(config, sourcerank, prompts, git_agent.metadata, args)))
+        tasks.append(asyncio.create_task(generate_report(config, git_agent.metadata, args)))
     if args.readme:
-        tasks.append(asyncio.create_task(generate_readme(config, prompts, git_agent.metadata, args)))
+        tasks.append(asyncio.create_task(generate_readme(config, git_agent.metadata, args)))
     if tasks:
         await asyncio.gather(*tasks)
 
 
-def process_repository_stage1(repo_url: str, prompts: PromptLoader, args) -> dict:
+def process_repository_stage1(repo_url: str, args) -> dict:
     """
     Stage 1: Clone repository, generate report and README asynchronously.
     This stage runs in multiple processes concurrently.
@@ -114,7 +111,7 @@ def process_repository_stage1(repo_url: str, prompts: PromptLoader, args) -> dic
         sourcerank = SourceRank(config)
 
         # Run async stage (report + readme)
-        asyncio.run(run_async_tasks(config, sourcerank, prompts, git_agent, args))
+        asyncio.run(run_async_tasks(config, git_agent, args))
 
         # Collect PyPi info
         info = PyPiPackageInspector(sourcerank.tree, sourcerank.repo_path).get_info()
@@ -285,18 +282,13 @@ def main():
     df = load_table(args.table_path)
     repositories = df["repository"].dropna().tolist()
 
-    # Load prompts
-    prompts = PromptLoader()
-
     # Stage 1: Parallel run for unprocessed repos
     unprocessed_stage1 = [r for r in repositories if not df.loc[df["repository"] == r, "processed_stage1"].any()]
 
     if unprocessed_stage1:
         rich_section(f"Starting Stage 1 for {len(unprocessed_stage1)} repositories (parallel mode)")
         with ProcessPoolExecutor(max_workers=os.cpu_count() // 2 or 2) as executor:
-            futures = {
-                executor.submit(process_repository_stage1, repo, prompts, args): repo for repo in unprocessed_stage1
-            }
+            futures = {executor.submit(process_repository_stage1, repo, args): repo for repo in unprocessed_stage1}
             for future in as_completed(futures):
                 repo = futures[future]
                 try:

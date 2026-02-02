@@ -1,19 +1,18 @@
 from unittest.mock import patch
 
-from osa_tool.readmegen.readme_core import ReadmeAgent
+from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
 
 
-@patch("osa_tool.readmegen.readme_core.remove_extra_blank_lines")
-@patch("osa_tool.readmegen.readme_core.save_sections")
-@patch("osa_tool.readmegen.readme_core.MarkdownBuilder")
-@patch("osa_tool.readmegen.readme_core.LLMClient")
+@patch("osa_tool.operations.docs.readme_generation.readme_core.remove_extra_blank_lines")
+@patch("osa_tool.operations.docs.readme_generation.readme_core.save_sections")
+@patch("osa_tool.operations.docs.readme_generation.readme_core.MarkdownBuilder")
+@patch("osa_tool.operations.docs.readme_generation.readme_core.LLMClient")
 def test_readme_agent_without_article(
     mock_llm,
     mock_builder,
     mock_save,
     mock_clean,
     mock_config_loader,
-    mock_prompts,
     mock_repository_metadata,
 ):
     """Test README generation without article (default mode)."""
@@ -30,10 +29,9 @@ def test_readme_agent_without_article(
 
     agent = ReadmeAgent(
         config_loader=mock_config_loader,
-        prompts=mock_prompts,
-        article=None,
-        refine_readme=True,
         metadata=mock_repository_metadata,
+        attachment=None,
+        refine_readme=True,
     )
 
     # Act
@@ -43,7 +41,6 @@ def test_readme_agent_without_article(
     mock_llm.return_value.get_responses.assert_called_once()
     mock_builder.assert_called_once_with(
         mock_config_loader,
-        mock_prompts,
         mock_repository_metadata,
         "overview_text",
         "core_features_text",
@@ -56,17 +53,16 @@ def test_readme_agent_without_article(
     mock_clean.assert_called_once()
 
 
-@patch("osa_tool.readmegen.readme_core.remove_extra_blank_lines")
-@patch("osa_tool.readmegen.readme_core.save_sections")
-@patch("osa_tool.readmegen.readme_core.MarkdownBuilderArticle")
-@patch("osa_tool.readmegen.readme_core.LLMClient")
+@patch("osa_tool.operations.docs.readme_generation.readme_core.remove_extra_blank_lines")
+@patch("osa_tool.operations.docs.readme_generation.readme_core.save_sections")
+@patch("osa_tool.operations.docs.readme_generation.readme_core.MarkdownBuilderArticle")
+@patch("osa_tool.operations.docs.readme_generation.readme_core.LLMClient")
 def test_readme_agent_with_article(
     mock_llm,
     mock_builder_article,
     mock_save,
     mock_clean,
     mock_config_loader,
-    mock_prompts,
     mock_repository_metadata,
 ):
     """Test README generation with article (scientific mode)."""
@@ -83,10 +79,9 @@ def test_readme_agent_with_article(
 
     agent = ReadmeAgent(
         config_loader=mock_config_loader,
-        prompts=mock_prompts,
-        article=article_path,
-        refine_readme=False,
         metadata=mock_repository_metadata,
+        attachment=article_path,
+        refine_readme=False,
     )
 
     # Act
@@ -96,7 +91,6 @@ def test_readme_agent_with_article(
     mock_llm.return_value.get_responses_article.assert_called_once_with(article_path)
     mock_builder_article.assert_called_once_with(
         mock_config_loader,
-        mock_prompts,
         mock_repository_metadata,
         "overview_from_article",
         "content_from_article",
