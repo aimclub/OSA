@@ -3,7 +3,6 @@ from pathlib import Path
 
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.core.models.event import OperationEvent, EventKind
-from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
@@ -73,19 +72,3 @@ class RequirementsGenerator:
                 )
             )
             raise
-
-
-class RequirementsGeneratorOperation(Operation):
-    name = "generate_requirements"
-    description = "Generate requirements.txt using pipreqs"
-
-    supported_intents = ["new_task"]
-    supported_scopes = ["full_repo", "codebase"]
-    priority = 67
-
-    executor = RequirementsGenerator
-    executor_method = "generate"
-    executor_dependencies = ["config_loader"]
-
-
-OperationRegistry.register(RequirementsGeneratorOperation())

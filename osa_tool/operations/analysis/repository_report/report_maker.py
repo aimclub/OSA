@@ -21,7 +21,6 @@ from reportlab.platypus import (
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.analysis.repository_report.report_generator import TextGenerator
-from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
@@ -415,19 +414,3 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
                 )
             )
         return story
-
-
-class GenerateReportOperation(Operation):
-    name = "generate_report"
-    description = "Generate repository quality report as PDF"
-
-    supported_intents = ["new_task"]
-    supported_scopes = ["full_repo", "analysis"]
-    priority = 5
-
-    executor = ReportGenerator
-    executor_method = "build_pdf"
-    executor_dependencies = ["config_loader", "metadata"]
-
-
-OperationRegistry.register(GenerateReportOperation())

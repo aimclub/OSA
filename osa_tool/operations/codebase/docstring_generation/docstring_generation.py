@@ -1,13 +1,9 @@
 import asyncio
 import multiprocessing
-from typing import List
-
-from pydantic import BaseModel
 
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.operations.codebase.docstring_generation.docgen import DocGen
 from osa_tool.operations.codebase.docstring_generation.osa_treesitter import OSA_TreeSitter
-from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
@@ -138,34 +134,3 @@ class DocstringsGenerator:
                 repr(e),
                 exc_info=True,
             )
-
-
-class GenerateDocstringsArgs(BaseModel):
-    ignore_list: List[str] = []
-
-
-class GenerateDocstringsOperation(Operation):
-    name = "generate_docstrings"
-    description = "Generate and update docstrings across the codebase"
-
-    supported_intents = ["new_task", "feedback"]
-    supported_scopes = ["full_repo", "codebase"]
-    priority = 50
-
-    args_schema = GenerateDocstringsArgs
-    args_policy = "auto"
-    prompt_for_args = (
-        "Optional parameter ignore_list: a list of directories or files "
-        "to ignore during docstring generation. "
-        "Paths must be relative to the project root. "
-        "If omitted, only '__init__.py' is ignored.\n\n"
-        "Example:\n"
-        "{'ignore_list': ['tests', 'moduleA/featureB', '__init__.py']}"
-    )
-
-    executor = DocstringsGenerator
-    executor_method = "run"
-    executor_dependencies = ["config_loader"]
-
-
-OperationRegistry.register(GenerateDocstringsOperation())

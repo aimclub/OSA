@@ -1,7 +1,4 @@
 import os
-from typing import Optional
-
-from pydantic import BaseModel
 
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.core.git.metadata import RepositoryMetadata
@@ -10,7 +7,6 @@ from osa_tool.operations.docs.readme_generation.generator.builder import Markdow
 from osa_tool.operations.docs.readme_generation.generator.builder_article import MarkdownBuilderArticle
 from osa_tool.operations.docs.readme_generation.models.llm_service import LLMClient
 from osa_tool.operations.docs.readme_generation.utils import remove_extra_blank_lines, save_sections
-from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.scheduler.todo_list import ToDoList
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
@@ -107,28 +103,3 @@ class ReadmeAgent:
         responses = self.llm_client.get_responses_article(self.article)
         overview, content, algorithms, getting_started = responses
         return MarkdownBuilderArticle(self.config_loader, self.metadata, overview, content, algorithms, getting_started)
-
-
-class GenerateReadmeArgs(BaseModel):
-    article: Optional[str] = None
-
-
-class GenerateReadmeOperation(Operation):
-    name = "generate_readme"
-    description = "Generate or improve README.md for the repository"
-
-    supported_intents = ["new_task", "feedback"]
-    supported_scopes = ["full_repo", "docs"]
-    priority = 70
-
-    args_schema = GenerateReadmeArgs
-    args_policy = "auto"
-    prompt_for_args = "Provide the content for README.md if you want to override default generation."
-
-    executor = ReadmeAgent
-    executor_method = "generate_readme"
-    executor_dependencies = ["config_loader", "metadata"]
-    state_dependencies = ["attachment"]
-
-
-OperationRegistry.register(GenerateReadmeOperation())

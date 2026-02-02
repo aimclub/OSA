@@ -1,16 +1,12 @@
 import asyncio
 import os
 import shutil
-from typing import List
-
-from pydantic import BaseModel
 
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.core.llm.llm import ModelHandlerFactory, ModelHandler
 from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.operations.docs.readme_generation.utils import read_file, save_sections, remove_extra_blank_lines
-from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor
@@ -197,29 +193,3 @@ class ReadmeTranslator:
         """Return the content of the main README.md in the repository root, or empty string if not found."""
         readme_path = os.path.join(self.base_path, "README.md")
         return read_file(readme_path)
-
-
-class TranslateReadmeArgs(BaseModel):
-    languages: List[str]
-
-
-class TranslateReadmeOperation(Operation):
-    name = "translate_readme"
-    description = "Translate README.md into another language"
-
-    supported_intents = ["new_task", "feedback"]
-    supported_scopes = ["full_repo", "docs"]
-    priority = 75
-
-    args_schema = TranslateReadmeArgs
-    args_policy = "ask_if_missing"
-    prompt_for_args = (
-        "For operation 'translate_readme' provide a list of languages " "(e.g., {'languages': ['Russian', 'Swedish']})."
-    )
-
-    executor = ReadmeTranslator
-    executor_method = "translate_readme"
-    executor_dependencies = ["config_loader", "metadata"]
-
-
-OperationRegistry.register(TranslateReadmeOperation())

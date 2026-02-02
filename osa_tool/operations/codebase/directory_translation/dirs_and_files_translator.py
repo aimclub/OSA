@@ -4,7 +4,6 @@ import re
 from osa_tool.config.settings import ConfigLoader
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.core.models.event import OperationEvent, EventKind
-from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
@@ -328,19 +327,3 @@ class RepositoryStructureTranslator:
         python_files = [file for file in self._get_all_files() if file.endswith(".py")]
         for file in python_files:
             self.update_code(file, rename_map)
-
-
-class TranslateRepositoryStructureOperation(Operation):
-    name = "translate_dirs"
-    description = "Translate directories and files into English"
-
-    supported_intents = ["new_task"]
-    supported_scopes = ["full_repo", "codebase"]
-    priority = 40
-
-    executor = RepositoryStructureTranslator
-    executor_method = "rename_directories_and_files"
-    executor_dependencies = ["config_loader"]
-
-
-OperationRegistry.register(TranslateRepositoryStructureOperation())

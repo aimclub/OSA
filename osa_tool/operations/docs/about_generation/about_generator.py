@@ -6,7 +6,6 @@ from osa_tool.config.settings import ConfigLoader
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.core.models.event import OperationEvent, EventKind
-from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.utils import extract_readme_content, parse_folder_name
@@ -272,19 +271,3 @@ class AboutGenerator:
             return []
 
         return [url.strip() for url in response.split(",")]
-
-
-class GenerateAboutOperation(Operation):
-    name = "generate_about"
-    description = "Generate About section with tags."
-
-    supported_intents = ["new_task"]
-    supported_scopes = ["full_repo", "docs"]
-    priority = 80
-
-    executor = AboutGenerator
-    executor_method = "generate_about_content"
-    executor_dependencies = ["config_loader", "git_agent"]
-
-
-OperationRegistry.register(GenerateAboutOperation())
