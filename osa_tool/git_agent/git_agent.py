@@ -104,6 +104,109 @@ class GitAgent(abc.ABC):
         """
         pass
 
+    def _handle_git_error(self, error: GitCommandError, action: str, raise_exception: bool = True) -> None:
+        """
+        Parses Git command errors and logs specific messages for 401, 403, 404, 429.
+
+        Args:
+            error (GitCommandError): The exception object caught from a failed GitPython operation.
+            action (str): A human-readable description of the operation being performed for logging.
+            raise_exception (bool): A flag which indicates whether to raise an exception or not.
+
+        Raises:
+            Exception: Re-raises a generic Exception chained with the original error.
+        """
+        stderr = (error.stderr or "").lower()
+
+        # 401/403: Auth/Permission error
+        if (
+            "authentication failed" in stderr
+            or "could not read username" in stderr
+            or "access denied" in stderr
+            or "permission denied" in stderr
+            or "unable to access" in stderr
+            or "403" in stderr
+            or "401" in stderr
+        ):
+            logger.error(f"Auth/Permission Error during {action}.")
+            logger.error(f"Details: {stderr}")
+            logger.error("Possible reasons:")
+            logger.error("1. Invalid GIT_TOKEN (expired or wrong).")
+            logger.error("2. Token missing scopes (needs 'repo', 'workflow', 'read:org').")
+            logger.error("3. You don't have write access to this repository.")
+
+        # 404: Not found
+        elif "not found" in stderr or "404" in stderr:
+            logger.error(f"Not Found Error during {action}.")
+            logger.error(f"Details: {stderr}")
+            logger.error("Possible reasons:")
+            logger.error("1. Repository URL is incorrect.")
+            logger.error("2. Repository is Private, and your token lacks access.")
+
+        # 429: Rate Limit
+        elif "too many requests" in stderr or "abuse detection mechanism" in stderr or "429" in stderr:
+            logger.error(f"Rate Limit Exceeded during {action}.")
+            logger.error("GitHub has temporarily blocked requests from your IP/Token.")
+            logger.error("Please wait a few minutes before retrying.")
+
+        # Ошибка ветки
+        elif "remote branch" in stderr:
+            logger.error(f"Branch Error: The target branch does not exist in remote.")
+
+        else:
+            logger.error(f"Unexpected Git error during {action}: {stderr}")
+
+        if raise_exception:
+            raise Exception(f"Git operation '{action}' failed.") from error
+        else:
+            # Doesn't raise an error for Non-critical errors.
+            # For example: starring a repository (star_repository), checking for updates, or posting non-essential
+            # comments. If these fail due to API limits or lack of scopes, the tool should log a warning but continue
+            # the README/documentation generation.
+            logger.warning(f"Non-critical error during '{action}'. Continuing execution.")
+
+    def _handle_api_error(self, response: requests.Response, action: str, raise_exception: bool = True) -> None:
+        """
+        Parses HTTP API errors and logs specific messages for 401, 403, 404, 429.
+        Should be called when response.status_code is not 200/201/204.
+
+        Args:
+            response (requests.Response): The response object from requests.
+            action (str): Description of the action.
+            raise_exception (bool): A flag which indicates whether to raise an exception or not.
+
+        Raises:
+            Exception: Re-raises a generic Exception chained with the original error.
+        """
+        code = response.status_code
+        try:
+            error_json = response.json()
+            error_msg = error_json.get("message", response.text)
+        except ValueError:
+            error_msg = response.text
+
+        logger.error(f"API Request failed during {action}. Status: {code}")
+        logger.debug(f"Raw API response: {error_msg}")
+
+        if code == 401:
+            logger.error(f"Unauthorized (401). Check your GIT_TOKEN. Message: {error_msg}")
+        elif code == 403:
+            if "rate limit" in str(error_msg).lower():
+                logger.error("API Rate Limit Exceeded (403).")
+            else:
+                logger.error(f"Forbidden (403). Permissions issue. Message: {error_msg}")
+        elif code == 404:
+            logger.error(f"Not Found (404). Check URL/ID or Token permissions. Message: {error_msg}")
+        elif code == 429:
+            logger.error("Too Many Requests (429). You are being rate-limited.")
+            if "Retry-After" in response.headers:
+                logger.error(f"Retry after: {response.headers['Retry-After']} seconds.")
+
+        if raise_exception:
+            raise ValueError(f"API operation '{action}' failed with status {code}.")
+        else:
+            logger.warning(f"Non-critical API error during '{action}' (Status {code}). Continuing execution.")
+
     def _check_branch_existence(self, branch: str = "osa_tool") -> bool:
         """
         Checks if a branch exists in the remote repository using platform-specific APIs.
@@ -154,6 +257,8 @@ class GitAgent(abc.ABC):
                 single_branch=True,
             )
             logger.info(f"Successfully cloned branch '{branch}'")
+        except GitCommandError as e:
+            self._handle_git_error(e, f"cloning branch '{branch}'")
         except Exception as e:
             raise Exception(f"Failed to clone branch '{branch}': {e}") from e
 
@@ -203,17 +308,9 @@ class GitAgent(abc.ABC):
                 logger.info("Cloning completed")
 
             except GitCommandError as e:
-                stderr = e.stderr or ""
-                logger.error(f"Cloning failed: {e}")
-
-                if "remote branch" in stderr and "not found" in stderr:
-                    logger.error(
-                        f"Branch '{self.base_branch}' not found in the remote repository. Please check the branch name."
-                    )
-                else:
-                    logger.error("An unexpected Git error occurred while cloning the repository.")
-
-                raise Exception(f"Cannot clone the repository: {self.repo_url}") from e
+                self._handle_git_error(e, f"cloning repository ({self.repo_url})")
+            except Exception as e:
+                raise Exception(f"Unexpected error during cloning: {e}")
 
     def clone_repository(self) -> None:
         """
@@ -325,13 +422,25 @@ class GitAgent(abc.ABC):
             self.repo.git.commit("-m", commit_message)
             logger.info("Commit completed.")
         except GitCommandError as e:
+            stderr = (e.stderr or "").lower()
+
             if "nothing to commit" in str(e):
                 logger.warning("Nothing to commit: working tree clean")
                 if self.pr_report_body:
                     logger.info(self.pr_report_body)
                 return False
+            elif "bad tree object" in stderr or "invalid object" in stderr:
+                logger.warning("Git index corruption detected. Attempting to repair and retry...")
+                try:
+                    self.repo.git.reset()  # reset to staging area
+                    self.repo.git.add(".")  # re-indexing all the files again
+                    self.repo.git.commit("-m", commit_message)
+                    logger.info("Index repaired and changes committed.")
+                except GitCommandError as retry_e:
+                    # if the reset didn't help
+                    self._handle_git_error(retry_e, "git commit repair retry")
             else:
-                raise
+                self._handle_git_error(e, "git commit")
 
         logger.info(f"Pushing changes to branch {branch} in fork...")
         self.repo.git.remote("set-url", "origin", self._get_auth_url(self.fork_url))
@@ -346,6 +455,7 @@ class GitAgent(abc.ABC):
             logger.info("Push completed.")
             return True
         except GitCommandError as e:
+            self._handle_git_error(e, f"pushing to {branch}")
             logger.error(f"""Push failed: Branch '{branch}' already exists in the fork.
                  To resolve this, please either:
                    1. Choose a different branch name that doesn't exist in the fork 
@@ -505,8 +615,7 @@ class GitHubAgent(GitAgent):
             self.fork_url = response.json()["html_url"]
             logger.info(f"GitHub fork created successfully: {self.fork_url}")
         else:
-            logger.error(f"Failed to create GitHub fork: {response.status_code} - {response.text}")
-            raise ValueError("Failed to create fork.")
+            self._handle_api_error(response, "creating GitHub fork")
 
     def star_repository(self) -> None:
         if not self.token:
@@ -520,19 +629,18 @@ class GitHubAgent(GitAgent):
 
         url = f"https://api.github.com/user/starred/{base_repo}"
         response_check = requests.get(url, headers=headers)
+
         if response_check.status_code == 204:
             logger.info(f"GitHub repository '{base_repo}' is already starred.")
             return
         elif response_check.status_code != 404:
-            logger.error(f"Failed to check star status: {response_check.status_code} - {response_check.text}")
-            raise ValueError("Failed to check star status.")
+            self._handle_api_error(response_check, "checking star status", raise_exception=False)
 
         response_star = requests.put(url, headers=headers)
         if response_star.status_code == 204:
             logger.info(f"GitHub repository '{base_repo}' has been starred successfully.")
         else:
-            logger.error(f"Failed to star repository: {response_star.status_code} - {response_star.text}")
-            raise ValueError("Failed to star repository.")
+            self._handle_api_error(response_star, "starring repository", raise_exception=False)
 
     def _check_github_branch_exists(self, branch: str) -> bool:
         """Check if branch exists on GitHub using API."""
@@ -609,6 +717,9 @@ class GitHubAgent(GitAgent):
         params = {"state": "open", "head": head_branch, "base": self.base_branch}
         response = requests.get(url, headers=headers, params=params)
 
+        if response.status_code != 200:
+            self._handle_api_error(response, "checking existing pull requests", False)
+
         prs = response.json() if response.status_code == 200 else []
         if prs:
             existing_pr = prs[0]
@@ -640,9 +751,7 @@ class GitHubAgent(GitAgent):
                 if update_response.status_code == 200:
                     logger.info(f"Successfully updated PR #{pr_number} with new reports.")
                 else:
-                    logger.error(
-                        f"Failed to update PR #{pr_number} description: {update_response.status_code} - {update_response.text}"
-                    )
+                    self._handle_api_error(update_response, f"updating PR #{pr_number}", raise_exception=False)
         elif changes:
             report_files = self.get_attachment_branch_files()
             report_branch = "osa_tool_attachments"
@@ -667,8 +776,7 @@ class GitHubAgent(GitAgent):
             if response.status_code == 201:
                 logger.info(f"GitHub pull request created successfully: {response.json()['html_url']}")
             else:
-                logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
-                raise ValueError("Failed to create pull request.")
+                self._handle_api_error(response, "creating pull request", raise_exception=True)
 
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
         url = f"https://api.github.com/repos/{repo_path}"
@@ -686,7 +794,7 @@ class GitHubAgent(GitAgent):
         if response.status_code in {200, 201}:
             logger.info(f"Successfully updated GitHub repository description and homepage for '{repo_path}'.")
         else:
-            logger.error(f"{response.status_code} - Failed to update description and homepage for '{repo_path}'.")
+            self._handle_api_error(response, f"updating description for '{repo_path}'", raise_exception=False)
 
         url = f"https://api.github.com/repos/{repo_path}/topics"
         topics_data = {"names": about_content["topics"]}
@@ -694,7 +802,7 @@ class GitHubAgent(GitAgent):
         if response.status_code in {200, 201}:
             logger.info(f"Successfully updated GitHub repository topics for '{repo_path}'")
         else:
-            logger.error(f"{response.status_code} - Failed to update topics for '{repo_path}'.")
+            self._handle_api_error(response, f"updating topics for '{repo_path}'", raise_exception=False)
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
         return f"{self.fork_url}/blob/{report_branch}/{report_filename}"
