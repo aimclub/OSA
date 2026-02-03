@@ -18,7 +18,11 @@ from pydantic import (
 )
 
 from osa_tool.utils.prompts_builder import PromptLoader
-from osa_tool.utils.utils import build_config_path, parse_git_url
+from osa_tool.utils.utils import (
+    build_config_path,
+    detect_provider_from_url,
+    parse_git_url,
+)
 
 
 class GitSettings(BaseModel):

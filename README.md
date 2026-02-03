@@ -71,7 +71,7 @@ Here is a short video:
    creates a pull request with proposed changes.
 
 4. **Various LLMs**: Use OSA with an LLM accessible via API (e.g., OpenAI, VseGPT, Ollama), a local server, or try
-   an [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
+   an [osa_bot](https://osa.nsslab.onti.actcognitive.org/) hosted on ITMO servers.
 
 5. **Workflow Generator**: Automatically generates customizable CI/CD workflows for Python repositories,
    including unit tests, code formatting, PEP 8 compliance checks, and PyPI publication.
