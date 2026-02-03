@@ -6,7 +6,7 @@ from typing import List
 from pydantic import BaseModel
 
 from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.models.models import ModelHandlerFactory, ModelHandler
 from osa_tool.operations.docs.readme_generation.utils import read_file, save_sections, remove_extra_blank_lines
 from osa_tool.operations.registry import Operation, OperationRegistry
@@ -17,15 +17,15 @@ from osa_tool.utils.utils import parse_folder_name
 
 
 class ReadmeTranslator:
-    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata, languages: list[str]):
-        self.config_loader = config_loader
-        self.config = self.config_loader.config
-        self.prompts = self.config.prompts
-        self.rate_limit = self.config.llm.rate_limit
+    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata, languages: list[str]):
+        self.config_manager = config_manager
+        self.model_settings = self.config_manager.get_model_settings("readme")
+        self.prompts = self.config_manager.get_prompts()
+        self.rate_limit = self.model_settings.rate_limit
         self.languages = languages
         self.metadata = metadata
-        self.repo_url = self.config.git.repository
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
+        self.repo_url = self.config_manager.get_git_settings().repository
+        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
 
     async def translate_readme_request_async(
@@ -159,7 +159,7 @@ class TranslateReadmeOperation(Operation):
 
     executor = ReadmeTranslator
     executor_method = "translate_readme"
-    executor_dependencies = ["config_loader", "metadata"]
+    executor_dependencies = ["config_manager", "metadata"]
 
 
 OperationRegistry.register(TranslateReadmeOperation())

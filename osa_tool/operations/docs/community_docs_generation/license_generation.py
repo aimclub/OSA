@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
@@ -24,11 +24,11 @@ class LicenseCompiler:
 
     def __init__(
         self,
-        config_loader: ConfigLoader,
+        config_manager: ConfigManager,
         metadata: RepositoryMetadata,
         license_type: str,
     ):
-        self.sourcerank = SourceRank(config_loader)
+        self.sourcerank = SourceRank(config_manager)
         self.metadata = metadata
         self.license_type = license_type
         self.license_template_path = os.path.join(osa_project_root(), "docs", "templates", "licenses.toml")
@@ -92,7 +92,7 @@ class EnsureLicenseOperation(Operation):
 
     executor = LicenseCompiler
     executor_method = "run"
-    executor_dependencies = ["config_loader", "metadata"]
+    executor_dependencies = ["config_manager", "metadata"]
 
 
 OperationRegistry.register(EnsureLicenseOperation())

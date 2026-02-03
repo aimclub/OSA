@@ -331,9 +331,9 @@ def gitlab_agent_instance(temp_clone_dir, mock_repository_metadata, repo_info, m
         yield agent
 
 
-@pytest.mark.parametrize("mock_config_loader", ["gitlab"], indirect=True)
+@pytest.mark.parametrize("mock_config_manager", ["gitlab"], indirect=True)
 def test_gitlab_agent_create_fork_success(
-    gitlab_agent_instance, mock_requests_response_factory, mock_repository_metadata, repo_info, mock_config_loader
+    gitlab_agent_instance, mock_requests_response_factory, mock_repository_metadata, repo_info, mock_config_manager
 ):
     # Arrange
     platform, owner, repo_name, repo_url = repo_info
