@@ -90,7 +90,7 @@ class TextGenerator:
 
 
 class AfterReportTextGenerator:
-    def __init__(self, config_loader: ConfigLoader, what_has_been_done: list[tuple[str, bool]]) -> None:
+    def __init__(self, config_loader: ConfigManager, what_has_been_done: list[tuple[str, bool]]) -> None:
         self.config = config_loader.config
         self.prompts = self.config.prompts
         self.what_has_been_done = what_has_been_done

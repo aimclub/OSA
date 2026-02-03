@@ -27,6 +27,11 @@ def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMe
     community = CommunityTemplateBuilder(config_manager, metadata)
     code_of_conduct_result = community.build_code_of_conduct()
     security_result = community.build_security()
+    pull_request_result = True
+    bug_issue_result = True
+    documentation_issue_result = True
+    feature_issue_result = True
+    vulnerability_disclosure_result = True
 
     if config_manager.get_git_settings().host in ["github", "gitlab"]:
         pull_request_result = community.build_pull_request()
