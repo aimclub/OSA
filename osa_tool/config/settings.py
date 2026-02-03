@@ -63,10 +63,10 @@ class ModelSettings(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     @model_validator(mode="after")
-        def set_model_api(self):
-            if not self.api:
-                self.api = detect_provider_from_url(self.base_url)
-            return self
+    def set_model_api(self):
+        if not self.api:
+            self.api = detect_provider_from_url(self.base_url)
+        return self
 
 
 class ModelGroupSettings(BaseModel):
