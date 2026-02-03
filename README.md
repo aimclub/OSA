@@ -34,8 +34,6 @@ create them from scratch.
 It automates the generation of README, different levels of documentation, CI/CD scripts, etc.
 It also generates advices and recommendations for the repository.
 
-OSA is currently under development, so not all features are implemented.
-
 ---
 
 ## How it works?
@@ -191,23 +189,27 @@ documentation, see the [Workflow Generator README](./osa_tool/workflow/README.md
 
 ### Configuration
 
-| Flag                 | Description                                                                         | Default                     |
-|----------------------|-------------------------------------------------------------------------------------|-----------------------------|
-| `-r`, `--repository` | URL of the GitHub/GitLab/Gitverse repository (**Mandatory**)                        |                             |
-| `-b`, `--branch`     | Branch name of the repository                                                       | Default branch              |
-| `-o`, `--output`     | Path to the output directory                                                        | Current working directory   |
-| `--api`              | LLM API service provider                                                            | `itmo`                      |
-| `--base-url`         | URL of the provider compatible with API OpenAI                                      | `https://api.openai.com/v1` |
-| `--model`            | Specific LLM model to use                                                           | `gpt-3.5-turbo`             |
-| `--top_p`            | Nucleus sampling probability                                                        | `0.95`                      |
-| `--temperature`      | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).   | `0.05`                      |
-| `--max_tokens`       | Maximum number of output tokens the model can generate in a single response         | `4096`                      |
-| `--context_window`   | Total number of model context (Input + Output)                                      | `16385`                     |
-| `--attachment`       | Path to a local PDF or .docx file, or a URL to a PDF resource                       | `None`                      |
-| `-m`, `--mode`       | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`. | `auto`                      |
-| `--delete-dir`       | Enable deleting the downloaded repository after processing                          | `disabled`                  |
-| `--no-fork`          | Avoid create fork for target repository                                             | `False`                     |
-| `--no-pull-request`  | Avoid create pull request for target repository                                     | `False`                     |
+| Flag                 | Description                                                                         | Default                        |
+|----------------------|-------------------------------------------------------------------------------------|--------------------------------|
+| `-r`, `--repository` | URL of the GitHub/GitLab/Gitverse repository (**Mandatory**)                        |                                |
+| `-b`, `--branch`     | Branch name of the repository                                                       | Default branch                 |
+| `-o`, `--output`     | Path to the output directory                                                        | Current working directory      |
+| `--api`              | LLM API service provider                                                            | `openai`                       |
+| `--base-url`         | URL of the provider compatible with API OpenAI                                      | `https://openrouter.ai/api/v1` |
+| `--model`            | Specific LLM model to use                                                           | `gpt-3.5-turbo`                |
+| `--top_p`            | Nucleus sampling probability                                                        | `0.95`                         |
+| `--temperature`      | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).   | `0.05`                         |
+| `--max_tokens`       | Maximum number of output tokens the model can generate in a single response         | `4096`                         |
+| `--context_window`   | Total number of model context (Input + Output)                                      | `16385`                        |
+| `--attachment`       | Path to a local PDF or .docx file, or a URL to a PDF resource                       | `None`                         |
+| `-m`, `--mode`       | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`. | `auto`                         |
+| `--delete-dir`       | Enable deleting the downloaded repository after processing                          | `disabled`                     |
+| `--no-fork`          | Avoid create fork for target repository                                             | `False`                        |
+| `--no-pull-request`  | Avoid create pull request for target repository                                     | `False`                        |
+
+Also OSA supports custom configuration via TOML files. Use the `--config-file` option to specify a path to custom configuration file. If no custom configuration file is provided, OSA will use the default configuration.
+
+By default, OSA uses a single model for all tasks (specified via `--model`). If you want to use different models for different types of tasks, disable the `--use-single-model` flag and specify models for each task type (`--model-docstring`, `--model-readme`, `--model-validation`, `--model-general`).
 
 To learn how to work with the interactive CLI and view descriptions of all available keys, visit
 the [CLI usage guide](./osa_tool/scheduler/README.md).

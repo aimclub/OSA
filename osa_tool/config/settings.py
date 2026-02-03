@@ -271,7 +271,7 @@ class ConfigManager:
         Returns:
             ModelSettings for the specified task type
         """
-        use_single_model = getattr(self.args, "use_single_model", False) if self.args else False
+        use_single_model = getattr(self.args, "use_single_model", True) if self.args else True
 
         if use_single_model:
             return self.config.llm.default
