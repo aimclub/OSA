@@ -10,9 +10,9 @@ from osa_tool.scheduler.plan import Plan
 
 
 @pytest.fixture
-def translator(tmp_path, mock_config_loader, mock_repository_metadata):
+def translator(tmp_path, mock_config_manager, mock_repository_metadata):
     plan = Plan({"translate_readme": ["fr", "de"]})
-    t = rt.ReadmeTranslator(mock_config_loader, mock_repository_metadata, plan)
+    t = rt.ReadmeTranslator(mock_config_manager, mock_repository_metadata, plan)
     t.base_path = tmp_path
     return t
 

@@ -1,14 +1,15 @@
 from pathlib import Path
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
 
 import pytest
 
 from osa_tool.utils.utils import (
-    parse_folder_name,
-    osa_project_root,
-    get_base_repo_url,
-    parse_git_url,
+    detect_provider_from_url,
     extract_readme_content,
+    get_base_repo_url,
+    osa_project_root,
+    parse_folder_name,
+    parse_git_url,
 )
 
 
@@ -126,6 +127,51 @@ def test_parse_git_url_invalid_url():
     # Assert
     with pytest.raises(ValueError):
         parse_git_url(repo_url)
+
+
+@pytest.mark.parametrize(
+    "base_url,api",
+    [
+        ("https://api.openai.com/v1/chat/completions", "openai"),
+        ("https://openrouter.ai/api/v1", "openai"),
+        ("https://api.vsegpt.ru/v1", "openai"),
+        ("https://gigachat.devices.sberbank.ru/api/v1", "openai"),
+    ],
+)
+def test_detect_model_openai_provider(base_url, api):
+    assert detect_provider_from_url(base_url) == api
+
+
+@pytest.mark.parametrize(
+    "base_url,api",
+    [
+        ("http://10.9.0.1:11434/api/generate", "ollama"),
+        ("http://localhost:11434/api/generate", "ollama"),
+    ],
+)
+def test_detect_model_ollama_provider(base_url, api):
+    assert detect_provider_from_url(base_url) == api
+
+
+@pytest.mark.parametrize(
+    "base_url,api",
+    [
+        ("https://llama.yourcompany.com/v1/completions", "llama"),
+    ],
+)
+def test_detect_model_llama_provider(base_url, api):
+    assert detect_provider_from_url(base_url) == api
+
+
+@pytest.mark.parametrize(
+    "base_url,api",
+    [
+        ("https://api.groq.com/openai/v1", None),
+        ("https://api.perplexity.ai/chat/completions", None),
+    ],
+)
+def test_detect_invalid_model_provider(base_url, api):
+    assert detect_provider_from_url(base_url) == api
 
 
 def test_extract_readme_content_existing_md():

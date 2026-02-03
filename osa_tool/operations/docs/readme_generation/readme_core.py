@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.operations.docs.readme_generation.generator.builder import MarkdownBuilder
 from osa_tool.operations.docs.readme_generation.generator.builder_article import MarkdownBuilderArticle
 from osa_tool.operations.docs.readme_generation.models.llm_service import LLMClient
@@ -19,18 +19,18 @@ class ReadmeAgent:
 
     def __init__(
         self,
-        config_loader: ConfigLoader,
+        config_manager: ConfigManager,
         metadata: RepositoryMetadata,
         plan: Plan,
     ):
-        self.config_loader = config_loader
+        self.config_manager = config_manager
         self.article = plan.get("attachment")
         self.refine_readme = plan.get("refine_readme")
         self.metadata = metadata
-        self.repo_url = self.config_loader.config.git.repository
+        self.repo_url = self.config_manager.get_git_settings().repository
         self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.file_to_save = os.path.join(self.repo_path, "README.md")
-        self.llm_client = LLMClient(self.config_loader, self.metadata)
+        self.llm_client = LLMClient(self.config_manager, self.metadata)
         self.plan = plan
 
     def generate_readme(self):
@@ -67,12 +67,14 @@ class ReadmeAgent:
     def default_readme(self) -> MarkdownBuilder:
         responses = self.llm_client.get_responses()
         core_features, overview, getting_started = responses
-        return MarkdownBuilder(self.config_loader, self.metadata, overview, core_features, getting_started)
+        return MarkdownBuilder(self.config_manager, self.metadata, overview, core_features, getting_started)
 
     def article_readme(self) -> MarkdownBuilderArticle:
         responses = self.llm_client.get_responses_article(self.article)
         overview, content, algorithms, getting_started = responses
-        return MarkdownBuilderArticle(self.config_loader, self.metadata, overview, content, algorithms, getting_started)
+        return MarkdownBuilderArticle(
+            self.config_manager, self.metadata, overview, content, algorithms, getting_started
+        )
 
 
 class GenerateReadmeArgs(BaseModel):
@@ -93,7 +95,7 @@ class GenerateReadmeOperation(Operation):
 
     executor = ReadmeAgent
     executor_method = "generate_readme"
-    executor_dependencies = ["config_loader", "metadata"]
+    executor_dependencies = ["config_manager", "metadata"]
     state_dependencies = ["attachment"]
 
 

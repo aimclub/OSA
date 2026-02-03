@@ -15,7 +15,7 @@ import tiktoken
 import tomli
 import yaml
 
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.models.models import ModelHandlerFactory, ProtollmHandler
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
@@ -67,14 +67,15 @@ class DocGen(object):
             file structure and for each class or standalone function, generating its documentation.
     """
 
-    def __init__(self, config_loader: ConfigLoader):
+    def __init__(self, config_manager: ConfigManager):
         """
         Instantiates the object of the class.
 
         This method is a constructor that initializes the object by setting the 'api_key' attribute to the value of the 'OPENAI_API_KEY' environment variable.
         """
-        self.config = config_loader.config
-        self.model_handler: ProtollmHandler = ModelHandlerFactory.build(self.config)
+        self.config_manager = config_manager
+        self.model_settings = self.config_manager.get_model_settings("docstrings")
+        self.model_handler: ProtollmHandler = ModelHandlerFactory.build(self.model_settings)
         self.main_idea = None
 
     @staticmethod
@@ -188,7 +189,7 @@ class DocGen(object):
         Returns:
             The number of tokens in the prompt.
         """
-        enc = tiktoken.encoding_for_model(self.config.llm.model)
+        enc = tiktoken.encoding_for_model(self.model_settings.model)
         tokens = enc.encode(prompt)
         return len(tokens)
 
@@ -999,7 +1000,7 @@ class DocGen(object):
             Dict[str, str]
         """
 
-        self._rename_invalid_dirs(Path(self.config.git.name).resolve())
+        self._rename_invalid_dirs(Path(self.config_manager.get_git_settings().name).resolve())
 
         semaphore = asyncio.Semaphore(rate_limit)
 
@@ -1079,14 +1080,14 @@ class DocGen(object):
             if leaves_summaries or folder_summaries:
                 summary = (
                     self.main_idea
-                    if path == self.config.git.name
+                    if path == self.config_manager.get_git_settings().name
                     else await summarize_directory(Path(path).name, leaves_summaries, folder_summaries)
                 )
                 _summaries[str(path)] = summary
 
                 return summary
 
-        await traverse_and_summarize(self.config.git.name, project_structure)
+        await traverse_and_summarize(self.config_manager.get_git_settings().name, project_structure)
         return _summaries
 
     def convert_path_to_dot_notation(self, path):
@@ -1179,7 +1180,7 @@ class DocGen(object):
             None. The method generates workflow for MkDocs documentation of a current project.
         """
         config_file = osa_project_root().resolve() / "docs" / "templates" / "ci_config.toml"
-        git_host = self.config.git.host
+        git_host = self.config_manager.get_git_settings().host
 
         with open(config_file, "rb") as f:
             cfg = tomli.load(f)

@@ -4,7 +4,7 @@ from pydantic import ValidationError
 
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.operations.analysis.repository_report.response_validation import (
     RepositoryReport,
@@ -22,13 +22,14 @@ from osa_tool.utils.utils import extract_readme_content, parse_folder_name
 
 
 class TextGenerator:
-    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
-        self.config = config_loader.config
-        self.sourcerank = SourceRank(config_loader)
-        self.prompts = self.config.prompts
+    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata):
+        self.config_manager = config_manager
+        self.model_settings = self.config_manager.get_model_settings("general")
+        self.sourcerank = SourceRank(self.config_manager)
+        self.prompts = self.config_manager.get_prompts()
         self.metadata = metadata
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
-        self.repo_url = self.config.git.repository
+        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
+        self.repo_url = self.config_manager.get_git_settings().repository
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
 
     def make_request(self) -> RepositoryReport:

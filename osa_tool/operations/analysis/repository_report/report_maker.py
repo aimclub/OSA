@@ -20,7 +20,7 @@ from reportlab.platypus import (
 
 from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.operations.analysis.repository_report.report_generator import TextGenerator, AfterReportTextGenerator
 from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.utils.logger import logger
@@ -28,11 +28,10 @@ from osa_tool.utils.utils import osa_project_root
 
 
 class AbstractReportGenerator(ABC):
-    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
-        self.config = config_loader.config
-        self.sourcerank = SourceRank(config_loader)
+    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata):
+        self.sourcerank = SourceRank(config_manager)
         self.metadata = metadata
-        self.repo_url = self.config.git.repository
+        self.repo_url = config_manager.get_git_settings().repository
         self.osa_url = "https://github.com/aimclub/OSA"
 
         self.logo_path = os.path.join(osa_project_root(), "docs", "images", "osa_logo.PNG")
@@ -311,9 +310,9 @@ class AbstractReportGenerator(ABC):
 
 class ReportGenerator(AbstractReportGenerator):
 
-    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
-        super().__init__(config_loader, metadata)
-        self.text_generator = TextGenerator(config_loader, self.metadata)
+    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata):
+        super().__init__(config_manager, metadata)
+        self.text_generator = TextGenerator(config_manager, self.metadata)
 
     def body_second_part(self) -> list[Flowable]:
         """
@@ -387,11 +386,11 @@ class ReportGenerator(AbstractReportGenerator):
 class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
     def __init__(
         self,
-        config_loader: ConfigLoader,
+        config_manager: ConfigManager,
         what_has_been_done: list[tuple[str, bool]],
         metadata: RepositoryMetadata,
     ):
-        super().__init__(config_loader, metadata)
+        super().__init__(config_manager, metadata)
         self.filename = f"{self.metadata.name}_work_summary.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
         self.what_has_been_done = what_has_been_done
@@ -436,7 +435,7 @@ class GenerateReportOperation(Operation):
 
     executor = ReportGenerator
     executor_method = "build_pdf"
-    executor_dependencies = ["config_loader", "metadata"]
+    executor_dependencies = ["config_manager", "metadata"]
 
 
 OperationRegistry.register(GenerateReportOperation())

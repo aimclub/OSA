@@ -1,6 +1,6 @@
 import asyncio
 
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.models.models import ModelHandler, ModelHandlerFactory
 from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
 from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
@@ -18,17 +18,18 @@ class PaperValidator:
     and validates the paper against the codebase using a language model.
     """
 
-    def __init__(self, config_loader: ConfigLoader):
+    def __init__(self, config_manager: ConfigManager):
         """
         Initialize the PaperValidator.
 
         Args:
-            config_loader (ConfigLoader): Loader containing configuration settings.
+            config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
         """
-        self.code_analyzer = CodeAnalyzer(config_loader)
-        self.config = config_loader.config
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
-        self.prompts = self.config.prompts
+        self.config_manager = config_manager
+        self.code_analyzer = CodeAnalyzer(config_manager)
+        self.model_settings = config_manager.get_model_settings("validation")
+        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
+        self.prompts = self.config_manager.get_prompts()
 
     async def validate(self, article: str | None) -> dict | None:
         """

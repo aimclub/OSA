@@ -7,9 +7,9 @@ import pytest
 from osa_tool.osatreesitter.docgen import DocGen
 
 
-def test_format_class(mock_config_loader):
+def test_format_class(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     class_item = {
         "type": "class",
         "name": "MyClass",
@@ -39,9 +39,9 @@ def test_format_class(mock_config_loader):
     assert "def my_method(self, x): return x" in result
 
 
-def test_format_function(mock_config_loader):
+def test_format_function(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     func_item = {
         "type": "function",
         "details": {
@@ -65,9 +65,9 @@ def test_format_function(mock_config_loader):
     assert "def my_func(a, b): return str(a+b)" in result
 
 
-def test_format_structure_openai(mock_config_loader):
+def test_format_structure_openai(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     structure = {
         "file1.py": [
             {"type": "class", "name": "MyClass", "start_line": 1, "docstring": None, "methods": []},
@@ -94,9 +94,9 @@ def test_format_structure_openai(mock_config_loader):
     assert "Function: my_func" in result
 
 
-def test_format_structure_openai_short_empty(mock_config_loader):
+def test_format_structure_openai_short_empty(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
 
     # Act
     result = docgen.format_structure_openai_short("file.py", {"structure": []})
@@ -105,9 +105,9 @@ def test_format_structure_openai_short_empty(mock_config_loader):
     assert result == ""
 
 
-def test_format_structure_openai_short_with_content(mock_config_loader):
+def test_format_structure_openai_short_with_content(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     structure = {"structure": [{"type": "class", "name": "Cls", "start_line": 1, "docstring": None, "methods": []}]}
 
     # Act
@@ -128,9 +128,9 @@ def test_format_structure_openai_short_with_content(mock_config_loader):
         ({"name": "NoDocClass", "docstring": None, "methods": []}, "  - Class: NoDocClass\n"),
     ],
 )
-def test_format_class_short(mock_config_loader, item, expected):
+def test_format_class_short(mock_config_manager, item, expected):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
 
     # Act
     result = docgen._format_class_short(item)
@@ -170,9 +170,9 @@ def test_format_class_short(mock_config_loader, item, expected):
         ),
     ],
 )
-def test_format_function_short(mock_config_loader, item, expected):
+def test_format_function_short(mock_config_manager, item, expected):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
 
     # Act
     result = docgen._format_function_short(item)
@@ -181,9 +181,9 @@ def test_format_function_short(mock_config_loader, item, expected):
     assert result == expected
 
 
-def test_count_tokens(mock_config_loader):
+def test_count_tokens(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     prompt = "Hello world"
 
     with patch("tiktoken.encoding_for_model") as mock_encoding:
@@ -200,9 +200,9 @@ def test_count_tokens(mock_config_loader):
 
 
 @pytest.mark.asyncio
-async def test_generate_class_documentation(mock_config_loader):
+async def test_generate_class_documentation(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     docgen.model_handler.async_request = AsyncMock(return_value="Generated docstring")
 
     class_details = [
@@ -222,9 +222,9 @@ async def test_generate_class_documentation(mock_config_loader):
 
 
 @pytest.mark.asyncio
-async def test_update_class_documentation(mock_config_loader):
+async def test_update_class_documentation(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     docgen.model_handler.async_request = AsyncMock(return_value="Updated description")
     docgen.main_idea = "Main idea here"
 
@@ -241,9 +241,9 @@ async def test_update_class_documentation(mock_config_loader):
 
 
 @pytest.mark.asyncio
-async def test_generate_method_documentation(mock_config_loader):
+async def test_generate_method_documentation(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     docgen.model_handler = MagicMock()
     docgen.model_handler.async_request = AsyncMock(return_value='"""Generated docstring"""')
 
@@ -265,9 +265,9 @@ async def test_generate_method_documentation(mock_config_loader):
 
 
 @pytest.mark.asyncio
-async def test_update_method_documentation(mock_config_loader):
+async def test_update_method_documentation(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     docgen.main_idea = "This project calculates something important"
     docgen.model_handler = MagicMock()
     docgen.model_handler.async_request = AsyncMock(return_value='"""Updated docstring"""')
@@ -289,9 +289,9 @@ async def test_update_method_documentation(mock_config_loader):
     docgen.model_handler.async_request.assert_called_once()
 
 
-def test_valid_triple_quotes(mock_config_loader):
+def test_valid_triple_quotes(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     resp = '"""\nThis is a test docstring.\n"""'
 
     # Act
@@ -301,9 +301,9 @@ def test_valid_triple_quotes(mock_config_loader):
     assert result == resp
 
 
-def test_with_triple_quotes_placeholder(mock_config_loader):
+def test_with_triple_quotes_placeholder(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     resp = "<triple quotes>\nSome content\n<triple quotes>"
 
     # Act
@@ -313,9 +313,9 @@ def test_with_triple_quotes_placeholder(mock_config_loader):
     assert result == '"""\nSome content\n"""'
 
 
-def test_with_markdown_code_block(mock_config_loader):
+def test_with_markdown_code_block(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     resp = '```python\n"""\nInside code block\n"""\n```'
 
     # Act
@@ -325,9 +325,9 @@ def test_with_markdown_code_block(mock_config_loader):
     assert result == '"""\nInside code block\n"""'
 
 
-def test_unclosed_triple_quotes_fixed(mock_config_loader):
+def test_unclosed_triple_quotes_fixed(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     resp = '"""\nUnclosed docstring without ending'
 
     # Act
@@ -338,9 +338,9 @@ def test_unclosed_triple_quotes_fixed(mock_config_loader):
     assert result.endswith('"""')
 
 
-def test_remove_def_leakage(mock_config_loader):
+def test_remove_def_leakage(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     resp = '"""\ndef some_func():\n    Actual docs\n"""'
 
     # Act
@@ -351,9 +351,9 @@ def test_remove_def_leakage(mock_config_loader):
     assert "Actual docs" in result
 
 
-def test_fix_indented_args(mock_config_loader):
+def test_fix_indented_args(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     resp = '"""\nDescription.\n    Args:\n        param: something\n"""'
 
     # Act
@@ -364,9 +364,9 @@ def test_fix_indented_args(mock_config_loader):
     assert "    Args" not in result  # indentation removed
 
 
-def test_single_quotes_docstring(mock_config_loader):
+def test_single_quotes_docstring(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     resp = "'''\nAnother doc\n'''"
 
     # Act
@@ -376,9 +376,9 @@ def test_single_quotes_docstring(mock_config_loader):
     assert result == "'''\nAnother doc\n'''"
 
 
-def test_fallback_when_no_quotes(mock_config_loader):
+def test_fallback_when_no_quotes(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     resp = "This looks like a long enough text without quotes to be treated as docstring"
 
     # Act
@@ -389,9 +389,9 @@ def test_fallback_when_no_quotes(mock_config_loader):
     assert result.endswith('"""')
 
 
-def test_invalid_short_response(mock_config_loader):
+def test_invalid_short_response(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     resp = "Hi"
 
     # Act
@@ -426,9 +426,9 @@ def test_invalid_short_response(mock_config_loader):
         ),
     ],
 )
-def test_strip_docstring_from_body(mock_config_loader, body, expected):
+def test_strip_docstring_from_body(mock_config_manager, body, expected):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
 
     # Act
     result = docgen.strip_docstring_from_body(body)
@@ -460,9 +460,9 @@ def test_strip_docstring_from_body(mock_config_loader, body, expected):
         ),
     ],
 )
-def test_insert_docstring_in_code(mock_config_loader, source, method_details, new_doc, expected_snippet):
+def test_insert_docstring_in_code(mock_config_manager, source, method_details, new_doc, expected_snippet):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
 
     # Act
     updated = docgen.insert_docstring_in_code(source, method_details, new_doc)
@@ -494,9 +494,9 @@ def test_insert_docstring_in_code(mock_config_loader, source, method_details, ne
         ),
     ],
 )
-def test_insert_cls_docstring_in_code(mock_config_loader, source, class_name, new_doc, expected_snippet):
+def test_insert_cls_docstring_in_code(mock_config_manager, source, class_name, new_doc, expected_snippet):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
 
     # Act
     updated = docgen.insert_cls_docstring_in_code(source, class_name, new_doc)
@@ -559,9 +559,9 @@ def test_insert_cls_docstring_in_code(mock_config_loader, source, class_name, ne
         ),
     ],
 )
-def test_context_extractor(mock_config_loader, method_details, structure, expected):
+def test_context_extractor(mock_config_manager, method_details, structure, expected):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
 
     # Act
     result = docgen.context_extractor(method_details, structure)
@@ -570,9 +570,9 @@ def test_context_extractor(mock_config_loader, method_details, structure, expect
     assert result.strip() == expected.strip()
 
 
-def test_format_with_black_calls_black(mock_config_loader, tmp_path):
+def test_format_with_black_calls_black(mock_config_manager, tmp_path):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     test_file = tmp_path / "test.py"
     test_file.write_text("x=1")
 
@@ -588,9 +588,9 @@ def test_format_with_black_calls_black(mock_config_loader, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_generate_the_main_idea_filters_and_sorts(mock_config_loader, mocker):
+async def test_generate_the_main_idea_filters_and_sorts(mock_config_manager, mocker):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     mock_request = mocker.AsyncMock(return_value="# Project\n## Overview\n## Purpose")
     docgen.model_handler.async_request = mock_request
 
@@ -626,10 +626,10 @@ async def test_generate_the_main_idea_filters_and_sorts(mock_config_loader, mock
 
 
 @pytest.mark.asyncio
-async def test_summarize_submodules_creates_summaries(mock_config_loader, mocker, tmp_path):
+async def test_summarize_submodules_creates_summaries(mock_config_manager, mocker, tmp_path):
     # Arrange
-    docgen = DocGen(mock_config_loader)
-    docgen.config.git.name = str(tmp_path)
+    docgen = DocGen(mock_config_manager)
+    docgen.config_manager.config.git.name = str(tmp_path)
 
     pkg_dir = tmp_path / "mypkg"
     pkg_dir.mkdir()
@@ -662,9 +662,9 @@ async def test_summarize_submodules_creates_summaries(mock_config_loader, mocker
     assert summaries[str(sub_dir)] == "Summary of module"
 
 
-def test_convert_path_to_dot_notation(mock_config_loader):
+def test_convert_path_to_dot_notation(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
 
     # Assert
     assert docgen.convert_path_to_dot_notation("a/b/c.py") == "::: a.b.c"
@@ -676,9 +676,9 @@ def test_convert_path_to_dot_notation(mock_config_loader):
 @patch("osa_tool.osatreesitter.docgen.Path.write_text")
 @patch("osa_tool.osatreesitter.docgen.shutil.copy")
 @patch("osa_tool.osatreesitter.docgen.osa_project_root")
-def test_generate_documentation_mkdocs(mock_root, mock_copy, mock_write_text, mock_mkdir, mock_config_loader):
+def test_generate_documentation_mkdocs(mock_root, mock_copy, mock_write_text, mock_mkdir, mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     mock_root.return_value = Path("/fake/project")
 
     files_info = {
@@ -697,9 +697,9 @@ def test_generate_documentation_mkdocs(mock_root, mock_copy, mock_write_text, mo
     mock_copy.assert_called_once()
 
 
-def test_sanitize_name_basic(mock_config_loader):
+def test_sanitize_name_basic(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
 
     # Assert
     assert docgen._sanitize_name("valid_name") == "valid_name"
@@ -708,9 +708,9 @@ def test_sanitize_name_basic(mock_config_loader):
     assert docgen._sanitize_name(".hidden") == "v.hidden".replace(".", "_")
 
 
-def test_rename_invalid_dirs(mock_config_loader, tmp_path):
+def test_rename_invalid_dirs(mock_config_manager, tmp_path):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     invalid_dir = tmp_path / "1invalid"
     invalid_dir.mkdir()
     valid_dir = tmp_path / "valid"
@@ -724,9 +724,9 @@ def test_rename_invalid_dirs(mock_config_loader, tmp_path):
     assert (tmp_path / "valid").exists()
 
 
-def test_add_init_files_creates_inits(mock_config_loader, tmp_path):
+def test_add_init_files_creates_inits(mock_config_manager, tmp_path):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
 
     subdir = tmp_path / "package"
     subdir.mkdir()
@@ -740,9 +740,9 @@ def test_add_init_files_creates_inits(mock_config_loader, tmp_path):
     assert (subdir / "__init__.py").exists()
 
 
-def test_purge_temp_files_removes_temp_dir(mock_config_loader, tmp_path):
+def test_purge_temp_files_removes_temp_dir(mock_config_manager, tmp_path):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
 
     temp_dir = tmp_path / "mkdocs_temp"
     temp_dir.mkdir()
@@ -755,9 +755,9 @@ def test_purge_temp_files_removes_temp_dir(mock_config_loader, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_generate_docstrings_for_functions_methods(mock_config_loader):
+async def test_generate_docstrings_for_functions_methods(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
 
     async def mock_fetch_docstrings(filename, structure, parsed_structure, semaphore):
         return {"functions": [("docstring", "func1")], "methods": [("docstring", "method1")]}
@@ -778,9 +778,9 @@ async def test_generate_docstrings_for_functions_methods(mock_config_loader):
 
 
 @pytest.mark.asyncio
-async def test_generate_docstrings_for_classes(mock_config_loader):
+async def test_generate_docstrings_for_classes(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
 
     async def mock_fetch_docstrings_for_class(filename, structure, semaphore):
         return {"classes": [("docstring", "Class1")]}
@@ -800,9 +800,9 @@ async def test_generate_docstrings_for_classes(mock_config_loader):
 
 
 @pytest.mark.asyncio
-async def test_generate_docstrings_for_all_types(mock_config_loader):
+async def test_generate_docstrings_for_all_types(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
 
     async def mock_fetch_docstrings(filename, structure, parsed_structure, semaphore):
         return {"functions": [("docstring", "func1")], "methods": [("docstring", "method1")]}
@@ -827,9 +827,9 @@ async def test_generate_docstrings_for_all_types(mock_config_loader):
         assert "classes" in results[file]
 
 
-def test_perform_code_augmentations(mock_config_loader):
+def test_perform_code_augmentations(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     with (
         patch("osa_tool.osatreesitter.docgen.DocGen.insert_docstring_in_code") as mock_insert,
         patch("osa_tool.osatreesitter.docgen.DocGen.insert_cls_docstring_in_code") as mock_insert_cls,
@@ -847,9 +847,9 @@ def test_perform_code_augmentations(mock_config_loader):
         assert "# doc1" in result["file1.py"]
 
 
-def test_run_in_executor_with_fake_augment(mock_config_loader):
+def test_run_in_executor_with_fake_augment(mock_config_manager):
     # Arrange
-    docgen = DocGen(mock_config_loader)
+    docgen = DocGen(mock_config_manager)
     parsed_structure = {
         "file1.py": {"structure": True},
         "file2.py": {"structure": True},
@@ -885,7 +885,7 @@ def test_run_in_executor_with_fake_augment(mock_config_loader):
 
 
 @pytest.mark.asyncio
-async def test_get_project_source_code_with_config(tmp_path, mock_config_loader):
+async def test_get_project_source_code_with_config(tmp_path, mock_config_manager):
     # Arrange
     files = {"file1.py": "print('hello')", "file2.py": "print('world')"}
 
@@ -895,7 +895,7 @@ async def test_get_project_source_code_with_config(tmp_path, mock_config_loader)
 
     sem = asyncio.Semaphore(2)
 
-    docgen = DocGen(config_loader=mock_config_loader)
+    docgen = DocGen(config_manager=mock_config_manager)
 
     # Act
     result = await docgen._get_project_source_code(parsed_structure, sem)
@@ -906,7 +906,7 @@ async def test_get_project_source_code_with_config(tmp_path, mock_config_loader)
 
 
 @pytest.mark.asyncio
-async def test_write_augmented_code_with_config(tmp_path, mock_config_loader):
+async def test_write_augmented_code_with_config(tmp_path, mock_config_manager):
     # Arrange
     files = ["file1.py", "file2.py"]
     for f in files:
@@ -915,7 +915,7 @@ async def test_write_augmented_code_with_config(tmp_path, mock_config_loader):
     augmented_code = [{str(tmp_path / files[0]): "new code 1"}, {str(tmp_path / files[1]): "new code 2"}]
 
     sem = asyncio.Semaphore(2)
-    docgen = DocGen(config_loader=mock_config_loader)
+    docgen = DocGen(config_manager=mock_config_manager)
 
     # Act
     await docgen._write_augmented_code(parsed_structure, augmented_code, sem)

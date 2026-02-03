@@ -6,7 +6,7 @@ from tests.utils.mocks.repo_trees import get_mock_repo_tree
 def test_license_already_exists(
     sourcerank_with_repo_tree,
     mock_repository_metadata,
-    mock_config_loader,
+    mock_config_manager,
     caplog,
 ):
     # Arrange
@@ -15,7 +15,7 @@ def test_license_already_exists(
     plan = Plan({"ensure_license": "mit"})
 
     compiler = LicenseCompiler(
-        config_loader=mock_config_loader,
+        config_manager=mock_config_manager,
         metadata=mock_repository_metadata,
         plan=plan,
     )
@@ -34,7 +34,7 @@ def test_license_generated_successfully(
     tmp_path,
     sourcerank_with_repo_tree,
     mock_repository_metadata,
-    mock_config_loader,
+    mock_config_manager,
     caplog,
 ):
     # Arrange
@@ -44,7 +44,7 @@ def test_license_generated_successfully(
     plan = Plan({"ensure_license": "mit"})
 
     compiler = LicenseCompiler(
-        config_loader=mock_config_loader,
+        config_manager=mock_config_manager,
         metadata=mock_repository_metadata,
         plan=plan,
     )
@@ -66,7 +66,7 @@ def test_unknown_license_type(
     tmp_path,
     sourcerank_with_repo_tree,
     mock_repository_metadata,
-    mock_config_loader,
+    mock_config_manager,
     caplog,
 ):
     # Arrange
@@ -76,7 +76,7 @@ def test_unknown_license_type(
     plan = Plan({"ensure_license": "unknown_license"})
 
     compiler = LicenseCompiler(
-        config_loader=mock_config_loader,
+        config_manager=mock_config_manager,
         metadata=mock_repository_metadata,
         plan=plan,
     )

@@ -35,6 +35,7 @@ You can customize the generated workflows using the following command-line argum
 | `--branches` | Branches to trigger the workflows on | `main master` |
 | `--codecov-token` | Use Codecov token for uploading coverage | `False` |
 | `--include-codecov` | Include Codecov coverage step in a unit tests workflow | `True` |
+| `--ignore-list` | Space-separated list of directories/files to ignore | `__init__.py` |
 
 ### Example
 
@@ -54,5 +55,6 @@ python -m osa_tool.run --repository https://github.com/username/repo \
   --use-poetry \
   --branches main develop \
   --codecov-token \
-  --include-codecov
+  --include-codecov \
+  --ignore-list tests venv setup.py
 ```
