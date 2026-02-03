@@ -111,6 +111,7 @@ OUTPUT FORMAT:
 }}
 """
 
+
 extract_paper_section = """
 INPUT DATA:
 {paper_content}
@@ -173,5 +174,67 @@ OUTPUT FORMAT:
   "correspondence": bool,
   "percentage": float,
   "conclusion": str
+}}
+"""
+
+extract_details_from_thesis = """
+INPUT DATA:
+{doc_info}
+
+TASK:
+Identify implemented algorithms/modules/functions and performed evaluation experiments mentioned in report.
+Form the output containing exact quotes from the report best describing each of them, do not repeat yourself.
+
+RULES:
+- Return ONLY a valid JSON object—no extra text, markdown, or commentary.
+- Do NOT include inline code from report into quotes list
+
+OUTPUT FORMAT:
+{{
+  "quotes": list<string>
+}}
+"""
+
+
+validate_thesis_against_repo = """
+INPUT DATA:
+{quotes}
+{code_files_info}
+
+TASK:
+Compare the quotes from a Russian-language academic report (which describes implementation, experiments and results) with the actual implementation in the repository code.
+
+Use these criteria with fixed maximum scores and penalties:
+
+ Implementation claims vs code (50 points)
+Penalties:
+- Claimed core algorithm not present in code (50)
+- Claimed feature present but implemented differently than described (5 each, cap 15)
+- Report claims use of specific library/framework not present in dependencies (5)
+C. Configuration and reproducibility (50 points)
+Penalties:
+- Described configuration files absent or mismatched (5 each, cap 20)
+- No code is provided to reproduce a described experiment (10 each)
+
+Based on this comparison:
+1. Set "correspondence" to `true` if the code substantially implements what the documentation claims; otherwise `false`.
+2. Calculate a final "score" (0–100 points) which should be equal to sum of the scores from listed criteria
+3. Write a "breakdown" list in Russian, each item in this list should reference a quote from the input list without explicitly including it. For each quote create a tuple with an explanation whether or not it is confirmed by the code and, if not confirmed - calculate how many points are deducted and by which of the criteria.
+5. Write a brief "conclusion" in Russian.
+
+RULES:
+- The report is in Russian—analyze its technical meaning directly; do NOT translate it unless necessary for reasoning.
+- Use only the provided criteria, do NOT apply penalties for the same problem more than once.
+- Use Russian language for the result.
+- Breakdown is a list of tuples where string is an explanation and a number is a deduction from the score (0 if everything is fine)
+- Return ONLY a valid JSON object—no extra text, markdown, or commentary.
+- Base your judgment exclusively on the provided inputs.
+
+OUTPUT FORMAT:
+{{
+  "correspondence": bool,
+  "score": int,
+  "breakdown": list<string, int>,
+  "conclusion": string
 }}
 """
