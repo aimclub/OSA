@@ -7,7 +7,6 @@ def test_header_builder_initialization(mock_header_builder):
     builder = mock_header_builder
 
     # Assert
-    assert builder.config is not None
     assert builder.repo_url is not None
     assert builder._template is not None
     assert builder.tree is not None
@@ -148,7 +147,7 @@ def test_build_header(mock_header_builder):
 
     # Assert
     assert isinstance(header, str)
-    assert builder.config.git.name in header
+    assert builder.config_manager.config.git.name in header
 
 
 def test_generate_info_badges_formats_correctly(mock_header_builder):
@@ -175,15 +174,17 @@ def test_generate_tech_badges_respects_max_limit(mock_header_builder):
     assert isinstance(badges, str)
 
 
-def test_header_builder_with_minimal_repo_tree(mock_config_loader, mock_repository_metadata, sourcerank_with_repo_tree):
+def test_header_builder_with_minimal_repo_tree(
+    mock_config_manager, mock_repository_metadata, sourcerank_with_repo_tree
+):
     # Arrange
     repo_tree_data = get_mock_repo_tree("MINIMAL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
-    builder = HeaderBuilder(mock_config_loader, mock_repository_metadata)
+    builder = HeaderBuilder(mock_config_manager, mock_repository_metadata)
     builder.sourcerank = sourcerank
 
     # Assert
-    assert builder.config is not None
+    assert builder.config_manager.config is not None
     assert builder.sourcerank is not None
 
     header = builder.build_header()

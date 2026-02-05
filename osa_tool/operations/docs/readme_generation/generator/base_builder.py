@@ -5,7 +5,7 @@ from functools import cached_property
 import requests
 import tomli
 
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.docs.readme_generation.generator.header import HeaderBuilder
 from osa_tool.operations.docs.readme_generation.generator.installation import InstallationSectionBuilder
@@ -18,25 +18,24 @@ from osa_tool.utils.utils import osa_project_root
 class MarkdownBuilderBase:
     def __init__(
         self,
-        config_loader: ConfigLoader,
+        config_manager: ConfigManager,
         metadata: RepositoryMetadata,
         overview=None,
         getting_started=None,
     ):
-        self.config_loader = config_loader
-        self.config = self.config_loader.config
-        self.sourcerank = SourceRank(self.config_loader)
-        self.prompts = self.config.prompts
-        self.repo_url = self.config.git.repository
+        self.config_manager = config_manager
+        self.sourcerank = SourceRank(self.config_manager)
+        self.prompts = self.config_manager.get_prompts()
+        self.repo_url = self.config_manager.get_git_settings().repository
         self.metadata = metadata
-        self.url_path = f"https://{self.config.git.host_domain}/{self.config.git.full_name}/"
+        self.url_path = f"https://{self.config_manager.get_git_settings().host_domain}/{self.config_manager.get_git_settings().full_name}/"
         self.branch_path = f"tree/{self.metadata.default_branch}/"
 
         self._overview = overview
         self._getting_started = getting_started
 
-        self.header = HeaderBuilder(self.config_loader, self.metadata).build_header()
-        self.installation = InstallationSectionBuilder(self.config_loader, self.metadata).build_installation()
+        self.header = HeaderBuilder(self.config_manager, self.metadata).build_header()
+        self.installation = InstallationSectionBuilder(self.config_manager, self.metadata).build_installation()
 
         self.template_path = os.path.join(osa_project_root(), "config", "templates", "template.toml")
         self._template = self.load_template()
@@ -109,7 +108,7 @@ class MarkdownBuilderBase:
             path = self.url_path + self.branch_path + find_in_repo_tree(self.sourcerank.tree, pattern)
             return self._template["citation"] + self._template["citation_v1"].format(path=path)
 
-        llm_client = LLMClient(self.config_loader, self.metadata)
+        llm_client = LLMClient(self.config_manager, self.metadata)
         citation_from_readme = llm_client.get_citation_from_readme()
 
         if citation_from_readme:
@@ -118,9 +117,9 @@ class MarkdownBuilderBase:
         return self._template["citation"] + self._template["citation_v2"].format(
             owner=self.metadata.owner,
             year=self.metadata.created_at.split("-")[0],
-            repo_name=self.config.git.name,
-            publisher=self.config.git.host_domain,
-            repository_url=self.config.git.repository,
+            repo_name=self.config_manager.get_git_settings().name,
+            publisher=self.config_manager.get_git_settings().host_domain,
+            repository_url=self.config_manager.get_git_settings().repository,
         )
 
     @staticmethod

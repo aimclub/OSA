@@ -6,14 +6,14 @@ no_pull_request = false
 
 # Language Model API Settings
 [llm]
-api = "itmo"
+# api = "openai"
 rate_limit = 10
-base_url = "https://api.openai.com/v1"
+base_url = "https://openrouter.ai/api/v1"
 encoder = "cl100k_base"
-host_name = "https://api.openai.com/v1"
+host_name = "https://openrouter.ai/api/v1"
 localhost = "http://localhost:11434/"
 model = "gpt-3.5-turbo"
-path = "generate"
+path = "chat/completions"
 temperature = 0.05
 max_tokens = 4096
 context_window = 16385
@@ -21,6 +21,11 @@ top_p = 0.95
 max_retries = 3
 allowed_providers = ["google-vertex", "azure"]
 system_prompt = "You are a helpful assistant for analyzing open-source repositories."
+
+[llm.for_docstring_gen]
+[llm.for_readme_gen]
+[llm.for_validation]
+[llm.for_general_tasks]
 
 # General CLI-related defaults
 [general]

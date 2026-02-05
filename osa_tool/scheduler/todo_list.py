@@ -1,4 +1,6 @@
 EXCLUDED_TASK = {
+    "use_single_model",
+    "config_file",
     "repository",
     "mode",
     "web_mode",
@@ -7,6 +9,10 @@ EXCLUDED_TASK = {
     "api",
     "base_url",
     "model",
+    "model_docstring",
+    "model_readme",
+    "model_validation",
+    "model_general",
     "temperature",
     "max_tokens",
     "context_window",

@@ -9,7 +9,7 @@ def test_installation_builder_initialization(mock_installation_builder):
     builder = mock_installation_builder
 
     # Assert
-    assert builder.config is not None
+    assert builder.config_manager.config is not None
     assert builder.repo_url is not None
     assert builder._template is not None
     assert builder.sourcerank is not None
@@ -106,7 +106,7 @@ def test_build_installation(mock_installation_builder):
 
     # Assert
     assert isinstance(installation, str)
-    assert builder.config.git.name in installation
+    assert builder.config_manager.config.git.name in installation
 
 
 def test_build_installation_with_python_version(mock_installation_builder):
@@ -125,17 +125,17 @@ def test_build_installation_with_python_version(mock_installation_builder):
 
 
 def test_installation_builder_with_minimal_repo_tree(
-    mock_config_loader, mock_repository_metadata, sourcerank_with_repo_tree
+    mock_config_manager, mock_repository_metadata, sourcerank_with_repo_tree
 ):
     # Arrange
     repo_tree_data = get_mock_repo_tree("MINIMAL")
     sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
-    builder = InstallationSectionBuilder(mock_config_loader, mock_repository_metadata)
+    builder = InstallationSectionBuilder(mock_config_manager, mock_repository_metadata)
     builder.sourcerank = sourcerank
 
     # Assert
-    assert builder.config is not None
+    assert builder.config_manager.config is not None
     assert builder.sourcerank is not None
 
     installation = builder.build_installation()

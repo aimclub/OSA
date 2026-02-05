@@ -2,7 +2,7 @@ import os
 
 import tomli
 
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.core.models.event import EventKind, OperationEvent
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
@@ -22,11 +22,11 @@ class LicenseCompiler:
 
     def __init__(
         self,
-        config_loader: ConfigLoader,
+        config_manager: ConfigManager,
         metadata: RepositoryMetadata,
         license_type: str,
     ):
-        self.sourcerank = SourceRank(config_loader)
+        self.sourcerank = SourceRank(config_manager)
         self.metadata = metadata
         self.license_type = license_type
         self.license_template_path = os.path.join(osa_project_root(), "docs", "templates", "licenses.toml")

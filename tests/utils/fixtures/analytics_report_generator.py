@@ -6,7 +6,7 @@ from osa_tool.operations.analysis.repository_report.report_generator import Text
 
 
 @pytest.fixture
-def text_generator_instance(mock_config_loader, mock_repository_metadata):
+def text_generator_instance(mock_config_manager, mock_repository_metadata):
     with (
         patch(
             "osa_tool.operations.analysis.repository_report.report_generator.ModelHandlerFactory.build"
@@ -24,6 +24,6 @@ def text_generator_instance(mock_config_loader, mock_repository_metadata):
         mock_model_handler_factory.return_value = mock_model_handler
 
         yield TextGenerator(
-            config_loader=mock_config_loader,
+            config_manager=mock_config_manager,
             metadata=mock_repository_metadata,
         ), mock_model_handler

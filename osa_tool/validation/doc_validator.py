@@ -5,7 +5,7 @@ import re
 
 import docx2txt
 
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
 from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
@@ -23,17 +23,18 @@ class DocValidator:
     analyzes code files in the repository, and validates the documentation against the codebase using a language model.
     """
 
-    def __init__(self, config_loader: ConfigLoader):
+    def __init__(self, config_manager: ConfigManager):
         """
         Initialize the DocValidator.
 
         Args:
-            config_loader (ConfigLoader): Loader containing configuration settings.
+            config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
         """
-        self.config = config_loader.config
-        self.code_analyzer = CodeAnalyzer(config_loader)
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
-        self.prompts = self.config.prompts
+        self.config_manager = config_manager
+        self.model_settings = self.config_manager.get_model_settings("validation")
+        self.code_analyzer = CodeAnalyzer(self.config_manager)
+        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
+        self.prompts = self.config_manager.get_prompts()
 
     def _describe_image(self, image_path: str):
         base64_image = self._encode_image(image_path)

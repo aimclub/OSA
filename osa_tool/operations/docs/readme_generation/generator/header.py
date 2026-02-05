@@ -3,7 +3,7 @@ import os
 
 import tomli
 
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.docs.readme_generation.context.pypi_status_checker import PyPiPackageInspector
 from osa_tool.tools.repository_analysis.dependencies import DependencyExtractor
@@ -12,12 +12,11 @@ from osa_tool.utils.utils import osa_project_root, parse_folder_name
 
 
 class HeaderBuilder:
-    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
-        self.config_loader = config_loader
-        self.config = self.config_loader.config
-        self.repo_url = self.config.git.repository
+    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata):
+        self.config_manager = config_manager
+        self.repo_url = self.config_manager.get_git_settings().repository
         self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
-        self.tree = SourceRank(self.config_loader).tree
+        self.tree = SourceRank(self.config_manager).tree
         self.metadata = metadata
         self.template_path = os.path.join(osa_project_root(), "config", "templates", "template.toml")
         self.icons_tech_path = os.path.join(
@@ -60,7 +59,7 @@ class HeaderBuilder:
             str: A formatted string representing the header section of the README.
         """
         return self._template["headers"].format(
-            project_name=self.config.git.name,
+            project_name=self.config_manager.get_git_settings().name,
             info_badges=self.build_information_section,
             tech_badges=self.build_technology_section,
         )
@@ -103,7 +102,7 @@ class HeaderBuilder:
         badge_color = "blue"
 
         badge_url = (
-            f"https://img.shields.io/{self.config.git.host}/license/{self.config.git.full_name}"
+            f"https://img.shields.io/{self.config_manager.get_git_settings().host}/license/{self.config_manager.get_git_settings().full_name}"
             f"?style={badge_style}&logo=opensourceinitiative&logoColor=white&color={badge_color}"
         )
         badge_html = f"\n![License]({badge_url})"

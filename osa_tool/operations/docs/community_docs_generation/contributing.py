@@ -2,7 +2,7 @@ import os
 
 import tomli
 
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.docs.readme_generation.utils import (
     find_in_repo_tree,
@@ -19,19 +19,22 @@ class ContributingBuilder:
     Builds the CONTRIBUTING.md Markdown documentation file for the project.
     """
 
-    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
-        self.config_loader = config_loader
-        self.config = self.config_loader.config
-        self.sourcerank = SourceRank(self.config_loader)
-        self.repo_url = self.config.git.repository
+    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata):
+        self.config_manager = config_manager
+        self.sourcerank = SourceRank(self.config_manager)
+        self.repo_url = self.config_manager.get_git_settings().repository
         self.metadata = metadata
         self.template_path = os.path.join(osa_project_root(), "docs", "templates", "contributing.toml")
-        self.url_path = f"https://{self.config.git.host_domain}/{self.config.git.full_name}/"
+        self.url_path = f"https://{self.config_manager.get_git_settings().host_domain}/{self.config_manager.get_git_settings().full_name}/"
         self.branch_path = f"tree/{self.metadata.default_branch}/"
-        self.issues_url = self.url_path + ("tasktracker" if "gitverse" in self.config.git.host else "issues")
+        self.issues_url = self.url_path + (
+            "tasktracker" if "gitverse" in self.config_manager.get_git_settings().host else "issues"
+        )
         self._template = self.load_template()
 
-        self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url), "." + self.config.git.host)
+        self.repo_path = os.path.join(
+            os.getcwd(), parse_folder_name(self.repo_url), "." + self.config_manager.get_git_settings().host
+        )
         self.file_to_save = os.path.join(self.repo_path, "CONTRIBUTING.md")
 
     def load_template(self) -> dict:

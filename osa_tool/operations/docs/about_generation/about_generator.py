@@ -2,7 +2,7 @@ import os
 import re
 from typing import List
 
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.core.models.event import OperationEvent, EventKind
@@ -25,11 +25,12 @@ HOMEPAGE_KEYS = [
 class AboutGenerator:
     """Generates Git repository About section content."""
 
-    def __init__(self, config_loader: ConfigLoader, git_agent: GitAgent):
-        self.config = config_loader.config
-        self.prompts = self.config.prompts
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
-        self.repo_url = self.config.git.repository
+    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent):
+        self.config_manager = config_manager
+        self.model_settings = config_manager.get_model_settings("general")
+        self.prompts = self.config_manager.get_prompts()
+        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
+        self.repo_url = self.config_manager.get_git_settings().repository
         self.metadata = git_agent.metadata
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.readme_content = extract_readme_content(self.base_path)

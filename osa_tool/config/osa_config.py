@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.scheduler.workflow_manager import WorkflowManager
 
@@ -11,7 +11,7 @@ class OSAConfig(BaseModel):
     Initialized once per session.
     """
 
-    config_loader: ConfigLoader
+    config_manager: ConfigManager
     git_agent: GitAgent
     workflow_manager: WorkflowManager
 

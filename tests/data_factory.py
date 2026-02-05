@@ -58,6 +58,20 @@ class DataFactory:
         }
 
     @staticmethod
+    def generate_model_group_settings() -> dict:
+        """Generating data for ModelGroupSettings"""
+        default_settings = DataFactory.generate_model_settings()
+
+        # Создаем настройки для разных задач (могут быть такими же или отличаться)
+        return {
+            "default": default_settings,
+            "for_docstring_gen": default_settings.copy(),
+            "for_readme_gen": default_settings.copy(),
+            "for_validation": default_settings.copy(),
+            "for_general_tasks": default_settings.copy(),
+        }
+
+    @staticmethod
     def generate_workflow_settings() -> dict:
         """Generating data for WorkflowSettings"""
         return {
@@ -80,7 +94,7 @@ class DataFactory:
         """Generate a complete set of settings"""
         return {
             "git": self.generate_git_settings(platform),
-            "llm": self.generate_model_settings(),
+            "llm": self.generate_model_group_settings(),
             "workflows": self.generate_workflow_settings(),
         }
 

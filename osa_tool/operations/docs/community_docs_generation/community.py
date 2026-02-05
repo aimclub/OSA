@@ -2,7 +2,7 @@ import os
 
 import tomli
 
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.docs.readme_generation.utils import find_in_repo_tree, save_sections
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
@@ -15,18 +15,19 @@ class CommunityTemplateBuilder:
     Builds PULL_REQUEST_TEMPLATE Markdown file.
     """
 
-    def __init__(self, config_loader: ConfigLoader, metadata: RepositoryMetadata):
-        self.config_loader = config_loader
-        self.config = self.config_loader.config
-        self.repo_url = self.config.git.repository
-        self.sourcerank = SourceRank(self.config_loader)
+    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata):
+        self.config_manager = config_manager
+        self.repo_url = self.config_manager.get_git_settings().repository
+        self.sourcerank = SourceRank(self.config_manager)
         self.metadata = metadata
         self.template_path = os.path.join(osa_project_root(), "docs", "templates", "community.toml")
-        self.url_path = f"https://{self.config.git.host_domain}/{self.config.git.full_name}/"
+        self.url_path = f"https://{self.config_manager.get_git_settings().host_domain}/{self.config_manager.get_git_settings().full_name}/"
         self.branch_path = f"tree/{self.metadata.default_branch}/"
         self._template = self.load_template()
 
-        self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url), "." + self.config.git.host)
+        self.repo_path = os.path.join(
+            os.getcwd(), parse_folder_name(self.repo_url), "." + self.config_manager.get_git_settings().host
+        )
         self.code_of_conduct_to_save = os.path.join(self.repo_path, "CODE_OF_CONDUCT.md")
         self.security_to_save = os.path.join(self.repo_path, "SECURITY.md")
         self._setup_paths_depends_on_platform()
@@ -34,7 +35,7 @@ class CommunityTemplateBuilder:
     def _setup_paths_depends_on_platform(self) -> None:
         """Configures file save paths depending on the platform."""
 
-        if "gitlab" in self.config.git.host:
+        if "gitlab" in self.config_manager.get_git_settings().host:
             self.issue_templates_path = os.path.join(self.repo_path, "issue_templates")
             self.merge_request_templates_path = os.path.join(self.repo_path, "merge_request_templates")
             os.makedirs(self.issue_templates_path, exist_ok=True)
@@ -47,7 +48,7 @@ class CommunityTemplateBuilder:
             self.vulnerability_disclosure_to_save = os.path.join(
                 self.issue_templates_path, "Vulnerability_Disclosure.md"
             )
-        elif "github" in self.config.git.host:
+        elif "github" in self.config_manager.get_git_settings().host:
             self.issue_templates_path = os.path.join(self.repo_path, "ISSUE_TEMPLATE")
             os.makedirs(self.issue_templates_path, exist_ok=True)
             self.pr_to_save = os.path.join(self.repo_path, "PULL_REQUEST_TEMPLATE.md")
@@ -140,7 +141,9 @@ class CommunityTemplateBuilder:
     def build_security(self) -> None:
         """Generates and saves the SECURITY.md file."""
         try:
-            content = self._template[f"security_{self.config.git.host}"].format(repo_url=self.repo_url)
+            content = self._template[f"security_{self.config_manager.get_git_settings().host}"].format(
+                repo_url=self.repo_url
+            )
             save_sections(content, self.security_to_save)
             logger.info(f"SECURITY.md successfully generated in folder {self.repo_path}")
         except Exception as e:

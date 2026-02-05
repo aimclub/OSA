@@ -1,6 +1,6 @@
 import os
 
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.scheduler.response_validation import PromptConfig
@@ -21,7 +21,7 @@ class ModeScheduler:
 
     def __init__(
         self,
-        config_loader: ConfigLoader,
+        config_manager: ConfigManager,
         sourcerank: SourceRank,
         args,
         workflow_manager: WorkflowManager,
@@ -29,14 +29,15 @@ class ModeScheduler:
     ):
         self.mode = args.mode
         self.args = args
-        self.config = config_loader.config
+        self.config_manager = config_manager
+        self.model_settings = self.config_manager.get_model_settings("general")
         self.sourcerank = sourcerank
         self.workflow_manager = workflow_manager
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
-        self.repo_url = self.config.git.repository
+        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
+        self.repo_url = self.config_manager.get_git_settings().repository
         self.metadata = metadata
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
-        self.prompts = self.config.prompts
+        self.prompts = self.config_manager.get_prompts()
         self.plan = self._select_plan()
 
     @staticmethod
@@ -70,6 +71,7 @@ class ModeScheduler:
 
         elif self.mode == "auto":
             logger.info("Auto mode selected for task scheduler.")
+            logger.info(f"The following model is used to create the plan: {self.model_settings.model}.")
             auto_plan = self._make_request_for_auto_mode()
 
             if not self.sourcerank.requirements_presence():

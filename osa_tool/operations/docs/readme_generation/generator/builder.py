@@ -1,4 +1,4 @@
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.docs.readme_generation.generator.base_builder import MarkdownBuilderBase
 from osa_tool.operations.docs.readme_generation.utils import find_in_repo_tree
@@ -11,13 +11,13 @@ class MarkdownBuilder(MarkdownBuilderBase):
 
     def __init__(
         self,
-        config_loader: ConfigLoader,
+        config_manager: ConfigManager,
         metadata: RepositoryMetadata,
         overview: str = None,
         core_features: str = None,
         getting_started: str = None,
     ):
-        super().__init__(config_loader, metadata, overview=overview, getting_started=getting_started)
+        super().__init__(config_manager, metadata, overview=overview, getting_started=getting_started)
         self._core_features_json = core_features
 
     @property
@@ -52,7 +52,7 @@ class MarkdownBuilder(MarkdownBuilderBase):
 
             contributing_url = self.url_path + self.branch_path + find_in_repo_tree(self.sourcerank.tree, pattern)
             contributing = self._template["contributing_section"].format(
-                contributing_url=contributing_url, name=self.config.git.name
+                contributing_url=contributing_url, name=self.config_manager.get_git_settings().name
             )
         else:
             contributing = ""
