@@ -20,6 +20,7 @@ from osa_tool.operations.docs.community_docs_generation.license_generation impor
 from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
 from osa_tool.operations.docs.readme_generation.utils import format_time
 from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
+from osa_tool.operations.requirements.requirements_generator import RequirementsGenerator
 from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
@@ -164,7 +165,8 @@ def main():
         # Requirements generation
         if plan.get("requirements"):
             rich_section("Requirements generation")
-            generate_requirements(args.repository)
+            req_gen = RequirementsGenerator(config_manager)
+            req_gen.generate(args.repository)
             what_has_been_done.mark_did("requirements")
 
         # Readme generation
@@ -271,22 +273,6 @@ def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) ->
 
     except Exception as e:
         logger.error("Error while converting notebooks: %s", repr(e), exc_info=True)
-
-
-def generate_requirements(repo_url):
-    logger.info(f"Starting the generation of requirements")
-    repo_path = Path(parse_folder_name(repo_url)).resolve()
-    try:
-        result = subprocess.run(
-            ["pipreqs", "--scan-notebooks", "--force", "--encoding", "utf-8", repo_path],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        logger.info(f"Requirements generated successfully at: {repo_path}")
-        logger.debug(result)
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Error while generating project's requirements: {e.stderr}")
 
 
 def generate_docstrings(config_manager: ConfigManager, loop: asyncio.AbstractEventLoop, ignore_list: list[str]) -> None:
