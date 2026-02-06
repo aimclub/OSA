@@ -6,7 +6,7 @@ import re
 import docx2txt
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.models.models import ModelHandler, ModelHandlerFactory
+from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
 from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
 from osa_tool.utils.logger import logger
@@ -53,7 +53,8 @@ class DocValidator:
         )
         logger.info(response)
 
-    def _encode_image(self, image_path: str):
+    @staticmethod
+    def _encode_image(image_path: str):
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode("utf-8")
 
@@ -112,7 +113,8 @@ class DocValidator:
     def _process_multiple_docs(self):
         pass
 
-    def _parse_docx(self, path_to_doc: str) -> str:
+    @staticmethod
+    def _parse_docx(path_to_doc: str) -> str:
         """
         Extract text content from a DOCX file.
 
@@ -129,7 +131,8 @@ class DocValidator:
             raise Exception(f"Error in parsing .docx: {e}")
         return docx_content
 
-    def _parse_pdf(self, path_to_doc: str) -> str:
+    @staticmethod
+    def _parse_pdf(path_to_doc: str) -> str:
         """
         Extract text content from a PDF file.
 
@@ -145,7 +148,8 @@ class DocValidator:
         logger.info("Extracting text from PDF ...")
         return PdfParser(path_to_pdf).data_extractor()
 
-    def _preprocess_text(self, raw_text: str) -> str:
+    @staticmethod
+    def _preprocess_text(raw_text: str) -> str:
         """
         Preprocess extracted text by cleaning and formatting.
 

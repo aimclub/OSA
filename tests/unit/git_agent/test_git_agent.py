@@ -5,12 +5,12 @@ from unittest.mock import Mock, patch, ANY
 import pytest
 from git import Repo, GitCommandError
 
-from osa_tool.analytics.metadata import (
+from osa_tool.core.git.git_agent import GitHubAgent, GitverseAgent, GitLabAgent
+from osa_tool.core.git.metadata import (
     GitHubMetadataLoader,
     GitverseMetadataLoader,
     GitLabMetadataLoader,
 )
-from osa_tool.git_agent.git_agent import GitHubAgent, GitverseAgent, GitLabAgent
 from osa_tool.utils.utils import parse_folder_name
 
 

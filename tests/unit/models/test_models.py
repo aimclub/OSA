@@ -1,6 +1,6 @@
 import pytest
 
-from osa_tool.models.models import ModelHandlerFactory, PayloadFactory, ProtollmHandler
+from osa_tool.core.llm.llm import ModelHandlerFactory, PayloadFactory, ProtollmHandler
 from tests.utils.fixtures.models import DummyLLMClient
 
 

@@ -702,7 +702,8 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
             script=script_yaml,
         )
 
-    def _generate_branches_section(self, branches: List[str] = None) -> str:
+    @staticmethod
+    def _generate_branches_section(branches: List[str] = None) -> str:
         if not branches:
             return ""
         return f"only:\n" + "\n".join([f"  - {branch}" for branch in branches])

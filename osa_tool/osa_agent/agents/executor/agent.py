@@ -1,10 +1,15 @@
+from typing import Any
+
+from rich import box
+from rich.table import Table
+
 from osa_tool.core.models.agent import AgentStatus
 from osa_tool.core.models.task import TaskStatus, Task
 from osa_tool.operations.registry import OperationRegistry
 from osa_tool.osa_agent.base import BaseAgent
 from osa_tool.osa_agent.state import OSAState
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import rich_section
+from osa_tool.utils.utils import rich_section, console
 
 
 class ExecutorAgent(BaseAgent):
@@ -37,6 +42,8 @@ class ExecutorAgent(BaseAgent):
         """
         rich_section("Executor Agent")
 
+        self._render_plan_cli(state)
+
         state.active_agent = self.name
         state.status = AgentStatus.GENERATING
 
@@ -47,7 +54,7 @@ class ExecutorAgent(BaseAgent):
             state.current_step_index = idx
             self._run_task(task, state)
 
-            state.artifacts[task.id] = task.result
+            state.artifacts[task.id] = {"result": task.result, "events": task.events}
 
         return state
 
@@ -70,16 +77,24 @@ class ExecutorAgent(BaseAgent):
 
         try:
             result = self._execute_task(task, state)
-            task.result = result
+            task.result = result.get("result")
+            task.events = result.get("events", [])
             task.status = TaskStatus.COMPLETED
             logger.info(f"Task '{task.id}' completed")
 
         except Exception as e:
             task.status = TaskStatus.FAILED
-            task.result = {"error": str(e)}
+
+            if isinstance(e, dict):
+                task.result = e.get("result")
+                task.events = e.get("events", [])
+            else:
+                task.result = {"error": str(e)}
+                task.events = []
+
             logger.error(f"Task '{task.id}' failed", exc_info=True)
 
-    def _execute_task(self, task: Task, state: OSAState) -> dict:
+    def _execute_task(self, task: Task, state: OSAState) -> dict[str, Any]:
         """
         Execute a task using its operation execution descriptor.
 
@@ -150,9 +165,43 @@ class ExecutorAgent(BaseAgent):
             dict: Normalized result dictionary.
         """
         if result is None:
-            return {}
+            return {"result": None, "events": []}
 
         if isinstance(result, dict):
-            return result
+            return {
+                "result": result.get("result"),
+                "events": result.get("events", []),
+            }
 
-        return {"result": result}
+        return {"result": result, "events": []}
+
+    @staticmethod
+    def _render_plan_cli(state: OSAState) -> None:
+        """
+        Render execution plan as a Rich table for CLI users.
+        """
+
+        if not state.plan:
+            console.print("[bold red]No tasks in the execution plan.[/]")
+            return
+
+        table = Table(
+            title="Execution Plan",
+            box=box.ROUNDED,
+            show_lines=True,
+            title_style="bold cyan",
+            header_style="bold white",
+        )
+
+        table.add_column("#", justify="right", style="bold yellow")
+        table.add_column("Task ID", style="bold")
+        table.add_column("Special Arguments", style="dim")
+
+        for i, task in enumerate(state.plan, start=1):
+            table.add_row(
+                str(i),
+                f"[cyan]{task.id}[/]",
+                str(task.args),
+            )
+
+        console.print(table)

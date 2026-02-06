@@ -18,7 +18,7 @@ nav:
       - index.md
   - API Reference:
       - Git Agent: core/git_agent/git_agent.md
-      - Model Handler: core/models/models.md
+      - Model Handler: core/llm/lmm.md
       - OSA Tree Sitter:
           - core/osatreesitter/osatreesitter.md
           - Documentation Generator: core/osatreesitter/docgen.md

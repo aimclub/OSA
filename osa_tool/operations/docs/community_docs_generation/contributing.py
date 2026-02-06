@@ -2,14 +2,14 @@ import os
 
 import tomli
 
-from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigManager
+from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.docs.readme_generation.utils import (
     find_in_repo_tree,
     remove_extra_blank_lines,
     save_sections,
 )
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root, parse_folder_name
 

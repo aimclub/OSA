@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 
 import pytest
 
-from osa_tool.osatreesitter.docgen import DocGen
+from osa_tool.operations.codebase.docstring_generation.docgen import DocGen
 
 
 def test_format_class(mock_config_manager):
@@ -672,10 +672,10 @@ def test_convert_path_to_dot_notation(mock_config_manager):
     assert docgen.convert_path_to_dot_notation(Path("x/y/z.py")) == "::: x.y.z"
 
 
-@patch("osa_tool.osatreesitter.docgen.Path.mkdir")
-@patch("osa_tool.osatreesitter.docgen.Path.write_text")
-@patch("osa_tool.osatreesitter.docgen.shutil.copy")
-@patch("osa_tool.osatreesitter.docgen.osa_project_root")
+@patch("osa_tool.operations.codebase.docstring_generation.docgen.Path.mkdir")
+@patch("osa_tool.operations.codebase.docstring_generation.docgen.Path.write_text")
+@patch("osa_tool.operations.codebase.docstring_generation.docgen.shutil.copy")
+@patch("osa_tool.operations.codebase.docstring_generation.docgen.osa_project_root")
 def test_generate_documentation_mkdocs(mock_root, mock_copy, mock_write_text, mock_mkdir, mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)
@@ -687,9 +687,8 @@ def test_generate_documentation_mkdocs(mock_root, mock_copy, mock_write_text, mo
     }
     modules_info = {"src/module1": "Module 1 documentation"}
 
-    with patch("osa_tool.osatreesitter.docgen.logger") as mock_logger:
-        # Act
-        docgen.generate_documentation_mkdocs("src", files_info, modules_info)
+    # Act
+    docgen.generate_documentation_mkdocs("src", files_info, modules_info)
 
     # Assert
     assert mock_mkdir.called
@@ -831,8 +830,12 @@ def test_perform_code_augmentations(mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)
     with (
-        patch("osa_tool.osatreesitter.docgen.DocGen.insert_docstring_in_code") as mock_insert,
-        patch("osa_tool.osatreesitter.docgen.DocGen.insert_cls_docstring_in_code") as mock_insert_cls,
+        patch(
+            "osa_tool.operations.codebase.docstring_generation.docgen.DocGen.insert_docstring_in_code"
+        ) as mock_insert,
+        patch(
+            "osa_tool.operations.codebase.docstring_generation.docgen.DocGen.insert_cls_docstring_in_code"
+        ) as mock_insert_cls,
     ):
         mock_insert.side_effect = lambda src, obj, doc, class_method=False: src + f"\n# {doc}"
         mock_insert_cls.side_effect = lambda src, cls, doc: src + f"\n# {doc}"

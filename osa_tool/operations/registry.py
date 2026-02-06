@@ -73,6 +73,10 @@ class OperationRegistry:
         return cls._operations.get(name)
 
     @classmethod
+    def list_all(cls) -> list[Operation]:
+        return list(cls._operations.values())
+
+    @classmethod
     def applicable(cls, state: OSAState) -> list[Operation]:
         return [op for op in cls._operations.values() if op.is_applicable(state)]
 

@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from osa_tool.aboutgen.about_generator import AboutGenerator
+from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
 from osa_tool.utils.prompts_builder import PromptBuilder
 
 
@@ -41,7 +41,7 @@ def test_generate_description(
     generator.metadata.description = ""
 
     # Act
-    description = generator.generate_description()
+    description = generator._generate_description()
 
     # Assert
     assert isinstance(description, str)
@@ -58,7 +58,7 @@ def test_generate_description_exists(
     generator = AboutGenerator(mock_config_manager, mock_git_agent)
 
     # Act
-    description = generator.generate_description()
+    description = generator._generate_description()
 
     # Assert
     assert isinstance(description, str)
@@ -79,7 +79,7 @@ def test_generate_description_no_readme(
     caplog.set_level("WARNING")
 
     # Act
-    description = generator.generate_description()
+    description = generator._generate_description()
 
     # Assert
     assert description == ""
@@ -99,7 +99,7 @@ def test_generate_topics(
     mock_git_agent.validate_topics.return_value = ["python", "open-source", "git-tools"]
 
     # Act
-    topics = generator.generate_topics()
+    topics = generator._generate_topics()
 
     # Assert
     assert isinstance(topics, list)
@@ -120,7 +120,7 @@ def test_generate_topics_existing(
     generator.metadata.topics = existing
 
     # Act
-    topics = generator.generate_topics()
+    topics = generator._generate_topics()
 
     # Assert
     mock_model_handler_aboutgen.send_request.assert_not_called()
@@ -138,7 +138,7 @@ def test_generate_topics_llm_exception_returns_empty(
     mock_model_handler_aboutgen.send_request.side_effect = Exception("LLM error")
 
     # Act
-    topics = generator.generate_topics()
+    topics = generator._generate_topics()
 
     # Assert
     assert topics == []
@@ -154,7 +154,7 @@ def test_detect_homepage_from_metadata(
     generator.metadata.homepage_url = expected_homepage
 
     # Act
-    homepage = generator.detect_homepage()
+    homepage = generator._detect_homepage()
 
     # Assert
     assert homepage == expected_homepage
@@ -172,7 +172,7 @@ def test_detect_homepage_from_readme(
     generator.readme_content = "Visit us at https://my-site.org for more info."
 
     # Act
-    homepage = generator.detect_homepage()
+    homepage = generator._detect_homepage()
 
     # Assert
     assert homepage == "https://my-site.org"
@@ -188,7 +188,7 @@ def test_detect_homepage_not_found(
     generator.readme_content = "No link here."
 
     # Act
-    homepage = generator.detect_homepage()
+    homepage = generator._detect_homepage()
 
     # Assert
     assert homepage == ""
@@ -206,7 +206,7 @@ def test_detect_homepage_no_readme(
     caplog.set_level("WARNING")
 
     # Act
-    homepage = generator.detect_homepage()
+    homepage = generator._detect_homepage()
 
     # Assert
     assert homepage == ""
@@ -262,8 +262,8 @@ def test_generate_about_content_once_only(
 ):
     # Arrange
     generator = AboutGenerator(mock_config_manager, mock_git_agent)
-    mocker.patch.object(generator, "generate_description", return_value="Test description")
-    mocker.patch.object(generator, "generate_topics", return_value=["topic1", "topic2"])
+    mocker.patch.object(generator, "_generate_description", return_value="Test description")
+    mocker.patch.object(generator, "_generate_topics", return_value=["topic1", "topic2"])
     caplog.set_level("WARNING")
 
     # Act

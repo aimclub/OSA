@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from osa_tool.analytics.metadata import (
+from osa_tool.core.git.metadata import (
     GitHubMetadataLoader,
     GitLabMetadataLoader,
     GitverseMetadataLoader,
@@ -55,7 +55,7 @@ def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_fa
     loader_class = LOADER_CLASSES[platform]
 
     # Act
-    with patch("osa_tool.analytics.metadata.requests.get", return_value=mock_response) as mock_get:
+    with patch("osa_tool.core.git.metadata.requests.get", return_value=mock_response) as mock_get:
         with patch.dict(os.environ, TOKEN_ENVS[platform]):
             result = loader_class._load_platform_data(repo_url, use_token=True)
 
@@ -85,7 +85,7 @@ def test_load_data_http_errors(status_code, mock_requests_response_factory, repo
     loader_class = LOADER_CLASSES[platform]
 
     # Act & Assert
-    with patch("osa_tool.analytics.metadata.requests.get", return_value=mock_response):
+    with patch("osa_tool.core.git.metadata.requests.get", return_value=mock_response):
         with patch.dict(os.environ, TOKEN_ENVS[platform]):
             with pytest.raises(Exception):
                 loader_class.load_data(repo_url)
