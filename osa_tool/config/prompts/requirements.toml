@@ -1,0 +1,29 @@
+[prompts]
+merge_requirements = """
+You are a Senior Python DevOps engineer.
+Your task is to merge two `requirements.txt` file contents into one final list.
+
+INPUT DATA:
+
+1. OLD_REQUIREMENTS (contains preferred versions/constraints):
+{old_requirements}
+
+2. NEW_REQUIREMENTS (generated from code analysis, contains the actual necessary libraries):
+{new_requirements}
+
+TASK:
+Merge these two lists into a single valid `requirements.txt` file content.
+
+RULES:
+1. The `NEW_REQUIREMENTS` list is the source of truth for *which* libraries must be included.
+2. If a library exists in `NEW_REQUIREMENTS`:
+   - Check if it also exists in `OLD_REQUIREMENTS`.
+   - If yes, use the version string/constraints/flags from `OLD_REQUIREMENTS` (preserve context).
+   - If no, keep the version from `NEW_REQUIREMENTS` (or leave it unpinned if provided so).
+3. If a library exists in `OLD_REQUIREMENTS` but NOT in `NEW_REQUIREMENTS`:
+   - REMOVE IT. It is considered dead code/unused dependency.
+4. Output ONLY the raw content of the final `requirements.txt`.
+   - Do not use Markdown blocks (no ```).
+   - Do not add comments or explanations.
+   - The output must be ready to be saved directly to a file.
+"""
