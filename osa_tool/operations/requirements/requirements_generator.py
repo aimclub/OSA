@@ -111,11 +111,7 @@ class RequirementsGenerator:
             # Getting prompt from yaml
             prompt_template = self.prompts.get("requirements.merge_requirements")
 
-            prompt = PromptBuilder.render(
-                prompt_template,
-                old_requirements=old_reqs,
-                new_requirements=new_reqs
-            )
+            prompt = PromptBuilder.render(prompt_template, old_requirements=old_reqs, new_requirements=new_reqs)
 
             # sync because it's a single operation
             response = self.model_handler.send_request(prompt)
@@ -142,5 +138,5 @@ class RequirementsGenerator:
                 lines = lines[1:]
             if lines and lines[-1].startswith("```"):
                 lines = lines[:-1]
-            return "\n".join(lines).strip()
+            text = "\n".join(lines).strip()
         return text
