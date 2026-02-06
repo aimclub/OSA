@@ -459,23 +459,7 @@ class OSA_TreeSitter(object):
                     if not call_text or call_text in ("", " "):
                         return
 
-                    # Only include:
-                    # 1. Simple function names (no dots): foo()
-                    # 2. self.method(): self.xxx
-                    # 3. ClassName.method(): CapitalizedName.xxx
-                    if "." not in call_text:
-                        # Simple function call
-                        function_calls.add(call_text)
-                    elif call_text.startswith("self."):
-                        # self.method() calls
-                        function_calls.add(call_text)
-                    else:
-                        # Check if it's a class method (starts with capital letter)
-                        parts = call_text.split(".")
-                        if parts and parts[0] and parts[0][0].isupper():
-                            # ClassName.method() pattern
-                            function_calls.add(call_text)
-                        # else: skip instance method calls like obj.method()
+                    function_calls.add(call_text)
 
             # Check assignments for imported class instantiation
             elif node.type == "assignment":
