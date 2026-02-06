@@ -1,5 +1,3 @@
-from scholarly import scholarly
-
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
@@ -24,7 +22,7 @@ class CitationExtractor:
         self.prompts = prompts
         self.metadata = metadata
         self.article_path = article_path
-        self.llm_client = LLMClient(config_manager, self.prompts, self.metadata)
+        self.llm_client = LLMClient(config_manager, self.metadata)
 
     def get_citation(self):
         """
@@ -66,5 +64,6 @@ class CitationExtractor:
         Returns:
             str: Bibliographic data of the first matching result in Google Scholar.
         """
-        search_query = scholarly.search_pubs(article_name)
-        return next(search_query).bib
+        pass
+        # search_query = scholarly.search_pubs(article_name)
+        # return next(search_query).bib

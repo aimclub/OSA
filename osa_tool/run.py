@@ -1,12 +1,9 @@
-import argparse
 import asyncio
 import os
 import sys
 import time
 
-from pydantic import ValidationError
-
-from osa_tool.config.settings import ConfigManager, GitSettings
+from osa_tool.config.settings import ConfigManager
 from osa_tool.conversion.notebook_converter import NotebookConverter
 from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator

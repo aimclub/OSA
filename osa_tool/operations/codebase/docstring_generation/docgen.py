@@ -525,7 +525,8 @@ class DocGen(object):
 
         return updated_code
 
-    def context_extractor(self, method_details: dict, structure: dict) -> str:
+    @staticmethod
+    def context_extractor(method_details: dict, structure: dict) -> str:
         """
             Extracts the context of method calls and functions from given method_details and code structure.
 
@@ -581,7 +582,8 @@ class DocGen(object):
 
         return "\n".join(context)
 
-    def format_with_black(self, filename):
+    @staticmethod
+    def format_with_black(filename):
         """
         Formats a Python source code file using the `black` code formatter.
 
@@ -1090,7 +1092,8 @@ class DocGen(object):
         await traverse_and_summarize(self.config_manager.get_git_settings().name, project_structure)
         return _summaries
 
-    def convert_path_to_dot_notation(self, path):
+    @staticmethod
+    def convert_path_to_dot_notation(path):
         path_obj = Path(path) if isinstance(path, str) else path
         processed_parts = []
         for part in path_obj.parts:

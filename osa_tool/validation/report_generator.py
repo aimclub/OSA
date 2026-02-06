@@ -142,7 +142,8 @@ class ReportGenerator:
         elements = [title_line1, title_line2]
         return elements
 
-    def _build_first_part(self, correspondence: bool, percentages: float) -> list[Paragraph]:
+    @staticmethod
+    def _build_first_part(correspondence: bool, percentages: float) -> list[Paragraph]:
         """
         Builds the first section of the report with correspondence and percentage metrics.
 
@@ -165,7 +166,8 @@ class ReportGenerator:
         percentages_text = Paragraph(f"<b>Percentages: {percentages}%</b>", normal_style)
         return [correspondence_text, percentages_text]
 
-    def _build_second_part(self, conclusion: str) -> list[Flowable]:
+    @staticmethod
+    def _build_second_part(conclusion: str) -> list[Flowable]:
         """
         Builds the conclusion section of the report.
 

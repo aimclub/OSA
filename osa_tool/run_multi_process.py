@@ -16,10 +16,10 @@ from osa_tool.operations.codebase.docstring_generation.docstring_generation impo
 from osa_tool.operations.docs.readme_generation.context.pypi_status_checker import PyPiPackageInspector
 from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
 from osa_tool.operations.docs.readme_generation.utils import format_time
-from osa_tool.run import load_configuration
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.utils import logger, rich_section, parse_git_url, delete_repository
+
 
 # === Stage 1: Generate report and README asynchronously ===
 

@@ -27,7 +27,7 @@ class GenerateReportOperation(Operation):
 
     executor = ReportGenerator
     executor_method = "build_pdf"
-    executor_dependencies = ["config_loader", "metadata"]
+    executor_dependencies = ["config_manager", "metadata"]
 
 
 class TranslateRepositoryStructureOperation(Operation):
@@ -40,7 +40,7 @@ class TranslateRepositoryStructureOperation(Operation):
 
     executor = RepositoryStructureTranslator
     executor_method = "rename_directories_and_files"
-    executor_dependencies = ["config_loader"]
+    executor_dependencies = ["config_manager"]
 
 
 class GenerateDocstringsArgs(BaseModel):
@@ -68,7 +68,7 @@ class GenerateDocstringsOperation(Operation):
 
     executor = DocstringsGenerator
     executor_method = "run"
-    executor_dependencies = ["config_loader"]
+    executor_dependencies = ["config_manager"]
 
 
 class EnsureLicenseArgs(BaseModel):
@@ -94,7 +94,7 @@ class EnsureLicenseOperation(Operation):
 
     executor = LicenseCompiler
     executor_method = "run"
-    executor_dependencies = ["config_loader", "metadata"]
+    executor_dependencies = ["config_manager", "metadata"]
 
 
 class GenerateCommunityDocsOperation(Operation):
@@ -107,7 +107,7 @@ class GenerateCommunityDocsOperation(Operation):
 
     executor = staticmethod(generate_documentation)
     executor_method = None
-    executor_dependencies = ["config_loader", "metadata"]
+    executor_dependencies = ["config_manager", "metadata"]
 
 
 class RequirementsGeneratorOperation(Operation):
@@ -120,7 +120,7 @@ class RequirementsGeneratorOperation(Operation):
 
     executor = RequirementsGenerator
     executor_method = "generate"
-    executor_dependencies = ["config_loader"]
+    executor_dependencies = ["config_manager"]
 
 
 class GenerateReadmeArgs(BaseModel):
@@ -141,7 +141,7 @@ class GenerateReadmeOperation(Operation):
 
     executor = ReadmeAgent
     executor_method = "generate_readme"
-    executor_dependencies = ["config_loader", "metadata"]
+    executor_dependencies = ["config_manager", "metadata"]
     state_dependencies = ["attachment"]
 
 
@@ -165,7 +165,7 @@ class TranslateReadmeOperation(Operation):
 
     executor = ReadmeTranslator
     executor_method = "translate_readme"
-    executor_dependencies = ["config_loader", "metadata"]
+    executor_dependencies = ["config_manager", "metadata"]
 
 
 class GenerateAboutOperation(Operation):
@@ -178,7 +178,7 @@ class GenerateAboutOperation(Operation):
 
     executor = AboutGenerator
     executor_method = "generate_about_content"
-    executor_dependencies = ["config_loader", "git_agent"]
+    executor_dependencies = ["config_manager", "git_agent"]
 
 
 def register_all_operations(generate_docs: bool = True):

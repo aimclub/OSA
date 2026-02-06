@@ -1,7 +1,7 @@
 import subprocess
 from pathlib import Path
 
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
@@ -15,9 +15,8 @@ class RequirementsGenerator:
     Python packages and produces a dependency list.
     """
 
-    def __init__(self, config_loader: ConfigLoader):
-        self.config = config_loader.config
-        self.repo_url = self.config.git.repository
+    def __init__(self, config_manager: ConfigManager):
+        self.repo_url = config_manager.get_git_settings().repository
         self.repo_path = Path(parse_folder_name(self.repo_url)).resolve()
         self.events: list[OperationEvent] = []
 

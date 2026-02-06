@@ -1,9 +1,10 @@
-import os
 import logging
+import os
 from pathlib import Path
+
 import tree_sitter
-from tree_sitter import Parser, Language
 import tree_sitter_python as tspython
+from tree_sitter import Parser, Language
 
 
 class OSA_TreeSitter(object):
@@ -27,7 +28,7 @@ class OSA_TreeSitter(object):
             self.ignore_list = ["__init__.py"]
 
     def files_list(self, path: str) -> tuple[list, 0] | tuple[list[str], 1]:
-        """Method provides a list of files occuring in the provided path.
+        """Method provides a list of files occurring in the provided path.
 
         If user provided a path to a file with a particular extension
         the method returns a corresponding status which will trigger
@@ -53,9 +54,9 @@ class OSA_TreeSitter(object):
             return script_files, 0
 
         elif os.path.isfile(path) and path.endswith(".py"):
-            return ([os.path.abspath(path)], 1)
+            return [os.path.abspath(path)], 1
 
-        return ([], 0)
+        return [], 0
 
     def _is_ignored(self, path: Path) -> bool:
         """Method checks if current path is relative to any of the ignore list.
@@ -103,7 +104,8 @@ class OSA_TreeSitter(object):
             content = f.read()
         return content
 
-    def _parser_build(self, filename: str) -> Parser:
+    @staticmethod
+    def _parser_build(filename: str) -> Parser | None:
         """Inner method builds the corresponding parser based on file's extension.
 
         Args:
@@ -113,8 +115,9 @@ class OSA_TreeSitter(object):
             Compiled parser.
         """
         if filename.endswith(".py"):
-            PY_LANGUAGE = Language(tspython.language())
-            return Parser(PY_LANGUAGE)
+            py_language = Language(tspython.language())
+            return Parser(py_language)
+        return None
 
     def _parse_source_code(self, filename: str) -> tuple[tree_sitter.Tree, str]:
         """Inner method parses the provided file with the source code.
@@ -127,14 +130,14 @@ class OSA_TreeSitter(object):
         """
         parser: Parser = self._parser_build(filename)
         source_code: str = self.open_file(filename)
-        return (parser.parse(source_code.encode("utf-8")), source_code)
+        return parser.parse(source_code.encode("utf-8")), source_code
 
-    def _traverse_expression(self, class_attributes: list, expr_node: tree_sitter.Node) -> list:
+    @staticmethod
+    def _traverse_expression(class_attributes: list, expr_node: tree_sitter.Node) -> list:
         """
         Traverses an expression node and appends any identifiers found in assignment nodes to the class attributes list.
 
         Args:
-            self: The instance of the class.
             class_attributes: A list to which identifiers found in assignment nodes will be appended.
             expr_node: The expression node to be traversed.
 
@@ -246,7 +249,8 @@ class OSA_TreeSitter(object):
             }
         )
 
-    def _get_decorators(self, dec_list: list, dec_node: tree_sitter.Node) -> list:
+    @staticmethod
+    def _get_decorators(dec_list: list, dec_node: tree_sitter.Node) -> list:
         """
         Extracts decorators from a given node and appends them to a list.
 
@@ -351,7 +355,8 @@ class OSA_TreeSitter(object):
                 import_map.update(resolved_imports)
         return import_map
 
-    def _resolve_import(self, call_text: str, call_alias: str, imports: dict, incantations: dict = None) -> dict:
+    @staticmethod
+    def _resolve_import(call_text: str, call_alias: str, imports: dict, incantations: dict = None) -> dict:
         """
         Resolves an import call to retrieve module/class information based on provided imports and aliases.
 
@@ -473,7 +478,7 @@ class OSA_TreeSitter(object):
             filename: name of the file occured in the provided directory.
 
         Returns:
-            List containing occuring in file functions, classes, their start lines and methods
+            List containing occurring in file functions, classes, their start lines and methods
         """
         structure = {}
         structure["structure"] = []
@@ -502,7 +507,8 @@ class OSA_TreeSitter(object):
 
         return structure
 
-    def _get_docstring(self, block_node: tree_sitter.Node) -> str:
+    @staticmethod
+    def _get_docstring(block_node: tree_sitter.Node) -> str:
         """Inner method to retrieve class or method's docstring.
 
         Args:
@@ -520,7 +526,7 @@ class OSA_TreeSitter(object):
         return docstring
 
     def _traverse_block(self, block_node: tree_sitter.Node, source_code: bytes, imports: dict) -> list:
-        """Inner method traverses occuring in file's tree structure "block" node.
+        """Inner method traverses occurring in file's tree structure "block" node.
 
         Args:
             block_node: an occured block node, containing class's methods.

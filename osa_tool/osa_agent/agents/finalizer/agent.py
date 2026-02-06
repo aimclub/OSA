@@ -85,7 +85,7 @@ class FinalizerAgent(BaseAgent):
             events=events_text,
         )
 
-        pr_summary: FinalizerPullRequestSummary = self.context.model_handler.run_chain(
+        pr_summary: FinalizerPullRequestSummary = self.context.get_model_handler("general").run_chain(
             prompt=prompt, system_message=system_message, parser=parser
         )
 

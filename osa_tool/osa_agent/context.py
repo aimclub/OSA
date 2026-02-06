@@ -1,5 +1,5 @@
 from osa_tool.config.osa_config import OSAConfig
-from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
+from osa_tool.core.llm.llm import ModelHandlerFactory
 
 
 class AgentContext:

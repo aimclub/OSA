@@ -47,6 +47,12 @@ class AboutGenerator:
                 - result: generated about section fields
                 - events: list of OperationEvent
         """
+        if self._content is not None:
+            logger.warning("About section content already generated. Skipping generation.")
+            return {
+                "result": self._content,
+                "events": self.events,
+            }
         if self._content is None:
             logger.info("Generating 'About' section...")
 

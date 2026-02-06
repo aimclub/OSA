@@ -104,7 +104,8 @@ class GitAgent(abc.ABC):
         """
         pass
 
-    def _handle_git_error(self, error: GitCommandError, action: str, raise_exception: bool = True) -> None:
+    @staticmethod
+    def _handle_git_error(error: GitCommandError, action: str, raise_exception: bool = True) -> None:
         """
         Parses Git command errors and logs specific messages for 401, 403, 404, 429.
 
@@ -165,7 +166,8 @@ class GitAgent(abc.ABC):
             # the README/documentation generation.
             logger.warning(f"Non-critical error during '{action}'. Continuing execution.")
 
-    def _handle_api_error(self, response: requests.Response, action: str, raise_exception: bool = True) -> None:
+    @staticmethod
+    def _handle_api_error(response: requests.Response, action: str, raise_exception: bool = True) -> None:
         """
         Parses HTTP API errors and logs specific messages for 401, 403, 404, 429.
         Should be called when response.status_code is not 200/201/204.

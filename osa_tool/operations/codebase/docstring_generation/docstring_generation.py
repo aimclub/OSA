@@ -1,7 +1,7 @@
 import asyncio
 import multiprocessing
 
-from osa_tool.config.settings import ConfigLoader
+from osa_tool.config.settings import ConfigManager
 from osa_tool.operations.codebase.docstring_generation.docgen import DocGen
 from osa_tool.operations.codebase.docstring_generation.osa_treesitter import OSA_TreeSitter
 from osa_tool.utils.logger import logger
@@ -11,19 +11,19 @@ from osa_tool.utils.utils import parse_folder_name
 class DocstringsGenerator:
     def __init__(
         self,
-        config_loader: ConfigLoader,
+        config_manager: ConfigManager,
         ignore_list: list[str],
     ) -> None:
-        self.config_loader = config_loader
+        self.config_manager = config_manager
         self.ignore_list = ignore_list
 
         self.sem = asyncio.Semaphore(100)
         self.workers = multiprocessing.cpu_count()
 
-        self.repo_url = self.config_loader.config.git.repository
+        self.repo_url = self.config_manager.get_git_settings().repository
         self.repo_path = parse_folder_name(self.repo_url)
 
-        self.dg = DocGen(self.config_loader)
+        self.dg = DocGen(self.config_manager)
         self.ts = OSA_TreeSitter(self.repo_path, self.ignore_list)
 
     def run(self) -> None:
@@ -44,7 +44,7 @@ class DocstringsGenerator:
 
     async def _run_async(self) -> None:
         try:
-            rate_limit = self.config_loader.config.llm.rate_limit
+            rate_limit = self.config_manager.get_model_settings("docstrings").rate_limit
 
             res = self.ts.analyze_directory(self.ts.cwd)
 
