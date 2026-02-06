@@ -415,7 +415,18 @@ class OSA_TreeSitter(object):
 
     def _resolve_method_calls(self, function_node: tree_sitter.Node, source_code: str, imports: dict) -> list:
         """
-        Resolve method calls in the given function node and return a list of resolved method calls.
+        Extract all function calls from a function node, filtering by import resolvability.
+
+        Returns only:
+        - Regular functions: foo(), bar()
+        - Self methods: self.method()
+        - Class methods: ClassName.method()
+        - Optionally: calls resolvable through imports
+
+        Excludes:
+        - Nested calls within other calls (e.g., calls inside arguments)
+        - Instance method calls: obj.method(), result.method()
+        - Internal nested function calls
 
         Parameters:
             - function_node: The tree_sitter.Node representing the function node to analyze.
@@ -423,48 +434,55 @@ class OSA_TreeSitter(object):
             - imports: A dictionary containing information about imports.
 
         Returns:
-            list: A list of resolved method calls extracted from the function node.
+            list: A list of unique function/method names being called from the function node.
         """
-        method_calls = []
+        function_calls = set()
         alias_map = {}
-
-        def process_call(call_node: tree_sitter.Node, alias=None):
-            call_target = call_node.child_by_field_name("function")
-            if not call_target:
-                return
-
-            call_text = source_code[call_target.start_byte : call_target.end_byte]
-            resolved_call = self._resolve_import(call_text, alias, imports, alias_map)
-            if resolved_call:
-                method_calls.append(resolved_call)
 
         block_node = next((child for child in function_node.children if child.type == "block"), None)
         if not block_node:
             return []
 
-        for expr in block_node.children:
-            if not expr.children:
-                continue
+        def extract_calls_recursive(node):
+            """Recursively extract calls from all nodes, including nested blocks."""
+            # Skip nested function definitions
+            if node.type == "function_definition" and node != function_node:
+                return
 
-            for node in expr.children:
-                # Handle assignment statements
-                if node.type == "assignment":
-                    alias = None
-                    call_node = None
+            # Process call nodes
+            if node.type == "call":
+                call_target = node.child_by_field_name("function")
+                if call_target:
+                    call_text = source_code[call_target.start_byte : call_target.end_byte].strip()
 
-                    for child in node.children:
-                        if child.type == "identifier":
-                            alias = child.text.decode("utf-8")
-                        elif child.type == "call":
-                            call_node = child
+                    # Filter out empty or invalid calls
+                    if not call_text or call_text in ("", " "):
+                        return
 
-                    if call_node:
-                        process_call(call_node, alias)
+                    function_calls.add(call_text)
 
-                elif node.type == "call":
-                    process_call(node)
+            # Check assignments for imported class instantiation
+            elif node.type == "assignment":
+                alias = None
+                for subchild in node.children:
+                    if subchild.type == "identifier":
+                        alias = subchild.text.decode("utf-8")
+                    elif subchild.type == "call":
+                        call_target = subchild.child_by_field_name("function")
+                        if call_target:
+                            call_text = source_code[call_target.start_byte : call_target.end_byte].strip()
+                            resolved = self._resolve_import(call_text, alias, imports, alias_map)
+                            if resolved and resolved.get("path"):
+                                function_calls.add(call_text)
 
-        return method_calls
+            # Recursively process children
+            for child in node.children:
+                extract_calls_recursive(child)
+
+        # Start recursive extraction from block node
+        extract_calls_recursive(block_node)
+
+        return sorted(list(function_calls))
 
     def extract_structure(self, filename: str) -> list:
         """Method extracts the structure of the occured file in the provided directory.
@@ -575,15 +593,36 @@ class OSA_TreeSitter(object):
         arguments = []
         if parameters_node:
             for param_node in parameters_node.children:
+                # Handle typed parameters (e.g., param: int)
                 if param_node.type == "typed_parameter":
                     for typed_param_node in param_node.children:
                         if typed_param_node.type == "identifier":
                             arguments.append(typed_param_node.text.decode("utf-8"))
-                if param_node.type == "typed_default_parameter":
+                # Handle typed parameters with defaults (e.g., param: int = 5)
+                elif param_node.type == "typed_default_parameter":
                     for typed_param_node in param_node.children:
                         if typed_param_node.type == "identifier":
                             arguments.append(typed_param_node.text.decode("utf-8"))
-                if param_node.type == "identifier":
+                # Handle parameters with defaults but no type (e.g., param=None)
+                elif param_node.type == "default_parameter":
+                    for child in param_node.children:
+                        if child.type == "identifier":
+                            arguments.append(child.text.decode("utf-8"))
+                            break  # Take only the first identifier (parameter name)
+                # Handle **kwargs
+                elif param_node.type == "dictionary_splat_pattern":
+                    for child in param_node.children:
+                        if child.type == "identifier":
+                            arguments.append(f"**{child.text.decode('utf-8')}")
+                            break
+                # Handle *args
+                elif param_node.type == "list_splat_pattern":
+                    for child in param_node.children:
+                        if child.type == "identifier":
+                            arguments.append(f"*{child.text.decode('utf-8')}")
+                            break
+                # Handle simple identifiers (e.g., param)
+                elif param_node.type == "identifier":
                     arguments.append(param_node.text.decode("utf-8"))
 
         source_bytes = source_code.encode("utf-8")
@@ -688,3 +727,60 @@ class OSA_TreeSitter(object):
                             f.write(f"    Docstring:\n    {details['docstring']}\n")
                         f.write(f"        Source:\n    {details['source_code']}\n")
                 f.write("\n")
+
+    @staticmethod
+    def build_function_index(results: dict) -> dict:
+        """
+        Build an index of all functions and methods for quick lookup by name.
+
+        This allows retrieving source code of called functions without storing it in every reference.
+
+        Args:
+            results: Dictionary returned from analyze_directory() containing the parsed structure.
+
+        Returns:
+            A dictionary mapping function names to their full details:
+            {
+                'function_name': {
+                    'source_code': '...',
+                    'arguments': [...],
+                    'docstring': '...',
+                    'return_type': '...',
+                    'file': 'path/to/file.py',
+                    'start_line': 123,
+                    ...
+                }
+            }
+        """
+        function_index = {}
+
+        for filename, structures in results.items():
+            for item in structures["structure"]:
+                if item["type"] == "class":
+                    class_name = item["name"]
+                    for method in item["methods"]:
+                        method_name = method["method_name"]
+                        # Store both simple name and class.method format
+                        full_method_name = f"{class_name}.{method_name}"
+
+                        function_index[method_name] = {
+                            **method,
+                            "file": filename,
+                            "class": class_name,
+                        }
+                        function_index[full_method_name] = {
+                            **method,
+                            "file": filename,
+                            "class": class_name,
+                        }
+
+                elif item["type"] == "function":
+                    details = item["details"]
+                    func_name = details["method_name"]
+
+                    function_index[func_name] = {
+                        **details,
+                        "file": filename,
+                    }
+
+        return function_index

@@ -506,68 +506,42 @@ def test_insert_cls_docstring_in_code(mock_config_manager, source, class_name, n
 
 
 @pytest.mark.parametrize(
-    "method_details, structure, expected",
+    "method_details, function_index, expected_contains",
     [
         (
-            {"method_calls": [{"path": "file1.py", "class": "MyClass", "function": "foo"}]},
-            {
-                "file1.py": {
-                    "structure": [
-                        {
-                            "type": "class",
-                            "name": "MyClass",
-                            "methods": [{"method_name": "foo", "source_code": "def foo(self): pass"}],
-                        }
-                    ]
-                }
-            },
-            "# Method foo in class MyClass\ndef foo(self): pass",
+            {"method_calls": ["foo"]},
+            {"foo": {"method_name": "foo", "docstring": "Does foo", "file": "file1.py", "class": "MyClass"}},
+            "MyClass.foo",
         ),
         (
-            {"method_calls": [{"path": "file2.py", "class": "InitClass", "function": None}]},
-            {
-                "file2.py": {
-                    "structure": [
-                        {
-                            "type": "class",
-                            "name": "InitClass",
-                            "methods": [{"method_name": "__init__", "source_code": "def __init__(self): pass"}],
-                        }
-                    ]
-                }
-            },
-            "# Method __init__ in class InitClass\ndef __init__(self): pass",
+            {"method_calls": ["helper"]},
+            {"helper": {"method_name": "helper", "docstring": "Helper func", "file": "file2.py"}},
+            "helper",
         ),
         (
-            {"method_calls": [{"path": "file3.py", "class": "standalone_func", "function": None}]},
-            {
-                "file3.py": {
-                    "structure": [
-                        {
-                            "type": "function",
-                            "details": {"method_name": "standalone_func", "source_code": "def standalone_func(): pass"},
-                        }
-                    ]
-                }
-            },
-            "# Function standalone_func\ndef standalone_func(): pass",
-        ),
-        (
-            {"method_calls": [{"path": "missing.py", "class": "X", "function": "y"}]},
+            {"method_calls": ["unknown"]},
             {},
+            "",
+        ),
+        (
+            {"method_calls": []},
+            {"foo": {"method_name": "foo", "docstring": "Does foo"}},
             "",
         ),
     ],
 )
-def test_context_extractor(mock_config_manager, method_details, structure, expected):
+def test_context_extractor(mock_config_manager, method_details, function_index, expected_contains):
     # Arrange
     docgen = DocGen(mock_config_manager)
 
     # Act
-    result = docgen.context_extractor(method_details, structure)
+    result = docgen.context_extractor(method_details, {}, function_index=function_index)
 
     # Assert
-    assert result.strip() == expected.strip()
+    if expected_contains:
+        assert expected_contains in result
+    else:
+        assert result == ""
 
 
 def test_format_with_black_calls_black(mock_config_manager, tmp_path):
@@ -759,8 +733,11 @@ async def test_generate_docstrings_for_functions_methods(mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)
 
-    async def mock_fetch_docstrings(filename, structure, parsed_structure, semaphore):
-        return {"functions": [("docstring", "func1")], "methods": [("docstring", "method1")]}
+    async def mock_fetch_docstrings(parsed_structure, docstring_type, semaphore, rate_limit):
+        return {
+            file: {"functions": [("docstring", "func1")], "methods": [("docstring", "method1")], "classes": []}
+            for file in parsed_structure
+        }
 
     docgen._fetch_docstrings = mock_fetch_docstrings
     parsed_structure = {
@@ -804,14 +781,17 @@ async def test_generate_docstrings_for_all_types(mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)
 
-    async def mock_fetch_docstrings(filename, structure, parsed_structure, semaphore):
-        return {"functions": [("docstring", "func1")], "methods": [("docstring", "method1")]}
-
-    async def mock_fetch_docstrings_for_class(filename, structure, semaphore):
-        return {"classes": [("docstring", "Class1")]}
+    async def mock_fetch_docstrings(parsed_structure, docstring_type, semaphore, rate_limit):
+        return {
+            file: {
+                "functions": [("docstring", "func1")],
+                "methods": [("docstring", "method1")],
+                "classes": [("docstring", "Class1")],
+            }
+            for file in parsed_structure
+        }
 
     docgen._fetch_docstrings = mock_fetch_docstrings
-    docgen._fetch_docstrings_for_class = mock_fetch_docstrings_for_class
     parsed_structure = {
         "file1.py": {"structure": True},
         "file2.py": {"structure": True},
