@@ -90,11 +90,12 @@ class TextGenerator:
 
 
 class AfterReportTextGenerator:
-    def __init__(self, config_loader: ConfigManager, what_has_been_done: list[tuple[str, bool]]) -> None:
-        self.config = config_loader.config
-        self.prompts = self.config.prompts
+    def __init__(self, config_manger: ConfigManager, what_has_been_done: list[tuple[str, bool]]) -> None:
+        self.config_manager = config_manger
+        self.model_settings = self.config_manager.get_model_settings("general")
+        self.prompts = self.config_manager.config.prompts
         self.what_has_been_done = what_has_been_done
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
+        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
 
     def make_request(self) -> AfterReport:
         """
