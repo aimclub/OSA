@@ -105,8 +105,12 @@ class ContributingBuilder:
         """Returns the acknowledgements section content."""
         return self._template["acknowledgements"]
 
-    def build(self) -> None:
-        """Assembles and saves the CONTRIBUTING.md file from template sections."""
+    def build(self) -> bool:
+        """
+        Assembles and saves the CONTRIBUTING.md file from template sections.
+        Returns:
+            Has the task been completed successfully
+        """
         try:
             content = [
                 self.introduction,
@@ -124,3 +128,5 @@ class ContributingBuilder:
             logger.info(f"CONTRIBUTING.md successfully generated in folder {self.repo_path}")
         except Exception as e:
             logger.error("Error while generating CONTRIBUTING.md: %s", repr(e), exc_info=True)
+            return False
+        return True

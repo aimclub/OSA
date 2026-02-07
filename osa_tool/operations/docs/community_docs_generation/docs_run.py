@@ -6,7 +6,7 @@ from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.utils.logger import logger
 
 
-def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMetadata) -> None:
+def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMetadata) -> bool:
     """
     This function initializes builders for various documentation templates such as
     contribution guidelines, community standards, and issue templates. It sequentially
@@ -17,27 +17,44 @@ def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMe
         metadata: Git repository metadata.
 
     Returns:
-        None
+        Has the task been completed successfully
     """
     logger.info("Starting generating additional documentation.")
 
     contributing = ContributingBuilder(config_manager, metadata)
-    contributing.build()
+    contributing_result = contributing.build()
 
     community = CommunityTemplateBuilder(config_manager, metadata)
-    community.build_code_of_conduct()
-    community.build_security()
+    code_of_conduct_result = community.build_code_of_conduct()
+    security_result = community.build_security()
+    pull_request_result = True
+    bug_issue_result = True
+    documentation_issue_result = True
+    feature_issue_result = True
+    vulnerability_disclosure_result = True
 
     if config_manager.get_git_settings().host in ["github", "gitlab"]:
-        community.build_pull_request()
-        community.build_bug_issue()
-        community.build_documentation_issue()
-        community.build_feature_issue()
+        pull_request_result = community.build_pull_request()
+        bug_issue_result = community.build_bug_issue()
+        documentation_issue_result = community.build_documentation_issue()
+        feature_issue_result = community.build_feature_issue()
 
     if config_manager.get_git_settings().host == "gitlab":
-        community.build_vulnerability_disclosure()
+        vulnerability_disclosure_result = community.build_vulnerability_disclosure()
 
     logger.info("All additional documentation successfully generated.")
+    return all(
+        [
+            contributing_result,
+            code_of_conduct_result,
+            security_result,
+            pull_request_result,
+            bug_issue_result,
+            documentation_issue_result,
+            feature_issue_result,
+            vulnerability_disclosure_result,
+        ]
+    )
 
 
 class GenerateCommunityDocsOperation(Operation):
