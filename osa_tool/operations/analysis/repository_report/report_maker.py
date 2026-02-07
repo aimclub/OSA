@@ -394,7 +394,7 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         self.filename = f"{self.metadata.name}_work_summary.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
         self.what_has_been_done = what_has_been_done
-        self.text_generator = AfterReportTextGenerator(config_loader, self.what_has_been_done)
+        self.text_generator = AfterReportTextGenerator(config_manager, self.what_has_been_done)
         self.start_log = f"Starting creating summary for OSA work"
         self.report_header = "OSA Work Summary"
 
