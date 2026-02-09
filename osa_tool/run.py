@@ -1,4 +1,3 @@
-import argparse
 import asyncio
 import multiprocessing
 import os
@@ -7,19 +6,31 @@ import sys
 import time
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from osa_tool.aboutgen.about_generator import AboutGenerator
 from osa_tool.analytics.sourcerank import SourceRank
-from osa_tool.config.settings import ConfigManager, GitSettings
+from osa_tool.config.settings import ConfigManager
 from osa_tool.conversion.notebook_converter import NotebookConverter
-from osa_tool.git_agent.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent
-from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
-from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
-from osa_tool.operations.docs.community_docs_generation.license_generation import LicenseCompiler
+from osa_tool.git_agent.git_agent import (
+    GitAgent,
+    GitHubAgent,
+    GitLabAgent,
+    GitverseAgent,
+)
+from osa_tool.operations.analysis.repository_report.report_maker import (
+    ReportGenerator,
+    WhatHasBeenDoneReportGenerator,
+)
+from osa_tool.operations.docs.community_docs_generation.docs_run import (
+    generate_documentation,
+)
+from osa_tool.operations.docs.community_docs_generation.license_generation import (
+    LicenseCompiler,
+)
 from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
 from osa_tool.operations.docs.readme_generation.utils import format_time
-from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
+from osa_tool.operations.docs.readme_translation.readme_translator import (
+    ReadmeTranslator,
+)
 from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.osatreesitter.docgen import DocGen
 from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
@@ -302,19 +313,43 @@ def generate_requirements(repo_url) -> bool:
     Returns:
         Has the task been completed successfully
     """
-    logger.info(f"Starting the generation of requirements")
+    logger.info(f"Starting the generation of requirements for: {repo_url}")
     repo_path = Path(parse_folder_name(repo_url)).resolve()
+    if not repo_path.exists():
+        logger.error(f"Repo path does not exist: {repo_path}")
+        return
+
+    base_cmd = ["pipreqs", "--force", "--encoding", "utf-8"]
+
     try:
-        result = subprocess.run(
-            ["pipreqs", "--scan-notebooks", "--force", "--encoding", "utf-8", repo_path],
+        logger.info("Attempting scan with notebooks...")
+        subprocess.run(
+            base_cmd + ["--scan-notebooks", str(repo_path)],
             capture_output=True,
             text=True,
             check=True,
         )
         logger.info(f"Requirements generated successfully at: {repo_path}")
-        logger.debug(result)
+
     except subprocess.CalledProcessError as e:
-        logger.error(f"Error while generating project's requirements: {e.stderr}")
+        error_msg = e.stderr or ""
+
+        logger.warning(f"Standard scan failed. It's likely a Notebook contained invalid syntax.")
+        logger.debug(f"Scan error details: {error_msg}")
+
+        logger.info("Retrying requirements generation WITHOUT notebooks...")
+        try:
+            subprocess.run(
+                base_cmd + [str(repo_path)],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            logger.info(f"Requirements generated successfully (excluding notebooks) at: {repo_path}")
+
+        except subprocess.CalledProcessError as e_retry:
+            logger.error(f"Fatal error: Could not generate requirements even after excluding notebooks.")
+            logger.error(f"Final error trace: {e_retry.stderr}")
         return False
     return True
 
