@@ -4,15 +4,15 @@ from unittest.mock import Mock, patch, MagicMock
 
 import pytest
 
-from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import Settings, GitSettings, ModelSettings, ModelGroupSettings, WorkflowSettings
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
+from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.utils import parse_folder_name
 from tests.data_factory import DataFactory
 from tests.utils.mocks.requests_mock import mock_requests_response
-from osa_tool.utils.prompts_builder import PromptLoader
 
 pytest_plugins = [
-    "tests.utils.fixtures.aboutgen",
+    "tests.utils.fixtures.about_generation",
     "tests.utils.fixtures.analytics_load_metadata",
     "tests.utils.fixtures.analytics_report_generator",
     "tests.utils.fixtures.analytics_sourcerank",
@@ -94,7 +94,7 @@ def config_manager_with_updates(mock_config_manager):
                 if section == "llm":
                     current_llm = mock_config_manager.config.llm
                     if "default" in values:
-                        default_dict = current_llm.default.dict()
+                        default_dict = current_llm.default.model_dump()
                         default_dict.update(values["default"])
                         current_llm.default = ModelSettings(**default_dict)
                     for task in ["for_docstring_gen", "for_readme_gen", "for_validation", "for_general_tasks"]:
@@ -124,11 +124,13 @@ def mock_sourcerank(mock_config_manager, mock_parse_folder_name, data_factory):
         random_methods = data_factory.random_source_rank_methods(force_overrides=overrides)
 
         patches = [
-            patch("osa_tool.analytics.sourcerank.parse_folder_name", return_value=mock_parse_folder_name),
+            patch(
+                "osa_tool.tools.repository_analysis.sourcerank.parse_folder_name", return_value=mock_parse_folder_name
+            ),
         ]
 
         if repo_tree is not None:
-            patches.append(patch("osa_tool.analytics.sourcerank.get_repo_tree", return_value=repo_tree))
+            patches.append(patch("osa_tool.tools.repository_analysis.sourcerank.get_repo_tree", return_value=repo_tree))
 
         with ExitStack() as stack:
             for p in patches:
