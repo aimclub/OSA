@@ -5,7 +5,7 @@ INPUT DATA:
 {file_content}
 
 TASK:
-Analyze the attached Python source code file and extract the following information:
+Analyze the attached source code/config file and extract the following information:
 
 1. For each class defined in the file:
    - Class name

@@ -23,7 +23,7 @@ class CodeAnalyzer:
     and sending code content to a model for analysis.
     """
 
-    SOURCEFILE_EXTENSIONS_LIST = "py", "c", "cpp", "kt", "java", "js", "ts", "go", "rb", "rs", "swift", "cs", "php"
+    SOURCEFILE_EXTENSIONS_LIST = "py", "c", "cpp", "kt", "java", "js", "ts", "go", "rb", "rs", "swift", "cs", "php", "cmake", "h", "hpp"
     IGNORE_LIST = (
         "__init__.py",
         "setup.py",
