@@ -2,10 +2,9 @@ import os
 
 from pydantic import ValidationError
 
-from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigManager
-from osa_tool.models.models import ModelHandler, ModelHandlerFactory
+from osa_tool.core.git.metadata import RepositoryMetadata
+from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.operations.analysis.repository_report.response_validation import (
     RepositoryReport,
     RepositoryStructure,
@@ -15,6 +14,7 @@ from osa_tool.operations.analysis.repository_report.response_validation import (
     AfterReportBlock,
     AfterReport,
 )
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor, JsonParseError

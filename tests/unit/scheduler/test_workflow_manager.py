@@ -3,13 +3,13 @@ from unittest.mock import patch, mock_open, MagicMock
 import pytest
 import yaml
 
-from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.scheduler.plan import Plan
 from osa_tool.scheduler.workflow_manager import (
     GitHubWorkflowManager,
     GitLabWorkflowManager,
     GitverseWorkflowManager,
 )
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 
 
 @pytest.fixture

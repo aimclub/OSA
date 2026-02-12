@@ -23,12 +23,12 @@ def test_get_main_readme_file_found(translator, tmp_path):
     readme.write_text("hello readme")
 
     # Assert
-    assert translator.get_main_readme_file() == "hello readme"
+    assert translator._get_main_readme_file() == "hello readme"
 
 
 def test_get_main_readme_file_missing(translator):
     # Assert
-    assert translator.get_main_readme_file() == ""
+    assert translator._get_main_readme_file() == ""
 
 
 def test_save_translated_readme_creates_file(translator):
@@ -36,7 +36,7 @@ def test_save_translated_readme_creates_file(translator):
     translation = {"suffix": "fr", "content": "bonjour"}
 
     # Act
-    translator.save_translated_readme(translation)
+    translator._save_translated_readme(translation)
 
     # Assert
     file_path = os.path.join(translator.base_path, "README_fr.md")
@@ -46,7 +46,7 @@ def test_save_translated_readme_creates_file(translator):
 
 def test_save_translated_readme_skips_empty(translator, caplog):
     # Act
-    translator.save_translated_readme({"suffix": "fr", "content": ""})
+    translator._save_translated_readme({"suffix": "fr", "content": ""})
 
     # Assert
     assert "skipping save" in caplog.text.lower()
@@ -61,7 +61,7 @@ def test_set_default_translated_readme_symlink(translator):
     translation = {"suffix": "fr"}
 
     # Act
-    translator.set_default_translated_readme(translation)
+    translator._set_default_translated_readme(translation)
 
     # Assert
     target = os.path.join(translator.base_path, ".github", "README.md")
@@ -78,7 +78,7 @@ def test_set_default_translated_readme_copy_on_error(translator):
 
     # Act
     with patch("os.symlink", side_effect=OSError("no symlink")):
-        translator.set_default_translated_readme(translation)
+        translator._set_default_translated_readme(translation)
 
     # Assert
     target = os.path.join(translator.base_path, ".github", "README.md")
@@ -93,7 +93,7 @@ async def test_translate_readme_request_async_valid_json(translator):
     translator.model_handler.async_send_and_parse = AsyncMock(return_value=response)
 
     # Act
-    result = await translator.translate_readme_request_async("hello", "French", asyncio.Semaphore(1))
+    result = await translator._translate_readme_request_async("hello", "French", asyncio.Semaphore(1))
 
     # Assert
     assert result["content"] == "text"
@@ -107,7 +107,7 @@ async def test_translate_readme_request_async_invalid_json(translator, caplog):
     translator.model_handler.async_send_and_parse = AsyncMock(return_value={})
 
     # Act
-    result = await translator.translate_readme_request_async("hello", "French", asyncio.Semaphore(1))
+    result = await translator._translate_readme_request_async("hello", "French", asyncio.Semaphore(1))
 
     # Assert
     assert result["suffix"] == "fr"
@@ -124,7 +124,7 @@ async def test_translate_readme_async_runs(translator, tmp_path):
     translator.model_handler.async_request = AsyncMock(return_value=resp)
 
     # Act
-    await translator.translate_readme_async()
+    await translator._translate_readme_async()
 
     # Assert
     readme_fr = tmp_path / "README_fr.md"

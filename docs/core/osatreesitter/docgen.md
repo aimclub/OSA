@@ -1,3 +1,3 @@
 # Documentation Generator
 
-::: osa_tool.osatreesitter.docgen.DocGen
+::: osa_tool.operations.codebase.docstring_generation.docgen.DocGen

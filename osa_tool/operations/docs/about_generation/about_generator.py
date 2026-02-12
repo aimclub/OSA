@@ -3,8 +3,9 @@ import re
 from typing import List
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.git_agent.git_agent import GitAgent
-from osa_tool.models.models import ModelHandler, ModelHandlerFactory
+from osa_tool.core.git.git_agent import GitAgent
+from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
+from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.utils import extract_readme_content, parse_folder_name
@@ -35,26 +36,54 @@ class AboutGenerator:
         self.readme_content = extract_readme_content(self.base_path)
         self.validate_topics = git_agent.validate_topics
         self._content: dict | None = None
+        self.events: list[OperationEvent] = []
+        # TODO: Добавить план
 
-    def generate_about_content(self) -> bool:
+    def generate_about_content(self) -> dict:
         """
-        Generates content for About section.
+        Generate About section content and return structured result with events.
+
         Returns:
-            Has the task been completed successfully
+            dict:
+                - result: generated about section fields
+                - events: list of OperationEvent
         """
+        # TODO: Добавить план
         if self._content is not None:
             logger.warning("About section content already generated. Skipping generation.")
-            return False
-        logger.info("Generating 'About' section...")
-        description = self.generate_description()
-        homepage = self.detect_homepage()
-        topics = self.generate_topics()
-        self._content = {
-            "description": description,
-            "homepage": homepage,
-            "topics": topics,
+            return {
+                "result": self._content,
+                "events": self.events,
+            }
+        if self._content is None:
+            logger.info("Generating 'About' section...")
+
+            description = self._generate_description()
+            homepage = self._detect_homepage()
+            topics = self._generate_topics()
+
+            self._content = {
+                "description": description,
+                "homepage": homepage,
+                "topics": topics,
+            }
+
+            self.events.append(
+                OperationEvent(
+                    kind=EventKind.GENERATED,
+                    target="about",
+                    data={
+                        "description": bool(description),
+                        "homepage": bool(homepage),
+                        "topics_count": len(topics),
+                    },
+                )
+            )
+
+        return {
+            "result": self._content,
+            "events": self.events,
         }
-        return all([description != "", homepage != "", topics != ""])
 
     def get_about_content(self) -> dict:
         """
@@ -83,7 +112,7 @@ class AboutGenerator:
         logger.info("Finished generating About section content.")
         return about_section_content
 
-    def generate_description(self) -> str:
+    def _generate_description(self) -> str:
         """
         Generates a repository description based on README content.
 
@@ -93,10 +122,24 @@ class AboutGenerator:
         """
         if self.metadata and self.metadata.description:
             logger.warning("Description already exists in metadata. Skipping generation.")
+            self.events.append(
+                OperationEvent(
+                    kind=EventKind.SKIPPED,
+                    target="about.description",
+                    data={"reason": "already_exists"},
+                )
+            )
             return self.metadata.description
 
         if not self.readme_content:
             logger.warning("No README content found. Cannot generate description.")
+            self.events.append(
+                OperationEvent(
+                    kind=EventKind.SKIPPED,
+                    target="about.description",
+                    data={"reason": "no_readme"},
+                )
+            )
             return ""
 
         prompt = PromptBuilder.render(
@@ -109,10 +152,17 @@ class AboutGenerator:
             logger.debug(f"Generated description: {description}")
             return description[:350]
         except Exception as e:
-            logger.error(f"Error generating description: {e}")
+            logger.error("Error generating description: %s", e)
+            self.events.append(
+                OperationEvent(
+                    kind=EventKind.FAILED,
+                    target="about.description",
+                    data={"error": str(e)},
+                )
+            )
             return ""
 
-    def generate_topics(self, amount: int = 7) -> List[str]:
+    def _generate_topics(self, amount: int = 7) -> List[str]:
         """
         Generates Git repository topics based on README content.
 
@@ -123,15 +173,23 @@ class AboutGenerator:
             List[str]: A list of up to `amount` topics, or an empty list if none can be generated.
         """
         logger.info(f"Generating up to {amount} topics...")
-        existing_topics = []
-        if self.metadata and hasattr(self.metadata, "topics"):
-            existing_topics = self.metadata.topics
-            if amount > 20:
-                logger.critical("Maximum amount of topics is 20.")
-                return existing_topics
-            if len(existing_topics) >= amount:
-                logger.warning(f"{amount} topics already exist in the metadata. Skipping generation.")
-                return existing_topics
+
+        existing_topics = getattr(self.metadata, "topics", []) or []
+
+        if amount > 20:
+            logger.critical("Maximum amount of topics is 20.")
+            return existing_topics
+
+        if len(existing_topics) >= amount:
+            logger.warning(f"{amount} topics already exist in the metadata. Skipping generation.")
+            self.events.append(
+                OperationEvent(
+                    kind=EventKind.SKIPPED,
+                    target="about.topics",
+                    data={"reason": "enough_existing"},
+                )
+            )
+            return existing_topics
 
         prompt = PromptBuilder.render(
             self.prompts.get("about_section.topics"),
@@ -148,9 +206,16 @@ class AboutGenerator:
             return list({*existing_topics, *validated_topics})
         except Exception as e:
             logger.error(f"Error generating topics: {e}")
-            return []
+            self.events.append(
+                OperationEvent(
+                    kind=EventKind.FAILED,
+                    target="about.topics",
+                    data={"error": str(e)},
+                )
+            )
+            return existing_topics
 
-    def detect_homepage(self) -> str:
+    def _detect_homepage(self) -> str:
         """
         Detects the homepage URL for a project.
 
@@ -160,10 +225,24 @@ class AboutGenerator:
         logger.info("Detecting homepage URL...")
         if self.metadata and self.metadata.homepage_url:
             logger.warning("Homepage already exists in metadata. Skipping generation.")
+            self.events.append(
+                OperationEvent(
+                    kind=EventKind.SKIPPED,
+                    target="about.homepage",
+                    data={"reason": "already_exists"},
+                )
+            )
             return self.metadata.homepage_url
 
         if not self.readme_content:
             logger.warning("No README content found. Cannot detect homepage.")
+            self.events.append(
+                OperationEvent(
+                    kind=EventKind.SKIPPED,
+                    target="about.homepage",
+                    data={"reason": "no_readme"},
+                )
+            )
             return ""
 
         urls = self._extract_readme_urls(self.readme_content)

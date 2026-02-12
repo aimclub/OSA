@@ -1,12 +1,12 @@
-from osa_tool.analytics.metadata import RepositoryMetadata
 from osa_tool.config.settings import ConfigManager
+from osa_tool.core.git.metadata import RepositoryMetadata
+from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.operations.docs.community_docs_generation.community import CommunityTemplateBuilder
 from osa_tool.operations.docs.community_docs_generation.contributing import ContributingBuilder
-from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.utils.logger import logger
 
 
-def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMetadata) -> bool:
+def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMetadata) -> dict:
     """
     This function initializes builders for various documentation templates such as
     contribution guidelines, community standards, and issue templates. It sequentially
@@ -17,57 +17,68 @@ def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMe
         metadata: Git repository metadata.
 
     Returns:
-        Has the task been completed successfully
+        dict: Standardized operation output containing:
+            - result: Generated documentation summary
+            - events: List of OperationEvent
     """
     logger.info("Starting generating additional documentation.")
 
+    events: list[OperationEvent] = []
+    generated_files: list[str] = []
+    # TODO: Добавить план
     contributing = ContributingBuilder(config_manager, metadata)
-    contributing_result = contributing.build()
+    contributing.build()
+    events.append(OperationEvent(kind=EventKind.GENERATED, target="CONTRIBUTING"))
+    generated_files.append("CONTRIBUTING.md")
 
     community = CommunityTemplateBuilder(config_manager, metadata)
-    code_of_conduct_result = community.build_code_of_conduct()
-    security_result = community.build_security()
-    pull_request_result = True
-    bug_issue_result = True
-    documentation_issue_result = True
-    feature_issue_result = True
-    vulnerability_disclosure_result = True
+    community.build_code_of_conduct()
+    events.append(OperationEvent(kind=EventKind.GENERATED, target="CODE_OF_CONDUCT"))
+    generated_files.append("CODE_OF_CONDUCT.md")
+
+    community.build_security()
+    events.append(OperationEvent(kind=EventKind.GENERATED, target="SECURITY"))
+    generated_files.append("SECURITY.md")
 
     if config_manager.get_git_settings().host in ["github", "gitlab"]:
-        pull_request_result = community.build_pull_request()
-        bug_issue_result = community.build_bug_issue()
-        documentation_issue_result = community.build_documentation_issue()
-        feature_issue_result = community.build_feature_issue()
+        community.build_pull_request()
+        community.build_bug_issue()
+        community.build_documentation_issue()
+        community.build_feature_issue()
+
+        events.extend(
+            [
+                OperationEvent(kind=EventKind.GENERATED, target="PULL_REQUEST_TEMPLATE"),
+                OperationEvent(kind=EventKind.GENERATED, target="ISSUE_TEMPLATE:bug"),
+                OperationEvent(kind=EventKind.GENERATED, target="ISSUE_TEMPLATE:documentation"),
+                OperationEvent(kind=EventKind.GENERATED, target="ISSUE_TEMPLATE:feature"),
+            ]
+        )
+        generated_files.extend(
+            [
+                "PULL_REQUEST_TEMPLATE.md",
+                "BUG_ISSUE.md",
+                "DOCUMENTATION_ISSUE.md",
+                "FEATURE_ISSUE.md",
+            ]
+        )
 
     if config_manager.get_git_settings().host == "gitlab":
-        vulnerability_disclosure_result = community.build_vulnerability_disclosure()
+        community.build_vulnerability_disclosure()
+
+        events.append(
+            OperationEvent(
+                kind=EventKind.GENERATED,
+                target="VULNERABILITY_DISCLOSURE",
+            )
+        )
+        generated_files.append("Vulnerability_Disclosure.md")
 
     logger.info("All additional documentation successfully generated.")
-    return all(
-        [
-            contributing_result,
-            code_of_conduct_result,
-            security_result,
-            pull_request_result,
-            bug_issue_result,
-            documentation_issue_result,
-            feature_issue_result,
-            vulnerability_disclosure_result,
-        ]
-    )
 
-
-class GenerateCommunityDocsOperation(Operation):
-    name = "generate_documentation"
-    description = "Generate additional documentation files (e.g., CONTRIBUTING, CODE_OF_CONDUCT)."
-
-    supported_intents = ["new_task"]
-    supported_scopes = ["full_repo", "docs"]
-    priority = 65
-
-    executor = staticmethod(generate_documentation)
-    executor_method = None
-    executor_dependencies = ["config_manager", "metadata"]
-
-
-OperationRegistry.register(GenerateCommunityDocsOperation())
+    return {
+        "result": {
+            "generated": generated_files,
+        },
+        "events": events,
+    }

@@ -1,14 +1,13 @@
 import os
 
-from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigManager
-from osa_tool.models.models import ModelHandler, ModelHandlerFactory
+from osa_tool.core.git.metadata import RepositoryMetadata
+from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.scheduler.response_validation import PromptConfig
 from osa_tool.scheduler.plan import Plan
 from osa_tool.scheduler.workflow_manager import WorkflowManager
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.ui.plan_editor import PlanEditor
-from osa_tool.ui.web_plan_editor import WebPlanEditor
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor
@@ -94,11 +93,6 @@ class ModeScheduler:
             if self.mode in ["basic", "advanced"]:
                 return plan
 
-            web_plan_handler = WebPlanEditor(plan)
-            logger.info(f"Plan saved for web at {web_plan_handler.get_plan_path()}")
-
-            updated_plan = web_plan_handler.get_updated_plan()
-            return updated_plan
         return PlanEditor(self.workflow_manager.workflow_keys).confirm_action(plan)
 
     def _make_request_for_auto_mode(self) -> dict:

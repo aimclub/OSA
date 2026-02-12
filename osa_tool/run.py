@@ -1,39 +1,22 @@
 import asyncio
-import multiprocessing
 import os
-import subprocess
 import sys
 import time
-from pathlib import Path
 
-from osa_tool.aboutgen.about_generator import AboutGenerator
-from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigManager
 from osa_tool.conversion.notebook_converter import NotebookConverter
-from osa_tool.git_agent.git_agent import (
-    GitAgent,
-    GitHubAgent,
-    GitLabAgent,
-    GitverseAgent,
-)
-from osa_tool.operations.analysis.repository_report.report_maker import (
-    ReportGenerator,
-    WhatHasBeenDoneReportGenerator,
-)
-from osa_tool.operations.docs.community_docs_generation.docs_run import (
-    generate_documentation,
-)
-from osa_tool.operations.docs.community_docs_generation.license_generation import (
-    LicenseCompiler,
-)
+from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent
+from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
+from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
+from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
+from osa_tool.operations.codebase.requirements_generation.requirements_generation import RequirementsGenerator
+from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
+from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
+from osa_tool.operations.docs.community_docs_generation.license_generation import LicenseCompiler
 from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
 from osa_tool.operations.docs.readme_generation.utils import format_time
-from osa_tool.operations.docs.readme_translation.readme_translator import (
-    ReadmeTranslator,
-)
+from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
 from osa_tool.organization.repo_organizer import RepoOrganizer
-from osa_tool.osatreesitter.docgen import DocGen
-from osa_tool.osatreesitter.osa_treesitter import OSA_TreeSitter
 from osa_tool.scheduler.scheduler import ModeScheduler
 from osa_tool.scheduler.workflow_manager import (
     GitHubWorkflowManager,
@@ -41,7 +24,7 @@ from osa_tool.scheduler.workflow_manager import (
     GitverseWorkflowManager,
     WorkflowManager,
 )
-from osa_tool.translation.dir_translator import DirectoryTranslator
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.logger import logger, setup_logging
 from osa_tool.utils.utils import (
@@ -75,9 +58,6 @@ def main():
     logs_dir = os.path.join(os.path.dirname(osa_project_root()), "logs")
     repo_name = parse_folder_name(args.repository)
     setup_logging(repo_name, logs_dir)
-
-    loop = asyncio.get_event_loop()
-    asyncio.set_event_loop(loop)
 
     start_time = time.time()
     try:
@@ -122,7 +102,7 @@ def main():
         if plan.get("validate_doc"):
             plan.mark_started("validate_doc")
             rich_section("Document validation")
-            content = loop.run_until_complete(DocValidator(config_manager).validate(plan.get("attachment")))
+            content = asyncio.run((DocValidator(config_manager).validate(plan.get("attachment"))))
             if content:
                 va_re_gen = ValidationReportGenerator(config_manager, git_agent.metadata)
                 va_re_gen.build_pdf("Document", content)
@@ -136,7 +116,7 @@ def main():
         if plan.get("validate_paper"):
             plan.mark_started("validate_paper")
             rich_section("Paper validation")
-            content = loop.run_until_complete(PaperValidator(config_manager).validate(plan.get("attachment")))
+            content = asyncio.run((PaperValidator(config_manager).validate(plan.get("attachment"))))
             if content:
                 va_re_gen = ValidationReportGenerator(config_manager, git_agent.metadata)
                 va_re_gen.build_pdf("Paper", content)
@@ -160,7 +140,7 @@ def main():
         if plan.get("translate_dirs"):
             rich_section("Directory and file translation")
             plan.mark_started("translate_dirs")
-            translation = DirectoryTranslator(config_manager)
+            translation = RepositoryStructureTranslator(config_manager)
             if translation.rename_directories_and_files():
                 plan.mark_done("translate_dirs")
             else:
@@ -169,11 +149,9 @@ def main():
         # Docstring generation
         if plan.get("docstring"):
             rich_section("Docstrings generation")
-            plan.mark_started("docstring")
-            if generate_docstrings(config_manager, loop, args.ignore_list):
-                plan.mark_done("docstring")
-            else:
-                plan.mark_failed("docstring")
+            # TODO: Посмотреть план
+            DocstringsGenerator(config_manager, args.ignore_list).run()
+            what_has_been_done.mark_did("docstring")
 
         # License compiling
         if plan.get("ensure_license"):
@@ -192,11 +170,9 @@ def main():
         # Requirements generation
         if plan.get("requirements"):
             rich_section("Requirements generation")
-            plan.mark_started("requirements")
-            if generate_requirements(args.repository):
-                plan.mark_done("requirements")
-            else:
-                plan.mark_failed("requirements")
+            # TODO: посмотреть план
+            RequirementsGenerator(config_manager).generate()
+            what_has_been_done.mark_did("requirements")
 
         # Readme generation
         if plan.get("readme"):
@@ -265,9 +241,6 @@ def main():
         logger.error("Error: %s", e, exc_info=False if args.web_mode else True)
         sys.exit(1)
 
-    finally:
-        loop.close()
-
 
 def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
     if "github.com" in args.repository:
@@ -306,128 +279,6 @@ def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) ->
     except Exception as e:
         logger.error("Error while converting notebooks: %s", repr(e), exc_info=True)
     return False
-
-
-def generate_requirements(repo_url) -> bool:
-    """
-    Returns:
-        Has the task been completed successfully
-    """
-    logger.info(f"Starting the generation of requirements for: {repo_url}")
-    repo_path = Path(parse_folder_name(repo_url)).resolve()
-    if not repo_path.exists():
-        logger.error(f"Repo path does not exist: {repo_path}")
-        return
-
-    base_cmd = ["pipreqs", "--force", "--encoding", "utf-8"]
-
-    try:
-        logger.info("Attempting scan with notebooks...")
-        subprocess.run(
-            base_cmd + ["--scan-notebooks", str(repo_path)],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        logger.info(f"Requirements generated successfully at: {repo_path}")
-
-    except subprocess.CalledProcessError as e:
-        error_msg = e.stderr or ""
-
-        logger.warning(f"Standard scan failed. It's likely a Notebook contained invalid syntax.")
-        logger.debug(f"Scan error details: {error_msg}")
-
-        logger.info("Retrying requirements generation WITHOUT notebooks...")
-        try:
-            subprocess.run(
-                base_cmd + [str(repo_path)],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            logger.info(f"Requirements generated successfully (excluding notebooks) at: {repo_path}")
-
-        except subprocess.CalledProcessError as e_retry:
-            logger.error(f"Fatal error: Could not generate requirements even after excluding notebooks.")
-            logger.error(f"Final error trace: {e_retry.stderr}")
-        return False
-    return True
-
-
-def generate_docstrings(config_manager: ConfigManager, loop: asyncio.AbstractEventLoop, ignore_list: list[str]) -> bool:
-    """Generates a docstrings for .py's classes and methods of the provided repository.
-
-    Args:
-        config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
-        loop: Link to the event loop in the main thread.
-    Returns:
-        Has the task been completed successfully
-    """
-
-    sem = asyncio.Semaphore(100)
-    workers = multiprocessing.cpu_count()
-    repo_url = config_manager.get_git_settings().repository
-    repo_path = parse_folder_name(repo_url)
-
-    try:
-        rate_limit = config_manager.get_model_settings("docstrings").rate_limit
-        ts = OSA_TreeSitter(repo_path, ignore_list)
-        res = ts.analyze_directory(ts.cwd)
-        dg = DocGen(config_manager)
-
-        # getting the project source code and start generating docstrings
-        source_code = loop.run_until_complete(dg._get_project_source_code(res, sem))
-
-        # first stage
-        # generate for functions and methods first
-        fn_generated_docstrings = loop.run_until_complete(
-            dg._generate_docstrings_for_items(res, docstring_type=("functions", "methods"), rate_limit=rate_limit)
-        )
-        fn_augmented = dg._run_in_executor(
-            res, source_code, generated_docstrings=fn_generated_docstrings, n_workers=workers
-        )
-        loop.run_until_complete(dg._write_augmented_code(res, augmented_code=fn_augmented, sem=sem))
-
-        # re-analyze project after docstrings writing
-        res = ts.analyze_directory(ts.cwd)
-        source_code = loop.run_until_complete(dg._get_project_source_code(ts.analyze_directory(ts.cwd), sem))
-
-        # then generate description for classes based on filled methods docstrings
-        cl_generated_docstrings = loop.run_until_complete(
-            dg._generate_docstrings_for_items(res, docstring_type="classes", rate_limit=rate_limit)
-        )
-        cl_augmented = dg._run_in_executor(
-            res, source_code, generated_docstrings=cl_generated_docstrings, n_workers=workers
-        )
-        loop.run_until_complete(dg._write_augmented_code(res, augmented_code=cl_augmented, sem=sem))
-
-        # generate the main idea
-        loop.run_until_complete(dg.generate_the_main_idea(res))
-
-        # re-analyze project and read augmented source code
-        res = ts.analyze_directory(ts.cwd)
-        source_code = loop.run_until_complete(dg._get_project_source_code(res, sem))
-
-        # update docstrings for project based on generated main idea
-        generated_after_idea = loop.run_until_complete(
-            dg._generate_docstrings_for_items(
-                res, docstring_type=("functions", "methods", "classes"), rate_limit=rate_limit
-            )
-        )
-
-        # augment the source code and persist it
-        augmented_after_idea = dg._run_in_executor(res, source_code, generated_after_idea, workers)
-        loop.run_until_complete(dg._write_augmented_code(res, augmented_after_idea, sem))
-
-        modules_summaries = loop.run_until_complete(dg.summarize_submodules(res, rate_limit))
-        dg.generate_documentation_mkdocs(repo_path, res, modules_summaries)
-        dg.create_mkdocs_git_workflow(repo_url, repo_path)
-
-    except Exception as e:
-        dg._purge_temp_files(repo_path)
-        logger.error("Error while generating codebase documentation: %s", repr(e), exc_info=True)
-        return False
-    return True
 
 
 if __name__ == "__main__":

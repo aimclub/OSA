@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os.path
 from pathlib import Path
-from typing import Any, List, Literal
+from typing import List, Literal
 
 import tomli
 from pydantic import (
@@ -180,7 +180,8 @@ class ConfigManager:
 
         return config_path
 
-    def _apply_cli_args_to_config_data(self, config_data: dict, args) -> dict:
+    @staticmethod
+    def _apply_cli_args_to_config_data(config_data: dict, args) -> dict:
         """
         Apply CLI arguments to raw config data.
 
@@ -226,7 +227,8 @@ class ConfigManager:
 
         return config_data
 
-    def _process_config_data(self, config_data: dict) -> dict:
+    @staticmethod
+    def _process_config_data(config_data: dict) -> dict:
         """
         Process raw TOML data into proper nested structure.
 

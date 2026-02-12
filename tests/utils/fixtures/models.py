@@ -20,4 +20,4 @@ class DummyLLMClient:
 @pytest.fixture
 def patch_llm_connector(monkeypatch):
     """Patch create_llm_connector to return a dummy client."""
-    monkeypatch.setattr("osa_tool.models.models.create_llm_connector", lambda *args, **kwargs: DummyLLMClient())
+    monkeypatch.setattr("osa_tool.core.llm.llm.create_llm_connector", lambda *args, **kwargs: DummyLLMClient())

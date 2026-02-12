@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from pydantic import BaseModel, Field
 
@@ -17,3 +17,4 @@ class Task(BaseModel):
     args: Dict[str, Any] = Field(default_factory=dict)
     status: TaskStatus = TaskStatus.PENDING
     result: Optional[Dict[str, Any]] = None
+    events: List[str] = Field(default_factory=list)
