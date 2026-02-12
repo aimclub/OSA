@@ -41,7 +41,6 @@ def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMe
     events.append(OperationEvent(kind=EventKind.GENERATED, target="SECURITY"))
     generated_files.append("SECURITY.md")
 
-
     if config_manager.get_git_settings().host in ["github", "gitlab"]:
         results["build_pull_request"] = community.build_pull_request()
         results["build_bug_issue"] = community.build_bug_issue()
