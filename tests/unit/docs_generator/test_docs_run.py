@@ -1,6 +1,7 @@
 from unittest.mock import patch, MagicMock
 
 from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
+from osa_tool.scheduler.plan import Plan
 
 
 def test_generate_documentation_calls_builders_methods(mock_config_manager, mock_repository_metadata, caplog):
@@ -26,7 +27,7 @@ def test_generate_documentation_calls_builders_methods(mock_config_manager, mock
         caplog.set_level("INFO")
 
         # Act
-        generate_documentation(mock_config_manager, mock_repository_metadata)
+        generate_documentation(mock_config_manager, mock_repository_metadata, Plan({"community_docs": True}))
 
         # Assert
         assert "Starting generating additional documentation." in caplog.text

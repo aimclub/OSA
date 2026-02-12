@@ -2,7 +2,7 @@ from typing import List
 
 from langchain_core.output_parsers import PydanticOutputParser
 
-from osa_tool.core.models.agent import AgentStatus
+from osa_tool.core.models.agent_status import AgentStatus
 from osa_tool.operations.operations_catalog import register_all_operations
 from osa_tool.operations.registry import OperationRegistry, Operation
 from osa_tool.osa_agent.agents.planner.models import PlannerDecision, ArgumentDetectionResponse

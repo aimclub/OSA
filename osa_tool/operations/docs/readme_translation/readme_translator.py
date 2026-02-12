@@ -7,7 +7,6 @@ from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.core.llm.llm import ModelHandlerFactory, ModelHandler
 from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.operations.docs.readme_generation.utils import read_file, save_sections, remove_extra_blank_lines
-from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder

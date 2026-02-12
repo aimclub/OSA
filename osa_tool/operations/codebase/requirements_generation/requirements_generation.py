@@ -3,6 +3,7 @@ from pathlib import Path
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.models.event import OperationEvent, EventKind
+from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
@@ -15,15 +16,17 @@ class RequirementsGenerator:
     Python packages and produces a dependency list.
     """
 
-    def __init__(self, config_manager: ConfigManager):
+    def __init__(self, config_manager: ConfigManager, plan: Plan):
         self.repo_url = config_manager.get_git_settings().repository
         self.repo_path = Path(parse_folder_name(self.repo_url)).resolve()
         self.events: list[OperationEvent] = []
+        self.plan = plan
 
     def generate(self) -> dict:
         logger.info(f"Starting the generation of requirements for: {self.repo_url}")
-
+        self.plan.mark_started("requirements")
         if not self._validate_repo_path():
+            self.plan.mark_failed("requirements")
             return {
                 "result": None,
                 "events": self.events,
@@ -36,7 +39,7 @@ class RequirementsGenerator:
 
             logger.info("Requirements generated successfully with notebook scanning")
             self._add_event(EventKind.GENERATED, mode="scan-notebooks")
-
+            self.plan.mark_done("requirements")
             return self._result_dict()
 
         except subprocess.CalledProcessError as e:
@@ -57,9 +60,8 @@ class RequirementsGenerator:
 
             logger.info("Requirements generated successfully (excluding notebooks)")
             self._add_event(EventKind.GENERATED, mode="no-notebooks")
-
+            self.plan.mark_done("requirements")
             return self._result_dict()
-
         except subprocess.CalledProcessError as e_retry:
             logger.error("Fatal error: Could not generate requirements even after excluding notebooks.")
             logger.error(f"Final error trace: {e_retry.stderr}")
@@ -69,7 +71,7 @@ class RequirementsGenerator:
                 mode="no-notebooks",
                 data={"stderr": e_retry.stderr},
             )
-
+            self.plan.mark_failed("requirements")
             raise
 
     def _validate_repo_path(self) -> bool:

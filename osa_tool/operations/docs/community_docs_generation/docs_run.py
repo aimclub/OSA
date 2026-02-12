@@ -3,10 +3,11 @@ from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.operations.docs.community_docs_generation.community import CommunityTemplateBuilder
 from osa_tool.operations.docs.community_docs_generation.contributing import ContributingBuilder
+from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.logger import logger
 
 
-def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMetadata) -> dict:
+def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMetadata, plan: Plan) -> dict:
     """
     This function initializes builders for various documentation templates such as
     contribution guidelines, community standards, and issue templates. It sequentially
@@ -22,29 +23,30 @@ def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMe
             - events: List of OperationEvent
     """
     logger.info("Starting generating additional documentation.")
-
+    plan.mark_started("community_docs")
     events: list[OperationEvent] = []
     generated_files: list[str] = []
-    # TODO: Добавить план
     contributing = ContributingBuilder(config_manager, metadata)
     contributing.build()
     events.append(OperationEvent(kind=EventKind.GENERATED, target="CONTRIBUTING"))
     generated_files.append("CONTRIBUTING.md")
 
     community = CommunityTemplateBuilder(config_manager, metadata)
-    community.build_code_of_conduct()
+    results: dict[str, bool] = {}
+    results["build_code_of_conduct"] = community.build_code_of_conduct()
     events.append(OperationEvent(kind=EventKind.GENERATED, target="CODE_OF_CONDUCT"))
     generated_files.append("CODE_OF_CONDUCT.md")
 
-    community.build_security()
+    results["build_security"] = community.build_security()
     events.append(OperationEvent(kind=EventKind.GENERATED, target="SECURITY"))
     generated_files.append("SECURITY.md")
 
+
     if config_manager.get_git_settings().host in ["github", "gitlab"]:
-        community.build_pull_request()
-        community.build_bug_issue()
-        community.build_documentation_issue()
-        community.build_feature_issue()
+        results["build_pull_request"] = community.build_pull_request()
+        results["build_bug_issue"] = community.build_bug_issue()
+        results["build_documentation_issue"] = community.build_documentation_issue()
+        results["build_feature_issue"] = community.build_feature_issue()
 
         events.extend(
             [
@@ -64,7 +66,7 @@ def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMe
         )
 
     if config_manager.get_git_settings().host == "gitlab":
-        community.build_vulnerability_disclosure()
+        results["build_vulnerability_disclosure"] = community.build_vulnerability_disclosure()
 
         events.append(
             OperationEvent(
@@ -75,6 +77,10 @@ def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMe
         generated_files.append("Vulnerability_Disclosure.md")
 
     logger.info("All additional documentation successfully generated.")
+    if all(results.values()):
+        plan.mark_done("community_docs")
+    else:
+        plan.mark_failed("community_docs")
 
     return {
         "result": {

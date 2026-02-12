@@ -1,7 +1,7 @@
 from langgraph.constants import END
 from langgraph.graph import StateGraph
 
-from osa_tool.core.models.agent import AgentStatus
+from osa_tool.core.models.agent_status import AgentStatus
 from osa_tool.osa_agent.agents.executor.agent import ExecutorAgent
 from osa_tool.osa_agent.agents.finalizer.agent import FinalizerAgent
 from osa_tool.osa_agent.agents.intent_router.agent import IntentRouterAgent

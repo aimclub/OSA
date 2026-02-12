@@ -3,7 +3,7 @@ from typing import Any
 from rich import box
 from rich.table import Table
 
-from osa_tool.core.models.agent import AgentStatus
+from osa_tool.core.models.agent_status import AgentStatus
 from osa_tool.core.models.task import TaskStatus, Task
 from osa_tool.operations.registry import OperationRegistry
 from osa_tool.osa_agent.base import BaseAgent

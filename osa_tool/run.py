@@ -139,19 +139,12 @@ def main():
         # Auto translating names of directories
         if plan.get("translate_dirs"):
             rich_section("Directory and file translation")
-            plan.mark_started("translate_dirs")
-            translation = RepositoryStructureTranslator(config_manager)
-            if translation.rename_directories_and_files():
-                plan.mark_done("translate_dirs")
-            else:
-                plan.mark_failed("translate_dirs")
+            RepositoryStructureTranslator(config_manager, plan).rename_directories_and_files()
 
         # Docstring generation
         if plan.get("docstring"):
             rich_section("Docstrings generation")
-            # TODO: Посмотреть план
-            DocstringsGenerator(config_manager, args.ignore_list).run()
-            what_has_been_done.mark_did("docstring")
+            DocstringsGenerator(config_manager, args.ignore_list, plan).run()
 
         # License compiling
         if plan.get("ensure_license"):
@@ -161,18 +154,12 @@ def main():
         # Generate community documentation
         if plan.get("community_docs"):
             rich_section("Community docs generation")
-            plan.mark_started("community_docs")
-            if generate_documentation(config_manager, git_agent.metadata):
-                plan.mark_done("community_docs")
-            else:
-                plan.mark_failed("community_docs")
+            generate_documentation(config_manager, git_agent.metadata, plan)
 
         # Requirements generation
         if plan.get("requirements"):
             rich_section("Requirements generation")
-            # TODO: посмотреть план
-            RequirementsGenerator(config_manager).generate()
-            what_has_been_done.mark_did("requirements")
+            RequirementsGenerator(config_manager, plan).generate()
 
         # Readme generation
         if plan.get("readme"):
@@ -189,7 +176,7 @@ def main():
         about_gen = None
         if plan.get("about"):
             rich_section("About Section generation")
-            about_gen = AboutGenerator(config_manager, git_agent)
+            about_gen = AboutGenerator(config_manager, git_agent, plan)
             if about_gen.generate_about_content():
                 plan.mark_done("about")
             else:
