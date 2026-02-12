@@ -1,6 +1,6 @@
 from langchain_core.output_parsers import PydanticOutputParser
 
-from osa_tool.core.models.agent import AgentStatus
+from osa_tool.core.models.agent_status import AgentStatus
 from osa_tool.osa_agent.agents.intent_router.models import IntentDecision
 from osa_tool.osa_agent.base import BaseAgent
 from osa_tool.osa_agent.state import OSAState

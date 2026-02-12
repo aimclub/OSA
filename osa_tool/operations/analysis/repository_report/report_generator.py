@@ -11,6 +11,8 @@ from osa_tool.operations.analysis.repository_report.response_validation import (
     ReadmeEvaluation,
     CodeDocumentation,
     OverallAssessment,
+    AfterReportBlock,
+    AfterReport,
 )
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
@@ -85,3 +87,49 @@ class TextGenerator:
             f"Requirements presence is {self.sourcerank.requirements_presence()}",
         ]
         return contents
+
+
+class AfterReportTextGenerator:
+    def __init__(self, config_manger: ConfigManager, what_has_been_done: list[tuple[str, bool]]) -> None:
+        self.config_manager = config_manger
+        self.model_settings = self.config_manager.get_model_settings("general")
+        self.prompts = self.config_manager.config.prompts
+        self.what_has_been_done = what_has_been_done
+        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
+
+    def make_request(self) -> AfterReport:
+        """
+        Sends a request to the model handler to generate the OSA work summary.
+
+        Returns:
+            The generated OSA work summary response from the model.
+        """
+        formatted_tasks = "\n".join(
+            f"Task {i}. {n}: {'Yes' if d else 'No'}" for i, (n, d) in enumerate(self.what_has_been_done)
+        )
+        json_prompt = PromptBuilder.render(
+            self.prompts.get("analysis.after_report_blocks_prompt"),
+            tasks_list=formatted_tasks,
+        )
+        summary_prompt = PromptBuilder.render(
+            self.prompts.get("analysis.after_report_text_prompt"),
+            tasks_list=formatted_tasks,
+        )
+
+        try:
+            summary = self.model_handler.send_request(prompt=summary_prompt)
+            json_result = self.model_handler.send_and_parse(
+                prompt=json_prompt,
+                parser=lambda raw: [
+                    AfterReportBlock(
+                        name=d["name"],
+                        description=d["description"],
+                        tasks=[self.what_has_been_done[i] for i in d["tasks"]],
+                    )
+                    for d in JsonProcessor.parse(raw, expected_type=list)
+                ],
+            )
+            return AfterReport(summary=summary, blocks=json_result)
+        except Exception as e:
+            logger.error(f"Unexpected error while parsing RepositoryReport: {e}")
+            raise ValueError(f"Failed to process model response: {e}")

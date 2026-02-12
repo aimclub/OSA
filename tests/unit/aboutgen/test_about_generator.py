@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
+from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.prompts_builder import PromptBuilder
 
 
@@ -22,7 +23,7 @@ def test_about_generator_init(
     mock_git_agent,
 ):
     # Act
-    generator = AboutGenerator(mock_config_manager, mock_git_agent)
+    generator = AboutGenerator(mock_config_manager, mock_git_agent, Plan({"about": True}))
 
     # Assert
     assert generator.config_manager == mock_config_manager
@@ -37,7 +38,7 @@ def test_generate_description(
     mock_git_agent,
 ):
     # Arrange
-    generator = AboutGenerator(mock_config_manager, mock_git_agent)
+    generator = AboutGenerator(mock_config_manager, mock_git_agent, Plan({"about": True}))
     generator.metadata.description = ""
 
     # Act
@@ -55,7 +56,7 @@ def test_generate_description_exists(
     mock_git_agent,
 ):
     # Arrange
-    generator = AboutGenerator(mock_config_manager, mock_git_agent)
+    generator = AboutGenerator(mock_config_manager, mock_git_agent, Plan({"about": True}))
 
     # Act
     description = generator._generate_description()
@@ -73,7 +74,7 @@ def test_generate_description_no_readme(
     caplog,
 ):
     # Arrange
-    generator = AboutGenerator(mock_config_manager, mock_git_agent)
+    generator = AboutGenerator(mock_config_manager, mock_git_agent, Plan({"about": True}))
     generator.metadata.description = ""
     generator.readme_content = ""
     caplog.set_level("WARNING")
@@ -93,7 +94,7 @@ def test_generate_topics(
     mock_git_agent,
 ):
     # Arrange
-    generator = AboutGenerator(mock_config_manager, mock_git_agent)
+    generator = AboutGenerator(mock_config_manager, mock_git_agent, Plan({"about": True}))
     generator.metadata.topics = []
     mock_model_handler_aboutgen.send_request.return_value = "python, open source, git tools"
     mock_git_agent.validate_topics.return_value = ["python", "open-source", "git-tools"]
@@ -116,7 +117,7 @@ def test_generate_topics_existing(
 ):
     # Arrange
     existing = ["python", "opensource", "ai", "ml", "data", "devtools", "api"]
-    generator = AboutGenerator(mock_config_manager, mock_git_agent)
+    generator = AboutGenerator(mock_config_manager, mock_git_agent, Plan({"about": True}))
     generator.metadata.topics = existing
 
     # Act
@@ -133,7 +134,7 @@ def test_generate_topics_llm_exception_returns_empty(
     mock_git_agent,
 ):
     # Arrange
-    generator = AboutGenerator(mock_config_manager, mock_git_agent)
+    generator = AboutGenerator(mock_config_manager, mock_git_agent, Plan({"about": True}))
     generator.metadata.topics = []
     mock_model_handler_aboutgen.send_request.side_effect = Exception("LLM error")
 
@@ -149,7 +150,7 @@ def test_detect_homepage_from_metadata(
     mock_git_agent,
 ):
     # Arrange
-    generator = AboutGenerator(mock_config_manager, mock_git_agent)
+    generator = AboutGenerator(mock_config_manager, mock_git_agent, Plan({"about": True}))
     expected_homepage = "https://example.com"
     generator.metadata.homepage_url = expected_homepage
 
@@ -167,7 +168,7 @@ def test_detect_homepage_from_readme(
 ):
     # Arrange
     mock_model_handler_aboutgen.send_request.return_value = "https://my-site.org"
-    generator = AboutGenerator(mock_config_manager, mock_git_agent)
+    generator = AboutGenerator(mock_config_manager, mock_git_agent, Plan({"about": True}))
     generator.metadata.homepage_url = ""
     generator.readme_content = "Visit us at https://my-site.org for more info."
 
@@ -183,7 +184,7 @@ def test_detect_homepage_not_found(
     mock_git_agent,
 ):
     # Arrange
-    generator = AboutGenerator(mock_config_manager, mock_git_agent)
+    generator = AboutGenerator(mock_config_manager, mock_git_agent, Plan({"about": True}))
     generator.metadata.homepage_url = ""
     generator.readme_content = "No link here."
 
@@ -200,7 +201,7 @@ def test_detect_homepage_no_readme(
     caplog,
 ):
     # Arrange
-    generator = AboutGenerator(mock_config_manager, mock_git_agent)
+    generator = AboutGenerator(mock_config_manager, mock_git_agent, Plan({"about": True}))
     generator.metadata.homepage_url = ""
     generator.readme_content = ""
     caplog.set_level("WARNING")
@@ -238,7 +239,7 @@ def test_analyze_urls(
     # Arrange
     urls = ["https://example.com", "http://test.org"]
     fake_response = "https://example.com  , http://test.org"
-    generator = AboutGenerator(mock_config_manager, mock_git_agent)
+    generator = AboutGenerator(mock_config_manager, mock_git_agent, Plan({"about": True}))
     generator.model_handler.send_request.return_value = fake_response
     expected_prompt = PromptBuilder.render(
         generator.prompts.get("about_section.analyze_urls"), project_url=generator.repo_url, urls=", ".join(urls)
@@ -261,7 +262,7 @@ def test_generate_about_content_once_only(
     caplog,
 ):
     # Arrange
-    generator = AboutGenerator(mock_config_manager, mock_git_agent)
+    generator = AboutGenerator(mock_config_manager, mock_git_agent, Plan({"about": True}))
     mocker.patch.object(generator, "_generate_description", return_value="Test description")
     mocker.patch.object(generator, "_generate_topics", return_value=["topic1", "topic2"])
     caplog.set_level("WARNING")
@@ -284,7 +285,7 @@ def test_get_about_content_triggers_generation_if_missing(
     mocker,
 ):
     # Arrange
-    generator = AboutGenerator(mock_config_manager, mock_git_agent)
+    generator = AboutGenerator(mock_config_manager, mock_git_agent, Plan({"about": True}))
     mock_generate = mocker.patch.object(generator, "generate_about_content")
 
     # Act
@@ -301,7 +302,7 @@ def test_get_about_section_message_formatting(
     caplog,
 ):
     # Arrange
-    generator = AboutGenerator(mock_config_manager, mock_git_agent)
+    generator = AboutGenerator(mock_config_manager, mock_git_agent, Plan({"about": True}))
     generator._content = {
         "description": "Test repo",
         "homepage": "https://example.com  ",

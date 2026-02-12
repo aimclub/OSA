@@ -3,6 +3,7 @@ from unittest.mock import patch, mock_open, MagicMock
 import pytest
 import yaml
 
+from osa_tool.scheduler.plan import Plan
 from osa_tool.scheduler.workflow_manager import (
     GitHubWorkflowManager,
     GitLabWorkflowManager,
@@ -106,7 +107,7 @@ def test_update_workflow_config(mock_config_manager, mock_repository_metadata, m
         metadata=mock_repository_metadata,
         args=mock_args,
     )
-    plan = {"include_tests": True, "include_black": False, "python_versions": ["3.10"]}
+    plan = Plan({"include_tests": True, "include_black": False, "python_versions": ["3.10"]})
 
     # Act
     manager.update_workflow_config(mock_config_manager, plan)

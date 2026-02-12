@@ -4,6 +4,7 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.scheduler.response_validation import PromptConfig
+from osa_tool.scheduler.plan import Plan
 from osa_tool.scheduler.workflow_manager import WorkflowManager
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.ui.plan_editor import PlanEditor
@@ -38,7 +39,7 @@ class ModeScheduler:
         self.metadata = metadata
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.prompts = self.config_manager.get_prompts()
-        self.plan = self._select_plan()
+        self.plan = Plan(self._select_plan())
 
     @staticmethod
     def _basic_plan() -> dict:

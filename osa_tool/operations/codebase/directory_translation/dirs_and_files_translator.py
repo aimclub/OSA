@@ -4,12 +4,13 @@ import re
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.core.models.event import OperationEvent, EventKind
+from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
 
 class RepositoryStructureTranslator:
-    def __init__(self, config_manager: ConfigManager):
+    def __init__(self, config_manager: ConfigManager, plan: Plan) -> None:
         self.config_manager = config_manager
         self.model_settings = self.config_manager.get_model_settings("general")
         self.repo_url = self.config_manager.get_git_settings().repository
@@ -26,6 +27,7 @@ class RepositoryStructureTranslator:
             "examples",
             "docs",
         }
+        self.plan = plan
 
         self.events: list[OperationEvent] = []
 
@@ -33,6 +35,7 @@ class RepositoryStructureTranslator:
         """
         The complete process of translating directories and files in the repository.
         """
+        self.plan.mark_started("translate_dirs")
         try:
             dirs_renamed = self.rename_directories()
             files_renamed = self.rename_files()
@@ -56,7 +59,7 @@ class RepositoryStructureTranslator:
                         data={"reason": "no_changes_required"},
                     )
                 )
-
+            self.plan.mark_done("translate_dirs")
             return {
                 "result": {
                     "directories_renamed": dirs_renamed,
@@ -72,6 +75,7 @@ class RepositoryStructureTranslator:
                     data={"error": str(e)},
                 )
             )
+            self.plan.mark_failed("translate_dirs")
             raise
 
     def rename_directories(self) -> int:

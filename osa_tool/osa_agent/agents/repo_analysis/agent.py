@@ -1,4 +1,4 @@
-from osa_tool.core.models.agent import AgentStatus
+from osa_tool.core.models.agent_status import AgentStatus
 from osa_tool.osa_agent.base import BaseAgent
 from osa_tool.osa_agent.state import OSAState
 from osa_tool.tools.repository_analysis.repo_analyzer import RepositoryAnalyzer

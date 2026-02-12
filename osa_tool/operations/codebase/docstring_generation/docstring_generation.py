@@ -4,6 +4,7 @@ import multiprocessing
 from osa_tool.config.settings import ConfigManager
 from osa_tool.operations.codebase.docstring_generation.docgen import DocGen
 from osa_tool.operations.codebase.docstring_generation.osa_treesitter import OSA_TreeSitter
+from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
@@ -13,6 +14,7 @@ class DocstringsGenerator:
         self,
         config_manager: ConfigManager,
         ignore_list: list[str],
+        plan: Plan,
     ) -> None:
         self.config_manager = config_manager
         self.ignore_list = ignore_list
@@ -25,6 +27,7 @@ class DocstringsGenerator:
 
         self.dg = DocGen(self.config_manager)
         self.ts = OSA_TreeSitter(self.repo_path, self.ignore_list)
+        self.plan = plan
 
     def run(self) -> None:
         """
@@ -43,6 +46,7 @@ class DocstringsGenerator:
             asyncio.run(self._run_async())
 
     async def _run_async(self) -> None:
+        self.plan.mark_started("docstring")
         try:
             rate_limit = self.config_manager.get_model_settings("docstrings").rate_limit
 
@@ -126,7 +130,7 @@ class DocstringsGenerator:
                 self.repo_url,
                 self.repo_path,
             )
-
+            self.plan.mark_done("docstring")
         except Exception as e:
             self.dg._purge_temp_files(self.repo_path)
             logger.error(
@@ -134,3 +138,4 @@ class DocstringsGenerator:
                 repr(e),
                 exc_info=True,
             )
+            self.plan.mark_failed("docstring")

@@ -1,11 +1,12 @@
 import os
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import yaml
 
 from osa_tool.config.settings import ConfigManager
+from osa_tool.scheduler.plan import Plan
 from osa_tool.core.git.metadata import RepositoryMetadata
-from osa_tool.scheduler.todo_list import ToDoList
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.arguments_parser import get_keys_from_group_in_yaml
 from osa_tool.utils.logger import logger
@@ -36,7 +37,7 @@ class WorkflowManager(ABC):
         "pypi-publish": ["pypi_publish", "pypi-publish"],
     }
 
-    def __init__(self, repo_url: str, metadata: RepositoryMetadata, args, todo_list: ToDoList | None = None):
+    def __init__(self, repo_url: str, metadata: RepositoryMetadata, args):
         self.repo_url = repo_url
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(repo_url))
         self.metadata = metadata
@@ -44,7 +45,7 @@ class WorkflowManager(ABC):
         self.workflow_plan = {key: value for key, value in vars(args).items() if key in self.workflow_keys}
         self.workflow_path = self._locate_workflow_path()
         self.existing_jobs = self._find_existing_jobs()
-        self.todo_list = todo_list
+        self.plan: Optional[Plan] = None
 
     @abstractmethod
     def _locate_workflow_path(self) -> str | None:
@@ -121,7 +122,7 @@ class WorkflowManager(ABC):
 
         return result_plan
 
-    def update_workflow_config(self, config_manager: ConfigManager, plan: dict) -> None:
+    def update_workflow_config(self, config_manager: ConfigManager, plan: Plan) -> None:
         """
         Update workflow configuration settings in the config loader based on the given plan.
 
@@ -129,13 +130,14 @@ class WorkflowManager(ABC):
             config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
             plan: Final workflow plan.
         """
+        self.plan = plan
         workflow_settings = {}
         for key in self.workflow_keys:
             workflow_settings[key] = plan.get(key)
         config_manager.config.workflows = config_manager.config.workflows.model_copy(update=workflow_settings)
         logger.info("Config successfully updated with workflow settings")
 
-    def generate_workflow(self, config_manager: ConfigManager) -> None:
+    def generate_workflow(self, config_manager: ConfigManager) -> bool:
         """
         Generate CI/CD files according to the updated configuration settings.
 
@@ -157,9 +159,11 @@ class WorkflowManager(ABC):
                 logger.info("Successfully generated the following CI/CD files:\n%s", files_list)
             else:
                 logger.info("No CI/CD files were generated.")
-
+                return False
         except Exception as e:
             logger.error("Error while generating CI/CD files: %s", repr(e), exc_info=True)
+            return False
+        return True
 
     @abstractmethod
     def _get_output_dir(self) -> str:
@@ -221,7 +225,7 @@ class GitHubWorkflowManager(WorkflowManager):
 
     def _generate_files(self, workflow_settings, output_dir) -> list[str]:
         generator = GitHubWorkflowGenerator(output_dir)
-        return generator.generate_selected_jobs(workflow_settings, self.todo_list)
+        return generator.generate_selected_jobs(workflow_settings, self.plan)
 
 
 class GitLabWorkflowManager(WorkflowManager):
@@ -273,7 +277,7 @@ class GitLabWorkflowManager(WorkflowManager):
 
     def _generate_files(self, workflow_settings, output_dir) -> list[str]:
         generator = GitLabWorkflowGenerator(output_dir)
-        return generator.generate_selected_jobs(workflow_settings, self.todo_list)
+        return generator.generate_selected_jobs(workflow_settings, self.plan)
 
 
 class GitverseWorkflowManager(WorkflowManager):
@@ -325,4 +329,4 @@ class GitverseWorkflowManager(WorkflowManager):
 
     def _generate_files(self, workflow_settings, output_dir) -> list[str]:
         generator = GitHubWorkflowGenerator(output_dir)
-        return generator.generate_selected_jobs(workflow_settings, self.todo_list)
+        return generator.generate_selected_jobs(workflow_settings, self.plan)

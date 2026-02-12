@@ -1,9 +1,10 @@
 from langchain_core.output_parsers import PydanticOutputParser
 
+from osa_tool.core.models.agent_status import AgentStatus
 from osa_tool.core.models.event import OperationEvent
 from osa_tool.osa_agent.agents.finalizer.models import FinalizerPullRequestSummary
 from osa_tool.osa_agent.base import BaseAgent
-from osa_tool.osa_agent.state import OSAState, AgentStatus
+from osa_tool.osa_agent.state import OSAState
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.utils import rich_section, delete_repository
