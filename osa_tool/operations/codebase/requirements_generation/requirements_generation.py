@@ -83,9 +83,7 @@ class RequirementsGenerator:
 
             prompt_template = self.prompts.get("requirements.merge_requirements")
             prompt = PromptBuilder.render(
-                prompt_template,
-                old_requirements=old_context,
-                new_requirements=new_requirements
+                prompt_template, old_requirements=old_context, new_requirements=new_requirements
             )
 
             response = self.model_handler.send_request(prompt)
@@ -102,8 +100,10 @@ class RequirementsGenerator:
         text = text.strip()
         if "```" in text:
             lines = text.splitlines()
-            if lines[0].startswith("```"): lines = lines[1:]
-            if lines and lines[-1].startswith("```"): lines = lines[:-1]
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
             return "\n".join(lines).strip()
         return text
 
