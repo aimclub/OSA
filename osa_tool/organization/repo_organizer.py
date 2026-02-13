@@ -43,7 +43,8 @@ class RepoOrganizer:
             except Exception as e:
                 logger.error(f"Failed to create directory {dir_path}: {e}")
 
-    def match_patterns(self, filename: str, patterns: List[str]) -> bool:
+    @staticmethod
+    def match_patterns(filename: str, patterns: List[str]) -> bool:
         """
         Check if filename matches any of the provided patterns.
 

@@ -1,6 +1,6 @@
 from langchain_core.output_parsers import PydanticOutputParser
 
-from osa_tool.core.models.agent import AgentStatus
+from osa_tool.core.models.agent_status import AgentStatus
 from osa_tool.osa_agent.agents.intent_router.models import IntentDecision
 from osa_tool.osa_agent.base import BaseAgent
 from osa_tool.osa_agent.state import OSAState
@@ -39,6 +39,7 @@ class IntentRouterAgent(BaseAgent):
             OSAState: Updated state with detected intent and routing status.
         """
         rich_section("Intent Router Agent")
+        state.active_agent = self.name
 
         if state.status == AgentStatus.WAITING_FOR_USER:
             clarification = clarify_user_input()
@@ -81,5 +82,4 @@ class IntentRouterAgent(BaseAgent):
 
         logger.info(f"Updated state after intent_router: {state.status}")
 
-        state.active_agent = self.name
         return state

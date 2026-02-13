@@ -1,4 +1,4 @@
-from osa_tool.core.models.agent import AgentStatus
+from osa_tool.core.models.agent_status import AgentStatus
 from osa_tool.osa_agent.base import BaseAgent
 from osa_tool.osa_agent.state import OSAState
 from osa_tool.tools.repository_analysis.repo_analyzer import RepositoryAnalyzer
@@ -35,6 +35,9 @@ class RepoAnalysisAgent(BaseAgent):
         """
         rich_section("Repository Analysis Agent")
 
+        state.active_agent = self.name
+        state.status = AgentStatus.ANALYZING
+
         # Prepare repository if not already prepared
         if not state.repo_prepared:
             self._prepare_repo(state)
@@ -46,8 +49,6 @@ class RepoAnalysisAgent(BaseAgent):
         # Update state with repository data
         state.repo_data = repo_data
         state.repo_metadata = self.context.git_agent.metadata
-        state.status = AgentStatus.ANALYZING
-        state.active_agent = self.name
 
         return state
 

@@ -2,8 +2,8 @@ from typing import Optional, List, Dict, Any
 
 from pydantic import BaseModel, Field, ConfigDict
 
-from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.core.models.agent import AgentStatus
+from osa_tool.core.git.metadata import RepositoryMetadata
+from osa_tool.core.models.agent_status import AgentStatus
 from osa_tool.core.models.task import Task
 from osa_tool.tools.repository_analysis.models import RepositoryData
 
@@ -44,7 +44,6 @@ class OSAState(BaseModel):
     # Artifacts & memory
     artifacts: Dict[str, Any] = Field(default_factory=dict)
     session_memory: List[Dict[str, Any]] = Field(default_factory=list)
-    module_memory: Dict[str, List[Any]] = Field(default_factory=dict)
 
     # Review
     approval: bool = False

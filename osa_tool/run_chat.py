@@ -3,9 +3,10 @@ import time
 
 from osa_tool.config.osa_config import OSAConfig
 from osa_tool.config.settings import ConfigManager
+from osa_tool.core.models.agent_status import AgentStatus
 from osa_tool.osa_agent.context import AgentContext
 from osa_tool.osa_agent.graph import build_graph
-from osa_tool.osa_agent.state import AgentStatus, OSAState
+from osa_tool.osa_agent.state import OSAState
 from osa_tool.run import initialize_git_platform
 from osa_tool.ui.input_for_chat import InitialChatInput, collect_user_input
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
@@ -41,6 +42,7 @@ def main():
         workflow_manager=workflow_manager,
         create_fork=not args.no_fork,
         create_pull_request=not args.no_pull_request,
+        delete_dir=args.delete_dir,
         enable_replanning=True,
         enable_memory=True,
     )

@@ -2,14 +2,14 @@ import os
 
 import tomli
 
-from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigManager
+from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.docs.readme_generation.utils import (
     find_in_repo_tree,
     remove_extra_blank_lines,
     save_sections,
 )
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root, parse_folder_name
 
@@ -105,8 +105,12 @@ class ContributingBuilder:
         """Returns the acknowledgements section content."""
         return self._template["acknowledgements"]
 
-    def build(self) -> None:
-        """Assembles and saves the CONTRIBUTING.md file from template sections."""
+    def build(self) -> bool:
+        """
+        Assembles and saves the CONTRIBUTING.md file from template sections.
+        Returns:
+            Has the task been completed successfully
+        """
         try:
             content = [
                 self.introduction,
@@ -124,3 +128,5 @@ class ContributingBuilder:
             logger.info(f"CONTRIBUTING.md successfully generated in folder {self.repo_path}")
         except Exception as e:
             logger.error("Error while generating CONTRIBUTING.md: %s", repr(e), exc_info=True)
+            return False
+        return True

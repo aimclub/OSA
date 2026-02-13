@@ -3,14 +3,15 @@ from unittest.mock import patch, Mock, mock_open, call
 
 import pytest
 
-from osa_tool.translation.dir_translator import DirectoryTranslator
+from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
+from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
 
 def test_init_sets_attributes(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_manager)
+    translator = RepositoryStructureTranslator(mock_config_manager, Plan({"translate_dirs": True}))
 
     # Assert
     assert translator.config_manager == mock_config_manager
@@ -18,13 +19,13 @@ def test_init_sets_attributes(mock_config_manager):
     assert translator.base_path.endswith(parse_folder_name(translator.repo_url))
     assert translator.excluded_dirs == {".git", ".venv"}
     assert translator.extensions_code_files == {".py"}
-    assert "README" in translator.excluded_names
+    assert "readme" in translator.excluded_names
     assert hasattr(translator.model_handler, "send_request")
 
 
 def test_translate_text_excluded_name_returns_same(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_manager)
+    translator = RepositoryStructureTranslator(mock_config_manager, Plan({"translate_dirs": True}))
 
     # Assert
     for name in translator.excluded_names:
@@ -33,7 +34,7 @@ def test_translate_text_excluded_name_returns_same(mock_config_manager):
 
 def test_translate_text_calls_model_handler(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_manager)
+    translator = RepositoryStructureTranslator(mock_config_manager, Plan({"translate_dirs": True}))
     translator.model_handler.send_request = Mock(return_value="some text")
 
     # Act
@@ -45,26 +46,9 @@ def test_translate_text_calls_model_handler(mock_config_manager):
 
 
 @patch("os.walk")
-def test_get_python_files_collects_py_files(mock_walk, mock_config_manager):
-    # Arrange
-    translator = DirectoryTranslator(mock_config_manager)
-    mock_walk.return_value = [
-        ("/repo", ("subdir",), ("file1.py", "file2.txt")),
-        ("/repo/subdir", (), ("file3.py", "README.md")),
-    ]
-
-    # Act
-    files = [str(Path(f)) for f in translator._get_python_files()]
-
-    # Assert
-    assert str(Path("/repo/file1.py")) in files
-    assert all(f.endswith(".py") for f in files)
-
-
-@patch("os.walk")
 def test_get_all_files_excludes_dirs(mock_walk, mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_manager)
+    translator = RepositoryStructureTranslator(mock_config_manager, Plan({"translate_dirs": True}))
     mock_walk.return_value = [
         ("/repo", (".git", "src"), ("file1.py", "file2.txt")),
         ("/repo/src", (), ("file3.py", "file4.txt")),
@@ -82,7 +66,7 @@ def test_get_all_files_excludes_dirs(mock_walk, mock_config_manager):
 @patch("os.walk")
 def test_get_all_directories_excludes_dirs(mock_walk, mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_manager)
+    translator = RepositoryStructureTranslator(mock_config_manager, Plan({"translate_dirs": True}))
     mock_walk.return_value = [
         ("/repo", [".git", "src", "docs"], []),
         ("/repo/src", ["sub"], []),
@@ -122,9 +106,12 @@ def test_update_code_parametrized(file_content, rename_map, expected_content):
     # Arrange
     m = mock_open(read_data=file_content)
 
-    with patch("builtins.open", m), patch("osa_tool.translation.dir_translator.logger") as mock_logger:
+    with (
+        patch("builtins.open", m),
+        patch("osa_tool.operations.codebase.directory_translation.dirs_and_files_translator.logger") as mock_logger,
+    ):
         # Act
-        DirectoryTranslator.update_code("dummy_path.py", rename_map)
+        RepositoryStructureTranslator.update_code("dummy_path.py", rename_map)
 
     # Assert
     m.assert_called_with("dummy_path.py", "w", encoding="utf-8")
@@ -136,13 +123,13 @@ def test_update_code_parametrized(file_content, rename_map, expected_content):
 
 def test_cycle_update_code_calls_update_code_for_all_files(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_manager)
+    translator = RepositoryStructureTranslator(mock_config_manager, Plan({"translate_dirs": True}))
     rename_map = {"a": "b"}
     files = ["file1.py", "file2.py"]
 
-    translator._get_python_files = lambda: files
+    translator._get_all_files = lambda: files
 
-    with patch.object(DirectoryTranslator, "update_code") as mock_update:
+    with patch.object(RepositoryStructureTranslator, "update_code") as mock_update:
         # Act
         translator._cycle_update_code(rename_map)
 
@@ -153,7 +140,7 @@ def test_cycle_update_code_calls_update_code_for_all_files(mock_config_manager):
 
 def test_translate_directories(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_manager)
+    translator = RepositoryStructureTranslator(mock_config_manager, Plan({"translate_dirs": True}))
     translator.base_path = Path("/repo")
 
     all_dirs = [Path("/repo/folder1"), Path("/repo/folder2")]
@@ -174,14 +161,13 @@ def test_translate_directories(mock_config_manager):
 
 def test_translate_files(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_manager)
+    translator = RepositoryStructureTranslator(mock_config_manager, Plan({"translate_dirs": True}))
 
     all_files = [Path("/repo/folder1/file1.py"), Path("/repo/folder2/file2.txt")]
 
     with (
         patch.object(translator, "_translate_text", side_effect=lambda x: f"translated_{Path(x).stem}"),
         patch("os.path.exists", return_value=False),
-        patch.object(logger, "info") as mock_logger,
     ):
         # Act
         rename_map, rename_map_code = translator.translate_files([str(f) for f in all_files])
@@ -200,7 +186,7 @@ def test_translate_files(mock_config_manager):
 
 def test_rename_files_calls_os_rename_and_cycle_update(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_manager)
+    translator = RepositoryStructureTranslator(mock_config_manager, Plan({"translate_dirs": True}))
     translator.extensions_code_files = [".py"]
 
     files = [Path("/repo/folder1/file1.py"), Path("/repo/folder2/file2.txt")]
@@ -233,7 +219,7 @@ def test_rename_files_calls_os_rename_and_cycle_update(mock_config_manager):
 
 def test_rename_directories_calls_os_rename_and_cycle_update(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_manager)
+    translator = RepositoryStructureTranslator(mock_config_manager, Plan({"translate_dirs": True}))
     translator.base_path = Path("/repo")
 
     all_dirs = [Path("/repo/folder1"), Path("/repo/folder2"), Path("/repo")]
@@ -257,7 +243,7 @@ def test_rename_directories_calls_os_rename_and_cycle_update(mock_config_manager
 
 def test_rename_directories_and_files_calls_both_methods(mock_config_manager):
     # Arrange
-    translator = DirectoryTranslator(mock_config_manager)
+    translator = RepositoryStructureTranslator(mock_config_manager, Plan({"translate_dirs": True}))
 
     with (
         patch.object(translator, "rename_directories") as mock_dirs,

@@ -46,7 +46,7 @@ def test_mode_scheduler_initialization_basic(
         )
 
         # Assert
-        assert scheduler.plan == {"test": "basic_plan"}
+        assert scheduler.plan.generated_plan == {"test": "basic_plan"}
 
 
 def test_mode_scheduler_initialization_advanced(
@@ -78,7 +78,7 @@ def test_mode_scheduler_initialization_advanced(
         )
 
         # Assert
-        assert scheduler.plan == {"test": "advanced_plan"}
+        assert scheduler.plan.generated_plan == {"test": "advanced_plan"}
 
 
 def test_mode_scheduler_initialization_auto(
@@ -120,5 +120,5 @@ def test_mode_scheduler_initialization_auto(
         )
 
         # Assert
-        assert "test" in scheduler.plan
-        assert scheduler.plan["test"] == "auto_plan"
+        assert "test" in scheduler.plan.generated_plan
+        assert scheduler.plan.generated_plan["test"] == "auto_plan"

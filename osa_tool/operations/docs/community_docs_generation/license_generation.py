@@ -1,13 +1,12 @@
 import os
-from typing import Literal
 
 import tomli
-from pydantic import BaseModel
 
-from osa_tool.analytics.metadata import RepositoryMetadata
-from osa_tool.analytics.sourcerank import SourceRank
 from osa_tool.config.settings import ConfigManager
-from osa_tool.operations.registry import Operation, OperationRegistry
+from osa_tool.core.git.metadata import RepositoryMetadata
+from osa_tool.core.models.event import EventKind, OperationEvent
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
+from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 
@@ -26,73 +25,103 @@ class LicenseCompiler:
         self,
         config_manager: ConfigManager,
         metadata: RepositoryMetadata,
-        license_type: str,
+        plan: Plan,
     ):
         self.sourcerank = SourceRank(config_manager)
         self.metadata = metadata
-        self.license_type = license_type
+        self.license_type = plan.get("ensure_license")
+        self.plan = plan
         self.license_template_path = os.path.join(osa_project_root(), "docs", "templates", "licenses.toml")
 
-    def run(self) -> None:
+        self.events: list[OperationEvent] = []
+
+    def run(self) -> dict:
         """
         Executes the license compilation process.
+
+        Returns:
+        dict: A dictionary containing:
+            - 'result': Optional dictionary with 'license' (license type) and 'path' (file path)
+            - 'events': List of emitted events during execution
+
+        Raises:
+            KeyError: If the specified license_type is not found in the license templates.
         """
+        self.plan.mark_started("ensure_license")
+        if self.sourcerank.license_presence():
+            logger.info("LICENSE file already exists.")
+            self.events.append(
+                OperationEvent(
+                    kind=EventKind.EXISTS,
+                    target="LICENSE",
+                )
+            )
+            return self._out(None)
+
+        logger.info("LICENSE was not resolved, compiling started...")
+
+        license_text = self._render_license()
+        license_path = os.path.join(self.sourcerank.repo_path, "LICENSE")
+
+        with open(license_path, "w", encoding="utf-8") as f:
+            f.write(license_text)
+
+        logger.info("LICENSE has been successfully compiled.")
+        self.events.append(
+            OperationEvent(
+                kind=EventKind.WRITTEN,
+                target="LICENSE",
+                data={
+                    "license": self.license_type,
+                    "path": license_path,
+                },
+            )
+        )
+
+        result = {
+            "license": self.license_type,
+            "path": license_path,
+        }
+        self.plan.mark_done("ensure_license")
+        return self._out(result)
+
+    def _render_license(self) -> str:
+        """
+        Render the license text based on the selected license type and repository metadata.
+
+        Returns:
+            str: The formatted license text.
+
+        Raises:
+            KeyError: If the license type does not exist in the templates.
+        """
+        with open(self.license_template_path, "rb") as f:
+            templates = tomli.load(f)
+
         try:
-            if self.sourcerank.license_presence():
-                logger.info("LICENSE file already exists.")
-                return
+            return templates[self.license_type]["template"].format(
+                year=self.metadata.created_at[:4],
+                author=self.metadata.owner,
+            )
+        except KeyError:
+            logger.error(
+                f"Couldn't resolve {self.license_type} license type, "
+                "try to look up available licenses at documentation."
+            )
+            self.plan.mark_failed("ensure_license")
+            raise
 
-            logger.info("LICENSE was not resolved, compiling started...")
+    def _out(self, result: dict | None) -> dict:
+        """
+        Format the standardized operation output.
 
-            with open(self.license_template_path, "rb") as f:
-                license_template = tomli.load(f)
+        Args:
+            result (dict | None): Operation result payload.
 
-            try:
-                license_text = license_template[self.license_type]["template"].format(
-                    year=self.metadata.created_at[:4],
-                    author=self.metadata.owner,
-                )
-                license_output_path = os.path.join(self.sourcerank.repo_path, "LICENSE")
-
-                with open(license_output_path, "w", encoding="utf-8") as f:
-                    f.write(license_text)
-
-                logger.info(f"LICENSE has been successfully compiled at {license_output_path}.")
-
-            except KeyError:
-                logger.error(
-                    f"Couldn't resolve {self.license_type} license type, "
-                    "try to look up available licenses at documentation."
-                )
-
-        except Exception as e:
-            logger.error("Error while compiling LICENSE: %s", e, exc_info=True)
-
-
-class EnsureLicenseArgs(BaseModel):
-    ensure_license: Literal["bsd-3", "mit", "ap2"] = "bsd-3"
-
-
-class EnsureLicenseOperation(Operation):
-    name = "ensure_license"
-    description = "Ensure LICENSE file exists"
-
-    supported_intents = ["new_task"]
-    supported_scopes = ["full_repo", "docs"]
-    priority = 60
-
-    args_schema = EnsureLicenseArgs
-    args_policy = "auto"
-    prompt_for_args = (
-        "For operation 'ensure_license' provide a license type. "
-        "Expected key: 'license_type'."
-        "Allowed values: 'bsd-3', 'mit', 'ap2'."
-        "If not specified, use 'bsd-3'."
-    )
-
-    executor = LicenseCompiler
-    executor_method = "run"
-    executor_dependencies = ["config_manager", "metadata"]
-
-
-OperationRegistry.register(EnsureLicenseOperation())
+        Returns:
+            dict: Standardized operation output.
+        """
+        return {
+            "result": result,
+            "events": self.events,
+        }
