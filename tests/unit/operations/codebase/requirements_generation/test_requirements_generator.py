@@ -27,11 +27,11 @@ def mock_plan():
 def generator(mock_config, mock_plan):
     """Create a generator instance with mocked dependencies."""
     with patch(
-            "osa_tool.operations.codebase.requirements_generation.requirements_generation.ModelHandlerFactory.build"
+        "osa_tool.operations.codebase.requirements_generation.requirements_generation.ModelHandlerFactory.build"
     ):
         with patch(
-                "osa_tool.operations.codebase.requirements_generation.requirements_generation.parse_folder_name",
-                return_value="repo"
+            "osa_tool.operations.codebase.requirements_generation.requirements_generation.parse_folder_name",
+            return_value="repo"
         ):
             gen = RequirementsGenerator(mock_config, mock_plan)
             gen.repo_path = MagicMock(spec=Path)
@@ -174,9 +174,9 @@ def test_generate_retry_logic(mock_run_pipreqs, generator):
 
     assert len(generator.events) == 2
     assert generator.events[0].kind == EventKind.FAILED
-    assert generator.events[0].data['mode'] == "scan-notebooks"
+    assert generator.events[0].data["mode"] == "scan-notebooks"
     assert generator.events[1].kind == EventKind.GENERATED
-    assert generator.events[1].data['mode'] == "no-notebooks"
+    assert generator.events[1].data["mode"] == "no-notebooks"
 
 
 @patch(
@@ -203,7 +203,7 @@ def test_generate_fatal_failure(mock_run_pipreqs, generator):
 
     assert len(generator.events) == 2
     assert generator.events[1].kind == EventKind.FAILED
-    assert generator.events[1].data['mode'] == "no-notebooks"
+    assert generator.events[1].data["mode"] == "no-notebooks"
 
 
 def test_refine_with_llm_writes_file(generator):
