@@ -36,13 +36,13 @@ class ModelHandler(ABC):
     payload: dict
 
     @abstractmethod
-    def send_request(self, prompt: str, system_message: str = None) -> str: ...
+    def send_request(self, prompt: str, system_message: str = None, retry_delay: float = 1) -> str: ...
 
     @abstractmethod
     def send_and_parse(self, prompt: str, parser: callable, system_message: str = None, retry_delay: float = 0.5): ...
 
     @abstractmethod
-    async def async_request(self, prompt: str, system_message: str = None) -> str: ...
+    async def async_request(self, prompt: str, system_message: str = None, retry_delay: float = 1) -> str: ...
 
     @abstractmethod
     async def async_send_and_parse(
@@ -180,28 +180,78 @@ class ProtollmHandler(ModelHandler):
             None
         """
         self.model_settings = model_settings
+        self._original_primary_model = model_settings.model
         self.max_retries = model_settings.max_retries
-        self._configure_api(model_settings.api, model_name=model_settings.model)
+        self._configure_api(model_name=model_settings.model)
 
-    def send_request(self, prompt: str, system_message: str = None) -> str:
+    def reset_to_primary_model(self) -> None:
+        """Explicitly restore primary model configuration."""
+        primary = self._original_primary_model
+        if self.model_settings.model != primary:
+            logger.info(f"Resetting model from `{self.model_settings.model}` to `{primary}`")
+            self._configure_api(model_name=primary)
+            self.model_settings.model = primary
+
+    def _iter_configured_models(self):
         """
-        Sends a request to a specified URL with a payload initialized with a given prompt.
+        Generator that yields for each model attempt, handling fallback configuration
+        and logging side effects automatically.
+        """
+        models_to_try = [self.model_settings.model, *self.model_settings.fallback_models]
 
-        This method initializes a payload with the provided prompt and configuration,
-        sends a POST request to a specified URL with this payload, and logs the response.
+        for model_idx, model in enumerate(models_to_try):
+            if model_idx > 0:
+                logger.warning(
+                    f"Model '{self.model_settings.model}' failed. Falling back to model '{model}' ({model_idx + 1}/{len(models_to_try)})"
+                )
+                self._configure_api(model_name=model)
+                self.model_settings.model = model
 
-        Args:
-            prompt (str): The prompt to initialize the payload with.
-            system_message (str, optional): The system message to initialize the payload with.
+            yield model
 
-        Returns:
-            str: The response received from the request.
+    def _prepare_messages(self, prompt: str, system_message: str) -> list:
+        """
+        Shared logic to prepare the payload and extract messages.
         """
         safe_prompt = self._limit_tokens(prompt)
         self.initialize_payload(self.model_settings, safe_prompt, system_message)
-        messages = self.payload["messages"]
-        response = self.client.invoke(messages)
-        return response.content
+        return self.payload["messages"]
+
+    def send_request(self, prompt: str, system_message: str = None, retry_delay: float = 1) -> str:
+        """
+        Sends a request using primary model, falling back to alternatives on failure.
+
+        SIDE EFFECT: On fallback success, updates `self.model_settings.model`
+        to the working fallback model. Does NOT automatically restore primary model.
+
+        Attempts the primary model first (without reconfiguration). If it fails,
+        sequentially tries models from `model_settings.fallback_models` until
+        successful or all options are exhausted.
+
+        Args:
+            prompt: User prompt text.
+            system_message: Optional system message to include in the payload.
+
+        Returns:
+            Model response content as string.
+
+        Raises:
+            Exception: Last exception encountered after exhausting all models.
+        """
+        last_error = None
+
+        for _ in self._iter_configured_models():
+            try:
+                messages = self._prepare_messages(prompt, system_message)
+                response = self.client.invoke(messages)
+                return response.content
+            except Exception as e:
+                last_error = e
+                logger.debug(repr(e))
+                time.sleep(retry_delay)
+
+        logger.error(f"All models failed. Last error: {last_error}")
+        raise last_error
 
     def send_and_parse(self, prompt: str, parser: callable, system_message: str = None, retry_delay: float = 0.5):
         """
@@ -247,22 +297,42 @@ class ProtollmHandler(ModelHandler):
         logger.debug(repr(last_error))
         raise
 
-    async def async_request(self, prompt: str, system_message: str = None) -> str:
+    async def async_request(self, prompt: str, system_message: str = None, retry_delay: float = 1) -> str:
         """
         Asynchronous alternative of send_request method.
-        This method do the same things in general.
+        Sends an async request using primary model, falling back to alternatives on failure.
+
+        SIDE EFFECT: On fallback success, updates `self.model_settings.model`
+        to the working fallback model. Does NOT automatically restore primary model.
+
+        Attempts the primary model first (without reconfiguration). If it fails,
+        sequentially tries models from `model_settings.fallback_models` until
+        successful or all options are exhausted.
 
         Args:
-            prompt (str): The prompt to initialize the payload with.
-            system_message (str, optional): The system message to initialize the payload with.
+            prompt: User prompt text.
+            system_message: Optional system message to include in the payload.
 
         Returns:
-            str: The response received from the request.
+            Model response content as string.
+
+        Raises:
+            Exception: Last exception encountered after exhausting all models.
         """
-        safe_prompt = self._limit_tokens(prompt)
-        self.initialize_payload(self.model_settings, safe_prompt, system_message)
-        response = await self.client.ainvoke(self.payload["messages"])
-        return response.content
+        last_error = None
+
+        for _ in self._iter_configured_models():
+            try:
+                messages = self._prepare_messages(prompt, system_message)
+                response = await self.client.ainvoke(messages)
+                return response.content
+            except Exception as e:
+                last_error = e
+                logger.debug(repr(e))
+                await asyncio.sleep(retry_delay)
+
+        logger.error(f"All models failed. Last error: {last_error}")
+        raise last_error
 
     async def async_send_and_parse(
         self,
@@ -308,6 +378,7 @@ class ProtollmHandler(ModelHandler):
             except JsonParseError as e:
                 last_error = e
                 logger.warning(f"Async parse failed (attempt {attempt}/{self.max_retries}): {e}")
+                self.reset_to_primary_model()
 
                 if attempt < self.max_retries:
                     await asyncio.sleep(retry_delay)
@@ -432,13 +503,13 @@ class ProtollmHandler(ModelHandler):
         logger.debug(repr(last_error))
         raise
 
-    def _build_model_url(self) -> str:
+    def _build_model_url(self, model_name: str) -> str:
         """Builds the model URL based on the LLM API type."""
         url_templates = {
-            "itmo": f"self_hosted;{os.getenv('ITMO_MODEL_URL', self.model_settings.base_url)};{self.model_settings.model}",
-            "ollama": f"ollama;{self.model_settings.localhost};{self.model_settings.model}",
+            "itmo": f"self_hosted;{os.getenv('ITMO_MODEL_URL', self.model_settings.base_url)};{model_name}",
+            "ollama": f"ollama;{self.model_settings.localhost};{model_name}",
         }
-        return url_templates.get(self.model_settings.api, f"{self.model_settings.base_url};{self.model_settings.model}")
+        return url_templates.get(self.model_settings.api, f"{self.model_settings.base_url};{model_name}")
 
     def _get_llm_params(self):
         """Extract LLM parameters from config"""
@@ -450,15 +521,12 @@ class ProtollmHandler(ModelHandler):
             if getattr(self.model_settings, name, None) is not None
         }
 
-    def _configure_api(self, api: str, model_name: str) -> None:
+    def _configure_api(self, model_name: str) -> None:
         """
         Configures the API for the instance based on the provided API name.
 
         This method loads environment variables, sets the URL and API key based on the provided API name,
         and initializes the OpenAI client with the set URL and API key.
-
-        Args:
-            api: The name of the API to configure. It can be either "openai" or "vsegpt".
 
         Returns:
             None
@@ -466,7 +534,7 @@ class ProtollmHandler(ModelHandler):
         dotenv.load_dotenv()
 
         self.client = create_llm_connector(
-            model_url=self._build_model_url(),
+            model_url=self._build_model_url(model_name),
             extra_body={"providers": {"only": self.model_settings.allowed_providers}},
             **self._get_llm_params(),
         )
