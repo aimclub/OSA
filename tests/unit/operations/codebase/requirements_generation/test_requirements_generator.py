@@ -31,7 +31,7 @@ def generator(mock_config, mock_plan):
     ):
         with patch(
             "osa_tool.operations.codebase.requirements_generation.requirements_generation.parse_folder_name",
-            return_value="repo"
+            return_value="repo",
         ):
             gen = RequirementsGenerator(mock_config, mock_plan)
             gen.repo_path = MagicMock(spec=Path)
