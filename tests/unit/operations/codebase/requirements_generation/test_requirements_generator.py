@@ -27,17 +27,18 @@ def mock_plan():
 def generator(mock_config, mock_plan):
     """Create a generator instance with mocked dependencies."""
     with patch(
-            "osa_tool.operations.codebase.requirements_generation.requirements_generation.ModelHandlerFactory.build"):
-        with patch("osa_tool.operations.codebase.requirements_generation.requirements_generation.parse_folder_name",
-                   return_value="repo"):
+            "osa_tool.operations.codebase.requirements_generation.requirements_generation.ModelHandlerFactory.build"
+    ):
+        with patch(
+                "osa_tool.operations.codebase.requirements_generation.requirements_generation.parse_folder_name",
+                return_value="repo"
+        ):
             gen = RequirementsGenerator(mock_config, mock_plan)
             gen.repo_path = MagicMock(spec=Path)
             gen.repo_path.resolve.return_value = gen.repo_path
             gen.repo_path.__str__.return_value = "/abs/path/to/repo"
             return gen
 
-
-# --- Helper Method Tests ---
 
 def test_clean_llm_response_simple(generator):
     raw = "pandas==1.0.0\nnumpy"
@@ -101,9 +102,11 @@ def test_run_pipreqs_fail(mock_subprocess, generator):
 
 
 @patch(
-    "osa_tool.operations.codebase.requirements_generation.requirements_generation.RequirementsGenerator._run_pipreqs")
+    "osa_tool.operations.codebase.requirements_generation.requirements_generation.RequirementsGenerator._run_pipreqs"
+)
 @patch(
-    "osa_tool.operations.codebase.requirements_generation.requirements_generation.RequirementsGenerator._refine_with_llm")
+    "osa_tool.operations.codebase.requirements_generation.requirements_generation.RequirementsGenerator._refine_with_llm"
+)
 def test_generate_success_simple(mock_refine, mock_run_pipreqs, generator):
     """
     Happy path: Repo exists, pipreqs works first time, context found -> LLM called.
@@ -119,8 +122,10 @@ def test_generate_success_simple(mock_refine, mock_run_pipreqs, generator):
     pyproj_mock.exists.return_value = False
 
     def path_div_side_effect(other):
-        if other == "requirements.txt": return req_file_mock
-        if other == "pyproject.toml": return pyproj_mock
+        if other == "requirements.txt":
+            return req_file_mock
+        if other == "pyproject.toml":
+            return pyproj_mock
         return MagicMock()
 
     generator.repo_path.__truediv__.side_effect = path_div_side_effect
@@ -141,7 +146,8 @@ def test_generate_success_simple(mock_refine, mock_run_pipreqs, generator):
 
 
 @patch(
-    "osa_tool.operations.codebase.requirements_generation.requirements_generation.RequirementsGenerator._run_pipreqs")
+    "osa_tool.operations.codebase.requirements_generation.requirements_generation.RequirementsGenerator._run_pipreqs"
+)
 def test_generate_retry_logic(mock_run_pipreqs, generator):
     """
     Scenario: Pipreqs fails with notebooks, retries without notebooks and succeeds.
@@ -155,7 +161,7 @@ def test_generate_retry_logic(mock_run_pipreqs, generator):
     # Mock pipreqs
     mock_run_pipreqs.side_effect = [
         subprocess.CalledProcessError(1, "cmd", stderr="notebook error"),  # 1st call
-        MagicMock(returncode=0)  # 2nd call
+        MagicMock(returncode=0),  # 2nd call
     ]
 
     # Act
@@ -168,13 +174,14 @@ def test_generate_retry_logic(mock_run_pipreqs, generator):
 
     assert len(generator.events) == 2
     assert generator.events[0].kind == EventKind.FAILED
-    assert generator.events[0].data['mode'] == 'scan-notebooks'
+    assert generator.events[0].data['mode'] == "scan-notebooks"
     assert generator.events[1].kind == EventKind.GENERATED
-    assert generator.events[1].data['mode'] == 'no-notebooks'
+    assert generator.events[1].data['mode'] == "no-notebooks"
 
 
 @patch(
-    "osa_tool.operations.codebase.requirements_generation.requirements_generation.RequirementsGenerator._run_pipreqs")
+    "osa_tool.operations.codebase.requirements_generation.requirements_generation.RequirementsGenerator._run_pipreqs"
+)
 def test_generate_fatal_failure(mock_run_pipreqs, generator):
     """Scenario: Pipreqs fails both times."""
     generator.repo_path.exists.return_value = True
@@ -185,7 +192,7 @@ def test_generate_fatal_failure(mock_run_pipreqs, generator):
 
     mock_run_pipreqs.side_effect = [
         subprocess.CalledProcessError(1, "cmd", stderr="err1"),
-        subprocess.CalledProcessError(1, "cmd", stderr="err2")
+        subprocess.CalledProcessError(1, "cmd", stderr="err2"),
     ]
 
     # Act / Assert
@@ -196,7 +203,7 @@ def test_generate_fatal_failure(mock_run_pipreqs, generator):
 
     assert len(generator.events) == 2
     assert generator.events[1].kind == EventKind.FAILED
-    assert generator.events[1].data['mode'] == 'no-notebooks'
+    assert generator.events[1].data['mode'] == "no-notebooks"
 
 
 def test_refine_with_llm_writes_file(generator):
