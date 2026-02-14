@@ -87,7 +87,7 @@ def test_build_model_url_varies_with_api(mock_config_manager, patch_llm_connecto
     handler = ProtollmHandler(model_settings)
 
     # Act
-    url = handler._build_model_url()
+    url = handler._build_model_url(model_settings.model)
 
     # Assert
     assert url.startswith(expected_prefix) or expected_prefix == ""
