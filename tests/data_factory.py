@@ -55,6 +55,7 @@ class DataFactory:
             "max_retries": random.randint(3, 10),
             "system_prompt": random_word(),
             "allowed_providers": random.sample(["google-vertex", "azure"], k=1),
+            "fallback_models": random.sample(["gpt-oss-120b", "claude-haiku-4.5"], k=1),
         }
 
     @staticmethod
