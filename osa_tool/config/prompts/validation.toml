@@ -175,3 +175,58 @@ OUTPUT FORMAT:
   "conclusion": str
 }}
 """
+
+extract_paper_experiments_list = """
+INPUT DATA:
+{paper_content}
+
+TASK:
+1. Identify the section(s) of the paper describing experiments (titles may include "Experiments", "Experimental Setup", "Methodology", "Materials and Methods", or similar), but don't rely solely on titles.
+2. From that text, list each explicitly described experiment in the order presented, using a direct description from the text. An experiment is a procedure carried out to support or refute a hypothesis, or determine the efficacy or likelihood of something previously untried.
+3. Experiment descriptions should be extracted with the exact wording as given in the original paper.
+4. Experiments have to be described clearly, so it would be possible to tell wheather or not this experiment can be reproduced with code.
+5. Replace ONLY non-askii characters with its askii variant.
+
+RULES:
+- Return ONLY a valid JSON object with no additional text, explanations, or formatting.
+- If no experiment section exists, return {{"experiment_list": []}}.
+- Do not paraphrase, infer, or add any content not present in the input.
+- Do NOT include section titles unless they appear in the original text.
+
+OUTPUT FORMAT:
+Return a valid JSON object with the following structure:
+{{
+  "experiment_list": ["string", "string"]
+}}
+"""
+
+validate_single_experiment = """
+INPUT DATA:
+{experiment_description}
+
+{code_files_info}
+
+TASK:
+For provided experiment description assess of how much of the proposed experiment is actually present in the code base and exactly where in the code such experiment is implemented and return a valid JSON object with following structure
+{{
+  "assessment": "assessment of how much of the proposed experiment is actually present in the code base with the name of specific code module or function"
+  "correlation_percent": float in range from 0.0 to 1.0 with your estimation of how much the code correlates with the provided experiment description.
+}}
+
+RULES:
+- Return ONLY a valid JSON object with no additional text, explanations, or formatting.
+- For "assessment", provide a brief assessment of how much of that specific experiment is implemented in the code base. Keep it in 1-2 sentences.
+- "correlation_percent": Float between 0.0 and 1.0 representing your estimate of implementation completeness (0=not implemented, 0.5=partially implemented, 1=fully implemented)
+- Assessments should focus on: whether the code implements the methods/models described, uses correct datasets/evaluation metrics, and allows reproduction of the experiment.
+- Consider partial implementations (e.g., model implemented but training loop missing = ~0.3-0.4). If something is missing, explain why it is crucial to have it.
+- Base assessments solely on comparing the experiment description with the provided code_files_info.
+
+OUTPUT FORMAT:
+Return a valid JSON obect with the following structure:
+{{
+  {{
+    "assessment": "string"
+    "correlation_percent": "float"
+  }}
+}}
+"""

@@ -1,13 +1,15 @@
 import asyncio
 
-from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
-from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
-from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
+from rich.progress import track
+
+from osa_tool.config.settings import ConfigManager
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor
-from osa_tool.validation.code_analyzer import CodeAnalyzer
+from osa_tool.validation.analyze.code_analyzer import CodeAnalyzer
+from osa_tool.validation.analyze.paper_analyzer import PaperAnalyzer
+from osa_tool.validation.experiment import Experiment
 
 
 class PaperValidator:
@@ -25,18 +27,20 @@ class PaperValidator:
         Args:
             config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
         """
-        self.config_manager = config_manager
-        self.code_analyzer = CodeAnalyzer(config_manager)
-        self.model_settings = config_manager.get_model_settings("validation")
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
-        self.prompts = self.config_manager.get_prompts()
+        self.__config_manager = config_manager
+        self.__prompts = self.__config_manager.get_prompts()
+        self.__code_analyzer = CodeAnalyzer(config_manager)
+        self.__paper_analyzer = PaperAnalyzer(config_manager, self.__prompts)
+        model_settings = config_manager.get_model_settings("validation")
+        self.__model_handler: ModelHandler = ModelHandlerFactory.build(model_settings)
+        self.__experiments = None
 
-    async def validate(self, article: str | None) -> dict | None:
+    async def validate(self, article_path: str | None) -> tuple[Experiment, ...] | None:
         """
         Asynchronously validate a scientific paper against the code repository.
 
         Args:
-            article (str | None): Path to the paper PDF file.
+            article_path (str | None): Path to the paper PDF file.
 
         Returns:
             dict | None: Validation result from the language model or none if an error occurs.
@@ -45,67 +49,36 @@ class PaperValidator:
             ValueError: If the article path is missing.
             Exception: If an error occurs during validation.
         """
-        if not article:
+        if not article_path:
             raise ValueError("Article is missing! Please pass it using --attachment argument.")
         try:
-            paper_info = await self.process_paper(article)
-            code_files = await asyncio.to_thread(self.code_analyzer.get_code_files)
-            code_files_info = await self.code_analyzer.process_code_files(code_files)
-            result = await self.validate_paper_against_repo(paper_info, code_files_info)
-            return result
+            experiments_list = await self.__paper_analyzer.process_paper(article_path)
+            self.__experiments = tuple(Experiment(experiment_descr) for experiment_descr in experiments_list)
+            code_files = await asyncio.to_thread(self.__code_analyzer.get_code_files)
+            code_files_info = await self.__code_analyzer.process_code_files(code_files)
+
+            await self.__validate_paper_against_repo(code_files_info)
+            return self.__experiments
         except Exception as e:
             logger.error(f"Error while validating paper against repo: {e}")
             return None
 
-    async def process_paper(self, article: str) -> str:
-        """
-        Asynchronously extract and process content from a scientific paper (PDF).
-
-        Args:
-            article (str): Path to the paper PDF file.
-
-        Returns:
-            str: Processed paper content.
-
-        Raises:
-            ValueError: If the PDF source is invalid.
-        """
-        logger.info("Loading PDF...")
-        path_to_pdf = get_pdf_path(article)
-        if not path_to_pdf:
-            raise ValueError(f"Invalid PDF source provided: {path_to_pdf}. Could not locate a valid PDF.")
-        logger.info("Extracting text from PDF ...")
-        pdf_content = await asyncio.to_thread(PdfParser(path_to_pdf).data_extractor)
-        logger.info("Sending request to extract sections ...")
-        response = await self.model_handler.async_send_and_parse(
-            PromptBuilder.render(
-                self.prompts.get("validation.extract_paper_section"),
-                paper_content=pdf_content,
-            ),
-            parser=lambda raw: JsonProcessor.parse(raw),
-        )
-        logger.debug(response)
-        return response
-
-    async def validate_paper_against_repo(self, paper_info: str, code_files_info: str) -> dict:
+    async def __validate_paper_against_repo(self, code_files_info: str):
         """
         Asynchronously validate the processed paper content against the code repository.
 
         Args:
-            paper_info (str): Processed paper information.
             code_files_info (str): Aggregated code files analysis.
-
-        Returns:
-            dict: Validation result from the language model.
         """
         logger.info("Validating paper against repository ...")
-        response = await self.model_handler.async_send_and_parse(
-            PromptBuilder.render(
-                self.prompts.get("validation.validate_paper_against_repo"),
-                paper_info=paper_info,
-                code_files_info=code_files_info,
-            ),
-            parser=lambda raw: JsonProcessor.parse(raw),
-        )
-        logger.debug(response)
-        return response
+        for experiment in track(self.__experiments, description="Assessing experiments"):
+            experiment_assessment = await self.__model_handler.async_send_and_parse(
+                PromptBuilder.render(
+                    self.__prompts.get("validation.validate_single_experiment"),
+                    experiment_description=experiment.description_from_paper,
+                    code_files_info=code_files_info,
+                ),
+                parser=lambda raw: JsonProcessor.parse(raw),
+            )
+            experiment.assessment = experiment_assessment["assessment"]
+            experiment.correspondence_percent = experiment_assessment["correlation_percent"]
