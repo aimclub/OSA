@@ -758,7 +758,7 @@ async def test_generate_docstrings_for_classes(mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)
 
-    async def mock_fetch_docstrings_for_class(filename, structure, semaphore):
+    async def mock_fetch_docstrings_for_class(filename, structure, semaphore, progress):
         return {"classes": [("docstring", "Class1")]}
 
     docgen._fetch_docstrings_for_class = mock_fetch_docstrings_for_class
