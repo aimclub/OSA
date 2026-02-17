@@ -1,16 +1,16 @@
 [prompts]
 intent_router = """
-Analyze the following user request and any attached context:
+Analyze the following activer request and any attached context:
 
-User Request: {user_request}
+Active Request: {active_request}
 Attachment: {attachment}
 
 Return the result **strictly in the JSON format described above**.
 """
 
 planner = """
-User request:
-{user_request}
+Active Request:
+{active_request}
 
 Detected intent: {intent}
 Task scope: {task_scope}
@@ -25,11 +25,19 @@ Select the operations that best satisfy the user request.
 """
 
 detect_arguments = """
-User request:
-{user_request}
+Active Request:
+{active_request}
 
 Operations with additional arguments:
 {operations}
+"""
+
+fill_missing_after_clarification = """
+Missing Fields (to fill):
+{missing}
+
+User Provided Answers:
+{user_answers}
 """
 
 pr_summarizer = """

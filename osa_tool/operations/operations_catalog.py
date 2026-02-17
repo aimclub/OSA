@@ -1,12 +1,14 @@
 import inspect
 import os
-from typing import Optional, List, Literal
+from typing import List, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
+from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
+from osa_tool.operations.codebase.organization.repo_organizer import RepoOrganizer
 from osa_tool.operations.codebase.requirements_generation.requirements_generation import RequirementsGenerator
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
 from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
@@ -30,6 +32,32 @@ class GenerateReportOperation(Operation):
     executor_dependencies = ["config_manager", "metadata"]
 
 
+class ConvertNotebooksArgs(BaseModel):
+    notebook_paths: List[str] = Field(default_factory=list)
+
+
+class ConvertNotebooksOperation(Operation):
+    name = "convert_notebooks"
+    description = "Convert Jupyter notebooks (.ipynb) into Python scripts with cleaned code."
+
+    supported_intents = ["new_task"]
+    supported_scopes = ["full_repo", "codebase"]
+    priority = 30
+
+    args_schema = ConvertNotebooksArgs
+    args_policy = "auto"
+    prompt_for_args = (
+        "Optional parameter notebook_paths: a list of .ipynb files or directories "
+        "to convert. If omitted, the entire repository will be scanned for notebooks.\n\n"
+        "Example:\n"
+        "{'notebook_paths': ['notebooks/analysis.ipynb', 'research/']}"
+    )
+
+    executor = NotebookConverter
+    executor_method = "convert_notebooks"
+    executor_dependencies = ["config_manager"]
+
+
 class TranslateRepositoryStructureOperation(Operation):
     name = "translate_dirs"
     description = "Translate directories and files into English"
@@ -44,7 +72,7 @@ class TranslateRepositoryStructureOperation(Operation):
 
 
 class GenerateDocstringsArgs(BaseModel):
-    ignore_list: List[str] = []
+    ignore_list: List[str] = Field(default_factory=list)
 
 
 class GenerateDocstringsOperation(Operation):
@@ -123,10 +151,6 @@ class RequirementsGeneratorOperation(Operation):
     executor_dependencies = ["config_manager"]
 
 
-class GenerateReadmeArgs(BaseModel):
-    article: Optional[str] = None
-
-
 class GenerateReadmeOperation(Operation):
     name = "generate_readme"
     description = "Generate or improve README.md for the repository"
@@ -135,10 +159,6 @@ class GenerateReadmeOperation(Operation):
     supported_scopes = ["full_repo", "docs"]
     priority = 70
 
-    args_schema = GenerateReadmeArgs
-    args_policy = "auto"
-    prompt_for_args = "Provide the content for README.md if you want to override default generation."
-
     executor = ReadmeAgent
     executor_method = "generate_readme"
     executor_dependencies = ["config_manager", "metadata"]
@@ -146,7 +166,7 @@ class GenerateReadmeOperation(Operation):
 
 
 class TranslateReadmeArgs(BaseModel):
-    languages: List[str]
+    languages: List[str] = Field(default_factory=list)
 
 
 class TranslateReadmeOperation(Operation):
@@ -160,7 +180,9 @@ class TranslateReadmeOperation(Operation):
     args_schema = TranslateReadmeArgs
     args_policy = "ask_if_missing"
     prompt_for_args = (
-        "For operation 'translate_readme' provide a list of languages " "(e.g., {'languages': ['Russian', 'Swedish']})."
+        "For operation 'translate_readme' provide a list of languages. "
+        "Even if only one language is specified, it must be returned as a list. "
+        "Detect only languages. (e.g., {'languages': ['Russian', 'Swedish']})"
     )
 
     executor = ReadmeTranslator
@@ -179,6 +201,22 @@ class GenerateAboutOperation(Operation):
     executor = AboutGenerator
     executor_method = "generate_about_content"
     executor_dependencies = ["config_manager", "git_agent"]
+
+
+class OrganizeRepositoryOperation(Operation):
+    name = "organize"
+    description = (
+        "Organize the repository structure by adding standard 'tests' and "
+        "'examples' directories if missing and moving matching files."
+    )
+
+    supported_intents = ["new_task"]
+    supported_scopes = ["full_repo", "codebase"]
+    priority = 90
+
+    executor = RepoOrganizer
+    executor_method = "organize"
+    executor_dependencies = ["config_manager"]
 
 
 def register_all_operations(generate_docs: bool = True):

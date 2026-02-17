@@ -4,11 +4,12 @@ import sys
 import time
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.conversion.notebook_converter import NotebookConverter
 from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
+from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
+from osa_tool.operations.codebase.organization.repo_organizer import RepoOrganizer
 from osa_tool.operations.codebase.requirements_generation.requirements_generation import RequirementsGenerator
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
 from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
@@ -16,7 +17,6 @@ from osa_tool.operations.docs.community_docs_generation.license_generation impor
 from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
 from osa_tool.operations.docs.readme_generation.utils import format_time
 from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
-from osa_tool.organization.repo_organizer import RepoOrganizer
 from osa_tool.scheduler.scheduler import ModeScheduler
 from osa_tool.scheduler.workflow_manager import (
     GitHubWorkflowManager,
@@ -112,6 +112,7 @@ def main():
             else:
                 plan.mark_failed("validate_doc")
                 logger.warning("Document validation returned no content. Skipping report generation.")
+
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_paper"):
             plan.mark_started("validate_paper")
@@ -131,56 +132,52 @@ def main():
         if notebook := plan.get("convert_notebooks"):
             plan.mark_started("convert_notebooks")
             rich_section("Jupyter notebooks conversion")
-            if convert_notebooks(args.repository, notebook):
-                plan.mark_done("convert_notebooks")
-            else:
-                plan.mark_failed("convert_notebooks")
+            NotebookConverter(config_manager, notebook).convert_notebooks()
 
         # Auto translating names of directories
         if plan.get("translate_dirs"):
             rich_section("Directory and file translation")
-            RepositoryStructureTranslator(config_manager, plan).rename_directories_and_files()
+            RepositoryStructureTranslator(config_manager).rename_directories_and_files()
 
         # Docstring generation
         if plan.get("docstring"):
             rich_section("Docstrings generation")
-            DocstringsGenerator(config_manager, args.ignore_list, plan).run()
+            DocstringsGenerator(config_manager, args.ignore_list).run()
 
         # License compiling
-        if plan.get("ensure_license"):
+        if license_type := plan.get("ensure_license"):
             rich_section("License generation")
-            LicenseCompiler(config_manager, git_agent.metadata, plan).run()
+            LicenseCompiler(config_manager, git_agent.metadata, license_type).run()
 
         # Generate community documentation
         if plan.get("community_docs"):
             rich_section("Community docs generation")
-            generate_documentation(config_manager, git_agent.metadata, plan)
+            generate_documentation(config_manager, git_agent.metadata)
 
         # Requirements generation
         if plan.get("requirements"):
             rich_section("Requirements generation")
-            RequirementsGenerator(config_manager, plan).generate()
+            RequirementsGenerator(config_manager).generate()
 
         # Readme generation
         if plan.get("readme"):
             rich_section("README generation")
-            readme_agent = ReadmeAgent(config_manager, git_agent.metadata, plan)
+            readme_agent = ReadmeAgent(
+                config_manager, git_agent.metadata, plan.get("attachment"), plan.get("refine_readme")
+            )
             readme_agent.generate_readme()
 
         # Readme translation
         translate_readme = plan.get("translate_readme")
         if translate_readme:
             rich_section("README translation")
-            ReadmeTranslator(config_manager, git_agent.metadata, plan).translate_readme()
+            ReadmeTranslator(config_manager, git_agent.metadata, translate_readme).translate_readme()
         # About section generation
         about_gen = None
         if plan.get("about"):
             rich_section("About Section generation")
-            about_gen = AboutGenerator(config_manager, git_agent, plan)
-            if about_gen.generate_about_content():
-                plan.mark_done("about")
-            else:
-                plan.mark_failed("about")
+            about_gen = AboutGenerator(config_manager, git_agent)
+            about_gen.generate_about_content()
             if create_fork:
                 git_agent.update_about_section(about_gen.get_about_content())
             if not create_pull_request:
@@ -200,7 +197,7 @@ def main():
         if plan.get("organize"):
             rich_section("Repository organization")
             plan.mark_started("organize")
-            organizer = RepoOrganizer(os.path.join(os.getcwd(), parse_folder_name(args.repository)))
+            organizer = RepoOrganizer(config_manager)
             organizer.organize()
             plan.mark_done("organize")
 
@@ -243,29 +240,6 @@ def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
         raise ValueError(f"Cannot initialize Git Agent and Workflow Manager for this platform: {args.repository}")
 
     return git_agent, workflow_manager
-
-
-def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) -> bool:
-    """Converts Jupyter notebooks to Python scripts based on provided paths.
-
-    Args:
-        repo_url: Repository url.
-        notebook_paths: A list of paths to the notebooks to be converted (or None).
-                        If empty, the converter will process the current repository.
-    Returns:
-        Has the task been completed successfully
-    """
-    try:
-        converter = NotebookConverter()
-        if len(notebook_paths) == 0:
-            converter.process_path(os.path.basename(repo_url))
-        else:
-            for path in notebook_paths:
-                converter.process_path(path)
-        return True
-    except Exception as e:
-        logger.error("Error while converting notebooks: %s", repr(e), exc_info=True)
-    return False
 
 
 if __name__ == "__main__":

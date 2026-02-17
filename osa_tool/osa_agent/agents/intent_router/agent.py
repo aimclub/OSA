@@ -4,9 +4,8 @@ from osa_tool.core.models.agent_status import AgentStatus
 from osa_tool.osa_agent.agents.intent_router.models import IntentDecision
 from osa_tool.osa_agent.base import BaseAgent
 from osa_tool.osa_agent.state import OSAState
-from osa_tool.ui.input_for_chat import clarify_user_input
+from osa_tool.ui.input_for_chat import wait_for_user_clarification
 from osa_tool.utils.logger import logger
-from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.utils import rich_section
 
 
@@ -41,31 +40,25 @@ class IntentRouterAgent(BaseAgent):
         rich_section("Intent Router Agent")
         state.active_agent = self.name
 
-        if state.status == AgentStatus.WAITING_FOR_USER:
-            clarification = clarify_user_input()
-            state.user_request = clarification.user_request
+        if state.status == AgentStatus.WAITING_FOR_USER and state.clarification_agent == self.name:
+            answers = wait_for_user_clarification(state)
+            state.active_request = answers.get("user_request")
+            state.active_request_source = "user"
 
-            if clarification.attachment:
-                state.attachment = clarification.attachment
+            if answers.get("attachment"):
+                state.attachment = answers.get("attachment")
 
         parser = PydanticOutputParser(pydantic_object=IntentDecision)
 
-        system_message = PromptBuilder.render(
-            self.context.prompts.get("system_messages.intent_router"),
-            safe=True,
-        )
+        system_message = self._render("system_messages.intent_router", safe=True)
 
-        prompt = PromptBuilder.render(
-            self.context.prompts.get("osa_agent.intent_router"),
-            user_request=state.user_request,
+        prompt = self._render(
+            "osa_agent.intent_router",
+            active_request=state.active_request,
             attachment=state.attachment,
         )
 
-        decision: IntentDecision = self.context.get_model_handler("general").run_chain(
-            prompt=prompt,
-            parser=parser,
-            system_message=system_message,
-        )
+        decision: IntentDecision = self._run_llm(prompt, parser, system_message)
 
         logger.info(f"Intent decision: {decision.intent}, {decision.task_scope}")
 
@@ -74,12 +67,45 @@ class IntentRouterAgent(BaseAgent):
         state.intent_confidence = decision.confidence
 
         # Low confidence → wait for user clarification
-        state.status = (
-            AgentStatus.WAITING_FOR_USER
-            if decision.confidence < 0.5 or decision.intent == "unknown"
-            else AgentStatus.ANALYZING
-        )
+        if decision.confidence < 0.5 or decision.intent == "unknown":
+            state.status = AgentStatus.WAITING_FOR_USER
 
+            state.clarification_required = True
+            state.clarification_agent = self.name
+            state.clarification_type = "user_request"
+            state.clarification_payload = {
+                "question": "Your intent is unclear. Please refine your request.",
+                "fields": [
+                    {
+                        "name": "user_request",
+                        "prompt": "Clarified user request:",
+                        "required": True,
+                    },
+                    {
+                        "name": "attachment",
+                        "prompt": "Attachment (optional):",
+                        "required": False,
+                    },
+                ],
+            }
+        else:
+            state.status = AgentStatus.ANALYZING
+            state.clarification_required = False
+            state.clarification_payload = None
+
+        state.session_memory.append(
+            {
+                "agent": self.name,
+                "active_request": state.active_request,
+                "attachment": bool(state.attachment),
+                "intent": decision.intent,
+                "task_scope": decision.task_scope,
+                "confidence": decision.confidence,
+                "new_status": state.status,
+                "prompt": prompt,
+            }
+        )
+        logger.debug(state)
         logger.info(f"Updated state after intent_router: {state.status}")
 
         return state

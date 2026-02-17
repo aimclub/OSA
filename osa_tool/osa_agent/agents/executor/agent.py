@@ -41,11 +41,10 @@ class ExecutorAgent(BaseAgent):
             OSAState: Updated state with executed tasks and collected artifacts.
         """
         rich_section("Executor Agent")
-
-        self._render_plan_cli(state)
-
         state.active_agent = self.name
         state.status = AgentStatus.GENERATING
+
+        self._render_plan_cli(state)
 
         for idx, task in enumerate(state.plan):
             if task.status is not TaskStatus.PENDING:
@@ -205,3 +204,13 @@ class ExecutorAgent(BaseAgent):
             )
 
         console.print(table)
+
+        planner_memory = next(
+            (event for event in reversed(state.session_memory) if event.get("agent") == "Planner"), None
+        )
+
+        if planner_memory and "decision" in planner_memory:
+            reasoning = planner_memory["decision"].get("reasoning")
+            if reasoning:
+                console.print("\n[bold cyan]Planner Reasoning[/]:")
+                console.print(f"[dim]{reasoning}[/]")

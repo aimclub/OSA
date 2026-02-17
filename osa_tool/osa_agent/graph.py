@@ -59,7 +59,10 @@ def build_graph(context: AgentContext):
     )
 
     graph.add_edge("repo_analysis", "planner")
-    graph.add_edge("planner", "executor")
+    # planner → executor | planner
+    graph.add_conditional_edges(
+        "planner", lambda state: ("planner" if state.status == AgentStatus.WAITING_FOR_USER else "executor")
+    )
     graph.add_edge("executor", "reviewer")
 
     # reviewer → finalizer | planner

@@ -6,7 +6,6 @@ from osa_tool.osa_agent.agents.finalizer.models import FinalizerPullRequestSumma
 from osa_tool.osa_agent.base import BaseAgent
 from osa_tool.osa_agent.state import OSAState
 from osa_tool.utils.logger import logger
-from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.utils import rich_section, delete_repository
 
 
@@ -76,19 +75,10 @@ class FinalizerAgent(BaseAgent):
         events_text = self._events_to_text(events)
 
         parser = PydanticOutputParser(pydantic_object=FinalizerPullRequestSummary)
-        system_message = PromptBuilder.render(
-            self.context.prompts.get("system_messages.pr_summarizer"),
-            safe=True,
-        )
+        system_message = self._render("system_messages.pr_summarizer", safe=True)
+        prompt = self._render("osa_agent.pr_summarizer", events=events_text)
 
-        prompt = PromptBuilder.render(
-            self.context.prompts.get("osa_agent.pr_summarizer"),
-            events=events_text,
-        )
-
-        pr_summary: FinalizerPullRequestSummary = self.context.get_model_handler("general").run_chain(
-            prompt=prompt, system_message=system_message, parser=parser
-        )
+        pr_summary: FinalizerPullRequestSummary = self._run_llm(prompt, parser, system_message)
 
         state.session_memory.append({"agent": self.name, "pr_summary": pr_summary.summary})
 

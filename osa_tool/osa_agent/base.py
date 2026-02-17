@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 from osa_tool.osa_agent.context import AgentContext
 from osa_tool.osa_agent.state import OSAState
+from osa_tool.utils.prompts_builder import PromptBuilder
 
 
 class BaseAgent(ABC):
@@ -37,3 +38,13 @@ class BaseAgent(ABC):
             OSAState: Updated workflow state after agent execution.
         """
         ...
+
+    def _render(self, template_key: str, **kwargs) -> str:
+        return PromptBuilder.render(self.context.prompts.get(template_key), **kwargs)
+
+    def _run_llm(self, prompt, parser, system_message):
+        return self.context.get_model_handler("general").run_chain(
+            prompt=prompt,
+            parser=parser,
+            system_message=system_message,
+        )

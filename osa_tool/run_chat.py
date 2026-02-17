@@ -51,8 +51,9 @@ def main():
     # Create initial state from user input
     initial_state = OSAState(
         repo_url=user_input.repo_url,
-        user_request=user_input.user_request,
         attachment=user_input.attachment,
+        active_request=user_input.user_request,
+        active_request_source="user",
         session_id=f"session_{int(time.time())}",
         status=AgentStatus.INIT,
     )
