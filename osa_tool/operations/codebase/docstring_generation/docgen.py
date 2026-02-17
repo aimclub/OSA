@@ -803,11 +803,7 @@ class DocGen(object):
                 total_classes = sum(
                     1
                     for file_meta in parsed_structure.values()
-                    for item in (
-                        file_meta.get("structure")
-                        if isinstance(file_meta.get("structure"), list)
-                        else []
-                    )
+                    for item in (file_meta.get("structure") if isinstance(file_meta.get("structure"), list) else [])
                     if item.get("type") == "class" and (not item.get("docstring") or self.main_idea)
                 )
                 class_progress = {"count": 0, "total": total_classes}
@@ -1053,11 +1049,7 @@ class DocGen(object):
             total_classes = sum(
                 1
                 for file_meta in parsed_structure.values()
-                for item in (
-                    file_meta.get("structure")
-                    if isinstance(file_meta.get("structure"), list)
-                    else []
-                )
+                for item in (file_meta.get("structure") if isinstance(file_meta.get("structure"), list) else [])
                 if item.get("type") == "class" and (not item.get("docstring") or self.main_idea)
             )
             logger.info(f"Generating class docstrings... Total classes: {total_classes}")
