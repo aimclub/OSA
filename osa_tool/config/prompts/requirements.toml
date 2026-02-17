@@ -4,26 +4,28 @@ You are a Senior Python DevOps engineer.
 Your task is to merge two `requirements.txt` file contents into one final list.
 
 INPUT DATA:
-
 1. OLD_REQUIREMENTS (contains preferred versions/constraints):
 {old_requirements}
 
-2. NEW_REQUIREMENTS (generated from code analysis, contains the actual necessary libraries):
+2. NEW_REQUIREMENTS (generated from code analysis, acts as the source of truth for used libraries):
 {new_requirements}
 
 TASK:
-Merge these two lists into a single valid `requirements.txt` file content.
+Merge these two lists into a single valid list of strings.
 
 RULES:
-1. The `NEW_REQUIREMENTS` list is the source of truth for *which* libraries must be included.
-2. If a library exists in `NEW_REQUIREMENTS`:
-   - Check if it also exists in `OLD_REQUIREMENTS`.
-   - If yes, use the version string/constraints/flags from `OLD_REQUIREMENTS` (preserve context).
-   - If no, keep the version from `NEW_REQUIREMENTS` (or leave it unpinned if provided so).
+1. The `NEW_REQUIREMENTS` list determines WHICH libraries must be included.
+2. For each library in `NEW_REQUIREMENTS`:
+   - If it exists in `OLD_REQUIREMENTS`, use the version string/constraints from `OLD_REQUIREMENTS`.
+   - If it does NOT exist in `OLD_REQUIREMENTS`, keep the version from `NEW_REQUIREMENTS`.
 3. If a library exists in `OLD_REQUIREMENTS` but NOT in `NEW_REQUIREMENTS`:
-   - REMOVE IT. It is considered dead code/unused dependency.
-4. Output ONLY the raw content of the final `requirements.txt`.
-   - Do not use Markdown blocks (no ```).
-   - Do not add comments or explanations.
-   - The output must be ready to be saved directly to a file.
+   - REMOVE IT. It is unused.
+4. Output ONLY a valid JSON object with a key "dependencies" containing a list of strings.
+
+Example Output:
+{{
+  "dependencies": ["requests==2.25.1", "pandas>=2.0.0", "numpy"]
+}}
+
+Do not add any explanations, comments or markdown blocks.
 """

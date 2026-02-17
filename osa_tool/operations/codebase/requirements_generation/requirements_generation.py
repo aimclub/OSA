@@ -8,7 +8,10 @@ from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.utils import parse_folder_name
+from pydantic import BaseModel
 
+class MergedRequirements(BaseModel):
+    dependencies: list[str]
 
 class RequirementsGenerator:
     """
@@ -75,7 +78,7 @@ class RequirementsGenerator:
         return self._result_dict()
 
     def _refine_with_llm(self, req_file_path: Path, old_context: str) -> None:
-        """Reads generated reqs, merges with old context via LLM, and rewrites file."""
+        """Refines requirements using JSON parsing via Pydantic."""
         try:
             new_requirements = req_file_path.read_text(encoding="utf-8").strip()
             if not new_requirements:
@@ -83,29 +86,25 @@ class RequirementsGenerator:
 
             prompt_template = self.prompts.get("requirements.merge_requirements")
             prompt = PromptBuilder.render(
-                prompt_template, old_requirements=old_context, new_requirements=new_requirements
+                prompt_template,
+                old_requirements=old_context,
+                new_requirements=new_requirements
             )
+            response: MergedRequirements = self.model_handler.send_and_parse(
+                prompt,
+                MergedRequirements
+            )
+            if response and response.dependencies:
+                merged_content = "\n".join(response.dependencies).strip()
 
-            response = self.model_handler.send_request(prompt)
-            merged_content = self._clean_llm_response(response)
-
-            if merged_content:
                 req_file_path.write_text(merged_content, encoding="utf-8")
-                logger.info("Requirements successfully refined with LLM.")
+                logger.info("Requirements successfully refined with LLM (JSON parsed).")
                 self._add_event(EventKind.REFINED, mode="llm-merge")
+            else:
+                logger.warning("LLM returned an empty dependency list.")
+
         except Exception as e:
             logger.error(f"Error during LLM refinement: {e}")
-
-    def _clean_llm_response(self, text: str) -> str:
-        text = text.strip()
-        if "```" in text:
-            lines = text.splitlines()
-            if lines[0].startswith("```"):
-                lines = lines[1:]
-            if lines and lines[-1].startswith("```"):
-                lines = lines[:-1]
-            return "\n".join(lines).strip()
-        return text
 
     def _get_existing_context(self, req_path: Path, pyproject_path: Path) -> str:
         """Reads existing dependencies to preserve versions."""
