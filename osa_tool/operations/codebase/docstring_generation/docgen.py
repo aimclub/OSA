@@ -800,8 +800,19 @@ class DocGen(object):
                     parsed_structure, docstring_type, semaphore, rate_limit
                 )
             case "classes":
+                total_classes = sum(
+                    1
+                    for file_meta in parsed_structure.values()
+                    for item in (
+                        file_meta.get("structure")
+                        if isinstance(file_meta.get("structure"), list)
+                        else []
+                    )
+                    if item.get("type") == "class" and (not item.get("docstring") or self.main_idea)
+                )
+                class_progress = {"count": 0, "total": total_classes}
                 generating_results = await _iterate_and_collect(
-                    parsed_structure, self._fetch_docstrings_for_class, semaphore
+                    parsed_structure, self._fetch_docstrings_for_class, semaphore, class_progress
                 )
 
             case _:
@@ -811,18 +822,6 @@ class DocGen(object):
 
         logger.info(f"Docstrings generation for the project is complete!")
         return generating_results
-
-    async def _generate_class_docstrings(self, parsed_structure: dict, rate_limit: int) -> dict[str, dict]:
-        semaphore = asyncio.Semaphore(rate_limit)
-        results = {}
-
-        for filename, structure in parsed_structure.items():
-            if structure.get("structure"):
-                results[filename] = await self._fetch_docstrings_for_class(filename, structure, semaphore)
-            else:
-                logger.info(f"File {filename} does not contain any functions, methods or class constructions.")
-
-        return results
 
     @staticmethod
     async def _get_project_source_code(parsed_structure: dict, sem: asyncio.Semaphore) -> dict[str, str]:
@@ -1051,14 +1050,27 @@ class DocGen(object):
                             queue.append(dependent_id)
 
         if docstring_type == ("functions", "methods", "classes"):
-            logger.info("Generating class docstrings...")
+            total_classes = sum(
+                1
+                for file_meta in parsed_structure.values()
+                for item in (
+                    file_meta.get("structure")
+                    if isinstance(file_meta.get("structure"), list)
+                    else []
+                )
+                if item.get("type") == "class" and (not item.get("docstring") or self.main_idea)
+            )
+            logger.info(f"Generating class docstrings... Total classes: {total_classes}")
+            class_progress = {"count": 0, "total": total_classes}
             class_results = {}
 
             for file_path, file_meta in parsed_structure.items():
                 if not file_meta.get("structure"):
                     continue
 
-                class_results[file_path] = await self._fetch_docstrings_for_class(file_path, file_meta, semaphore)
+                class_results[file_path] = await self._fetch_docstrings_for_class(
+                    file_path, file_meta, semaphore, class_progress
+                )
 
             for file_path in results.keys():
                 if file_path in class_results:
@@ -1067,7 +1079,11 @@ class DocGen(object):
         return results
 
     async def _fetch_docstrings_for_class(
-        self, file: str, file_meta: dict, semaphore: asyncio.Semaphore
+        self,
+        file: str,
+        file_meta: dict,
+        semaphore: asyncio.Semaphore,
+        progress: dict,
     ) -> dict[str, list]:
         """
         Collects a batch of requests for each class in given file by its metadata.
@@ -1077,6 +1093,7 @@ class DocGen(object):
             file: The name of the file for which the generation will be performed.
             file_meta: Dictionary which contains metadata about file from project parsed structure.
             semaphore: Synchronous primitive for preventing the overload external LLM-server API.
+            progress: class-level progress dictionary in format {"count": int, "total": int}.
 
         Returns:
             dict[str, list]
@@ -1106,8 +1123,11 @@ class DocGen(object):
 
                         class_metadata.append(item["docstring"])
 
+                        progress["count"] += 1
+                        progress_label = f"[{progress['count']}/{progress['total']}]"
+
                         logger.info(
-                            f"""Requesting for docstrings {"update" if self.main_idea else "generation"} for the class: {item["name"]} at {file}"""
+                            f"""{progress_label} Requesting for docstrings {"update" if self.main_idea else "generation"} for the class: {item["name"]} at {file}"""
                         )
 
                         request_coroutine = (
