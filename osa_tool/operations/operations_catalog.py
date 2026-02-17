@@ -33,7 +33,13 @@ class GenerateReportOperation(Operation):
 
 
 class ConvertNotebooksArgs(BaseModel):
-    notebook_paths: List[str] = Field(default_factory=list)
+    notebook_paths: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Optional list of .ipynb files or directories to convert. "
+            "Example: ['notebooks/analysis.ipynb', 'research/']"
+        ),
+    )
 
 
 class ConvertNotebooksOperation(Operation):
@@ -46,12 +52,6 @@ class ConvertNotebooksOperation(Operation):
 
     args_schema = ConvertNotebooksArgs
     args_policy = "auto"
-    prompt_for_args = (
-        "Optional parameter notebook_paths: a list of .ipynb files or directories "
-        "to convert. If omitted, the entire repository will be scanned for notebooks.\n\n"
-        "Example:\n"
-        "{'notebook_paths': ['notebooks/analysis.ipynb', 'research/']}"
-    )
 
     executor = NotebookConverter
     executor_method = "convert_notebooks"
@@ -72,7 +72,13 @@ class TranslateRepositoryStructureOperation(Operation):
 
 
 class GenerateDocstringsArgs(BaseModel):
-    ignore_list: List[str] = Field(default_factory=list)
+    ignore_list: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Optional list of directories or files to ignore during docstring generation. "
+            "Example: ['tests', 'moduleA/featureB', '__init__.py']"
+        ),
+    )
 
 
 class GenerateDocstringsOperation(Operation):
@@ -85,14 +91,6 @@ class GenerateDocstringsOperation(Operation):
 
     args_schema = GenerateDocstringsArgs
     args_policy = "auto"
-    prompt_for_args = (
-        "Optional parameter ignore_list: a list of directories or files "
-        "to ignore during docstring generation. "
-        "Paths must be relative to the project root. "
-        "If omitted, only '__init__.py' is ignored.\n\n"
-        "Example:\n"
-        "{'ignore_list': ['tests', 'moduleA/featureB', '__init__.py']}"
-    )
 
     executor = DocstringsGenerator
     executor_method = "run"
@@ -100,7 +98,7 @@ class GenerateDocstringsOperation(Operation):
 
 
 class EnsureLicenseArgs(BaseModel):
-    ensure_license: Literal["bsd-3", "mit", "ap2"] = "bsd-3"
+    license_type: Literal["bsd-3", "mit", "ap2"] = Field("bsd-3", description="License type to set for the repository.")
 
 
 class EnsureLicenseOperation(Operation):
@@ -113,12 +111,6 @@ class EnsureLicenseOperation(Operation):
 
     args_schema = EnsureLicenseArgs
     args_policy = "auto"
-    prompt_for_args = (
-        "For operation 'ensure_license' provide a license type. "
-        "Expected key: 'license_type'."
-        "Allowed values: 'bsd-3', 'mit', 'ap2'."
-        "If not specified, use 'bsd-3'."
-    )
 
     executor = LicenseCompiler
     executor_method = "run"
@@ -166,7 +158,10 @@ class GenerateReadmeOperation(Operation):
 
 
 class TranslateReadmeArgs(BaseModel):
-    languages: List[str] = Field(default_factory=list)
+    languages: List[str] = Field(
+        ...,
+        description="List of languages to translate README.md into. Example: ['Russian', 'Swedish']",
+    )
 
 
 class TranslateReadmeOperation(Operation):
@@ -179,11 +174,6 @@ class TranslateReadmeOperation(Operation):
 
     args_schema = TranslateReadmeArgs
     args_policy = "ask_if_missing"
-    prompt_for_args = (
-        "For operation 'translate_readme' provide a list of languages. "
-        "Even if only one language is specified, it must be returned as a list. "
-        "Detect only languages. (e.g., {'languages': ['Russian', 'Swedish']})"
-    )
 
     executor = ReadmeTranslator
     executor_method = "translate_readme"

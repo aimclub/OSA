@@ -70,7 +70,6 @@ def wait_for_user_clarification(state: OSAState) -> dict:
         prompt = field["prompt"]
         required = field.get("required", False)
 
-        value = ""
         while True:
             value = console.input(f"[cyan]{prompt}[/] ").strip()
             if value or not required:

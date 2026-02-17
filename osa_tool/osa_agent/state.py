@@ -56,3 +56,37 @@ class OSAState(BaseModel):
     approval: bool = False
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    def get_task(self, task_id: str) -> Optional[Task]:
+        """Returns a Task by its id or None if not found"""
+        for task in self.plan:
+            if task.id == task_id:
+                return task
+        return None
+
+    def __str__(self):
+        plan_summary = [f"{t.id}: args={t.args}" for t in getattr(self, "plan", [])]
+        missing_args_summary = [
+            f"{item['task_id']}::{item['field']}" for item in getattr(self, "missing_arguments", [])
+        ]
+
+        return (
+            f"OSAState(\n"
+            f"  session_id={self.session_id},\n"
+            f"  repo_url={self.repo_url},\n"
+            f"  attachment={self.attachment},\n"
+            f"  active_request={self.active_request},\n"
+            f"  active_request_source={self.active_request_source},\n"
+            f"  intent={self.intent}, intent_confidence={self.intent_confidence},\n"
+            f"  task_scope={self.task_scope},\n"
+            f"  repo_prepared={self.repo_prepared},\n"
+            f"  active_agent={self.active_agent},\n"
+            f"  current_step_index={self.current_step_index},\n"
+            f"  status={self.status},\n"
+            f"  plan_tasks=[{', '.join(plan_summary)}],\n"
+            f"  missing_arguments=[{', '.join(missing_args_summary)}],\n"
+            f"  review_feedback={self.review_feedback},\n"
+            f"  review_requires_new_intent={self.review_requires_new_intent},\n"
+            f"  approval={self.approval}\n"
+            f")"
+        )
