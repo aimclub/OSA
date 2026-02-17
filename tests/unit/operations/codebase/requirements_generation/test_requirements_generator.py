@@ -6,7 +6,8 @@ import pytest
 
 from osa_tool.core.models.event import EventKind
 from osa_tool.operations.codebase.requirements_generation.requirements_generation import (
-    RequirementsGenerator, MergedRequirements
+    RequirementsGenerator,
+    MergedRequirements,
 )
 
 
