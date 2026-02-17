@@ -86,14 +86,9 @@ class RequirementsGenerator:
 
             prompt_template = self.prompts.get("requirements.merge_requirements")
             prompt = PromptBuilder.render(
-                prompt_template,
-                old_requirements=old_context,
-                new_requirements=new_requirements
+                prompt_template, old_requirements=old_context, new_requirements=new_requirements
             )
-            response: MergedRequirements = self.model_handler.send_and_parse(
-                prompt,
-                MergedRequirements
-            )
+            response: MergedRequirements = self.model_handler.send_and_parse(prompt, MergedRequirements)
             if response and response.dependencies:
                 merged_content = "\n".join(response.dependencies).strip()
 
