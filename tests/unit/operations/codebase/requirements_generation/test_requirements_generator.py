@@ -5,7 +5,9 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 
 from osa_tool.core.models.event import EventKind
-from osa_tool.operations.codebase.requirements_generation.requirements_generation import RequirementsGenerator
+from osa_tool.operations.codebase.requirements_generation.requirements_generation import (
+    RequirementsGenerator, MergedRequirements
+)
 
 
 @pytest.fixture
@@ -38,21 +40,6 @@ def generator(mock_config, mock_plan):
             gen.repo_path.resolve.return_value = gen.repo_path
             gen.repo_path.__str__.return_value = "/abs/path/to/repo"
             return gen
-
-
-def test_clean_llm_response_simple(generator):
-    raw = "pandas==1.0.0\nnumpy"
-    cleaned = generator._clean_llm_response(raw)
-    assert cleaned == "pandas==1.0.0\nnumpy"
-
-
-def test_clean_llm_response_markdown(generator):
-    raw = "```text\npandas==1.0.0\nnumpy\n```"
-    cleaned = generator._clean_llm_response(raw)
-    assert cleaned == "pandas==1.0.0\nnumpy"
-
-    raw_2 = "```\npandas\n```"
-    assert generator._clean_llm_response(raw_2) == "pandas"
 
 
 def test_get_existing_context_both_files(generator):
@@ -213,14 +200,15 @@ def test_refine_with_llm_writes_file(generator):
     req_path.read_text.return_value = "new-lib"
     old_context = "old-lib==1.0"
 
-    generator.model_handler.send_request.return_value = "merged-lib==1.0"
+    mock_response = MergedRequirements(dependencies=["merged-lib==1.0", "numpy"])
+    generator.model_handler.send_and_parse.return_value = mock_response
 
     # Act
     generator._refine_with_llm(req_path, old_context)
 
     # Assert
-    generator.model_handler.send_request.assert_called_once()
-    req_path.write_text.assert_called_once_with("merged-lib==1.0", encoding="utf-8")
+    generator.model_handler.send_and_parse.assert_called_once()
+    req_path.write_text.assert_called_once_with("merged-lib==1.0\nnumpy", encoding="utf-8")
     assert generator.events[-1].kind == EventKind.REFINED
 
 
