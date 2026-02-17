@@ -10,8 +10,10 @@ from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.utils import parse_folder_name
 from pydantic import BaseModel
 
+
 class MergedRequirements(BaseModel):
     dependencies: list[str]
+
 
 class RequirementsGenerator:
     """
