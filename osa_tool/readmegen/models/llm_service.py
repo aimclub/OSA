@@ -13,7 +13,61 @@ from osa_tool.utils import logger
 
 
 class LLMClient:
+    """
+    LLMClient
+    
+    This class provides a client for interacting with a language model to analyze repository contents, generate summaries, and refine documentation. It loads configuration, builds prompts, handles model interactions, ranks source files, and offers utilities for extracting core features, generating article‑style summaries, and refining README files.
+    
+    Attributes
+    ----------
+    config_loader
+        The ConfigLoader instance used to access configuration settings.
+    config
+        The configuration object extracted from the loader.
+    prompts
+        A PromptBuilder instance that loads prompt templates from the repository's configuration files and prepares them for use.
+    model_handler
+        A ModelHandler instance created by ModelHandlerFactory.build based on the configuration; it provides the interface to the underlying model.
+    sourcerank
+        A SourceRank instance that builds a representation of the repository tree and provides ranking utilities.
+    tree
+        The repository tree structure obtained from sourcerank.
+    
+    Methods
+    -------
+    __init__
+    get_responses
+    get_responses_article
+    run_request
+    get_key_files
+    deduplicate_sections
+    refine_readme
+    """
     def __init__(self, config_loader: ConfigLoader):
+        """
+        Initializes the main class with the provided configuration loader.
+        
+        Parameters
+        ----------
+        self
+        config_loader
+        
+        Fields initialized
+        ------------------
+        config_loader: The ConfigLoader instance used to access configuration settings.
+        config: The configuration object extracted from the loader.
+        prompts: A PromptBuilder instance that loads prompt templates from the repository's
+                configuration files and prepares them for use.
+        model_handler: A ModelHandler instance created by ModelHandlerFactory.build based on
+                       the configuration; it provides the interface to the underlying model.
+        sourcerank: A SourceRank instance that builds a representation of the repository
+                    tree and provides ranking utilities.
+        tree: The repository tree structure obtained from sourcerank.
+        
+        Returns
+        -------
+        None
+        """
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.prompts = PromptBuilder(config_loader)
@@ -137,6 +191,23 @@ class LLMClient:
         return response
 
     def refine_readme(self, new_readme_sections: dict) -> str:
+        """
+        Refines a README file by generating updated content from a prompt and extracting the
+        resulting text.
+        
+        The method logs the start of the refinement process, builds a prompt using
+        `self.prompts.get_prompt_refine_readme(new_readme_sections)`, sends this prompt
+        to an external service via `self.run_request`, and then processes the raw
+        response with the helper function `process_text`.  `process_text` extracts the
+        first JSON block from the response string and returns it as a plain string.
+        
+        Args:
+            new_readme_sections: A dictionary containing the new or updated sections
+                that should be incorporated into the README.
+        
+        Returns:
+            str: The refined README content extracted from the response.
+        """
         logger.info("Refining README files...")
         response = self.run_request(self.prompts.get_prompt_refine_readme(new_readme_sections))
         response = process_text(response)

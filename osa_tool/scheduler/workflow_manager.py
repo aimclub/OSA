@@ -16,6 +16,28 @@ class WorkflowManager:
     """
 
     def __init__(self, base_path: str, sourcerank: SourceRank, metadata: RepositoryMetadata, workflows_plan: dict):
+        """
+        Initializes a WorkflowManager instance with repository information and workflow configuration.
+        
+        Args:
+            base_path: The root directory path of the repository.
+            sourcerank: An object representing the source ranking information.
+            metadata: Repository metadata containing details such as name, version, etc.
+            workflows_plan: A dictionary defining the plan for generating or updating CI workflows.
+        
+        Class fields initialized:
+            base_path: Stores the repository root path.
+            sourcerank: Holds the source ranking object.
+            metadata: Contains repository metadata.
+            workflows_plan: Stores the workflow configuration plan.
+            workflows_dir: Path to the directory where workflow files are located, determined by `_find_workflows_directory`.
+            existing_jobs: A collection of currently defined CI jobs, retrieved via `_get_existing_jobs`.
+            excluded_keys: A set of keys that should be ignored when processing workflow plans.
+            job_name_for_key: A mapping from configuration keys to lists of job name patterns used to identify related jobs.
+        
+        Returns:
+            None
+        """
         self.base_path = base_path
         self.sourcerank = sourcerank
         self.metadata = metadata

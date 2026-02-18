@@ -16,7 +16,108 @@ from osa_tool.utils import osa_project_root
 
 
 class MarkdownBuilderBase:
+    """
+    Base class for constructing Markdown README files from repository metadata and optional JSON sections.
+    
+    This class provides a framework for generating standard README sections such as Overview, Getting Started, Examples, Documentation, License, and Citation. It also handles template loading, URL validation, and deduplication of sections using an LLM.
+    
+    Class Methods
+    -------------
+    - __init__: Initializes the builder with configuration and optional JSON data.
+    - load_template: Loads a TOML template file and returns its sections as a dictionary.
+    - _check_url: Checks if a given URL is reachable and returns HTTP 200.
+    - deduplicate_sections: Deduplicates Installation and Getting Started sections via LLM if both are present.
+    - overview: Generates the README Overview section.
+    - getting_started: Generates the README Getting Started section.
+    - examples: Generates the README Examples section.
+    - documentation: Generates the README Documentation section.
+    - license: Generates the README License section.
+    - citation: Generates the README Citation section.
+    - table_of_contents: Generates an adaptive Table of Contents based on provided sections.
+    
+    Attributes
+    ----------
+    config_loader
+        The :class:`ConfigLoader` instance passed to the constructor.
+    config
+        The configuration dictionary obtained from ``config_loader``.
+    sourcerank
+        Instance of :class:`SourceRank` initialized with the same ``config_loader``. Holds the repository tree and related information.
+    repo_url
+        Repository URL extracted from the configuration.
+    metadata
+        Repository metadata retrieved via :func:`load_data_metadata` using ``repo_url``. Provides information such as the default branch.
+    url_path
+        Base URL path for the repository on its hosting platform, constructed from ``config.git.host_domain`` and ``config.git.full_name``.
+    branch_path
+        Path to the default branch tree in the repository, formatted as ``tree/<default_branch>/``.
+    _overview_json
+        Stored overview JSON data passed to the constructor.
+    _getting_started_json
+        Stored getting‑started JSON data passed to the constructor.
+    header
+        Header section built by :class:`HeaderBuilder`.
+    installation
+        Installation section built by :class:`InstallationSectionBuilder`.
+    template_path
+        Filesystem path to the ``template.toml`` file located in the project's ``config/templates`` directory.
+    _template
+        Loaded template content returned by :meth:`load_template`.
+    """
     def __init__(self, config_loader: ConfigLoader, overview=None, getting_started=None):
+        """
+        Initialize the object with configuration and optional JSON data.
+        
+        Parameters
+        ----------
+        config_loader
+            Configuration loader instance that provides access to the repository
+            configuration.
+        overview
+            Optional JSON data for the overview section.
+        getting_started
+            Optional JSON data for the getting‑started section.
+        
+        Attributes
+        ----------
+        config_loader
+            The :class:`ConfigLoader` instance passed to the constructor.
+        config
+            The configuration dictionary obtained from ``config_loader``.
+        sourcerank
+            Instance of :class:`SourceRank` initialized with the same
+            ``config_loader``.  It holds the repository tree and related
+            information.
+        repo_url
+            Repository URL extracted from the configuration.
+        metadata
+            Repository metadata retrieved via :func:`load_data_metadata` using
+            ``repo_url``.  Provides information such as the default branch.
+        url_path
+            Base URL path for the repository on its hosting platform,
+            constructed from ``config.git.host_domain`` and
+            ``config.git.full_name``.
+        branch_path
+            Path to the default branch tree in the repository,
+            formatted as ``tree/<default_branch>/``.
+        _overview_json
+            Stored overview JSON data passed to the constructor.
+        _getting_started_json
+            Stored getting‑started JSON data passed to the constructor.
+        header
+            Header section built by :class:`HeaderBuilder`.
+        installation
+            Installation section built by :class:`InstallationSectionBuilder`.
+        template_path
+            Filesystem path to the ``template.toml`` file located in the
+            project's ``config/templates`` directory.
+        _template
+            Loaded template content returned by :meth:`load_template`.
+        
+        Returns
+        -------
+        None
+        """
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.sourcerank = SourceRank(self.config_loader)
@@ -43,6 +144,15 @@ class MarkdownBuilderBase:
 
     @staticmethod
     def _check_url(url):
+        """
+        Check if a given URL is reachable and returns HTTP 200.
+        
+        Args:
+            url: The URL to be checked.
+        
+        Returns:
+            bool: True if the URL responds with status code 200, False otherwise.
+        """
         response = requests.get(url)
         return response.status_code == 200
 

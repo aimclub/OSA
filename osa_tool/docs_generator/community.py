@@ -15,6 +15,55 @@ class CommunityTemplateBuilder:
     """
 
     def __init__(self, config_loader: ConfigLoader):
+        """
+        Initializes the repository template manager with configuration and metadata.
+        
+        Parameters
+        ----------
+        config_loader
+            Configuration loader providing repository settings.
+        
+        Attributes
+        ----------
+        config_loader
+            The ConfigLoader instance used to access configuration.
+        config
+            Configuration object extracted from ``config_loader``.
+        repo_url
+            URL of the Git repository.
+        sourcerank
+            ``SourceRank`` instance for repository analysis, initialized with the same
+            ``config_loader``.
+        metadata
+            Repository metadata retrieved via :func:`load_data_metadata` using the
+            repository URL.
+        template_path
+            Filesystem path to the community template file located under the project
+            ``docs/templates`` directory.
+        url_path
+            Base URL for the repository on the host domain, constructed from the
+            configuration.
+        branch_path
+            Path to the default branch tree within the repository.
+        _template
+            Parsed template content loaded by :meth:`load_template`.
+        repo_path
+            Filesystem path to the repository's ``.github`` directory.
+        code_of_conduct_to_save
+            Full path where ``CODE_OF_CONDUCT.md`` will be written.
+        pr_to_save
+            Full path where ``PULL_REQUEST_TEMPLATE.md`` will be written.
+        docs_issue_to_save
+            Full path where ``DOCUMENTATION_ISSUE.md`` will be written.
+        feature_issue_to_save
+            Full path where ``FEATURE_ISSUE.md`` will be written.
+        bug_issue_to_save
+            Full path where ``BUG_ISSUE.md`` will be written.
+        
+        Returns
+        -------
+        None
+        """
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.repo_url = self.config.git.repository

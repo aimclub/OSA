@@ -2,6 +2,19 @@ import pytest
 
 
 def test_git_auth_url_success(github_agent):
+    """
+    Test that the GitHub agent constructs the correct authenticated URL.
+    
+    Parameters
+    ----------
+    github_agent
+        The GitHub agent instance used to generate the authentication URL.
+    
+    Returns
+    -------
+    None
+        This test does not return a value; it asserts that the generated URL matches the expected value.
+    """
     # Arrange
     expected_url = "https://test_token@github.com/testuser/testrepo.git"
     # Act
@@ -11,6 +24,17 @@ def test_git_auth_url_success(github_agent):
 
 
 def test_get_auth_url_invalid_url_format(github_agent):
+    """
+    Test that `_get_auth_url` raises a `ValueError` when the repository URL is in an unsupported format.
+    
+    Args:
+        github_agent: The GitHub agent instance whose `repo_url` is set to an
+            unsupported SSH-style URL and whose `_get_auth_url` method is invoked
+            to trigger the error.
+    
+    Returns:
+        None
+    """
     # Arrange
     github_agent.repo_url = "git@github.com:testuser/testrepo.git"
     # Assert

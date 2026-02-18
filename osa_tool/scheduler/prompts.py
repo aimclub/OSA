@@ -58,7 +58,32 @@ class PromptConfig(BaseModel):
 
 
 class PromptLoader:
+    """
+    PromptLoader
+    
+    Loads prompts from a TOML configuration file and provides them for use in the application.
+    
+    Attributes:
+        prompts: Holds the loaded prompts returned by `load_prompts()`.
+    
+    Methods:
+        __init__: Initializes the object by loading prompts.
+        load_prompts: Load and validate prompts from prompts.toml file.
+        _get_prompts_path: Helper method to get the correct resource path.
+    """
     def __init__(self):
+        """
+        Initializes the object by loading prompts.
+        
+        Args:
+            self: The instance of the class.
+        
+        Attributes:
+            prompts: Holds the loaded prompts returned by `load_prompts()`.
+        
+        Returns:
+            None
+        """
         self.prompts = self.load_prompts()
 
     def load_prompts(self) -> dict:

@@ -9,7 +9,54 @@ from osa_tool.utils import logger
 
 
 class PyPiPackageInspector:
+    """
+    PyPiPackageInspector
+    
+    Short summary:
+        Analyzes a repository to discover Python packages and retrieves their PyPI
+        publication information, including name, version, and download statistics.
+    
+    Attributes:
+        tree: Stores the provided repository tree path.
+        base_path: Stores the base path for file resolution.
+        api_key: Retrieves the API key from the environment variable "X-API-Key".
+        patterns_for_file: List of regex patterns used to identify package definition files.
+        pattern_for_setup: Regex pattern to extract the package name from a setup file.
+        pypi_url_template: URL template for querying package metadata from PyPI.
+        pepy_url_template: URL template for querying download statistics from Pepy.
+    
+    Methods:
+        get_info
+        get_published_package_name
+        _extract_package_name_from_pyproject
+        _extract_package_name_from_setup
+        _is_published_on_pypi
+        _get_package_version_from_pypi
+        _get_downloads_from_pepy
+    
+    Class Methods:
+    - __init__:
+    """
     def __init__(self, tree: str, base_path: str):
+        """
+        Initializes the repository analyzer with configuration for package discovery.
+        
+        Args:
+            tree: The root directory or path to the repository tree.
+            base_path: The base path used for resolving relative file locations.
+        
+        Class fields initialized:
+            tree: Stores the provided repository tree path.
+            base_path: Stores the base path for file resolution.
+            api_key: Retrieves the API key from the environment variable "X-API-Key".
+            patterns_for_file: List of regex patterns used to identify package definition files.
+            pattern_for_setup: Regex pattern to extract the package name from a setup file.
+            pypi_url_template: URL template for querying package metadata from PyPI.
+            pepy_url_template: URL template for querying download statistics from Pepy.
+        
+        Returns:
+            None
+        """
         self.tree = tree
         self.base_path = base_path
         self.api_key = os.getenv("X-API-Key")

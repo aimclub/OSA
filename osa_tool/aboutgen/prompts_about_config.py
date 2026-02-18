@@ -15,7 +15,34 @@ class PromptConfig(BaseModel):
 
 
 class PromptAboutLoader:
+    """
+    PromptAboutLoader
+    
+        Loads and provides prompts from a TOML file located in the
+        `prompts_about_section` package. The class reads the file,
+        validates its contents, and exposes the parsed prompts via the
+        `prompts` attribute.
+    
+    Class Methods:
+    - __init__:
+    """
     def __init__(self):
+        """
+        Initializes the object by loading prompts.
+        
+        Parameters
+        ----------
+        self
+        
+        Attributes
+        ----------
+        prompts
+            Holds the prompts returned by the `load_prompts` method.
+        
+        Returns
+        -------
+        None
+        """
         self.prompts = self.load_prompts()
 
     def load_prompts(self) -> PromptConfig:

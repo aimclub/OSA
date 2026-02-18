@@ -19,6 +19,38 @@ class ContributingBuilder:
     """
 
     def __init__(self, config_loader: ConfigLoader):
+        """
+        Initializes a contributing documentation generator.
+        
+        This constructor sets up all necessary attributes for generating a
+        `CONTRIBUTING.md` file. It loads configuration data, prepares paths,
+        retrieves repository metadata, and loads a template for the
+        contributing guide.
+        
+        Args:
+            config_loader: An instance of ``ConfigLoader`` that provides
+                configuration information for the repository.
+        
+        Attributes:
+            config_loader: The ``ConfigLoader`` instance passed to the constructor.
+            config: The configuration dictionary extracted from ``config_loader``.
+            sourcerank: A ``SourceRank`` object initialized with the same
+                ``config_loader``; it holds repository tree information.
+            repo_url: The full repository URL from the configuration.
+            metadata: Repository metadata obtained via ``load_data_metadata``.
+            template_path: Filesystem path to the contributing template
+                ``contributing.toml`` located under the project docs.
+            url_path: Base URL for the repository on its hosting platform.
+            branch_path: Path segment pointing to the default branch tree.
+            issues_url: Full URL to the repository's issues page.
+            _template: The parsed template content loaded by ``load_template``.
+            repo_path: Filesystem path to the repository's ``.github`` directory.
+            file_to_save: Full path where the generated ``CONTRIBUTING.md`` will be
+                written.
+        
+        Returns:
+            None
+        """
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.sourcerank = SourceRank(self.config_loader)

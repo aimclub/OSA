@@ -108,6 +108,16 @@ class DocGen(object):
 
     @staticmethod
     def format_structure_openai_short(filename: str, structure: dict) -> str:
+        """
+        Format a short representation of a Python file's structure for OpenAI.
+        
+        Args:
+            filename: The name of the Python file being described.
+            structure: A dictionary containing a 'structure' key with a list of items. Each item is a dict that represents either a class or a function. The function uses the private helpers `_format_class_short` and `_format_function_short` to build a concise description.
+        
+        Returns:
+            A string containing a short summary of the file's structure. If the structure list is empty, an empty string is returned.
+        """
         formatted_structure = "The following is the structure of the Python file:\n\n"
 
         structures = structure["structure"]
@@ -533,6 +543,37 @@ class DocGen(object):
             self._process_one_file(filename, structure, project_structure=parsed_structure)
 
     def _process_one_file(self, filename, file_structure, project_structure):
+        """
+        Process a single Python file to generate or update docstrings for its classes and functions.
+        
+        This method performs the following steps:
+        1. Formats the file with Black.
+        2. Reads the source code.
+        3. Iterates over the parsed file structure to generate or update method docstrings for classes and standalone functions.
+        4. Builds a class-level docstring from its attributes and methods and inserts it into the source code.
+        5. Writes the modified source back to disk and re-formats the file.
+        
+        Parameters
+        ----------
+        filename : str
+            Path to the Python file to be processed.
+        file_structure : dict
+            Parsed representation of the file containing a ``structure`` key. Each item in
+            ``structure`` is a dictionary describing either a class or a function. Class
+            items contain ``name``, ``attributes``, ``methods`` (each with
+            ``method_name`` and ``docstring``), and an optional ``docstring`` for the
+            class itself. Function items contain ``details`` with ``method_name`` and
+            ``docstring``.
+        project_structure : dict
+            Global project information used by the context extractor to generate
+            contextual docstrings.
+        
+        Returns
+        -------
+        None
+            The method writes the updated source code back to ``filename`` and does not
+            return a value.
+        """
         self.format_with_black(filename)
         with open(filename, "r", encoding="utf-8") as f:
             source_code = f.read()
@@ -599,6 +640,19 @@ class DocGen(object):
         logger.info(f"Updated file: {filename}")
 
     def generate_the_main_idea(self, parsed_structure: dict) -> None:
+        """
+        Generate the main idea of the project based on its parsed structure.
+        
+        This method constructs a prompt for an AI model to produce a concise project overview and purpose. It iterates over the provided `parsed_structure`, extracts component information (classes and functions), and formats it into a readable list. The resulting summary is stored in the instance attribute `main_idea`.
+        
+        Args:
+            parsed_structure: A dictionary where each key is a file path and each value contains a
+                ``structure`` list of components and an ``imports`` list. Each component entry
+                includes its type, name, docstring, and additional details for functions.
+        
+        Returns:
+            None. The method assigns the generated summary to ``self.main_idea``.
+        """
         prompt = (
             "You are an AI documentation assistant, and your task is to deduce the main idea of the project and formulate for which purpose it was written."
             "You are given with the list of the main components (classes and functions) with it's short description and location in project hierarchy:\n"
@@ -631,6 +685,27 @@ class DocGen(object):
         self.main_idea = self.model_handler.send_request(prompt.format(components="\n\n".join(structure)))
 
     def summarize_submodules(self, project_structure):
+        """
+        Summarize the documentation for each submodule in a project.
+        
+        This method walks through the directory tree of a given project, generating a
+        markdown‑formatted summary for each module and submodule. It uses an AI model
+        to produce a concise README‑style description based on the files and nested
+        submodules found. The resulting summaries are stored in a dictionary keyed by
+        the path of each module.
+        
+        Parameters
+        ----------
+        project_structure : dict
+            A mapping from file paths to their parsed structure information. This
+            dictionary is used to format file summaries for each module.
+        
+        Returns
+        -------
+        dict
+            A dictionary where each key is a string representation of a module path
+            and each value is the generated markdown summary for that module.
+        """
         summaries = {}
         self._rename_invalid_dirs(self.config.git.name)
 
@@ -703,6 +778,23 @@ class DocGen(object):
         return summaries
 
     def convert_path_to_dot_notation(self, path):
+        """
+        Convert a filesystem path to a dotted module notation string.
+        
+        This method accepts a file path (either a string or a :class:`pathlib.Path` instance) and
+        produces a string suitable for use in documentation references. It removes the
+        ``.py`` file extension, skips ``__init__`` directories, and joins the remaining
+        path components with dots. The resulting string is prefixed with ``::: `` to
+        match the expected format for certain documentation tools.
+        
+        Args:
+            path: A file path to convert. Can be a string or a :class:`pathlib.Path`
+                  instance.
+        
+        Returns:
+            A string in the form ``"::: module.submodule"`` representing the dotted
+            module path derived from the input.
+        """
         path_obj = Path(path) if isinstance(path, str) else path
         processed_parts = []
         for part in path_obj.parts:

@@ -7,7 +7,53 @@ from osa_tool.utils import logger, parse_folder_name
 
 
 class DirectoryTranslator:
+    """
+    DirectoryTranslator
+    
+    The DirectoryTranslator class provides utilities to translate directory and file names in a repository into English, update import paths accordingly, and manage file renaming while preserving code integrity. It uses an LLM for translation and handles exclusion rules for directories and file names.
+    
+    Methods:
+    - __init__
+    - _translate_text
+    - _get_python_files
+    - _get_all_files
+    - _get_all_directories
+    - update_code
+    - _cycle_update_code
+    - translate_directories
+    - translate_files
+    - rename_files
+    - rename_directories
+    - rename_directories_and_files
+    
+    Attributes:
+    - config
+    - repo_url
+    - model_handler
+    - base_path
+    - excluded_dirs
+    - extensions_code_files
+    - excluded_names
+    """
     def __init__(self, config_loader: ConfigLoader):
+        """
+        Initializes the repository analyzer with configuration and sets up default parameters.
+        
+        Args:
+            config_loader: A ConfigLoader instance that provides the application settings.
+        
+        Attributes:
+            config: The configuration object extracted from the provided ConfigLoader.
+            repo_url: The Git repository URL obtained from the configuration.
+            model_handler: A ModelHandler instance created by ModelHandlerFactory.build using the configuration.
+            base_path: The absolute path to the repository directory, constructed by joining the current working directory with the parsed folder name from the repository URL.
+            excluded_dirs: A set of directory names that should be ignored during analysis (e.g., ".git", ".venv").
+            extensions_code_files: A set of file extensions considered as code files (currently only ".py").
+            excluded_names: A set of file or directory names that should be excluded from processing (e.g., "main", "LICENSE", "README", "requirements", "examples", "docs").
+        
+        Returns:
+            None
+        """
         self.config = config_loader.config
         self.repo_url = self.config.git.repository
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
@@ -189,11 +235,42 @@ class DirectoryTranslator:
             logger.error(f"Failed to update {file_path}", repr(e), exc_info=True)
 
     def _cycle_update_code(self, rename_map: dict) -> None:
+        """
+        Updates the code in all Python files within the repository using the provided rename map.
+        
+        This method retrieves all Python files via the internal `_get_python_files` helper and then applies the
+        `update_code` operation to each file, passing along the `rename_map` which specifies the substitutions
+        to perform.
+        
+        Args:
+            rename_map: A dictionary mapping identifiers or strings to be replaced in the code to their
+                corresponding new values.
+        
+        Returns:
+            None
+        """
         python_files = self._get_python_files()
         for file in python_files:
             self.update_code(file, rename_map)
 
     def translate_directories(self, all_dirs) -> dict:
+        """
+        Translate directory names within a given list of paths.
+        
+        This method iterates over a collection of directory paths, translating each
+        directory name using the instance's `_translate_text` helper. It skips the
+        repository's base path and avoids generating a new name if the translated
+        name already exists. The resulting mapping of original directory names to
+        their translated counterparts is returned.
+        
+        Args:
+            all_dirs: A sequence of absolute directory paths to be processed.
+        
+        Returns:
+            A dictionary mapping each original directory name (basename of the path)
+            to its translated name. Only entries for directories that will actually
+            be renamed are included.
+        """
         rename_map = {}
         try:
             for old_path in all_dirs:
@@ -213,6 +290,40 @@ class DirectoryTranslator:
         return rename_map
 
     def translate_files(self, all_files) -> tuple[dict, dict]:
+        """
+        Translate file names and generate rename mappings.
+        
+        This method iterates over a collection of file paths, translating each file name
+        using the instance's `_translate_text` method. It builds two dictionaries:
+        
+        * `rename_map` – maps original file paths to their new translated paths.
+        * `rename_map_code` – maps original file names (including extension for code
+          files) to the translated names.
+        
+        The method skips files that would not change name or would overwrite an
+        existing file. For files whose extensions are not listed in
+        `self.extensions_code_files`, the extension is appended to the key and value
+        in `rename_map_code` to preserve the full file name.
+        
+        Parameters
+        ----------
+        all_files : Iterable[str]
+            A sequence of file paths to be processed.
+        
+        Returns
+        -------
+        tuple[dict, dict]
+            A tuple containing two dictionaries:
+            1. `rename_map`: mapping from original file paths to new translated paths.
+            2. `rename_map_code`: mapping from original file names (with extension for
+               code files) to translated names.
+        
+        Notes
+        -----
+        * The method logs the number of files renamed and any errors encountered.
+        * It relies on the instance attributes `self._translate_text` and
+          `self.extensions_code_files` for name translation and file type checks.
+        """
         rename_map = {}
         rename_map_code = {}
         try:

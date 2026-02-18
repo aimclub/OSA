@@ -20,6 +20,18 @@ class NotebookConverter:
     """
 
     def __init__(self) -> None:
+        """
+        Initializes the exporter attribute with a PythonExporter instance.
+        
+        Args:
+            self: The instance of the class.
+        
+        Attributes:
+            exporter: Holds a PythonExporter instance used for exporting Python code.
+        
+        Returns:
+            None
+        """
         self.exporter = PythonExporter()
 
     def process_path(self, path: str) -> None:

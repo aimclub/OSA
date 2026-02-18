@@ -13,6 +13,28 @@ class WebPlanEditor:
     """
 
     def __init__(self, plan: dict):
+        """
+        Initializes the plan handler and persists the plan to a temporary JSON file.
+        
+        Parameters
+        ----------
+        plan
+            A dictionary containing the plan configuration.
+        
+        Attributes
+        ----------
+        plan
+            The plan dictionary passed to the constructor.
+        file_path
+            Path to the temporary JSON file where the plan is stored.
+        
+        The constructor also sets the environment variable `OSA_PLAN_PATH` to the
+        temporary file path and calls :meth:`save_plan` to write the plan to disk.
+        
+        Returns
+        -------
+        None
+        """
         self.plan = plan
         self.file_path = os.path.join(tempfile.gettempdir(), f"osa_plan_{uuid.uuid4().hex}.json")
         os.environ["OSA_PLAN_PATH"] = self.file_path

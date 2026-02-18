@@ -17,6 +17,23 @@ class MarkdownBuilderArticle(MarkdownBuilderBase):
         algorithms: str = None,
         getting_started: str = None,
     ):
+        """
+        Initializes the object with configuration loader and optional JSON content.
+        
+        Args:
+            config_loader: The configuration loader instance used to load settings.
+            overview: Optional overview text passed to the base class.
+            content: Optional JSON string containing the main content.
+            algorithms: Optional JSON string containing algorithm details.
+            getting_started: Optional getting started text passed to the base class.
+        
+        Attributes:
+            _content_json: Stores the provided content JSON string.
+            _algorithms_json: Stores the provided algorithms JSON string.
+        
+        Returns:
+            None
+        """
         super().__init__(config_loader, overview=overview, getting_started=getting_started)
         self._content_json = content
         self._algorithms_json = algorithms
@@ -39,6 +56,22 @@ class MarkdownBuilderArticle(MarkdownBuilderBase):
 
     @property
     def toc(self) -> str:
+        """
+        Return a formatted table of contents for the document.
+        
+        This property builds a mapping of section titles to the corresponding
+        attributes of the instance and delegates rendering to the
+        ``table_of_contents`` method. The resulting string is suitable for
+        displaying a quick navigation aid for the document.
+        
+        Args:
+            self: The instance whose section attributes are used to build the
+                table of contents.
+        
+        Returns:
+            str: A formatted table of contents string generated from the
+                instance's section attributes.
+        """
         sections = {
             "Content": self.content,
             "Algorithms": self.algorithms,

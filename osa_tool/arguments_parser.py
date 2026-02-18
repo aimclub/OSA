@@ -67,6 +67,21 @@ def build_parser_from_yaml(yaml_path: str) -> argparse.ArgumentParser:
 
 
 def get_keys_from_group_in_yaml(yaml_path, group_name) -> list:
+    """
+    Get keys from a specified group in a YAML file.
+    
+    This function reads a YAML file located at `yaml_path`, searches for a top‑level
+    key matching `group_name`, and returns a list of the keys contained within that
+    group. If the group is not found, an empty list is returned.
+    
+    Args:
+        yaml_path: Path to the YAML file to read.
+        group_name: Name of the group whose keys should be extracted.
+    
+    Returns:
+        list: A list of keys belonging to the specified group. If the group does not
+        exist, an empty list is returned.
+    """
     data = read_arguments_file(yaml_path)
     keys = []
     for key, params in data.items():
@@ -93,6 +108,15 @@ def read_arguments_file_flat(yaml_path) -> dict:
 
 
 def read_arguments_file(yaml_path) -> dict:
+    """
+    Read a YAML file and return its contents as a dictionary.
+    
+    Args:
+        yaml_path: Path to the YAML file to be read.
+    
+    Returns:
+        dict: The data loaded from the YAML file.
+    """
     with open(yaml_path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     return data

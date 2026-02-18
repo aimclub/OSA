@@ -12,7 +12,40 @@ from osa_tool.utils import osa_project_root, parse_folder_name
 
 
 class HeaderBuilder:
+    """
+    HeaderBuilder
+    
+    Builds the header section of a README file for a Python project, assembling the
+    project title, informational badges (PyPI version, download statistics, license),
+    and technology badges derived from the project's dependencies.
+    
+    Class Methods:
+    - __init__:
+    """
     def __init__(self, config_loader: ConfigLoader):
+        """
+        Initializes the repository analysis context with configuration and metadata.
+        
+        Args:
+            config_loader: A ConfigLoader instance used to access the project configuration.
+        
+        Class fields initialized:
+            config_loader: Stores the provided ConfigLoader for later use.
+            config: The configuration object extracted from the loader.
+            repo_url: The Git repository URL from the configuration.
+            repo_path: Absolute path to the local repository directory, derived from the current working directory and the parsed folder name.
+            tree: The source code tree obtained from SourceRank based on the configuration.
+            metadata: Repository metadata retrieved via ``load_data_metadata`` using the repository URL.
+            template_path: Path to the default template file located under the project root.
+            icons_tech_path: Path to the JSON file containing shield icons for technologies.
+            max_tech_badges: Maximum number of technology badges to display (default 7).
+            _template: The parsed template loaded by ``self.load_template()``.
+            info: Package information extracted from the repository using ``PyPiPackageInspector``.
+            techs: List of technologies extracted from the repository via ``DependencyExtractor``.
+        
+        Returns:
+            None
+        """
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.repo_url = self.config.git.repository

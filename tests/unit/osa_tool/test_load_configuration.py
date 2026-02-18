@@ -46,6 +46,38 @@ def test_load_configuration(
     expected_url,
     expected_model,
 ):
+    """
+    Test that `load_configuration` correctly populates configuration fields from
+    provided arguments.
+    
+    Parameters
+    ----------
+    mock_config_loader : MagicMock
+        Mocked ConfigLoader used to provide a mock configuration object.
+    mock_project_root : str
+        Mocked project root path returned by the `osa_project_root` patch.
+    repo_url : str
+        Repository URL to be passed to `load_configuration`.
+    api : str
+        LLM API name to be passed to `load_configuration`.
+    api_url : str
+        Base URL for the LLM API.
+    model : str
+        Model name to be passed to `load_configuration`.
+    expected_repo : str
+        Expected repository URL in the resulting configuration.
+    expected_api : str
+        Expected LLM API name in the resulting configuration.
+    expected_url : str
+        Expected LLM API URL in the resulting configuration.
+    expected_model : str
+        Expected LLM model name in the resulting configuration.
+    
+    Returns
+    -------
+    None
+        The function performs assertions and does not return a value.
+    """
     # Arrange
     mock_config = MagicMock()
     mock_config_loader.return_value = mock_config

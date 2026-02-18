@@ -24,12 +24,69 @@ from osa_tool.utils import logger, osa_project_root
 
 
 class ReportGenerator:
+    """
+    ReportGenerator
+    
+    Generates a PDF report for a repository analysis, including tables, images, QR codes, and metadata.
+    
+    Attributes
+    ----------
+    config
+    sourcerank
+    text_generator
+    repo_url
+    osa_url
+    metadata
+    logo_path
+    filename
+    output_path
+    
+    Class Methods
+    -------------
+    - __init__:
+    """
 
     def __init__(
         self,
         config_loader: ConfigLoader,
         sourcerank: SourceRank,
     ):
+        """
+        Initialize the report generator with configuration and source ranking.
+        
+        Parameters
+        ----------
+        config_loader
+            Configuration loader providing project settings.
+        sourcerank
+            Source ranking object used for analysis.
+        
+        Attributes
+        ----------
+        config
+            Configuration dictionary loaded from `config_loader`.
+        sourcerank
+            Reference to the provided `SourceRank` instance.
+        text_generator
+            `TextGenerator` instance initialized with the same configuration and source ranking.
+        repo_url
+            URL of the repository being analyzed, extracted from the configuration.
+        osa_url
+            Base URL for the OSA project repository.
+        metadata
+            Repository metadata retrieved via `load_data_metadata`.
+        logo_path
+            File system path to the OSA logo image used in reports.
+        filename
+            Name of the PDF report file, derived from repository metadata.
+        output_path
+            Absolute path where the generated report will be saved.
+        
+        Returns
+        -------
+        None
+            This constructor does not return a value.
+        """
         self.config = config_loader.config
         self.sourcerank = sourcerank
         self.text_generator = TextGenerator(config_loader, self.sourcerank)

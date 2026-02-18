@@ -15,6 +15,19 @@ from osa_tool.analytics.report_maker import ReportGenerator
 
 
 def test_report_generator_initialization(report_generator):
+    """
+    Test that the ReportGenerator is initialized correctly.
+    
+    Args:
+        report_generator: The instance of ReportGenerator to test.
+    
+    Returns:
+        None
+    
+    This test verifies that the ReportGenerator instance has the expected
+    repo_url, that its metadata attribute is populated, and that the output_path
+    ends with '_report.pdf'.
+    """
     # Assert
     assert report_generator.repo_url == "https://github.com/testuser/testrepo.git"
     assert report_generator.metadata is not None
@@ -22,6 +35,21 @@ def test_report_generator_initialization(report_generator):
 
 
 def test_generate_qr_code(report_generator):
+    """
+    Test the QR code generation functionality of a report generator.
+    
+    This test verifies that the `generate_qr_code` method of the provided
+    `report_generator` instance returns a file path ending with
+    `temp_qr.png`, that the file actually exists on disk, and then cleans up
+    by removing the generated file.
+    
+    Args:
+        report_generator: The report generator instance whose QR code
+            generation method is being tested.
+    
+    Returns:
+        None
+    """
     # Act
     qr_path = report_generator.generate_qr_code()
     # Assert
@@ -32,6 +60,19 @@ def test_generate_qr_code(report_generator):
 
 
 def test_table_builder(report_generator):
+    """
+    Test that the report_generator's table_builder method correctly constructs a Table object.
+    
+    Parameters
+    ----------
+    report_generator
+        The report generator instance used to build the table.
+    
+    Returns
+    -------
+    None
+        This test function does not return a value; it asserts that the table is an instance of Table.
+    """
     # Arrange
     data = [["Header 1", "Header 2"], ["Row 1", "✓"], ["Row 2", "✗"]]
     # Act
@@ -43,6 +84,25 @@ def test_table_builder(report_generator):
 @patch.object(ReportGenerator, "generate_qr_code", return_value="temp_qr.png")
 @patch("os.remove")
 def test_draw_images_and_tables(mock_remove, mock_generate_qr_code, report_generator):
+    """
+    Test that ReportGenerator.draw_images_and_tables correctly draws images and tables
+    and removes the temporary QR code file.
+    
+    Parameters
+    ----------
+    mock_remove : mock
+        Mock for os.remove to verify that the temporary QR code file is deleted.
+    mock_generate_qr_code : mock
+        Mock for ReportGenerator.generate_qr_code to return a temporary QR code file path.
+    report_generator : ReportGenerator
+        Instance of ReportGenerator whose draw_images_and_tables method is being tested.
+    
+    Returns
+    -------
+    None
+        This test does not return a value; it asserts that the canvas methods are called
+        and that the temporary QR code file is removed.
+    """
     # Arrange
     mock_canvas = MagicMock()
     mock_doc = MagicMock()
@@ -55,6 +115,15 @@ def test_draw_images_and_tables(mock_remove, mock_generate_qr_code, report_gener
 
 
 def test_header(report_generator):
+    """
+    Test that the report generator's header returns exactly two elements.
+    
+    Args:
+        report_generator: The report generator instance to test.
+    
+    Returns:
+        None
+    """
     # Act
     header_elements = report_generator.header()
     # Assert
@@ -62,6 +131,17 @@ def test_header(report_generator):
 
 
 def test_table_generator(report_generator):
+    """
+    Test that the `table_generator` method of a report generator returns two
+    `Table` instances.
+    
+    Args:
+        report_generator: An object that provides a `table_generator` method
+            which is expected to return a tuple of two `Table` objects.
+    
+    Returns:
+        None: This function performs assertions and does not return a value.
+    """
     # Act
     table1, table2 = report_generator.table_generator()
     # Assert
@@ -70,6 +150,19 @@ def test_table_generator(report_generator):
 
 
 def test_body_first_part(report_generator):
+    """
+    Test that the body_first_part method of a report generator returns a ListFlowable instance.
+    
+    Parameters
+    ----------
+    report_generator
+        The report generator instance whose metadata is configured for the test.
+    
+    Returns
+    -------
+    None
+        This test does not return a value; it asserts that the body_first_part method produces a ListFlowable.
+    """
     # Arrange
     report_generator.metadata = MagicMock()
     report_generator.metadata.created_at = "2025-03-28T14:30:00Z"
@@ -84,6 +177,26 @@ def test_body_first_part(report_generator):
 
 
 def test_body_second_part(report_generator):
+    """
+    Test the body_second_part method of a report generator.
+    
+    This test configures a mock text generator to return a predefined
+    RepositoryReport, invokes the `body_second_part` method, and asserts that
+    the resulting story list contains the expected sections and content for
+    repository structure, README analysis, documentation, key shortcomings,
+    and recommendations.
+    
+    Parameters
+    ----------
+    report_generator
+        The report generator instance whose `body_second_part` method is being
+        exercised.
+    
+    Returns
+    -------
+    None
+        The function performs assertions and does not return a value.
+    """
     # Arrange
     report_generator.text_generator = MagicMock()
     report_generator.text_generator.make_request.return_value = RepositoryReport(

@@ -15,7 +15,36 @@ from osa_tool.utils import extract_readme_content, osa_project_root, parse_folde
 
 
 class TextGenerator:
+    """
+    TextGenerator
+    
+        Generates textual content for a repository using a language model. The class
+        constructs a prompt from repository metadata, sends it to a model handler,
+        and returns the generated text.
+    
+        Class Methods:
+        - __init__:
+    """
     def __init__(self, config_loader: ConfigLoader, sourcerank: SourceRank):
+        """
+        Initializes the analysis context with configuration and source ranking.
+        
+        Args:
+            config_loader: Provides access to the application configuration.
+            sourcerank: Handles ranking of source files.
+        
+        Fields initialized:
+            config: The configuration object extracted from ``config_loader``.
+            sourcerank: The ``SourceRank`` instance passed to the constructor.
+            model_handler: A ``ModelHandler`` built using ``ModelHandlerFactory.build`` with the configuration.
+            repo_url: The repository URL from the configuration (``config.git.repository``).
+            metadata: Repository metadata retrieved via ``load_data_metadata(repo_url)``.
+            base_path: Absolute path to the repository folder, constructed from the current working directory and the parsed folder name of ``repo_url``.
+            prompt_path: Path to the ``prompt_for_analysis.toml`` file located in the project's config/settings directory.
+        
+        Returns:
+            None
+        """
         self.config = config_loader.config
         self.sourcerank = sourcerank
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)

@@ -153,6 +153,26 @@ def test_analyze_directory(mock_extract_structure, mock_files_list, osa_tree_sit
 
 
 def test_resolve_import_path_from_import(osa_tree_sitter, tmp_path):
+    """
+    Test that the internal method `_resolve_import_path` correctly resolves an import
+    statement to the corresponding module and file path.
+    
+    The test creates a temporary Python file named ``utils.py`` in a temporary
+    directory, sets the current working directory of the ``osa_tree_sitter`` object
+    to that directory, and then calls the private method
+    ``_resolve_import_path`` with a simple import statement.  It verifies that
+    the returned mapping contains the expected class name, module name, and file
+    path.
+    
+    Args:
+        osa_tree_sitter: The object under test that provides the
+            ``_resolve_import_path`` method.
+        tmp_path: A temporary directory path provided by the test framework
+            (e.g., pytest) for creating test files.
+    
+    Returns:
+        None
+    """
     file = tmp_path / "utils.py"
     file.write_text("# dummy")
     osa_tree_sitter.cwd = str(tmp_path)
@@ -166,6 +186,18 @@ def test_resolve_import_path_from_import(osa_tree_sitter, tmp_path):
 
 
 def test_resolve_import_path_with_alias(osa_tree_sitter, tmp_path):
+    """
+    Method Name: test_resolve_import_path_with_alias
+    
+    Test resolving an import statement that uses an alias. The test creates a temporary package structure, writes a dummy module file, sets the parser's current working directory, patches `os.path.exists` to always return `True`, and then calls the internal `_resolve_import_path` method. It verifies that the returned mapping contains the alias key, the correct module name, and a file path that ends with the expected module file.
+    
+    Args:
+        osa_tree_sitter: The OsaTreeSitter instance being tested.
+        tmp_path: A temporary directory path provided by the test framework.
+    
+    Returns:
+        None
+    """
     (tmp_path / "mypkg").mkdir()
     file = tmp_path / "mypkg" / "core.py"
     file.write_text("# dummy")
@@ -180,10 +212,35 @@ def test_resolve_import_path_with_alias(osa_tree_sitter, tmp_path):
 
 
 def test_resolve_import_path_invalid_format(osa_tree_sitter):
+    """
+    Test that resolving an invalid import path returns an empty dictionary.
+    
+    Args:
+        osa_tree_sitter: The tree-sitter parser instance used for resolving import paths.
+    
+    Returns:
+        None
+    """
     assert osa_tree_sitter._resolve_import_path("not an import") == {}
 
 
 def test_extract_imports_parses_nodes(osa_tree_sitter):
+    """
+    Test that the `_extract_imports` method correctly parses different types of import
+    nodes and returns a dictionary containing the expected import entries.
+    
+    The test constructs mock AST nodes representing an `import_statement` and an
+    `import_from_statement`, patches the internal `_resolve_import_path` method to
+    return predetermined import information, and then verifies that the result
+    includes the expected keys for the imported modules or symbols.
+    
+    Args:
+        osa_tree_sitter: The instance of the class under test, providing the
+            `_extract_imports` method and the `_resolve_import_path` helper.
+    
+    Returns:
+        None
+    """
     node1 = Mock()
     node1.type = "import_statement"
     node1.text = b"import os"
@@ -206,6 +263,27 @@ def test_extract_imports_parses_nodes(osa_tree_sitter):
 
 
 def test_resolve_import_with_function(osa_tree_sitter):
+    """
+    Test that the internal _resolve_import method correctly resolves a function
+    import from a given alias.
+    
+    This test constructs a simple imports mapping where the alias ``np`` refers to
+    the ``numpy`` module. It then calls the private ``_resolve_import`` method on
+    the provided ``osa_tree_sitter`` instance to resolve the fully qualified
+    function name ``np.array``. The test verifies that the returned dictionary
+    contains the expected module name and function name.
+    
+    Parameters
+    ----------
+    osa_tree_sitter
+        The instance of the tree-sitter wrapper that provides the
+        ``_resolve_import`` method.
+    
+    Returns
+    -------
+    None
+        This function performs assertions and does not return a value.
+    """
     imports = {"np": {"module": "numpy", "path": "/numpy.py"}}
     result = osa_tree_sitter._resolve_import("np.array", "np", imports)
     assert result["module"] == "numpy"
@@ -213,6 +291,18 @@ def test_resolve_import_with_function(osa_tree_sitter):
 
 
 def test_resolve_import_class_method_chain(osa_tree_sitter):
+    """
+    Test that the `_resolve_import` method correctly resolves a class method chain.
+    
+    Args:
+        osa_tree_sitter: The OsaTreeSitter instance used to resolve imports.
+    
+    Returns:
+        None
+    
+    Raises:
+        AssertionError: If the resolved class or function does not match the expected values.
+    """
     imports = {"mod": {"module": "pkg.module", "class": "MyClass", "path": "/module.py"}}
     result = osa_tree_sitter._resolve_import("mod.MyClass().run", "mod", imports)
     assert result["class"] == "MyClass"
@@ -220,4 +310,21 @@ def test_resolve_import_class_method_chain(osa_tree_sitter):
 
 
 def test_resolve_import_unknown(osa_tree_sitter):
+    """
+    Test that resolving an unknown import returns an empty dictionary.
+    
+    This test verifies that the `_resolve_import` method of the
+    `osa_tree_sitter` object correctly handles a case where the
+    requested import cannot be found.  It calls the method with a
+    non‑existent module name and asserts that the result is an empty
+    dictionary, indicating that no symbols were imported.
+    
+    Args:
+        osa_tree_sitter: The instance providing the `_resolve_import`
+            method, typically a parser or resolver object used in the
+            test suite.
+    
+    Returns:
+        None
+    """
     assert osa_tree_sitter._resolve_import("foo.bar", "foo", {}) == {}

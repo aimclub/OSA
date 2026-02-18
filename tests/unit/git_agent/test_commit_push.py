@@ -4,6 +4,20 @@ import pytest
 
 
 def test_commit_and_push_changes_success(github_agent):
+    """
+    Test that `commit_and_push_changes` successfully commits and pushes changes.
+    
+    Parameters
+    ----------
+    github_agent : object
+        The GitHub agent instance to be tested.
+    
+    Returns
+    -------
+    None
+        This test does not return a value; it verifies that the agent performs the
+        expected git operations and logs the appropriate messages.
+    """
     # Arrange
     with (
         patch.object(github_agent, "_get_auth_url", return_value="https://auth-url.com") as mock_auth_url,
@@ -28,6 +42,20 @@ def test_commit_and_push_changes_success(github_agent):
 
 
 def test_commit_and_push_changes_no_fork_url(github_agent):
+    """
+    Test that `commit_and_push_changes` raises a ValueError when the fork URL is not set.
+    
+    Parameters
+    ----------
+    github_agent
+        The GitHub agent instance used for testing.
+    
+    Returns
+    -------
+    None
+        This test does not return a value; it asserts that a ValueError is raised when
+        `commit_and_push_changes` is called with `fork_url` unset.
+    """
     # Arrange
     github_agent.fork_url = None
     # Assert

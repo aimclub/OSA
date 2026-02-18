@@ -14,6 +14,28 @@ class DependencyExtractor:
     """
 
     def __init__(self, tree: str, base_path: str):
+        """
+        Initializes a dependency parser with the given project tree and base path.
+        
+        Args:
+            tree: The root directory or identifier of the project tree to analyze.
+            base_path: The base filesystem path where the project resides.
+        
+        Attributes:
+            tree: Stores the project tree identifier or path.
+            base_path: Stores the base filesystem path for the project.
+            regex_requirements: Regular expression pattern used to match package names in
+                requirements files.
+            regex_setup_install_requires: Regular expression pattern used to extract the
+                `install_requires` list from a setup.py file.
+            regex_setup_python_requires: Regular expression pattern used to extract the
+                `python_requires` specification from a setup.py file.
+            regex_setup_dependency_items: Regular expression pattern used to capture
+                individual dependency items within the `install_requires` list.
+        
+        Returns:
+            None
+        """
         self.tree = tree
         self.base_path = base_path
 
@@ -163,9 +185,34 @@ class DependencyExtractor:
 
     @staticmethod
     def _normalize_dependency(dep: str) -> str:
+        """
+        Normalize a dependency string.
+        
+        This static method processes a dependency string by extracting the first
+        token before any whitespace or semicolon, trimming surrounding whitespace,
+        and converting the result to lowercase. It is useful for standardizing
+        dependency identifiers that may contain version constraints or comments.
+        
+        Args:
+            dep: The dependency string to normalize.
+        
+        Returns:
+            str: The normalized dependency string.
+        """
         return dep.split()[0].split(";")[0].strip().lower()
 
     def _find_file(self, pattern: str) -> str | None:
+        """
+        Find the absolute path of a file matching a given pattern within the repository tree.
+        
+        Args:
+            pattern: A regular expression pattern to search for in the repository tree.
+        
+        Returns:
+            str or None: The absolute path to the first file that matches the pattern, or ``None`` if no match is found.
+        
+        The method uses :func:`find_in_repo_tree` to locate a relative file path that matches the supplied pattern in the string representation of the repository tree stored in ``self.tree``. If a match is found, the relative path is joined with ``self.base_path`` to produce an absolute path. If no match is found, the method returns ``None``.
+        """
         rel_path = find_in_repo_tree(self.tree, pattern)
         if rel_path:
             abs_path = os.path.join(self.base_path, rel_path)

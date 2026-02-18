@@ -12,6 +12,18 @@ class PdfParser:
     """
 
     def __init__(self, pdf_path: str) -> None:
+        """
+        Initializes the object with the path to a PDF file.
+        
+        Args:
+            pdf_path: The file system path to the PDF document.
+        
+        Attributes:
+            path: Stores the provided PDF file path.
+        
+        Returns:
+            None
+        """
         self.path = pdf_path
 
     def data_extractor(self) -> str:

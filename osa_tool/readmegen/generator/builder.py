@@ -17,6 +17,21 @@ class MarkdownBuilder(MarkdownBuilderBase):
         core_features: str = None,
         getting_started: str = None,
     ):
+        """
+        Initialize the object with configuration loader and optional documentation sections.
+        
+        Args:
+            config_loader: The configuration loader instance used to load settings.
+            overview: Optional overview text for the documentation.
+            core_features: Optional JSON string containing core feature information.
+            getting_started: Optional getting started text for the documentation.
+        
+        Attributes:
+            _core_features_json: Stores the core_features JSON string passed to the constructor.
+        
+        Returns:
+            None
+        """
         super().__init__(config_loader, overview=overview, getting_started=getting_started)
         self._core_features_json = core_features
 
@@ -66,6 +81,28 @@ class MarkdownBuilder(MarkdownBuilderBase):
 
     @property
     def toc(self) -> str:
+        """
+        Return a formatted table of contents string.
+        
+        This property builds a mapping of section titles to the corresponding
+        instance attributes and passes it to `self.table_of_contents` to generate
+        the final string representation. The sections included are:
+        
+        - Core features
+        - Installation
+        - Getting Started
+        - Examples
+        - Documentation
+        - Contributing
+        - License
+        - Citation
+        
+        Args:
+            self: The instance on which the property is accessed.
+        
+        Returns:
+            str: A string representation of the table of contents.
+        """
         sections = {
             "Core features": self.core_features,
             "Installation": self.installation,

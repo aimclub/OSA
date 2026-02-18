@@ -12,7 +12,40 @@ from osa_tool.utils import osa_project_root, parse_folder_name
 
 
 class InstallationSectionBuilder:
+    """
+    Builds the installation section for a repository's documentation.
+    
+    The :class:`InstallationSectionBuilder` class is responsible for generating a
+    formatted installation section based on a TOML template and repository
+    metadata. It loads configuration data, extracts package information, and
+    produces installation instructions that can be embedded in documentation
+    files.
+    
+    Class Methods:
+    - __init__:
+    """
     def __init__(self, config_loader: ConfigLoader):
+        """
+        Initializes the repository inspector with configuration and prepares internal state.
+        
+        Args:
+            config_loader: A ConfigLoader instance that provides configuration data for the repository.
+        
+        Attributes:
+            config_loader: The ConfigLoader instance passed to the constructor.
+            config: The configuration object extracted from config_loader.
+            repo_url: The Git repository URL from the configuration.
+            tree: A SourceRank tree built from the configuration loader.
+            metadata: Repository metadata retrieved from the repository URL via `load_data_metadata`.
+            repo_path: Local filesystem path where the repository is expected to be cloned.
+            template_path: Path to the default template.toml file within the project.
+            _template: Parsed template data loaded by the `load_template` method.
+            info: Package information obtained from `PyPiPackageInspector`.
+            version: Python version requirement extracted by `DependencyExtractor`.
+        
+        Returns:
+            None
+        """
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.repo_url = self.config.git.repository

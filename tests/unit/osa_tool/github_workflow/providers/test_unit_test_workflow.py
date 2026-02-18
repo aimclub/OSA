@@ -3,8 +3,33 @@ from osa_tool.github_workflow.providers.unit_test import generate_unit_test_work
 
 
 class TestUnitTestWorkflowGenerator(unittest.TestCase):
+    """
+    TestUnitTestWorkflowGenerator
+    
+    This test class verifies the correctness of the unit test workflow generation
+    functionality provided by the workflow generator. It contains unit tests that
+    check the default configuration, custom configuration, and inclusion of a
+    Codecov token in the generated workflow.
+    
+    Class Methods:
+    - test_generate_unit_test_workflow_default:
+    """
 
     def test_generate_unit_test_workflow_default(self):
+        """
+        Test default unit test workflow generation.
+        
+        This test verifies that the workflow produced by `generate_unit_test_workflow()` contains the expected default
+        configuration. It checks the workflow name, trigger events, job name, operating system and Python version matrix,
+        checkout and setup steps, test installation and execution commands, and the inclusion of the Codecov action
+        without a token.
+        
+        Args:
+            self: The test case instance.
+        
+        Returns:
+            None
+        """
         workflow = generate_unit_test_workflow()
 
         self.assertEqual(workflow["name"], "Unit Tests")
@@ -28,6 +53,23 @@ class TestUnitTestWorkflowGenerator(unittest.TestCase):
         self.assertNotIn("token", workflow["jobs"]["test"]["steps"][4].get("with", {}))  # No token by default
 
     def test_generate_unit_test_workflow_custom(self):
+        """
+        Test generating a unit test workflow with custom configuration.
+        
+        This test verifies that the `generate_unit_test_workflow` function correctly
+        creates a workflow dictionary when provided with custom parameters such as
+        specific Python versions, operating systems, dependencies command, test
+        command, branches, coverage flag, timeout, and codecov token. It checks that
+        the resulting workflow contains the expected name, trigger branches,
+        timeout, matrix configuration, steps for installing dependencies and running
+        tests, and that no Codecov step is included when coverage is disabled.
+        
+        Args:
+            self: The test case instance.
+        
+        Returns:
+            None
+        """
         workflow = generate_unit_test_workflow(
             name="My Tests",
             python_versions=["3.7", "3.11"],
@@ -62,6 +104,23 @@ class TestUnitTestWorkflowGenerator(unittest.TestCase):
         )  # No Codecov step
 
     def test_generate_unit_test_workflow_with_codecov_token(self):
+        """
+        Test that the unit test workflow generation correctly includes a Codecov token when the
+        `codecov_token` flag is set to `True`.
+        
+        The test calls :func:`generate_unit_test_workflow` with ``codecov_token=True`` and
+        verifies that the resulting workflow dictionary contains a `token` entry in the
+        fifth step of the `test` job. It also checks that the token value is set to the
+        expected GitHub Actions secret reference ``${{ secrets.CODECOV_TOKEN }}``.
+        
+        Parameters
+        ----------
+        self
+        
+        Returns
+        -------
+        None
+        """
         workflow = generate_unit_test_workflow(codecov_token=True)
         self.assertIn("token", workflow["jobs"]["test"]["steps"][4]["with"])
         self.assertEqual(

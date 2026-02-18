@@ -4,6 +4,20 @@ from unittest.mock import patch
 
 @patch("os.rename")
 def test_rename_files(mock_rename, translator):
+    """
+    Test that the translator's rename_files method correctly calls os.rename with the expected source and destination paths.
+    
+    Parameters
+    ----------
+    mock_rename
+        Mock object for the os.rename function, injected by the @patch("os.rename") decorator.
+    translator
+        Instance of the translator class whose rename_files method is being tested.
+    
+    Returns
+    -------
+    None
+    """
     # Act
     with (
         patch.object(translator, "_get_all_files", return_value=["/repo/file.txt"]),
@@ -22,6 +36,23 @@ def test_rename_files(mock_rename, translator):
 
 @patch("os.rename")
 def test_rename_directories(mock_rename, translator):
+    """
+    Test that the `rename_directories` method correctly calls `os.rename` with the
+    expected source and destination paths.
+    
+    Parameters
+    ----------
+    mock_rename : mock
+        Mock object for `os.rename` provided by the `@patch("os.rename")` decorator.
+    translator : Translator
+        Instance of the translator class whose `rename_directories` method is being
+        exercised.  The test temporarily patches its `_get_all_directories` and
+        `translate_directories` methods to provide controlled input.
+    
+    Returns
+    -------
+    None
+    """
     # Act
     with (
         patch.object(translator, "_get_all_directories", return_value=["/repo/old_dir"]),

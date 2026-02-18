@@ -7,6 +7,24 @@ from osa_tool.docs_generator.docs_run import generate_documentation
 @mock.patch("osa_tool.docs_generator.docs_run.ContributingBuilder")
 @mock.patch("osa_tool.docs_generator.docs_run.logger")
 def test_generate_documentation(mock_logger, mock_contributing_builder, mock_community_builder, config_loader):
+    """
+    Test that `generate_documentation` correctly builds all documentation sections and logs the process.
+    
+    Parameters
+    ----------
+    mock_logger : object
+        Mocked logger used to verify that informational messages are logged.
+    mock_contributing_builder : object
+        Mocked factory for creating a `ContributingBuilder` instance.
+    mock_community_builder : object
+        Mocked factory for creating a `CommunityTemplateBuilder` instance.
+    config_loader : object
+        Configuration loader passed to `generate_documentation`.
+    
+    Returns
+    -------
+    None
+    """
     # Arrange
     # Create mocks for the configuration and all builders
     mock_contributing = mock.MagicMock()

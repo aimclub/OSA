@@ -175,6 +175,19 @@ def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) ->
 
 
 def generate_requirements(repo_url):
+    """
+    Generate a requirements.txt file for a given repository.
+    
+    This function runs the external `pipreqs` tool to scan the specified repository
+    for Python dependencies and create a `requirements.txt` file. It logs the
+    progress and any errors encountered during the process.
+    
+    Args:
+        repo_url: The URL of the repository to generate requirements for.
+    
+    Returns:
+        None
+    """
     logger.info(f"Starting the generation of requirements")
     repo_path = Path(parse_folder_name(repo_url)).resolve()
     try:

@@ -27,6 +27,40 @@ class AboutGenerator:
     """Generates Git repository About section content."""
 
     def __init__(self, config_loader: ConfigLoader):
+        """
+        Initializes a repository analyzer with configuration and prepares internal state.
+        
+        Args:
+            config_loader: An object that provides the configuration for the repository
+                analysis. It is expected to expose a ``config`` attribute containing
+                settings such as the Git repository URL.
+        
+        Attributes:
+            config: The configuration object obtained from ``config_loader``.
+            model_handler: A ``ModelHandler`` instance created by
+                ``ModelHandlerFactory.build`` using the configuration. This handler
+                is responsible for interacting with the language model specified in
+                the settings.
+            repo_url: The Git repository URL extracted from the configuration
+                (``config.git.repository``).
+            metadata: Repository metadata retrieved by ``load_data_metadata`` based on
+                the repository URL. This may include information such as the
+                repository name, owner, and other platform‑specific details.
+            base_path: The absolute path to the local repository directory, formed by
+                joining the current working directory with the parsed folder name of
+                the repository URL.
+            readme_content: The textual content of the repository's README file,
+                obtained via ``extract_readme_content``. If no README is found, a
+                default message is stored.
+            platform: A string indicating the hosting platform of the repository
+                (e.g., ``"github"``, ``"gitlab"``, or ``"gitverse"``), determined by
+                ``detect_platform``.
+            prompts: A collection of prompts loaded from ``PromptAboutLoader``.
+            _content: A placeholder for future content, initially set to ``None``.
+        
+        Returns:
+            None
+        """
         self.config = config_loader.config
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.config)
         self.repo_url = self.config.git.repository

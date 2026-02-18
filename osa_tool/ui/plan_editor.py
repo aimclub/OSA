@@ -22,7 +22,44 @@ console = Console()
 
 
 class PlanEditor:
+    """
+    PlanEditor
+    
+        A utility class for editing, validating, and displaying workflow plans.  
+        It loads argument metadata, tracks changes, and provides interactive
+        editing capabilities with optional confirmation.
+    
+    Class Methods:
+    - __init__:
+    """
     def __init__(self, workflow_keys: list):
+        """
+        Initialize the class with workflow keys and load argument metadata.
+        
+        Parameters
+        ----------
+        workflow_keys
+            A list of keys that identify the workflow configuration.
+        
+        Attributes
+        ----------
+        workflow_keys
+            The list of workflow keys passed to the constructor.
+        info_keys
+            A list of standard information keys used in the workflow.
+        special_keys
+            Keys that require special handling, e.g., notebook conversion.
+        arguments_metadata
+            A flattened dictionary of arguments loaded from the arguments YAML file via
+            `read_arguments_file_flat(build_arguments_path())`. The function reads a
+            YAML file and flattens nested groups into a single dictionary.
+        modified_keys
+            A set that tracks keys that have been modified during processing.
+        
+        Returns
+        -------
+        None
+        """
         self.workflow_keys = workflow_keys
         self.info_keys = [
             "repository",
@@ -448,15 +485,65 @@ class PlanEditor:
         return [k for k in self.workflow_keys if isinstance(plan.get(k), bool) and k not in exclude]
 
     def _format_key_label(self, key: str) -> str:
+        """
+        Formats a key label by appending an asterisk if the key is marked as modified.
+        
+        Args:
+            key: The key to format.
+        
+        Returns:
+            str: The key with an asterisk appended if it is present in ``self.modified_keys``; otherwise the original key.
+        """
         return f"{key} *" if key in self.modified_keys else key
 
 
 class MultiWordCompleter(Completer):
+    """
+    MultiWordCompleter
+    Provides auto‑completion for a predefined list of words, optionally ignoring case.
+    The completer examines the text preceding the cursor, splits it into parts, and
+    yields any word from the internal list that starts with the last token. The
+    comparison can be case‑sensitive or case‑insensitive depending on the
+    `ignore_case` flag.
+    
+    Class Methods:
+    - __init__:
+    """
     def __init__(self, words, ignore_case=False):
+        """
+        Initializes the object with a collection of words and an optional case‑sensitivity flag.
+        
+        Args:
+            words: The collection of words to be stored.
+            ignore_case: If True, comparisons will ignore case. Defaults to False.
+        
+        Attributes:
+            words: The collection of words passed to the constructor.
+            ignore_case: Flag indicating whether to ignore case in operations.
+        
+        Returns:
+            None
+        """
         self.words = words
         self.ignore_case = ignore_case
 
     def get_completions(self, document: Document, complete_event: CompleteEvent) -> Iterable[Completion]:
+        """
+        Get completions for the current document.
+        
+        This method generates completion suggestions based on a predefined list of words. It
+        examines the text preceding the cursor, splits it into parts, and yields any word
+        from the internal list that starts with the last token. The comparison can be
+        case‑sensitive or case‑insensitive depending on the `ignore_case` flag.
+        
+        Args:
+            document: The document containing the text to be completed.
+            complete_event: The event that triggered completion.
+        
+        Yields:
+            Completion: A completion object for each matching word, positioned so that the
+            matched portion of the last word is replaced.
+        """
         text_before_cursor = document.text_before_cursor
 
         parts = re.split(r"[,\s]+", text_before_cursor)

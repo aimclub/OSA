@@ -22,6 +22,52 @@ class ModeScheduler:
     """
 
     def __init__(self, config: ConfigLoader, sourcerank: SourceRank, args, workflow_keys: list):
+        """
+        Initializes the workflow manager with configuration, source ranking, and command-line arguments.
+        
+        Parameters
+        ----------
+        config : ConfigLoader
+            Loader containing the application settings, including the Git repository information.
+        sourcerank : SourceRank
+            Object responsible for ranking source files or data.
+        args : Namespace
+            Parsed command-line arguments; attributes are used to set mode and workflow-specific options.
+        workflow_keys : list
+            List of argument names that correspond to workflow configuration keys.
+        
+        Class fields initialized
+        ------------------------
+        mode
+            The execution mode specified in ``args.mode``.
+        args
+            The parsed command-line arguments.
+        workflow_keys
+            The list of workflow-related keys passed to the constructor.
+        config
+            The underlying configuration dictionary extracted from ``config.config``.
+        sourcerank
+            Reference to the provided ``SourceRank`` instance.
+        model_handler
+            Instance of ``ModelHandler`` created by ``ModelHandlerFactory.build`` using the configuration.
+        repo_url
+            Git repository URL obtained from the configuration.
+        metadata
+            Repository metadata retrieved by ``load_data_metadata`` based on ``repo_url``.
+        base_path
+            Absolute path to the repository folder, constructed from the current working directory and the parsed folder name.
+        prompts
+            Prompt definitions loaded from ``PromptLoader().prompts``.
+        workflows_plan
+            Dictionary of workflow-specific arguments extracted from ``args`` that match ``workflow_keys``.
+        plan
+            The selected plan determined by the private method ``_select_plan``.
+        
+        Returns
+        -------
+        None
+            ``__init__`` does not return a value; it sets up the instance state.
+        """
         self.mode = args.mode
         self.args = args
         self.workflow_keys = workflow_keys

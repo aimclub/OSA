@@ -135,6 +135,16 @@ class ConfigLoader:
 
     @staticmethod
     def _read_config(path: str) -> dict[str, Any]:
+        """
+        Read a TOML configuration file and return a dictionary with lowercased keys.
+        
+        Args:
+            path: The file system path to the TOML configuration file.
+        
+        Returns:
+            A dictionary mapping each key from the TOML file to its corresponding value,
+            with all keys converted to lowercase.
+        """
         with open(path, "rb") as file:
             data = tomli.load(file)
 

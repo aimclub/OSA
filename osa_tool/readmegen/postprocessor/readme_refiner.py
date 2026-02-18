@@ -6,7 +6,35 @@ from osa_tool.readmegen.models.llm_service import LLMClient
 
 
 class ReadmeRefiner:
+    """
+    ReadmeRefiner refines and assembles README files by merging generated content with existing sections using a language model.
+    
+    Attributes:
+        config_loader: The ConfigLoader instance passed to the constructor.
+        config: The configuration dictionary obtained from config_loader.
+        new_readme: The new README content.
+        llm_client: An LLMClient instance initialized with the provided config_loader.
+    
+    Class Methods:
+    - __init__:
+    """
     def __init__(self, config_loader: ConfigLoader, new_readme: str):
+        """
+        Initializes the object with a configuration loader and new README content.
+        
+        Args:
+            config_loader: The configuration loader used to access configuration settings.
+            new_readme: The new README content as a string.
+        
+        Attributes:
+            config_loader: The ConfigLoader instance passed to the constructor.
+            config: The configuration dictionary obtained from config_loader.
+            new_readme: The new README content.
+            llm_client: An LLMClient instance initialized with the provided config_loader.
+        
+        Returns:
+            None
+        """
         self.config_loader = config_loader
         self.config = self.config_loader.config
         self.new_readme = new_readme
