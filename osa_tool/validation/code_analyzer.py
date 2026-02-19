@@ -23,7 +23,83 @@ class CodeAnalyzer:
     and sending code content to a model for analysis.
     """
 
-    SOURCEFILE_EXTENSIONS_LIST = "py", "c", "cpp", "kt", "java", "js", "ts", "go", "rb", "rs", "swift", "cs", "php", "cmake", "h", "hpp"
+    CODE_EXTENSIONS = (
+        "py",
+        "c",
+        "cpp",
+        "cc",
+        "cxx",
+        "h",
+        "hpp",
+        "java",
+        "kt",
+        "kts",
+        "js",
+        "jsx",
+        "ts",
+        "tsx",
+        "go",
+        "rb",
+        "rs",
+        "swift",
+        "cs",
+        "php",
+        "scala",
+        "sh",
+        "bash",
+        "zsh",
+        "ps1",
+        "lua",
+        "dart",
+        "r",
+        "jl",
+        "sql",
+        "html",
+        "css",
+        "scss",
+        "vue",
+        "xml",
+        "yaml",
+        "yml",
+        "json",
+        "md",
+    )
+
+    SETUP_FILE_PATTERNS = (
+        # common Python packaging / dependency files
+        "requirements.txt",
+        "pyproject.toml",
+        "setup.cfg",
+        "Pipfile",
+        "Pipfile.lock",
+        "requirements-dev.txt",
+        "environment.yml",
+        "conda.yml",
+        # Node / JS
+        "package.json",
+        "package-lock.json",
+        "yarn.lock",
+        # Ruby / PHP / Composer
+        "Gemfile",
+        "Gemfile.lock",
+        "composer.json",
+        "composer.lock",
+        # CI / build / container
+        "Makefile",
+        "Dockerfile",
+        ".dockerignore",
+        "Procfile",
+        "Jenkinsfile",
+        ".travis.yml",
+        ".github/workflows/",
+        "tox.ini",
+        # other common config
+        "Dockerfile",
+        "gradle.properties",
+        "build.gradle",
+        "pom.xml",
+    )
+
     IGNORE_LIST = (
         "__init__.py",
         "setup.py",
@@ -75,13 +151,38 @@ class CodeAnalyzer:
                 self.notebook_convertor.convert_notebook(str(repo_path.joinpath(filename)))
                 yield str(repo_path.joinpath(filename.replace(".ipynb", ".py")))
 
+    def get_setup_files(self) -> Iterator[str]:
+        """
+        Retrieve a list of repository setup/config files.
+
+        Returns:
+            Iterator[str]: List of absolute paths to setup/config files.
+        """
+        repo_path = Path(parse_folder_name(str(self.config.git.repository))).resolve()
+        for filename in track(self.tree.split("\n"), description="Getting setup files ..."):
+            if self.__is_blacklisted(filename):
+                logger.debug(f"File '{filename}' is ignored. Skipping")
+                continue
+            if self.__is_setupfile(filename):
+                yield str(repo_path.joinpath(filename))
+
     @classmethod
     def __is_blacklisted(cls, filename: str) -> bool:
         return any(pattern in filename for pattern in cls.IGNORE_LIST)
 
     @classmethod
     def __is_sourcefile(cls, filename: str) -> bool:
-        return any(filename.endswith(f".{pattern}") for pattern in cls.SOURCEFILE_EXTENSIONS_LIST)
+        return any(filename.endswith(f".{pattern}") for pattern in cls.CODE_EXTENSIONS)
+
+    @classmethod
+    def __is_setupfile(cls, filename: str) -> bool:
+        """
+        Determine whether a filename corresponds to a setup/config file.
+
+        Matching is permissive: checks for full-name matches or substring
+        occurrences for folder-based patterns (e.g. .github/workflows/).
+        """
+        return any(pattern in filename for pattern in cls.SETUP_FILE_PATTERNS)
 
     async def process_code_files(self, code_files: Iterable[str]) -> str:
         """
@@ -128,5 +229,42 @@ class CodeAnalyzer:
                     return f"Error analyzing {file_path}: {e}"
 
         tasks = [_process_single_file(file) for file in code_files]
+        results = await asyncio.gather(*tasks)
+        return "\n".join(results) + "\n"
+
+    async def process_setup_files(self, setup_files: Iterable[str]) -> str:
+        """
+        Analyze repository setup/config files asynchronously using the LLM.
+
+        Args:
+            setup_files (Iterable[str]): List of setup/config file paths.
+
+        Returns:
+            str: Aggregated analysis results for all setup files.
+        """
+        rate_limit = self.config.llm.rate_limit
+        semaphore = asyncio.Semaphore(rate_limit)
+
+        logger.info(f"Starting async analysis of setup files with rate limit {rate_limit}...")
+
+        async def _process_single_setup(file_path: str) -> str:
+            async with semaphore:
+                try:
+                    logger.debug(f"Getting setup file {file_path} content ...")
+                    file_content = await asyncio.to_thread(read_file, file_path)
+                    logger.info(f"Analyzing setup file {file_path} ...")
+                    response = await self.model_handler.async_request(
+                        PromptBuilder.render(
+                            self.prompts.get("validation.analyze_setup_file"),
+                            file_content=file_content,
+                        )
+                    )
+                    logger.debug(f"Finished {file_path} analysis")
+                    return response
+                except Exception as e:
+                    logger.error(f"Failed to process setup file {file_path}: {e}")
+                    return f"Error analyzing {file_path}: {e}"
+
+        tasks = [_process_single_setup(file) for file in setup_files]
         results = await asyncio.gather(*tasks)
         return "\n".join(results) + "\n"

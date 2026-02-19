@@ -5,7 +5,7 @@ INPUT DATA:
 {file_content}
 
 TASK:
-Analyze the attached source code/config file and extract the following information:
+Analyze the attached source code file and extract the following information:
 
 1. For each class defined in the file:
    - Class name
@@ -45,6 +45,30 @@ Return a valid JSON object with the following structure:
     }},
     ...
   }}
+}}
+"""
+
+analyze_setup_file = """
+INPUT DATA:
+{file_content}
+
+TASK:
+Analyze the attached setup or configuration file and extract structured information.
+
+1. Classify the file type (choose one of: "packaging", "dependencies", "build", "ci", "container", "config", "lock", "other").
+2. Provide a high-level description of the file's purpose.
+
+RULES:
+- Return ONLY a valid JSON object—no extra text or commentary.
+- Use JSON arrays for lists and JSON objects for mappings.
+- If a field is not present, use empty string "" or empty list/object as appropriate.
+
+OUTPUT FORMAT:
+Return a valid JSON object with the following structure:
+
+{{
+  "type": "string",
+  "summary": "string"
 }}
 """
 
@@ -177,17 +201,20 @@ OUTPUT FORMAT:
 }}
 """
 
+
 extract_details_from_thesis = """
 INPUT DATA:
 {doc_info}
 
 TASK:
-Identify implemented algorithms/modules/functions and performed evaluation experiments mentioned in report.
-Form the output containing exact quotes from the report best describing each of them, do not repeat yourself.
+Extract the most meaningful exact quotes that describe implemented algorithms/methods and the performed experiments.
+Prioritize quotes that name algorithms/models, describe methodology, cite datasets or metrics, or report numeric results—these convey the core meaning and importance.
 
 RULES:
-- Return ONLY a valid JSON object—no extra text, markdown, or commentary.
-- Do NOT include inline code from report into quotes list
+- Return ONLY a single JSON object and nothing else.
+- Preserve original wording
+- Exclude short low-value fragments (variable names, single-line code, raw tables). Prefer surrounding explanatory text.
+- Return at most 20 quotes. If none found, return {{"quotes": []}}.
 
 OUTPUT FORMAT:
 {{
@@ -200,27 +227,36 @@ validate_thesis_against_repo = """
 INPUT DATA:
 {quotes}
 {code_files_info}
+{setup_files_info}
 
 TASK:
-Compare the quotes from a Russian-language academic report (which describes implementation, experiments and results) with the actual implementation in the repository code.
+Compare the quotes from a Russian-language academic report (which describes implementation, experiments and results) with the actual implementation in the repository code and with the repository's setup/configuration files.
+
+Consider both inputs:
+- `code_files_info`: aggregated analysis of source files (implementation details, functions, algorithms).
+- `setup_files_info`: aggregated analysis of setup/config files (dependencies, build instructions, Dockerfiles, CI workflows).
 
 Use these criteria with fixed maximum scores and penalties:
 
- Implementation claims vs code (50 points)
+Implementation claims vs code (50 points)
 Penalties:
 - Claimed core algorithm not present in code (50)
 - Claimed feature present but implemented differently than described (5 each, cap 15)
 - Report claims use of specific library/framework not present in dependencies (5)
-C. Configuration and reproducibility (50 points)
+
+Configuration and reproducibility (50 points)
 Penalties:
 - Described configuration files absent or mismatched (5 each, cap 20)
 - No code is provided to reproduce a described experiment (10 each)
+- Dependency/lockfile mismatch or missing runtime spec (5 each, cap 15)
+
+When evaluating, consider whether setup files support reproducing the experiments: dependency versions, presence of lockfiles, explicit runtime (Python) versions, Docker images, build or CI workflows that run evaluations.
 
 Based on this comparison:
-1. Set "correspondence" to `true` if the code substantially implements what the documentation claims; otherwise `false`.
-2. Calculate a final "score" (0–100 points) which should be equal to sum of the scores from listed criteria
-3. Write a "breakdown" list in Russian, each item in this list should reference a quote from the input list without explicitly including it. For each quote create a tuple with an explanation whether or not it is confirmed by the code and, if not confirmed - calculate how many points are deducted and by which of the criteria.
-5. Write a brief "conclusion" in Russian.
+1. Set "correspondence" to `true` if the code and setup files together substantially implement what the documentation claims; otherwise `false`.
+2. Calculate a final "score" (0–100 points) which should be equal to sum of the scores from listed criteria.
+3. Write a "breakdown" list in Russian, each item in this list should reference a quote from the input list without explicitly including it. For each quote create a tuple with an explanation whether or not it is confirmed by the code/setup files and, if not confirmed - calculate how many points are deducted and by which of the criteria.
+4. Write a brief "conclusion" in Russian.
 
 RULES:
 - The report is in Russian—analyze its technical meaning directly; do NOT translate it unless necessary for reasoning.

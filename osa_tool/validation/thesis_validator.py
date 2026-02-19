@@ -114,15 +114,46 @@ class ThesisValidator(DocValidator):
         )
         logger.debug(response)
         return response['quotes']
+    
+    
+    async def validate(self, path_to_doc: str | None) -> dict | None:
+        """
+        Asynchronously validate a documentation file against the code repository.
+
+        Args:
+            path_to_doc (str): Path to the documentation file (.docx or .pdf) or None.
+
+        Returns:
+            dict | None: Validation result from the language model or None if an error occurred.
+        """
+        if not path_to_doc:
+            raise ValueError("Document is missing! Please pass it using --attachment argument.")
+        try:
+            doc_info = await self.process_doc(path_to_doc)
+
+            # Collect and analyze repository code files
+            code_files = await asyncio.to_thread(self.code_analyzer.get_code_files)
+            code_files_info = await self.code_analyzer.process_code_files(code_files)
+
+            # Collect and analyze repository setup/configuration files
+            setup_files = await asyncio.to_thread(self.code_analyzer.get_setup_files)
+            setup_files_info = await self.code_analyzer.process_setup_files(setup_files)
+
+            result = await self.validate_doc_against_repo(doc_info, code_files_info, setup_files_info)
+            return result
+        except Exception as e:
+            logger.error(f"Error while validating doc against repo: {e}")
+            return None
 
 
-    async def validate_doc_against_repo(self, doc_info: str, code_files_info: str) -> str:
+    async def validate_doc_against_repo(self, doc_info: str, code_files_info: str, setup_files_info: str) -> str:
         """
         Asynchronously validate the processed document content against the code repository.
 
         Args:
             doc_info (str): Processed document information.
             code_files_info (str): Aggregated code files analysis.
+            setup_files_info (str): Aggregated setup/config files analysis.
 
         Returns:
             str: Validation result from the language model.
@@ -134,9 +165,9 @@ class ThesisValidator(DocValidator):
         response = await self.model_handler.async_send_and_parse(
             PromptBuilder.render(
                 self.prompts.get("validation.validate_thesis_against_repo"),
-                # doc_info=doc_info,
                 quotes=quotes,
                 code_files_info=code_files_info,
+                setup_files_info=setup_files_info,
             ),
             parser=lambda raw: JsonProcessor.parse(raw),
         )
