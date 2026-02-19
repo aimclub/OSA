@@ -9,6 +9,8 @@ from typing import List, Dict, Callable
 
 import aiofiles
 import black
+import black.report
+import libcst as cst
 import dotenv
 import tiktoken
 import tomli
@@ -20,6 +22,7 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 from osa_tool.operations.codebase.docstring_generation.osa_treesitter import OSA_TreeSitter
 from osa_tool.operations.codebase.docstring_generation.topology import build_dependency_graph
+from osa_tool.operations.codebase.docstring_generation.docstring_transformer import DocstringTransformer
 
 dotenv.load_dotenv()
 
@@ -738,26 +741,15 @@ class DocGen(object):
 
         logger.info(f"Augmenting code for the file: {file}")
 
-        # iterating over given docstrings dictionary and choosing of insertion strategy.
-        for _type, generated in docstrings.items():
-
-            # note that "source_code" variable is from outer scope.
-            match _type:
-
-                case "methods":
-                    for docstring, m in generated:
-                        source_code = DocGen.insert_docstring_in_code(source_code, m, docstring, class_method=True)
-
-                case "functions":
-                    for docstring, f in generated:
-                        source_code = DocGen.insert_docstring_in_code(source_code, f, docstring)
-
-                case "classes":
-                    for docstring, c in generated:
-                        source_code = DocGen.insert_cls_docstring_in_code(source_code, c, docstring)
+        if not docstrings:
+            return {file: source_code}
+        
+        module = cst.parse_module(source_code)
+        transformer = DocstringTransformer(docstrings)
+        new_module = module.visit(transformer)
 
         # serialize the results to a dictionary
-        return {file: source_code}
+        return {file: new_module.code}
 
     async def _generate_docstrings_for_items(
         self, parsed_structure: dict, docstring_type: tuple | str, rate_limit: int = 10

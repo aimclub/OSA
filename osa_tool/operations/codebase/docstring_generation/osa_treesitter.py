@@ -200,11 +200,11 @@ class OSA_TreeSitter(object):
             if child.type == "block":
                 class_attributes = self._get_attributes(class_attributes, child)
                 docstring = self._get_docstring(child)
-                method_details = self._traverse_block(child, source_code, structure["imports"])
+                method_details = self._traverse_block(child, class_name, source_code, structure["imports"])
                 class_methods.extend(method_details)
 
             if child.type == "function_definition":
-                method_details = self._extract_function_details(child, source_code, structure["imports"])
+                method_details = self._extract_function_details(child, source_code, structure["imports"], class_name=class_name)
                 class_methods.append(method_details)
 
         structure["structure"].append(
@@ -543,7 +543,7 @@ class OSA_TreeSitter(object):
                         docstring = c_c.text.decode("utf-8")
         return docstring
 
-    def _traverse_block(self, block_node: tree_sitter.Node, source_code: bytes, imports: dict) -> list:
+    def _traverse_block(self, class_name: str, block_node: tree_sitter.Node, source_code: bytes, imports: dict) -> list:
         """Inner method traverses occurring in file's tree structure "block" node.
 
         Args:
@@ -562,11 +562,11 @@ class OSA_TreeSitter(object):
                         dec_list = self._get_decorators(dec_list, dec_child)
 
                     if dec_child.type == "function_definition":
-                        method_details = self._extract_function_details(dec_child, source_code, imports, dec_list)
+                        method_details = self._extract_function_details(dec_child, source_code, imports, dec_list, class_name)
                         methods.append(method_details)
 
             if child.type == "function_definition":
-                method_details = self._extract_function_details(child, source_code, imports)
+                method_details = self._extract_function_details(child, source_code, imports, class_name)
                 methods.append(method_details)
         return methods
 
@@ -576,6 +576,7 @@ class OSA_TreeSitter(object):
         source_code: str,
         imports: dict,
         dec_list: list = [],
+        class_name: str = None,
     ) -> dict:
         """Inner method extracts the details of "function_definition" node in file's tree structure.
 
@@ -642,6 +643,7 @@ class OSA_TreeSitter(object):
         method_calls = self._resolve_method_calls(function_node, source_code, imports)
 
         return {
+            "class_name": class_name,
             "method_name": method_name,
             "decorators": dec_list,
             "docstring": docstring,
