@@ -325,7 +325,7 @@ def test_resolve_import_unknown_alias_returns_empty():
     assert result == {}
 
 
-def test_resolve_method_calls_with_assignment(monkeypatch):
+def test_resolve_method_calls_with_assignment():
     # Arrange
     ts = OSA_TreeSitter(".")
     imports = {"m": {"module": "m", "path": "p"}}
@@ -343,12 +343,12 @@ def test_resolve_method_calls_with_assignment(monkeypatch):
     # Act
     result = ts._resolve_method_calls(function_node, "m.do()", imports)
 
-    # Assert
-    assert result[0]["module"] == "m"
-    assert result[0]["function"] == "do"
+    # Assert - returns list of function name strings
+    assert isinstance(result, list)
+    assert "m.do" in result
 
 
-def test_resolve_method_calls_direct_call(monkeypatch):
+def test_resolve_method_calls_direct_call():
     # Arrange
     ts = OSA_TreeSitter(".")
     imports = {"m": {"module": "m", "path": "p"}}
@@ -362,10 +362,11 @@ def test_resolve_method_calls_direct_call(monkeypatch):
     function_node = Node("function_definition", children=[block])
 
     # Act
-    result = ts._resolve_method_calls(function_node, "m.work", imports)
+    result = ts._resolve_method_calls(function_node, "m.work()", imports)
 
-    # Assert
-    assert result[0]["function"] == "work"
+    # Assert - returns list of function name strings
+    assert isinstance(result, list)
+    assert "m.work" in result
 
 
 def test_resolve_method_calls_no_block_returns_empty():
