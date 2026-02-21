@@ -200,7 +200,7 @@ class OSA_TreeSitter(object):
             if child.type == "block":
                 class_attributes = self._get_attributes(class_attributes, child)
                 docstring = self._get_docstring(child)
-                method_details = self._traverse_block(child, class_name, source_code, structure["imports"])
+                method_details = self._traverse_block(class_name, child, source_code, structure["imports"])
                 class_methods.extend(method_details)
 
             if child.type == "function_definition":

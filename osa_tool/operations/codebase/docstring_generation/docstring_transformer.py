@@ -37,7 +37,7 @@ class DocstringTransformer(CSTTransformer):
 
                 case "classes":
                     for docstring, c in generated:
-                        targets[c["class_name"]] = docstring
+                        targets[c] = docstring
 
         return targets
 
