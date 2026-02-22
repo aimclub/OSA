@@ -157,7 +157,10 @@ def main():
         # Requirements generation
         if plan.get("requirements"):
             rich_section("Requirements generation")
-            RequirementsGenerator(config_manager).generate()
+            try:
+                RequirementsGenerator(config_manager).generate()
+            except Exception as e:
+                logger.error(f"Requirements generation failed and will be skipped. Error: {e}")
 
         # Readme generation
         if plan.get("readme"):
