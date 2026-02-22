@@ -78,14 +78,13 @@ class ReviewerAgent(BaseAgent):
         state.active_request_source = "reviewer"
 
         # Enforce max review cycles for Planner -> Executor -> Reviewer loop
-        state.review_cycle_count = getattr(state, "review_cycle_count", 0) + 1
-        max_cycles = getattr(state, "max_review_cycles", 3)
-        if state.review_cycle_count >= max_cycles:
+        state.review_cycle_count = state.review_cycle_count + 1
+        if state.review_cycle_count >= state.max_review_cycles:
             self._reset_clarification(state)
             state.review_cycles_exhausted = True
             state.approval = True
             logger.warning(
-                f"Max review cycles reached ({state.review_cycle_count}/{max_cycles}). Routing to finalizer."
+                f"Max review cycles reached ({state.review_cycle_count}/{state.max_review_cycles}). Routing to finalizer."
             )
 
         logger.debug(state)

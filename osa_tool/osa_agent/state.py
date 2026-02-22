@@ -74,10 +74,8 @@ class OSAState(BaseModel):
         return None
 
     def __str__(self):
-        plan_summary = [f"{t.id}: args={t.args}" for t in getattr(self, "plan", [])]
-        missing_args_summary = [
-            f"{item['task_id']}::{item['field']}" for item in getattr(self, "missing_arguments", [])
-        ]
+        plan_summary = [f"{t.id}: args={t.args}" for t in self.plan]
+        missing_args_summary = [f"{item['task_id']}::{item['field']}" for item in self.missing_arguments]
 
         return (
             f"OSAState(\n"
@@ -93,6 +91,7 @@ class OSAState(BaseModel):
             f"  current_step_index={self.current_step_index},\n"
             f"  status={self.status},\n"
             f"  plan_tasks=[{', '.join(plan_summary)}],\n"
+            f"  plan_reasoning={self.plan_reasoning},\n"
             f"  missing_arguments=[{', '.join(missing_args_summary)}],\n"
             f"  review_feedback={self.review_feedback},\n"
             f"  review_requires_new_intent={self.review_requires_new_intent},\n"

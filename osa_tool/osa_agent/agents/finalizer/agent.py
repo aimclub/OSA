@@ -55,6 +55,7 @@ class FinalizerAgent(BaseAgent):
         # Delete repository after processing
         if self.context.delete_repo:
             delete_repository(state.repo_url)
+            logger.info(f"Cloned repository has been deleted: {state.repo_url}")
 
         state.status = AgentStatus.COMPLETED
         logger.debug(f"Session memory:\n{state.session_memory}")
