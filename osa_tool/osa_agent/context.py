@@ -11,7 +11,13 @@ class AgentContext:
     do not need to resolve or construct these dependencies themselves.
     """
 
-    def __init__(self, agent_config: OSAConfig):
+    def __init__(self, agent_config: OSAConfig) -> None:
+        """
+        Initialize the context from the OSA configuration.
+
+        Sets agent_config, config_manager, git_agent, metadata, workflow_manager,
+        prompts, create_fork, create_pull_request, and delete_repo from the given config.
+        """
         self.agent_config = agent_config
         self.config_manager = self.agent_config.config_manager
         self.git_agent = self.agent_config.git_agent
@@ -28,10 +34,10 @@ class AgentContext:
         Get a model handler configured for a specific task type.
 
         Args:
-            task_type: Type of task (docstring, readme, validation, general)
+            task_type: Type of task (docstring, readme, validation, general).
 
         Returns:
-            ModelHandler instance configured for the specified task
+            ModelHandler instance configured for the specified task.
         """
         model_settings = self.config_manager.get_model_settings(task_type)
         return ModelHandlerFactory.build(model_settings)

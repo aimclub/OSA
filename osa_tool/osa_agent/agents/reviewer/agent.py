@@ -21,8 +21,15 @@ class ReviewerAgent(BaseAgent):
     name = "Reviewer"
 
     def run(self, state: OSAState) -> OSAState:
+        """
+        Ask the user to approve or reject the result, then optionally analyze feedback.
+
+        If the user approves, state.approval is set and the graph routes to finalizer.
+        If not, collects feedback, runs LLM to extract intent/scope changes, and routes back to planner.
+        """
         rich_section("Reviewer Agent")
         state.active_agent = self.name
+        logger.debug("Reviewer started; waiting for user approval")
 
         state.status = AgentStatus.WAITING_FOR_USER
 
@@ -42,16 +49,17 @@ class ReviewerAgent(BaseAgent):
 
         answers = wait_for_user_clarification(state)
         approval_answer = answers.get("accept", "").strip().lower()
-        logger.debug(f"User approval answer: '{approval_answer}'")
+        logger.debug("User approval answer: '%s'", approval_answer)
 
         if approval_answer in {"yes", "y"}:
             state.approval = True
             self._reset_clarification(state)
             state.status = AgentStatus.ANALYZING
-            logger.info("User approved the result. Moving to Finalizer.")
+            logger.info("User approved the result; routing to Finalizer")
             return state
 
         state.approval = False
+        logger.info("User requested changes; collecting feedback")
         state.clarification_payload = {
             "question": "Please describe what needs to be improved.",
             "fields": [
@@ -65,9 +73,9 @@ class ReviewerAgent(BaseAgent):
 
         feedback_answers = wait_for_user_clarification(state)
         feedback_text = feedback_answers.get("feedback", "").strip()
-        logger.debug(f"User feedback text: '{feedback_text}'")
+        logger.debug("User feedback: %s", feedback_text)
 
-        logger.info("Received user feedback. Passing it to LLM ReviewerDecision.")
+        logger.info("Analyzing feedback with LLM")
         state.review_feedback = feedback_text
         decision = self._analyze_feedback_with_llm(state, feedback_text)
 
@@ -84,10 +92,12 @@ class ReviewerAgent(BaseAgent):
             state.review_cycles_exhausted = True
             state.approval = True
             logger.warning(
-                f"Max review cycles reached ({state.review_cycle_count}/{state.max_review_cycles}). Routing to finalizer."
+                "Max review cycles reached (%s/%s); routing to finalizer",
+                state.review_cycle_count,
+                state.max_review_cycles,
             )
 
-        logger.debug(state)
+        logger.debug("State after reviewer: %s", state)
         return state
 
     def _analyze_feedback_with_llm(self, state: OSAState, feedback_text: str) -> ReviewerDecision:
@@ -110,11 +120,10 @@ class ReviewerAgent(BaseAgent):
             current_intent=state.intent,
             current_task_scope=state.task_scope,
         )
-        logger.debug(f"Reviewer LLM prompt:\n{prompt}")
+        logger.debug("Reviewer LLM prompt: %s", prompt)
 
-        logger.info("Running Reviewer LLM decision parser...")
         decision: ReviewerDecision = self._run_llm(prompt, parser, system_message)
-        logger.debug(f"ReviewerDecision received: {decision}")
+        logger.debug("ReviewerDecision: %s", decision)
         return decision
 
     def _apply_decision(self, state: OSAState, decision: ReviewerDecision) -> OSAState:
@@ -135,10 +144,10 @@ class ReviewerAgent(BaseAgent):
             state.intent = decision.new_intent
             if decision.new_task_scope is not None:
                 state.task_scope = decision.new_task_scope
-            logger.info(f"Reviewer set NEW INTENT: {state.intent}, scope={state.task_scope}")
+            logger.info("Reviewer set new intent: %s, scope=%s", state.intent, state.task_scope)
         elif decision.requires_new_task_scope and decision.new_task_scope is not None:
             state.task_scope = decision.new_task_scope
-            logger.info(f"Reviewer UPDATED task_scope: {state.task_scope}")
+            logger.info("Reviewer updated task_scope: %s", state.task_scope)
 
         state.reviewer_summary = decision.reviewer_summary
 

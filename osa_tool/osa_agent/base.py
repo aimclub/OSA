@@ -1,4 +1,7 @@
 from abc import ABC, abstractmethod
+from typing import Any, ClassVar, Optional
+
+from langchain_core.output_parsers import PydanticOutputParser
 
 from osa_tool.osa_agent.context import AgentContext
 from osa_tool.osa_agent.state import OSAState
@@ -14,17 +17,17 @@ class BaseAgent(ABC):
     and operates on a shared AgentContext and mutable OSAState.
     """
 
-    name: str
+    name: ClassVar[str]
 
-    def __init__(self, context: AgentContext):
+    def __init__(self, context: AgentContext) -> None:
         """
         Initialize the agent with a shared execution context.
 
         Args:
-            context (AgentContext): Shared context containing configuration,
+            context: Shared context containing configuration,
                 repository metadata, model handlers, and workflow utilities.
         """
-        self.context = context
+        self.context: AgentContext = context
 
     @abstractmethod
     def run(self, state: OSAState) -> OSAState:
@@ -32,17 +35,43 @@ class BaseAgent(ABC):
         Execute the agent's logic and return an updated state.
 
         Args:
-            state (OSAState): Current workflow state.
+            state: Current workflow state.
 
         Returns:
-            OSAState: Updated workflow state after agent execution.
+            Updated workflow state after agent execution.
         """
         ...
 
-    def _render(self, template_key: str, **kwargs) -> str:
+    def _render(self, template_key: str, **kwargs: Any) -> str:
+        """
+        Render a prompt template from the context prompts registry.
+
+        Args:
+            template_key: Key used to look up the template in context.prompts.
+            **kwargs: Variables to pass into the template.
+
+        Returns:
+            Rendered prompt string.
+        """
         return PromptBuilder.render(self.context.prompts.get(template_key), **kwargs)
 
-    def _run_llm(self, prompt, parser, system_message):
+    def _run_llm(
+        self,
+        prompt: str,
+        parser: PydanticOutputParser,
+        system_message: Optional[str] = None,
+    ) -> Any:
+        """
+        Run the general model handler with the given prompt and parser.
+
+        Args:
+            prompt: User or task-specific prompt text.
+            parser: Pydantic output parser to parse the LLM response.
+            system_message: Optional system message for the LLM.
+
+        Returns:
+            Parsed output from the LLM (type depends on the parser's target model).
+        """
         return self.context.get_model_handler("general").run_chain(
             prompt=prompt,
             parser=parser,

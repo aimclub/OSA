@@ -60,7 +60,7 @@ class IntentRouterAgent(BaseAgent):
 
         decision: IntentDecision = self._run_llm(prompt, parser, system_message)
 
-        logger.info(f"Intent decision: {decision.intent}, {decision.task_scope}")
+        logger.info("Intent decision: intent=%s, task_scope=%s, confidence=%s", decision.intent, decision.task_scope, decision.confidence)
 
         state.intent = decision.intent
         state.task_scope = decision.task_scope
@@ -68,6 +68,7 @@ class IntentRouterAgent(BaseAgent):
 
         # Low confidence → wait for user clarification
         if decision.confidence < 0.5 or decision.intent == "unknown":
+            logger.info("Low confidence or unknown intent; requesting user clarification")
             state.status = AgentStatus.WAITING_FOR_USER
 
             state.clarification_required = True
@@ -89,6 +90,7 @@ class IntentRouterAgent(BaseAgent):
                 ],
             }
         else:
+            logger.debug("Intent accepted; proceeding to repo analysis")
             state.status = AgentStatus.ANALYZING
             self._reset_clarification(state)
 
@@ -104,7 +106,7 @@ class IntentRouterAgent(BaseAgent):
                 "prompt": prompt,
             }
         )
-        logger.debug(state)
-        logger.info(f"Updated state after intent_router: {state.status}")
+        logger.debug("State after intent_router: %s", state)
+        logger.info("Intent router completed; status=%s", state.status)
 
         return state

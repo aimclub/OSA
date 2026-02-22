@@ -9,6 +9,10 @@ from osa_tool.tools.repository_analysis.models import RepositoryData
 
 
 class OSAState(BaseModel):
+    """
+    Mutable workflow state shared by all agents in the OSA graph.
+    """
+
     # User input
     repo_url: Optional[str] = None
     attachment: Optional[str] = None
@@ -67,7 +71,15 @@ class OSAState(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def get_task(self, task_id: str) -> Optional[Task]:
-        """Returns a Task by its id or None if not found"""
+        """
+        Return a task from the plan by its id.
+
+        Args:
+            task_id: The task identifier (typically the operation name).
+
+        Returns:
+            The matching Task, or None if not found.
+        """
         for task in self.plan:
             if task.id == task_id:
                 return task

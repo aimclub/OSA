@@ -48,40 +48,39 @@ class PlannerAgent(BaseAgent):
         state.active_agent = self.name
 
         if state.status == AgentStatus.WAITING_FOR_USER and state.clarification_agent == self.name:
-            logger.info("Planner handling missing argument clarification (loop)...")
+            logger.info("Planner handling missing argument clarification (loop)")
             self._clarification_loop(state)
             return state
 
         state.status = AgentStatus.ANALYZING
-        logger.info("Planner started.")
+        logger.info("Planner started")
         register_all_operations()
 
         # Maintain plan history when re-planning after review: append last plan or clear for new request
         if state.active_request_source == "reviewer" and state.plan:
             state.plan_history = list(state.plan_history) + [[t.model_dump() for t in state.plan]]
-            logger.debug(f"Appended current plan to plan_history ({len(state.plan_history)} prior plans).")
+            logger.debug("Appended current plan to plan_history (%s prior plans)", len(state.plan_history))
         else:
             state.plan_history = []
-            logger.debug("Cleared plan_history (new request or first plan).")
+            logger.debug("Cleared plan_history (new request or first plan)")
 
         available_ops = self._get_available_operations(state)
-        logger.debug(f"Available operations: {[op.name for op in available_ops]}")
+        logger.debug("Available operations: %s", [op.name for op in available_ops])
 
         decision = self._make_decision(state, available_ops)
         state.plan_reasoning = (decision.reasoning or "").strip()
         selected_ops = self._select_operations(decision)
-        logger.info(f"LLM selected operations: {[op.name for op in selected_ops]}")
+        logger.info("LLM selected operations: %s", [op.name for op in selected_ops])
 
         self._build_execution_plan(state, selected_ops)
-        logger.debug(f"Initial plan tasks: {[t.id for t in state.plan]}")
+        logger.debug("Initial plan tasks: %s", [t.id for t in state.plan])
 
         detect_args_prompt = self._detect_additional_arguments(state)
-        logger.debug(f"Argument detection prompt used: {detect_args_prompt}")
+        logger.debug("Argument detection prompt used: %s", detect_args_prompt)
 
         self._fill_default_args(state)
-        logger.debug(
-            "Task args after filling defaults:\n" + "\n".join(f"{task.id}: {task.args}" for task in state.plan)
-        )
+        args_summary = "\n".join("%s: %s" % (task.id, task.args) for task in state.plan)
+        logger.debug("Task args after filling defaults:\n%s", args_summary)
 
         if self._check_missing_args(state):
             return state
@@ -106,15 +105,23 @@ class PlannerAgent(BaseAgent):
                 "new_status": state.status,
             }
         )
-        logger.debug(f"Session memory updated with Planner step.")
-        logger.debug(state)
-        logger.info(f"Planner completed. Selected {len(selected_ops)} operations, built {len(state.plan)} tasks.")
+        logger.debug("Session memory updated with Planner step")
+        logger.debug("State after planning: %s", state)
+        logger.info("Planner completed: %s tasks", len(state.plan))
 
         return state
 
     @staticmethod
     def _get_available_operations(state: OSAState) -> List[Operation]:
-        """Retrieves all applicable operations"""
+        """
+        Retrieve all operations applicable to the current state.
+
+        Args:
+            state: Current workflow state.
+
+        Returns:
+            List of Operation instances that can run in this state.
+        """
         return OperationRegistry.applicable(state)
 
     @staticmethod
@@ -153,7 +160,7 @@ class PlannerAgent(BaseAgent):
             repo_data=state.repo_data,
             available_operations="\n".join(f"- {op.name}: {op.description}" for op in available_ops),
         )
-        logger.debug(f"Planner _make_decision prompt:\n{prompt}")
+        logger.debug("Planner _make_decision prompt: %s ", prompt)
         return self._run_llm(prompt, parser, system_message)
 
     @staticmethod
@@ -224,20 +231,20 @@ class PlannerAgent(BaseAgent):
         )
 
         response = self._run_llm(prompt, parser, system_message)
-        logger.debug(f"_detect_additional_arguments LLM output: {response.root}")
+        logger.debug("_detect_additional_arguments LLM output: %s", response.root)
 
         for op_name, args in response.root.items():
             task = state.get_task(op_name)
             if not task:
-                logger.warning(f"_detect_additional_arguments: unknown operation '{op_name}' in LLM output")
+                logger.warning("_detect_additional_arguments: unknown operation '%s' in LLM output", op_name)
                 continue
 
             if not isinstance(args, dict):
-                logger.warning(f"_detect_additional_arguments: invalid args for '{op_name}': {args}")
+                logger.warning("_detect_additional_arguments: invalid args for '%s': %s", op_name, args)
                 continue
 
             task.args.update(args)
-            logger.debug(f"_detect_additional_arguments -> task '{task.id}' updated args: {task.args}")
+            logger.debug("_detect_additional_arguments -> task '%s' updated args: '%s'", task.id, task.args)
 
         return prompt
 
@@ -257,7 +264,7 @@ class PlannerAgent(BaseAgent):
             default_args_obj = op.args_schema()
             for k, v in default_args_obj.model_dump().items():
                 task.args[k] = v
-                logger.debug(f"_fill_default_args -> task '{task.id}' field '{k}' set to default '{v}'")
+                logger.debug("_fill_default_args -> task '%s' field '%s' set to default: %s", task.id, k, v)
 
     def _check_missing_args(self, state: OSAState) -> bool:
         """
@@ -296,7 +303,7 @@ class PlannerAgent(BaseAgent):
                         "required": True,
                     }
                 )
-                logger.debug(f"_task_with_unfilled_required_args: {missing[-1]}")
+                logger.debug("_task_with_unfilled_required_args: '%s'", missing[-1])
 
         if not missing:
             return False
@@ -321,12 +328,13 @@ class PlannerAgent(BaseAgent):
         }
 
         state.status = AgentStatus.WAITING_FOR_USER
-        logger.warning(f"Some arguments are missing: {[item['field'] for item in missing]}")
-        logger.debug(f"Agents state after detecting missing arguments: {state}")
+        missing_fields = [item["field"] for item in missing]
+        logger.warning("Missing required arguments: %s", missing_fields)
+        logger.debug("State after detecting missing arguments: %s", state)
 
         return True
 
-    def _clarification_loop(self, state: OSAState):
+    def _clarification_loop(self, state: OSAState) -> None:
         """
         Loop to handle missing arguments clarification from the user.
         Uses LLM to validate/convert user's answers into proper task.args.
@@ -334,11 +342,9 @@ class PlannerAgent(BaseAgent):
         """
 
         attempts = 0
-        max_attempts = getattr(state, "clarification_attempts", 3)
-
-        while attempts < max_attempts:
+        while attempts < state.clarification_attempts:
             attempts += 1
-            logger.info(f"Clarification attempt {attempts} of {max_attempts}")
+            logger.info("Clarification attempt %s of %s", attempts, state.clarification_attempts)
 
             # Ask user for missing arguments
             answers = wait_for_user_clarification(state)
@@ -354,7 +360,7 @@ class PlannerAgent(BaseAgent):
                 state.missing_arguments = []
                 self._reset_clarification(state)
                 state.status = AgentStatus.ANALYZING
-                logger.info("All missing arguments filled successfully.")
+                logger.info("All missing arguments filled successfully")
                 return
 
             # Update state for next attempt
@@ -366,15 +372,15 @@ class PlannerAgent(BaseAgent):
                     for item in still_missing
                 ],
             }
-            logger.warning(f"Still missing arguments after attempt {attempts}: {still_missing}")
+            logger.warning("Still missing arguments after attempt %s: %s", attempts, still_missing)
 
         # Max attempts reached
         state.status = AgentStatus.ANALYZING
         self._reset_clarification(state)
-        logger.error("Max clarification attempts reached. Some arguments are still missing.")
-        logger.debug(f"Agents state after failing args clarification: {state}")
+        logger.error("Max clarification attempts reached; some arguments still missing")
+        logger.debug("State after failing args clarification: %s", state)
 
-    def _apply_clarification_via_llm(self, state: OSAState, answers: dict):
+    def _apply_clarification_via_llm(self, state: OSAState, answers: dict) -> None:
         """
         Use LLM to fill missing arguments AFTER user clarification.
         This prevents re-running the full planning and only updates arguments.
@@ -397,24 +403,24 @@ class PlannerAgent(BaseAgent):
             missing=missing_fields_str,
             user_answers=answers_str,
         )
-        logger.debug(f"Argument clarification prompt used: {prompt}")
+        logger.debug("Argument clarification prompt: %s", prompt)
 
         response = self._run_llm(prompt, parser, system_message)
-        logger.debug(f"LLM clarification fill output: {response.root}")
+        logger.debug("LLM clarification fill output: %s", response.root)
 
         # Update tasks with the LLM-processed arguments
         for op_name, args in response.root.items():
             task = state.get_task(op_name)
             if not task:
-                logger.warning(f"_apply_clarification_via_llm: unknown operation '{op_name}' in LLM output")
+                logger.warning("_apply_clarification_via_llm: unknown operation '%s' in LLM output", op_name)
                 continue
 
             if not isinstance(args, dict):
-                logger.warning(f"_apply_clarification_via_llm: invalid args for '{op_name}': {args}")
+                logger.warning("_apply_clarification_via_llm: invalid args for '%s': %s", op_name, args)
                 continue
 
             task.args.update(args)
-            logger.info(f"Task '{task.id}' updated with clarified args: {task.args}")
+            logger.info("Task '%s' updated with clarified args: %s", task.id, task.args)
 
     @staticmethod
     def _task_has_arg(state: OSAState, missing_item: dict) -> bool:
@@ -448,7 +454,10 @@ class PlannerAgent(BaseAgent):
         - Adds default info for clarity
 
         Args:
-            field (FieldInfo): The Pydantic field info object.
+            field: The Pydantic field info object.
+
+        Returns:
+            A single string describing the argument for prompts or UI.
         """
         desc = field.description or ""
 

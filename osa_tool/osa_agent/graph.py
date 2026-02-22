@@ -1,3 +1,5 @@
+from typing import Any
+
 from langgraph.constants import END
 from langgraph.graph import StateGraph
 
@@ -12,7 +14,7 @@ from osa_tool.osa_agent.context import AgentContext
 from osa_tool.osa_agent.state import OSAState
 
 
-def build_graph(context: AgentContext):
+def build_graph(context: AgentContext) -> Any:
     """
     Build and compile the OSA agent execution graph.
 
