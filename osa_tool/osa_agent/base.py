@@ -48,3 +48,15 @@ class BaseAgent(ABC):
             parser=parser,
             system_message=system_message,
         )
+
+    @staticmethod
+    def _reset_clarification(state: OSAState) -> None:
+        """
+        Reset all clarification-related fields in the given state to their default values,
+        except for clarification_attempts.
+        """
+        state.clarification_required = False
+        state.clarification_agent = None
+        state.clarification_type = "single_question"
+        state.clarification_payload = None
+        state.clarification_answer = None

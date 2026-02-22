@@ -49,11 +49,19 @@ class OSAState(BaseModel):
     # Artifacts & memory
     artifacts: Dict[str, Any] = Field(default_factory=dict)
     session_memory: List[Dict[str, Any]] = Field(default_factory=list)
+    plan_history: List[List[Dict[str, Any]]] = Field(default_factory=list)
 
     # Reviewer feedback
     review_feedback: Optional[str] = None
     review_requires_new_intent: bool = False
+    review_requires_new_task_scope: bool = False
+    reviewer_summary: Optional[str] = None
+    previous_plan_status: Optional[List[Task]] = None
     approval: bool = False
+    # Limit Planner -> Executor -> Reviewer loop
+    max_review_cycles: int = 3
+    review_cycle_count: int = 0
+    review_cycles_exhausted: bool = False
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -87,6 +95,8 @@ class OSAState(BaseModel):
             f"  missing_arguments=[{', '.join(missing_args_summary)}],\n"
             f"  review_feedback={self.review_feedback},\n"
             f"  review_requires_new_intent={self.review_requires_new_intent},\n"
-            f"  approval={self.approval}\n"
+            f"  approval={self.approval},\n"
+            f"  review_cycle_count={self.review_cycle_count},\n"
+            f"  max_review_cycles={self.max_review_cycles}\n"
             f")"
         )

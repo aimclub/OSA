@@ -90,8 +90,7 @@ class IntentRouterAgent(BaseAgent):
             }
         else:
             state.status = AgentStatus.ANALYZING
-            state.clarification_required = False
-            state.clarification_payload = None
+            self._reset_clarification(state)
 
         state.session_memory.append(
             {

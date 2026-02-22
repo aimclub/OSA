@@ -56,6 +56,14 @@ class PlannerAgent(BaseAgent):
         logger.info("Planner started.")
         register_all_operations()
 
+        # Maintain plan history when re-planning after review: append last plan or clear for new request
+        if state.active_request_source == "reviewer" and state.plan:
+            state.plan_history = list(state.plan_history) + [[t.model_dump() for t in state.plan]]
+            logger.debug(f"Appended current plan to plan_history ({len(state.plan_history)} prior plans).")
+        else:
+            state.plan_history = []
+            logger.debug("Cleared plan_history (new request or first plan).")
+
         available_ops = self._get_available_operations(state)
         logger.debug(f"Available operations: {[op.name for op in available_ops]}")
 
@@ -108,6 +116,20 @@ class PlannerAgent(BaseAgent):
         """Retrieves all applicable operations"""
         return OperationRegistry.applicable(state)
 
+    @staticmethod
+    def _format_plan_history_section(plan_history: List[List[dict]]) -> str:
+        """
+        Format plan_history for the planner prompt so the LLM sees which plans were already tried.
+        Returns an empty string when there is no history.
+        """
+        if not plan_history:
+            return ""
+        lines = []
+        for i, plan in enumerate(plan_history, start=1):
+            task_ids = [t.get("id", "?") for t in plan if isinstance(t, dict)]
+            lines.append(f"- Cycle {i}: {', '.join(task_ids)}")
+        return "Previous plans from this review loop (not approved by the user):\n" + "\n".join(lines) + "\n\n"
+
     def _make_decision(self, state: OSAState, available_ops: List[Operation]) -> PlannerDecision:
         """
         Use the language model to decide which operations should be executed.
@@ -126,6 +148,7 @@ class PlannerAgent(BaseAgent):
             active_request=state.active_request,
             intent=state.intent,
             task_scope=state.task_scope,
+            plan_history_section=self._format_plan_history_section(state.plan_history),
             repo_data=state.repo_data,
             available_operations="\n".join(f"- {op.name}: {op.description}" for op in available_ops),
         )
@@ -346,8 +369,7 @@ class PlannerAgent(BaseAgent):
 
         # Max attempts reached
         state.status = AgentStatus.ANALYZING
-        state.clarification_required = False
-        state.clarification_payload = None
+        self._reset_clarification(state)
         logger.error("Max clarification attempts reached. Some arguments are still missing.")
         logger.debug(f"Agents state after failing args clarification: {state}")
 
