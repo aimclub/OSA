@@ -60,7 +60,12 @@ class IntentRouterAgent(BaseAgent):
 
         decision: IntentDecision = self._run_llm(prompt, parser, system_message)
 
-        logger.info("Intent decision: intent=%s, task_scope=%s, confidence=%s", decision.intent, decision.task_scope, decision.confidence)
+        logger.info(
+            "Intent decision: intent=%s, task_scope=%s, confidence=%s",
+            decision.intent,
+            decision.task_scope,
+            decision.confidence,
+        )
 
         state.intent = decision.intent
         state.task_scope = decision.task_scope
