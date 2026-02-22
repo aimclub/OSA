@@ -450,7 +450,7 @@ class PlannerAgent(BaseAgent):
         Args:
             field (FieldInfo): The Pydantic field info object.
         """
-        desc = field.description
+        desc = field.description or ""
 
         # Check if type is Literal → list allowed values
         origin = get_origin(field.annotation)

@@ -35,7 +35,7 @@ class FinalizerAgent(BaseAgent):
         summary = self._summarize_events(state, events) if events else ""
 
         # PR or logs
-        if create_pr and create_pr:
+        if create_fork and create_pr:
             logger.info("Publishing changes")
             changes = self.context.git_agent.commit_and_push_changes(force=True)
 
