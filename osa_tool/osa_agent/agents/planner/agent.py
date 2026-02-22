@@ -68,6 +68,7 @@ class PlannerAgent(BaseAgent):
         logger.debug(f"Available operations: {[op.name for op in available_ops]}")
 
         decision = self._make_decision(state, available_ops)
+        state.plan_reasoning = (decision.reasoning or "").strip()
         selected_ops = self._select_operations(decision)
         logger.info(f"LLM selected operations: {[op.name for op in selected_ops]}")
 
@@ -126,7 +127,7 @@ class PlannerAgent(BaseAgent):
             return ""
         lines = []
         for i, plan in enumerate(plan_history, start=1):
-            task_ids = [t.get("id", "?") for t in plan if isinstance(t, dict)]
+            task_ids = [t.get("id", "?") for t in plan]
             lines.append(f"- Cycle {i}: {', '.join(task_ids)}")
         return "Previous plans from this review loop (not approved by the user):\n" + "\n".join(lines) + "\n\n"
 
@@ -152,7 +153,7 @@ class PlannerAgent(BaseAgent):
             repo_data=state.repo_data,
             available_operations="\n".join(f"- {op.name}: {op.description}" for op in available_ops),
         )
-
+        logger.debug(f"Planner _make_decision prompt:\n{prompt}")
         return self._run_llm(prompt, parser, system_message)
 
     @staticmethod
@@ -351,7 +352,7 @@ class PlannerAgent(BaseAgent):
             if not still_missing:
                 # All arguments filled successfully
                 state.missing_arguments = []
-                state.clarification_required = False
+                self._reset_clarification(state)
                 state.status = AgentStatus.ANALYZING
                 logger.info("All missing arguments filled successfully.")
                 return

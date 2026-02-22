@@ -106,7 +106,7 @@ class ReviewerAgent(BaseAgent):
         system_message = self._render("system_messages.reviewer", safe=True)
 
         prompt = self._render(
-            "osa_agent.reviewer",
+            "osa_agent.reviewer_user_prompt",
             feedback_text=feedback_text,
             current_intent=state.intent,
             current_task_scope=state.task_scope,

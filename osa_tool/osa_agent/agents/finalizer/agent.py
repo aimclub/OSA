@@ -57,6 +57,7 @@ class FinalizerAgent(BaseAgent):
             delete_repository(state.repo_url)
 
         state.status = AgentStatus.COMPLETED
+        logger.debug(f"Session memory:\n{state.session_memory}")
 
         return state
 

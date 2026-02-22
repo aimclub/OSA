@@ -205,12 +205,6 @@ class ExecutorAgent(BaseAgent):
 
         console.print(table)
 
-        planner_memory = next(
-            (event for event in reversed(state.session_memory) if event.get("agent") == "Planner"), None
-        )
-
-        if planner_memory and "decision" in planner_memory:
-            reasoning = planner_memory["decision"].get("reasoning")
-            if reasoning:
-                console.print("\n[bold cyan]Planner Reasoning[/]:")
-                console.print(f"[dim]{reasoning}[/]")
+        if state.plan_reasoning:
+            console.print("\n[bold cyan]Planner Reasoning[/]:")
+            console.print(f"[dim]{state.plan_reasoning}[/]")

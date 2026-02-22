@@ -43,6 +43,7 @@ class OSAState(BaseModel):
 
     # Planning
     plan: List[Task] = Field(default_factory=list)
+    plan_reasoning: Optional[str] = None
     missing_arguments: list = Field(default_factory=list)
     current_step_index: Optional[int] = None
 
