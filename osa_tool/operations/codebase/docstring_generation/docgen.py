@@ -216,7 +216,7 @@ class DocGen(object):
             "- A list of its methods without details if class has them otherwise do not mention a list of methods.\n"
             "- A list of its attributes that explicitly mentioned at the constructor method's docstring (can be adressed as attributes, properties, class fields, etc.), without types if class or constructor method has them otherwise do not mention a list of attributes.\n"
             "- A brief summary of what its methods and attributes do if one has them for.\n\n"
-            "Return only docstring without any quotation. Follow such format:\n <triple_quotes>\ncontent\n<triple_quotes>"
+            "Return only docstring without any quotation."
         )
 
         if len(class_details[1]) > 0:
@@ -230,7 +230,8 @@ class DocGen(object):
                 prompt += f"- {method['method_name']}: {method['docstring']}\n"
 
         async with semaphore:
-            return await self.model_handler.async_request(prompt)
+            docstring = await self.model_handler.async_request(prompt)
+            return docstring.strip('"""')
 
     async def update_class_documentation(self, class_details: list, semaphore: asyncio.Semaphore) -> str:
         """
@@ -247,7 +248,7 @@ class DocGen(object):
             desc, other = class_details[-1].split("\n\n", maxsplit=1)
             desc = desc.replace('"', "")
         except:
-            return class_details[-1]
+            return class_details[-1].strip().strip('"').strip("'")
 
         old_desc = desc.strip('"\n ')
         prompt = (
@@ -260,8 +261,9 @@ class DocGen(object):
 
         async with semaphore:
             new_desc = await self.model_handler.async_request(prompt)
+            new_desc = new_desc.strip().strip('"').strip("'")
 
-        return "\n\n".join(['"""\n' + new_desc, other])
+        return "\n\n".join([new_desc, other])
 
     async def generate_method_documentation(
         self,
