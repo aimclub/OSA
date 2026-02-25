@@ -809,7 +809,11 @@ async def test_generate_docstrings_for_all_types(mock_config_manager):
 def test_perform_code_augmentations(mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)
-    args = ("file1.py", "def foo():\n\tdo_stuff()", {"functions": [("doc1", {"method_name": "foo"})], "methods": [], "classes": []})
+    args = (
+        "file1.py",
+        "def foo():\n\tdo_stuff()",
+        {"functions": [("doc1", {"method_name": "foo"})], "methods": [], "classes": []},
+    )
 
     # Act
     result = docgen._perform_code_augmentations(args)
