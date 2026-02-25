@@ -195,5 +195,6 @@ class ReportGenerator:
     def __build_table(self, experiments) -> Iterable[Paragraph]:
         return (Paragraph(f"""<b>Experiment {i + 1}.</b>
                 <b>Formulation stated: </b><p>"{experiment.description_from_paper}"</p>
-                <b>Assessment: </b><p>{experiment.assessment}</p>
+                <b>Implementation found: </b><p>{experiment.impl_src_path}</p>
+                <b>Missing components: </b><p>{experiment.missing}</p>
                 """) for i, experiment in enumerate(experiments))

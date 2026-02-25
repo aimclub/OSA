@@ -80,5 +80,6 @@ class PaperValidator:
                 ),
                 parser=lambda raw: JsonProcessor.parse(raw),
             )
-            experiment.assessment = experiment_assessment["assessment"]
+            experiment.impl_src_path = experiment_assessment["implemented_in"]
+            experiment.missing = experiment_assessment["missing_critical_components"]
             experiment.correspondence_percent = experiment_assessment["correlation_percent"]

@@ -28,6 +28,7 @@ OUTPUT FORMAT:
 Return a valid JSON object with the following structure:
 
 {{
+  "filename": "string",
   "description": "string",
   "classes": {{
     "ClassName1": {{
@@ -207,26 +208,43 @@ INPUT DATA:
 {code_files_info}
 
 TASK:
-For provided experiment description assess of how much of the proposed experiment is actually present in the code base and exactly where in the code such experiment is implemented and return a valid JSON object with following structure
+For provided experiment description assess how much of the proposed experiment is actually present in the code base and exactly where in the code such experiment is implemented and return a valid JSON object with following structure
 {{
-  "assessment": "assessment of how much of the proposed experiment is actually present in the code base with the name of specific code module or function"
+  "implemented_in": "list of exact file paths and function/class names where experiment logic is found",
+  "missing_critical_components": "list of key elements from description absent in code",
   "correlation_percent": float in range from 0.0 to 1.0 with your estimation of how much the code correlates with the provided experiment description.
 }}
 
 RULES:
 - Return ONLY a valid JSON object with no additional text, explanations, or formatting.
-- For "assessment", provide a brief assessment of how much of that specific experiment is implemented in the code base. Keep it in 1-2 sentences.
 - "correlation_percent": Float between 0.0 and 1.0 representing your estimate of implementation completeness (0=not implemented, 0.5=partially implemented, 1=fully implemented)
-- Assessments should focus on: whether the code implements the methods/models described, uses correct datasets/evaluation metrics, and allows reproduction of the experiment.
 - Consider partial implementations (e.g., model implemented but training loop missing = ~0.3-0.4). If something is missing, explain why it is crucial to have it.
-- Base assessments solely on comparing the experiment description with the provided code_files_info.
+- "implemented_in": MUST contain exact locations like "train.py:train_sar_model()" or "NOT IMPLEMENTED"
+- "missing_critical_components": list ONLY critical missing parts that prevent experiment reproduction
+- DO NOT use vague terms like "pipeline", "includes preprocessing", "visualization" without naming exact files/functions.
+- MUST specify: filename.py:function_name() or filename.py:lines X-Y for each implemented component.
+- If component not found → state "NOT FOUND" explicitly.
+
+Use the following as an example:
+{{
+  "implemented_in": [
+    "models/sar_predictor.py:train_sar_model()",
+    "data/preprocessing.py:extract_11_descriptors()"
+  ],
+  "missing_critical_components": [
+    "Relaxivity prediction with 8 descriptors (no implementation found)",
+    "Explicit descriptor count validation in training loop"
+  ],
+  "correlation_percent": 0.65
+}}
 
 OUTPUT FORMAT:
 Return a valid JSON obect with the following structure:
 {{
   {{
-    "assessment": "string"
-    "correlation_percent": "float"
+    "implemented_in": list[string],
+    "missing_critical_components": list[string],
+    "correlation_percent": float
   }}
 }}
 """
