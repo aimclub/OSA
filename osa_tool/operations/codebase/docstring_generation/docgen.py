@@ -745,7 +745,7 @@ class DocGen(object):
 
         if not docstrings:
             return {file: source_code}
-        
+
         module = cst.parse_module(source_code)
         transformer = DocstringTransformer(docstrings)
         new_module = module.visit(transformer)

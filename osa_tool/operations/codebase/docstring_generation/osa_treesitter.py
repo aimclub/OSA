@@ -204,7 +204,9 @@ class OSA_TreeSitter(object):
                 class_methods.extend(method_details)
 
             if child.type == "function_definition":
-                method_details = self._extract_function_details(child, source_code, structure["imports"], class_name=class_name)
+                method_details = self._extract_function_details(
+                    child, source_code, structure["imports"], class_name=class_name
+                )
                 class_methods.append(method_details)
 
         structure["structure"].append(
@@ -562,7 +564,9 @@ class OSA_TreeSitter(object):
                         dec_list = self._get_decorators(dec_list, dec_child)
 
                     if dec_child.type == "function_definition":
-                        method_details = self._extract_function_details(dec_child, source_code, imports, dec_list, class_name)
+                        method_details = self._extract_function_details(
+                            dec_child, source_code, imports, dec_list, class_name
+                        )
                         methods.append(method_details)
 
             if child.type == "function_definition":
