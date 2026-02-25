@@ -314,10 +314,6 @@ class DocGen(object):
             "- DO NOT lose any parameter.\n"
             "- DO NOT wrap any sections of the docstring into <any_tag> — remove such tags if generated.\n\n"
             "Return only the docstring without any quotation marks.\n"
-            "Follow this format exactly:\n"
-            "<triple_quotes>\n"
-            "content\n"
-            "<triple_quotes>\n"
         )
 
         async with semaphore:
@@ -372,7 +368,7 @@ class DocGen(object):
             "Return only the updated docstring.\n"
             "DO NOT return code.\n"
             "DO NOT return other documentation sections.\n"
-            "Use triple quotes format.\n"
+            "Return only the docstring without any quotation marks.\n"
         )
 
         async with semaphore:

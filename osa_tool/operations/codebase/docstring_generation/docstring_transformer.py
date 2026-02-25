@@ -33,7 +33,7 @@ class DocstringTransformer(CSTTransformer):
 
                 case "functions":
                     for docstring, f in generated:
-                        targets[f["function_name"]] = docstring
+                        targets[f["method_name"]] = docstring
 
                 case "classes":
                     for docstring, c in generated:
