@@ -261,6 +261,7 @@ def main():
 
 def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
 <<<<<<< HEAD
+<<<<<<< HEAD
     is_ci = os.getenv("GITHUB_ACTIONS", "false").lower() == "true"
     is_incremental = getattr(args, "incremental", False)
     no_remote = args.no_pull_request and args.no_fork
@@ -275,6 +276,9 @@ def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
     logger.info(f"Target branch set to: '{target_branch}'")
 =======
     if os.getenv("GITHUB_ACTIONS") == "true":
+=======
+    if os.getenv("GITHUB_ACTIONS").lower() == "true":
+>>>>>>> 4d1899c (fixes)
         target_branch = args.branch
     else:
         target_branch = "osa_tool"
