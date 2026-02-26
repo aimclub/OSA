@@ -19,7 +19,8 @@ from reportlab.platypus import (
 )
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.core.git.metadata import RepositoryMetadata
+from osa_tool.core.git.git_agent import GitAgent
+from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.operations.analysis.repository_report.report_generator import TextGenerator, AfterReportTextGenerator
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
@@ -27,9 +28,10 @@ from osa_tool.utils.utils import osa_project_root
 
 
 class AbstractReportGenerator(ABC):
-    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata):
+    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent):
         self.sourcerank = SourceRank(config_manager)
-        self.metadata = metadata
+        self.git_agent = git_agent
+        self.metadata = self.git_agent.metadata
         self.repo_url = config_manager.get_git_settings().repository
         self.osa_url = "https://github.com/aimclub/OSA"
 
@@ -309,9 +311,32 @@ class AbstractReportGenerator(ABC):
 
 class ReportGenerator(AbstractReportGenerator):
 
-    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata):
-        super().__init__(config_manager, metadata)
+    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent, create_fork: bool):
+        super().__init__(config_manager, git_agent)
         self.text_generator = TextGenerator(config_manager, self.metadata)
+        self.create_fork = create_fork
+        self.events: list[OperationEvent] = []
+
+    def run(self) -> dict:
+        try:
+            self.build_pdf()
+            self.events.append(OperationEvent(kind=EventKind.GENERATED, target=f"{self.filename}"))
+
+            if self.create_fork:
+                self.git_agent.upload_report(self.filename, self.output_path)
+                self.events.append(OperationEvent(kind=EventKind.UPLOADED, target=f"{self.filename}"))
+            return {
+                "result": {
+                    "file": self.filename,
+                    "path": self.output_path,
+                },
+                "events": self.events,
+            }
+        except ValueError:
+            return {
+                "result": None,
+                "events": self.events,
+            }
 
     def body_second_part(self) -> list[Flowable]:
         """
@@ -387,9 +412,9 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         self,
         config_manager: ConfigManager,
         what_has_been_done: list[tuple[str, bool]],
-        metadata: RepositoryMetadata,
+        git_agent: GitAgent,
     ):
-        super().__init__(config_manager, metadata)
+        super().__init__(config_manager, git_agent)
         self.filename = f"{self.metadata.name}_work_summary.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
         self.what_has_been_done = what_has_been_done

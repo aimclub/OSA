@@ -13,6 +13,7 @@ class EventKind(str, Enum):
     MOVED = "moved"
     WRITTEN = "written"
     EXISTS = "exists"
+    UPLOADED = "uploaded"
     SKIPPED = "skipped"
     FAILED = "failed"
 

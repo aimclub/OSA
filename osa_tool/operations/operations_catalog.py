@@ -5,6 +5,8 @@ from typing import List, Literal
 from pydantic import BaseModel, Field
 
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator
+from osa_tool.operations.analysis.repository_validation.doc_validator import DocValidator
+from osa_tool.operations.analysis.repository_validation.paper_validator import PaperValidator
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
 from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
@@ -28,8 +30,42 @@ class GenerateReportOperation(Operation):
     priority = 5
 
     executor = ReportGenerator
-    executor_method = "build_pdf"
-    executor_dependencies = ["config_manager", "metadata"]
+    executor_method = "run"
+    executor_dependencies = ["config_manager", "git_agent", "create_fork"]
+
+
+class DocValidationOperation(Operation):
+    name = "validate_doc"
+    description = (
+        "Check if the procedures or workflows from the attached technical documentation "
+        "can be reproduced using the selected repository."
+    )
+
+    supported_intents = ["new_task"]
+    supported_scopes = ["full_repo", "analysis"]
+    priority = 10
+
+    executor = DocValidator
+    executor_method = "run"
+    executor_dependencies = ["config_manager", "git_agent", "create_fork"]
+    state_dependencies = ["attachment"]
+
+
+class PaperValidationOperation(Operation):
+    name = "validate_paper"
+    description = (
+        "Check if the experiments and methodology from the attached research paper "
+        "can be reproduced using the selected repository."
+    )
+
+    supported_intents = ["new_task"]
+    supported_scopes = ["full_repo", "analysis"]
+    priority = 15
+
+    executor = PaperValidator
+    executor_method = "run"
+    executor_dependencies = ["config_manager", "git_agent", "create_fork"]
+    state_dependencies = ["attachment"]
 
 
 class ConvertNotebooksArgs(BaseModel):

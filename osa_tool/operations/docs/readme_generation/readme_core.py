@@ -28,6 +28,7 @@ class ReadmeAgent:
         self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.file_to_save = os.path.join(self.repo_path, "README.md")
         self.llm_client = LLMClient(self.config_manager, self.metadata)
+        self.events: list[OperationEvent] = []
 
     def generate_readme(self) -> dict:
         """
@@ -39,7 +40,6 @@ class ReadmeAgent:
                 - events: List of OperationEvent
         """
         logger.info("Started generating README.md. Processing the repository: %s", self.repo_url)
-        events: list[OperationEvent] = []
 
         try:
             if self.article is None:
@@ -49,11 +49,11 @@ class ReadmeAgent:
 
             readme_content = builder.build()
 
-            events.append(OperationEvent(kind=EventKind.GENERATED, target="README.md"))
+            self.events.append(OperationEvent(kind=EventKind.GENERATED, target="README.md"))
 
             if self.refine_readme:
                 readme_content = self.llm_client.refine_readme(readme_content)
-                events.append(OperationEvent(kind=EventKind.REFINED, target="README.md"))
+                self.events.append(OperationEvent(kind=EventKind.REFINED, target="README.md"))
 
             if self.article is None:
                 readme_content = self.llm_client.clean(readme_content)
@@ -67,11 +67,11 @@ class ReadmeAgent:
                     "path": self.file_to_save,
                     "refined": self.refine_readme,
                 },
-                "events": events,
+                "events": self.events,
             }
         except Exception as e:
             logger.error("Error while generating: %s", repr(e), exc_info=True)
-            events.append(
+            self.events.append(
                 OperationEvent(
                     kind=EventKind.FAILED,
                     target="README.md",
@@ -84,7 +84,7 @@ class ReadmeAgent:
 
             return {
                 "result": None,
-                "events": events,
+                "events": self.events,
             }
 
     def default_readme(self) -> MarkdownBuilder:

@@ -6,13 +6,18 @@ import re
 import docx2txt
 
 from osa_tool.config.settings import ConfigManager
+from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
+from osa_tool.core.models.event import OperationEvent
+from osa_tool.operations.analysis.repository_validation.code_analyzer import CodeAnalyzer
+from osa_tool.operations.analysis.repository_validation.report_generator import (
+    ReportGenerator as ValidationReportGenerator,
+)
 from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
 from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor
-from osa_tool.validation.code_analyzer import CodeAnalyzer
 
 
 class DocValidator:
@@ -23,18 +28,43 @@ class DocValidator:
     analyzes code files in the repository, and validates the documentation against the codebase using a language model.
     """
 
-    def __init__(self, config_manager: ConfigManager):
+    def __init__(
+        self, config_manager: ConfigManager, git_agent: GitAgent, create_fork: bool, attachment: str | None = None
+    ):
         """
         Initialize the DocValidator.
 
         Args:
             config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
+            git_agent (GitAgent): Abstract base class for Git platform agents.
+            create_fork (bool): The flag is responsible for creating a pull request.
+            attachment (str): Path to the documentation file (.docx or .pdf) or None.
         """
         self.config_manager = config_manager
+        self.git_agent = git_agent
+        self.create_fork = create_fork
+        self.path_to_doc = attachment
         self.model_settings = self.config_manager.get_model_settings("validation")
         self.code_analyzer = CodeAnalyzer(self.config_manager)
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
         self.prompts = self.config_manager.get_prompts()
+        self.events: list[OperationEvent] = []
+
+    def run(self) -> dict:
+        try:
+            content = asyncio.run(self.validate())
+            if content:
+                va_re_gen = ValidationReportGenerator(self.config_manager, self.git_agent.metadata)
+                va_re_gen.build_pdf("Document", content)
+                if self.create_fork:
+                    self.git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
+
+                return {"result": "", "events": self.events}
+            else:
+                logger.warning("Document validation returned no content. Skipping report generation.")
+                return {"result": None, "events": self.events}
+        except ValueError as e:
+            return {"result": {"error": str(e)}, "events": self.events}
 
     def _describe_image(self, image_path: str):
         base64_image = self._encode_image(image_path)
@@ -58,20 +88,17 @@ class DocValidator:
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode("utf-8")
 
-    async def validate(self, path_to_doc: str | None) -> dict | None:
+    async def validate(self) -> dict | None:
         """
         Asynchronously validate a documentation file against the code repository.
-
-        Args:
-            path_to_doc (str): Path to the documentation file (.docx or .pdf) or None.
 
         Returns:
             dict | None: Validation result from the language model or None if an error occurred.
         """
-        if not path_to_doc:
+        if not self.path_to_doc:
             raise ValueError("Document is missing! Please pass it using --attachment argument.")
         try:
-            doc_info = await self.process_doc(path_to_doc)
+            doc_info = await self.process_doc()
             code_files = await asyncio.to_thread(self.code_analyzer.get_code_files)
             code_files_info = await self.code_analyzer.process_code_files(code_files)
             result = await self.validate_doc_against_repo(doc_info, code_files_info)
@@ -80,24 +107,21 @@ class DocValidator:
             logger.error(f"Error while validating doc against repo: {e}")
             return None
 
-    async def process_doc(self, path_to_doc: str) -> str:
+    async def process_doc(self) -> str:
         """
         Process and extract content from a documentation file asynchronously.
-
-        Args:
-            path_to_doc (str): Path to the documentation file (.docx or .pdf).
 
         Returns:
             str: Processed document content.
         """
-        if path_to_doc.endswith(".docx"):
+        if self.path_to_doc.endswith(".docx"):
             logger.info("Processing DOCX...")
-            raw_content = await asyncio.to_thread(self._parse_docx, path_to_doc)
-        elif path_to_doc.endswith(".pdf"):
+            raw_content = await asyncio.to_thread(self._parse_docx)
+        elif self.path_to_doc.endswith(".pdf"):
             logger.info("Processing PDF...")
-            raw_content = await asyncio.to_thread(self._parse_pdf, path_to_doc)
+            raw_content = await asyncio.to_thread(self._parse_pdf)
         else:
-            raise ValueError(f"Unprocessable file format: {path_to_doc}")
+            raise ValueError(f"Unprocessable file format: {self.path_to_doc}")
         processed_content = self._preprocess_text(raw_content)
         logger.info("Sending request to process document's content ...")
         response = await self.model_handler.async_send_and_parse(
@@ -113,36 +137,28 @@ class DocValidator:
     def _process_multiple_docs(self):
         pass
 
-    @staticmethod
-    def _parse_docx(path_to_doc: str) -> str:
+    def _parse_docx(self) -> str:
         """
         Extract text content from a DOCX file.
-
-        Args:
-            path_to_doc (str): Path to the DOCX file.
 
         Returns:
             str: Extracted text content.
         """
-        logger.info(f"Extracting text from {path_to_doc} ...")
+        logger.info(f"Extracting text from {self.path_to_doc} ...")
         try:
-            docx_content = docx2txt.process(path_to_doc)
+            docx_content = docx2txt.process(self.path_to_doc)
         except Exception as e:
             raise Exception(f"Error in parsing .docx: {e}")
         return docx_content
 
-    @staticmethod
-    def _parse_pdf(path_to_doc: str) -> str:
+    def _parse_pdf(self) -> str:
         """
         Extract text content from a PDF file.
-
-        Args:
-            path_to_doc (str): Path to the PDF file.
 
         Returns:
             str: Extracted text content.
         """
-        path_to_pdf = get_pdf_path(path_to_doc)
+        path_to_pdf = get_pdf_path(self.path_to_doc)
         if not path_to_pdf:
             raise ValueError(f"Invalid PDF source provided: {path_to_pdf}. Could not locate a valid PDF.")
         logger.info("Extracting text from PDF ...")

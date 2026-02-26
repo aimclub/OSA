@@ -1,4 +1,3 @@
-import asyncio
 import os
 import sys
 import time
@@ -6,6 +5,8 @@ import time
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
+from osa_tool.operations.analysis.repository_validation.doc_validator import DocValidator
+from osa_tool.operations.analysis.repository_validation.paper_validator import PaperValidator
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
 from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
@@ -33,11 +34,6 @@ from osa_tool.utils.utils import (
     parse_folder_name,
     rich_section,
     switch_to_output_directory,
-)
-from osa_tool.validation.doc_validator import DocValidator
-from osa_tool.validation.paper_validator import PaperValidator
-from osa_tool.validation.report_generator import (
-    ReportGenerator as ValidationReportGenerator,
 )
 
 
@@ -88,49 +84,21 @@ def main():
         # NOTE: Must run first - switches GitHub branches
         if plan.get("report"):
             rich_section("Report generation")
-            plan.mark_started("report")
-            analytics = ReportGenerator(config_manager, git_agent.metadata)
-            try:
-                analytics.build_pdf()
-                if create_fork:
-                    git_agent.upload_report(analytics.filename, analytics.output_path)
-                plan.mark_done("report")
-            except ValueError:
-                plan.mark_failed("report")
+            ReportGenerator(config_manager, git_agent, create_fork).run()
 
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_doc"):
-            plan.mark_started("validate_doc")
             rich_section("Document validation")
-            content = asyncio.run((DocValidator(config_manager).validate(plan.get("attachment"))))
-            if content:
-                va_re_gen = ValidationReportGenerator(config_manager, git_agent.metadata)
-                va_re_gen.build_pdf("Document", content)
-                if create_fork:
-                    git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
-                plan.mark_done("validate_doc")
-            else:
-                plan.mark_failed("validate_doc")
-                logger.warning("Document validation returned no content. Skipping report generation.")
+            DocValidator(config_manager, git_agent, create_fork, plan.get("attachment")).run()
 
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_paper"):
             plan.mark_started("validate_paper")
             rich_section("Paper validation")
-            content = asyncio.run((PaperValidator(config_manager).validate(plan.get("attachment"))))
-            if content:
-                va_re_gen = ValidationReportGenerator(config_manager, git_agent.metadata)
-                va_re_gen.build_pdf("Paper", content)
-                if create_fork:
-                    git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
-                plan.mark_done("validate_paper")
-            else:
-                plan.mark_failed("validate_paper")
-                logger.warning("Paper validation returned no content. Skipping report generation.")
+            PaperValidator(config_manager, git_agent, create_fork, plan.get("attachment")).run()
 
         # .ipynb to .py conversion
         if notebook := plan.get("convert_notebooks"):
-            plan.mark_started("convert_notebooks")
             rich_section("Jupyter notebooks conversion")
             NotebookConverter(config_manager, notebook).convert_notebooks()
 
@@ -218,7 +186,7 @@ def main():
             plan.mark_done("delete_dir")
 
         if plan.get("report"):
-            WhatHasBeenDoneReportGenerator(config_manager, plan.list_for_report, git_agent.metadata).build_pdf()
+            WhatHasBeenDoneReportGenerator(config_manager, plan.list_for_report, git_agent).build_pdf()
 
         elapsed_time = time.time() - start_time
         rich_section(f"All operations completed successfully in total time: {format_time(elapsed_time)}")
