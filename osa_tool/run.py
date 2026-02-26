@@ -185,7 +185,7 @@ def main():
             plan.mark_done("delete_dir")
 
         if plan.get("report"):
-            WhatHasBeenDoneReportGenerator(config_manager, plan.list_for_report, git_agent).build_pdf()
+            WhatHasBeenDoneReportGenerator(config_manager, plan.list_for_report, git_agent).run()
 
         elapsed_time = time.time() - start_time
         rich_section(f"All operations completed successfully in total time: {format_time(elapsed_time)}")

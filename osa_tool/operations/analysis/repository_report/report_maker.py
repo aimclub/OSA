@@ -414,6 +414,23 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         self.text_generator = AfterReportTextGenerator(config_manager, self.what_has_been_done)
         self.start_log = f"Starting creating summary for OSA work"
         self.report_header = "OSA Work Summary"
+        self.events: list[OperationEvent] = []
+
+    def run(self) -> dict:
+        """
+        Build the OSA work summary PDF and return a structured result with events.
+
+        This mirrors the contract used by other operations so that:
+        - callers receive a dict with "result" and "events"
+        - each generated report is tracked as an OperationEvent
+        """
+        try:
+            self.build_pdf()
+            self.events.append(OperationEvent(kind=EventKind.GENERATED, target=self.filename))
+            return {"result": {"report": self.filename}, "events": self.events}
+        except ValueError as e:
+            self.events.append(OperationEvent(kind=EventKind.FAILED, target="OSA work summary", data={"error": str(e)}))
+            return {"result": {"error": str(e)}, "events": self.events}
 
     def body_second_part(self) -> list[Flowable]:
         """

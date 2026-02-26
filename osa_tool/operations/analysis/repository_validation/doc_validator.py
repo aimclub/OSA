@@ -56,14 +56,10 @@ class DocValidator:
             if content:
                 va_re_gen = ValidationReportGenerator(self.config_manager, self.git_agent.metadata)
                 va_re_gen.build_pdf("Document", content)
-                self.events.append(
-                    OperationEvent(kind=EventKind.GENERATED, target=va_re_gen.filename)
-                )
+                self.events.append(OperationEvent(kind=EventKind.GENERATED, target=va_re_gen.filename))
                 if self.create_fork:
                     self.git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
-                    self.events.append(
-                        OperationEvent(kind=EventKind.UPLOADED, target=va_re_gen.filename)
-                    )
+                    self.events.append(OperationEvent(kind=EventKind.UPLOADED, target=va_re_gen.filename))
 
                 return {"result": {"report": va_re_gen.filename}, "events": self.events}
             else:
