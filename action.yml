@@ -46,6 +46,7 @@ runs:
           -r "https://github.com/${{ github.repository }}" \
           -b "${{ github.head_ref }}" \
           --mode ${{ inputs.mode }} \
+          --web-mode \
           --no-fork \
           --no-pull-request \
           --docstring \
