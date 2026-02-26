@@ -29,7 +29,7 @@ class DocstringsGenerator:
         self.repo_path = parse_folder_name(self.repo_url)
 
         self.dg = DocGen(self.config_manager)
-        self.ts = OSA_TreeSitter(self.repo_path, self.ignore_list, target_files=self.target_files)
+        self.ts = OSA_TreeSitter(self.repo_path, self.ignore_list, target_files=self.target_files, )
         self.events: list[OperationEvent] = []
 
     def run(self) -> dict:

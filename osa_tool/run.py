@@ -40,6 +40,11 @@ from osa_tool.utils.utils import (
     switch_to_output_directory,
     format_time,
 )
+from osa_tool.validation.doc_validator import DocValidator
+from osa_tool.validation.paper_validator import PaperValidator
+from osa_tool.validation.report_generator import (
+    ReportGenerator as ValidationReportGenerator,
+)
 
 
 def main():
@@ -70,7 +75,7 @@ def main():
         config_manager = ConfigManager(args)
 
         # Initialize Git agent and Workflow Manager for used platform, perform operations
-        git_agent, workflow_manager = initialize_git_platform(args)
+        git_agent, workflow_manager = initialize_git_platform(args, config_manager)
 
         if create_fork:
             git_agent.star_repository()
@@ -137,7 +142,14 @@ def main():
             _run_plan_operation(
                 plan,
                 "docstring",
-                lambda: DocstringsGenerator(config_manager, args.ignore_list).run(),
+                lambda:
+                DocstringsGenerator(
+                    config_manager=config_manager,
+                    ignore_list=args.ignore_list,
+                    plan=plan,
+                    incremental=args.incremental,
+                    target_files=args.target_files,
+                ).run(),
             )
 
         # License compiling
@@ -248,6 +260,19 @@ def main():
 
 
 def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
+    is_ci = os.getenv("GITHUB_ACTIONS", "false").lower() == "true"
+    is_incremental = getattr(args, "incremental", False)
+    no_remote = args.no_pull_request and args.no_fork
+
+    logger.info(f"[Branch Selection] CI={is_ci}, Incremental={is_incremental}, NoRemote={no_remote}. Args branch: {args.branch}")
+
+    if is_ci or is_incremental or no_remote:
+        target_branch = args.branch
+    else:
+        target_branch = getattr(config_manager.config.git, "osa_branch_name", "osa_tool")
+
+    logger.info(f"Target branch set to: '{target_branch}'")
+
     if "github.com" in args.repository:
         git_agent = GitHubAgent(args.repository, args.branch, author=args.author)
         workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)

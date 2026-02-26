@@ -48,7 +48,9 @@ class OSA_TreeSitter(object):
         """
         script_files = []
 
-        if self.target_files:
+        print(self.target_files)
+
+        if self.target_files is not None:
             for file_path in self.target_files:
                 p = Path(os.path.join(self.cwd, file_path)).resolve()
                 if p.exists() and str(p).endswith(".py") and not self._is_ignored(p) and p.name not in self.ignore_list:
