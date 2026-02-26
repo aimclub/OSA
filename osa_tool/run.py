@@ -260,6 +260,7 @@ def main():
 
 
 def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
+<<<<<<< HEAD
     is_ci = os.getenv("GITHUB_ACTIONS", "false").lower() == "true"
     is_incremental = getattr(args, "incremental", False)
     no_remote = args.no_pull_request and args.no_fork
@@ -272,15 +273,30 @@ def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
         target_branch = getattr(config_manager.config.git, "osa_branch_name", "osa_tool")
 
     logger.info(f"Target branch set to: '{target_branch}'")
+=======
+    if os.getenv("GITHUB_ACTIONS") == "true":
+        target_branch = args.branch
+    else:
+        target_branch = "osa_tool"
+>>>>>>> 0951082 (ci_cd branch)
 
     if "github.com" in args.repository:
-        git_agent = GitHubAgent(args.repository, args.branch, author=args.author)
+        git_agent = GitHubAgent(args.repository,
+                                repo_branch_name=args.branch,
+                                branch_name=target_branch,
+                                author=args.author)
         workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
     elif "gitlab." in args.repository:
-        git_agent = GitLabAgent(args.repository, args.branch, author=args.author)
+        git_agent = GitLabAgent(args.repository,
+                                repo_branch_name=args.branch,
+                                branch_name=target_branch,
+                                author=args.author)
         workflow_manager = GitLabWorkflowManager(args.repository, git_agent.metadata, args)
     elif "gitverse.ru" in args.repository:
-        git_agent = GitverseAgent(args.repository, args.branch, author=args.author)
+        git_agent = GitverseAgent(args.repository,
+                                  repo_branch_name=args.branch,
+                                  branch_name=target_branch,
+                                  author=args.author)
         workflow_manager = GitverseWorkflowManager(args.repository, git_agent.metadata, args)
     else:
         raise ValueError(f"Cannot initialize Git Agent and Workflow Manager for this platform: {args.repository}")
