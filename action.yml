@@ -42,6 +42,10 @@ runs:
         OPENAI_API_KEY: ${{ inputs.openai_api_key }}
         GIT_TOKEN: ${{ inputs.github_token }}
       run: |
+        REPO_NAME=$(basename ${{ github.repository }})
+        
+        rm -rf "$REPO_NAME"
+        
         python -m osa_tool.run \
           -r "https://github.com/${{ github.repository }}" \
           -b "${{ github.head_ref }}" \
