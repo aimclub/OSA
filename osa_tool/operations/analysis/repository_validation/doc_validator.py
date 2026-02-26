@@ -8,7 +8,7 @@ import docx2txt
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
-from osa_tool.core.models.event import OperationEvent
+from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.operations.analysis.repository_validation.code_analyzer import CodeAnalyzer
 from osa_tool.operations.analysis.repository_validation.report_generator import (
     ReportGenerator as ValidationReportGenerator,
@@ -56,14 +56,26 @@ class DocValidator:
             if content:
                 va_re_gen = ValidationReportGenerator(self.config_manager, self.git_agent.metadata)
                 va_re_gen.build_pdf("Document", content)
+                self.events.append(
+                    OperationEvent(kind=EventKind.GENERATED, target=va_re_gen.filename)
+                )
                 if self.create_fork:
                     self.git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
+                    self.events.append(
+                        OperationEvent(kind=EventKind.UPLOADED, target=va_re_gen.filename)
+                    )
 
-                return {"result": "", "events": self.events}
+                return {"result": {"report": va_re_gen.filename}, "events": self.events}
             else:
                 logger.warning("Document validation returned no content. Skipping report generation.")
+                self.events.append(
+                    OperationEvent(kind=EventKind.SKIPPED, target="Document validation", data={"reason": "no content"})
+                )
                 return {"result": None, "events": self.events}
         except ValueError as e:
+            self.events.append(
+                OperationEvent(kind=EventKind.FAILED, target="Document validation", data={"error": str(e)})
+            )
             return {"result": {"error": str(e)}, "events": self.events}
 
     def _describe_image(self, image_path: str):

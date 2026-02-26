@@ -321,22 +321,15 @@ class ReportGenerator(AbstractReportGenerator):
         try:
             self.build_pdf()
             self.events.append(OperationEvent(kind=EventKind.GENERATED, target=f"{self.filename}"))
-
             if self.create_fork:
                 self.git_agent.upload_report(self.filename, self.output_path)
                 self.events.append(OperationEvent(kind=EventKind.UPLOADED, target=f"{self.filename}"))
-            return {
-                "result": {
-                    "file": self.filename,
-                    "path": self.output_path,
-                },
-                "events": self.events,
-            }
-        except ValueError:
-            return {
-                "result": None,
-                "events": self.events,
-            }
+            return {"result": {"report": self.filename}, "events": self.events}
+        except ValueError as e:
+            self.events.append(
+                OperationEvent(kind=EventKind.FAILED, target="Report generation", data={"error": str(e)})
+            )
+            return {"result": {"error": str(e)}, "events": self.events}
 
     def body_second_part(self) -> list[Flowable]:
         """

@@ -93,7 +93,6 @@ def main():
 
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_paper"):
-            plan.mark_started("validate_paper")
             rich_section("Paper validation")
             PaperValidator(config_manager, git_agent, create_fork, plan.get("attachment")).run()
 
