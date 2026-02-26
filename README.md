@@ -131,7 +131,7 @@ docker build --build-arg GIT_USER_NAME="your-user-name" --build-arg GIT_USER_EMA
 
 ### Prerequisites
 
-OSA requires Python 3.10 or higher.
+OSA requires Python 3.11 or higher.
 
 The .env file is required to specify the LLM API key (OPENAI_API_KEY or AUTHORIZATION_KEY) and optionally a Git token.
 The Git token (GIT_TOKEN) may be omitted if you plan to work with a public repository without creating a fork (using the
