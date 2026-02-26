@@ -64,14 +64,19 @@ runs:
         REPO_NAME=$(basename ${{ github.repository }})
         
         if [ -d "$REPO_NAME" ]; then
-          echo "Syncing modified files from $REPO_NAME back to workspace root..."
+          echo "Syncing ONLY target files from cloned directory..."
         
-          rm -rf "./$REPO_NAME/.git"
+          CHANGED_FILES="${{ steps.changed-files.outputs.all_changed_files }}"
         
-          cp -aT "./$REPO_NAME/" "./"
+          for file in $CHANGED_FILES; do
+            if [ -f "./$REPO_NAME/$file" ]; then
+              mkdir -p $(dirname "./$file")
+              cp -a "./$REPO_NAME/$file" "./$file"
+              echo "Synced: $file"
+            fi
+          done
         
           rm -rf "./$REPO_NAME"
-        
           echo "Sync complete."
         else
           echo "Directory $REPO_NAME not found. Skipping sync."
