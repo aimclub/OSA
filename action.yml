@@ -64,7 +64,6 @@ runs:
         
           rm -rf "./$REPO_NAME/.git"
         
-          # Флаг -a сохраняет права доступа, -T копирует содержимое
           cp -aT "./$REPO_NAME/" "./"
         
           rm -rf "./$REPO_NAME"
