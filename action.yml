@@ -53,7 +53,32 @@ runs:
           --incremental \
           --target-files ${{ steps.changed-files.outputs.all_changed_files }}
 
-    - name: Sync and Commit
+    - name: Sync modified files back to workspace
+      shell: bash
+      if: steps.changed-files.outputs.any_changed == 'true'
+      run: |
+        REPO_NAME=$(basename ${{ github.repository }})
+        
+        if [ -d "$REPO_NAME" ]; then
+          echo "Syncing modified files from $REPO_NAME back to workspace root..."
+        
+          rm -rf "./$REPO_NAME/.git"
+        
+          # Флаг -a сохраняет права доступа, -T копирует содержимое
+          cp -aT "./$REPO_NAME/" "./"
+        
+          rm -rf "./$REPO_NAME"
+        
+          echo "Sync complete."
+        else
+          echo "Directory $REPO_NAME not found. Skipping sync."
+        fi
+
+    - name: Commit and Push changes
+      if: steps.changed-files.outputs.any_changed == 'true'
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
         commit_message: "docs(osa): auto-generate missing docstrings"
+        file_pattern: "*.py"
+        commit_user_name: "osa-bot"
+        commit_user_email: "osa-bot@users.noreply.github.com"
