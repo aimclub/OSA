@@ -144,7 +144,14 @@ def main():
         # Docstring generation
         if plan.get("docstring"):
             rich_section("Docstrings generation")
-            DocstringsGenerator(config_manager, args.ignore_list, plan).run()
+
+            DocstringsGenerator(
+                config_manager=config_manager,
+                ignore_list=args.ignore_list,
+                plan=plan,
+                incremental=args.incremental,
+                target_files=args.target_files,
+            ).run()
 
         # License compiling
         if plan.get("ensure_license"):
