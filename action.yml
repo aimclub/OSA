@@ -84,13 +84,6 @@ runs:
           CHANGED_FILES="${{ steps.changed-files.outputs.all_changed_files }}"
           for file in $CHANGED_FILES; do
             if [ -f "./$REPO_NAME/$file" ]; then
-        
-              # --- ОТЛАДКА: СМОТРИМ ЧТО НАПИСАЛА ОСА ---
-              echo ">>> CONTENT OF $file AFTER OSA: <<<"
-              cat "./$REPO_NAME/$file"
-              echo ">>> END OF CONTENT <<<"
-              # ----------------------------------------
-        
               mkdir -p $(dirname "./$file")
               cp -a "./$REPO_NAME/$file" "./$file"
               echo "Synced: $file"
