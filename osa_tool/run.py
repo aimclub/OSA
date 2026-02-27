@@ -222,7 +222,9 @@ def main():
 
         if plan.get("report"):
             try:
-                report_generator = WhatHasBeenDoneReportGenerator(config_manager, plan.list_for_report, git_agent.metadata)
+                report_generator = WhatHasBeenDoneReportGenerator(
+                    config_manager, plan.list_for_report, git_agent.metadata
+                )
                 report_generator.build_pdf()
                 if create_fork and os.path.exists(report_generator.output_path):
                     git_agent.upload_report(report_generator.filename, report_generator.output_path)
