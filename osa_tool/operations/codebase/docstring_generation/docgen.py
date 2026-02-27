@@ -456,8 +456,11 @@ class DocGen(object):
         using the method's body from method_details['source_code'] to locate the method.
         Handles multi-line signatures, decorators, async definitions, and existing docstrings.
         """
-        method_body = DocGen.strip_docstring_from_body(method_details["source_code"].strip())
-        docstring_clean = DocGen.extract_pure_docstring(generated_docstring)
+        source_code = source_code.replace("\r\n", "\n")
+        method_source = method_details["source_code"].replace("\r\n", "\n")
+
+        method_body = DocGen.strip_docstring_from_body(method_source.strip())
+        docstring_clean = DocGen.extract_pure_docstring(generated_docstring.replace("\r\n", "\n"))
 
         # Find method within a source code
         match = re.search(re.escape(method_details["source_code"]), source_code)
@@ -473,7 +476,7 @@ class DocGen(object):
         while start > 0 and source_code[start - 1] in " \t\n":
             start -= 1
 
-        end = body_start + len(method_body)
+        end = body_start + len(method_source)
 
         method_block = source_code[start:end]
         method_lines = method_block.splitlines(keepends=True)
@@ -483,7 +486,7 @@ class DocGen(object):
         def indent_docstring(docstring: str) -> str:
             lines = docstring.strip().splitlines()
             if len(lines) == 1:
-                return f'{indent}"""{lines[0]}"""'
+                return f'{indent}"""{lines[0]}"""\n'
             indented = [f"{indent}" + lines[0]]
             for line in lines[1:]:
                 indented.append(f"{indent}{line}")
