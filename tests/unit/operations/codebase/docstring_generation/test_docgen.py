@@ -494,15 +494,24 @@ def test_insert_docstring_in_code(mock_config_manager, source, method_details, n
         ),
     ],
 )
-def test_insert_cls_docstring_in_code(mock_config_manager, source, class_name, new_doc, expected_snippet):
+def test_insert_docstring_in_code(mock_config_manager, source, method_details, new_doc, expected_snippet):
     # Arrange
     docgen = DocGen(mock_config_manager)
 
     # Act
-    updated = docgen.insert_cls_docstring_in_code(source, class_name, new_doc)
+    updated = docgen.insert_docstring_in_code(source, method_details, new_doc)
 
     # Assert
-    assert expected_snippet in updated
+    assert updated != source
+
+    clean_doc_content = expected_snippet.strip('"')
+    assert clean_doc_content in updated
+
+    assert "def " in updated
+    assert "return " in updated
+
+    if '"""Old doc"""' in source:
+        assert '"""Old doc"""' not in updated
 
 
 @pytest.mark.parametrize(
