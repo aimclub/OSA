@@ -476,31 +476,31 @@ def test_insert_docstring_in_code(mock_config_manager, source, method_details, n
     [
         # Case 1: Common function (Linux style \n)
         (
-                "def foo(x):\n    return x + 1\n",
-                {"source_code": "def foo(x):\n    return x + 1\n", "method_name": "foo"},
-                '"""Adds one"""',
-                "Adds one",
+            "def foo(x):\n    return x + 1\n",
+            {"source_code": "def foo(x):\n    return x + 1\n", "method_name": "foo"},
+            '"""Adds one"""',
+            "Adds one",
         ),
         # Case 2: Common function (Windows style \r\n)
         (
-                "def foo(x):\r\n    return x + 1\r\n",
-                {"source_code": "def foo(x):\r\n    return x + 1\r\n", "method_name": "foo"},
-                '"""Adds one"""',
-                "Adds one",
+            "def foo(x):\r\n    return x + 1\r\n",
+            {"source_code": "def foo(x):\r\n    return x + 1\r\n", "method_name": "foo"},
+            '"""Adds one"""',
+            "Adds one",
         ),
         # Case 3: Changing old docstring
         (
-                'def bar(y):\n    """Old doc"""\n    return y * 2\n',
-                {"source_code": 'def bar(y):\n    """Old doc"""\n    return y * 2\n', "method_name": "bar"},
-                '"""Multiply by two"""',
-                "Multiply by two",
+            'def bar(y):\n    """Old doc"""\n    return y * 2\n',
+            {"source_code": 'def bar(y):\n    """Old doc"""\n    return y * 2\n', "method_name": "bar"},
+            '"""Multiply by two"""',
+            "Multiply by two",
         ),
         # Case 4: Async function
         (
-                "async def baz(z):\n    return z - 1\n",
-                {"source_code": "async def baz(z):\n    return z - 1\n", "method_name": "baz"},
-                '"""Subtract one"""',
-                "Subtract one",
+            "async def baz(z):\n    return z - 1\n",
+            {"source_code": "async def baz(z):\n    return z - 1\n", "method_name": "baz"},
+            '"""Subtract one"""',
+            "Subtract one",
         ),
     ],
 )
