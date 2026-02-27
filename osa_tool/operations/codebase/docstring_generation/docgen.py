@@ -449,37 +449,45 @@ class DocGen(object):
 
     @staticmethod
     def insert_docstring_in_code(
-        source_code: str, method_details: dict, generated_docstring: str, class_method: bool = False
+            source_code: str, method_details: dict, generated_docstring: str, class_method: bool = False
     ) -> str:
-        """
-        Inserts or replaces a method-level docstring in the provided source code,
-        using the method's body from method_details['source_code'] to locate the method.
-        Handles multi-line signatures, decorators, async definitions, and existing docstrings.
-        """
+        method_name = method_details.get('method_name', 'UNKNOWN')
+        logger.warning(f"==================================================")
+        logger.warning(f"🛠️ DEBUG START for: {method_name}")
+
+        if not generated_docstring or not generated_docstring.strip():
+            logger.error(f"❌ DEBUG: Empty generated docstring!")
+            return source_code
+
+        # 1. Нормализация
         source_code = source_code.replace("\r\n", "\n")
         method_source = method_details["source_code"].replace("\r\n", "\n")
 
-        method_body = DocGen.strip_docstring_from_body(method_source.strip())
         docstring_clean = DocGen.extract_pure_docstring(generated_docstring.replace("\r\n", "\n"))
+        logger.warning(f"✅ DEBUG: Cleaned docstring: {repr(docstring_clean[:50])}...")
 
-        # Find method within a source code
-        match = re.search(re.escape(method_details["source_code"]), source_code)
+        # 2. Поиск
+        match = re.search(re.escape(method_source), source_code)
         if not match:
+            logger.error(f"❌ DEBUG: Regex match failed!")
+            logger.error(f"   Source code length: {len(source_code)}")
+            logger.error(f"   Method source snippet: {repr(method_source[:50])}...")
             return source_code
-        body_start = match.start()
 
-        if not body_start:
-            return source_code
+        body_start = match.start()
+        logger.warning(f"✅ DEBUG: Regex matched at index {body_start}")
 
         start = body_start
-
         while start > 0 and source_code[start - 1] in " \t\n":
             start -= 1
 
         end = body_start + len(method_source)
+        logger.warning(f"✅ DEBUG: Slice indices: start={start}, body_start={body_start}, end={end}")
 
         method_block = source_code[start:end]
         method_lines = method_block.splitlines(keepends=True)
+
+        logger.warning(f"✅ DEBUG: Extracted {len(method_lines)} lines for method_block.")
 
         indent = "        " if class_method else "    "
 
@@ -492,47 +500,59 @@ class DocGen(object):
                 indented.append(f"{indent}{line}")
             return "\n".join(indented) + "\n"
 
-        # Check for existing docstring right after signature
+        # 3. Ищем сигнатуру
         signature_end_index = None
         for i, line in enumerate(method_lines):
             if line.strip().endswith(":"):
                 signature_end_index = i
                 break
 
+        if signature_end_index is None:
+            logger.error(f"❌ DEBUG: Failed to find ':' in method_lines! Here is the block:\n{repr(method_block)}")
+            return source_code
+
+        logger.warning(f"✅ DEBUG: Found ':' at line index {signature_end_index}")
+
         docstring_inserted = indent_docstring(docstring_clean)
 
-        if signature_end_index is not None:
-            next_line_index = signature_end_index + 1
-            while next_line_index < len(method_lines) and method_lines[next_line_index].strip() == "":
-                next_line_index += 1
+        next_line_index = signature_end_index + 1
+        while next_line_index < len(method_lines) and method_lines[next_line_index].strip() == "":
+            next_line_index += 1
 
-            if next_line_index < len(method_lines) and method_lines[next_line_index].strip().startswith(('"""', "'''")):
-                # Replace old docstring
-                closing = method_lines[next_line_index].strip()[:3]
-                end_doc_idx = next_line_index
+        is_replacement = False
+        if next_line_index < len(method_lines) and method_lines[next_line_index].strip().startswith(('"""', "'''")):
+            is_replacement = True
+            logger.warning(f"✅ DEBUG: Existing docstring found, replacing...")
+            # Замена существующего (оставил твою логику)
+            closing = method_lines[next_line_index].strip()[:3]
+            end_doc_idx = next_line_index
 
-                if len(method_lines[next_line_index].strip()) > 3 and method_lines[next_line_index].strip().endswith(
-                    closing
-                ):
-                    method_lines = (
-                        method_lines[:next_line_index] + [docstring_inserted] + method_lines[end_doc_idx + 1 :]
-                    )
-                    updated_block = "".join(method_lines)
-                    result = source_code[:start] + updated_block + source_code[end:]
-                    return result
+            if len(method_lines[next_line_index].strip()) > 3 and method_lines[next_line_index].strip().endswith(
+                    closing):
+                method_lines = method_lines[:next_line_index] + [docstring_inserted] + method_lines[end_doc_idx + 1:]
+                updated_block = "".join(method_lines)
+                logger.warning(f"✅ DEBUG: Replaced 1-liner. Returning.")
+                return source_code[:start] + updated_block + source_code[end:]
 
-                for j in range(next_line_index + 1, len(method_lines)):
-                    if closing in method_lines[j]:
-                        end_doc_idx = j
-                        break
-                method_lines = method_lines[:next_line_index] + [docstring_inserted] + method_lines[end_doc_idx + 1 :]
-            else:
-                # Insert new docstring
-                method_lines.insert(signature_end_index + 1, docstring_inserted)
+            for j in range(next_line_index + 1, len(method_lines)):
+                if closing in method_lines[j]:
+                    end_doc_idx = j
+                    break
+            method_lines = method_lines[:next_line_index] + [docstring_inserted] + method_lines[end_doc_idx + 1:]
+        else:
+            logger.warning(f"✅ DEBUG: No existing docstring. Inserting new one at index {signature_end_index + 1}...")
+            # Вставка
+            method_lines.insert(signature_end_index + 1, docstring_inserted)
 
         updated_block = "".join(method_lines)
-        result = source_code[:start] + updated_block + source_code[end:]
 
+        # --- ФИНАЛЬНАЯ ПРОВЕРКА ЧТО МЫ ОТДАЕМ ---
+        logger.warning(f"✅ DEBUG: Old block length: {len(method_block)}. New block length: {len(updated_block)}")
+        if method_block == updated_block:
+            logger.error("❌ DEBUG: updated_block IS IDENTICAL to method_block! Insertion failed logically.")
+
+        result = source_code[:start] + updated_block + source_code[end:]
+        logger.warning(f"==================================================")
         return result
 
     @staticmethod
