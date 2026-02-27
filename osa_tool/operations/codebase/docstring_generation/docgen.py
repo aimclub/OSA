@@ -431,6 +431,13 @@ class DocGen(object):
         using the method's body from method_details['source_code'] to locate the method.
         Handles multi-line signatures, decorators, async definitions, and existing docstrings.
         """
+        method_name = method_details.get('method_name', 'UNKNOWN')
+        logger.warning(f"Attempting to insert docstring for '{method_name}'")
+
+        if not generated_docstring or not generated_docstring.strip():
+            logger.error(f"Generated docstring is empty/None for {method_name}")
+            return source_code
+
         method_body = DocGen.strip_docstring_from_body(method_details["source_code"].strip())
         docstring_clean = DocGen.extract_pure_docstring(generated_docstring)
 
