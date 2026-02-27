@@ -460,15 +460,12 @@ class DocGen(object):
         method_source = method_details["source_code"].replace("\r\n", "\n")
 
         # method_body = DocGen.strip_docstring_from_body(method_source.strip())
-        docstring_clean = DocGen.extract_pure_docstring(generated_docstring.replace("\r\n", "\n"))
+        docstring_clean = DocGen.extract_pure_docstring(generated_docstring.replace("\r\n", F"\n"))
 
         # Find method within a source code
-        match = re.search(re.escape(method_source), source_code) # TODO: поменять на обычный find
-        if not match:
-            return source_code
-        body_start = match.start()
+        body_start = source_code.find(method_source)
 
-        if not body_start:
+        if body_start == -1:
             return source_code
 
         start = body_start
@@ -495,7 +492,7 @@ class DocGen(object):
         # Check for existing docstring right after signature
         signature_end_index = None
         for i, line in enumerate(method_lines):
-            if line.strip().endswith(":"):
+            if line.split('#')[0].strip().endswith(":"):
                 signature_end_index = i
                 break
 
