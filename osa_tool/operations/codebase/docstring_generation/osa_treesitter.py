@@ -649,7 +649,7 @@ class OSA_TreeSitter(object):
                     arguments.append(param_node.text.decode("utf-8"))
 
         source_bytes = source_code.encode("utf-8")
-        source = source_bytes[function_node.start_byte : node.end_byte].decode("utf-8")
+        source = source_bytes[function_node.start_byte : function_node.end_byte].decode("utf-8")
 
         return_node = function_node.child_by_field_name("return_type")
         return_type = None
