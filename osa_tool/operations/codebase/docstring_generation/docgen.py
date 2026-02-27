@@ -459,7 +459,6 @@ class DocGen(object):
         source_code = source_code.replace("\r\n", "\n")
         method_source = method_details["source_code"].replace("\r\n", "\n")
 
-        # method_body = DocGen.strip_docstring_from_body(method_source.strip())
         docstring_clean = DocGen.extract_pure_docstring(generated_docstring.replace("\r\n", f"\n"))
 
         # Find method within a source code
