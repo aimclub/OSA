@@ -472,29 +472,39 @@ def test_insert_docstring_in_code(mock_config_manager, source, method_details, n
 
 
 @pytest.mark.parametrize(
-    "source, class_name, new_doc, expected_snippet",
+    "source, method_details, new_doc, expected_content",
     [
+        # Case 1: Common function (Linux style \n)
         (
-            "class MyClass:\n    pass\n",
-            "MyClass",
-            '"""This is a class"""',
-            '"""\n    This is a class\n    """',
+                "def foo(x):\n    return x + 1\n",
+                {"source_code": "def foo(x):\n    return x + 1\n", "method_name": "foo"},
+                '"""Adds one"""',
+                "Adds one",
         ),
+        # Case 2: Common function (Windows style \r\n)
         (
-            'class OldClass:\n    """Old docstring"""\n    pass\n',
-            "OldClass",
-            '"""Updated docstring"""',
-            '"""\n    Updated docstring\n    """',
+                "def foo(x):\r\n    return x + 1\r\n",
+                {"source_code": "def foo(x):\r\n    return x + 1\r\n", "method_name": "foo"},
+                '"""Adds one"""',
+                "Adds one",
         ),
+        # Case 3: Changing old docstring
         (
-            "class ParamClass(Base):\n    pass\n",
-            "ParamClass",
-            '"""Class with base"""',
-            '"""\n    Class with base\n    """',
+                'def bar(y):\n    """Old doc"""\n    return y * 2\n',
+                {"source_code": 'def bar(y):\n    """Old doc"""\n    return y * 2\n', "method_name": "bar"},
+                '"""Multiply by two"""',
+                "Multiply by two",
+        ),
+        # Case 4: Async function
+        (
+                "async def baz(z):\n    return z - 1\n",
+                {"source_code": "async def baz(z):\n    return z - 1\n", "method_name": "baz"},
+                '"""Subtract one"""',
+                "Subtract one",
         ),
     ],
 )
-def test_insert_docstring_in_code(mock_config_manager, source, method_details, new_doc, expected_snippet):
+def test_insert_docstring_in_code(mock_config_manager, source, method_details, new_doc, expected_content):
     # Arrange
     docgen = DocGen(mock_config_manager)
 
@@ -502,16 +512,19 @@ def test_insert_docstring_in_code(mock_config_manager, source, method_details, n
     updated = docgen.insert_docstring_in_code(source, method_details, new_doc)
 
     # Assert
-    assert updated != source
+    assert updated != source, "Source code should be modified"
 
-    clean_doc_content = expected_snippet.strip('"')
-    assert clean_doc_content in updated
+    assert expected_content in updated, "New docstring content not found in updated code"
 
-    assert "def " in updated
+    if "async def" in source:
+        assert "async def " in updated
+    else:
+        assert "def " in updated
+
     assert "return " in updated
 
     if '"""Old doc"""' in source:
-        assert '"""Old doc"""' not in updated
+        assert '"""Old doc"""' not in updated, "Old docstring was not removed"
 
 
 @pytest.mark.parametrize(

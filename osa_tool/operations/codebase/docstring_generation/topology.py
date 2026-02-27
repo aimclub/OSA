@@ -72,7 +72,7 @@ class DependencyGraph:
                 dependency_node = self._resolve_call(node_id, call)
 
                 if dependency_node and dependency_node in self.nodes:
-                    if node_id != dependency_node: # Avoiding self-recursion
+                    if node_id != dependency_node:  # Avoiding self-recursion
                         self.graph[node_id].add(dependency_node)
                         self.reverse_graph[dependency_node].add(node_id)
                     else:
