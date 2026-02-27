@@ -316,7 +316,17 @@ class DocGen(object):
         )
 
         async with semaphore:
-            return await self.model_handler.async_request(prompt)
+            response = await self.model_handler.async_request(prompt)
+
+            # === [DEBUG LOGGING START] ===
+            method_name = method_details.get('method_name', 'UNKNOWN')
+            if not response:
+                logger.error(f"!!! DEBUG: LLM returned EMPTY response for {method_name}!")
+            else:
+                logger.warning(
+                    f"!!! DEBUG: LLM returned {len(response)} chars for {method_name}. Start: {response[:50].replace(chr(10), ' ')}...")
+
+            return response
 
     async def update_method_documentation(
         self,
@@ -456,13 +466,30 @@ class DocGen(object):
         using the method's body from method_details['source_code'] to locate the method.
         Handles multi-line signatures, decorators, async definitions, and existing docstrings.
         """
+        method_name = method_details.get('method_name', 'UNKNOWN')
+        logger.warning(f"🔍 DEBUG: Attempting to insert docstring for '{method_name}'")
+
+        if not generated_docstring or not generated_docstring.strip():
+            logger.error(f"🛑 DEBUG: Generated docstring is empty/None for {method_name}")
+            return source_code
+        # === [DEBUG LOGGING END] ===
+
         method_body = DocGen.strip_docstring_from_body(method_details["source_code"].strip())
         docstring_clean = DocGen.extract_pure_docstring(generated_docstring)
 
         # Find method within a source code
         match = re.search(re.escape(method_details["source_code"]), source_code)
+
+        # === [DEBUG LOGGING MATCH CHECK] ===
         if not match:
+            logger.error(f"❌ DEBUG: FAILED to find source code match for '{method_name}'!")
+            logger.error(f"   --> Looking for (first 50 chars): {repr(method_details['source_code'][:50])}")
+            logger.error(f"   --> File content len: {len(source_code)}")
             return source_code
+        else:
+            logger.warning(f"✅ DEBUG: FOUND match for '{method_name}' at index {match.start()}")
+        # === [DEBUG LOGGING END] ===
+
         body_start = match.start()
 
         if not body_start:
