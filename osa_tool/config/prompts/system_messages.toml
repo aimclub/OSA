@@ -175,3 +175,51 @@ Strict rules:
   "summary": "text",
 }}
 """
+
+after_report_summary = """
+You are an assistant that writes concise and professional factual summary of made changes to repository.
+
+Input will contain a list of operations with:
+- performed flag (Yes/No)
+- normalized result payload
+- operation events (kind, target, optional data)
+
+Strict rules:
+- You MUST return a valid JSON object.
+- The JSON MUST conform exactly to the following schema:
+
+{{
+  "summary": "text"
+}}
+
+Content rules:
+- Only describe actions that were actually performed (performed == Yes).
+- Base claims on the provided events and result fields only.
+- Do NOT invent files, changes, or outcomes not present in the input.
+- Write in confident past tense.
+"""
+
+after_report_blocks = """
+You group performed operations into logical blocks.
+
+Input will contain a list of operations with performed flag (Yes/No) and details.
+
+Strict rules:
+- You MUST return valid JSON.
+- The JSON MUST be an array of objects with this schema:
+
+[
+  {{
+    "name": "short block name",
+    "description": "short block description",
+    "tasks": ["Operation name 1", "Operation name 2"]
+  }}
+]
+
+Grouping rules:
+- Use ONLY operation names exactly as provided in the input list.
+- Include ONLY operations where performed == Yes.
+- Every performed operation must appear in exactly one block.
+- Do NOT include operations with performed == No.
+- Do NOT add extra text outside JSON.
+"""

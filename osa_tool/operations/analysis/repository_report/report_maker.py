@@ -22,6 +22,7 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.operations.analysis.repository_report.report_generator import TextGenerator, AfterReportTextGenerator
+from osa_tool.scheduler.plan import Plan
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
@@ -404,14 +405,15 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
     def __init__(
         self,
         config_manager: ConfigManager,
-        what_has_been_done: list[tuple[str, bool]],
+        plan: Plan,
         git_agent: GitAgent,
     ):
         super().__init__(config_manager, git_agent)
         self.filename = f"{self.metadata.name}_work_summary.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
-        self.what_has_been_done = what_has_been_done
-        self.text_generator = AfterReportTextGenerator(config_manager, self.what_has_been_done)
+        self.completed_tasks = plan.list_for_report
+        self.task_results = plan.results or {}
+        self.text_generator = AfterReportTextGenerator(config_manager, self.completed_tasks, self.task_results)
         self.start_log = f"Starting creating summary for OSA work"
         self.report_header = "OSA Work Summary"
         self.events: list[OperationEvent] = []
