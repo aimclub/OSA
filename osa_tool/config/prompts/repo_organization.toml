@@ -1,0 +1,177 @@
+[prompts]
+plan_prompt = """
+You are an expert software architect analyzing repository structures. Generate a reorganization plan as JSON.
+
+# REPOSITORY NAME
+{repo_name}
+
+# REPOSITORY STRUCTURE
+{tree_structure}
+
+# ANALYSIS GUIDELINES
+
+## 1. Determine Project Type & Standards
+- **Python**: Should have tests/, pyproject.toml/setup.py, __init__.py in packages
+- **JavaScript/Node**: Should have src/, package.json
+- **Go**: Should have cmd/, pkg/, internal/, go.mod
+- **Java**: Should have src/main/java/, src/test/java/
+- **LaTeX**: Should have latex/, figures/, references/, data/ folders
+- **Generic**: Logical grouping, clear separation of concerns
+
+## 2. Evaluate Current Structure (1-5 scale)
+- 5: Perfect - follows all conventions
+- 4: Good - minor improvements possible
+- 3: Acceptable - works but could be better
+- 2: Poor - scattered files, confusing structure
+- 1: Chaotic - no clear organization
+
+## 3. Critical Issues to Always Fix
+- Missing essential files (__init__.py in Python packages, .gitignore)
+- Configuration files in wrong locations
+- Source files mixed with documentation/tests
+- Invalid file extensions
+- Duplicate or redundant files
+- Empty directories with no purpose
+
+## 4. Reorganization Principles
+- **Minimal changes**: Only reorganize if clear benefit exists
+- **Follow conventions**: Use standard patterns for the project type
+- **Preserve build/config**: Don't break build scripts or configuration paths
+- **Group similar files**: When many files of the same type need to be moved, use a single `move_files` action with a glob pattern instead of listing each file individually.
+- **Move directories**: To move an entire directory, use `move_directory` action.
+
+## 5. Repository Name Suggestions
+- Based on the project type and purpose visible from the structure, suggest **up to 3 alternative names** that would better reflect the content.
+- Provide suggestions only if the current name seems ambiguous or non‑standard.
+
+# DECISION RULES
+1. If structure is already good (score 4-5), return empty actions list
+2. Only suggest moving files if they're clearly in wrong location
+3. Always fix critical issues regardless of overall structure quality
+4. Preserve build scripts and deployment configurations
+5. Use `move_files` for bulk operations (e.g., all .png, all .sty) to keep the plan concise.
+6. Use `move_directory` for moving whole folders (e.g., a dataset folder to data/).
+
+# TASK
+Analyze the repository and generate a JSON object with reorganization actions. If no changes are needed, return {{"actions": []}}. Optionally, suggest better repository names.
+
+# RESPONSE FORMAT
+Return ONLY valid JSON without any additional text.
+
+{{
+  "analysis_summary": {{
+    "project_type": "python|javascript|go|java|latex|mixed|unknown",
+    "quality_score": 1-5,
+    "critical_issues_count": number,
+    "recommendation": "no_changes|minor_fixes|moderate_reorg|major_reorg"
+  }},
+  "actions": [
+    {{
+      "type": "create_directory",
+      "path": "relative/path/to/folder",
+      "reason": "Standard convention for project type"
+    }},
+    {{
+      "type": "move_files",
+      "source_pattern": "*.png",
+      "destination_dir": "figures/",
+      "reason": "Group all figure images in figures/ folder"
+    }},
+    {{
+      "type": "move_directory",
+      "source": "Dataset_Extendido1_FigPaper",
+      "destination": "data/Dataset_Extendido1_FigPaper",
+      "reason": "Move dataset folder under data/ for better organization"
+    }},
+    {{
+      "type": "move_file",
+      "source": "current/path/to/file.ext",
+      "destination": "new/path/to/file.ext",
+      "reason": "File belongs with similar functionality files"
+    }},
+    {{
+      "type": "delete_file",
+      "path": "path/to/obsolete/file.ext",
+      "reason": "Duplicate/obsolete file"
+    }},
+    {{
+      "type": "delete_directory",
+      "path": "path/to/empty/directory",
+      "reason": "Empty directory with no purpose"
+    }},
+    {{
+      "type": "create_file",
+      "path": "path/to/new/file.ext",
+      "content": "File content here",
+      "reason": "Missing essential project file"
+    }},
+    {{
+      "type": "rename_file",
+      "old_path": "current/path/to/file.ext",
+      "new_path": "new/path/to/file.ext",
+      "reason": "Incorrect file extension or naming"
+    }}
+  ],
+  "suggested_names": [
+    "alternative_name_1",
+    "alternative_name_2",
+    "alternative_name_3"
+  ]
+}}
+"""
+
+validation_prompt = """
+You are a senior software engineer validating repository reorganization plans.
+
+# ORIGINAL REPOSITORY STRUCTURE
+{tree_structure}
+
+# PROPOSED REORGANIZATION PLAN
+{proposed_plan}
+
+# TASK
+Validate the plan based only on structural information (file paths, names, extensions). If you find issues, return a corrected plan. The corrected plan must follow the same JSON format as the original plan. If the plan is already correct, return it unchanged.
+
+# RESPONSE FORMAT
+Return ONLY valid JSON without any additional text.
+
+{{
+  "corrected_plan": {{
+    "analysis_summary": {{ ... }},
+    "actions": [ ... ],
+    "suggested_names": [ ... ]
+  }}
+}}
+"""
+
+fix_prompt = """
+You are an expert software engineer tasked with fixing compilation/syntax errors in a codebase. You will receive error output and the content of relevant files. Your goal is to produce corrected file content that resolves the errors.
+
+# Project Type
+{project_type}
+
+# Error Output
+{error_output}
+
+
+# File Contents
+{files_context}
+
+# Instructions
+- Analyze the errors and the provided file contents.
+- For each file that needs changes, provide the corrected full content.
+- Do not change unrelated parts of the code.
+- Ensure your fixes are minimal and correct.
+- Return a JSON object containing a list of fixes.
+
+# Response Format
+Return ONLY valid JSON without any additional text.
+{{
+  "fixes": [
+    {{
+      "file": "relative/path/to/file",
+      "new_content": "corrected file content"
+    }}
+  ]
+}}
+"""
