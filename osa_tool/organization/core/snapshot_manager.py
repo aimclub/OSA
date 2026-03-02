@@ -95,9 +95,7 @@ class SnapshotManager:
                 ["git", "branch", "-D", self.temp_branch], cwd=self.base_path, check=True, capture_output=True
             )
 
-            logger.info(
-                "Changes staged in %s.", self.original_branch
-            )
+            logger.info("Changes staged in %s.", self.original_branch)
             return True
 
         except subprocess.CalledProcessError as e:
