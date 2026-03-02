@@ -37,7 +37,7 @@ You are an expert software architect analyzing repository structures. Generate a
 - **Minimal changes**: Only reorganize if clear benefit exists
 - **Follow conventions**: Use standard patterns for the project type
 - **Preserve build/config**: Don't break build scripts or configuration paths
-- **Group similar files**: When many files of the same type need to be moved, use a single `move_files` action with a glob pattern instead of listing each file individually.
+- **Group similar files**: When many files of the same type need to be moved, use a single `move_files` action with a glob pattern instead of listing each file individually. - Never use commas inside the pattern – it will be interpreted as part of the filename.
 - **Move directories**: To move an entire directory, use `move_directory` action.
 
 ## 5. Repository Name Suggestions

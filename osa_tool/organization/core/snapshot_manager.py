@@ -96,7 +96,7 @@ class SnapshotManager:
             )
 
             logger.info(
-                "Changes staged in %s. Use 'git status' to review and 'git commit' to finalize.", self.original_branch
+                "Changes staged in %s.", self.original_branch
             )
             return True
 
