@@ -106,7 +106,7 @@ def main():
             if content:
                 va_re_gen = ValidationReportGenerator(config_manager, git_agent.metadata)
                 va_re_gen.build_pdf("Document", content)
-                if create_fork:
+                if create_fork and os.path.exists(va_re_gen.output_path):
                     git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
                 plan.mark_done("validate_doc")
             else:
@@ -120,7 +120,7 @@ def main():
             if content:
                 va_re_gen = ValidationReportGenerator(config_manager, git_agent.metadata)
                 va_re_gen.build_pdf("Paper", content)
-                if create_fork:
+                if create_fork and os.path.exists(va_re_gen.output_path):
                     git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
                 plan.mark_done("validate_paper")
             else:
