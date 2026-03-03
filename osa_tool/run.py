@@ -16,7 +16,7 @@ from osa_tool.operations.docs.community_docs_generation.license_generation impor
 from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
 from osa_tool.operations.docs.readme_generation.utils import format_time
 from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
-from osa_tool.organization.repo_organizer import RepoOrganizer
+from osa_tool.organization.organize import RepoOrganizer
 from osa_tool.scheduler.scheduler import ModeScheduler
 from osa_tool.scheduler.workflow_manager import (
     GitHubWorkflowManager,
@@ -203,7 +203,7 @@ def main():
         if plan.get("organize"):
             rich_section("Repository organization")
             plan.mark_started("organize")
-            organizer = RepoOrganizer(os.path.join(os.getcwd(), parse_folder_name(args.repository)))
+            organizer = RepoOrganizer(config_manager)
             organizer.organize()
             plan.mark_done("organize")
 
