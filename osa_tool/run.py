@@ -72,7 +72,7 @@ def main():
         config_manager = ConfigManager(args)
 
         # Initialize Git agent and Workflow Manager for used platform, perform operations
-        git_agent, workflow_manager = initialize_git_platform(args)
+        git_agent, workflow_manager = initialize_git_platform(args, config_manager)
 
         if create_fork:
             git_agent.star_repository()
@@ -255,11 +255,11 @@ def main():
         sys.exit(1)
 
 
-def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
+def initialize_git_platform(args, config_manager: ConfigManager) -> tuple[GitAgent, WorkflowManager]:
     if os.getenv("GITHUB_ACTIONS").lower() == "true":
         target_branch = args.branch
     else:
-        target_branch = GitAgent.DEFAULT_BRANCH_NAME
+        target_branch = config_manager.config.osa_branch_name
 
     if "github.com" in args.repository:
         git_agent = GitHubAgent(
