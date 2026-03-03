@@ -92,7 +92,7 @@ def main():
             analytics = ReportGenerator(config_manager, git_agent.metadata)
             try:
                 analytics.build_pdf()
-                if create_fork:
+                if create_fork and os.path.exists(analytics.output_path):
                     git_agent.upload_report(analytics.filename, analytics.output_path)
                 plan.mark_done("report")
             except ValueError:
@@ -106,7 +106,7 @@ def main():
             if content:
                 va_re_gen = ValidationReportGenerator(config_manager, git_agent.metadata)
                 va_re_gen.build_pdf("Document", content)
-                if create_fork:
+                if create_fork and os.path.exists(va_re_gen.output_path):
                     git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
                 plan.mark_done("validate_doc")
             else:
@@ -120,7 +120,7 @@ def main():
             if content:
                 va_re_gen = ValidationReportGenerator(config_manager, git_agent.metadata)
                 va_re_gen.build_pdf("Paper", content)
-                if create_fork:
+                if create_fork and os.path.exists(va_re_gen.output_path):
                     git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
                 plan.mark_done("validate_paper")
             else:
@@ -221,7 +221,15 @@ def main():
             plan.mark_done("delete_dir")
 
         if plan.get("report"):
-            WhatHasBeenDoneReportGenerator(config_manager, plan.list_for_report, git_agent.metadata).build_pdf()
+            try:
+                report_generator = WhatHasBeenDoneReportGenerator(
+                    config_manager, plan.list_for_report, git_agent.metadata
+                )
+                report_generator.build_pdf()
+                if create_fork and os.path.exists(report_generator.output_path):
+                    git_agent.upload_report(report_generator.filename, report_generator.output_path)
+            except Exception as e:
+                logger.error("Error while generating after report: %s", repr(e), exc_info=True)
 
         elapsed_time = time.time() - start_time
         rich_section(f"All operations completed successfully in total time: {format_time(elapsed_time)}")
