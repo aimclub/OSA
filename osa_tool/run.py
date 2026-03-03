@@ -243,7 +243,7 @@ def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
     if os.getenv("GITHUB_ACTIONS").lower() == "true":
         target_branch = args.branch
     else:
-        target_branch = "osa_tool"
+        target_branch = GitAgent.DEFAULT_BRANCH_NAME
 
     if "github.com" in args.repository:
         git_agent = GitHubAgent(
