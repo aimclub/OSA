@@ -41,11 +41,7 @@ class GitAgent(abc.ABC):
     DEFAULT_BRANCH_NAME = "osa_tool"
 
     def __init__(
-            self,
-            repo_url: str,
-            repo_branch_name: str = None,
-            branch_name: str = DEFAULT_BRANCH_NAME,
-            author: str = None
+        self, repo_url: str, repo_branch_name: str = None, branch_name: str = DEFAULT_BRANCH_NAME, author: str = None
     ):
         """Initializes the agent with repository info.
 
