@@ -34,7 +34,7 @@ runs:
   using: "composite"
   steps:
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.11'
 
@@ -47,7 +47,7 @@ runs:
 
     - name: Get changed files
       id: changed-files
-      uses: tj-actions/changed-files@v44
+      uses: tj-actions/changed-files@v47
       with:
         files: '**.py'
 
@@ -63,7 +63,7 @@ runs:
         rm -rf "$REPO_NAME"
 
         # Base command
-        CMD="python -m osa_tool.run -r https://github.com/${{ github.repository }} -b ${{ github.head_ref }} --web-mode --no-fork --no-pull-request --docstring --incremental --target-files ${{ steps.changed-files.outputs.all_changed_files }}"
+        CMD="python -m osa_tool.run -r https://github.com/${{ github.repository }} -b ${{ github.head_ref || github.ref_name }} --web-mode --no-fork --no-pull-request --docstring --incremental --target-files ${{ steps.changed-files.outputs.all_changed_files }}"
         
         # Dynamic argument adding (if they are added by user)
         if [ -n "${{ inputs.mode }}" ]; then CMD="$CMD --mode ${{ inputs.mode }}"; fi
@@ -94,7 +94,7 @@ runs:
 
     - name: Commit and Push
       if: steps.changed-files.outputs.any_changed == 'true'
-      uses: stefanzweifel/git-auto-commit-action@v5
+      uses: stefanzweifel/git-auto-commit-action@v7
       with:
         commit_message: "docs(osa): auto-generate missing docstrings"
         file_pattern: "*.py"

@@ -38,7 +38,15 @@ class GitAgent(abc.ABC):
         pr_report_body: A formatted message for a pull request.
     """
 
-    def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool", author: str = None):
+    DEFAULT_BRANCH_NAME = "osa_tool"
+
+    def __init__(
+            self,
+            repo_url: str,
+            repo_branch_name: str = None,
+            branch_name: str = DEFAULT_BRANCH_NAME,
+            author: str = None
+    ):
         """Initializes the agent with repository info.
 
         Args:
