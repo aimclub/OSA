@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import json
+import os
 import re
 
 import docx2txt
@@ -57,7 +58,7 @@ class DocValidator:
                 va_re_gen = ValidationReportGenerator(self.config_manager, self.git_agent.metadata)
                 va_re_gen.build_pdf("Document", content)
                 self.events.append(OperationEvent(kind=EventKind.GENERATED, target=va_re_gen.filename))
-                if self.create_fork:
+                if self.create_fork and os.path.exists(va_re_gen.output_path):
                     self.git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
                     self.events.append(OperationEvent(kind=EventKind.UPLOADED, target=va_re_gen.filename))
 

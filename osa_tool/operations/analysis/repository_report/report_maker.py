@@ -322,7 +322,7 @@ class ReportGenerator(AbstractReportGenerator):
         try:
             self.build_pdf()
             self.events.append(OperationEvent(kind=EventKind.GENERATED, target=f"{self.filename}"))
-            if self.create_fork:
+            if self.create_fork and os.path.exists(self.output_path):
                 self.git_agent.upload_report(self.filename, self.output_path)
                 self.events.append(OperationEvent(kind=EventKind.UPLOADED, target=f"{self.filename}"))
             return {"result": {"report": self.filename}, "events": self.events}
@@ -402,14 +402,17 @@ class ReportGenerator(AbstractReportGenerator):
 
 
 class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
+
     def __init__(
         self,
         config_manager: ConfigManager,
-        plan: Plan,
         git_agent: GitAgent,
+        create_fork: bool,
+        plan: Plan,
     ):
         super().__init__(config_manager, git_agent)
         self.filename = f"{self.metadata.name}_work_summary.pdf"
+        self.create_fork = create_fork
         self.output_path = os.path.join(os.getcwd(), self.filename)
         self.completed_tasks = plan.list_for_report
         self.task_results = plan.results or {}
@@ -429,6 +432,9 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         try:
             self.build_pdf()
             self.events.append(OperationEvent(kind=EventKind.GENERATED, target=self.filename))
+            if self.create_fork and os.path.exists(self.output_path):
+                self.git_agent.upload_report(self.filename, self.output_path)
+                self.events.append(OperationEvent(kind=EventKind.UPLOADED, target=f"{self.filename}"))
             return {"result": {"report": self.filename}, "events": self.events}
         except ValueError as e:
             self.events.append(OperationEvent(kind=EventKind.FAILED, target="OSA work summary", data={"error": str(e)}))

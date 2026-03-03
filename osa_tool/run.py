@@ -235,7 +235,7 @@ def main():
             )
 
         if plan.get("report"):
-            WhatHasBeenDoneReportGenerator(config_manager, plan, git_agent).run()
+            WhatHasBeenDoneReportGenerator(config_manager, git_agent, create_fork, plan).run()
 
         elapsed_time = time.time() - start_time
         rich_section(f"All operations completed successfully in total time: {format_time(elapsed_time)}")
