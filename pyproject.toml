@@ -2,7 +2,7 @@
 name = "osa_tool"
 version = "0.2.7"
 description = "Tool that just makes your open source project better!"
-requires-python = ">=3.10,<4.0"
+requires-python = ">=3.11,<4.0"
 authors = [
     { name = "ITMO-NSS-team", email = "itmo.nss.team@gmail.com" }
 ]

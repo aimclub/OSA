@@ -10,6 +10,7 @@
 [![Acknowledgement ITMO](https://raw.githubusercontent.com/aimclub/open-source-ops/43bb283758b43d75ec1df0a6bb4ae3eb20066323/badges/ITMO_badge.svg)](https://itmo.ru/)
 [![Open-source-ops website](https://raw.githubusercontent.com/aimclub/open-source-ops/7de1e1321389ec177f236d0a5f41f876811a912a/badges/open--source--ops-black.svg)](https://aimclub.github.io/open-source-ops/)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![CI Pipeline](https://github.com/aimclub/OSA/actions/workflows/ci.yml/badge.svg)](https://github.com/aimclub/OSA/actions/workflows/ci.yml)
 [![PyPi](https://badge.fury.io/py/osa_tool.svg)](https://badge.fury.io/py/osa_tool)
 [![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/aimclub/OSA)
 [![Telegram Chat](https://img.shields.io/badge/Telegram-group-blue)](https://t.me/OSA_helpdesk)
@@ -131,7 +132,7 @@ docker build --build-arg GIT_USER_NAME="your-user-name" --build-arg GIT_USER_EMA
 
 ### Prerequisites
 
-OSA requires Python 3.10 or higher.
+OSA requires Python 3.11 or higher.
 
 The .env file is required to specify the LLM API key (OPENAI_API_KEY or AUTHORIZATION_KEY) and optionally a Git token.
 The Git token (GIT_TOKEN) may be omitted if you plan to work with a public repository without creating a fork (using the
