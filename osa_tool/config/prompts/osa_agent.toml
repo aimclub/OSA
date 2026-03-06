@@ -1,6 +1,6 @@
 [prompts]
 intent_router = """
-Analyze the following activer request and any attached context:
+Analyze the following active request and any attached context:
 
 Active Request: {active_request}
 Attachment: {attachment}
