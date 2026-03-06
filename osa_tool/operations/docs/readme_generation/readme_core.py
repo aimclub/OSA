@@ -7,7 +7,6 @@ from osa_tool.operations.docs.readme_generation.generator.builder import Markdow
 from osa_tool.operations.docs.readme_generation.generator.builder_article import MarkdownBuilderArticle
 from osa_tool.operations.docs.readme_generation.models.llm_service import LLMClient
 from osa_tool.operations.docs.readme_generation.utils import remove_extra_blank_lines, save_sections
-from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
@@ -18,17 +17,18 @@ class ReadmeAgent:
         self,
         config_manager: ConfigManager,
         metadata: RepositoryMetadata,
-        plan: Plan,
+        attachment: str | None = None,
+        refine_readme: bool = False,
     ):
         self.config_manager = config_manager
-        self.article = plan.get("attachment")
-        self.refine_readme = plan.get("refine_readme")
+        self.article = attachment
+        self.refine_readme = refine_readme
         self.metadata = metadata
         self.repo_url = self.config_manager.get_git_settings().repository
         self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.file_to_save = os.path.join(self.repo_path, "README.md")
         self.llm_client = LLMClient(self.config_manager, self.metadata)
-        self.plan = plan
+        self.events: list[OperationEvent] = []
 
     def generate_readme(self) -> dict:
         """
@@ -40,9 +40,7 @@ class ReadmeAgent:
                 - events: List of OperationEvent
         """
         logger.info("Started generating README.md. Processing the repository: %s", self.repo_url)
-        events: list[OperationEvent] = []
 
-        self.plan.mark_started("readme")
         try:
             if self.article is None:
                 builder = self.default_readme()
@@ -51,15 +49,11 @@ class ReadmeAgent:
 
             readme_content = builder.build()
 
-            events.append(OperationEvent(kind=EventKind.GENERATED, target="README.md"))
+            self.events.append(OperationEvent(kind=EventKind.GENERATED, target="README.md"))
 
             if self.refine_readme:
-                try:
-                    readme_content = self.llm_client.refine_readme(readme_content)
-                    events.append(OperationEvent(kind=EventKind.REFINED, target="README.md"))
-                    self.plan.mark_done("refine_readme")
-                except:
-                    self.plan.mark_failed("refine_readme")
+                readme_content = self.llm_client.refine_readme(readme_content)
+                self.events.append(OperationEvent(kind=EventKind.REFINED, target="README.md"))
 
             if self.article is None:
                 readme_content = self.llm_client.clean(readme_content)
@@ -67,19 +61,17 @@ class ReadmeAgent:
             save_sections(readme_content, self.file_to_save)
             remove_extra_blank_lines(self.file_to_save)
             logger.info(f"README.md successfully generated in folder {self.repo_path}")
-            self.plan.mark_done("readme")
             return {
                 "result": {
                     "file": "README.md",
                     "path": self.file_to_save,
                     "refined": self.refine_readme,
                 },
-                "events": events,
+                "events": self.events,
             }
         except Exception as e:
             logger.error("Error while generating: %s", repr(e), exc_info=True)
-            self.plan.mark_failed("readme")
-            events.append(
+            self.events.append(
                 OperationEvent(
                     kind=EventKind.FAILED,
                     target="README.md",
@@ -92,7 +84,7 @@ class ReadmeAgent:
 
             return {
                 "result": None,
-                "events": events,
+                "events": self.events,
             }
 
     def default_readme(self) -> MarkdownBuilder:

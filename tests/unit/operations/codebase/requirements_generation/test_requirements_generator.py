@@ -21,13 +21,7 @@ def mock_config():
 
 
 @pytest.fixture
-def mock_plan():
-    """Mock the scheduler plan."""
-    return MagicMock()
-
-
-@pytest.fixture
-def generator(mock_config, mock_plan):
+def generator(mock_config):
     """Create a generator instance with mocked dependencies."""
     with patch(
         "osa_tool.operations.codebase.requirements_generation.requirements_generation.ModelHandlerFactory.build"
@@ -36,7 +30,7 @@ def generator(mock_config, mock_plan):
             "osa_tool.operations.codebase.requirements_generation.requirements_generation.parse_folder_name",
             return_value="repo",
         ):
-            gen = RequirementsGenerator(mock_config, mock_plan)
+            gen = RequirementsGenerator(mock_config)
             gen.repo_path = MagicMock(spec=Path)
             gen.repo_path.resolve.return_value = gen.repo_path
             gen.repo_path.__str__.return_value = "/abs/path/to/repo"
@@ -124,12 +118,10 @@ def test_generate_success_simple(mock_refine, mock_run_pipreqs, generator):
     result = generator.generate()
 
     # Assert
-    generator.plan.mark_started.assert_called_with("requirements")
     mock_run_pipreqs.assert_called_once_with(scan_notebooks=True)
 
     mock_refine.assert_called_once()
 
-    generator.plan.mark_done.assert_called_with("requirements")
     assert result["result"]["path"].endswith("requirements.txt")
 
 
@@ -186,8 +178,6 @@ def test_generate_fatal_failure(mock_run_pipreqs, generator):
     # Act / Assert
     with pytest.raises(subprocess.CalledProcessError):
         generator.generate()
-
-    generator.plan.mark_failed.assert_called_with("requirements")
 
     assert len(generator.events) == 2
     assert generator.events[1].kind == EventKind.FAILED

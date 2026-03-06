@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Annotated
 
 from pydantic import BaseModel
+from pydantic import RootModel
 
 
 class YesNoPartial(str, Enum):
@@ -75,3 +76,27 @@ class AfterReportBlock(BaseModel):
 class AfterReport(BaseModel):
     summary: str
     blocks: list[AfterReportBlock]
+
+
+class AfterReportSummary(BaseModel):
+    """Structured output for after-report summary generation."""
+
+    summary: str
+
+
+class AfterReportBlockPlan(BaseModel):
+    """
+    Block definition returned by LLM.
+
+    tasks: list of task names (as shown in the input), not indices.
+    """
+
+    name: str
+    description: str
+    tasks: list[str]
+
+
+class AfterReportBlocksPlan(RootModel):
+    """Structured output for after-report block grouping."""
+
+    root: list[AfterReportBlockPlan]

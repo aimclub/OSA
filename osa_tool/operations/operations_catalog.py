@@ -1,12 +1,16 @@
 import inspect
 import os
-from typing import Optional, List, Literal
+from typing import List, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator
+from osa_tool.operations.analysis.repository_validation.doc_validator import DocValidator
+from osa_tool.operations.analysis.repository_validation.paper_validator import PaperValidator
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
+from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
+from osa_tool.operations.codebase.organization.repo_organizer import RepoOrganizer
 from osa_tool.operations.codebase.requirements_generation.requirements_generation import RequirementsGenerator
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
 from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
@@ -26,8 +30,68 @@ class GenerateReportOperation(Operation):
     priority = 5
 
     executor = ReportGenerator
-    executor_method = "build_pdf"
-    executor_dependencies = ["config_manager", "metadata"]
+    executor_method = "run"
+    executor_dependencies = ["config_manager", "git_agent", "create_fork"]
+
+
+class DocValidationOperation(Operation):
+    name = "validate_doc"
+    description = (
+        "Check if the procedures or workflows from the attached technical documentation "
+        "can be reproduced using the selected repository."
+    )
+
+    supported_intents = ["new_task"]
+    supported_scopes = ["full_repo", "analysis"]
+    priority = 10
+
+    executor = DocValidator
+    executor_method = "run"
+    executor_dependencies = ["config_manager", "git_agent", "create_fork"]
+    state_dependencies = ["attachment"]
+
+
+class PaperValidationOperation(Operation):
+    name = "validate_paper"
+    description = (
+        "Check if the experiments and methodology from the attached research paper "
+        "can be reproduced using the selected repository."
+    )
+
+    supported_intents = ["new_task"]
+    supported_scopes = ["full_repo", "analysis"]
+    priority = 15
+
+    executor = PaperValidator
+    executor_method = "run"
+    executor_dependencies = ["config_manager", "git_agent", "create_fork"]
+    state_dependencies = ["attachment"]
+
+
+class ConvertNotebooksArgs(BaseModel):
+    notebook_paths: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Optional list of .ipynb files or directories to convert. "
+            "Example: ['notebooks/analysis.ipynb', 'research/']"
+        ),
+    )
+
+
+class ConvertNotebooksOperation(Operation):
+    name = "convert_notebooks"
+    description = "Convert Jupyter notebooks (.ipynb) into Python scripts with cleaned code."
+
+    supported_intents = ["new_task"]
+    supported_scopes = ["full_repo", "codebase"]
+    priority = 30
+
+    args_schema = ConvertNotebooksArgs
+    args_policy = "auto"
+
+    executor = NotebookConverter
+    executor_method = "convert_notebooks"
+    executor_dependencies = ["config_manager"]
 
 
 class TranslateRepositoryStructureOperation(Operation):
@@ -44,7 +108,13 @@ class TranslateRepositoryStructureOperation(Operation):
 
 
 class GenerateDocstringsArgs(BaseModel):
-    ignore_list: List[str] = []
+    ignore_list: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Optional list of directories or files to ignore during docstring generation. "
+            "Example: ['tests', 'moduleA/featureB', '__init__.py']"
+        ),
+    )
 
 
 class GenerateDocstringsOperation(Operation):
@@ -57,14 +127,6 @@ class GenerateDocstringsOperation(Operation):
 
     args_schema = GenerateDocstringsArgs
     args_policy = "auto"
-    prompt_for_args = (
-        "Optional parameter ignore_list: a list of directories or files "
-        "to ignore during docstring generation. "
-        "Paths must be relative to the project root. "
-        "If omitted, only '__init__.py' is ignored.\n\n"
-        "Example:\n"
-        "{'ignore_list': ['tests', 'moduleA/featureB', '__init__.py']}"
-    )
 
     executor = DocstringsGenerator
     executor_method = "run"
@@ -72,7 +134,7 @@ class GenerateDocstringsOperation(Operation):
 
 
 class EnsureLicenseArgs(BaseModel):
-    ensure_license: Literal["bsd-3", "mit", "ap2"] = "bsd-3"
+    license_type: Literal["bsd-3", "mit", "ap2"] = Field("bsd-3", description="License type to set for the repository.")
 
 
 class EnsureLicenseOperation(Operation):
@@ -85,12 +147,6 @@ class EnsureLicenseOperation(Operation):
 
     args_schema = EnsureLicenseArgs
     args_policy = "auto"
-    prompt_for_args = (
-        "For operation 'ensure_license' provide a license type. "
-        "Expected key: 'license_type'."
-        "Allowed values: 'bsd-3', 'mit', 'ap2'."
-        "If not specified, use 'bsd-3'."
-    )
 
     executor = LicenseCompiler
     executor_method = "run"
@@ -123,10 +179,6 @@ class RequirementsGeneratorOperation(Operation):
     executor_dependencies = ["config_manager"]
 
 
-class GenerateReadmeArgs(BaseModel):
-    article: Optional[str] = None
-
-
 class GenerateReadmeOperation(Operation):
     name = "generate_readme"
     description = "Generate or improve README.md for the repository"
@@ -135,10 +187,6 @@ class GenerateReadmeOperation(Operation):
     supported_scopes = ["full_repo", "docs"]
     priority = 70
 
-    args_schema = GenerateReadmeArgs
-    args_policy = "auto"
-    prompt_for_args = "Provide the content for README.md if you want to override default generation."
-
     executor = ReadmeAgent
     executor_method = "generate_readme"
     executor_dependencies = ["config_manager", "metadata"]
@@ -146,7 +194,10 @@ class GenerateReadmeOperation(Operation):
 
 
 class TranslateReadmeArgs(BaseModel):
-    languages: List[str]
+    languages: List[str] = Field(
+        ...,
+        description="List of languages to translate README.md into. Example: ['Russian', 'Swedish']",
+    )
 
 
 class TranslateReadmeOperation(Operation):
@@ -159,9 +210,6 @@ class TranslateReadmeOperation(Operation):
 
     args_schema = TranslateReadmeArgs
     args_policy = "ask_if_missing"
-    prompt_for_args = (
-        "For operation 'translate_readme' provide a list of languages " "(e.g., {'languages': ['Russian', 'Swedish']})."
-    )
 
     executor = ReadmeTranslator
     executor_method = "translate_readme"
@@ -179,6 +227,22 @@ class GenerateAboutOperation(Operation):
     executor = AboutGenerator
     executor_method = "generate_about_content"
     executor_dependencies = ["config_manager", "git_agent"]
+
+
+class OrganizeRepositoryOperation(Operation):
+    name = "organize"
+    description = (
+        "Organize the repository structure by adding standard 'tests' and "
+        "'examples' directories if missing and moving matching files."
+    )
+
+    supported_intents = ["new_task"]
+    supported_scopes = ["full_repo", "codebase"]
+    priority = 90
+
+    executor = RepoOrganizer
+    executor_method = "organize"
+    executor_dependencies = ["config_manager"]
 
 
 def register_all_operations(generate_docs: bool = True):

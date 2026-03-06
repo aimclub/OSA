@@ -5,8 +5,8 @@ from typing import Iterable, Iterator
 from rich.progress import track
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.conversion.notebook_converter import NotebookConverter
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
+from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
 from osa_tool.operations.docs.readme_generation.utils import read_file
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger

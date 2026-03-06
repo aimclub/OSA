@@ -1,14 +1,17 @@
-import asyncio
 import os
 import sys
 import time
+from typing import Any
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.conversion.notebook_converter import NotebookConverter
 from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
+from osa_tool.operations.analysis.repository_validation.doc_validator import DocValidator
+from osa_tool.operations.analysis.repository_validation.paper_validator import PaperValidator
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
+from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
+from osa_tool.operations.codebase.organization.repo_organizer import RepoOrganizer
 from osa_tool.operations.codebase.requirements_generation.requirements_generation import RequirementsGenerator
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
 from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
@@ -16,7 +19,7 @@ from osa_tool.operations.docs.community_docs_generation.license_generation impor
 from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
 from osa_tool.operations.docs.readme_generation.utils import format_time
 from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
-from osa_tool.organization.repo_organizer import RepoOrganizer
+from osa_tool.scheduler.plan import Plan
 from osa_tool.scheduler.scheduler import ModeScheduler
 from osa_tool.scheduler.workflow_manager import (
     GitHubWorkflowManager,
@@ -33,11 +36,6 @@ from osa_tool.utils.utils import (
     parse_folder_name,
     rich_section,
     switch_to_output_directory,
-)
-from osa_tool.validation.doc_validator import DocValidator
-from osa_tool.validation.paper_validator import PaperValidator
-from osa_tool.validation.report_generator import (
-    ReportGenerator as ValidationReportGenerator,
 )
 
 
@@ -88,102 +86,115 @@ def main():
         # NOTE: Must run first - switches GitHub branches
         if plan.get("report"):
             rich_section("Report generation")
-            plan.mark_started("report")
-            analytics = ReportGenerator(config_manager, git_agent.metadata)
-            try:
-                analytics.build_pdf()
-                if create_fork and os.path.exists(analytics.output_path):
-                    git_agent.upload_report(analytics.filename, analytics.output_path)
-                plan.mark_done("report")
-            except ValueError:
-                plan.mark_failed("report")
+            _run_plan_operation(
+                plan,
+                "report",
+                lambda: ReportGenerator(config_manager, git_agent, create_fork).run(),
+            )
 
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_doc"):
-            plan.mark_started("validate_doc")
             rich_section("Document validation")
-            content = asyncio.run((DocValidator(config_manager).validate(plan.get("attachment"))))
-            if content:
-                va_re_gen = ValidationReportGenerator(config_manager, git_agent.metadata)
-                va_re_gen.build_pdf("Document", content)
-                if create_fork and os.path.exists(va_re_gen.output_path):
-                    git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
-                plan.mark_done("validate_doc")
-            else:
-                plan.mark_failed("validate_doc")
-                logger.warning("Document validation returned no content. Skipping report generation.")
+            _run_plan_operation(
+                plan,
+                "validate_doc",
+                lambda: DocValidator(config_manager, git_agent, create_fork, plan.get("attachment")).run(),
+            )
+
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_paper"):
-            plan.mark_started("validate_paper")
             rich_section("Paper validation")
-            content = asyncio.run((PaperValidator(config_manager).validate(plan.get("attachment"))))
-            if content:
-                va_re_gen = ValidationReportGenerator(config_manager, git_agent.metadata)
-                va_re_gen.build_pdf("Paper", content)
-                if create_fork and os.path.exists(va_re_gen.output_path):
-                    git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
-                plan.mark_done("validate_paper")
-            else:
-                plan.mark_failed("validate_paper")
-                logger.warning("Paper validation returned no content. Skipping report generation.")
+            _run_plan_operation(
+                plan,
+                "validate_paper",
+                lambda: PaperValidator(config_manager, git_agent, create_fork, plan.get("attachment")).run(),
+            )
 
         # .ipynb to .py conversion
         if notebook := plan.get("convert_notebooks"):
-            plan.mark_started("convert_notebooks")
             rich_section("Jupyter notebooks conversion")
-            if convert_notebooks(args.repository, notebook):
-                plan.mark_done("convert_notebooks")
-            else:
-                plan.mark_failed("convert_notebooks")
+            _run_plan_operation(
+                plan,
+                "convert_notebooks",
+                lambda: NotebookConverter(config_manager, notebook).convert_notebooks(),
+            )
 
         # Auto translating names of directories
         if plan.get("translate_dirs"):
             rich_section("Directory and file translation")
-            RepositoryStructureTranslator(config_manager, plan).rename_directories_and_files()
+            _run_plan_operation(
+                plan,
+                "translate_dirs",
+                lambda: RepositoryStructureTranslator(config_manager).rename_directories_and_files(),
+            )
 
         # Docstring generation
         if plan.get("docstring"):
             rich_section("Docstrings generation")
-            DocstringsGenerator(config_manager, args.ignore_list, plan).run()
+            _run_plan_operation(
+                plan,
+                "docstring",
+                lambda: DocstringsGenerator(config_manager, args.ignore_list).run(),
+            )
 
         # License compiling
-        if plan.get("ensure_license"):
+        if license_type := plan.get("ensure_license"):
             rich_section("License generation")
-            LicenseCompiler(config_manager, git_agent.metadata, plan).run()
+            _run_plan_operation(
+                plan,
+                "ensure_license",
+                lambda: LicenseCompiler(config_manager, git_agent.metadata, license_type).run(),
+            )
 
         # Generate community documentation
         if plan.get("community_docs"):
             rich_section("Community docs generation")
-            generate_documentation(config_manager, git_agent.metadata, plan)
+            _run_plan_operation(
+                plan,
+                "community_docs",
+                lambda: generate_documentation(config_manager, git_agent.metadata),
+            )
 
         # Requirements generation
         if plan.get("requirements"):
             rich_section("Requirements generation")
-            try:
-                RequirementsGenerator(config_manager, plan).generate()
-            except Exception as e:
-                logger.error(f"Requirements generation failed and will be skipped. Error: {e}")
+            _run_plan_operation(
+                plan,
+                "requirements",
+                lambda: RequirementsGenerator(config_manager).generate(),
+            )
 
         # Readme generation
         if plan.get("readme"):
             rich_section("README generation")
-            readme_agent = ReadmeAgent(config_manager, git_agent.metadata, plan)
-            readme_agent.generate_readme()
+            _run_plan_operation(
+                plan,
+                "readme",
+                lambda: ReadmeAgent(
+                    config_manager, git_agent.metadata, plan.get("attachment"), plan.get("refine_readme")
+                ).generate_readme(),
+            )
 
         # Readme translation
         translate_readme = plan.get("translate_readme")
         if translate_readme:
             rich_section("README translation")
-            ReadmeTranslator(config_manager, git_agent.metadata, plan).translate_readme()
+            _run_plan_operation(
+                plan,
+                "translate_readme",
+                lambda: ReadmeTranslator(config_manager, git_agent.metadata, translate_readme).translate_readme(),
+            )
+
         # About section generation
         about_gen = None
         if plan.get("about"):
             rich_section("About Section generation")
-            about_gen = AboutGenerator(config_manager, git_agent, plan)
-            if about_gen.generate_about_content():
-                plan.mark_done("about")
-            else:
-                plan.mark_failed("about")
+            about_gen = AboutGenerator(config_manager, git_agent)
+            _run_plan_operation(
+                plan,
+                "about",
+                lambda: about_gen.generate_about_content(),
+            )
             if create_fork:
                 git_agent.update_about_section(about_gen.get_about_content())
             if not create_pull_request:
@@ -202,10 +213,11 @@ def main():
         # Organize repository by adding 'tests' and 'examples' directories if they aren't exist
         if plan.get("organize"):
             rich_section("Repository organization")
-            plan.mark_started("organize")
-            organizer = RepoOrganizer(os.path.join(os.getcwd(), parse_folder_name(args.repository)))
-            organizer.organize()
-            plan.mark_done("organize")
+            _run_plan_operation(
+                plan,
+                "organize",
+                lambda: RepoOrganizer(config_manager).organize(),
+            )
 
         if create_fork and create_pull_request:
             rich_section("Publishing changes")
@@ -216,20 +228,14 @@ def main():
 
         if plan.get("delete_dir"):
             rich_section("Repository deletion")
-            plan.mark_started("delete_dir")
-            delete_repository(args.repository)
-            plan.mark_done("delete_dir")
+            _run_plan_operation(
+                plan,
+                "delete_dir",
+                lambda: delete_repository(args.repository),
+            )
 
         if plan.get("report"):
-            try:
-                report_generator = WhatHasBeenDoneReportGenerator(
-                    config_manager, plan.list_for_report, git_agent.metadata
-                )
-                report_generator.build_pdf()
-                if create_fork and os.path.exists(report_generator.output_path):
-                    git_agent.upload_report(report_generator.filename, report_generator.output_path)
-            except Exception as e:
-                logger.error("Error while generating after report: %s", repr(e), exc_info=True)
+            WhatHasBeenDoneReportGenerator(config_manager, git_agent, create_fork, plan).run()
 
         elapsed_time = time.time() - start_time
         rich_section(f"All operations completed successfully in total time: {format_time(elapsed_time)}")
@@ -256,27 +262,25 @@ def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
     return git_agent, workflow_manager
 
 
-def convert_notebooks(repo_url: str, notebook_paths: list[str] | None = None) -> bool:
-    """Converts Jupyter notebooks to Python scripts based on provided paths.
-
-    Args:
-        repo_url: Repository url.
-        notebook_paths: A list of paths to the notebooks to be converted (or None).
-                        If empty, the converter will process the current repository.
-    Returns:
-        Has the task been completed successfully
+def _run_plan_operation(plan: Plan, task_key: str, call: callable) -> None:
     """
+    Execute a single legacy plan operation and record its result.
+
+    - marks task as IN_PROGRESS/COMPLETED/FAILED in Plan
+    - normalizes and stores {"result", "events"} in plan.results
+    """
+    if task_key in plan.tasks:
+        plan.mark_started(task_key)
+
     try:
-        converter = NotebookConverter()
-        if len(notebook_paths) == 0:
-            converter.process_path(os.path.basename(repo_url))
-        else:
-            for path in notebook_paths:
-                converter.process_path(path)
-        return True
+        raw_result: Any = call()
+        plan.record_result(task_key, raw_result)
+        if task_key in plan.tasks:
+            plan.mark_done(task_key)
     except Exception as e:
-        logger.error("Error while converting notebooks: %s", repr(e), exc_info=True)
-    return False
+        plan.record_result(task_key, {"result": {"error": str(e)}, "events": []})
+        if task_key in plan.tasks:
+            plan.mark_failed(task_key)
 
 
 if __name__ == "__main__":

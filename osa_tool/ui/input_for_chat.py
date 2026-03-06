@@ -3,16 +3,13 @@ from typing import Optional
 from pydantic import BaseModel
 from rich.console import Console
 
+from osa_tool.osa_agent.state import OSAState
+
 console = Console()
 
 
 class InitialChatInput(BaseModel):
     repo_url: str
-    user_request: str
-    attachment: Optional[str] = None
-
-
-class ClarifyChatInput(BaseModel):
     user_request: str
     attachment: Optional[str] = None
 
@@ -51,21 +48,34 @@ def collect_user_input() -> InitialChatInput:
     )
 
 
-def clarify_user_input() -> ClarifyChatInput:
-    console.print("\n[bold yellow]Intent not clear. Please refine your request.[/]\n")
+def wait_for_user_clarification(state: OSAState) -> dict:
+    """
+    Universal mechanism for requesting clarification.
+    Supports multiple fields defined by the agent.
+    """
 
-    user_request = ""
-    while not user_request:
-        user_request = console.input("[cyan]Clarified user request:[/] ").strip()
-        if not user_request:
-            console.print("[red]User request is required![/]")
+    if not state.clarification_required:
+        raise RuntimeError("wait_for_user_clarification called but no clarification was requested")
 
-    attachment = console.input("[cyan]Attachment (optional, single value):[/] ").strip()
-    # Convert empty string → None
-    if not attachment:
-        attachment = None
+    payload = state.clarification_payload or {}
+    question = payload.get("question", "Additional information required:")
+    fields = payload.get("fields", [])
 
-    return ClarifyChatInput(
-        user_request=user_request,
-        attachment=attachment,
-    )
+    console.print(f"\n[bold yellow]{question}[/]\n")
+
+    answers = {}
+
+    for field in fields:
+        name = field["name"]
+        prompt = field["prompt"]
+        required = field.get("required", False)
+
+        while True:
+            value = console.input(f"[cyan]{prompt}[/] ").strip()
+            if value or not required:
+                break
+            console.print("[red]This field is required![/]")
+
+        answers[name] = value if value else None
+
+    return answers
