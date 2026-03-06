@@ -346,8 +346,8 @@ class GitAgent(abc.ABC):
                 logger.error(f"Directory {self.clone_dir} exists but is not a valid Git repository")
                 raise
 
-        elif self._check_branch_existence():
-            self._clone_chosen_branch()
+        elif self._check_branch_existence(None):
+            self._clone_chosen_branch(None)
         else:
             self._clone_default_branch()
 

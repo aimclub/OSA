@@ -1,0 +1,102 @@
+name: 'Open Source Advisor Action'
+description: 'Automatically generates missing docstrings and audits your repository using various LLM providers'
+author: 'aimclub'
+
+inputs:
+  # Tokens (Secrets)
+  openai_api_key:
+    description: 'API key for OpenAI, VseGPT or OpenRouter'
+    required: false
+  authorization_key:
+    description: 'API key for GigaChat provider'
+    required: false
+  github_token:
+    description: 'GitHub Token for repository access'
+    required: true
+    default: ${{ github.token }}
+
+  # LLM Settings
+  api:
+    description: 'LLM Provider (openai, itmo, ollama, gigachat)'
+    required: false
+  base_url:
+    description: 'API Base URL'
+    required: false
+  model:
+    description: 'LLM Model name'
+    required: false
+  mode:
+    description: 'OSA processing mode (basic, auto, advanced)'
+    required: false
+    default: 'advanced'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r ${{ github.action_path }}/requirements.txt
+        pip install ${{ github.action_path }}
+
+    - name: Get changed files
+      id: changed-files
+      uses: tj-actions/changed-files@v47
+      with:
+        files: '**.py'
+
+    - name: Run OSA
+      shell: bash
+      env:
+        # Try and get all possible tokens that we have
+        OPENAI_API_KEY: ${{ inputs.openai_api_key }}
+        AUTHORIZATION_KEY: ${{ inputs.authorization_key }}
+        GIT_TOKEN: ${{ inputs.github_token }}
+      run: |
+        REPO_NAME=$(basename ${{ github.repository }})
+        rm -rf "$REPO_NAME"
+
+        # Base command
+        CMD="python -m osa_tool.run -r https://github.com/${{ github.repository }} -b ${{ github.head_ref || github.ref_name }} --web-mode --no-fork --no-pull-request --docstring --incremental --target-files ${{ steps.changed-files.outputs.all_changed_files }}"
+        
+        # Dynamic argument adding (if they are added by user)
+        if [ -n "${{ inputs.mode }}" ]; then CMD="$CMD --mode ${{ inputs.mode }}"; fi
+        if [ -n "${{ inputs.api }}" ]; then CMD="$CMD --api ${{ inputs.api }}"; fi
+        if [ -n "${{ inputs.base_url }}" ]; then CMD="$CMD --base-url ${{ inputs.base_url }}"; fi
+        if [ -n "${{ inputs.model }}" ]; then CMD="$CMD --model ${{ inputs.model }}"; fi
+        
+        echo "Executing: $CMD"
+        $CMD
+
+    - name: Sync modified files
+      shell: bash
+      if: steps.changed-files.outputs.any_changed == 'true'
+      run: |
+        REPO_NAME=$(basename ${{ github.repository }})
+        if [ -d "$REPO_NAME" ]; then
+          echo "Syncing ONLY target files from cloned directory..."
+          CHANGED_FILES="${{ steps.changed-files.outputs.all_changed_files }}"
+          for file in $CHANGED_FILES; do
+            if [ -f "./$REPO_NAME/$file" ]; then
+              mkdir -p $(dirname "./$file")
+              cp -a "./$REPO_NAME/$file" "./$file"
+              echo "Synced: $file"
+            fi
+          done
+          rm -rf "./$REPO_NAME"
+        fi
+
+    - name: Commit and Push
+      if: steps.changed-files.outputs.any_changed == 'true'
+      uses: stefanzweifel/git-auto-commit-action@v7
+      with:
+        commit_message: "docs(osa): auto-generate missing docstrings"
+        file_pattern: "*.py"
+        commit_user_name: "osa-bot"
+        commit_user_email: "osa-bot@users.noreply.github.com"

@@ -15,9 +15,13 @@ class DocstringsGenerator:
         config_manager: ConfigManager,
         ignore_list: list[str],
         plan: Plan,
+        incremental: bool = False,
+        target_files: list[str] = None,
     ) -> None:
         self.config_manager = config_manager
         self.ignore_list = ignore_list
+        self.incremental = incremental
+        self.target_files = target_files
 
         self.sem = asyncio.Semaphore(100)
         self.workers = multiprocessing.cpu_count()
@@ -26,7 +30,11 @@ class DocstringsGenerator:
         self.repo_path = parse_folder_name(self.repo_url)
 
         self.dg = DocGen(self.config_manager)
-        self.ts = OSA_TreeSitter(self.repo_path, self.ignore_list)
+        self.ts = OSA_TreeSitter(
+            self.repo_path,
+            self.ignore_list,
+            target_files=self.target_files,
+        )
         self.plan = plan
 
     def run(self) -> None:
@@ -91,6 +99,11 @@ class DocstringsGenerator:
             )
 
             await self.dg._write_augmented_code(res, cl_augmented, self.sem)
+
+            if self.incremental:
+                logger.info("Incremental mode active. Skipping main idea generation and full codebase update.")
+                self.plan.mark_done("docstring")
+                return
 
             # generate the main idea
             await self.dg.generate_the_main_idea(res)

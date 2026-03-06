@@ -14,11 +14,13 @@ class OSA_TreeSitter(object):
         cwd: A current working directory with source code files.
     """
 
-    def __init__(self, scripts_path: str, ignore_list: list[str] = None):
+    def __init__(self, scripts_path: str, ignore_list: list[str] = None, target_files: list[str] = None):
         """Initialization of the instance based on the provided path to the scripts.
 
         Args:
             scripts_path: provided by user path to the scripts.
+            ignore_list: files that will be ignored.
+            target_files: files that need to be checked.
         """
         self.cwd = scripts_path
         self.import_map = {}
@@ -26,6 +28,7 @@ class OSA_TreeSitter(object):
             self.ignore_list = ignore_list
         else:
             self.ignore_list = ["__init__.py"]
+        self.target_files = target_files
 
     def files_list(self, path: str) -> tuple[list, 0] | tuple[list[str], 1]:
         """Method provides a list of files occurring in the provided path.
@@ -44,6 +47,15 @@ class OSA_TreeSitter(object):
             1 - a path to the specific file was provided.
         """
         script_files = []
+
+        print(self.target_files)
+
+        if self.target_files is not None:
+            for file_path in self.target_files:
+                p = Path(os.path.join(self.cwd, file_path)).resolve()
+                if p.exists() and str(p).endswith(".py") and not self._is_ignored(p) and p.name not in self.ignore_list:
+                    script_files.append(str(p))
+            return script_files, 0
 
         if os.path.isdir(path):
             for root, _, files in os.walk(path):
@@ -632,7 +644,7 @@ class OSA_TreeSitter(object):
                     arguments.append(param_node.text.decode("utf-8"))
 
         source_bytes = source_code.encode("utf-8")
-        source = source_bytes[function_node.start_byte : node.end_byte].decode("utf-8")
+        source = source_bytes[function_node.start_byte : function_node.end_byte].decode("utf-8")
 
         return_node = function_node.child_by_field_name("return_type")
         return_type = None

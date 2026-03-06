@@ -35,6 +35,7 @@ class GitSettings(BaseModel):
     host_domain: str | None = None
     host: str | None = None
     name: str = ""
+    osa_branch_name: str = "osa_tool"
 
     @model_validator(mode="after")
     def set_git_attributes(self):

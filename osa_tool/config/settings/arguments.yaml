@@ -57,6 +57,17 @@ arguments:
       If flag omitted only __init__.py will be ignored.
     example: "tests moduleA/featureB __init__.py"
 
+  incremental:
+    aliases: [ "--incremental" ]
+    type: flag
+    description: "Enable incremental mode for tasks (e.g., generate docstrings only for missing ones and skip main idea update)."
+
+  target_files:
+    aliases: [ "--target-files" ]
+    type: list
+    description: "Space-separated list of specific files to analyze. If set, OSA will focus only on these files."
+    example: "path/to/file1.py path/to/file2.py"
+
   report:
     aliases: [ "--report" ]
     type: flag
