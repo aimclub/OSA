@@ -179,9 +179,9 @@ def test_generate_fatal_failure(mock_run_pipreqs, generator):
     with pytest.raises(subprocess.CalledProcessError):
         generator.generate()
 
-    assert len(generator.events) == 2
-    assert generator.events[1].kind == EventKind.FAILED
-    assert generator.events[1].data["mode"] == "no-notebooks"
+    assert len(generator.events) == 3
+    assert generator.events[2].kind == EventKind.FAILED
+    assert generator.events[2].data["mode"] == "no-notebooks"
 
 
 def test_refine_with_llm_writes_file(generator):

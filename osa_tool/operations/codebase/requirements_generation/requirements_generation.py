@@ -42,6 +42,8 @@ class RequirementsGenerator:
         pyproject_path = self.repo_path / "pyproject.toml"
 
         old_context = self._get_existing_context(req_file_path, pyproject_path)
+        if old_context:
+            self._add_event(EventKind.ANALYZED, mode="existing-context")
 
         # Scan with notebooks
         try:
