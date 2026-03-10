@@ -4,7 +4,6 @@ from pathlib import Path
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandlerFactory
 from osa_tool.core.models.event import OperationEvent, EventKind
-from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.utils import parse_folder_name
@@ -23,20 +22,17 @@ class RequirementsGenerator:
     Python packages and produces a dependency list.
     """
 
-    def __init__(self, config_manager: ConfigManager, plan: Plan):
+    def __init__(self, config_manager: ConfigManager):
         self.config_manager = config_manager
         self.repo_url = config_manager.get_git_settings().repository
         self.repo_path = Path(parse_folder_name(self.repo_url)).resolve()
         self.events: list[OperationEvent] = []
-        self.plan = plan
         self.prompts = self.config_manager.get_prompts()
         self.model_handler = ModelHandlerFactory.build(self.config_manager.config)
 
     def generate(self) -> dict:
         logger.info(f"Starting the generation of requirements for: {self.repo_url}")
-        self.plan.mark_started("requirements")
         if not self._validate_repo_path():
-            self.plan.mark_failed("requirements")
             return {
                 "result": None,
                 "events": self.events,
@@ -68,7 +64,6 @@ class RequirementsGenerator:
             except subprocess.CalledProcessError as e_retry:
                 logger.error("Fatal error: Could not generate requirements.")
                 self._add_event(EventKind.FAILED, mode="no-notebooks", data={"stderr": e_retry.stderr})
-                self.plan.mark_failed("requirements")
                 raise
 
         # LLM Refinement
@@ -76,7 +71,6 @@ class RequirementsGenerator:
             logger.info("Merging requirements versions using LLM...")
             self._refine_with_llm(req_file_path, old_context)
 
-        self.plan.mark_done("requirements")
         return self._result_dict()
 
     def _refine_with_llm(self, req_file_path: Path, old_context: str) -> None:

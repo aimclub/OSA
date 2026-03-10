@@ -3,7 +3,10 @@ import shutil
 from fnmatch import fnmatch
 from typing import List
 
+from osa_tool.config.settings import ConfigManager
+from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.utils.logger import logger
+from osa_tool.utils.utils import parse_folder_name
 
 
 class RepoOrganizer:
@@ -18,16 +21,42 @@ class RepoOrganizer:
     # File patterns for example files
     EXAMPLE_PATTERNS: List[str] = ["example*", "*example*", "*sample*", "*demo*"]
 
-    def __init__(self, repo_path: str) -> None:
+    def __init__(self, config_manager: ConfigManager) -> None:
         """
         Initialize with the local repository path.
 
         Args:
-            repo_path (str): Local path to the repository.
+            config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
         """
-        self.repo_path = repo_path
-        self.tests_dir = os.path.join(repo_path, "tests")
-        self.examples_dir = os.path.join(repo_path, "examples")
+        self.repo_url = config_manager.get_git_settings().repository
+        self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.tests_dir = os.path.join(self.repo_path, "tests")
+        self.examples_dir = os.path.join(self.repo_path, "examples")
+
+        self.events: list[OperationEvent] = []
+
+    def organize(self) -> dict:
+        """
+        Ensure directories exist and move Python test and example files.
+        """
+        try:
+            logger.info("Starting repository organization process.")
+            self.add_directories()
+            self.move_files_by_patterns(self.tests_dir, self.TEST_PATTERNS)
+            self.move_files_by_patterns(self.examples_dir, self.EXAMPLE_PATTERNS)
+            logger.info("Repository organization process completed.")
+
+            return {
+                "result": "Repository successfully organized",
+                "events": self.events,
+            }
+        except Exception as e:
+            logger.error(f"Unexpected failure during repository organization: {e}")
+            self._emit(EventKind.FAILED, target="repo_organization", data={"error": repr(e)})
+            return {
+                "result": None,
+                "events": self.events,
+            }
 
     def add_directories(self) -> None:
         """
@@ -38,10 +67,13 @@ class RepoOrganizer:
                 if not os.path.exists(dir_path):
                     os.makedirs(dir_path)
                     logger.info(f"Created directory: {dir_path}")
+                    self._emit(EventKind.CREATED, target=dir_path)
                 else:
                     logger.info(f"Directory already exists: {dir_path}")
+                    self._emit(EventKind.SKIPPED, target=dir_path, data={"reason": "already_exists"})
             except Exception as e:
                 logger.error(f"Failed to create directory {dir_path}: {e}")
+                self._emit(EventKind.FAILED, target=dir_path, data={"error": repr(e)})
 
     @staticmethod
     def match_patterns(filename: str, patterns: List[str]) -> bool:
@@ -92,15 +124,11 @@ class RepoOrganizer:
                         if src_abs != os.path.abspath(dst):
                             shutil.move(src, dst)
                             logger.info(f"Moved '{src}' to '{dst}'")
+                            self._emit(EventKind.MOVED, target=file, data={"from": src, "to": dst})
                     except Exception as e:
                         logger.error(f"Failed to move '{src}' to '{dst}': {e}")
+                        self._emit(EventKind.FAILED, target=file, data={"error": repr(e)})
 
-    def organize(self) -> None:
-        """
-        Ensure directories exist and move Python test and example files.
-        """
-        logger.info("Starting repository organization process.")
-        self.add_directories()
-        self.move_files_by_patterns(self.tests_dir, self.TEST_PATTERNS)
-        self.move_files_by_patterns(self.examples_dir, self.EXAMPLE_PATTERNS)
-        logger.info("Repository organization process completed.")
+    def _emit(self, kind: EventKind, target: str, data: dict | None = None):
+        event = OperationEvent(kind=kind, target=target, data=data or {})
+        self.events.append(event)

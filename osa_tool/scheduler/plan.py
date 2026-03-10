@@ -1,5 +1,6 @@
-from enum import Enum
 from typing import Optional, Any
+
+from osa_tool.core.models.task import TaskStatus
 
 EXCLUDED_TASK = {
     "use_single_model",
@@ -29,29 +30,36 @@ EXCLUDED_TASK = {
 }
 
 
-class TaskStatus(Enum):
-    SCHEDULED = "SCHEDULED"
-    STARTED = "STARTED"
-    DONE = "DONE"
-    FAILED = "FAILED"
-
-
 class Plan:
     def __init__(self, generated_plan: dict):
-        self.tasks: dict[str, TaskStatus] = {key: TaskStatus.SCHEDULED for key in generated_plan if generated_plan[key]}
+        self.tasks: dict[str, TaskStatus] = {key: TaskStatus.PENDING for key in generated_plan if generated_plan[key]}
         self.generated_plan = generated_plan
+        self.results: dict[str, dict] = {}
 
-    def status(self, task: str) -> TaskStatus:
-        return self.tasks[task]
+    @staticmethod
+    def _normalize_result(result: Any) -> dict:
+        if result is None:
+            return {"result": None, "events": []}
+        if isinstance(result, dict):
+            return {
+                "result": result.get("result"),
+                "events": result.get("events", []),
+            }
+        return {"result": result, "events": []}
+
+    def record_result(self, task: str, result: Any) -> None:
+        """Store normalized result for a task, keyed by its human‑readable name."""
+        display_name = self._format_task_name(task)
+        self.results[display_name] = self._normalize_result(result)
 
     def get(self, task: str) -> Optional[Any]:
         return self.generated_plan.get(task, None)
 
     def mark_started(self, task: str):
-        self.tasks[task] = TaskStatus.STARTED
+        self.tasks[task] = TaskStatus.IN_PROGRESS
 
     def mark_done(self, task: str):
-        self.tasks[task] = TaskStatus.DONE
+        self.tasks[task] = TaskStatus.COMPLETED
 
     def mark_failed(self, task: str):
         self.tasks[task] = TaskStatus.FAILED
@@ -61,7 +69,13 @@ class Plan:
         tasks = []
         for task in self.tasks.keys():
             if task not in EXCLUDED_TASK:
-                formatted_name = task.split("_")
-                formatted_name[0] = formatted_name[0][0].upper() + formatted_name[0][1:]
-                tasks.append((" ".join(formatted_name), self.tasks[task] == TaskStatus.DONE))
+                display_name = self._format_task_name(task)
+                tasks.append((display_name, self.tasks[task] == TaskStatus.COMPLETED))
         return tasks
+
+    @staticmethod
+    def _format_task_name(task: str) -> str:
+        parts = task.split("_")
+        if parts and parts[0]:
+            parts[0] = parts[0][0].upper() + parts[0][1:]
+        return " ".join(parts)
