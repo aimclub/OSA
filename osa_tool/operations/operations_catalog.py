@@ -12,6 +12,7 @@ from osa_tool.operations.codebase.docstring_generation.docstring_generation impo
 from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
 from osa_tool.operations.codebase.organization.repo_organizer import RepoOrganizer
 from osa_tool.operations.codebase.requirements_generation.requirements_generation import RequirementsGenerator
+from osa_tool.operations.codebase.workflow_generation.workflow_executor import WorkflowsExecutor
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
 from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
 from osa_tool.operations.docs.community_docs_generation.license_generation import LicenseCompiler
@@ -227,6 +228,42 @@ class GenerateAboutOperation(Operation):
     executor = AboutGenerator
     executor_method = "generate_about_content"
     executor_dependencies = ["config_manager", "git_agent"]
+
+
+class GenerateWorkflowsArgs(BaseModel):
+    include_black: bool = Field(True, description="Generate Black code formatter workflow.")
+    include_tests: bool = Field(True, description="Generate unit tests workflow.")
+    include_pep8: bool = Field(True, description="Generate PEP 8 compliance check workflow.")
+    include_autopep8: bool = Field(False, description="Generate autopep8 auto-fix workflow.")
+    include_fix_pep8: bool = Field(False, description="Generate fix-pep8 slash-command workflow.")
+    include_pypi: bool = Field(False, description="Generate PyPI publish workflow.")
+    pep8_tool: Literal["flake8", "pylint"] = Field("flake8", description="Tool for PEP 8 checking.")
+    use_poetry: bool = Field(False, description="Use Poetry for PyPI packaging.")
+    include_codecov: bool = Field(True, description="Include Codecov coverage upload step.")
+    python_versions: List[str] = Field(
+        default_factory=lambda: ["3.9", "3.10"],
+        description="Python versions to test against. Example: ['3.10', '3.11', '3.12']",
+    )
+    branches: List[str] = Field(
+        default_factory=lambda: ["main", "master"],
+        description="Git branches to trigger workflows on.",
+    )
+
+
+class GenerateWorkflowsOperation(Operation):
+    name = "generate_workflows"
+    description = "Generate CI/CD workflow files (GitHub Actions / GitLab CI) for the repository."
+
+    supported_intents = ["new_task", "feedback"]
+    supported_scopes = ["full_repo", "codebase"]
+    priority = 85
+
+    args_schema = GenerateWorkflowsArgs
+    args_policy = "auto"
+
+    executor = WorkflowsExecutor
+    executor_method = "generate"
+    executor_dependencies = ["config_manager", "workflow_manager"]
 
 
 class OrganizeRepositoryOperation(Operation):
