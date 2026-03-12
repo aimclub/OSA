@@ -30,7 +30,7 @@ def test_generate_documentation_calls_builders_methods(mock_config_manager, mock
 
         # Assert
         assert "Starting generating additional documentation." in caplog.text
-        assert "All additional documentation successfully generated." in caplog.text
+        assert "Additional documentation generation completed." in caplog.text
 
         mock_contributing_instance.build.assert_called_once()
         mock_community_instance.build_code_of_conduct.assert_called_once()

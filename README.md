@@ -186,7 +186,7 @@ Docker, ensure that you upload the PDF file to the OSA folder before building th
 /app/OSA/... or just use volume mounting to access the file.
 
 The --generate-workflows option is intended to create customizable CI/CD pipelines for Python repositories. For detailed
-documentation, see the [Workflow Generator README](./osa_tool/workflow/README.md).
+documentation, see the [Workflow Generator README](./osa_tool/operations/codebase/workflow_generation/README.md).
 
 ### Configuration
 
@@ -208,9 +208,12 @@ documentation, see the [Workflow Generator README](./osa_tool/workflow/README.md
 | `--no-fork`          | Avoid create fork for target repository                                             | `False`                        |
 | `--no-pull-request`  | Avoid create pull request for target repository                                     | `False`                        |
 
-Also OSA supports custom configuration via TOML files. Use the `--config-file` option to specify a path to custom configuration file. If no custom configuration file is provided, OSA will use the default configuration.
+Also OSA supports custom configuration via TOML files. Use the `--config-file` option to specify a path to custom
+configuration file. If no custom configuration file is provided, OSA will use the default configuration.
 
-By default, OSA uses a single model for all tasks (specified via `--model`). If you want to use different models for different types of tasks, disable the `--use-single-model` flag and specify models for each task type (`--model-docstring`, `--model-readme`, `--model-validation`, `--model-general`).
+By default, OSA uses a single model for all tasks (specified via `--model`). If you want to use different models for
+different types of tasks, disable the `--use-single-model` flag and specify models for each task type (
+`--model-docstring`, `--model-readme`, `--model-validation`, `--model-general`).
 
 To learn how to work with the interactive CLI and view descriptions of all available keys, visit
 the [CLI usage guide](./osa_tool/scheduler/README.md).
