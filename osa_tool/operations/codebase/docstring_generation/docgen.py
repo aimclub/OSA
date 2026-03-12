@@ -286,7 +286,8 @@ class DocGen(object):
             f"- Method Name: {method_details['method_name']}\n\n"
             "Method source code: You are given only the body of a single method, without its signature. "
             "All visible code, including any inner functions or nested logic, belongs to this single method. "
-            "Do not write separate docstrings for inner functions — they are part of the main method's logic.\n"
+            "Do NOT write separate docstrings for inner functions — they are part of the main method's logic.\n"
+            "Do NOT repeat the function signature or decorators.\n"
             "```\n"
             f"{method_details['source_code']}\n"
             "```\n\n"
@@ -368,6 +369,7 @@ class DocGen(object):
             f"The main idea of the project (for context only): {self.main_idea}\n\n"
             "Return only the updated docstring.\n"
             "DO NOT return code.\n"
+            "Do NOT repeat the function signature or decorators.\n"
             "DO NOT return other documentation sections.\n"
             "Return only the docstring without any quotation marks.\n"
         )

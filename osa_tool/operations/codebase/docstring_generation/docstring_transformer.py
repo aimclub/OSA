@@ -7,7 +7,6 @@ from libcst import (
     IndentedBlock,
 )
 from typing import Sequence
-import json
 
 
 class DocstringTransformer(CSTTransformer):

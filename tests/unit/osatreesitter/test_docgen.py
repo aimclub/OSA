@@ -260,7 +260,7 @@ async def test_generate_method_documentation(mock_config_manager):
     docstring = await docgen.generate_method_documentation(method_details, semaphore)
 
     # Assert
-    assert docstring == 'Generated docstring'
+    assert docstring == "Generated docstring"
     docgen.model_handler.async_request.assert_called_once()
 
 
@@ -285,7 +285,7 @@ async def test_update_method_documentation(mock_config_manager):
     updated_doc = await docgen.update_method_documentation(method_details, semaphore)
 
     # Assert
-    assert updated_doc == 'Updated docstring'
+    assert updated_doc == "Updated docstring"
     docgen.model_handler.async_request.assert_called_once()
 
 
