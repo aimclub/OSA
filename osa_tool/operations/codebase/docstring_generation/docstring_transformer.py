@@ -42,7 +42,8 @@ class DocstringTransformer(CSTTransformer):
         return targets
 
     def _make_doc(self, text: str) -> SimpleStatementLine:
-        return SimpleStatementLine(body=[Expr(value=SimpleString(f'"""{text.strip('"""')}"""'))])
+        clean = text.strip('"""')
+        return SimpleStatementLine(body=[Expr(value=SimpleString(f'"""{clean}"""'))])
 
     def _has_docstring(self, body: Sequence[cst.BaseStatement]) -> bool:
         return (
