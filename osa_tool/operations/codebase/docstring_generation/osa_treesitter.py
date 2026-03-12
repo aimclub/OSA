@@ -570,7 +570,7 @@ class OSA_TreeSitter(object):
                         methods.append(method_details)
 
             if child.type == "function_definition":
-                method_details = self._extract_function_details(child, source_code, imports, class_name)
+                method_details = self._extract_function_details(child, source_code, imports, class_name=class_name)
                 methods.append(method_details)
         return methods
 

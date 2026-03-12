@@ -7,6 +7,7 @@ from libcst import (
     IndentedBlock,
 )
 from typing import Sequence
+import json
 
 
 class DocstringTransformer(CSTTransformer):
@@ -42,7 +43,7 @@ class DocstringTransformer(CSTTransformer):
         return targets
 
     def _make_doc(self, text: str) -> SimpleStatementLine:
-        return SimpleStatementLine(body=[Expr(value=SimpleString(f'"""{text}"""'))])
+        return SimpleStatementLine(body=[Expr(value=SimpleString(f'"""{text.strip('"""')}"""'))])
 
     def _has_docstring(self, body: Sequence[cst.BaseStatement]) -> bool:
         return (

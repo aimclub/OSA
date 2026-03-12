@@ -317,7 +317,8 @@ class DocGen(object):
         )
 
         async with semaphore:
-            return await self.model_handler.async_request(prompt)
+            docstring = await self.model_handler.async_request(prompt)
+            return docstring.strip('"""')
 
     async def update_method_documentation(
         self,
@@ -372,7 +373,8 @@ class DocGen(object):
         )
 
         async with semaphore:
-            return await self.model_handler.async_request(prompt)
+            docstring = await self.model_handler.async_request(prompt)
+            return docstring.strip('"""')
 
     @staticmethod
     def extract_pure_docstring(gpt_response: str) -> str:
