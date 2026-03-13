@@ -747,8 +747,9 @@ class DocGen(object):
             return {file: source_code}
 
         module = cst.parse_module(source_code)
-        transformer = DocstringTransformer(docstrings)
-        new_module = module.visit(transformer)
+        wrapper = cst.MetadataWrapper(module)
+        transformer = DocstringTransformer(docstrings, source_code.splitlines(True), module.default_indent)
+        new_module = wrapper.visit(transformer)
 
         # serialize the results to a dictionary
         return {file: new_module.code}

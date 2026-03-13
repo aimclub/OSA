@@ -820,7 +820,7 @@ def test_perform_code_augmentations(mock_config_manager):
 
     # Assert
     assert "file1.py" in result
-    assert '"""doc1"""' in result["file1.py"]
+    assert '\n\t"""\n\tdoc1\n\t"""\n\t' in result["file1.py"]
 
 
 def test_run_in_executor_with_fake_augment(mock_config_manager):
