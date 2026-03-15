@@ -1,5 +1,25 @@
 # FAQ
 
+> **Last Updated:** March 2026  
+> **Version:** OSA 1.x  
+> **Repository:** [github.com/aimclub/OSA](https://github.com/aimclub/OSA)
+
+---
+
+## 🗂️ Quick Navigation
+
+| Section | Topic | Jump To |
+|---------|-------|---------|
+| [1️⃣](#section-1-general-questions) | General Questions | [What is OSA?](#11-what-is-osa-open-source-advisor) |
+| [2️⃣](#section-2-installation--setup) | Installation & Setup | [System Requirements](#21-what-are-the-system-requirements) |
+| [3️⃣](#section-3-configuration--api-keys) | Configuration & API Keys | [Required Tokens](#31-what-tokensapi-keys-do-i-need) |
+| [4️⃣](#section-4-usage--features) | Usage & Features | [How to Run OSA](#41-how-do-i-run-osa) |
+| [5️⃣](#section-5-troubleshooting) | Troubleshooting | [API Auth Fails](#51-what-do-i-do-if-api-key-authentication-fails) |
+| [6️⃣](#section-6-contributing--community) | Contributing & Community | [How to Contribute](#61-how-can-i-contribute-to-osa) |
+| [7️⃣](#section-7-technical-details) | Technical Details | [Technology Stack](#71-what-technologies-does-osa-use) |
+
+---
+
 ## Section 1: General Questions
 
 Welcome to the OSA (Open-Source Advisor) FAQ! This section covers the most common questions about what OSA is, who it's for, and how to get started.
@@ -1918,6 +1938,3 @@ Comprehensive API documentation is available through multiple channels.
 | **Examples** | Generated outputs | [github.com/aimclub/OSA/examples](https://github.com/aimclub/OSA/tree/main/examples) |
 
 ---
-
-*Last Updated: March 2026*  
-*Contributors: OSA Development Team, ITMO University*
