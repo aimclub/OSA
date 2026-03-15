@@ -6,7 +6,7 @@
 
 ---
 
-## 🗂️ Quick Navigation
+## Quick Navigation
 
 | Section | Topic | Jump To |
 |---------|-------|---------|
@@ -17,6 +17,21 @@
 | [5️⃣](#section-5-troubleshooting) | Troubleshooting | [API Auth Fails](#51-what-do-i-do-if-api-key-authentication-fails) |
 | [6️⃣](#section-6-contributing--community) | Contributing & Community | [How to Contribute](#61-how-can-i-contribute-to-osa) |
 | [7️⃣](#section-7-technical-details) | Technical Details | [Technology Stack](#71-what-technologies-does-osa-use) |
+
+---
+
+## ⚡ Quick Start: Top 10 Questions
+
+1. [What is OSA?](#11-what-is-osa-open-source-advisor)
+2. [How do I install OSA?](#22-how-do-i-install-osa)
+3. [What tokens do I need?](#31-what-tokensapi-keys-do-i-need)
+4. [How do I run OSA?](#41-how-do-i-run-osa)
+5. [How does README generation work?](#43-how-does-readme-generation-work)
+6. [What if API auth fails?](#51-what-do-i-do-if-api-key-authentication-fails)
+7. [How do I report a bug?](#57-where-do-i-report-bugs)
+8. [How can I contribute?](#61-how-can-i-contribute-to-osa)
+9. [How do I cite OSA?](#65-how-do-i-cite-osa-in-my-research)
+10. [What LLM model should I use?](#73-what-llm-models-are-recommended)
 
 ---
 
@@ -218,6 +233,11 @@ OSA's current support matrix:
 | 🌐 **Multi-Language** | Support for JavaScript, Java, etc. |
 | 🤖 **Conversational Mode** | Natural language improvement requests |
 | 📈 **Smart Detection** | Skip already-high-quality components |
+
+---
+*[↑ Back to Section 1](#section-1-general-questions)*  
+
+*[↑ Top](#quick-navigation)*
 
 ## Section 2: Installation & Setup
 
@@ -466,6 +486,11 @@ services:
 # Run with Docker Compose
 docker-compose up --rm osa
 ```
+
+---
+*[↑ Back to Section 2](#section-2-installation--setup)*  
+
+*[↑ Top](#quick-navigation)*
 
 ## Section 3: Configuration & API Keys
 
@@ -772,6 +797,11 @@ python -m osa_tool.run \
   --model gpt-4o-mini \  # Overrides [llm].model
   --temperature 0.2      # Overrides [llm].temperature
 ```
+
+---
+*[↑ Back to Section 3](#section-3-configuration--api-keys)*  
+
+*[↑ Top](#quick-navigation)*
 
 ## Section 4: Usage & Features
 
@@ -1197,6 +1227,11 @@ python -m osa_tool.run \
   --convert-notebooks ./notebooks/*.ipynb
 ```
 
+---
+*[↑ Back to Section 4](#section-4-usage--features)*  
+
+*[↑ Top](#quick-navigation)*
+
 ## Section 5: Troubleshooting
 
 Welcome to Section 5 of the OSA FAQ! This section covers common issues, errors, and solutions to help you resolve problems quickly and get back to improving your repositories.
@@ -1477,6 +1512,11 @@ When requesting features, include:
 [Any other relevant information]
 ```
 
+---
+*[↑ Back to Section 5](#section-5-troubleshooting)*  
+
+*[↑ Top](#quick-navigation)*
+
 ## Section 6: Contributing & Community
 
 Welcome to Section 6 of the OSA FAQ! This section covers everything you need to know about contributing to OSA, engaging with the community, getting help, and properly citing the project in your work.
@@ -1756,6 +1796,11 @@ Championing Open-source DEvelopment in ML Workshop@ ICML25.
 
 Renders as: [![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/aimclub/OSA)
 
+---
+*[↑ Back to Section 6](#section-6-contributing--community)*  
+
+*[↑ Top](#quick-navigation)*
+
 ## Section 7: Technical Details
 
 Welcome to Section 7 of the OSA FAQ! This final section covers the technical architecture, underlying technologies, model recommendations, and advanced configuration options for developers and power users.
@@ -1938,3 +1983,6 @@ Comprehensive API documentation is available through multiple channels.
 | **Examples** | Generated outputs | [github.com/aimclub/OSA/examples](https://github.com/aimclub/OSA/tree/main/examples) |
 
 ---
+*[↑ Back to Section 7](#section-7-technical-details)*  
+
+*[↑ Top](#quick-navigation)*
