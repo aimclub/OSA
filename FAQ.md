@@ -221,7 +221,7 @@ OSA's current support matrix:
 | 📈 **Smart Detection** | Skip already-high-quality components |
 
 ---
-*[↑ Back to Section 1](#section-1-general-questions)*  
+*[↑ Back to Section 1](#general-questions)*  
 
 *[↑ Top](#quick-navigation)*
 
