@@ -1,4 +1,4 @@
-# FAQ
+# FAQ {#faq}
 
 > **Last Updated:** March 2026  
 > **Version:** OSA 1.x  
@@ -6,40 +6,40 @@
 
 ---
 
-## Quick Navigation
+## Quick Navigation {#quick-navigation}
 
 | Section | Topic | Jump To |
 |---------|-------|---------|
-| [1️⃣](#section-1-general-questions) | General Questions | [What is OSA?](#11-what-is-osa-open-source-advisor) |
-| [2️⃣](#section-2-installation--setup) | Installation & Setup | [System Requirements](#21-what-are-the-system-requirements) |
-| [3️⃣](#section-3-configuration--api-keys) | Configuration & API Keys | [Required Tokens](#31-what-tokensapi-keys-do-i-need) |
-| [4️⃣](#section-4-usage--features) | Usage & Features | [How to Run OSA](#41-how-do-i-run-osa) |
-| [5️⃣](#section-5-troubleshooting) | Troubleshooting | [API Auth Fails](#51-what-do-i-do-if-api-key-authentication-fails) |
-| [6️⃣](#section-6-contributing--community) | Contributing & Community | [How to Contribute](#61-how-can-i-contribute-to-osa) |
-| [7️⃣](#section-7-technical-details) | Technical Details | [Technology Stack](#71-what-technologies-does-osa-use) |
+| [1️⃣](#general-questions) | General Questions | [What is OSA?](#what-is-osa) |
+| [2️⃣](#installation-setup) | Installation & Setup | [System Requirements](#system-requirements) |
+| [3️⃣](#configuration-api-keys) | Configuration & API Keys | [Required Tokens](#required-tokens) |
+| [4️⃣](#usage-features) | Usage & Features | [How to Run OSA](#how-to-run-osa) |
+| [5️⃣](#troubleshooting) | Troubleshooting | [API Auth Fails](#api-auth-fails) |
+| [6️⃣](#contributing-community) | Contributing & Community | [How to Contribute](#how-to-contribute) |
+| [7️⃣](#technical-details) | Technical Details | [Technology Stack](#technology-stack) |
 
 ---
 
-## ⚡ Quick Start: Top 10 Questions
+## ⚡ Quick Start: Top 10 Questions {#quick-start}
 
-1. [What is OSA?](#11-what-is-osa-open-source-advisor)
-2. [How do I install OSA?](#22-how-do-i-install-osa)
-3. [What tokens do I need?](#31-what-tokensapi-keys-do-i-need)
-4. [How do I run OSA?](#41-how-do-i-run-osa)
-5. [How does README generation work?](#43-how-does-readme-generation-work)
-6. [What if API auth fails?](#51-what-do-i-do-if-api-key-authentication-fails)
-7. [How do I report a bug?](#57-where-do-i-report-bugs)
-8. [How can I contribute?](#61-how-can-i-contribute-to-osa)
-9. [How do I cite OSA?](#65-how-do-i-cite-osa-in-my-research)
-10. [What LLM model should I use?](#73-what-llm-models-are-recommended)
+1. [What is OSA?](#what-is-osa)
+2. [How do I install OSA?](#how-do-i-install-osa)
+3. [What tokens do I need?](#required-tokens)
+4. [How do I run OSA?](#how-to-run-osa)
+5. [How does README generation work?](#readme-generation)
+6. [What if API auth fails?](#api-auth-fails)
+7. [How do I report a bug?](#report-bug)
+8. [How can I contribute?](#how-to-contribute)
+9. [How do I cite OSA?](#how-do-i-cite-osa-in-my-research)
+10. [What LLM model should I use?](#llm-models)
 
 ---
 
-## Section 1: General Questions
+## Section 1: General Questions {#general-questions}
 
 Welcome to the OSA (Open-Source Advisor) FAQ! This section covers the most common questions about what OSA is, who it's for, and how to get started.
 
-### 1.1 What is OSA (Open-Source Advisor)?
+### 1.1 What is OSA (Open-Source Advisor)? {#what-is-osa}
 
 OSA (Open-Source Advisor) is an **LLM-based multi-agent tool** designed to automatically improve open-source repositories and make them easier to understand, run, and reuse.
 
@@ -56,7 +56,7 @@ OSA (Open-Source Advisor) is an **LLM-based multi-agent tool** designed to autom
 
 OSA was originally developed for **researchers** (biologists, chemists, etc.) who lack software engineering experience but need to share reproducible code with their publications. However, it works on **any repository**, not just scientific ones.
 
-### 1.2 Who should use OSA?
+### 1.2 Who should use OSA? {#who-should-use-osa}
 
 OSA is designed for multiple audiences:
 
@@ -76,7 +76,7 @@ OSA is designed for multiple audiences:
 - ✅ You maintain multiple repositories and need consistent quality
 - ✅ You want to improve your repository's security scorecard rating
 
-### 1.3 What problems does OSA solve?
+### 1.3 What problems does OSA solve? {#problems-osa-solves}
 
 OSA addresses critical challenges in open-source project maintenance:
 
@@ -102,7 +102,7 @@ OSA addresses critical challenges in open-source project maintenance:
 
 **Key Advantage:** Unlike tools that focus on individual components (e.g., Readme-AI only generates README, RepoAgent only generates code docs), **OSA considers the repository holistically** to make it easier to understand and ready to run.
 
-### 1.4  Is OSA free to use?
+### 1.4  Is OSA free to use? {#osa-free}
 
 **Yes!** OSA is completely **free and open-source** software.
 
@@ -121,7 +121,7 @@ OSA addresses critical challenges in open-source project maintenance:
 - ✅ Community support via Telegram
 - ✅ Regular updates and improvements
 
-### 1.5 What license does OSA use?
+### 1.5 What license does OSA use? {#osa-license}
 
 OSA is protected under the **BSD 3-Clause "New" or "Revised" License**.
 
@@ -151,7 +151,7 @@ OSA is protected under the **BSD 3-Clause "New" or "Revised" License**.
 
 For full details, see the [LICENSE file](https://github.com/aimclub/OSA/blob/main/LICENSE).
 
-### 1.6 Who developed OSA?
+### 1.6 Who developed OSA? {#who-developed-osa}
 
 OSA was developed by researchers and developers at **ITMO University** (Saint Petersburg, Russia) as part of the **AI Initiative Research Project (RPAII)**.
 Core Authors:
@@ -164,7 +164,7 @@ Core Authors:
 
 The project is tested and supported by the [ITMO OpenSource community](https://t.me/scientific_opensource).
 
-### 1.7 Where can I find publications about OSA?
+### 1.7 Where can I find publications about OSA? {#publications-about-osa}
 
 OSA has been published and presented at several venues:
 
@@ -175,23 +175,9 @@ OSA has been published and presented at several venues:
 | 🇬🇧 English | An End-to-End Guide to Beautifying Your Open-Source Repo with Agentic AI | [Towards Data Science](https://towardsdatascience.com/an-end-to-end-guide-to-beautifying-your-open-source-repo-with-agentic-ai/) |
 | 🇷🇺 Russian | OSA: ИИ-помощник для разработчиков научного open source кода             | [Habr](https://habr.com/ru/companies/spbifmo/articles/906018)                                                                    |
 
-**Citation (Simple Format):**
+For citation formats, see [How do I cite OSA in my research?](#how-do-i-cite-osa-in-my-research)
 
-```Nikitin N. et al. An LLM-Powered Tool for Enhancing Scientific Open-Source Repositories // Championing Open-source DEvelopment in ML Workshop@ ICML25.```
-
-**Citation (BibTeX):**
-
-```bibtex
-@inproceedings{nikitinllm,
-  title={An LLM-Powered Tool for Enhancing Scientific Open-Source Repositories},
-  author={Nikitin, Nikolay and Getmanov, Andrey and Popov, Zakhar and 
-      Ulyanova Ekaterina and Aksenkin, Yaroslav and 
-      Sokolov, Ilya and Boukhanovsky, Alexander},
-  booktitle={Championing Open-source DEvelopment in ML Workshop@ ICML25}
-}
-```
-
-### 1.8 What is the OSA community and how do I join?
+### 1.8 What is the OSA community and how do I join? {#osa-community}
 
 The OSA community consists of developers, researchers, and users who contribute to and support the project.
 
@@ -239,11 +225,11 @@ OSA's current support matrix:
 
 *[↑ Top](#quick-navigation)*
 
-## Section 2: Installation & Setup
+## Section 2: Installation & Setup {#installation-setup}
 
 Welcome to Section 2 of the OSA FAQ! This section covers everything you need to know about installing and setting up OSA on your system.
 
-### 2.1 What are the system requirements?
+### 2.1 What are the system requirements? {#system-requirements}
 
 OSA has minimal system requirements and runs on most modern systems.
 
@@ -272,7 +258,7 @@ OSA has minimal system requirements and runs on most modern systems.
 | **Windows** | ✅ Supported, use PowerShell or WSL for best experience |
 | **WSL2** | ✅ Recommended for Windows users |
 
-### 2.2 How do I install OSA?
+### 2.2 How do I install OSA? {#how-do-i-install-osa}
 
 OSA can be installed in several ways depending on your needs. Here's the quick start:
 
@@ -300,7 +286,7 @@ pip install osa_tool
 python -c "import osa_tool; print(osa_tool.__version__)"
 ```
 
-### 2.3 What installation methods are available?
+### 2.3 What installation methods are available? {#installation-methods}
 
 OSA supports multiple installation methods to fit different use cases:
 
@@ -311,7 +297,7 @@ OSA supports multiple installation methods to fit different use cases:
 | **🐳 Docker** | Production, consistent environments | ✅ Isolated, reproducible | ⚠️ Larger footprint, Docker knowledge needed |
 | **🌐 Web GUI** | Non-technical users | ✅ No installation required | ⚠️ Limited to ITMO-hosted instance |
 
-### 2.4 How do I install using pip?
+### 2.4 How do I install using pip? {#install-using-pip}
 
 Installing via PyPI is the recommended method for most users.
 
@@ -352,7 +338,7 @@ pip show osa_tool
 pip uninstall osa_tool
 ```
 
-### 2.5 How do I build from source?
+### 2.5 How do I build from source? {#build-from-source}
 
 Building from source is recommended for developers who want to contribute or use the latest features.
 
@@ -406,7 +392,7 @@ git commit -m "Add your feature"
 git push origin feature/your-feature-name
 ```
 
-### 2.6 How do I use OSA with Docker?
+### 2.6 How do I use OSA with Docker? {#use-osa-docker}
 
 Docker provides a consistent, isolated environment for running OSA.
 
@@ -488,15 +474,15 @@ docker-compose up --rm osa
 ```
 
 ---
-*[↑ Back to Section 2](#section-2-installation--setup)*  
+*[↑ Back to Section 2](#installation-setup)*  
 
 *[↑ Top](#quick-navigation)*
 
-## Section 3: Configuration & API Keys
+## Section 3: Configuration & API Keys {#configuration-api-keys}
 
 Welcome to Section 3 of the OSA FAQ! This section covers everything you need to know about configuring OSA, setting up API keys, and managing tokens for seamless operation.
 
-### 3.1 What tokens/API keys do I need?
+### 3.1 What tokens/API keys do I need? {#required-tokens}
 
 OSA requires different tokens depending on your use case. Here's a complete overview:
 
@@ -525,7 +511,7 @@ export GIT_TOKEN=your_token
 # That's it! OSA will use default ITMO endpoint
 ```
 
-### 3.2 How do I set up OPENAI_API_KEY?
+### 3.2 How do I set up OPENAI_API_KEY? {#setup-openai-api-key}
 
 Setting up your OpenAI API key is straightforward.
 
@@ -578,7 +564,7 @@ echo "OPENAI_API_KEY=sk-..." >> .env
 | "Invalid API key" error | Verify key format, check OpenAI dashboard for key status |
 | "Rate limit exceeded" | Upgrade plan or reduce request frequency |
 
-### 3.3 How do I set up GIT_TOKEN?
+### 3.3 How do I set up GIT_TOKEN? {#setup-git-token}
 
 A Git token enables OSA to interact with your repositories (clone, create branches, open PRs).
 
@@ -646,35 +632,24 @@ export GITVERSE_TOKEN="gv_..."
 | "Rate limit exceeded" | Use fine-grained tokens, implement retry logic |
 | Token not working with fork | Ensure token has `repo` scope for fork creation |
 
-### 3.4 Which LLM providers are supported?
+### 3.4 Which LLM providers are supported? {#llm-providers}
 
 OSA supports multiple LLM providers through the [ProtoLLM](https://github.com/aimclub/ProtoLLM/) ecosystem.
 
-**Supported Providers Overview:**
+**Supported Providers and Configuration:**
 
-| Provider | API Type | Models Available | Cost | Best For |
-|----------|----------|-----------------|------|----------|
-| **OpenAI** | OpenAI-compatible | gpt-4, gpt-3.5-turbo, gpt-4o | 💰 Paid | High-quality, reliable results |
-| **OpenRouter** | OpenAI-compatible | 100+ models (Claude, Llama, Mistral) | 💰/🆓 Mixed | Flexibility, cost optimization |
-| **VseGPT** | OpenAI-compatible | OpenAI models via Russian proxy | 💰 Paid | Users in Russia/CIS region |
-| **Ollama** | Local/Ollama API | Llama 3, Gemma, Mistral, custom | 🆓 Free | Privacy, offline use, customization |
-| **ITMO Hosted** | OpenAI-compatible | ITMO fine-tuned models | 🆓 Free* | Research, testing, ITMO community |
-| **Gigachat** | Native API | GigaChat models by Sber | 💰 Paid | Russian language, local compliance |
+| Provider | API Type | Models Available | Cost | Best For | --api Value | --base-url | Auth Variable | Example Model |
+|----------|----------|-----------------|------|----------|---------------|--------------|---------------|---------------|
+| **OpenAI** | OpenAI-compatible | gpt-4, gpt-3.5-turbo, gpt-4o | 💰 Paid | High-quality, reliable results | openai | <https://api.openai.com/v1> | OPENAI_API_KEY | gpt-4o |
+| **OpenRouter** | OpenAI-compatible | 100+ models (Claude, Llama, Mistral) | 💰/🆓 Mixed | Flexibility, cost optimization | openai | <https://openrouter.ai/api/v1> | OPENAI_API_KEY | qwen/qwen3-30b |
+| **VseGPT** | OpenAI-compatible | OpenAI models via Russian proxy | 💰 Paid | Users in Russia/CIS region | openai | <https://api.vsegpt.ru/v1> | OPENAI_API_KEY | openai/gpt-3.5-turbo |
+| **Ollama** | Local/Ollama API | Llama 3, Gemma, Mistral, custom | 🆓 Free | Privacy, offline use, customization | ollama | <http://localhost:11434> | None | gemma3:27b |
+| **ITMO Hosted** | OpenAI-compatible | ITMO fine-tuned models | 🆓 Free* | Research, testing, ITMO community | openai | <https://osa.nsslab.onti.actcognitive.org/api/v1> | None (or ITMO_API_KEY) | itmo-research |
+| **Gigachat** | Native API | GigaChat models by Sber | 💰 Paid | Russian language, local compliance | gigachat | (auto) | AUTHORIZATION_KEY | GigaChat |
 
-### 3.5 How do I configure different LLM providers?
+### 3.5 How do I configure different LLM providers? {#configure-llm-providers}
 
 OSA autodetects provider from base url, but you can manually configure it with the following options:
-
-**Configuration Reference Table:**
-
-| Provider | `--api` Value | `--base-url` | Auth Variable | Example Model |
-|----------|---------------|--------------|---------------|---------------|
-| OpenAI | `openai` | `https://api.openai.com/v1` | `OPENAI_API_KEY` | `gpt-4o` |
-| OpenRouter | `openai` | `https://openrouter.ai/api/v1` | `OPENAI_API_KEY` | `qwen/qwen3-30b` |
-| VseGPT | `openai` | `https://api.vsegpt.ru/v1` | `OPENAI_API_KEY` | `openai/gpt-3.5-turbo` |
-| Ollama | `ollama` | `http://localhost:11434` | None | `gemma3:27b` |
-| ITMO | `openai` | `https://.../api/v1` | None (or `ITMO_API_KEY`) | `itmo-research` |
-| Gigachat | `gigachat` | (auto) | `AUTHORIZATION_KEY` | `GigaChat` |
 
 Manual configuration varies slightly by provider. Here are complete examples for each:
 
@@ -744,11 +719,11 @@ python -m osa_tool.run \
 # No API key needed for public ITMO endpoint
 ```
 
-### 3.6 Can I use local LLM models?
+### 3.6 Can I use local LLM models? {#local-llm-models}
 
 **Yes!** OSA fully supports local LLM models via Ollama or self-hosted OpenAI-compatible servers.
 
-### 3.7 How do I use the ITMO hosted model?
+### 3.7 How do I use the ITMO hosted model? {#itmo-hosted-model}
 
 ITMO University provides a hosted OSA endpoint for research and testing purposes.
 
@@ -773,11 +748,11 @@ echo "ITMO_MODEL_URL=https://osa.nsslab.onti.actcognitive.org/api/v1" >> .env
 python -m osa_tool.run -r https://github.com/username/repo
 ```
 
-### 3.8 What configuration options are available?
+### 3.8 What configuration options are available? {#configuration-options}
 
 OSA offers extensive CLI configuration options. For the complete reference visit the [README.md](https://github.com/aimclub/OSA/blob/main/osa_tool/scheduler/README.md).
 
-### 3.9 How do I use custom TOML configuration?
+### 3.9 How do I use custom TOML configuration? {#custom-toml-config}
 
 OSA supports custom configuration via TOML files for complex setups and reproducibility.
 
@@ -799,15 +774,15 @@ python -m osa_tool.run \
 ```
 
 ---
-*[↑ Back to Section 3](#section-3-configuration--api-keys)*  
+*[↑ Back to Section 3](#configuration-api-keys)*  
 
 *[↑ Top](#quick-navigation)*
 
-## Section 4: Usage & Features
+## Section 4: Usage & Features {#usage-features}
 
 Welcome to Section 4 of the OSA FAQ! This section covers everything you need to know about running OSA, understanding its features, and maximizing its capabilities for your repository improvement workflow.
 
-### 4.1 How do I run OSA?
+### 4.1 How do I run OSA? {#how-to-run-osa}
 
 Running OSA is straightforward once you have it installed and configured. Here's the complete workflow:
 
@@ -892,7 +867,7 @@ OSA provides extensive CLI arguments for customization. Here's the complete refe
 python -m osa_tool.run --help
 ```
 
-### 4.3 How does README generation work?
+### 4.3 How does README generation work? {#readme-generation}
 
 OSA's README generation is one of its core features, creating comprehensive documentation automatically.
 
@@ -1228,15 +1203,15 @@ python -m osa_tool.run \
 ```
 
 ---
-*[↑ Back to Section 4](#section-4-usage--features)*  
+*[↑ Back to Section 4](#usage-features)*  
 
 *[↑ Top](#quick-navigation)*
 
-## Section 5: Troubleshooting
+## Section 5: Troubleshooting {#troubleshooting}
 
 Welcome to Section 5 of the OSA FAQ! This section covers common issues, errors, and solutions to help you resolve problems quickly and get back to improving your repositories.
 
-### 5.1 What do I do if API key authentication fails?
+### 5.1 What do I do if API key authentication fails? {#api-auth-fails}
 
 API key authentication failures are common but usually easy to fix.
 
@@ -1402,12 +1377,7 @@ Temperature and sampling parameters control the creativity and determinism of LL
 
 **Parameter Overview:**
 
-| Parameter | Range | Default | Effect |
-|-----------|-------|---------|--------|
-| `--temperature` | 0.0 - 2.0 | 0.05 | Creativity vs. determinism |
-| `--top_p` | 0.0 - 1.0 | 0.95 | Nucleus sampling probability |
-| `--max_tokens` | 1 - model max | 4096 | Maximum output length |
-| `--context_window` | 1 - model max | 16385 | Total input + output tokens |
+See [Model Parameters](#model-parameters) for details.
 
 **Temperature Guide:**
 
@@ -1439,7 +1409,7 @@ Temperature and sampling parameters control the creativity and determinism of LL
 | **Suggestions** | 0.2 | 0.9 | 2048 |
 | **Research Paper README** | 0.1 | 0.95 | 4096 |
 
-### 5.7 Where do I report bugs?
+### 5.7 Where do I report bugs? {#report-bug}
 
 There are multiple channels for reporting bugs, requesting features, and getting help.
 
@@ -1513,15 +1483,15 @@ When requesting features, include:
 ```
 
 ---
-*[↑ Back to Section 5](#section-5-troubleshooting)*  
+*[↑ Back to Section 5](#troubleshooting)*  
 
 *[↑ Top](#quick-navigation)*
 
-## Section 6: Contributing & Community
+## Section 6: Contributing & Community {#contributing-community}
 
 Welcome to Section 6 of the OSA FAQ! This section covers everything you need to know about contributing to OSA, engaging with the community, getting help, and properly citing the project in your work.
 
-### 6.1 How can I contribute to OSA?
+### 6.1 How can I contribute to OSA? {#how-to-contribute}
 
 OSA welcomes contributions from developers, researchers, documentation writers, and users of all skill levels. Here's how you can get involved:
 
@@ -1761,7 +1731,7 @@ Multiple channels are available for getting help, from quick questions to in-dep
 - Use aggressive or disrespectful language
 - Expect immediate responses (maintainers have other commitments)
 
-### 6.5 How do I cite OSA in my research?
+### 6.5 How do I cite OSA in my research? {#how-do-i-cite-osa-in-my-research}
 
 If you use OSA in your research or mention it in publications, please cite the project appropriately.
 
@@ -1769,7 +1739,7 @@ If you use OSA in your research or mention it in publications, please cite the p
 
 **Simple Format (for text):**
 
-```
+```txt
 Nikitin N. et al. An LLM-Powered Tool for Enhancing Scientific Open-Source Repositories // 
 Championing Open-source DEvelopment in ML Workshop@ ICML25.
 ```
@@ -1797,15 +1767,15 @@ Championing Open-source DEvelopment in ML Workshop@ ICML25.
 Renders as: [![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/aimclub/OSA)
 
 ---
-*[↑ Back to Section 6](#section-6-contributing--community)*  
+*[↑ Back to Section 6](#contributing-community)*  
 
 *[↑ Top](#quick-navigation)*
 
-## Section 7: Technical Details
+## Section 7: Technical Details {#technical-details}
 
 Welcome to Section 7 of the OSA FAQ! This final section covers the technical architecture, underlying technologies, model recommendations, and advanced configuration options for developers and power users.
 
-### 7.1 What technologies does OSA use?
+### 7.1 What technologies does OSA use? {#technology-stack}
 
 OSA is built on a modern technology stack designed for flexibility, performance, and extensibility.
 
@@ -1885,7 +1855,7 @@ OSA uses Git to clone repositories locally for analysis, then manages changes th
 | `Rate limit exceeded` | Too many API requests | Wait or use authenticated requests |
 | `Clone failed` | Network issues or Git not installed | Check connectivity, install Git |
 
-### 7.3 What LLM models are recommended?
+### 7.3 What LLM models are recommended? {#llm-models}
 
 Model selection depends on your use case, budget, and quality requirements. Here are evidence-based recommendations.
 
@@ -1900,7 +1870,7 @@ Model selection depends on your use case, budget, and quality requirements. Here
 | **Research Paper README** | GPT-4o | Claude 3.5 Sonnet | GPT-3.5-turbo |
 | **Full Repository** | GPT-4o | Mixtral 8x7B | Llama 3.1 70B |
 
-### 7.4 How do I configure model parameters (temperature, top_p, max_tokens)?
+### 7.4 How do I configure model parameters (temperature, top_p, max_tokens)? {#model-parameters}
 
 Model parameters control the behavior, creativity, and output length of LLM responses.
 
@@ -1983,6 +1953,6 @@ Comprehensive API documentation is available through multiple channels.
 | **Examples** | Generated outputs | [github.com/aimclub/OSA/examples](https://github.com/aimclub/OSA/tree/main/examples) |
 
 ---
-*[↑ Back to Section 7](#section-7-technical-details)*  
+*[↑ Back to Section 7](#technical-details)*  
 
 *[↑ Top](#quick-navigation)*
