@@ -259,7 +259,7 @@ def initialize_git_platform(args, config_manager: ConfigManager) -> tuple[GitAge
     if (os.getenv("GITHUB_ACTIONS") is not None) and (os.getenv("GITHUB_ACTIONS").lower() == "true"):
         target_branch = args.branch
     else:
-        target_branch = config_manager.config.osa_branch_name
+        target_branch = getattr(config_manager.config.git, "osa_branch_name", "osa_tool")
 
     if "github.com" in args.repository:
         git_agent = GitHubAgent(
