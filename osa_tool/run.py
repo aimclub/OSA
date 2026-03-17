@@ -256,7 +256,7 @@ def main():
 
 
 def initialize_git_platform(args, config_manager: ConfigManager) -> tuple[GitAgent, WorkflowManager]:
-    if os.getenv("GITHUB_ACTIONS").lower() == "true":
+    if (os.getenv("GITHUB_ACTIONS") is not None) and (os.getenv("GITHUB_ACTIONS").lower() == "true"):
         target_branch = args.branch
     else:
         target_branch = config_manager.config.osa_branch_name
