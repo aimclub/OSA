@@ -191,7 +191,7 @@ class GenerateReadmeOperation(Operation):
     executor = ReadmeAgent
     executor_method = "generate_readme"
     executor_dependencies = ["config_manager", "metadata"]
-    state_dependencies = ["attachment"]
+    state_dependencies = ["attachment", "active_request"]
 
 
 class TranslateReadmeArgs(BaseModel):

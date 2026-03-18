@@ -171,7 +171,7 @@ def main():
                 plan,
                 "readme",
                 lambda: ReadmeAgent(
-                    config_manager, git_agent.metadata, plan.get("attachment"), plan.get("refine_readme")
+                    config_manager, git_agent.metadata, plan.get("attachment")
                 ).generate_readme(),
             )
 

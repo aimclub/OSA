@@ -3,26 +3,31 @@
 [prompts]
 preanalysis = """
 TASK:
-Based on the provided data about the files and the README content,
-your task is to identify and return the paths to 4-6 key files that
-contain the main business logic or project description.
+Based on the repository file tree and README, identify the 4-8 most important files
+for understanding the project’s purpose, architecture, and usage.
 
-Generate a JSON response following this exact structure:
+Return files in PRIORITY ORDER — the first file should be the single most important
+file for understanding the project. Prioritize:
+1. Entry points (main.py, app.py, cli.py, __main__.py)
+2. Core module files containing primary business logic
+3. Configuration/setup files (setup.py, pyproject.toml, Cargo.toml, package.json)
+4. Example/demo files that show usage
+
+OUTPUT:
+Return a JSON object:
 
 {{
     "key_files": [
-        "path/to/file1",
-        "path/to/file2"
+        "most/important/file.py",
+        "second/important/file.py"
     ]
 }}
 
 RULES:
-
-- The value of "key_files" must be a JSON array (list) of strings, each string representing the relative path to one important file.
-- Include only the most important files that define the project’s core logic.
-- Exclude files related to tests, configuration, or assets unless they are central to the business logic.
-- Exclude README files.
-- Return only valid JSON without additional explanations or formatting.
+- Return 4-8 files, ordered by importance (most important first).
+- Each string is a relative path exactly matching a path in the tree.
+- Exclude test files, CI configs, and README files.
+- Return only valid JSON without explanations.
 
 INPUT DATA:
 

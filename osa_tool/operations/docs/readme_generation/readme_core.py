@@ -2,11 +2,12 @@ import os
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
-from osa_tool.core.models.event import OperationEvent, EventKind
-from osa_tool.operations.docs.readme_generation.generator.builder import MarkdownBuilder
-from osa_tool.operations.docs.readme_generation.generator.builder_article import MarkdownBuilderArticle
-from osa_tool.operations.docs.readme_generation.models.llm_service import LLMClient
-from osa_tool.operations.docs.readme_generation.utils import remove_extra_blank_lines, save_sections
+from osa_tool.core.models.event import EventKind, OperationEvent
+from osa_tool.operations.docs.readme_generation.agent import (
+    ReadmeContext,
+    ReadmeState,
+    build_readme_graph,
+)
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
@@ -18,21 +19,19 @@ class ReadmeAgent:
         config_manager: ConfigManager,
         metadata: RepositoryMetadata,
         attachment: str | None = None,
-        refine_readme: bool = False,
+        active_request: str | None = None,
     ):
         self.config_manager = config_manager
-        self.article = attachment
-        self.refine_readme = refine_readme
         self.metadata = metadata
+        self.attachment = attachment
+        self.active_request = active_request
+
         self.repo_url = self.config_manager.get_git_settings().repository
         self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.file_to_save = os.path.join(self.repo_path, "README.md")
-        self.llm_client = LLMClient(self.config_manager, self.metadata)
-        self.events: list[OperationEvent] = []
 
     def generate_readme(self) -> dict:
-        """
-        Generate README.md file.
+        """Generate README.md file via the LangGraph agent pipeline.
 
         Returns:
             dict: Standardized operation output containing:
@@ -42,59 +41,39 @@ class ReadmeAgent:
         logger.info("Started generating README.md. Processing the repository: %s", self.repo_url)
 
         try:
-            if self.article is None:
-                builder = self.default_readme()
+            context = ReadmeContext(self.config_manager, self.metadata)
+            state = ReadmeState(
+                repo_url=self.repo_url,
+                attachment=self.attachment,
+                user_request=self.active_request,
+            )
+
+            graph = build_readme_graph(context)
+            final = graph.invoke(state)
+
+            # LangGraph returns a dict when state is a Pydantic model
+            if isinstance(final, dict):
+                events = final.get("events", [])
             else:
-                builder = self.article_readme()
+                events = final.events
 
-            readme_content = builder.build()
-
-            self.events.append(OperationEvent(kind=EventKind.GENERATED, target="README.md"))
-
-            if self.refine_readme:
-                readme_content = self.llm_client.refine_readme(readme_content)
-                self.events.append(OperationEvent(kind=EventKind.REFINED, target="README.md"))
-
-            if self.article is None:
-                readme_content = self.llm_client.clean(readme_content)
-
-            save_sections(readme_content, self.file_to_save)
-            remove_extra_blank_lines(self.file_to_save)
-            logger.info(f"README.md successfully generated in folder {self.repo_path}")
+            logger.info("README.md successfully generated in folder %s", self.repo_path)
             return {
                 "result": {
                     "file": "README.md",
                     "path": self.file_to_save,
-                    "refined": self.refine_readme,
                 },
-                "events": self.events,
+                "events": events,
             }
         except Exception as e:
             logger.error("Error while generating: %s", repr(e), exc_info=True)
-            self.events.append(
-                OperationEvent(
-                    kind=EventKind.FAILED,
-                    target="README.md",
-                    data={
-                        "reason": "generation_error",
-                        "error": repr(e),
-                    },
-                )
-            )
-
             return {
                 "result": None,
-                "events": self.events,
+                "events": [
+                    OperationEvent(
+                        kind=EventKind.FAILED,
+                        target="README.md",
+                        data={"reason": "generation_error", "error": repr(e)},
+                    )
+                ],
             }
-
-    def default_readme(self) -> MarkdownBuilder:
-        responses = self.llm_client.get_responses()
-        core_features, overview, getting_started = responses
-        return MarkdownBuilder(self.config_manager, self.metadata, overview, core_features, getting_started)
-
-    def article_readme(self) -> MarkdownBuilderArticle:
-        responses = self.llm_client.get_responses_article(self.article)
-        overview, content, algorithms, getting_started = responses
-        return MarkdownBuilderArticle(
-            self.config_manager, self.metadata, overview, content, algorithms, getting_started
-        )

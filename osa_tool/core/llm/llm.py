@@ -6,12 +6,13 @@ from typing import Any
 from uuid import uuid4
 
 import dotenv
-import tiktoken
 from langchain.schema import SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from protollm.connectors import create_llm_connector
 from pydantic import ValidationError
+
+from osa_tool.utils.token_counter import truncate_to_tokens
 
 from osa_tool.config.settings import ModelSettings
 from osa_tool.utils.logger import logger
@@ -545,33 +546,14 @@ class ProtollmHandler(ModelHandler):
 
         Calculates: Available Input = Total Context - Max Output - Safety Buffer
         """
-        model_context_limit = getattr(self.model_settings, "context_window")
-        max_output_tokens = self.model_settings.max_tokens
-        encoding_name = self.model_settings.encoder
-
-        max_input_tokens = model_context_limit - max_output_tokens - safety_buffer
-
-        try:
-            encoding = tiktoken.get_encoding(encoding_name)
-        except ValueError:
-            encoding = tiktoken.get_encoding("cl100k_base")
-
-        tokens = encoding.encode(text)
-
-        if len(tokens) <= max_input_tokens:
-            return text
-
-        if mode == "start":
-            truncated_tokens = tokens[:max_input_tokens]
-        elif mode == "end":
-            truncated_tokens = tokens[-max_input_tokens:]
-        elif mode == "middle-out":
-            half_limit = max_input_tokens // 2
-            truncated_tokens = tokens[:half_limit] + tokens[-half_limit:]
-        else:
-            raise ValueError(f"Unknown mode: {mode}")
-
-        return encoding.decode(truncated_tokens)
+        max_input_tokens = (
+            self.model_settings.context_window
+            - self.model_settings.max_tokens
+            - safety_buffer
+        )
+        return truncate_to_tokens(
+            text, max_input_tokens, self.model_settings.encoder, mode=mode,
+        )
 
 
 class ModelHandlerFactory:

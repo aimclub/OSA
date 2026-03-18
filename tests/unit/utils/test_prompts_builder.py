@@ -72,4 +72,4 @@ def test_prompt_builder_format_real_template():
     # Assert
     assert isinstance(rendered, str)
     assert len(rendered) > 0
-    assert "Based on the provided data about the files" in rendered
+    assert "Based on the repository file tree and README" in rendered

@@ -39,7 +39,7 @@ async def generate_readme(config_manager: ConfigManager, metadata: RepositoryMet
     readmes_dir = os.path.join(os.path.dirname(args.table_path), "readmes")
     os.makedirs(readmes_dir, exist_ok=True)
 
-    readme_agent = ReadmeAgent(config_manager, metadata, None, args.refine_readme)
+    readme_agent = ReadmeAgent(config_manager, metadata)
     readme_agent.file_to_save = os.path.join(readmes_dir, f"{metadata.name}_README.md")
 
     await asyncio.to_thread(readme_agent.generate_readme)

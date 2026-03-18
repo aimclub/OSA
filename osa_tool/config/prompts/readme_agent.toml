@@ -1,0 +1,261 @@
+# LLM prompts for the README generation agent pipeline.
+
+[prompts]
+repo_analysis = """
+TASK:
+Analyze the repository and produce a structured assessment of its characteristics.
+
+Based on the repository tree, key files, and existing README, determine:
+1. **Project type**: ML/AI, CLI tool, library/SDK, web app, data pipeline, or other
+2. **Tech stack**: primary language(s), frameworks, key dependencies
+3. **Architecture**: monolith, microservices, plugin-based, notebook-based, etc.
+4. **Quality signals**: presence of tests, CI/CD, documentation, examples, type hints
+5. **Target audience**: researchers, developers, data scientists, end-users
+
+Produce a concise but complete analysis covering all five points above.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "repo_analysis": "text"
+}}
+
+INPUT DATA:
+
+1. REPOSITORY TREE:
+
+{repository_tree}
+
+2. KEY FILES CONTENT:
+
+{key_files_content}
+
+3. EXISTING README:
+
+{existing_readme}
+"""
+
+readme_analysis = """
+TASK:
+Evaluate the quality of the existing README for this repository.
+
+Assess the following dimensions:
+1. **Completeness**: which standard sections exist (overview, installation, usage/getting started, examples, API reference, contributing, license) and which are missing
+2. **Accuracy**: does the README reflect the current state of the code (outdated commands, wrong dependencies, etc.)
+3. **Clarity**: is the writing clear, well-structured, and beginner-friendly
+4. **Section quality**: for each existing section, rate quality as good/adequate/poor
+5. **Gaps**: specific improvements that would have the highest impact
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "readme_analysis": "text"
+}}
+
+INPUT DATA:
+
+1. EXISTING README:
+
+{existing_readme}
+
+2. REPOSITORY ANALYSIS:
+
+{repo_analysis}
+
+3. REPOSITORY TREE:
+
+{repository_tree}
+"""
+
+article_analysis = """
+TASK:
+Analyze the scientific article (PDF) associated with this repository.
+
+Extract and summarize:
+1. **Main contributions**: what novel methods, datasets, or findings does the paper present
+2. **Methodology**: key algorithms, experimental setup, evaluation approach
+3. **Results**: primary findings and their significance
+4. **Code connection**: how well the repository reflects or implements the paper's methodology
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "article_analysis": "text"
+}}
+
+INPUT DATA:
+
+1. PDF CONTENT:
+
+{pdf_content}
+
+2. REPOSITORY ANALYSIS:
+
+{repo_analysis}
+
+3. EXISTING README:
+
+{existing_readme}
+"""
+
+diagnosis = """
+TASK:
+Based on the analyses below, decide how to generate or improve the README.
+
+You must decide:
+1. **generation_mode**: "full_regen" or "targeted"
+   - Use "full_regen" if: README is absent, globally poor, or user requests fresh generation
+   - Use "targeted" if: README is mostly good with specific fixable issues, or user points to specific sections
+2. **target_sections**: (only for targeted mode) list of section names to regenerate
+   - Valid section names: "overview", "core_features", "getting_started", "installation", "content", "algorithms"
+3. **generation_plan**: a brief description of what should be done and why
+
+Consider the user's request carefully. If the user asks for specific improvements, prefer targeted mode.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "generation_mode": "full_regen" or "targeted",
+    "target_sections": ["section1", "section2"],
+    "generation_plan": "text"
+}}
+
+INPUT DATA:
+
+1. REPOSITORY ANALYSIS:
+
+{repo_analysis}
+
+2. README ANALYSIS:
+
+{readme_analysis}
+
+3. ARTICLE ANALYSIS (if available):
+
+{article_analysis}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. HAS EXISTING README: {has_existing_readme}
+"""
+
+self_eval = """
+TASK:
+Evaluate the quality of the generated README below.
+
+Score the README on a scale of 1-10 based on:
+- Completeness: does it cover all essential sections
+- Accuracy: does it reflect the repository correctly
+- Clarity: is it well-written and easy to follow
+- Structure: proper markdown formatting, logical flow
+- User request alignment: does it address what the user asked for (if applicable)
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "score": 8.5,
+    "issues": ["issue 1 description", "issue 2 description"],
+    "should_stop": true
+}}
+
+Set "should_stop" to true if the README is good enough (score >= 8) or if remaining issues are minor.
+
+INPUT DATA:
+
+1. GENERATED README:
+
+{readme}
+
+2. REPOSITORY ANALYSIS:
+
+{repo_analysis}
+
+3. GENERATION PLAN:
+
+{generation_plan}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. PREVIOUS ISSUES (if any):
+
+{previous_issues}
+"""
+
+refine_with_feedback = """
+TASK:
+Improve the README based on the specific issues identified during evaluation.
+
+Fix each issue while preserving the overall structure and content that is already good.
+Do not rewrite from scratch; make targeted improvements.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "readme": "text"
+}}
+
+INPUT DATA:
+
+1. CURRENT README:
+
+{readme}
+
+2. ISSUES TO FIX:
+
+{issues}
+
+3. GENERATION PLAN:
+
+{generation_plan}
+
+4. USER REQUEST (if any):
+
+{user_request}
+"""
+
+section_merge = """
+TASK:
+Merge newly generated sections into the existing README.
+
+You have an existing README and one or more newly generated sections.
+Your job is to produce a coherent, unified README by:
+1. Replacing the corresponding sections in the existing README with the new versions
+2. Ensuring smooth transitions between sections
+3. Preserving sections that were NOT regenerated
+4. Maintaining consistent formatting and tone throughout
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "readme": "text"
+}}
+
+INPUT DATA:
+
+1. EXISTING README:
+
+{existing_readme}
+
+2. NEWLY GENERATED SECTIONS:
+
+{new_sections}
+
+3. SECTIONS BEING REPLACED:
+
+{target_sections}
+
+4. GENERATION PLAN:
+
+{generation_plan}
+"""
