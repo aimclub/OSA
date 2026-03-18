@@ -159,7 +159,7 @@ Core Authors:
 - Nikolay Nikitin
 - Andrey Getmanov
 - Zakhar Popov
-- EkaterinaUlyanova
+- Ekaterina Ulyanova
 - Ilya Sokolov
 
 The project is tested and supported by the [ITMO OpenSource community](https://t.me/scientific_opensource).
@@ -706,19 +706,6 @@ python -m osa_tool.run \
   --model gemma3:27b
 ```
 
-**ITMO Hosted Model:**
-
-```bash
-# Option 1: Via .env file
-echo "ITMO_MODEL_URL=https://osa.nsslab.onti.actcognitive.org/api/v1" >> .env
-
-# Option 2: Via command line
-python -m osa_tool.run \
-  -r https://github.com/username/repo \
-  --base-url https://osa.nsslab.onti.actcognitive.org/api/v1
-# No API key needed for public ITMO endpoint
-```
-
 ### 3.6 Can I use local LLM models? {#local-llm-models}
 
 **Yes!** OSA fully supports local LLM models via Ollama or self-hosted OpenAI-compatible servers.
@@ -732,21 +719,7 @@ ITMO University provides a hosted OSA endpoint for research and testing purposes
 | Option | Description | How to Use |
 |--------|-------------|------------|
 | **Public Web GUI** | No installation, browser-based | Visit [osa.nsslab.onti.actcognitive.org](https://osa.nsslab.onti.actcognitive.org/) |
-| **API Access** | CLI usage with ITMO endpoint | Set `--base-url` to ITMO API endpoint |
 | **Community Access** | For ITMO students/researchers | Contact ITMO OpenSource team for credentials |
-
-**Using ITMO Model via CLI:**
-
-```bash
-# Method 1: Direct base-url parameter
-python -m osa_tool.run \
-  -r https://github.com/username/repo \
-  --base-url https://osa.nsslab.onti.actcognitive.org/api/v1
-
-# Method 2: Via .env file
-echo "ITMO_MODEL_URL=https://osa.nsslab.onti.actcognitive.org/api/v1" >> .env
-python -m osa_tool.run -r https://github.com/username/repo
-```
 
 ### 3.8 What configuration options are available? {#configuration-options}
 
@@ -1748,14 +1721,11 @@ Championing Open-source DEvelopment in ML Workshop@ ICML25.
 
 ```bibtex
 @inproceedings{nikitinllm,
-  title={An LLM-Powered Tool for Enhancing Scientific Open-Source Repositories},
-  author={Nikitin, Nikolay and Getmanov, Andrey and Popov, Zakhar and 
-      Ulyanova, Ekaterina and Aksenkin, Yaroslav and 
-      Sokolov, Ilya and Boukhanovsky, Alexander},
-  booktitle={Championing Open-source DEvelopment in ML Workshop@ ICML25},
-  year={2025},
-  url={https://aimclub.github.io/OSA/}
-}
+    title={An LLM-Powered Tool for Enhancing Scientific Open-Source Repositories},
+    author={Nikitin, Nikolay and Getmanov, Andrey and Popov, Zakhar and 
+        Ulyanova Ekaterina and Aksenkin, Yaroslav and 
+        Sokolov, Ilya and Boukhanovsky, Alexander},
+    booktitle={Championing Open-source DEvelopment in ML Workshop@ ICML25}
 ```
 
 **Example Repository Badge:**
