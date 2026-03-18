@@ -1,0 +1,1 @@
+--8<-- "osa_tool/workflow/README.md"

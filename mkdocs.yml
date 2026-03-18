@@ -1,6 +1,18 @@
 site_name: Open-Source-Advisor
 theme:
   name: material
+  features:
+  - navigation.top  
+  - navigation.footer
+  - navigation.tabs 
+  - toc.integrate 
+
+extra:
+  social:
+    - icon: fontawesome/brands/telegram
+      link: https://t.me/osa_helpdesk
+    - icon: fontawesome/brands/github
+      link: https://github.com/aimclub/OSA
 
 plugins:
   - search
@@ -14,8 +26,18 @@ plugins:
             show_object_full_path: false
 
 nav:
-  - User Guide:
-      - index.md
+  - Home: index.md
+  - FAQ:
+      - Overview: faq/index.md
+      - General Questions: faq/general-questions.md
+      - Installation & Setup: faq/installation-setup.md
+      - Configuration & API Keys: faq/configuration-api-keys.md
+      - Usage & Features: faq/usage-features.md
+      - Troubleshooting: faq/troubleshooting.md
+      - Contributing & Community: faq/contributing-community.md
+      - Technical Details: faq/technical-details.md
+  - Scheduler: scheduler/index.md
+  - Workflow Generator: workflow-generator/index.md
   - API Reference:
       - Git Agent: core/git_agent/git_agent.md
       - Model Handler: core/llm/lmm.md
@@ -46,3 +68,5 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences
+  - attr_list
+  - pymdownx.snippets

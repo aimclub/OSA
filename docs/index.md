@@ -17,7 +17,7 @@ OSA is currently under development, so not all features are implemented.
 
 Here is a short video:
 
-[![Watch the video](../docs/images/osa_preview.png)](https://www.youtube.com/watch?v=LDSb7JJgKoY)
+[![Watch the video](images/osa_preview.png)](https://www.youtube.com/watch?v=LDSb7JJgKoY)
 
 ---
 
@@ -68,13 +68,13 @@ pip install osa_tool
 git clone https://github.com/aimclub/OSA
 ```
 
-2. Navigate to the project directory:
+1. Navigate to the project directory:
 
 ```sh
 cd Open-Source-Advisor
 ```
 
-3. Install the project dependencies:
+1. Install the project dependencies:
 
 **Using `pip`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
@@ -153,7 +153,7 @@ Docker, ensure that you upload the PDF file to the OSA folder before building th
 /app/OSA/... or just use volume mounting to access the file.
 
 The --generate-workflows option is intended to create customizable CI/CD pipelines for Python repositories. For detailed
-documentation, see the [GitHub Action Workflow Generator README](../osa_tool/github_workflow/README.md).
+documentation, see the [GitHub Action Workflow Generator README](workflow-generator/index.md).
 
 ### Configuration
 
@@ -176,7 +176,7 @@ documentation, see the [GitHub Action Workflow Generator README](../osa_tool/git
 | `--no-pull-request`  | Avoid create pull request for target repository                                     | `False`                     |
 
 To learn how to work with the interactive CLI and view descriptions of all available keys, visit
-the [CLI usage guide](../osa_tool/scheduler/README.md).
+the [CLI usage guide](scheduler/index.md).
 
 ---
 
@@ -233,7 +233,7 @@ Detailed description of OSA API is available [here](https://aimclub.github.io/OS
 
 ## Chat with developers: OSA_helpdesk
 
-In our Telegram chat [OSA_helpdesk](t.me/osa_helpdesk) you can ask questions about working with OSA and find the latest
+In our Telegram chat [OSA_helpdesk](https://t.me/osa_helpdesk) you can ask questions about working with OSA and find the latest
 news about the project.
 
 ---

@@ -97,13 +97,13 @@ pip install osa_tool
 git clone https://github.com/aimclub/OSA
 ```
 
-2. Navigate to the project directory:
+1. Navigate to the project directory:
 
 ```sh
 cd Open-Source-Advisor
 ```
 
-3. Install the project dependencies:
+1. Install the project dependencies:
 
 **Using `pip`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
@@ -270,7 +270,7 @@ Detailed description of OSA API is available [here](https://aimclub.github.io/OS
 
 ## Chat with developers: OSA_helpdesk
 
-In our Telegram chat [OSA_helpdesk](t.me/osa_helpdesk) you can ask questions about working with OSA and find the latest
+In our Telegram chat [OSA_helpdesk](https://t.me/osa_helpdesk) you can ask questions about working with OSA and find the latest
 news about the project.
 
 ---
