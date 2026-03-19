@@ -15,6 +15,7 @@ class DocstringTransformer(CSTTransformer):
     Transformer to insert/update docstrings,
     by built qualified targets.
     """
+
     METADATA_DEPENDENCIES = (PositionProvider,)
 
     def __init__(self, generated_docstrings: dict, source_lines: List[str], default_indent: str):
@@ -25,7 +26,7 @@ class DocstringTransformer(CSTTransformer):
         self.class_stack: list[str] = []
 
     def _escape_triple_quotes(self, text: str) -> str:
-        return text.replace('"""', r'\"\"\"')
+        return text.replace('"""', r"\"\"\"")
 
     def _escape_backslashes(self, text: str) -> str:
         return text.replace("\\", "\\\\")
@@ -38,7 +39,7 @@ class DocstringTransformer(CSTTransformer):
         # line with function/class definition
         line = self.source_lines[pos.start.line - 1]
         # indent to def/class
-        prefix = line[:pos.start.column]
+        prefix = line[: pos.start.column]
         # concating default indent for body
         return prefix + self.default_indent
     
@@ -49,16 +50,16 @@ class DocstringTransformer(CSTTransformer):
         clean = self._escape_triple_quotes(clean)
         clean = self._escape_backslashes(clean)
 
-        lines = clean.split('\n')
+        lines = clean.split("\n")
 
         inner_lines = []
         for line in lines:
             if line.strip():
                 inner_lines.append(indent + line)
             else:
-                inner_lines.append('')
+                inner_lines.append("")
 
-        inner = '\n'.join(inner_lines)
+        inner = "\n".join(inner_lines)
 
         return f'"""\n{inner}\n{indent}"""'
 
@@ -85,9 +86,7 @@ class DocstringTransformer(CSTTransformer):
 
     def _make_doc(self, text: str, indent: str) -> SimpleStatementLine:
         doc_value = self._format_docstring_literal(text, indent)
-        return SimpleStatementLine(
-            body=[Expr(value=SimpleString(doc_value))]
-        )
+        return SimpleStatementLine(body=[Expr(value=SimpleString(doc_value))])
 
     def _has_docstring(self, body: Sequence[cst.BaseStatement]) -> bool:
         return (
@@ -97,7 +96,7 @@ class DocstringTransformer(CSTTransformer):
             and isinstance(body[0].body[0], Expr)
             and isinstance(body[0].body[0].value, SimpleString)
         )
-    
+
     def visit_Module(self, node: cst.Module):
         self.module = node
         self.current_indent = node.default_indent
