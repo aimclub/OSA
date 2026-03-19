@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, List
 
 import aiofiles
 import black
+import black.report
 import dotenv
 import libcst as cst
 import tiktoken
