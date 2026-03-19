@@ -9,6 +9,8 @@ from typing import List, Dict, Callable
 
 import aiofiles
 import black
+import black.report
+import libcst as cst
 import dotenv
 import tiktoken
 import tomli
@@ -20,6 +22,7 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 from osa_tool.operations.codebase.docstring_generation.osa_treesitter import OSA_TreeSitter
 from osa_tool.operations.codebase.docstring_generation.topology import build_dependency_graph
+from osa_tool.operations.codebase.docstring_generation.docstring_transformer import DocstringTransformer
 
 dotenv.load_dotenv()
 
@@ -213,7 +216,7 @@ class DocGen(object):
             "- A list of its methods without details if class has them otherwise do not mention a list of methods.\n"
             "- A list of its attributes that explicitly mentioned at the constructor method's docstring (can be adressed as attributes, properties, class fields, etc.), without types if class or constructor method has them otherwise do not mention a list of attributes.\n"
             "- A brief summary of what its methods and attributes do if one has them for.\n\n"
-            "Return only docstring without any quotation. Follow such format:\n <triple_quotes>\ncontent\n<triple_quotes>"
+            "Return only docstring without any quotation."
         )
 
         if len(class_details[1]) > 0:
@@ -227,7 +230,8 @@ class DocGen(object):
                 prompt += f"- {method['method_name']}: {method['docstring']}\n"
 
         async with semaphore:
-            return await self.model_handler.async_request(prompt)
+            docstring = await self.model_handler.async_request(prompt)
+            return docstring.strip('"""')
 
     async def update_class_documentation(self, class_details: list, semaphore: asyncio.Semaphore) -> str:
         """
@@ -244,7 +248,7 @@ class DocGen(object):
             desc, other = class_details[-1].split("\n\n", maxsplit=1)
             desc = desc.replace('"', "")
         except:
-            return class_details[-1]
+            return class_details[-1].strip().strip('"').strip("'")
 
         old_desc = desc.strip('"\n ')
         prompt = (
@@ -257,8 +261,9 @@ class DocGen(object):
 
         async with semaphore:
             new_desc = await self.model_handler.async_request(prompt)
+            new_desc = new_desc.strip().strip('"').strip("'")
 
-        return "\n\n".join(['"""\n' + new_desc, other])
+        return "\n\n".join([new_desc, other])
 
     async def generate_method_documentation(
         self,
@@ -281,7 +286,8 @@ class DocGen(object):
             f"- Method Name: {method_details['method_name']}\n\n"
             "Method source code: You are given only the body of a single method, without its signature. "
             "All visible code, including any inner functions or nested logic, belongs to this single method. "
-            "Do not write separate docstrings for inner functions — they are part of the main method's logic.\n"
+            "Do NOT write separate docstrings for inner functions — they are part of the main method's logic.\n"
+            "Do NOT repeat the function signature or decorators.\n"
             "```\n"
             f"{method_details['source_code']}\n"
             "```\n\n"
@@ -309,14 +315,11 @@ class DocGen(object):
             "- DO NOT lose any parameter.\n"
             "- DO NOT wrap any sections of the docstring into <any_tag> — remove such tags if generated.\n\n"
             "Return only the docstring without any quotation marks.\n"
-            "Follow this format exactly:\n"
-            "<triple_quotes>\n"
-            "content\n"
-            "<triple_quotes>\n"
         )
 
         async with semaphore:
-            return await self.model_handler.async_request(prompt)
+            docstring = await self.model_handler.async_request(prompt)
+            return docstring.strip('"""')
 
     async def update_method_documentation(
         self,
@@ -366,12 +369,14 @@ class DocGen(object):
             f"The main idea of the project (for context only): {self.main_idea}\n\n"
             "Return only the updated docstring.\n"
             "DO NOT return code.\n"
+            "Do NOT repeat the function signature or decorators.\n"
             "DO NOT return other documentation sections.\n"
-            "Use triple quotes format.\n"
+            "Return only the docstring without any quotation marks.\n"
         )
 
         async with semaphore:
-            return await self.model_handler.async_request(prompt)
+            docstring = await self.model_handler.async_request(prompt)
+            return docstring.strip('"""')
 
     @staticmethod
     def extract_pure_docstring(gpt_response: str) -> str:
@@ -738,26 +743,16 @@ class DocGen(object):
 
         logger.info(f"Augmenting code for the file: {file}")
 
-        # iterating over given docstrings dictionary and choosing of insertion strategy.
-        for _type, generated in docstrings.items():
+        if not docstrings:
+            return {file: source_code}
 
-            # note that "source_code" variable is from outer scope.
-            match _type:
-
-                case "methods":
-                    for docstring, m in generated:
-                        source_code = DocGen.insert_docstring_in_code(source_code, m, docstring, class_method=True)
-
-                case "functions":
-                    for docstring, f in generated:
-                        source_code = DocGen.insert_docstring_in_code(source_code, f, docstring)
-
-                case "classes":
-                    for docstring, c in generated:
-                        source_code = DocGen.insert_cls_docstring_in_code(source_code, c, docstring)
+        module = cst.parse_module(source_code)
+        wrapper = cst.MetadataWrapper(module)
+        transformer = DocstringTransformer(docstrings, source_code.splitlines(True), module.default_indent)
+        new_module = wrapper.visit(transformer)
 
         # serialize the results to a dictionary
-        return {file: source_code}
+        return {file: new_module.code}
 
     async def _generate_docstrings_for_items(
         self, parsed_structure: dict, docstring_type: tuple | str, rate_limit: int = 10

@@ -260,7 +260,7 @@ async def test_generate_method_documentation(mock_config_manager):
     docstring = await docgen.generate_method_documentation(method_details, semaphore)
 
     # Assert
-    assert docstring == '"""Generated docstring"""'
+    assert docstring == "Generated docstring"
     docgen.model_handler.async_request.assert_called_once()
 
 
@@ -285,7 +285,7 @@ async def test_update_method_documentation(mock_config_manager):
     updated_doc = await docgen.update_method_documentation(method_details, semaphore)
 
     # Assert
-    assert updated_doc == '"""Updated docstring"""'
+    assert updated_doc == "Updated docstring"
     docgen.model_handler.async_request.assert_called_once()
 
 
@@ -809,25 +809,18 @@ async def test_generate_docstrings_for_all_types(mock_config_manager):
 def test_perform_code_augmentations(mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)
-    with (
-        patch(
-            "osa_tool.operations.codebase.docstring_generation.docgen.DocGen.insert_docstring_in_code"
-        ) as mock_insert,
-        patch(
-            "osa_tool.operations.codebase.docstring_generation.docgen.DocGen.insert_cls_docstring_in_code"
-        ) as mock_insert_cls,
-    ):
-        mock_insert.side_effect = lambda src, obj, doc, class_method=False: src + f"\n# {doc}"
-        mock_insert_cls.side_effect = lambda src, cls, doc: src + f"\n# {doc}"
+    args = (
+        "file1.py",
+        "def foo():\n\tdo_stuff()",
+        {"functions": [("doc1", {"method_name": "foo"})], "methods": [], "classes": []},
+    )
 
-        args = ("file1.py", "def foo(): pass", {"functions": [("doc1", "foo")], "methods": [], "classes": []})
+    # Act
+    result = docgen._perform_code_augmentations(args)
 
-        # Act
-        result = docgen._perform_code_augmentations(args)
-
-        # Assert
-        assert "file1.py" in result
-        assert "# doc1" in result["file1.py"]
+    # Assert
+    assert "file1.py" in result
+    assert '\n\t"""\n\tdoc1\n\t"""\n\t' in result["file1.py"]
 
 
 def test_run_in_executor_with_fake_augment(mock_config_manager):
