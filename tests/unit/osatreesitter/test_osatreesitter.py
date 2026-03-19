@@ -137,8 +137,8 @@ def test_class_parser_appends_structure(monkeypatch):
     # monkeypatch dependencies
     monkeypatch.setattr(ts, "_get_attributes", lambda attrs, node: ["attr1"])
     monkeypatch.setattr(ts, "_get_docstring", lambda node: "docstring here")
-    monkeypatch.setattr(ts, "_traverse_block", lambda block, src, imports: [{"method": "from_block"}])
-    monkeypatch.setattr(ts, "_extract_function_details", lambda node, src, imports: {"method": "from_func"})
+    monkeypatch.setattr(ts, "_traverse_block", lambda class_name, block, src, imports: [{"method": "from_block"}])
+    monkeypatch.setattr(ts, "_extract_function_details", lambda node, src, imports, class_name: {"method": "from_func"})
 
     block_node = Node("block")
     func_node = Node("function_definition")
@@ -436,7 +436,7 @@ def test_traverse_block(monkeypatch):
     block = Node("block", children=[decorated, func_def])
 
     # Act
-    result = ts._traverse_block(block, "code", {})
+    result = ts._traverse_block("class_name", block, "code", {})
 
     # Assert
     assert fake_method in result
