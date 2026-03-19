@@ -42,7 +42,7 @@ class DocstringTransformer(CSTTransformer):
         prefix = line[: pos.start.column]
         # concating default indent for body
         return prefix + self.default_indent
-    
+
     def _format_docstring_literal(self, text: str, indent: str) -> str:
         """correct indentation formatting"""
         clean = text.strip('"').strip()
