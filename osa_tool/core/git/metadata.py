@@ -20,6 +20,7 @@ class RepositoryMetadata:
     Dataclass to store Git repository metadata.
     """
 
+
     name: str
     full_name: str
     owner: str
@@ -68,15 +69,22 @@ class MetadataLoader(ABC):
     Abstract base class for repository metadata loaders.
     """
 
+
     @classmethod
     def load_data(cls, repo_url: str) -> RepositoryMetadata:
         """
         General method to load repository metadata for a given URL.
         Calls the platform-specific loader method.
-
+        
+        This method attempts to load metadata without authentication first. If that fails,
+        it retries with authentication enabled. If an HTTP error occurs, it logs a detailed
+        message based on the status code (e.g., authentication failure, repository not found,
+        access denied) before re-raising the exception. Any other unexpected errors are also
+        logged and re-raised.
+        
         Args:
-            repo_url (str): The full URL of the repository.
-
+            repo_url: The full URL of the repository.
+        
         Returns:
             RepositoryMetadata: Parsed repository metadata.
         """
@@ -109,13 +117,15 @@ class MetadataLoader(ABC):
     def _load_platform_data(cls, repo_url: str, use_token: bool) -> RepositoryMetadata:
         """
         Abstract method to load metadata from a platform-specific API.
-
+        
+        This method must be implemented by subclasses to fetch and parse repository metadata (such as stars, forks, issues, and descriptions) from a specific hosting platform (e.g., GitHub, GitLab). It is abstract because each platform has a different API structure and authentication mechanism.
+        
         Args:
-            repo_url (str): The full URL of the repository.
-            use_token (bool): Whether to use authentication token.
-
+            repo_url: The full URL of the repository.
+            use_token: Whether to use an authentication token for the API request, which may allow higher rate limits or access to private repository data.
+        
         Returns:
-            RepositoryMetadata: Parsed repository metadata.
+            Parsed repository metadata.
         """
         pass
 
@@ -124,27 +134,48 @@ class MetadataLoader(ABC):
     def _parse_metadata(cls, repo_data: dict) -> RepositoryMetadata:
         """
         Abstract method to parse raw API response dictionary into RepositoryMetadata.
-
+        
+        This method is implemented by subclasses to transform platform-specific API data into a standardized RepositoryMetadata object. It ensures that metadata from different sources (e.g., GitHub, GitLab) is normalized for consistent use throughout the OSA Tool pipeline.
+        
         Args:
-            repo_data (dict): Raw API response data.
-
+            repo_data: Raw API response data from a code hosting platform (e.g., GitHub, GitLab).
+        
         Returns:
-            RepositoryMetadata: Parsed repository metadata.
+            RepositoryMetadata: Parsed and normalized repository metadata.
         """
         pass
 
 
 class GitHubMetadataLoader(MetadataLoader):
+    """
+    GitHubMetadataLoader loads metadata from GitHub repositories via the GitHub API.
+    
+        Attributes:
+            api_token: GitHub API token for authenticated requests.
+            base_url: Base URL for the GitHub API.
+            session: HTTP session for making API requests.
+    
+        Methods:
+            _load_platform_data: Loads GitHub repository metadata via GitHub API.
+            _parse_metadata: Parses GitHub API response into RepositoryMetadata.
+    """
+
     @classmethod
     def _load_platform_data(cls, repo_url: str, use_token: bool) -> RepositoryMetadata:
         """
         Load GitHub repository metadata via GitHub API.
-
+        
+        This class method fetches raw repository data from the GitHub API and parses it into a structured metadata object. It supports authenticated requests using a token when required.
+        
         Args:
-            repo_url (str): URL of the GitHub repository.
-
+            repo_url: URL of the GitHub repository.
+            use_token: Boolean flag indicating whether to use an authentication token for the API request. If True, the token is read from environment variables ('GIT_TOKEN' or 'GITHUB_TOKEN').
+        
         Returns:
-            RepositoryMetadata: Parsed metadata object.
+            RepositoryMetadata: Parsed metadata object containing repository details.
+        
+        Why:
+            Authentication (use_token) allows access to private repositories or higher rate limits. The method centralizes API interaction and error handling, ensuring consistent metadata retrieval for downstream processing.
         """
         base_url = get_base_repo_url(repo_url)
         headers = {
@@ -165,12 +196,17 @@ class GitHubMetadataLoader(MetadataLoader):
     def _parse_metadata(cls, repo_data: dict) -> RepositoryMetadata:
         """
         Parse GitHub API response into RepositoryMetadata.
-
+        
+        This class method extracts and structures repository metadata from the raw GitHub API response dictionary. It handles nested fields (like owner, license, and languages) and provides sensible defaults for missing values to ensure a complete RepositoryMetadata object is always returned.
+        
         Args:
-            repo_data (dict): Raw GitHub API response.
-
+            repo_data (dict): Raw GitHub API response containing repository information.
+        
         Returns:
-            RepositoryMetadata: Parsed repository metadata.
+            RepositoryMetadata: Parsed repository metadata object populated with fields such as name, owner details, counts (stars, forks, watchers, issues), URLs, timestamps, language data, topics, and license information.
+        
+        Why:
+            The method centralizes the parsing logic to transform the varied and nested GitHub API response into a consistent, typed data structure (RepositoryMetadata). This ensures that downstream components receive a uniform object with validated fields and default values, improving reliability and maintainability across the OSA Tool's documentation pipeline.
         """
         languages = repo_data.get("languages", {})
         license_info = repo_data.get("license", {}) or {}
@@ -210,16 +246,32 @@ class GitHubMetadataLoader(MetadataLoader):
 
 
 class GitLabMetadataLoader(MetadataLoader):
+    """
+    GitLabMetadataLoader loads repository metadata from GitLab using its API.
+    
+        Attributes:
+        - api_token: GitLab API token for authentication.
+        - base_url: Base URL for GitLab API requests.
+    
+        Methods:
+        - _load_platform_data: Retrieves repository data from GitLab API.
+        - _parse_metadata: Converts raw API response into structured metadata object.
+    """
+
     @classmethod
     def _load_platform_data(cls, repo_url: str, use_token: bool) -> RepositoryMetadata:
         """
         Load GitLab repository metadata via GitLab API.
-
+        
         Args:
-            repo_url (str): URL of the GitLab repository.
-
+            repo_url: URL of the GitLab repository.
+            use_token: Whether to include an authorization token in the request. If True, the token is read from the GITLAB_TOKEN or GIT_TOKEN environment variable.
+        
         Returns:
             RepositoryMetadata: Parsed metadata object.
+        
+        Why:
+            This method fetches repository metadata directly from the GitLab API, enabling the tool to obtain detailed, up-to-date information about the repository (such as stars, forks, issues, and license) without relying on local clones or cached data. Using an API token when available allows access to private repositories or higher rate limits.
         """
         base_url = get_base_repo_url(repo_url)
         gitlab_instance_match = re.match(r"(https?://[^/]*gitlab[^/]*)", repo_url)
@@ -247,12 +299,22 @@ class GitLabMetadataLoader(MetadataLoader):
     def _parse_metadata(cls, repo_data: dict) -> RepositoryMetadata:
         """
         Parse GitLab API response into RepositoryMetadata.
-
+        
+        This class method transforms raw GitLab repository data into a standardized RepositoryMetadata object. It handles GitLab-specific field mappings, converts units (e.g., bytes to KB), and constructs derived URLs. WHY: GitLab's API structure differs from other platforms (like GitHub), so this method adapts its response to a common internal data model, filling in missing fields with defaults or calculated values.
+        
         Args:
-            repo_data (dict): Raw GitLab API response.
-
+            repo_data: Raw GitLab API response dictionary for a repository.
+        
         Returns:
-            RepositoryMetadata: Parsed repository metadata.
+            RepositoryMetadata: Parsed repository metadata with fields populated from repo_data. Notable adaptations include:
+                - watchers_count is set to 0 (GitLab does not provide this).
+                - size_kb is calculated by converting repository_size from bytes.
+                - created_at is reformatted to a standard ISO timestamp.
+                - URLs (contributors_url, languages_url, issues_url) are built from the web_url.
+                - owner and owner_url are sourced from namespace or owner fields.
+                - language is left empty and languages as an empty list (GitLab API does not provide primary language data).
+                - has_projects is always True (GitLab projects inherently have project management).
+                - is_private is determined from the visibility field.
         """
         owner_info = repo_data.get("owner", {}) or {}
         namespace = repo_data.get("namespace", {}) or {}
@@ -299,16 +361,37 @@ class GitLabMetadataLoader(MetadataLoader):
 
 
 class GitverseMetadataLoader(MetadataLoader):
+    """
+    GitverseMetadataLoader loads repository metadata from the Gitverse API.
+    
+        Methods:
+            _load_platform_data: Loads Gitverse repository metadata via Gitverse API.
+            _parse_metadata: Parses Gitverse API response into RepositoryMetadata.
+    
+        Attributes:
+            api_base_url: Base URL for the Gitverse API.
+            session: HTTP session for making API requests.
+            timeout: Request timeout duration.
+    
+        The _load_platform_data method fetches raw metadata from the API using a repository URL. The _parse_metadata method converts the raw API response into a structured RepositoryMetadata object. The api_base_url attribute defines the API endpoint, the session manages HTTP connections, and the timeout controls request timing.
+    """
+
     @classmethod
     def _load_platform_data(cls, repo_url: str, use_token: bool) -> RepositoryMetadata:
         """
         Load Gitverse repository metadata via Gitverse API.
-
+        
+        This class method fetches repository metadata from the Gitverse API by constructing a request with appropriate authentication and headers. It extracts the base repository path from the provided URL, calls the API, and parses the JSON response into a structured RepositoryMetadata object.
+        
         Args:
-            repo_url (str): URL of the Gitverse repository.
-
+            repo_url: URL of the Gitverse repository.
+            use_token: Whether to use an authentication token from environment variables for the API request. If True, the token is included in the Authorization header; if False, the header may be omitted or use a placeholder.
+        
         Returns:
-            RepositoryMetadata: Parsed metadata object.
+            RepositoryMetadata: Parsed metadata object containing repository details such as name, owner, counts, URLs, timestamps, and license information.
+        
+        Why:
+            The method enables the OSA Tool to retrieve standardized metadata from Gitverse-hosted repositories, which is essential for automated documentation generation and repository analysis. It handles authentication and API communication, ensuring reliable data fetching even when tokens are conditionally required.
         """
         base_url = get_base_repo_url(repo_url)
         headers = {
@@ -329,12 +412,14 @@ class GitverseMetadataLoader(MetadataLoader):
     def _parse_metadata(cls, repo_data: dict) -> RepositoryMetadata:
         """
         Parse Gitverse API response into RepositoryMetadata.
-
+        
+        This class method extracts and transforms raw repository data from the Gitverse API into a structured RepositoryMetadata object. It handles nested fields (like owner and license) and provides safe defaults for missing values to ensure the metadata object is always valid.
+        
         Args:
-            repo_data (dict): Raw Gitverse API response.
-
+            repo_data: Raw Gitverse API response containing repository information.
+        
         Returns:
-            RepositoryMetadata: Parsed repository metadata.
+            RepositoryMetadata: Parsed repository metadata with fields populated from the API response. Key fields include name, owner details, counts (stars, forks, watchers, issues), URLs, timestamps, repository settings, and license information.
         """
         owner_info = repo_data.get("owner", {}) or {}
         license_info = repo_data.get("license", {}) or {}

@@ -9,6 +9,21 @@ from osa_tool.operations.analysis.repository_report.response_validation import (
 
 
 def test_repository_report_defaults():
+    """
+    Verifies that a new instance of RepositoryReport is initialized with the correct default values.
+    
+    This test case checks the default state of various nested components within the
+    RepositoryReport class, including structure, readme, documentation, and assessment
+    attributes, ensuring they align with expected initial constants and enums.
+    This is important to confirm that the report starts in a consistent, predictable state
+    before any analysis or data is added.
+    
+    Args:
+        None
+    
+    Returns:
+        None
+    """
     # Act
     report = RepositoryReport()
 
@@ -24,6 +39,17 @@ def test_repository_report_defaults():
 
 
 def test_repository_report_with_custom_data():
+    """
+    Verifies that the RepositoryReport and its nested components correctly store and retrieve custom data.
+    
+    This test case manually instantiates a RepositoryReport object with specific values for its structure, readme, documentation, and assessment attributes, then asserts that the assigned values are correctly preserved. The test ensures that the data model's nested structure functions as intended, allowing custom data to be set and retrieved without loss or corruption.
+    
+    Args:
+        None: This is a test function and does not accept parameters.
+    
+    Returns:
+        None: This is a test function and does not return a value.
+    """
     # Arrange
     custom_data = RepositoryReport(
         structure=RepositoryStructure(
@@ -60,6 +86,16 @@ def test_repository_report_with_custom_data():
 
 
 def test_repository_report_enum_validation():
+    """
+    Verifies that the repository report correctly validates and stores enum values for its fields.
+    This test ensures that the ReadmeEvaluation class properly accepts and retains a valid enum value (YesNoPartial.YES) for the project_description field.
+    
+    Args:
+        None.
+    
+    Returns:
+        None.
+    """
     # Act
     readme_eval = ReadmeEvaluation(project_description=YesNoPartial.YES)
 
@@ -68,6 +104,14 @@ def test_repository_report_enum_validation():
 
 
 def test_repository_report_ignores_extra_fields():
+    """
+    Verifies that the RepositoryReport class and its nested structures ignore any extra or unexpected fields provided during initialization.
+    
+    This test ensures that when a dictionary containing additional keys is unpacked into the RepositoryReport constructor, the resulting object and its sub-components (structure and readme) only retain the expected attributes and do not dynamically assign the extra fields. This is important to maintain a strict, predictable schema for the report data and prevent accidental pollution of the object with arbitrary fields.
+    
+    Args:
+        None
+    """
     # Act
     data_with_extra = {
         "structure": {
@@ -90,6 +134,17 @@ def test_repository_report_ignores_extra_fields():
 
 
 def test_repository_report_list_defaults_are_independent():
+    """
+    Verifies that default values in RepositoryReport instances are independent and not shared.
+    
+    This test ensures that modifying a collection (like missing_files) in one instance of RepositoryReport does not affect other instances, confirming that default values are correctly initialized as unique objects rather than class-level shared state. This is important because mutable default values (like lists) defined at the class level would be shared across all instances, leading to unintended side effects.
+    
+    Args:
+        None.
+    
+    Returns:
+        None.
+    """
     # Arrange
     report1 = RepositoryReport()
     report2 = RepositoryReport()

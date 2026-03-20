@@ -9,7 +9,51 @@ from osa_tool.utils.logger import logger
 
 
 class PyPiPackageInspector:
+    """
+    PyPiPackageInspector inspects Python projects to determine if they are published on PyPI and retrieves related metadata.
+    
+        Methods:
+            __init__: Initializes the instance with project metadata and API configuration.
+            get_info: Retrieves PyPI publication info including name, version, and download count.
+            get_published_package_name: Checks whether a package defined in a file in the repo tree is published on PyPI.
+            _extract_package_name_from_pyproject: Attempts to extract the package name from the contents of pyproject.toml.
+            _extract_package_name_from_setup: Tries to extract the package name from the contents of setup.py (roughly, via regular expression).
+            _is_published_on_pypi: Checks if a package is published on PyPI by its name.
+            _get_package_version_from_pypi: Retrieves version of the package from PyPI.
+            _get_downloads_from_pepy: Retrieves the total downloads count for the package using pepy.tech API.
+    
+        Attributes:
+            tree: Stores the project tree structure.
+            base_path: Stores the base directory path for file operations.
+            api_key: The API key retrieved from the 'X-API-Key' environment variable.
+            patterns_for_file: A list of regex patterns used to identify relevant configuration files.
+            pattern_for_setup: A regex pattern used to extract the package name from setup files.
+            pypi_url_template: The URL template for fetching package data from PyPI.
+            pepy_url_template: The URL template for fetching download statistics from PePy.
+    
+        The class primarily facilitates checking publication status on PyPI and gathering associated data like version and download statistics. Its methods handle extraction of package names from configuration files, API requests to PyPI and PePy, and consolidation of this information. The attributes store configuration, paths, and patterns necessary for these operations.
+    """
+
     def __init__(self, tree: str, base_path: str):
+        """
+        Initialize the instance with project metadata and API configuration.
+        
+        Args:
+            tree: The directory structure or tree representation of the project.
+            base_path: The root filesystem path where the project is located.
+        
+        Attributes:
+            tree: Stores the project tree structure.
+            base_path: Stores the base directory path for file operations.
+            api_key: The API key retrieved from the 'X-API-Key' environment variable, used for authenticated API requests.
+            patterns_for_file: A list of regex patterns used to identify relevant configuration files (pyproject.toml and setup.py).
+            pattern_for_setup: A regex pattern used to extract the package name from setup files.
+            pypi_url_template: The URL template for fetching package data from PyPI.
+            pepy_url_template: The URL template for fetching download statistics from PePy.
+        
+        Why:
+            This initializer sets up the inspector with necessary paths, environment configurations, and predefined patterns to later locate and analyze Python package metadata, fetch data from PyPI and PePy APIs, and extract the package name from configuration files.
+        """
         self.tree = tree
         self.base_path = base_path
         self.api_key = os.getenv("X-API-Key")
@@ -21,9 +65,11 @@ class PyPiPackageInspector:
     def get_info(self) -> dict | None:
         """
         Retrieves PyPI publication info including name, version, and download count.
-
+        
+        This method first determines if the repository's package is published on PyPI. If published, it fetches the latest version from PyPI and the total download count from the pepy.tech API, then compiles this information into a dictionary.
+        
         Returns:
-            dict | None: A dictionary with package name, version, downloads; None if not published.
+            dict | None: A dictionary with keys "name" (the published package name), "version" (the latest version from PyPI), and "downloads" (the total download count from pepy.tech). Returns None if the package is not published on PyPI.
         """
         package_name = self.get_published_package_name()
         if not package_name:
@@ -36,10 +82,20 @@ class PyPiPackageInspector:
 
     def get_published_package_name(self) -> str | None:
         """
-        Checks whether a package defined in a file in the repo tree is published on PyPI.
-
+        Checks whether a package defined in a file in the repository tree is published on PyPI.
+        
+        The method searches the repository tree for specific configuration files (pyproject.toml or setup.py) using predefined patterns. For each found file, it extracts the package name and verifies its publication status on PyPI. This is used to determine if the repository's package is publicly available for installation.
+        
+        Args:
+            patterns_for_file: A list of regex patterns used to locate package configuration files in the repository tree.
+            base_path: The root directory path of the repository, used to construct absolute file paths.
+            tree: A string representation of the repository's file structure.
+        
         Returns:
-            str | None: The name of the published package, if found and published. Otherwise, None.
+            The name of the published package if a configuration file is found, the package name is successfully extracted, and the package is confirmed to be published on PyPI. Otherwise, None.
+        
+        Why:
+            This method enables the tool to identify publicly released Python packages within a repository, which is essential for accurate documentation generation and repository analysis. It handles multiple packaging standards (PEP 621 and Poetry via pyproject.toml, and legacy setup.py) and gracefully skips files that cannot be read or parsed.
         """
         for pattern in self.patterns_for_file:
             file = find_in_repo_tree(self.tree, pattern)
@@ -68,13 +124,19 @@ class PyPiPackageInspector:
     @staticmethod
     def _extract_package_name_from_pyproject(content: str) -> str | None:
         """
-        Attempts to extract the package name from the contents of pyproject.toml.
-
+        Attempts to extract the package name from the contents of a pyproject.toml file.
+        
+        The method supports multiple common project configurations: first checking the PEP 621 standard `[project]` table, then falling back to the Poetry-specific `[tool.poetry]` table. This ensures compatibility with a wide range of Python packaging tools.
+        
         Args:
-        content: The content of the pyproject.toml file as a string.
-
+            content: The raw string content of the pyproject.toml file.
+        
         Returns:
-            str | None: The extracted package name if found, otherwise None.
+            str | None: The extracted package name if found in a supported section; otherwise None.
+        
+        Why:
+            If the TOML content cannot be parsed, an error is logged and None is returned.
+            If no package name is located in either of the checked sections, a warning is logged.
         """
         try:
             data = tomli.loads(content)
@@ -97,13 +159,15 @@ class PyPiPackageInspector:
 
     def _extract_package_name_from_setup(self, content: str) -> str | None:
         """
-        Tries to extract the package name from the contents of setup.py (roughly, via regular expression).
-
+        Tries to extract the package name from the contents of setup.py using a regular expression pattern.
+        
+        This method is used as a fallback when more reliable metadata sources (like pyproject.toml or PKG-INFO) are unavailable. It performs a rough extraction because setup.py is executable code, making precise parsing difficult without full evaluation.
+        
         Args:
             content: The content of the setup.py file as a string.
-
+        
         Returns:
-            str | None: The extracted package name if found, otherwise None.
+            str | None: The extracted package name if found, otherwise None. Returns None and logs a warning if no match is found.
         """
         match = re.search(self.pattern_for_setup, content)
         if match:
@@ -115,12 +179,14 @@ class PyPiPackageInspector:
     def _is_published_on_pypi(self, package_name: str) -> bool:
         """
         Checks if a package is published on PyPI by its name.
-
+        
+        This method attempts to fetch the package's metadata page from PyPI using a formatted URL template. It determines publication status based on whether the HTTP request returns a successful response (status code 200). If the request fails due to a network or connection error, the method logs the error and treats the package as not published.
+        
         Args:
             package_name: The name of the package to check.
-
+        
         Returns:
-            bool: True if the package is published on PyPI, False otherwise.
+            bool: True if the package is published on PyPI (HTTP 200), False otherwise.
         """
         url = self.pypi_url_template.format(package=package_name)
         try:
@@ -132,13 +198,15 @@ class PyPiPackageInspector:
 
     def _get_package_version_from_pypi(self, package_name: str) -> str | None:
         """
-        Retrieves version of the package from PyPI.
-
+        Retrieves the latest version of a package from PyPI by querying its JSON metadata API.
+        
+        WHY: This method provides a fallback mechanism to obtain version information when local package metadata is unavailable, ensuring the inspector can report accurate version data even for packages not installed in the current environment.
+        
         Args:
-            package_name: The name of the package.
-
+            package_name: The name of the package to look up on PyPI.
+        
         Returns:
-            str | None: A version of the package, or None if request fails.
+            str | None: The latest version string of the package if the request succeeds and the version field is present; otherwise, None if the HTTP request fails, returns a non‑200 status, or the version key is missing from the response.
         """
         url = self.pypi_url_template.format(package=package_name)
         try:
@@ -152,13 +220,18 @@ class PyPiPackageInspector:
 
     def _get_downloads_from_pepy(self, package_name: str) -> int | None:
         """
-        Retrieves the total downloads count for the package using pepy.tech API.
-
+        Retrieves the total downloads count for a package using the pepy.tech API.
+        
+        This method is used as a fallback or alternative source for download statistics when primary sources are unavailable or fail. It makes an authenticated HTTP GET request to the pepy.tech service to fetch the total downloads for the specified package.
+        
         Args:
-            package_name: The name of the package.
-
+            package_name: The name of the package to query.
+        
         Returns:
-            int | None: The number of downloads or None if request fails.
+            int | None: The total number of downloads retrieved from the API, or None if the request fails due to a non-200 status code or a network exception. In case of failure, an error is logged.
+        
+        Note:
+            The request includes an API key header for authentication. The method expects the API response to be a JSON object containing a 'total_downloads' field.
         """
         url = self.pepy_url_template.format(package=package_name)
         headers = {"X-API-Key": f"{self.api_key}"}

@@ -9,13 +9,45 @@ from osa_tool.operations.analysis.repository_report.report_maker import ReportGe
 
 @pytest.fixture
 def mock_git_agent(mock_repository_metadata):
-    """Mock GitAgent with metadata and validate_topics."""
+    """
+    Mock a GitAgent instance with specified repository metadata.
+    
+    This function creates a MagicMock object to simulate a GitAgent, primarily for testing purposes. It allows the injection of predefined repository metadata, enabling isolated unit tests that rely on GitAgent behavior without requiring actual repository access or complex setup.
+    
+    Args:
+        mock_repository_metadata: The repository metadata to assign to the mocked GitAgent's metadata attribute.
+    
+    Returns:
+        A MagicMock object configured as a GitAgent, with its metadata set to the provided mock_repository_metadata.
+    """
     git_agent = MagicMock()
     git_agent.metadata = mock_repository_metadata
     return git_agent
 
 
 def test_report_generator_init(mock_config_manager, mock_git_agent):
+    """
+    Tests the initialization of the ReportGenerator class to ensure all attributes are correctly assigned.
+    
+    Args:
+        mock_config_manager: A mocked configuration manager providing repository settings.
+        mock_git_agent: A mocked Git agent providing repository metadata.
+    
+    Attributes Initialized:
+        text_generator: An instance of TextGenerator used for generating report content.
+        repo_url: The URL of the repository being analyzed.
+        osa_url: The hardcoded URL for the OSA project.
+        metadata: Metadata information retrieved from the Git agent.
+        filename: The generated name for the PDF report file.
+        output_path: The absolute path where the report will be saved.
+        logo_path: The path to the OSA logo image used in the report.
+    
+    Why:
+        This test verifies that the ReportGenerator constructor properly sets up all necessary components
+        for generating a repository report, using mocked dependencies to isolate the initialization logic.
+        It ensures that paths are correctly resolved and that the TextGenerator is instantiated with the
+        expected arguments.
+    """
     # Arrange
     expected_metadata = mock_git_agent.metadata
     expected_repo_url = mock_config_manager.config.git.repository
@@ -42,6 +74,19 @@ def test_report_generator_init(mock_config_manager, mock_git_agent):
 
 
 def test_table_builder_without_coloring():
+    """
+    Verifies that the table_builder method correctly creates a Table object when coloring is disabled.
+    
+    This test ensures that the generated Table instance contains the expected data and column widths, and that it is an instance of the correct class. The test is important because it validates that the table_builder method functions properly without color formatting, which is a common configuration for plain-text or non-interactive outputs.
+    
+    Args:
+        data: A list of lists representing the table rows and columns.
+        w_first_col: The width for the first column.
+        w_second_col: The width for the second column.
+    
+    Returns:
+        None
+    """
     # Arrange
     data = [["Feature", "Status"], ["README", "✓"], ["License", "✗"]]
     w_first_col, w_second_col = 100, 200
@@ -56,6 +101,17 @@ def test_table_builder_without_coloring():
 
 
 def test_table_builder_with_coloring():
+    """
+    Verifies that the table_builder method correctly creates a Table object with coloring enabled.
+    
+    This test case ensures that when the ReportGenerator's table builder is called with specific data, column widths, and the coloring flag set to True, it returns a Table instance with the expected internal cell values and column width configurations. The test validates that the coloring flag is properly passed through and that the Table's internal state matches the provided inputs.
+    
+    Args:
+        None
+    
+    Returns:
+        None
+    """
     # Arrange
     data = [["Check", "Pass"], ["Test A", "✓"], ["Test B", "✗"]]
     w_first_col, w_second_col = 80, 180
@@ -70,6 +126,20 @@ def test_table_builder_with_coloring():
 
 
 def test_generate_qr_code(tmp_path, mock_config_manager, monkeypatch, mock_git_agent):
+    """
+    Verifies that the QR code generation process correctly creates a file on the filesystem.
+    
+    WHY: This test ensures the ReportGenerator's QR code generation functionality works end-to-end by confirming the output file is physically created, validating the integration of QR code library calls and file system operations.
+    
+    Args:
+        tmp_path: A pytest fixture providing a temporary directory unique to the test invocation.
+        mock_config_manager: A mocked configuration manager used to initialize the ReportGenerator.
+        monkeypatch: A pytest fixture used to safely patch attributes or environment variables.
+        mock_git_agent: A mocked git agent used to initialize the ReportGenerator.
+    
+    Returns:
+        None. This is a test method; assertions are used to verify behavior.
+    """
     # Arrange
     monkeypatch.chdir(tmp_path)
     report_generator = ReportGenerator(mock_config_manager, mock_git_agent, False)
@@ -85,6 +155,15 @@ def test_generate_qr_code(tmp_path, mock_config_manager, monkeypatch, mock_git_a
 
 
 def test_header(mock_config_manager, mock_git_agent):
+    """
+    Verifies that the header method of the ReportGenerator class correctly produces the expected report header elements.
+    
+    Args:
+        mock_config_manager: A mocked configuration manager instance used to initialize the ReportGenerator.
+        mock_git_agent: A mocked git agent instance used to initialize the ReportGenerator.
+    
+    The test creates a ReportGenerator instance with the provided mocks and a False flag (likely indicating a non-dry run). It then calls the header method and asserts that the returned value is a list containing exactly two Paragraph objects. It further checks that the first paragraph includes the text "Repository Analysis Report" and the second paragraph includes the text "for". This ensures the header generates the correct structure and content for the report's introductory section.
+    """
     # Arrange
     report_generator = ReportGenerator(mock_config_manager, mock_git_agent, False)
 
@@ -100,6 +179,20 @@ def test_header(mock_config_manager, mock_git_agent):
 
 
 def test_draw_images_and_tables(tmp_path, mock_config_manager, monkeypatch, mock_git_agent):
+    """
+    Verifies that the draw_images_and_tables method correctly renders images, links, lines, and tables onto a report canvas.
+    
+    This test ensures the ReportGenerator's draw_images_and_tables method properly integrates visual and structural elements into the PDF canvas. It checks that the expected number of drawing operations are performed and that the table generator is invoked.
+    
+    Args:
+        tmp_path: A temporary directory path provided by pytest for file system operations.
+        mock_config_manager: A mocked configuration manager instance used to initialize the report generator.
+        monkeypatch: A pytest fixture used to safely patch or modify objects, dictionaries, or os.environ.
+        mock_git_agent: A mocked git agent instance used to handle repository operations.
+    
+    Returns:
+        None.
+    """
     # Arrange
     monkeypatch.chdir(tmp_path)
     report_generator = ReportGenerator(mock_config_manager, mock_git_agent, False)
@@ -118,6 +211,15 @@ def test_draw_images_and_tables(tmp_path, mock_config_manager, monkeypatch, mock
 
 
 def test_table_generator_returns_two_tables(mock_config_manager, mock_git_agent):
+    """
+    Verifies that the table_generator method of the ReportGenerator class returns exactly two Table objects.
+    
+    This test ensures the method's output structure is correct, confirming that the generator produces the expected number of tables for reporting purposes.
+    
+    Args:
+        mock_config_manager: A mocked configuration manager instance used to initialize the generator.
+        mock_git_agent: A mocked git agent instance used to initialize the generator.
+    """
     # Arrange
     generator = ReportGenerator(mock_config_manager, mock_git_agent, False)
 
@@ -130,6 +232,19 @@ def test_table_generator_returns_two_tables(mock_config_manager, mock_git_agent)
 
 
 def test_body_first_part_returns_bullet_list(mock_config_manager, mock_git_agent):
+    """
+    Verifies that the body_first_part method returns a bulleted list containing the correct repository metadata.
+    This test ensures the report generator correctly formats and includes essential repository details in the report body.
+    
+    Args:
+        mock_config_manager: A mocked configuration manager instance used for report settings.
+        mock_git_agent: A mocked git agent instance used to retrieve repository information.
+    
+    Asserts:
+        - The returned object is an instance of ListFlowable.
+        - The list contains exactly three items.
+        - Each item in the list contains one of the expected metadata keys: "Repository Name", "Owner", or "Created at".
+    """
     # Arrange
     generator = ReportGenerator(mock_config_manager, mock_git_agent, False)
 
@@ -147,6 +262,19 @@ def test_body_first_part_returns_bullet_list(mock_config_manager, mock_git_agent
 def test_body_second_part_returns_story_elements(
     mock_config_manager, text_generator_instance, monkeypatch, mock_git_agent
 ):
+    """
+    Verifies that the body_second_part method of ReportGenerator returns a list of story elements.
+    This test ensures the generated documentation section contains the expected structural components, such as repository structure, README analysis, and recommendations, which are essential for comprehensive project documentation.
+    
+    Args:
+        mock_config_manager: A mocked configuration manager instance to provide configuration without external dependencies.
+        text_generator_instance: A tuple containing a text generator instance and its associated data, used to simulate text generation during the report creation.
+        monkeypatch: The pytest monkeypatch fixture for modifying objects or environment variables during the test.
+        mock_git_agent: A mocked git agent instance for simulating repository operations without actual Git interactions.
+    
+    Returns:
+        This method does not return a value; it performs assertions to validate the output of body_second_part.
+    """
     # Arrange
     report_generator = ReportGenerator(mock_config_manager, mock_git_agent, False)
     report_generator.text_generator, _ = text_generator_instance
@@ -165,6 +293,21 @@ def test_body_second_part_returns_story_elements(
 def test_build_pdf_creates_output_file(
     tmp_path, mock_config_manager, text_generator_instance, monkeypatch, mock_git_agent
 ):
+    """
+    Verifies that the build_pdf method successfully creates a non-empty PDF file at the expected location.
+    
+    This test ensures the PDF generation process completes without errors and produces a valid output file with the correct naming convention and non-zero size.
+    
+    Args:
+        tmp_path: A pytest fixture providing a temporary directory path for the test execution. The test changes the working directory to this path to isolate file output.
+        mock_config_manager: A mocked configuration manager used to initialize the ReportGenerator, providing controlled configuration without external dependencies.
+        text_generator_instance: A tuple containing a text generator instance and its associated data. The instance is assigned to the ReportGenerator to supply the content for the PDF.
+        monkeypatch: A pytest fixture used to safely patch attributes and environment variables. Here, it is used to change the current working directory to the temporary path.
+        mock_git_agent: A mocked git agent used to initialize the ReportGenerator, simulating Git operations without requiring a real repository.
+    
+    Returns:
+        None.
+    """
     # Arrange
     monkeypatch.chdir(tmp_path)
     report_generator = ReportGenerator(mock_config_manager, mock_git_agent, False)

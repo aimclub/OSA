@@ -29,54 +29,57 @@ dotenv.load_dotenv()
 
 class DocGen(object):
     """
-    This class is a utility for generating Python docstrings using OpenAI's GPT model. It includes methods
-    for generating docstrings for a class, a single method, formatting the structure of Python files,
-    counting the number of tokens in a given prompt, extracting the docstring from GPT's response,
-    inserting a generated docstring into the source code and also processing a Python file by generating
-    and inserting missing docstrings.
-
-    Methods:
-        __init__(self)
-            Initializes the class instance by setting the 'api_key' attribute to the value of the
-            'OPENAI_API_KEY' environment variable.
-
-        format_structure_openai(structure)
-            Formats the structure of Python files in a readable string format by iterating over the given
-            'structure' dictionary and generating a formatted string.
-
-        count_tokens(prompt, model)
-            Counts the number of tokens in a given prompt using a specified model.
-
-        generate_class_documentation(class_details, model)
-            Generates documentation for a class using OpenAI GPT.
-
-        generate_method_documentation()
-            Generates documentation for a single method using OpenAI GPT.
-
-        extract_pure_docstring(gpt_response)
-            Extracts only the docstring from the GPT-4 response while keeping triple quotes.
-
-        insert_docstring_in_code(source_code, method_details, generated_docstring)
-            Inserts a generated docstring into the specified location in the source code.
-
-        insert_cls_docstring_in_code(source_code, class_details, generated_docstring)
-            Inserts a generated class docstring into the class definition and returns the updated source code.
-
-        process_python_file(parsed_structure, file_path)
-            Processes a Python file by generating and inserting missing docstrings and updates the source file
-            with the new docstrings.
-
-        generate_documentation_openai(file_structure, model)
-            Generates the documentation for a given file structure using OpenAI's API by traversing the given
-            file structure and for each class or standalone function, generating its documentation.
+    The DocGen class facilitates automated generation and integration of Python docstrings using AI models. It handles the creation of documentation for classes and methods, structures Python file formatting, manages token counting for prompts, extracts docstrings from model responses, and inserts generated documentation into source code. Additionally, it processes entire Python files to identify and fill missing docstrings, enhancing code clarity and maintainability.
+    
+        Methods:
+            __init__(self)
+                Initializes the class instance by setting the 'api_key' attribute to the value of the
+                'OPENAI_API_KEY' environment variable.
+    
+            format_structure_openai(structure)
+                Formats the structure of Python files in a readable string format by iterating over the given
+                'structure' dictionary and generating a formatted string.
+    
+            count_tokens(prompt, model)
+                Counts the number of tokens in a given prompt using a specified model.
+    
+            generate_class_documentation(class_details, model)
+                Generates documentation for a class using OpenAI GPT.
+    
+            generate_method_documentation()
+                Generates documentation for a single method using OpenAI GPT.
+    
+            extract_pure_docstring(gpt_response)
+                Extracts only the docstring from the GPT-4 response while keeping triple quotes.
+    
+            insert_docstring_in_code(source_code, method_details, generated_docstring)
+                Inserts a generated docstring into the specified location in the source code.
+    
+            insert_cls_docstring_in_code(source_code, class_details, generated_docstring)
+                Inserts a generated class docstring into the class definition and returns the updated source code.
+    
+            process_python_file(parsed_structure, file_path)
+                Processes a Python file by generating and inserting missing docstrings and updates the source file
+                with the new docstrings.
+    
+            generate_documentation_openai(file_structure, model)
+                Generates the documentation for a given file structure using OpenAI's API by traversing the given
+                file structure and for each class or standalone function, generating its documentation.
     """
+
 
     def __init__(self, config_manager: ConfigManager):
         """
-        Instantiates the object of the class.
-
+        Initializes a new DocGen instance.
+        
         Args:
-            config_loader: Configuration loader instance
+            config_manager: Configuration manager instance used to retrieve model settings for docstring generation.
+        
+        Why:
+        - The method initializes the core components required for automated docstring generation.
+        - It fetches the specific model configuration for the "docstrings" task from the configuration manager.
+        - It builds a model handler based on those settings to interact with the underlying language model.
+        - Internal state variables are set up to manage the generation process and cache function indices for efficiency.
         """
         self.config_manager = config_manager
         self.model_settings = self.config_manager.get_model_settings("docstrings")
@@ -88,20 +91,14 @@ class DocGen(object):
     def format_structure_openai(structure: dict) -> str:
         """
         Formats the structure of Python files in a readable string format.
-
-        This method iterates over the given dictionary 'structure' and generates a formatted string where it describes
-        each file, its classes and functions along with their details such as line number, arguments, return type,
-        source code and docstrings if available.
-
+        
+        This method iterates over the given dictionary 'structure' and generates a formatted string where it describes each file, its classes and functions along with their details such as line number, arguments, return type, source code and docstrings if available. The formatting is delegated to helper methods for classes and functions to ensure consistent output. This structured representation is used by the OSA Tool to generate and maintain comprehensive repository documentation.
+        
         Args:
-            structure: A dictionary containing details of the Python files structure. The dictionary should
-            have filenames as keys and values as lists of dictionaries. Each dictionary in the list represents a
-            class or function and should contain keys like 'type', 'name', 'start_line', 'docstring', 'methods'
-            (for classes), 'details' (for functions) etc. Each 'methods' or 'details' is also a dictionary that
-            includes detailed information about the method or function.
-
+            structure: A dictionary containing details of the Python files structure. The dictionary should have filenames as keys and values as lists of dictionaries. Each dictionary in the list represents a class or function and should contain keys like 'type', 'name', 'start_line', 'docstring', 'methods' (for classes), 'details' (for functions) etc. Each 'methods' or 'details' is also a dictionary that includes detailed information about the method or function.
+        
         Returns:
-            A formatted string representing the structure of the Python files.
+            A formatted string representing the structure of the Python files, with each file's contents clearly delineated and each class or function formatted for readability.
         """
         formatted_structure = "The following is the structure of the Python files:\n\n"
 
@@ -117,6 +114,25 @@ class DocGen(object):
 
     @staticmethod
     def format_structure_openai_short(filename: str, structure: dict) -> str:
+        """
+        Formats the structure of a Python file into a short, readable string.
+        
+        This method takes a file's structure information and produces a concise
+        textual representation suitable for use with OpenAI models. It lists
+        classes and functions found in the file.
+        
+        Args:
+            filename: The name of the Python file whose structure is being formatted.
+            structure: A dictionary containing the structural data of the file.
+                It must contain a key "structure" which holds a list of items.
+                Each item in the list is a dictionary with a "type" key (either "class" or "function")
+                and other metadata used by helper methods to generate formatted summaries.
+        
+        Returns:
+            A formatted string describing the file's structure. The string begins with a header,
+            includes the filename, and then lists each class and function with a short summary
+            (generated by internal helper methods). Returns an empty string if the structure list is empty.
+        """
         formatted_structure = "The following is the structure of the Python file:\n\n"
 
         structures = structure["structure"]
@@ -133,7 +149,21 @@ class DocGen(object):
 
     @staticmethod
     def _format_class(item: dict) -> str:
-        """Formats class details."""
+        """
+        Formats class details into a structured string representation for documentation.
+        
+        This static method takes a dictionary containing class metadata and formats it into a human-readable string. It includes the class name, line number, docstring (if present), and recursively formats all methods belonging to the class using the helper method `_format_method`. This ensures consistent documentation sections for classes within the generated output.
+        
+        Args:
+            item: A dictionary containing the following keys:
+                - name: The name of the class.
+                - start_line: The line number where the class starts in the source file.
+                - docstring: The docstring of the class (may be empty or None).
+                - methods: A list of dictionaries, each representing a method within the class.
+        
+        Returns:
+            A formatted string representing the class details, suitable for inclusion in generated documentation.
+        """
         class_str = f"  - Class: {item['name']}, line {item['start_line']}\n"
         if item["docstring"]:
             class_str += f"      Docstring: {item['docstring']}\n"
@@ -143,7 +173,28 @@ class DocGen(object):
 
     @staticmethod
     def _format_method(method: dict) -> str:
-        """Formats method details."""
+        """
+        Formats method details into a structured string representation for documentation.
+        
+        This static method takes a dictionary containing method metadata and source code,
+        and formats it into a human-readable string that includes the method name, arguments,
+        return type, line number, docstring (if present), and the actual source code.
+        It is used internally by the DocGen class to generate consistent documentation
+        sections for methods.
+        
+        Args:
+            method: A dictionary containing the following keys:
+                - method_name: The name of the method.
+                - arguments: The arguments of the method.
+                - return_type: The return type of the method.
+                - start_line: The line number where the method starts in the source file.
+                - docstring: The docstring of the method (may be empty or None).
+                - source_code: The full source code of the method.
+        
+        Returns:
+            A formatted string representing the method details, suitable for inclusion
+            in generated documentation.
+        """
         method_str = f"      - Method: {method['method_name']}, Args: {method['arguments']}, Return: {method['return_type']}, line {method['start_line']}\n"
         if method["docstring"]:
             method_str += f"          Docstring:\n        {method['docstring']}\n"
@@ -152,7 +203,23 @@ class DocGen(object):
 
     @staticmethod
     def _format_function(item: dict) -> str:
-        """Formats function details."""
+        """
+        Formats a function's details into a structured string for documentation.
+        
+        This method takes a dictionary containing parsed function metadata and formats it into a human-readable string. It is used to consistently present function information (like name, arguments, and source code) within generated documentation reports.
+        
+        Args:
+            item: A dictionary containing the key 'details', which holds the function's metadata. Expected subkeys in 'details' include:
+                - method_name: The name of the function.
+                - arguments: The function's parameter list.
+                - return_type: The function's return type annotation.
+                - start_line: The line number in the source file where the function begins.
+                - docstring: The function's docstring, if present.
+                - source_code: The raw source code of the function.
+        
+        Returns:
+            A formatted string representing the function. The output includes the function signature, line number, optional docstring, and its source code, each on separate lines with consistent indentation.
+        """
         details = item["details"]
         function_str = f"  - Function: {details['method_name']}, Args: {details['arguments']}, Return: {details['return_type']}, line {details['start_line']}\n"
         if details["docstring"]:
@@ -162,7 +229,22 @@ class DocGen(object):
 
     @staticmethod
     def _format_class_short(item: dict) -> str:
-        """Formats class details."""
+        """
+        Formats a class entry into a short, readable summary line.
+        
+        This method extracts the class name and the first paragraph of its docstring (if available)
+        to produce a concise representation suitable for inclusion in a documentation summary.
+        It is used internally to generate structured overviews of classes within the project.
+        
+        Args:
+            item: A dictionary containing class information. Expected keys are 'name' for the class name
+                  and 'docstring' for the raw docstring text.
+        
+        Returns:
+            A formatted string representing the class. The string includes the class name on one line,
+            and, if a docstring exists, its first paragraph (or the entire docstring if parsing fails)
+            on the following line with indentation for readability.
+        """
         class_str = f"  - Class: {item['name']}\n"
         if item["docstring"]:
             try:
@@ -174,7 +256,23 @@ class DocGen(object):
 
     @staticmethod
     def _format_function_short(item: dict) -> str:
-        """Formats function details."""
+        """
+        Formats a function's details into a short, readable string representation.
+        
+        This method extracts the function name and the first paragraph of its docstring (if available)
+        to create a concise summary. It is used to generate brief, clean function listings in
+        documentation outputs.
+        
+        Args:
+            item: A dictionary containing a 'details' key, which itself holds the function's
+                  metadata. The 'details' dictionary must include 'method_name' and may include
+                  'docstring'.
+        
+        Returns:
+            A formatted string representing the function. The format includes the function name
+            and, if a docstring exists, its first paragraph (or the entire docstring if paragraph
+            parsing fails). The output is intended for inclusion in larger documentation blocks.
+        """
         details = item["details"]
         function_str = f"  - Function: {details['method_name']}\n"
         if details["docstring"]:
@@ -187,11 +285,13 @@ class DocGen(object):
 
     def count_tokens(self, prompt: str) -> int:
         """
-        Counts the number of tokens in a given prompt using a specified model.
-
+        Counts the number of tokens in a given prompt using the model specified in the class's model settings.
+        
+        This method is used to measure the length of a prompt in tokens, which is important for ensuring compatibility with model context windows and for managing usage costs.
+        
         Args:
             prompt: The text for which to count the tokens.
-
+        
         Returns:
             The number of tokens in the prompt.
         """
@@ -201,13 +301,16 @@ class DocGen(object):
 
     async def generate_class_documentation(self, class_details: list, semaphore: asyncio.Semaphore) -> str:
         """
-        Generate documentation for a class.
-
+        Generate documentation for a class by constructing a structured prompt and querying a language model.
+        
+        The method orchestrates the creation of a class-level docstring. It builds a detailed prompt from the provided class details, then uses an asynchronous model handler to generate the final docstring. A semaphore is used to limit concurrent requests to the model API, preventing overload and ensuring reliable operation.
+        
         Args:
-            class_details: A list of dictionaries containing method names and their docstrings.
-            semaphore: synchronous primitive that implements limitation of concurrency degree to avoid overloading api.
+            class_details: A list where the first element is the class name, the second is a list of class attributes, and subsequent elements (except the last) are dictionaries for class methods. Each method dictionary contains 'method_name' and 'docstring' keys. The structure is used to build a comprehensive prompt.
+            semaphore: An asyncio semaphore to limit the number of concurrent asynchronous requests to the model API, preventing rate limits or server overload.
+        
         Returns:
-            The generated class docstring.
+            The generated class docstring as a string, with any surrounding triple quotes stripped.
         """
         # Construct a structured prompt
         prompt = (
@@ -235,13 +338,19 @@ class DocGen(object):
 
     async def update_class_documentation(self, class_details: list, semaphore: asyncio.Semaphore) -> str:
         """
-        Generate documentation for a class.
-
+        Generate documentation for a class by updating its existing description.
+        
+        This method takes an existing class docstring, splits it into a description and other content, and uses an AI model to refine the description based on the project's main idea. The semaphore controls concurrent API calls to prevent overloading.
+        
         Args:
-            class_details: A list of dictionaries containing method names and their docstrings.
-            semaphore: synchronous primitive that implements limitation of concurrency degree to avoid overloading api.
+            class_details: A list where the last element is the full existing docstring. Earlier elements contain metadata (e.g., the class name at index 0). The docstring is expected to have a description followed by other sections separated by a double newline.
+            semaphore: An asyncio semaphore to limit concurrent API requests, ensuring the service is not overwhelmed.
+        
         Returns:
-            The generated class docstring.
+            The updated class docstring as a string. The description portion is rewritten by the AI model, while any other sections (like parameter lists or examples) are preserved unchanged.
+        
+        Why:
+            The method updates only the descriptive part of a class docstring to better reflect the project context without altering technical details. This allows documentation to stay consistent with the project's purpose while preserving structured information.
         """
         # Construct a structured prompt
         try:
@@ -272,7 +381,17 @@ class DocGen(object):
         context_code: str = None,
     ) -> str:
         """
-        Generate documentation for a single method.
+        Generate documentation for a single method by constructing a detailed prompt and querying an AI model.
+        
+        This method builds a structured prompt containing the method's source code, arguments, decorators, and optional context, then requests a docstring from an AI model. The prompt instructs the model to produce a Google‑style docstring with a summary, parameter descriptions, and, for constructors, a list of initialized class fields. The semaphore controls concurrent access to the model to prevent rate‑limiting.
+        
+        Args:
+            method_details: A dictionary containing the method's name, source code, arguments, and decorators.
+            semaphore: An asyncio semaphore to limit concurrent requests to the AI model.
+            context_code: Optional documentation of related functions to provide context for the method.
+        
+        Returns:
+            The generated docstring as a string, with surrounding triple quotes stripped.
         """
         arguments = [a for a in method_details["arguments"] if a not in ("self", "cls")]
         prompt = (
@@ -329,7 +448,18 @@ class DocGen(object):
         class_name: str = None,
     ) -> str:
         """
-        Update documentation for a single method.
+        Update documentation for a single method by generating an improved docstring via an AI model.
+        
+        This method constructs a detailed prompt based on the method's source code, existing docstring, and any provided context, then sends it to an AI model to produce an updated docstring. The semaphore controls concurrent requests to manage rate limits or resource usage.
+        
+        Args:
+            method_details: A dictionary containing the method's name, source code, existing docstring, and decorators.
+            semaphore: An asyncio semaphore to limit concurrent API calls.
+            context_code: Optional source code of imported methods or helper functions to provide context for understanding the method's behavior.
+            class_name: Optional name of the class containing the method, used to provide context in the prompt.
+        
+        Returns:
+            The updated docstring as a string, with surrounding triple quotes stripped.
         """
         docstring = method_details["docstring"]
 
@@ -383,12 +513,14 @@ class DocGen(object):
         """
         Extracts only the docstring from the GPT response while keeping triple quotes.
         Handles common formatting issues like Markdown blocks, extra indentation, and missing closing quotes.
-
+        
+        The method processes the LLM response through a series of fallback steps to isolate a clean docstring. This is necessary because LLM outputs can be inconsistent—they may include Markdown code blocks, partial or malformed triple quotes, or even leaked function definitions. The extraction prioritizes a properly quoted block if present, but will construct one if the response is sufficiently substantive.
+        
         Args:
             gpt_response: Full response string from LLM.
-
+        
         Returns:
-            A properly formatted Python docstring string with triple quotes.
+            A properly formatted Python docstring string with triple quotes. If no valid content is extracted, returns a placeholder docstring: `
         """
         response = gpt_response.strip().replace("<triple quotes>", '"""')
 
@@ -434,7 +566,15 @@ class DocGen(object):
     @staticmethod
     def strip_docstring_from_body(body: str) -> str:
         """
-        Method to trimm method's body from docstring
+        Method to remove a docstring from the beginning of a method or function body.
+        
+        This is useful when extracting the actual executable code from a source string that may start with a docstring. It handles both single-line and multi-line docstrings.
+        
+        Args:
+            body: The source code body of a method or function, potentially starting with a docstring.
+        
+        Returns:
+            The body with any leading docstring removed. If no docstring is found at the start, the original body is returned unchanged.
         """
         lines = body.strip().splitlines()
         if len(lines) < 1:
@@ -460,6 +600,18 @@ class DocGen(object):
         Inserts or replaces a method-level docstring in the provided source code,
         using the method's body from method_details['source_code'] to locate the method.
         Handles multi-line signatures, decorators, async definitions, and existing docstrings.
+        
+        Args:
+            source_code: The full source code string where the docstring will be inserted or replaced.
+            method_details: A dictionary containing at least a 'source_code' key with the exact method body (without its docstring) to locate the method.
+            generated_docstring: The new docstring content to insert. It may contain surrounding quotes or be a raw string; it will be cleaned and formatted.
+            class_method: If True, uses an 8‑space indent for the docstring; otherwise uses 4 spaces. This is needed because class methods are indented an extra level.
+        
+        Returns:
+            The updated source code string with the docstring inserted or replaced. If the method body cannot be found in the source code, the original source code is returned unchanged.
+        
+        Why:
+            This method ensures that generated docstrings are placed correctly within the source, respecting the existing structure and indentation. It locates the method by matching its body (stripped of any existing docstring) to avoid ambiguity from decorators or multi‑line signatures. The approach preserves surrounding whitespace and handles both single‑line and multi‑line docstring formatting.
         """
         method_body = DocGen.strip_docstring_from_body(method_details["source_code"].strip())
         docstring_clean = DocGen.extract_pure_docstring(generated_docstring)
@@ -541,14 +693,22 @@ class DocGen(object):
     def insert_cls_docstring_in_code(source_code: str, class_name: str, generated_docstring: str) -> str:
         """
         Inserts or replaces a class-level docstring for a given class name.
-
+        
+        WHY: This method ensures that a class has a properly formatted and indented docstring, either by replacing an existing one or inserting a new one if missing. It is used to automatically update documentation generated by an LLM into the source code.
+        
         Args:
             source_code: The full source code string.
             class_name: Name of the class to update.
-            generated_docstring: The new docstring (raw response from LLM).
-
+            generated_docstring: The new docstring (raw response from LLM), which may contain extra formatting or quotes.
+        
         Returns:
-            Updated source code with the inserted or replaced class docstring.
+            Updated source code with the inserted or replaced class docstring. If the class is not found, the original source code is returned unchanged.
+        
+        Details:
+            - The method uses a regex pattern to locate the class definition and any existing docstring.
+            - It extracts a clean docstring from the LLM response via `DocGen.extract_pure_docstring`.
+            - All lines of the new docstring are indented to match the class's indentation level.
+            - If an existing docstring is present, it is replaced; otherwise, a new docstring is inserted after the class signature.
         """
         class_pattern = (
             rf"(class\s+{class_name}\s*(\([^)]*\))?\s*:\n)"  # group 1: class signature
@@ -586,12 +746,15 @@ class DocGen(object):
         """
         Builds function index using OSA_TreeSitter's static method.
         Caches result to avoid rebuilding on every call.
-
+        
         Args:
             parsed_structure: Complete parsed structure from analyze_directory()
-
+        
         Returns:
             Dictionary mapping function names to their details
+        
+        Why:
+            This method implements caching to improve performance when the function index is needed multiple times. Instead of rebuilding the index from the parsed structure on each call, it stores the result after the first build and returns the cached value thereafter.
         """
         if self._function_index_cache is None:
             self._function_index_cache = OSA_TreeSitter.build_function_index(parsed_structure)
@@ -605,21 +768,27 @@ class DocGen(object):
         generated_docstrings: dict = None,
     ) -> str:
         """
-        Extracts the context of function calls from given method_details using method_calls field.
-
-        Parameters:
-        - method_details: A dictionary containing details about the method, including 'method_calls' list.
-        - structure: A dictionary representing the code structure (for fallback search)
-        - function_index: Optional index built by osa_treesitter.build_function_index() for fast O(1) lookup.
-        - generated_docstrings: Optional dict mapping node_id to generated docstring (from topological sort)
-
+        Extracts the context of function calls from given method_details using the 'method_calls' field.
+        
+        This method gathers documentation for functions called within a method to provide contextual understanding for documentation generation. It prioritizes using pre-generated docstrings (from a topological sort) if available, falling back to original docstrings from the function index.
+        
+        Args:
+            method_details: A dictionary containing details about the method, including a 'method_calls' list of function names.
+            structure: A dictionary representing the code structure, used for fallback search (though the current implementation primarily uses function_index).
+            function_index: Optional index built by osa_treesitter.build_function_index() for fast O(1) lookup of function information. If not provided, the method returns an empty string.
+            generated_docstrings: Optional dict mapping node_id to a generated docstring (from topological sort). Used to retrieve the most up-to-date documentation for called functions.
+        
         Returns:
-        A string containing the context of called functions in the format:
-        "Function {function_name} (from {file})
-        {source_code}
-        Args: {arguments}
-        Return: {return_type}
-        "
+            A formatted string containing the context of called functions. If no called functions are found, the function index is missing, or no docstrings are available, an empty string is returned.
+            The output format is:
+            "Referenced helper functions (for context understanding only):\n"
+            [For each function]
+            "==========\n"
+            "Helper function name: {display_name}\n"
+            "Documentation:\n"
+            "{docstring}\n"
+            [End for each]
+            "\nEnd of referenced helper functions\n"
         """
 
         called_functions = method_details.get("method_calls", [])
@@ -679,14 +848,17 @@ class DocGen(object):
     def format_with_black(filename):
         """
         Formats a Python source code file using the `black` code formatter.
-
-        This method takes a filename as input and formats the code in the specified file using the `black` code formatter.
-
-        Parameters:
-            - filename: The path to the Python source code file to be formatted.
-
+        
+        This method takes a filename as input and formats the code in the specified file using the `black` code formatter. It is used to ensure consistent code style and readability across the project's Python files.
+        
+        Args:
+            filename: The path to the Python source code file to be formatted.
+        
         Returns:
             None
+        
+        Note:
+            The formatting is performed in-place with `black`'s default settings, using fast mode for performance and writing changes directly back to the file.
         """
         black.format_file_in_place(
             Path(filename),
@@ -703,15 +875,22 @@ class DocGen(object):
         Runs docstrings insertion tasks in multiprocessing mode.
         For correct execution, all objects that would be sent to the processes must be pickle-able.
         The results will be received in the order in which they were sent to the executor.
-
+        
         Args:
-            parsed_structure: Parsed structure of current project that contains all files and their metadata.
-            project_source_code: Serialized version of source code.
-            generated_docstrings: Docstrings that would be inserted in the source code.
-            n_workers: The number of workers that would be participating in cpu-bound work.
-
+            parsed_structure: Parsed structure of the current project containing all files and their metadata.
+            project_source_code: Serialized version of the source code.
+            generated_docstrings: Docstrings to be inserted into the source code.
+            n_workers: The number of worker processes to use for CPU-bound tasks. Defaults to 8.
+        
         Returns:
-            list[dict]
+            list[dict]: A list of dictionaries, each representing the result of a docstring insertion task for a file.
+            The order of results matches the order of files processed.
+        
+        Why:
+            This method uses multiprocessing to parallelize the insertion of docstrings into multiple source files,
+            which is a CPU-intensive operation. It filters the parsed structure to include only files that have a
+            "structure" entry, maps the necessary arguments for each file, and distributes the work across a
+            ProcessPoolExecutor to improve performance on multi-core systems.
         """
 
         structure = [k for k, v in parsed_structure.items() if v.get("structure")]
@@ -727,15 +906,17 @@ class DocGen(object):
     @staticmethod
     def _perform_code_augmentations(args) -> dict[str, str]:
         """
-        Performs the insertion of generated docstrings into presented source code.
-        This method contains the main cpu-bound work of current "docstrings" algorithm
-        because of regexp usage in DocGen insertion methods.
-
+        Performs the insertion of generated docstrings into the provided source code.
+        This method contains the main CPU-bound work of the current "docstrings" algorithm due to regex usage in the underlying DocGen insertion methods.
+        
         Args:
-                args: A tuple that contains filename it's source code and docstrings which would be inserted
-
+            args: A tuple containing three elements: the filename, its source code as a string, and a collection of generated docstrings to be inserted.
+        
         Returns:
-            dict[str, str]
+            dict[str, str]: A dictionary mapping the input filename to the augmented source code string after docstring insertion. If no docstrings are provided, the original source code is returned unchanged under the same filename.
+        
+        Why:
+            This method is static to allow parallel execution, as the docstring insertion for each file is independent and CPU-intensive. It uses the LibCST library to parse and transform the source code, ensuring that docstrings are inserted at the correct locations while preserving the original code structure and formatting.
         """
 
         # unpack the given arguments
@@ -758,19 +939,27 @@ class DocGen(object):
         self, parsed_structure: dict, docstring_type: tuple | str, rate_limit: int = 10
     ) -> dict[str, dict]:
         """
-        Generates a docstrings for all structures in given project by interacting with LLM.
-
-        Args:
-            parsed_structure: Parsed structure of current project that contains all files and their metadata.
-            docstring_type: Defines docstrings generation strategy by given value.
-            rate_limit: A number of API requests to LLM-server that could be sent at the same time.
-
-        Returns:
-            dict[str, dict]
-
-        Note:
-            The docstrings_type argument accepts the only following values
-            ('functions', 'methods'), 'classes', ('functions', 'methods', 'classes')
+        Generates docstrings for all structures in the given project by interacting with an LLM.
+        
+                Args:
+                    parsed_structure: Parsed structure of the current project containing all files and their metadata.
+                    docstring_type: Defines the docstring generation strategy. Valid values are:
+                        - ('functions', 'methods'): Generate docstrings only for functions and methods.
+                        - 'classes': Generate docstrings only for classes.
+                        - ('functions', 'methods', 'classes'): Generate docstrings for all three structure types.
+                    rate_limit: Maximum number of concurrent API requests to the LLM server. Defaults to 10.
+        
+                Returns:
+                    A dictionary where keys are filenames and values are dictionaries containing the generated docstrings
+                    for the structures in that file.
+        
+                Note:
+                    The method uses different internal handlers based on the docstring_type:
+                    - For ('functions', 'methods') or ('functions', 'methods', 'classes'), it calls _fetch_docstrings.
+                    - For 'classes', it iterates through parsed_structure to count classes needing docstrings and calls
+                      _fetch_docstrings_for_class with progress tracking.
+                    Files without any functions, methods, or classes are skipped, and a log message is issued.
+                    An invalid docstring_type raises a ValueError.
         """
 
         semaphore = asyncio.Semaphore(rate_limit)
@@ -817,15 +1006,17 @@ class DocGen(object):
     @staticmethod
     async def _get_project_source_code(parsed_structure: dict, sem: asyncio.Semaphore) -> dict[str, str]:
         """
-        Concurrently reads each file of given project and serialize source code in pickle-able object
-        for future use in multiprocessing cpu-bound tasks.
-
-            Args:
-            parsed_structure: Parsed structure of current project that contains all files and their metadata.
-            sem: Synchronous primitive for preventing the overload of file-system.
-
+        Concurrently reads each file of a given project and serializes source code into a pickle-able object for future use in multiprocessing CPU-bound tasks.
+        
+        Args:
+            parsed_structure: Parsed structure of the current project containing all files and their metadata. Only items where the "structure" key has a truthy value are processed as readable files.
+            sem: Asynchronous semaphore to limit concurrent file I/O operations, preventing system overload and managing resource usage.
+        
         Returns:
-            dict[str, str]
+            A dictionary mapping each file path (str) to its corresponding source code content (str). Only files with a defined "structure" in parsed_structure are included.
+        
+        Why:
+            This method enables efficient, non-blocking file reading across many files by using asyncio and a semaphore for controlled concurrency. The resulting dictionary is pickle-able, allowing it to be easily passed to separate processes for CPU-intensive documentation generation or analysis tasks without repeated I/O overhead.
         """
 
         structure = [k for k, v in parsed_structure.items() if v.get("structure")]
@@ -844,13 +1035,15 @@ class DocGen(object):
     @staticmethod
     async def _write_augmented_code(parsed_structure: dict, augmented_code: list[dict], sem: asyncio.Semaphore) -> None:
         """
-        Writes given code after docstrings insertion in necessary files concurrently
-
+        Writes given code after docstrings insertion in necessary files concurrently.
+        
+        This method writes the augmented code (with inserted docstrings) back to the corresponding files in the project structure. It processes only files that have a "structure" entry in the parsed metadata, ensuring that only relevant, parsed files are updated. The writes are performed concurrently with a semaphore to limit simultaneous file‑system operations and prevent overload.
+        
         Args:
-            parsed_structure: Parsed structure of current project that contains all files and their metadata.
-            augmented_code: List of code snippets that contains inserted docstrings.
-            sem: Synchronous primitive for preventing the overload of file-system.
-
+            parsed_structure: Parsed structure of the current project containing all files and their metadata.
+            augmented_code: List of code snippets, each a dictionary mapping file paths to the augmented code with inserted docstrings.
+            sem: Semaphore used to control concurrent access to the file‑system, preventing excessive simultaneous writes.
+        
         Returns:
             None
         """
@@ -877,7 +1070,27 @@ class DocGen(object):
         docstring_type: tuple | str,
         progress: dict,
     ):
-        """Generate docstring for a single node with context from completed dependencies."""
+        """
+        Generate a docstring for a single node (function or method) using context from its completed dependencies.
+        
+        This method processes one node from the dependency graph, checking if it should be documented based on the node type and configuration. It then gathers relevant context from already documented dependencies and either generates a new docstring or updates an existing one, depending on the tool's mode.
+        
+        Args:
+            node_id: The unique identifier of the node in the dependency graph.
+            dep_graph: The dependency graph containing node metadata and relationships.
+            parsed_structure: The parsed abstract syntax tree (AST) structure of the source code.
+            function_index: A mapping of function/method names to their metadata for quick lookup.
+            generated_docstrings: A dictionary of already generated docstrings for other nodes, used to provide context.
+            semaphore: An asyncio semaphore to limit concurrent API requests or processing.
+            docstring_type: A tuple or string specifying which types of nodes (e.g., functions, methods, classes) should be documented.
+            progress: A dictionary tracking progress, containing 'count' and 'total' keys for logging.
+        
+        Returns:
+            A tuple containing (node_id, node_type, file_path, generated_docstring, metadata) if a docstring is successfully generated or updated; otherwise, None. Returns None if the node is not found, already has a docstring (in generation mode), or is filtered out by docstring_type.
+        
+        Why:
+            The method ensures documentation is generated in dependency order, providing necessary context from already documented items. It filters nodes based on type and configuration to avoid unnecessary processing and respects rate limits via the semaphore. In 'main_idea' (update) mode, it updates existing docstrings; otherwise, it generates new ones.
+        """
         node_info = dep_graph.get_node_metadata(node_id)
         if not node_info:
             return None
@@ -940,19 +1153,17 @@ class DocGen(object):
     ) -> dict[str, dict]:
         """
         Generates docstrings for functions and methods using dependency-first processing.
-
-        Builds a dependency graph from parsed_structure, then generates docstrings in
-        topological order while propagating context from already generated docstrings.
-        Optionally adds class docstrings when docstring_type includes "classes".
-
+        
+        Builds a dependency graph from the parsed structure, then generates docstrings in topological order while propagating context from already generated docstrings. This ensures that dependencies are documented before dependents, allowing context (like parameter types or return values inferred from dependencies) to inform the generation of dependent docstrings. Optionally adds class docstrings when docstring_type includes "classes".
+        
         Args:
-            parsed_structure: Parsed structure of current project that contains all files and their metadata.
-            docstring_type: Defines docstrings generation strategy by given value.
-            semaphore: Synchronous primitive for preventing the overload external LLM-server API.
-            rate_limit: Maximum number of concurrent requests to the LLM.
-
+            parsed_structure: Parsed structure of the current project containing all files and their metadata.
+            docstring_type: Defines the docstring generation strategy. Can be a string or tuple specifying which types (e.g., "functions", "methods", "classes") to generate.
+            semaphore: Asynchronous semaphore to limit concurrent requests, preventing overload on the external LLM server API.
+            rate_limit: Maximum number of concurrent generation tasks allowed at once, controlling the rate of requests to the LLM.
+        
         Returns:
-            dict[str, dict]: {file: {"methods": [...], "functions": [...], "classes": [...]}}
+            dict[str, dict]: A dictionary mapping each file path to a dict with keys "methods", "functions", and "classes". Each key holds a list of tuples, where each tuple contains the generated docstring and its associated metadata for the corresponding node in that file.
         """
         logger.info("Using topological sorting with context propagation for dependency-first generation")
         logger.info("Building dependency graph for topological sort...")
@@ -1073,17 +1284,18 @@ class DocGen(object):
         progress: dict,
     ) -> dict[str, list]:
         """
-        Collects a batch of requests for each class in given file by its metadata.
-        Then concurrently executes a batch of requests and wraps the results to the dict structure.
-
+        Collects a batch of requests for each class in a given file based on its metadata, then concurrently executes the requests and returns the results in a structured dictionary.
+        
+        For each class in the file metadata that either lacks a docstring or when `self.main_idea` is True, a request coroutine is created to generate or update the class documentation. The method uses a semaphore to limit concurrent requests and avoid overloading the external LLM‑server API. Progress is tracked and logged during the operation.
+        
         Args:
-            file: The name of the file for which the generation will be performed.
-            file_meta: Dictionary which contains metadata about file from project parsed structure.
-            semaphore: Synchronous primitive for preventing the overload external LLM-server API.
-            progress: class-level progress dictionary in format {"count": int, "total": int}.
-
+            file: The name of the file being processed.
+            file_meta: Dictionary containing metadata about the file, including its structure (list of classes, methods, etc.).
+            semaphore: Asynchronous semaphore used to throttle concurrent API requests.
+            progress: Dictionary tracking progress across classes, formatted as {"count": int, "total": int}. The "count" is incremented for each class processed.
+        
         Returns:
-            dict[str, list]
+            A dictionary with a single key "classes", whose value is a list of tuples. Each tuple contains (docstring_result, class_name) for every class that received a non‑empty docstring result. Classes that yield an empty result are filtered out.
         """
 
         _coroutines = []
@@ -1132,6 +1344,36 @@ class DocGen(object):
         return {"classes": [pair for pair in zip(fetched_docstrings, structure_names) if pair[0]]}
 
     async def generate_the_main_idea(self, parsed_structure: dict, top_n: int = 5) -> None:
+        """
+        Generates the main idea of the project based on its key components.
+                
+                This method analyzes the parsed project structure to identify the most important
+                components (based on import counts), constructs a prompt for an AI model, and
+                asynchronously requests the model to generate a concise project overview and
+                purpose statement. The result is stored as an instance attribute.
+                
+                Why: The method uses import counts as a heuristic for component importance because
+                frequently imported components often represent core functionality or central modules
+                in a project. This focuses the AI model on the most relevant parts when generating
+                the project overview.
+                
+                Args:
+                    parsed_structure: A dictionary representing the parsed structure of the
+                        project, containing file paths as keys and their component details.
+                        Each value should contain 'imports' and 'structure' keys.
+                    top_n: The number of top components (by import count) to consider when
+                        generating the main idea. Defaults to 5.
+                
+                Initializes the following class fields (object properties):
+                    main_idea: The generated project overview and purpose statement as returned
+                        by the AI model. The output is formatted as markdown with '# Name of the project',
+                        '## Overview', and '## Purpose' sections.
+                
+                Note:
+                    - Excludes files containing '.git', '.github', 'test', 'tests', '__init__', or '__pycache__'.
+                    - For classes, uses the first paragraph of the docstring; for functions, uses the full docstring.
+                    - The prompt instructs the AI model to avoid speculation, list components, or reveal its source information.
+        """
 
         prompt = (
             "You are an AI documentation assistant, and your task is to deduce the main idea of the project and formulate for which purpose it was written."
@@ -1187,14 +1429,21 @@ class DocGen(object):
         """
         This method performs recursive traversal over given parsed structure of a Python codebase and
         generates short summaries for each directory (submodule).
-
+        
         Args:
             project_structure: A dictionary representing the parsed structure of the Python codebase.
                 The dictionary keys are filenames and the values are lists of dictionaries representing
                 classes and their methods.
-            rate_limit: A number of maximum concurrent requests to provided API
+            rate_limit: The maximum number of concurrent requests allowed to the LLM API.
+        
         Returns:
-            Dict[str, str]
+            A dictionary mapping directory paths (as strings) to their generated markdown summaries.
+        
+        Why:
+            The method recursively traverses the project directory, excluding certain folders (like .git, tests),
+            and uses an LLM to generate a structured markdown summary for each submodule. This creates
+            hierarchical documentation that reflects the project's organization, linking each module's purpose
+            to the overall project idea.
         """
 
         self._rename_invalid_dirs(Path(self.config_manager.get_git_settings().name).resolve())
@@ -1289,6 +1538,17 @@ class DocGen(object):
 
     @staticmethod
     def convert_path_to_dot_notation(path):
+        """
+        Converts a file system path to a dot notation string for documentation.
+        
+        This method is used to transform a file path into a format suitable for documentation tools (like MkDocs or Sphinx) that reference modules using dot notation. It strips file extensions and omits "__init__" parts to produce a clean module path.
+        
+        Args:
+            path: The file path to convert, either as a string or a Path object.
+        
+        Returns:
+            A string in the format "::: dot.path.to.module" representing the converted module path. The ":::" prefix is a common directive used in documentation generators to indicate a module reference.
+        """
         path_obj = Path(path) if isinstance(path, str) else path
         processed_parts = []
         for part in path_obj.parts:
@@ -1302,13 +1562,17 @@ class DocGen(object):
 
     def generate_documentation_mkdocs(self, path: str, files_info, modules_info) -> None:
         """
-        Generates MkDocs documentation for a Python project based on provided path.
-
-        Parameters:
-            path: str - The path to the root directory of the Python project.
-
+        Generates MkDocs documentation for a Python project based on the provided path.
+        
+        This method creates a structured MkDocs documentation site by processing the project's files and modules. It prepares the repository by renaming invalid directories and adding missing __init__.py files, then generates Markdown documentation files from Python source files and module information. Finally, it copies a predefined MkDocs configuration template to the project. The method is designed to automate the setup of project documentation in a standardized format.
+        
+        Args:
+            path: The path to the root directory of the Python project.
+            files_info: A dictionary containing information about Python files to document, where each key is a file path and the value includes a "structure" key indicating whether to process the file.
+            modules_info: A dictionary mapping module paths to content strings used to generate index.md files for each module.
+        
         Returns:
-            None. The method generates MkDocs documentation for the project.
+            None. The method generates MkDocs documentation files and configuration in the project directory.
         """
         local = False
         repo_path = Path(path).resolve()
@@ -1368,14 +1632,21 @@ class DocGen(object):
 
     def create_mkdocs_git_workflow(self, repository_url: str, path: str) -> None:
         """
-        Generates .yaml documentation deploy workflow for chosen git host service.
-
+        Generates a CI/CD workflow configuration file for deploying MkDocs documentation to the chosen Git hosting service (GitHub or GitLab).
+        
+        WHY: This method automates the setup of documentation deployment pipelines by creating service-specific YAML workflow files based on a template configuration, ensuring consistent and automated documentation updates.
+        
         Parameters:
-            repository_url: str - URI of the Python project's repository on GitHub.
-            path: str - The path to the root directory of the Python project.
-
+            repository_url: URI of the project's repository (used for logging guidance about GitHub Pages setup).
+            path: Root directory of the Python project where the workflow file will be placed.
+        
         Returns:
-            None. The method generates workflow for MkDocs documentation of a current project.
+            None. The method writes a workflow file to the project directory and logs instructions for the user.
+        
+        Details:
+            - For GitHub: Creates `.github/workflows/osa_mkdocs.yml` with the predefined workflow from the template and logs steps to enable GitHub Pages deployment.
+            - For GitLab: Creates or updates `.gitlab-ci.yml` by merging MkDocs build and deploy stages into the existing CI configuration, preserving existing stages and adding new ones as needed. Artifacts from the build stage expire after one week.
+            - The workflow configuration is read from a template TOML file (`ci_config.toml`) located in the docs/templates directory of the OSA project root.
         """
         config_file = osa_project_root().resolve() / "docs" / "templates" / "ci_config.toml"
         git_host = self.config_manager.get_git_settings().host
@@ -1442,15 +1713,22 @@ class DocGen(object):
     def _sanitize_name(name: str) -> str:
         """
         Sanitize a given name for use as an identifier.
-
+        
         This method replaces any periods in the name with underscores
         and ensures that the name starts with an alphabetic character.
         If the name does not start with an alphabetic character, it
         prepends a 'v' to the name.
-
+        
+        This sanitization is necessary because identifiers in many contexts
+        (e.g., variable names, file names) cannot start with non‑alphabetic
+        characters and periods may have special meaning (such as in file
+        extensions or module paths). Replacing periods with underscores
+        prevents misinterpretation, and adding a leading 'v' guarantees a
+        valid identifier start.
+        
         Args:
             name: The name string to sanitize.
-
+        
         Returns:
             The sanitized name as a string.
         """
@@ -1462,17 +1740,18 @@ class DocGen(object):
     def _rename_invalid_dirs(self, repo_path: Path):
         """
         Renames directories within a specified path that have invalid names.
-
-            This method recursively searches for directories within the given repository path,
-            identifies those whose names are not valid Python identifiers or start with a dot,
-            and renames them to valid names using a sanitization process. The method maintains a
-            mapping of the original directory names to their new names.
-
-            Args:
-                repo_path: The path to the repository where directories will be checked and renamed.
-
-            Returns:
-                None.
+        
+        This method recursively searches for directories within the given repository path,
+        identifies those whose names are not valid Python identifiers or start with a dot,
+        and renames them to valid names using a sanitization process. The method maintains a
+        mapping of the original directory names to their new names.
+        
+        Directories are processed from deepest to shallowest (nested to parent) to avoid path conflicts
+        after renaming. Directories starting with a dot are skipped, and renaming is skipped if the
+        new sanitized name already exists to prevent overwriting.
+        
+        Args:
+            repo_path: The path to the repository where directories will be checked and renamed.
         """
 
         all_dirs = sorted(
@@ -1497,17 +1776,21 @@ class DocGen(object):
     def _add_init_files(repo_path: Path):
         """
         Creates __init__.py files in all parent directories of Python files.
-
-            This static method searches through the given repository path to find all
-            Python files and adds an empty __init__.py file to each of their parent
-            directories, excluding the directory containing the repository itself. This
-            is useful for treating directories as Python packages.
-
-            Args:
-                repo_path: The path to the repository where the Python files are located.
-
-            Returns:
-                None
+        
+        This static method searches through the given repository path to find all
+        Python files and adds an empty __init__.py file to each of their parent
+        directories, excluding the directory containing the repository itself. This
+        is useful for treating directories as Python packages.
+        
+        The method skips directories that are inside a predefined skip list (e.g., "tests")
+        to avoid adding __init__.py files in test directories. It also ensures that
+        __init__.py files are only created if they do not already exist.
+        
+        Args:
+            repo_path: The path to the repository where the Python files are located.
+        
+        Returns:
+            None
         """
         py_dirs = set()
         skip_dirs = {repo_path / "tests"}
@@ -1542,17 +1825,14 @@ class DocGen(object):
     def _purge_temp_files(path: str):
         """
         Remove temporary files from the specified directory.
-
-            This method deletes the 'mkdocs_temp' directory located within
-            the given path if it exists. This is typically used to clean up
-            temporary files if runtime error occured.
-
-            Args:
-                path: The path to the repository where the 'mkdocs_temp'
-                        directory is located.
-
-            Returns:
-                None
+        
+        This method deletes the 'mkdocs_temp' directory located within the given path if it exists. This is typically used to clean up temporary files after a runtime error or as part of a cleanup routine to ensure a clean state for subsequent operations.
+        
+        Args:
+            path: The path to the repository where the 'mkdocs_temp' directory is located. The method expects this to be a valid directory path.
+        
+        Returns:
+            None
         """
         repo_path = Path(path)
         mkdocs_dir = repo_path / "mkdocs_temp"

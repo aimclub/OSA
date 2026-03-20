@@ -19,33 +19,41 @@ from osa_tool.utils.utils import get_base_repo_url, parse_folder_name
 
 
 class GitAgent(abc.ABC):
-    """Abstract base class for Git platform agents.
-
-    This class provides functionality to clone repositories, create and checkout branches,
-    commit and push changes, and create pull requests.
-
-    Attributes:
-        agent_signature: A signature string appended to a pull request descriptions.
-        author: An author name that appended to a pull request description.
-        repo_url: The URL of the Git repository.
-        clone_dir: The directory where the repository will be cloned.
-        branch_name: The name of the branch to be created.
-        repo: The GitPython Repo object representing the repository.
-        token: The Git token for authentication.
-        fork_url: The URL of the created fork of a Git repository.
-        metadata: Git repository metadata.
-        base_branch: The name of the repository's branch.
-        pr_report_body: A formatted message for a pull request.
+    """
+    Base class for Git platform integration, handling repository operations and interactions.
+    
+        This class provides functionality to clone repositories, create and checkout branches,
+        commit and push changes, and create pull requests.
+    
+        Attributes:
+            agent_signature: A signature string appended to a pull request descriptions.
+            author: An author name that appended to a pull request description.
+            repo_url: The URL of the Git repository.
+            clone_dir: The directory where the repository will be cloned.
+            branch_name: The name of the branch to be created.
+            repo: The GitPython Repo object representing the repository.
+            token: The Git token for authentication.
+            fork_url: The URL of the created fork of a Git repository.
+            metadata: Git repository metadata.
+            base_branch: The name of the repository's branch.
+            pr_report_body: A formatted message for a pull request.
     """
 
-    def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool", author: str = None):
-        """Initializes the agent with repository info.
 
+    def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool", author: str = None):
+        """
+        Initializes the agent with repository information and prepares the environment for operations.
+        
         Args:
             repo_url: The URL of the GitHub repository.
-            repo_branch_name: The name of the repository's branch to be checked out.
-            branch_name: The name of the branch to be created. Defaults to "osa_tool".
-            author: The name of the author of the pull request.
+            repo_branch_name: The name of the repository's branch to be checked out. If not provided, defaults to the repository's default branch from its metadata.
+            branch_name: The name of the new branch to be created for the agent's work. Defaults to "osa_tool".
+            author: The name of the author to be associated with generated pull requests.
+        
+        Why:
+        - The agent clones the repository into a local directory derived from the repo_url (using parse_folder_name) to isolate its work.
+        - It loads environment variables (like authentication tokens) and repository metadata to enable authenticated API calls and to determine the base branch if repo_branch_name is not specified.
+        - The base_branch is set either to the provided repo_branch_name or to the default branch from the repository metadata, ensuring the agent operates on the correct starting point.
         """
         load_dotenv()
         self.author = author
@@ -61,6 +69,13 @@ class GitAgent(abc.ABC):
 
     @property
     def agent_signature(self) -> str:
+        """
+        Generates a standardized signature string for the agent to be used in PR descriptions.
+        This signature provides attribution to the human author (when known) and includes a promotional footer for the OSA tool, enhancing transparency and promoting the automated tool that created the pull request.
+        
+        Returns:
+            A formatted string containing a separator line, the author's name (if available), and a promotional footer for the osa_tool.
+        """
         signature = "\n\n---"
         if self.author:
             signature += f"\n*Author: {self.author}.*"
@@ -72,50 +87,104 @@ class GitAgent(abc.ABC):
 
     @abc.abstractmethod
     def _get_token(self) -> str:
-        """Return platform-specific token from environment."""
+        """
+        Return the platform-specific authentication token from environment variables.
+        
+        This method retrieves the appropriate token (e.g., for GitHub, GitLab, or Bitbucket) based on the platform the GitAgent is configured to interact with. It is used internally to authenticate API requests without hard‑coding credentials.
+        
+        Args:
+            self: The GitAgent instance.
+        
+        Returns:
+            The token as a string, retrieved from the corresponding environment variable.
+        """
         pass
 
     @abc.abstractmethod
     def _load_metadata(self, repo_url: str) -> RepositoryMetadata:
-        """Return platform-specific repository metadata.
-
+        """
+        Return platform-specific repository metadata for a given Git repository URL.
+        
+        This method is responsible for extracting or constructing metadata that is specific to the platform hosting the repository (e.g., GitHub, GitLab). The metadata typically includes information such as the repository's owner, name, default branch, visibility, and platform-specific identifiers, which are essential for subsequent operations like cloning, analysis, or documentation generation within the OSA Tool.
+        
         Args:
-            repo_url: The URL of the Git repository.
+            repo_url: The URL of the Git repository from which to load metadata.
+        
+        Returns:
+            A RepositoryMetadata object containing the structured platform-specific details.
         """
         pass
 
     @abc.abstractmethod
     def create_fork(self) -> None:
-        """Create a fork of the repository."""
+        """
+        Create a fork of the repository.
+        
+        This method is intended to fork the current repository under the authenticated user's account or a specified organization. It is a placeholder for future implementation where the actual fork operation will be performed via the Git provider's API (e.g., GitHub, GitLab).
+        
+        WHY: Forking is a common prerequisite for contributing to open-source projects, allowing users to make changes in their own copy before submitting a pull request. This method will enable automated repository enhancement workflows within the OSA Tool to operate on a fork rather than the original repository.
+        
+        Args:
+            self: The GitAgent instance representing the current repository context.
+        
+        Note:
+            This method currently does not perform any action and is a stub for future development.
+        """
         pass
 
     @abc.abstractmethod
     def star_repository(self) -> None:
-        """Star the repository on the platform."""
+        """
+        Star the repository on the platform.
+        
+        This method is a placeholder for the functionality to star (or bookmark) the current repository on the hosting platform (e.g., GitHub, GitLab). It is intended to be implemented to allow the GitAgent to perform repository starring as part of automated repository enhancement or interaction workflows.
+        
+        Args:
+            None.
+        
+        Returns:
+            None.
+        
+        Note:
+            The current implementation is a stub and does not perform any action. Actual implementation would require platform-specific API integration and authentication.
+        """
         pass
 
     @abc.abstractmethod
     def create_pull_request(self, title: str = None, body: str = None) -> None:
-        """Create a pull request / merge request on the platform.
-
+        """
+        Create a pull request or merge request on the platform.
+        
+        This method initiates the creation of a pull request (PR) or merge request (MR) on the connected Git platform (e.g., GitHub, GitLab). It is used to propose changes from the current branch to another branch, typically as part of an automated documentation or enhancement workflow.
+        
         Args:
-            title: The title of the PR. If None, the commit message will be used.
-            body: The body/description of the PR. If None, the commit message with agent signature will be used.
+            title: The title of the PR/MR. If None, the commit message of the latest commit will be used.
+            body: The body/description of the PR/MR. If None, the commit message appended with the agent's signature will be used.
+        
+        Why:
+            This method enables automated contribution workflows by programmatically creating pull requests, which is essential for tools that generate documentation or apply repository enhancements without manual intervention.
         """
         pass
 
     @staticmethod
     def _handle_git_error(error: GitCommandError, action: str, raise_exception: bool = True) -> None:
         """
-        Parses Git command errors and logs specific messages for 401, 403, 404, 429.
-
+        Parses Git command errors and logs specific messages for 401, 403, 404, 429, and other common error patterns.
+        
+        This method centralizes error handling for Git operations, providing user-friendly log messages and actionable guidance for common failure scenarios. It distinguishes between critical errors (which halt execution) and non-critical errors (which allow the tool to continue), enabling robust operation in automated workflows.
+        
         Args:
-            error (GitCommandError): The exception object caught from a failed GitPython operation.
-            action (str): A human-readable description of the operation being performed for logging.
-            raise_exception (bool): A flag which indicates whether to raise an exception or not.
-
+            error: The exception object caught from a failed GitPython operation.
+            action: A human-readable description of the operation being performed, used for contextual logging.
+            raise_exception: A flag which indicates whether to raise an exception after logging. If True, a generic Exception is raised, chained with the original error. If False, only a warning is logged and execution continues.
+        
         Raises:
-            Exception: Re-raises a generic Exception chained with the original error.
+            Exception: Re-raises a generic Exception chained with the original error when `raise_exception` is True. The exception is only raised after the relevant error details have been logged.
+        
+        Notes:
+            - Specific error patterns detected include authentication/permission failures (401, 403), "not found" errors (404), rate limiting (429), and missing remote branches.
+            - For each detected pattern, structured error messages and possible remediation steps are logged.
+            - When `raise_exception` is False, the method logs a warning and allows the program to continue. This is intended for non-critical operations (e.g., starring a repository, checking for updates) where failure should not stop the primary documentation generation workflow.
         """
         stderr = (error.stderr or "").lower()
 
@@ -171,14 +240,27 @@ class GitAgent(abc.ABC):
         """
         Parses HTTP API errors and logs specific messages for 401, 403, 404, 429.
         Should be called when response.status_code is not 200/201/204.
-
+        
+        WHY: This method centralizes error handling for common HTTP error codes, providing
+        tailored logging and optional exception raising to streamline API error management.
+        
         Args:
-            response (requests.Response): The response object from requests.
-            action (str): Description of the action.
-            raise_exception (bool): A flag which indicates whether to raise an exception or not.
-
+            response: The response object from requests.
+            action: Description of the action that triggered the API call.
+            raise_exception: A flag which indicates whether to raise an exception or not.
+                If True, raises a ValueError after logging. If False, logs a warning and continues.
+        
         Raises:
-            Exception: Re-raises a generic Exception chained with the original error.
+            ValueError: If raise_exception is True, raises a ValueError with a summary of the failure.
+                The exception is raised after logging the detailed error information.
+        
+        Notes:
+            - For 401 errors, logs a message about unauthorized access, typically due to an invalid GIT_TOKEN.
+            - For 403 errors, distinguishes between general forbidden errors and rate limit issues.
+            - For 404 errors, logs a message suggesting checks for URL/ID or token permissions.
+            - For 429 errors, logs rate-limiting details and includes Retry-After header information if present.
+            - For all other error codes, logs generic failure details.
+            - The method extracts error messages from the JSON response body if available; otherwise, uses the raw response text.
         """
         code = response.status_code
         try:
@@ -212,18 +294,22 @@ class GitAgent(abc.ABC):
     def _check_branch_existence(self, branch: str = "osa_tool") -> bool:
         """
         Checks if a branch exists in the remote repository using platform-specific APIs.
-
+        
         This method attempts to determine whether the specified branch exists in the
         remote repository before attempting to clone it. It uses different API endpoints
         depending on the Git platform (GitHub, GitLab, or Gitverse).
-
+        
+        WHY: This pre‑check avoids cloning operations when the target branch does not exist,
+        saving time and network resources.
+        
         Args:
-            branch: The name of the branch to check. If None, uses the default branch name
-                    configured for this agent (typically "osa_tool").
-
+            branch: The name of the branch to check. If None, the method uses the agent's
+                    default branch name (stored in `self.branch_name`). The parameter
+                    defaults to "osa_tool" if not provided.
+        
         Returns:
             True if the branch exists in the remote repository, False otherwise.
-            False and logs a warning if the platform is not recognized.
+            Returns False and logs a warning if the platform is not recognized.
         """
         if branch is None:
             branch = self.branch_name
@@ -239,13 +325,20 @@ class GitAgent(abc.ABC):
         return False
 
     def _clone_chosen_branch(self, branch: str = "osa_tool") -> None:
-        """Clones an existing branch from the remote repository.
-
+        """
+        Clones an existing branch from the remote repository into a local directory.
+        
+        This method is used to initialize a local working copy of a specific branch from the remote repository, which is necessary for subsequent operations like documentation generation or repository enhancements.
+        
         Args:
-            branch: The name of the branch to clone. Defaults to `branch_name`.
-
-        Returns:
-            True if cloning was successful, False otherwise.
+            branch: The name of the branch to clone. Defaults to "osa_tool". If None is provided, the instance's `branch_name` attribute is used instead.
+        
+        Raises:
+            GitCommandError: If the Git clone operation fails, the error is handled internally by `_handle_git_error`.
+            Exception: For any other unexpected errors during the cloning process, an exception is raised with a descriptive message.
+        
+        Note:
+            The clone uses single-branch cloning for efficiency, fetching only the specified branch. The remote URL is determined by `self.fork_url` if available, otherwise `self.repo_url`, and authentication is applied via `_get_auth_url`. The clone destination is `self.clone_dir`.
         """
         if branch is None:
             branch = self.branch_name
@@ -267,19 +360,25 @@ class GitAgent(abc.ABC):
     def _clone_default_branch(self) -> None:
         """
         Clones the default branch of the repository.
-
-        This method implements the standard cloning logic with fallback mechanisms:
+        
+        This method implements a two‑step cloning logic with fallback mechanisms:
         1. First attempts unauthenticated cloning (for public repositories)
-        2. Falls back to authenticated cloning if unauthenticated fails
+        2. Falls back to authenticated cloning if unauthenticated fails (for private repositories or when rate‑limited)
         3. Provides detailed error messages for common Git errors
-
+        
+        The method clones only the requested branch (single_branch=True) for efficiency.  
+        If both cloning attempts fail, a GitCommandError is raised for Git‑specific issues; otherwise, a generic Exception is raised for unexpected errors.
+        
+        Args:
+            self: The GitAgent instance containing the repository URL, clone directory, and base branch.
+        
         Raises:
-            GitCommandError: If both cloning attempts fail with Git-specific errors.
-            Exception: If an unexpected error occurs during cloning.
-
+            GitCommandError: If both cloning attempts fail due to Git‑specific errors (e.g., invalid URL, missing permissions).
+            Exception: If an unexpected, non‑Git error occurs during cloning.
+        
         Note:
-            The 'single_branch=True' parameter is used to clone only the requested
-            branch, which is more efficient than cloning all branches.
+            The authenticated URL is obtained via `self._get_auth_url()` and the unauthenticated URL via `self._get_unauth_url()`.
+            The clone directory and base branch are taken from instance attributes (`self.clone_dir`, `self.base_branch`).
         """
         try:
             logger.info(
@@ -317,21 +416,27 @@ class GitAgent(abc.ABC):
     def clone_repository(self) -> None:
         """
         Clones or initializes the Git repository in the local filesystem.
-
+        
         This is the main entry point for obtaining a local copy of the repository.
         It implements a multi-step strategy:
         1. If the repository is already initialized, returns early.
         2. If the directory exists locally, initializes from existing files.
         3. If cloning is needed, checks for existing 'osa_tool' branch first.
         4. Falls back to cloning the default branch if 'osa_tool' doesn't exist.
-
+        
+        Why this multi-step approach? It ensures efficient repository setup by reusing existing local data when possible and gracefully handling missing branches.
+        
+        Args:
+            self: The GitAgent instance. Uses internal state like repo_url, clone_dir, and repo.
+        
         Raises:
             InvalidGitRepositoryError: If the local directory exists but is not a valid Git repository.
             Exception: If all cloning attempts fail.
-
+        
         Note:
             This method handles both authenticated and unauthenticated cloning attempts
             for the default branch. It prefers the fork URL when available.
+            The method does not return a value; it initializes the internal `self.repo` attribute.
         """
         if self.repo:
             logger.warning(f"Repository is already initialized ({self.repo_url})")
@@ -352,13 +457,22 @@ class GitAgent(abc.ABC):
             self._clone_default_branch()
 
     def get_attachment_branch_files(self, branch: str = "osa_tool_attachments") -> List[str]:
-        """Gets list of report files from attachment branch.
-
+        """
+        Gets list of report files from attachment branch.
+        
+        This method fetches a specific branch (typically used for storing attachments like PDF reports) from the remote repository, lists all files in that branch, and filters for PDF report files. It is used to retrieve externally stored reports without cloning the entire branch history.
+        
         Args:
-            branch: The name of the attachment branch.
-
+            branch: The name of the attachment branch. Defaults to "osa_tool_attachments".
+        
         Returns:
-            List of report filenames found in the branch.
+            List of report filenames (ending with "report.pdf") found in the branch. Returns an empty list if the branch does not exist or if an error occurs.
+        
+        Why:
+        - The method checks if the branch exists remotely before fetching to avoid unnecessary operations.
+        - It fetches only the latest commit (depth=1) to minimize data transfer.
+        - A temporary local branch is created and then deleted to avoid polluting the local repository with attachment branches.
+        - Errors are caught and logged, returning an empty list to allow graceful failure in the calling code.
         """
         try:
             remote_refs = self.repo.git.ls_remote("--heads", self._get_unauth_url(self.fork_url or self.repo_url))
@@ -380,12 +494,16 @@ class GitAgent(abc.ABC):
             return []
 
     def create_and_checkout_branch(self, branch: str = None) -> None:
-        """Creates and checks out a new branch.
-
-        If the branch already exists, it simply checks out the branch.
-
+        """
+        Creates and checks out a new branch.
+        
+        If the branch already exists, it simply checks out the branch. If it does not exist, a new branch is created and checked out.
+        
         Args:
-            branch: The name of the branch to create or check out. Defaults to `branch_name`.
+            branch: The name of the branch to create or check out. If not provided, defaults to the instance's `branch_name` attribute.
+        
+        Why:
+            This method ensures a smooth workflow by automatically handling both branch creation and checkout in a single operation, avoiding manual checks for branch existence. It is commonly used when preparing the repository for modifications that should be isolated in a specific branch.
         """
         if branch is None:
             branch = self.branch_name
@@ -405,12 +523,21 @@ class GitAgent(abc.ABC):
         commit_message: str = "osa_tool recommendations",
         force: bool = False,
     ) -> bool:
-        """Commits and pushes changes to the forked repository.
-
+        """
+        Commits and pushes changes to the forked repository.
+        
+        This method stages all changes in the working directory, creates a commit, and pushes it to the specified branch in the user's fork. It includes error handling for common Git issues, such as a clean working tree or index corruption, and provides guidance if the target branch already exists remotely.
+        
         Args:
-            branch: The name of the branch to push changes to. Defaults to `branch_name`.
-            commit_message: The commit message. Defaults to "osa_tool recommendations".
-            force: Option to force push the commit. Defaults to `False`
+            branch: The name of the branch to push changes to. If not provided, defaults to the instance's `branch_name` attribute.
+            commit_message: The commit message to use. Defaults to "osa_tool recommendations".
+            force: If True, performs a force push. If False (default), uses `--force-with-lease` for safety.
+        
+        Returns:
+            bool: True if the push was successful. False if there was nothing to commit or if the push failed because the branch already exists in the remote fork.
+        
+        Raises:
+            ValueError: If the `fork_url` is not set, indicating a fork has not been created.
         """
         if not self.fork_url:
             raise ValueError("Fork URL is not set. Please create a fork first.")
@@ -473,13 +600,21 @@ class GitAgent(abc.ABC):
         report_branch: str = "osa_tool_attachments",
         commit_message: str = "docs: upload pdf report",
     ) -> None:
-        """Uploads the generated PDF report to a separate branch.
-
+        """
+        Uploads the generated PDF report to a separate branch.
+        
+        This method handles the process of committing and pushing a generated PDF report to a dedicated branch in the repository. It ensures the report is stored separately from the main working branch, provides a publicly accessible URL for the report, and appends a link to the report in the pull request body for easy access.
+        
         Args:
             report_filename: Name of the report file.
-            report_filepath: Path to the report file.
+            report_filepath: Path to the report file on the local system.
             report_branch: Name of the branch for storing reports. Defaults to "osa_tool_attachments".
-            commit_message: Commit message for the report upload. Defaults to "upload pdf report".
+            commit_message: Commit message for the report upload. Defaults to "docs: upload pdf report".
+        
+        Why:
+            - Storing reports in a separate branch keeps the main working branch clean and organizes attachments distinctly.
+            - The method switches back to the original branch after uploading to maintain the expected working state.
+            - Appending a markdown link to the pull request body automatically provides visibility and access to the uploaded report.
         """
         logger.info("Uploading report...")
 
@@ -499,22 +634,33 @@ class GitAgent(abc.ABC):
 
     @abc.abstractmethod
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
-        """Returns the URL to the report file on the corresponding platform.
-
+        """
+        Returns the URL to the report file on the corresponding platform.
+        This URL is constructed using the repository's base URL, the specified branch, and the report filename, enabling direct access to the stored report.
+        
         Args:
             report_branch: Name of the branch for storing reports. Defaults to "osa_tool_attachments".
-            report_filename: Name of the report file.
+            report_filename: Name of the report file, which will be appended to the branch path in the URL.
+        
+        Returns:
+            The full URL string pointing to the report file on the platform (e.g., GitHub, GitLab).
         """
         pass
 
     def update_about_section(self, about_content: dict) -> None:
-        """Tries to update the 'About' section of the base and fork repository with the provided content.
-
+        """
+        Tries to update the 'About' section of the base and fork repository with the provided content.
+        
+        This method ensures that both the original (base) repository and its fork have consistent metadata in their 'About' sections, which typically includes descriptions, website links, and other repository details displayed on the platform.
+        
         Args:
-            about_content: Dictionary containing the metadata to update about section.
-
+            about_content: Dictionary containing the metadata to update the 'About' section. The exact keys and values depend on the Git platform's API requirements.
+        
         Raises:
-            ValueError: If the Git token is not set or inappropriate platform used.
+            ValueError: If the Git token is not set, the fork URL is not set, or an inappropriate platform is used. The fork must be created before this method is called.
+        
+        Why:
+            Keeping the 'About' sections synchronized between the base and fork repositories helps maintain consistent project information across both locations, which is important for clarity and proper attribution when working with forked projects.
         """
         if not self.token:
             raise ValueError("Git-platform token is required to fill repository's 'About' section.")
@@ -531,22 +677,30 @@ class GitAgent(abc.ABC):
 
     @abc.abstractmethod
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
-        """A platform-specific helper method for updating the About section of a repository.
-
+        """
+        A platform-specific helper method for updating the About section of a repository.
+        This method is intended for use within the GitAgent class to handle platform-specific API calls or operations required to modify the repository's About metadata, such as description, website, or topics.
+        
         Args:
             repo_path: The base repository path (e.g., 'username/repo-name').
-            about_content: Dictionary containing the metadata to update about section.
+            about_content: Dictionary containing the metadata to update the About section. The exact keys and values depend on the platform's API requirements.
+        
+        Why:
+            The About section on platforms like GitHub or GitLab provides a summary and links for the repository. This method centralizes the update logic to accommodate differences between platforms, ensuring the repository's public-facing information is correctly set without exposing platform-specific details in the main workflow.
         """
         pass
 
     def _get_unauth_url(self, url: str = None) -> str:
-        """Returns the repository URL without authentication token.
-
+        """
+        Returns the repository URL without authentication token and ensures it ends with the `.git` extension.
+        
+        This method is used to normalize repository URLs for consistent internal handling, particularly when interacting with Git operations that expect a standard `.git` suffix. It ensures that the URL is formatted appropriately regardless of whether an authentication token is present in the original input.
+        
         Args:
-            url: The URL to convert. If None, uses the original repository URL.
-
+            url: The URL to convert. If None, the original repository URL (`self.repo_url`) is used instead.
+        
         Returns:
-            The repository URL without authentication token.
+            The repository URL without authentication token, guaranteed to end with `.git`.
         """
         repo_url = url if url else self.repo_url
 
@@ -557,16 +711,21 @@ class GitAgent(abc.ABC):
         return repo_url
 
     def _get_auth_url(self, url: str = None) -> str:
-        """Converts the repository URL by adding a token for authentication.
-
+        """
+        Converts the repository URL by adding a token for authentication.
+        
+        This method is used to securely embed an authentication token into a Git repository URL,
+        enabling authenticated access for subsequent Git operations (e.g., cloning, fetching).
+        If no explicit URL is provided, the method defaults to the repository URL stored in the instance.
+        
         Args:
-            url: The URL to convert. If None, uses the original repository URL.
-
+            url: The URL to convert. If None, the method uses the original repository URL (self.repo_url).
+        
         Returns:
-            The repository URL with the token.
-
+            The repository URL with the authentication token inserted.
+        
         Raises:
-            ValueError: If the token is not found or the repository URL format is unsupported.
+            ValueError: If the token is not found in the environment variables or if the repository URL format is unsupported (handled by _build_auth_url).
         """
         if not self.token:
             raise ValueError("Token not found in environment variables.")
@@ -575,34 +734,103 @@ class GitAgent(abc.ABC):
 
     @abc.abstractmethod
     def _build_auth_url(self, repo_url: str) -> str:
-        """A platform-specific helper method for converting the repository URL by adding a token for authentication.
-
+        """
+        A platform-specific helper method for converting the repository URL by adding a token for authentication.
+        
+        This method modifies the provided repository URL to embed an authentication token, enabling secure access to the repository without requiring manual login. This is essential for automated operations within the OSA Tool, such as cloning or fetching repository data, where authentication must be handled programmatically.
+        
         Args:
-            repo_url: The URL of the Git repository.
+            repo_url: The URL of the Git repository to be authenticated.
+        
+        Returns:
+            The authenticated repository URL with the token embedded.
         """
         pass
 
     @abc.abstractmethod
     def validate_topics(self, topics: List[str]) -> List[str]:
-        """Validates topics against platform-specific APIs.
-
+        """
+        Validates topics against platform-specific APIs by checking which ones exist on the platform.
+        
+        This method is used to filter a list of potential topics, ensuring only those recognized by the platform are retained. This helps maintain accurate metadata and avoid tagging repositories with non-existent or unsupported topics.
+        
         Args:
-            topics (List[str]): List of potential topics to validate
-
+            topics: List of potential topics to validate.
+        
         Returns:
-            List[str]: List of validated topics that exist on platform
+            List of validated topics that exist on the platform.
         """
         pass
 
 
 class GitHubAgent(GitAgent):
+    """
+    GitHubAgent is a class that provides a comprehensive interface for interacting with GitHub repositories through the GitHub API.
+    
+        Attributes:
+            base_url: The base URL for GitHub API requests.
+            token: The authentication token used for API requests.
+            headers: The HTTP headers used for API requests, including authentication.
+            fork_url: The URL of the forked repository, if a fork has been created.
+            repo_metadata: The metadata of the repository being interacted with.
+    
+        Methods:
+            _get_token: Retrieves the authentication token from environment variables.
+            _load_metadata: Fetches and loads metadata for a specific repository.
+            create_fork: Creates a fork of the specified GitHub repository.
+            star_repository: Stars the specified GitHub repository for the authenticated user.
+            _check_github_branch_exists: Checks if a branch exists on GitHub using the API.
+            post_comment: Posts a comment to a specific GitHub pull request.
+            create_pull_request: Creates or updates a pull request on GitHub.
+            _update_about_section: Updates the GitHub repository's about section.
+            _build_report_url: Constructs a URL pointing to a specific report file on a GitHub fork.
+            _build_auth_url: Constructs a GitHub repository URL containing authentication credentials.
+            validate_topics: Validates a list of topics against the GitHub Topics API.
+    """
+
     def _get_token(self) -> str:
+        """
+        Retrieves the authentication token from environment variables.
+        
+        This method attempts to fetch a token from the 'GIT_TOKEN' environment variable,
+        falling back to 'GITHUB_TOKEN' if the former is not set. If neither is found,
+        it returns an empty string. This token is used for authenticating requests to
+        GitHub's API, enabling operations like repository analysis and enhancements.
+        
+        Returns:
+            str: The retrieved authentication token or an empty string if not found.
+        """
         return os.getenv("GIT_TOKEN", os.getenv("GITHUB_TOKEN", ""))
 
     def _load_metadata(self, repo_url: str) -> RepositoryMetadata:
+        """
+        Fetches and loads metadata for a specific repository using the GitHub metadata loader.
+        This internal method centralizes metadata retrieval to ensure consistent data sourcing for subsequent analysis and documentation tasks.
+        
+        Args:
+            repo_url: The URL of the GitHub repository for which to retrieve metadata.
+        
+        Returns:
+            RepositoryMetadata: An object containing the loaded repository metadata, such as repository name, owner, description, stars, and other platform-specific information.
+        """
         return GitHubMetadataLoader.load_data(repo_url)
 
     def create_fork(self) -> None:
+        """
+        Creates a fork of the specified GitHub repository using the GitHub API.
+        
+        This method authenticates using the provided token and sends a POST request to the GitHub API to create a fork of the base repository. If successful, it updates the instance with the URL of the newly created fork. This is typically done to obtain a personal copy of the repository where changes can be made without affecting the original.
+        
+        Args:
+            self: The instance of the GitHubAgent class. The instance must have a valid `token` and `repo_url` already set.
+        
+        Raises:
+            ValueError: If the GitHub token is not provided.
+            RuntimeError: If the GitHub API request fails (handled by `_handle_api_error`).
+        
+        Attributes Initialized:
+            fork_url: The web URL (html_url) of the newly created GitHub fork. This is set only upon a successful API response (status code 200 or 202).
+        """
         if not self.token:
             raise ValueError("GitHub token is required to create a fork.")
 
@@ -620,6 +848,21 @@ class GitHubAgent(GitAgent):
             self._handle_api_error(response, "creating GitHub fork")
 
     def star_repository(self) -> None:
+        """
+        Stars the specified GitHub repository for the authenticated user.
+        
+        This method checks if the repository is already starred by the user. If not, it sends a PUT request to the GitHub API to star the repository. It requires a valid GitHub token and handles API errors gracefully by logging them.
+        
+        Args:
+            repo_url: The URL of the GitHub repository to star. This is derived from the instance's `repo_url` attribute.
+            token: The GitHub authentication token. This is derived from the instance's `token` attribute. Required for API authorization.
+        
+        Raises:
+            ValueError: If the GitHub token is not provided.
+        
+        Why:
+            The method first verifies the star status to avoid redundant API calls and unnecessary notifications. If the repository is already starred, it logs the status and exits early. This prevents duplicate starring and respects GitHub's API idempotency for the star action.
+        """
         if not self.token:
             raise ValueError("GitHub token is required to star the repository.")
 
@@ -645,7 +888,24 @@ class GitHubAgent(GitAgent):
             self._handle_api_error(response_star, "starring repository", raise_exception=False)
 
     def _check_github_branch_exists(self, branch: str) -> bool:
-        """Check if branch exists on GitHub using API."""
+        """
+        Check if a branch exists in a GitHub repository via the GitHub API.
+        
+        This method determines whether a given branch name exists in either the original
+        repository or a forked repository, depending on whether a fork URL is configured.
+        It is used to verify branch availability before performing operations such as
+        creating pull requests or checking out branches, ensuring that the branch
+        is present and accessible.
+        
+        Args:
+            branch: The name of the branch to check for existence.
+        
+        Returns:
+            True if the branch exists (API returns 200), False if it does not exist
+            (API returns 404) or if any other error occurs (e.g., network issues,
+            authentication problems, or unexpected API responses). In case of
+            non‑404 errors, a warning is logged.
+        """
         if not self.fork_url:
             repo_to_check = get_base_repo_url(self.repo_url)
             url = f"https://api.github.com/repos/{repo_to_check}/branches/{branch}"
@@ -674,6 +934,16 @@ class GitHubAgent(GitAgent):
             return False
 
     def post_comment(self, pr_number: int, comment_body: str):
+        """
+        Posts a comment to a specific GitHub pull request via the GitHub API.
+        
+        Args:
+            pr_number: The identification number of the pull request where the comment will be posted.
+            comment_body: The text content of the comment to be posted.
+        
+        Why:
+        This method enables automated interaction with pull requests, allowing the OSA Tool to provide feedback, notes, or documentation-related messages directly within the GitHub workflow. It supports the tool's goal of enhancing repository maintainability by facilitating communication about changes or improvements.
+        """
         base_repo = get_base_repo_url(self.repo_url)
         url = f"https://api.github.com/repos/{base_repo}/issues/{pr_number}/comments"
         headers = {
@@ -688,18 +958,30 @@ class GitHubAgent(GitAgent):
             logger.error(f"Failed to post a comment to PR #{pr_number}: {response.status_code} - {response.text}")
 
     def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
-        """Creates or updates a pull request on GitHub.
-
+        """
+        Creates or updates a pull request on GitHub.
+        
         This method implements intelligent PR management:
-        1. Checks if an open PR already exists for the current branch
-        2. If PR exists and there are new reports, updates the PR description
-           with all unique report links (removing duplicates)
-        3. If no PR exists, creates a new one with all available reports
-           from the attachment branch
-
+        1. Checks if an open PR already exists for the current branch.
+        2. If a PR exists and there are new reports, updates the PR description
+           with all unique report links (removing duplicates).
+        3. If no PR exists and changes are present, creates a new PR with all
+           available reports from the attachment branch.
+        
+        WHY: This approach prevents duplicate PRs for the same branch and ensures
+        that all generated reports are aggregated into a single PR description,
+        improving organization and traceability.
+        
         Args:
-            title: Optional title for the PR. Uses last commit message if not provided.
-            body: Optional body/description for the PR.
+            title: Optional title for the PR. Uses the last commit message if not provided.
+            body: Optional body/description for the PR. If provided when updating an
+                  existing PR, this body is posted as a new comment on the PR.
+            changes: Boolean flag indicating whether there are changes to report.
+                     If False and no PR exists, no action is taken. If True, a new
+                     PR is created with available reports.
+        
+        Raises:
+            ValueError: If the GitHub token is not available, preventing API calls.
         """
         if not self.token:
             raise ValueError("GIT_TOKEN or GITHUB_TOKEN token is required to create a pull request.")
@@ -781,6 +1063,25 @@ class GitHubAgent(GitAgent):
                 self._handle_api_error(response, "creating pull request", raise_exception=True)
 
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
+        """
+        Updates the GitHub repository's about section, including description, homepage, and topics.
+        
+        This method performs two separate API calls: a PATCH request to update the repository's
+        general information (description and homepage) and a PUT request to update the
+        repository's topics. It logs the success of these operations or handles errors
+        via the internal error handling mechanism. The two calls are made separately because
+        the GitHub API requires updating repository metadata and topics through different endpoints.
+        
+        Args:
+            repo_path: The full path of the repository (e.g., 'owner/repo').
+            about_content: A dictionary containing the keys 'description', 'homepage',
+                and 'topics' with their respective new values. The 'topics' value must be a list of strings.
+        
+        Note:
+            Errors from either API call are handled without raising exceptions (raise_exception=False),
+            allowing partial updates to succeed even if one operation fails. Success is logged for each
+            independent update.
+        """
         url = f"https://api.github.com/repos/{repo_path}"
         headers = {
             "Accept": "application/vnd.github+json",
@@ -807,15 +1108,54 @@ class GitHubAgent(GitAgent):
             self._handle_api_error(response, f"updating topics for '{repo_path}'", raise_exception=False)
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
+        """
+        Constructs a URL pointing to a specific report file on a GitHub fork.
+        
+        The method builds a direct URL to a report file stored in a branch of the fork, enabling easy access for viewing or downloading the report. This is used to generate links for reports produced by the OSA Tool's documentation pipeline.
+        
+        Args:
+            report_branch: The name of the branch where the report is located.
+            report_filename: The name of the report file.
+        
+        Returns:
+            str: The full URL to the report file on the fork.
+        """
         return f"{self.fork_url}/blob/{report_branch}/{report_filename}"
 
     def _build_auth_url(self, repo_url: str) -> str:
+        """
+        Constructs a GitHub repository URL containing authentication credentials.
+        
+        WHY: To enable authenticated Git operations (like cloning or pushing) by embedding the agent's access token directly into the HTTPS URL, which is required when interacting with private repositories or when performing actions that require authentication.
+        
+        Args:
+            repo_url: The original HTTPS URL of the GitHub repository (e.g., "https://github.com/owner/repo").
+        
+        Returns:
+            str: The authenticated URL formatted with the access token for Git operations (e.g., "https://<token>@github.com/owner/repo.git").
+        
+        Raises:
+            ValueError: If the provided repo_url does not start with "https://github.com/", indicating an unsupported or non-GitHub URL format.
+        """
         if repo_url.startswith("https://github.com/"):
             repo_path = repo_url[len("https://github.com/") :]
             return f"https://{self.token}@github.com/{repo_path}.git"
         raise ValueError(f"Unsupported repository URL format for GitHub: {repo_url}")
 
     def validate_topics(self, topics: List[str]) -> List[str]:
+        """
+        Validates a list of topics against the GitHub Topics API to ensure they exist and meet a minimum repository count.
+                
+        The method checks each topic by querying the GitHub API. If a topic is found and associated with more than five repositories, it is considered valid. If the API returns a single exact match that differs in casing or formatting, the method applies the transformation to the canonical name. It handles API rate limiting by pausing execution when a 403 status code is encountered.
+        
+        WHY: This validation ensures that only established, widely-used GitHub topics are applied to a repository, improving discoverability and avoiding the creation of overly niche or misspelled tags.
+        
+        Args:
+            topics: A list of strings representing the topics to be validated.
+        
+        Returns:
+            List[str]: A list of validated and potentially transformed topic names that exist on GitHub. Topics that do not meet the minimum repository count or are not found are omitted.
+        """
         logger.info("Validating topics against GitHub Topics API...")
         min_repo = 5
         validated_topics = []
@@ -853,13 +1193,73 @@ class GitHubAgent(GitAgent):
 
 
 class GitLabAgent(GitAgent):
+    """
+    GitLabAgent provides an interface for interacting with GitLab repositories and performing various operations.
+    
+        Attributes:
+            fork_url: The web URL of the forked repository or the original repository URL if the user is the owner.
+    
+        Methods:
+            _get_token: Retrieves the GitLab authentication token from environment variables.
+            _load_metadata: Fetches and loads metadata for a specific repository from GitLab.
+            create_fork: Creates a fork of the specified GitLab repository for the authenticated user.
+            star_repository: Stars a GitLab repository using the GitLab API.
+            _check_gitlab_branch_exists: Checks if a branch exists on GitLab using the API.
+            post_note: Posts a comment or note to a specific GitLab merge request.
+            create_pull_request: Creates or updates a merge request on GitLab.
+            _update_about_section: Updates the GitLab repository's description and topics using the GitLab API.
+            _build_report_url: Constructs a URL pointing to a specific report file on a Git fork.
+            _build_auth_url: Constructs a GitLab authentication URL using an OAuth2 token.
+            validate_topics: Validates a list of topics against the GitLab Topics API.
+    """
+
     def _get_token(self) -> str:
+        """
+        Retrieves the GitLab authentication token from environment variables.
+                
+                The method checks for the 'GITLAB_TOKEN' environment variable first, falling back to 'GIT_TOKEN' if the former is not set. If neither is found, it returns an empty string.
+                This approach allows flexible token configuration, supporting both GitLab-specific and generic Git environment variable names.
+                
+                Returns:
+                    str: The authentication token or an empty string if not found.
+        """
         return os.getenv("GITLAB_TOKEN", os.getenv("GIT_TOKEN", ""))
 
     def _load_metadata(self, repo_url: str) -> RepositoryMetadata:
+        """
+        Fetches and loads metadata for a specific repository from GitLab.
+        
+        This method delegates to a dedicated loader class to retrieve structured metadata
+        (such as project details, contributors, issues, or other repository attributes)
+        from the GitLab API. This separation allows the agent to focus on orchestration
+        while keeping data-fetching logic centralized and reusable.
+        
+        Args:
+            repo_url: The URL of the GitLab repository for which to retrieve metadata.
+        
+        Returns:
+            RepositoryMetadata: An object containing the loaded repository metadata.
+        """
         return GitLabMetadataLoader.load_data(repo_url)
 
     def create_fork(self) -> None:
+        """
+        Creates a fork of the specified GitLab repository for the authenticated user.
+        
+        This method validates the presence of a GitLab token, extracts the GitLab instance and project path from the repository URL, and checks if the current user already owns the repository or has an existing fork. If no fork exists, it initiates a fork request via the GitLab API. The method ensures the user does not create duplicate forks and efficiently reuses an existing fork or the original repository when appropriate.
+        
+        Args:
+            self: The instance of the GitLabAgent class.
+        
+        Attributes Initialized:
+            fork_url: The web URL of the forked repository. If the user already owns the original repository, this is set to the original repository URL. If a fork already exists for the user, this is set to that fork's web URL.
+        
+        Raises:
+            ValueError: If the GitLab token is missing, user information cannot be retrieved, the forks list cannot be accessed, or the fork creation request fails.
+        
+        Why:
+            Forking is a prerequisite for many collaborative workflows (e.g., submitting merge requests). This method automates the fork creation while avoiding unnecessary API calls and duplicate forks by first checking ownership and existing forks.
+        """
         if not self.token:
             raise ValueError("GitLab token is required to create a fork.")
         gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
@@ -924,6 +1324,20 @@ class GitLabAgent(GitAgent):
             raise ValueError("Failed to create fork.")
 
     def star_repository(self) -> None:
+        """
+        Stars a GitLab repository using the GitLab API.
+        
+        This method extracts the GitLab instance and project path from the repository URL and sends a POST request to the star endpoint. It handles cases where the repository is already starred or successfully starred, and logs an error if the request fails. The method relies on the instance's `repo_url` and `token` attributes.
+        
+        Args:
+            self: The instance of the GitLabAgent class.
+        
+        Raises:
+            ValueError: If the GitLab token is not provided.
+        
+        Why:
+            The method performs URL parsing to construct the correct API endpoint because the GitLab API requires the project path to be URL-encoded and uses a specific endpoint structure (/api/v4/projects/{project_path}/star). It checks for status codes 304 (already starred) and 201 (successfully starred) to provide appropriate logging without raising exceptions for these expected outcomes.
+        """
         if not self.token:
             raise ValueError("GitLab token is required to star the repository.")
 
@@ -949,7 +1363,25 @@ class GitLabAgent(GitAgent):
             logger.error(f"Failed to star GitLab repository: {response.status_code} - {response.text}")
 
     def _check_gitlab_branch_exists(self, branch: str) -> bool:
-        """Check if branch exists on GitLab using API."""
+        """
+        Check if a branch exists on a GitLab repository via the GitLab API.
+        
+        This method constructs the appropriate API endpoint for the target GitLab project
+        and issues a GET request to determine whether the specified branch exists.
+        It handles both the original repository and a forked repository, depending on
+        whether a fork URL is configured. The method is used internally to verify
+        branch presence before performing operations that depend on branch existence,
+        such as creating merge requests or checking out code.
+        
+        Args:
+            branch: The name of the branch to check for existence.
+        
+        Returns:
+            True if the branch exists (API returns 200), False if the branch does not
+            exist (API returns 404) or if an error occurs (e.g., network issue, unexpected
+            API response, or authentication failure). Warnings are logged for non‑404
+            errors or exceptions.
+        """
         gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
 
         if not self.fork_url:
@@ -980,6 +1412,20 @@ class GitLabAgent(GitAgent):
             return False
 
     def post_note(self, project_id: int, mr_iid: int, note_body: str):
+        """
+        Posts a comment or note to a specific GitLab merge request via the GitLab API.
+        
+        Args:
+            project_id: The ID of the GitLab project.
+            mr_iid: The internal ID (IID) of the merge request within the project.
+            note_body: The content of the note or comment to be posted.
+        
+        Why:
+            This method enables automated interaction with merge requests, such as posting review feedback, status updates, or bot-generated messages, which is essential for integrating automated documentation and analysis workflows into the GitLab merge request process.
+        
+        Note:
+            The GitLab instance URL and authentication token are derived from the class instance's `repo_url` and `token` attributes. The request is authenticated using a Bearer token.
+        """
         gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
         url = f"{gitlab_instance}/api/v4/projects/{project_id}/merge_requests/{mr_iid}/notes"
         headers = {
@@ -994,19 +1440,31 @@ class GitLabAgent(GitAgent):
             logger.error(f"Failed to post a note to MR !{mr_iid}: {response.status_code} - {response.text}")
 
     def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
-        """Creates or updates a merge request on GitLab.
-
+        """
+        Creates or updates a merge request on GitLab.
+        
         This method implements intelligent MR management:
-        1. Checks if an open MR already exists for the current branch
-        2. If MR exists and there are new reports, updates the MR description
-           with all unique report links (removing duplicates)
-        3. If no MR exists, creates a new one with all available reports
-           from the attachment branch
-
+        1. Checks if an open MR already exists for the current branch.
+        2. If an MR exists and there are new reports, updates the MR description
+           with all unique report links (removing duplicates) and appends a new note
+           if a body is provided.
+        3. If no MR exists and there are changes to commit, creates a new MR with
+           all available reports from the attachment branch.
+        
+        The method ensures that the MR description contains a consolidated list of
+        generated report links, avoiding duplicates, and includes a signature to
+        identify agent‑generated content.
+        
         Args:
-            title: Optional title for the MR. Uses last commit message if not provided.
-            body: Optional body/description for the MR.
-            changes: Flag indicating whether there are changes to commit.
+            title: Optional title for the MR. Uses the last commit message if not provided.
+            body: Optional body/description for the MR. If provided and an MR exists,
+                  this content is posted as a new note on the existing MR.
+            changes: Flag indicating whether there are changes to commit. A new MR is
+                     created only when this flag is True and no open MR exists.
+        
+        Raises:
+            ValueError: If the GitLab token is missing, if project information cannot
+                        be retrieved, or if MR creation fails (unless the MR already exists).
         """
         if not self.token:
             raise ValueError("GitLab token is required to create a merge request.")
@@ -1103,6 +1561,18 @@ class GitLabAgent(GitAgent):
                     raise ValueError("Failed to create merge request.")
 
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
+        """
+        Updates the GitLab repository's description and topics using the GitLab API.
+        
+        This method extracts the GitLab instance URL from the repository URL stored in the class instance, formats the provided repository path for API compatibility, and sends a PUT request to update the project's metadata with the given description and topics. The update is performed using a personal access token for authentication.
+        
+        Args:
+            repo_path: The full path or namespace of the repository on GitLab (e.g., "username/project").
+            about_content: A dictionary containing the new metadata. Must include the keys "description" (the new repository description) and "topics" (a list of topic tags to apply). The topics are sent to the API as "tag_list".
+        
+        Why:
+            The method exists to programmatically update the repository's "About" section (description and topics) via the GitLab REST API, enabling automated repository maintenance as part of the OSA Tool's enhancement pipeline. The path is URL-encoded (replacing "/" with "%2F") to meet GitLab API requirements for project identification.
+        """
         gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
         project_path = repo_path.replace("/", "%2F")
 
@@ -1122,9 +1592,40 @@ class GitLabAgent(GitAgent):
             logger.error(f"{response.status_code} - Failed to update GitLab repository metadata.")
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
+        """
+        Constructs a URL pointing to a specific report file on a Git fork.
+        
+        This method builds a direct web URL to a report file stored in a specific branch of the forked repository. It is used to generate accessible links for viewing or sharing reports produced by the OSA Tool's documentation pipeline.
+        
+        Args:
+            report_branch: The name of the branch where the report is located.
+            report_filename: The name of the report file.
+        
+        Returns:
+            str: The complete URL to the report file on the fork. The URL format is: {fork_url}/-/blob/{report_branch}/{report_filename}
+        """
         return f"{self.fork_url}/-/blob/{report_branch}/{report_filename}"
 
     def _build_auth_url(self, repo_url: str) -> str:
+        """
+        Constructs a GitLab authentication URL using an OAuth2 token.
+        
+        This method parses a standard GitLab repository URL and injects the instance's
+        token into the URL structure to allow for authenticated git operations.
+        It specifically transforms the URL to embed the token in the format required
+        for Git to authenticate via HTTPS without interactive prompts.
+        
+        Args:
+            repo_url: The original GitLab repository URL to be transformed. Must be a valid
+                      GitLab URL matching the pattern `https?://([^/]*gitlab[^/]*)/(.+)`.
+        
+        Returns:
+            str: A formatted URL string containing the OAuth2 credentials and the repository path,
+                 with `.git` appended to the path.
+        
+        Raises:
+            ValueError: If the provided `repo_url` does not match the expected GitLab URL pattern.
+        """
         gitlab_match = re.match(r"https?://([^/]*gitlab[^/]*)/(.+)", repo_url)
         if gitlab_match:
             gitlab_host = gitlab_match.group(1)
@@ -1133,6 +1634,20 @@ class GitLabAgent(GitAgent):
         raise ValueError(f"Unsupported repository URL format for GitLab: {repo_url}")
 
     def validate_topics(self, topics: List[str]) -> List[str]:
+        """
+        Validates a list of topics against the GitLab Topics API.
+        
+        This method checks each provided topic string by querying the GitLab API. It verifies if an exact match for the topic name exists. It handles API rate limiting by pausing execution and includes error handling for network or request failures.
+        
+        Args:
+            topics: A list of strings representing the topics to be validated.
+        
+        Returns:
+            A list containing only the topics that were successfully validated against the GitLab API.
+        
+        Why:
+            The validation ensures that only existing, official GitLab topics are used, which helps maintain consistency and discoverability when tagging repositories. The method includes rate‑limit handling and delays between requests to comply with GitLab API usage policies and to avoid being blocked.
+        """
         logger.info("Validating topics against GitLab Topics API...")
         validated_topics = []
         base_url = "https://gitlab.com/api/v4/topics"
@@ -1164,13 +1679,72 @@ class GitLabAgent(GitAgent):
 
 
 class GitverseAgent(GitAgent):
+    """
+    GitverseAgent provides an interface for interacting with Gitverse repositories via API.
+    
+        This class handles authentication, repository operations (forking, starring), pull request management, and metadata loading for Gitverse repositories. It also includes utilities for constructing URLs and validating repository topics.
+    
+        Attributes:
+            token: Authentication token for Gitverse API access.
+            base_repo_url: URL of the base repository being operated on.
+            fork_url: URL of the user's fork of the base repository.
+            repo_metadata: Loaded metadata for the repository.
+            user_info: Information about the authenticated user.
+    
+        Methods:
+            _get_token: Retrieves the authentication token from environment variables.
+            _load_metadata: Loads metadata for a specific repository using the Gitverse loader.
+            create_fork: Creates a fork of the repository on Gitverse.
+            star_repository: Stars a repository on Gitverse for the authenticated user.
+            _check_gitverse_branch_exists: Check if branch exists on Gitverse using API.
+            create_pull_request: Creates or updates a pull request on Gitverse.
+            _update_about_section: Logs a warning regarding the lack of support for updating the repository About section.
+            _build_report_url: Constructs a URL pointing to a specific report file within a repository fork.
+            _build_auth_url: Constructs an authenticated URL for a Gitverse repository using the stored token.
+            validate_topics: Validates a list of topics for the Gitverse platform.
+    """
+
     def _get_token(self) -> str:
+        """
+        Retrieves the authentication token from environment variables.
+        
+        The method checks for the 'GITVERSE_TOKEN' environment variable first, falling back to 'GIT_TOKEN' if the former is not set. This order allows a project-specific token to override a general-purpose token. If neither is found, it returns an empty string.
+        
+        Returns:
+            str: The authentication token or an empty string if not found.
+        """
         return os.getenv("GITVERSE_TOKEN", os.getenv("GIT_TOKEN", ""))
 
     def _load_metadata(self, repo_url: str) -> RepositoryMetadata:
+        """
+        Loads metadata for a specific repository using the Gitverse loader.
+        This method is used internally to fetch structured metadata (such as repository details, contributors, and activity) required for subsequent documentation and enhancement operations.
+        
+        Args:
+            repo_url: The URL of the repository for which to load metadata.
+        
+        Returns:
+            RepositoryMetadata: An object containing the metadata for the repository.
+        """
         return GitverseMetadataLoader.load_data(repo_url)
 
     def create_fork(self) -> None:
+        """
+        Creates a fork of the repository on Gitverse.
+        
+        This method authenticates with the Gitverse API using the provided token to create a fork of the base repository. It first checks if the current user is already the owner of the repository. If not, it checks if a fork already exists for the user. If no fork exists, it sends a request to create one. The resulting fork URL is stored in the instance.
+        
+        Why this logic is used: It avoids unnecessary API calls and prevents duplicate forks by first verifying ownership and then checking for an existing fork before attempting creation.
+        
+        Args:
+            self: The instance of the GitverseAgent class.
+        
+        Attributes Initialized:
+            fork_url: The URL of the created or existing fork on Gitverse. If the user already owns the repository, this is set to the original repo_url.
+        
+        Raises:
+            ValueError: If the Gitverse token is missing, user information cannot be retrieved, or the fork creation request fails.
+        """
         if not self.token:
             raise ValueError("Gitverse token is required to create a fork.")
 
@@ -1217,6 +1791,19 @@ class GitverseAgent(GitAgent):
             raise ValueError("Failed to create fork.")
 
     def star_repository(self) -> None:
+        """
+        Stars a repository on Gitverse for the authenticated user.
+        
+        This method checks if the repository is already starred by the user. If not, it sends a request to the Gitverse API to star the repository. It requires a valid authentication token and repository URL to be present on the instance.
+        
+        The method first verifies the token exists, then constructs the API URL from the repository URL. It performs a GET request to check the current star status. If the repository is already starred (status 204), it logs this and returns early. If the check fails for any reason other than a 404 (which indicates the repository is not starred), it raises an error. Finally, if the repository is not starred, it sends a PUT request to star it.
+        
+        Args:
+            self: The instance of the GitverseAgent class. The instance must have `token` and `repo_url` attributes set.
+        
+        Raises:
+            ValueError: If the Gitverse token is missing, if the initial GET request to check star status fails (with a status code other than 404), or if the subsequent PUT request to star the repository fails.
+        """
         if not self.token:
             raise ValueError("Gitverse token is required to star the repository.")
 
@@ -1242,7 +1829,19 @@ class GitverseAgent(GitAgent):
             logger.error(f"Failed to star Gitverse repository: {response_star.status_code} - {response_star.text}")
 
     def _check_gitverse_branch_exists(self, branch: str) -> bool:
-        """Check if branch exists on Gitverse using API."""
+        """
+        Check if a branch exists on Gitverse using the API.
+        
+        WHY: This method is used to verify whether a specific branch exists in the repository before performing operations that depend on branch availability (e.g., creating pull requests, merging). It ensures that the agent can safely proceed with branch-related tasks.
+        
+        Args:
+            branch: The name of the branch to check for existence.
+        
+        Returns:
+            True if the branch exists on Gitverse, False otherwise. Returns False if the API request fails or returns a non-200 status code.
+        
+        The method determines which repository URL to check (either the original repo or the fork URL) based on whether a fork URL is set. It then constructs the API endpoint, adds necessary headers (including an authorization token if available), and makes a GET request. If the request succeeds (status 200), it parses the response to see if the branch name matches any in the list.
+        """
         if not self.fork_url:
             repo_to_check = get_base_repo_url(self.repo_url)
         else:
@@ -1270,19 +1869,30 @@ class GitverseAgent(GitAgent):
             return False
 
     def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
-        """Creates or updates a pull request on Gitverse.
-
-        This method implements intelligent PR management:
-        1. Checks if an open PR already exists for the current branch
-        2. If PR exists and there are new reports, updates the PR description
-           with all unique report links (removing duplicates)
-        3. If no PR exists, creates a new one with all available reports
-           from the attachment branch
-
-        Args:
-            title: Optional title for the PR. Uses last commit message if not provided.
-            body: Optional body/description for the PR.
-            changes: Flag indicating whether there are changes to commit.
+        """
+        Creates or updates a pull request on Gitverse.
+        
+                This method implements intelligent PR management:
+                1. Checks if an open PR already exists for the current branch.
+                2. If a PR exists and there are new reports, updates the PR description
+                   with all unique report links (removing duplicates) while preserving
+                   the existing description text and any new body content.
+                3. If no PR exists and there are changes to commit, creates a new PR
+                   with all available reports from the attachment branch.
+        
+                The method ensures that the PR description always contains a complete,
+                   deduplicated list of report links and is signed with the agent's signature.
+        
+                Args:
+                    title: Optional title for the PR. Uses the last commit message if not provided.
+                    body: Optional body/description for the PR. If provided when updating an existing PR,
+                          this content is appended to the existing description (if not already present).
+                    changes: Flag indicating whether there are changes to commit. A new PR is created
+                             only if this flag is True and no open PR exists for the branch.
+        
+                Raises:
+                    ValueError: If the Gitverse token is not set, or if PR creation fails
+                                (unless the failure is due to an existing PR).
         """
         if not self.token:
             raise ValueError("Gitverse token is required to create a pull request.")
@@ -1383,19 +1993,69 @@ class GitverseAgent(GitAgent):
                     raise ValueError("Failed to create pull request.")
 
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
+        """
+        Logs a warning regarding the lack of support for updating the repository About section.
+        
+        Currently, Gitverse does not support updating the About section via API. This method
+        notifies the user that suggestions for these updates can be viewed in the Pull Request.
+        WHY: This method exists as a placeholder to inform users that the intended update operation is not yet implemented, preventing silent failures and guiding them to alternative review locations.
+        
+        Args:
+            repo_path: The path or identifier of the repository to be updated.
+            about_content: A dictionary containing the metadata for the About section.
+        """
         logger.warning(
             "Updating repository 'About' section via API is not yet supported for Gitverse. You can see suggestions in PR."
         )
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
+        """
+        Constructs a URL pointing to a specific report file within a repository fork.
+        
+        This method builds a direct URL to access a report file stored in a specific branch of the fork. It is used internally to generate links for retrieving or referencing generated documentation and analysis reports.
+        
+        Args:
+            report_branch: The name of the branch where the report is located.
+            report_filename: The name of the report file to be accessed.
+        
+        Returns:
+            str: The complete URL for the specified report file, formatted as `{fork_url}/content/{report_branch}/{report_filename}`.
+        """
         return f"{self.fork_url}/content/{report_branch}/{report_filename}"
 
     def _build_auth_url(self, repo_url: str) -> str:
+        """
+        Constructs an authenticated URL for a Gitverse repository using the stored token.
+        
+        Args:
+            repo_url: The original HTTPS URL of the Gitverse repository. Must start with "https://gitverse.ru/".
+        
+        Returns:
+            str: The repository URL with the authentication token embedded in the format "https://{token}@gitverse.ru/{repo_path}.git".
+        
+        Raises:
+            ValueError: If the provided repository URL does not start with the expected Gitverse prefix "https://gitverse.ru/". This ensures the method only processes URLs from the correct Gitverse domain.
+        
+        Why:
+            This method enables secure, authenticated access to private Gitverse repositories by embedding the agent's stored token directly into the URL. It transforms a standard HTTPS URL into one that includes authentication credentials, allowing subsequent Git operations (like cloning or fetching) to proceed without separate credential prompts.
+        """
         if repo_url.startswith("https://gitverse.ru/"):
             repo_path = repo_url[len("https://gitverse.ru/") :]
             return f"https://{self.token}@gitverse.ru/{repo_path}.git"
         raise ValueError(f"Unsupported repository URL format for Gitverse: {repo_url}")
 
     def validate_topics(self, topics: List[str]) -> List[str]:
+        """
+        Validates a list of topics for the Gitverse platform.
+        
+        Note:
+            This method is currently a placeholder and does not perform actual validation. It logs a warning and returns the input list unchanged. This allows the broader OSA Tool pipeline to proceed without interruption while the Gitverse-specific validation logic is under development.
+        
+        Args:
+            topics: A list of strings representing the topics to be validated.
+        
+        Returns:
+            The original list of topics provided as input.
+        """
         logger.warning("Topic validation is not yet implemented for Gitverse. Returning original topics list.")
         return topics

@@ -1,0 +1,6 @@
+# Core
+## Overview
+The Core module provides the foundational infrastructure for the OSA Tool's automated documentation and repository enhancement system. It integrates structured interfaces for large language model communication, defines the essential data models for operation state management, and delivers a unified abstraction layer for multi-platform Git repository interactions.
+
+## Purpose
+This module was written to serve as the central orchestration and integration layer of the OSA Tool. Its primary function is to enable the system's documentation generation and enhancement pipeline by standardizing external API communication with language models, establishing a consistent framework for tracking and managing the lifecycle of automated tasks and events, and abstracting operational interactions across different Git hosting services. It ensures the tool's core processes—retrieving repository data, executing sequential operations, and programmatically enhancing content—are performed uniformly and configurable.

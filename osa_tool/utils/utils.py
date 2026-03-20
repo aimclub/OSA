@@ -15,7 +15,9 @@ console = Console()
 def rich_section(title: str):
     """
     Print a styled section header in the console to visually separate log sections.
-
+    
+    This method uses the Rich library to print a blank line followed by a horizontal rule with the given title, styled in bold cyan. This visual separation helps organize console output into distinct, readable sections, which is especially useful in automated documentation and analysis pipelines where clear logging is important.
+    
     Args:
         title: Title text for the section header.
     """
@@ -25,11 +27,13 @@ def rich_section(title: str):
 
 def parse_folder_name(repo_url: str) -> str:
     """
-    Parses the repository URL to extract the folder name.
-
+    Parses the repository URL to extract the folder name for cloning.
+    
+    The method first attempts to match common Git hosting URL patterns (GitHub, GitLab, Gitverse) to extract the repository name. If no pattern matches, it falls back to replacing URL separators (':' and '/') with underscores to create a safe folder name.
+    
     Args:
         repo_url: The URL of the Git repository.
-
+    
     Returns:
         The name of the folder where the repository will be cloned.
     """
@@ -46,17 +50,38 @@ def parse_folder_name(repo_url: str) -> str:
 
 
 def osa_project_root() -> Path:
-    """Returns osa_tool project root folder."""
+    """
+    Returns the absolute path to the root directory of the osa_tool project.
+    
+    This method determines the project root by navigating two levels up from the current file's location. It is used to provide a consistent base path for accessing project resources, configuration files, or other directories relative to the project root.
+    
+    Returns:
+        The Path object representing the osa_tool project root folder.
+    """
     return Path(__file__).parent.parent
 
 
 def build_arguments_path() -> str:
-    """Returns arguments.yaml path for CLI parser."""
+    """
+    Returns the absolute file path to the arguments.yaml configuration file used by the CLI parser.
+    
+    This method constructs the path by joining the project root directory with the relative path to the configuration file. It ensures the CLI parser can reliably locate its argument definitions.
+    
+    Returns:
+        The full path to the arguments.yaml file.
+    """
     return os.path.join(osa_project_root(), "config", "settings", "arguments.yaml")
 
 
 def build_config_path() -> str:
-    """Returns config.toml path for CLI parser and settings.py."""
+    """
+    Returns the absolute path to the config.toml file used by the CLI parser and settings.py.
+    
+    This method constructs the path by joining the osa_tool project root directory with the relative path to the configuration file. It ensures that the configuration file is consistently located relative to the project root, which is necessary for the CLI and settings modules to access shared configuration.
+    
+    Returns:
+        The absolute path string to the config.toml configuration file.
+    """
     return os.path.join(osa_project_root(), "config", "settings", "config.toml")
 
 
@@ -64,6 +89,14 @@ def switch_to_output_directory(path: str | Path) -> Path:
     """
     Ensure the given output directory exists and change current working directory to it.
     Returns the resolved Path object.
+    
+    This method is used to set up a working environment for output operations by guaranteeing the target directory is available and making it the current working directory. Changing the directory simplifies subsequent file operations, as relative paths will be resolved relative to this output location.
+    
+    Args:
+        path: The output directory path (as a string or Path object). If the directory does not exist, it will be created, including any necessary parent directories.
+    
+    Returns:
+        The resolved Path object representing the absolute output directory.
     """
     output_path = Path(path).resolve()
 
@@ -80,16 +113,18 @@ def switch_to_output_directory(path: str | Path) -> Path:
 def get_base_repo_url(repo_url: str) -> str:
     """
     Extracts the base repository URL path from a given Git URL.
-
+    
     Args:
-        repo_url (str, optional): The Git repository URL. If not provided,
-            the instance's `repo_url` attribute is used. Defaults to None.
-
+        repo_url: The Git repository URL to parse. Must be provided; there is no default or instance attribute fallback.
+    
     Returns:
-        str: The base repository path (e.g., 'username/repo-name').
-
+        The base repository path (e.g., 'username/repo-name').
+    
     Raises:
-        ValueError: If the provided URL has unsupported format.
+        ValueError: If the provided URL does not match any of the supported Git hosting patterns.
+    
+    Why:
+        This method standardizes repository URLs by extracting the unique identifier (owner and repository name) from various Git hosting services. It enables consistent handling of repository references across different platforms (GitHub, GitLab, GitVerse) by isolating the common path component.
     """
     patterns = [
         r"https?://github\.com/([^/]+/[^/]+)",
@@ -106,13 +141,16 @@ def get_base_repo_url(repo_url: str) -> str:
 def delete_repository(repo_url: str) -> None:
     """
     Deletes the local directory of the downloaded repository based on its URL.
-    Works reliably on Windows and Unix-like systems.
-
+    Works reliably on Windows and Unix-like systems by forcibly removing read-only files if necessary.
+    
     Args:
-        repo_url (str): The URL of the repository to be deleted.
-
+        repo_url: The URL of the repository to be deleted. The local directory name is derived from this URL.
+    
     Raises:
-        Exception: Logs an error message if deletion fails.
+        Exception: Logs an error message if deletion fails. The method logs both success and failure outcomes, and does nothing if the directory does not exist.
+    
+    Why:
+        This method ensures that temporary or downloaded repository directories are cleaned up after use, preventing leftover files from consuming disk space. The force-removal of read-only files handles permission issues that can occur on some systems.
     """
     repo_path = os.path.join(os.getcwd(), parse_folder_name(repo_url))
 
@@ -136,13 +174,20 @@ def delete_repository(repo_url: str) -> None:
 
 def parse_git_url(repo_url: str) -> tuple[str, str, str, str]:
     """
-    Parse repository URL and return host, full name, and project name.
-
+    Parse a Git repository URL and extract its components.
+    
     Args:
-        repo_url: The URL of the GitHub repository.
-
+        repo_url: The URL of the Git repository (must be an http or https URL).
+    
     Returns:
-        tuple: host_domain, host, project name and full name.
+        tuple: A four-element tuple containing:
+            - host_domain: The full network location (e.g., "github.com").
+            - host: The first part of the domain, typically the platform name (e.g., "github").
+            - name: The final segment of the URL path, representing the project/repository name.
+            - full_name: The combination of the first two path segments, usually "owner/repository".
+    
+    Raises:
+        ValueError: If the URL scheme is not http/https or if the network location is missing.
     """
     parsed_url = urlparse(repo_url)
 
@@ -164,15 +209,18 @@ def parse_git_url(repo_url: str) -> tuple[str, str, str, str]:
 
 def get_repo_tree(repo_path: str) -> str:
     """
-    Builds a text representation of the project file tree, excluding the .git directory.
-
+    Builds a text representation of the project file tree, excluding the .git directory and other non‑source files.
+    
+    The tree includes relative paths of files and directories, each on a new line. It intentionally filters out:
+    - The `.git` directory and any paths containing “log” or “logs” (to avoid version‑control and log clutter).
+    - A predefined set of file extensions (images, videos, archives, binaries, documents, temporary files, etc.) that are typically not needed for source‑code analysis.
+    
     Args:
         repo_path: Path to the repository being explored.
-
+    
     Returns:
         str: A text representation of the repository's file tree with relative paths to files and directories,
-             excluding the `.git` directory. Each file or directory path is on a new line.
-
+             excluding the `.git` directory and filtered extensions. Each file or directory path is on a new line.
     """
     repo_path = Path(repo_path)
     excluded_extensions = {
@@ -275,16 +323,16 @@ def get_repo_tree(repo_path: str) -> str:
 def extract_readme_content(repo_path: str) -> str:
     """
     Extracts the content of the README file from the repository.
-
-    If a README file exists in the repository, it will return its content.
-    It checks for both "README.md" and "README.rst" files. If no README is found,
-    it returns a default message.
-
+    
+    It checks for the presence of common README filenames in order: "README.md", "README_en.rst", and "README.rst". The first file found is read and its content returned. This prioritization ensures that a Markdown README is preferred over reStructuredText, and an English version is preferred over a generic .rst file. If none of these files exist, a default message is returned.
+    
+    WHY: The method supports multiple common README naming conventions and formats to maximize compatibility across open-source repositories, increasing the chance of successfully extracting documentation.
+    
     Args:
-        repo_path: Path to the repository being explored.
-
+        repo_path: Path to the repository directory to search.
+    
     Returns:
-        str: The content of the README file or a message indicating absence.
+        str: The UTF-8 decoded content of the first README file found, or the string "No README.md file" if no matching file is present.
     """
     for file in ["README.md", "README_en.rst", "README.rst"]:
         readme_path = os.path.join(repo_path, file)
@@ -298,13 +346,18 @@ def extract_readme_content(repo_path: str) -> str:
 
 def detect_provider_from_url(url) -> str | None:
     """
-    Detect the LLM provider from a given URL.
-
+    Detect the LLM provider from a given URL by matching against known provider URL patterns.
+    
+    This is used to automatically determine the appropriate provider context for API interactions, enabling the tool to adapt its behavior or configuration based on the service being called.
+    
     Args:
-        url (str): The API URL to analyze
-
+        url: The API URL to analyze. If the input is not a string or is empty, the function returns None.
+    
     Returns:
-        str: Detected provider name or 'None' if not recognized
+        The detected provider name as a string (e.g., 'openai', 'ollama', 'llama'). Returns None if no known provider pattern matches the URL.
+    
+    Note:
+        The detection relies on regular expression patterns defined for each provider. Patterns include common domains, local endpoints, and alternative service URLs (e.g., OpenRouter, GigaChat for OpenAI; local Ollama instances).
     """
     if not url or not isinstance(url, str):
         return None

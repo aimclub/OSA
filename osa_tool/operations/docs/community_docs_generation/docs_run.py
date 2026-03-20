@@ -8,18 +8,28 @@ from osa_tool.utils.logger import logger
 
 def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMetadata) -> dict:
     """
+    Generates additional documentation files for a repository based on configuration and metadata.
+    
     This function initializes builders for various documentation templates such as
     contribution guidelines, community standards, and issue templates. It sequentially
     generates these files based on the loaded configuration.
-
+    
+    WHY: The method ensures a repository includes essential community and contribution
+    documentation, which improves project accessibility and maintainability. It conditionally
+    creates platform-specific templates (e.g., for GitHub or GitLab) to align with the
+    repository's hosting environment.
+    
     Args:
-        config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
+        config_manager: A unified configuration manager that provides task-specific LLM settings,
+            repository information, and workflow preferences.
         metadata: Git repository metadata.
-
+    
     Returns:
         dict: Standardized operation output containing:
-            - result: Generated documentation summary
-            - events: List of OperationEvent
+            - result: A dictionary with a "generated" key listing the filenames of successfully
+              created documentation files.
+            - events: List of OperationEvent objects recording the outcome (success or failure)
+              for each documentation generation attempt.
     """
     logger.info("Starting generating additional documentation.")
     events: list[OperationEvent] = []

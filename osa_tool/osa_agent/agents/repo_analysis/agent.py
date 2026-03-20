@@ -8,31 +8,34 @@ from osa_tool.utils.utils import rich_section
 
 class RepoAnalysisAgent(BaseAgent):
     """
-    Agent responsible for preparing and analyzing the repository.
-
-    The RepoAnalysisAgent:
-    - clones and optionally forks the repository
-    - prepares a working branch if required
-    - performs static repository analysis
-    - stores repository metadata and analysis results in the state
+    Agent responsible for preparing and analyzing the repository for automated documentation generation, structural improvements, and content validation.
+    
+        The RepoAnalysisAgent:
+        - clones and optionally forks the repository
+        - prepares a working branch if required
+        - performs static repository analysis
+        - stores repository metadata and analysis results in the state
     """
+
 
     name = "RepoAnalysis"
 
     def run(self, state: OSAState) -> OSAState:
         """
         Prepare the repository and extract structural information.
-
-        This method:
-        1. Ensures the repository is cloned and ready for analysis
-        2. Runs repository analysis to collect structural and semantic data
-        3. Updates the workflow state with repository information
-
+        
+        This method orchestrates the repository analysis phase of the workflow. It ensures a local copy of the repository is ready, performs a comprehensive structural and semantic analysis, and updates the workflow state with the results.
+        
+        The method:
+        1. Ensures the repository is cloned and ready for analysis. If not already prepared, it clones the repository (optionally creating a fork first, depending on the agent's context).
+        2. Runs repository analysis to collect structural and semantic data, including testing setup, file structure, and dependency information.
+        3. Updates the workflow state with the repository information and analysis results.
+        
         Args:
-            state (OSAState): Current workflow state.
-
+            state: Current workflow state. The method updates this object in place and returns it.
+        
         Returns:
-            OSAState: Updated state containing repository analysis results.
+            Updated state containing repository analysis results. The state includes `repo_data` (the analysis output), `repo_metadata` (Git metadata from the cloning process), and updated status fields.
         """
         rich_section("Repository Analysis Agent")
         logger.info("Repo analysis started")
@@ -61,16 +64,27 @@ class RepoAnalysisAgent(BaseAgent):
     def _prepare_repo(self, state: OSAState) -> None:
         """
         Clone and initialize the repository workspace.
-
-        This method may:
-        - star the repository
-        - create a fork
-        - clone the repository locally
-        - create and checkout a working branch
-
+        
+        This method orchestrates the local and remote Git operations required to prepare a working copy of the repository for analysis or modification. Its behavior is conditional based on the `create_fork` flag in the agent's context.
+        
+        If `create_fork` is True, the method will:
+        - Star the repository on Gitverse (to support the forking workflow).
+        - Create a fork of the repository on Gitverse for the authenticated user.
+        - Clone the forked repository locally.
+        - Create and checkout a new working branch (typically for isolated changes).
+        
+        If `create_fork` is False, the method will:
+        - Clone the original repository locally without forking or starring.
+        
+        After cloning, the method updates the analysis state with the local repository path and marks the repository as prepared.
+        
+        Args:
+            state: The current analysis state object. Its `repo_path` attribute will be set to the local clone directory, and `repo_prepared` will be set to True.
+        
         Side effects:
-            - filesystem writes
-            - remote Git operations
+            - Filesystem writes (local repository clone).
+            - Remote Git operations (starring, forking, cloning).
+            - Modifies the provided `state` object in place.
         """
         if self.context.create_fork:
             self.context.git_agent.star_repository()

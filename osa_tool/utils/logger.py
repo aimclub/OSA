@@ -10,16 +10,18 @@ logger = logging.getLogger("rich")
 def setup_logging(repo_name: str, logs_dir: str) -> None:
     """
     Configures logging for the application.
-
+    
     This function sets up:
     - Console logging using `RichHandler` with INFO-level output.
     - File logging with DEBUG-level output, saved to a timestamped log file
       inside the specified logs directory.
-
+    
+    WHY: The dual-handler approach provides immediate, user-friendly output to the console while capturing detailed debug information in a file for later analysis. This is essential for troubleshooting and auditing the tool's operations.
+    
     Args:
-        repo_name (str): Name of the repository used as a prefix for the log filename.
-        logs_dir (str): Directory where the log file will be stored.
-
+        repo_name: Name of the repository used as a prefix for the log filename.
+        logs_dir: Directory where the log file will be stored. The directory is created if it does not exist.
+    
     Returns:
         None
     """

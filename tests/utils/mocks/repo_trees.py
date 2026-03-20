@@ -63,5 +63,15 @@ src/main.py
 
 
 def get_mock_repo_tree(tree_type: str = "FULL") -> str:
-    """Returns a mock repository tree by type"""
+    """
+    Returns a mock repository tree by type.
+    
+    This method provides a predefined mock repository structure, which is useful for testing and development when a real repository tree is not available or needed. The structure is selected from a dictionary of available mock trees.
+    
+    Args:
+        tree_type: The key identifying which mock repository tree structure to return. The default value "FULL" provides a complete example.
+    
+    Returns:
+        A string containing the mock repository tree structure corresponding to the given type.
+    """
     return REPO_TREES[tree_type]

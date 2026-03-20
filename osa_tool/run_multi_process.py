@@ -24,7 +24,23 @@ from osa_tool.utils.utils import logger, rich_section, parse_git_url, delete_rep
 
 
 async def generate_report(config_manager: ConfigManager, metadata: RepositoryMetadata, args) -> None:
-    """Async wrapper for generating PDF report."""
+    """
+    Asynchronously generates a PDF report for a repository and saves it to a reports directory.
+    
+    This function serves as an async wrapper around the synchronous PDF generation process,
+    allowing it to be run in an asynchronous context without blocking. It creates a 'reports'
+    directory adjacent to the provided table path, then builds and saves the PDF report.
+    
+    Args:
+        config_manager: Manages configuration settings used during report generation.
+        metadata: Contains repository metadata (e.g., name) used to title the report.
+        args: Contains the table_path used to determine the output directory for the report.
+    
+    Why:
+        The method uses asyncio.to_thread to offload the CPU‑intensive PDF building to a
+        separate thread, preventing it from blocking the async event loop while maintaining
+        compatibility with synchronous report‑generation code.
+    """
     reports_dir = os.path.join(os.path.dirname(args.table_path), "reports")
     os.makedirs(reports_dir, exist_ok=True)
 
@@ -35,7 +51,19 @@ async def generate_report(config_manager: ConfigManager, metadata: RepositoryMet
 
 
 async def generate_readme(config_manager: ConfigManager, metadata: RepositoryMetadata, args) -> None:
-    """Async wrapper for generating README."""
+    """
+    Asynchronously generates a README file for a repository and saves it to a designated directory.
+    
+    This function serves as an asynchronous wrapper around the synchronous README generation logic. It ensures the output directory exists, configures the ReadmeAgent with the necessary parameters, and then executes the generation in a separate thread to avoid blocking the event loop.
+    
+    Args:
+        config_manager: The configuration manager instance providing settings and environment.
+        metadata: The repository metadata containing details like the repository name.
+        args: An object containing command-line or runtime arguments, specifically expecting `table_path` to determine the output directory and `refine_readme` to control README refinement.
+    
+    Why:
+        The asynchronous design allows the potentially I/O-bound or CPU-intensive README generation to run without blocking other concurrent operations, improving overall tool responsiveness when processing multiple repositories or tasks.
+    """
     readmes_dir = os.path.join(os.path.dirname(args.table_path), "readmes")
     os.makedirs(readmes_dir, exist_ok=True)
 
@@ -46,7 +74,24 @@ async def generate_readme(config_manager: ConfigManager, metadata: RepositoryMet
 
 
 async def run_async_tasks(config_manager: ConfigManager, git_agent, args):
-    """Run report and readme generation concurrently inside a process."""
+    """
+    Run report and readme generation concurrently inside a process.
+    
+    Based on command-line arguments, creates and executes asynchronous tasks for
+    generating a PDF report and/or a README file. Tasks are run concurrently using
+    `asyncio.gather`.
+    
+    Args:
+        config_manager: Manages configuration settings for the generation tasks.
+        git_agent: Provides repository metadata used by the generation tasks.
+        args: Command-line arguments specifying which tasks to run (`args.report`
+              and/or `args.readme`) and providing additional options.
+    
+    Why:
+        This method allows the potentially independent report and readme generation
+        operations to execute in parallel, improving overall performance when both
+        are requested.
+    """
     tasks = []
 
     if args.report:
@@ -61,6 +106,34 @@ def process_repository_stage1(repo_url: str, args) -> dict:
     """
     Stage 1: Clone repository, generate report and README asynchronously.
     This stage runs in multiple processes concurrently.
+    
+    It clones the given repository, runs concurrent tasks to generate a PDF report
+    and/or a README file (as specified by command‑line arguments), collects
+    package metadata from PyPI, and records timing and success status.
+    
+    Args:
+        repo_url: The URL of the Git repository to process.
+        args: Command‑line arguments object containing configuration such as
+              `table_path`, `docstring`, `report`, and `readme` flags.
+    
+    Returns:
+        A dictionary with the following keys:
+            - repository: The input repository URL.
+            - name: The repository name extracted from the URL.
+            - forks: The fork count from the repository metadata.
+            - stars: The star count from the repository metadata.
+            - downloads: The download count from PyPI, if available.
+            - processed_stage1: Boolean indicating whether stage 1 completed successfully.
+            - processed_docstring: Boolean (always False at this stage; reserved for later use).
+            - stage1_time: Total processing time in seconds.
+            - stage1_time_str: Human‑readable formatted processing time (HH:MM:SS).
+    
+    Why:
+        This stage is designed to be executed in parallel across multiple repositories.
+        It performs the initial heavy‑weight operations—cloning and generating
+        documentation—while gathering metadata needed for later analysis. The
+        repository is automatically cleaned up after stage 1 unless docstring
+        generation is requested in a later stage.
     """
     stage_start = time.time()
 
@@ -154,6 +227,16 @@ def process_docstrings_for_repo(repo_url: str, args, df: DataFrame) -> None:
     """
     Stage 2: Generate docstrings sequentially for each repository.
     After processing each repository, immediately update the table file.
+    
+    This method handles the docstring generation for a single repository. It sets up the necessary working directories and logging, runs the docstring generator, records the processing time, and updates the progress table. The table is saved after each repository to prevent data loss in case of interruptions.
+    
+    Args:
+        repo_url: The URL of the Git repository to process.
+        args: An object containing configuration arguments, including the table file path and an ignore list.
+        df: The DataFrame representing the progress table, which will be updated with the results.
+    
+    Why:
+        The table is updated and saved immediately after each repository to ensure progress is persisted, minimizing data loss if the process fails or is stopped. Logging is configured per repository to isolate and capture output specific to each run.
     """
     stage_start = time.time()
 
@@ -213,7 +296,22 @@ def process_docstrings_for_repo(repo_url: str, args, df: DataFrame) -> None:
 
 
 def load_table(table_path: str | None) -> DataFrame:
-    """Load repository table."""
+    """
+    Load a repository table from a CSV or Excel file, performing validation and adding missing columns with default values.
+    
+    The method ensures the input file exists, is in a supported format, and contains a required 'repository' column. It then loads the data and initializes optional columns that are expected by downstream processing stages. If any validation fails, the program exits with an error.
+    
+    Args:
+        table_path: Path to the CSV or Excel file containing the repository data. Must be provided and point to an existing file with a .csv or .xlsx extension.
+    
+    Returns:
+        A pandas DataFrame containing the repository table. The DataFrame is guaranteed to have a 'repository' column and will include the following columns with default values if they were missing from the input file:
+            - name, stage1_time_str, stage2_time_str: Empty strings.
+            - forks, stars, downloads: None values.
+            - processed_stage1, processed_docstring: False.
+            - stage1_time, stage2_time: 0.0.
+        This ensures the DataFrame has a consistent structure for subsequent pipeline stages.
+    """
     if not table_path:
         logger.error(f"Argument '--table-path' is required.")
         sys.exit(1)
@@ -265,8 +363,22 @@ def load_table(table_path: str | None) -> DataFrame:
 def main():
     """
     Main entry point for the pipeline.
-    - Stage 1 (parallel): generate reports & READMEs for all repositories.
-    - Stage 2 (sequential): generate docstrings for repositories not yet processed.
+    
+    The pipeline processes a list of repositories in two stages:
+    - Stage 1 (parallel): Generates reports and READMEs for all repositories that have not yet been processed in this stage. This stage runs in parallel using multiple worker processes.
+    - Stage 2 (sequential): Generates docstrings for repositories that have not yet been processed in this stage, but only if the `--docstring` command-line flag is enabled. This stage runs sequentially.
+    
+    Progress is tracked and saved incrementally in a table (CSV or Excel file). The table must contain a 'repository' column and is automatically updated with results and status flags after each repository is processed.
+    
+    Args:
+        No explicit parameters. Command-line arguments are parsed internally. Key arguments include:
+            --table-path: Path to the input table file containing repository URLs.
+            --docstring: Flag to enable or disable Stage 2 docstring generation.
+    
+    Why:
+        Stage 1 is parallelized to speed up the generation of reports and READMEs across many repositories.
+        Stage 2 is sequential because docstring generation may involve more intensive processing or shared resources where parallel execution could cause conflicts.
+        Incremental saving ensures progress is not lost if the pipeline is interrupted, though a PermissionError warning is logged if the file cannot be written.
     """
 
     # Create a command line argument parser

@@ -5,22 +5,37 @@ from osa_tool.utils.logger import logger
 
 class DependencyGraph:
     """
-    Builds and manages dependency graph for functions/methods.
-
-    The graph represents "who calls whom" relationships where:
-    - Node: unique identifier for a function/method (file_path:function_name)
-    - Edge: A → B means "A calls B" (A depends on B)
-
-    Topological sort ensures B is processed before A.
+    Constructs and maintains a directed graph representing the call dependencies between functions and methods within a codebase.
+    
+        The graph represents "who calls whom" relationships where:
+        - Node: unique identifier for a function/method (file_path:function_name)
+        - Edge: A → B means "A calls B" (A depends on B)
+    
+        Topological sort ensures B is processed before A.
     """
+
 
     def __init__(self, parsed_structure: dict):
         """
         Initialize dependency graph from parsed structure.
-
+        
         Args:
             parsed_structure: Output from OSA_TreeSitter.analyze_directory()
                 Format: {file_path: {"structure": [...], "imports": {...}}}
+        
+        WHY:
+        This constructor builds a directed graph representing import dependencies between files.
+        It creates both forward and reverse adjacency lists to enable efficient dependency traversal and cycle detection.
+        The graph is constructed immediately upon initialization to ensure the object is ready for subsequent queries.
+        
+        The method initializes the following attributes:
+        - parsed_structure: Stores the input parsed structure for reference.
+        - graph: Forward adjacency list mapping each file to its direct dependencies (files it imports).
+        - reverse_graph: Reverse adjacency list mapping each file to its dependents (files that import it).
+        - nodes: Placeholder for potential node metadata (currently an empty dictionary).
+        - node_to_file: Mapping from node identifiers to file paths (currently empty until populated by _build_graph).
+        
+        After setting up the data structures, it calls _build_graph() to populate the graph based on the imports in parsed_structure.
         """
         self.parsed_structure = parsed_structure
         self.graph = defaultdict(set)
@@ -31,7 +46,20 @@ class DependencyGraph:
         self._build_graph()
 
     def _build_graph(self):
-        """Build dependency graph from parsed structure."""
+        """
+        Build dependency graph from parsed structure.
+        
+        This method constructs a directed dependency graph by processing the parsed structure of source files. It creates nodes for each method and function, then establishes edges based on method calls to represent dependencies between them.
+        
+        Args:
+            self: The DependencyGraph instance containing parsed_structure, nodes, node_to_file, graph, and reverse_graph.
+        
+        Why:
+            The graph is built to enable analysis of dependencies within the codebase, such as identifying call hierarchies or potential circular dependencies. Nodes are keyed by a unique identifier combining file path and method/function name to avoid collisions. Dependencies are derived from the 'method_calls' metadata of each node, linking caller to callee.
+        
+        Returns:
+            None. The method populates internal structures (nodes, node_to_file, graph, reverse_graph) but does not return a value.
+        """
         for file_path, file_meta in self.parsed_structure.items():
             structure = file_meta.get("structure", [])
 
@@ -77,14 +105,22 @@ class DependencyGraph:
 
     def _resolve_call(self, caller_node_id: str, call_name: str) -> str:
         """
-        Resolve a method call to a node ID.
-
+        Resolve a method call to a node ID within the dependency graph.
+        
+        The method determines the node ID corresponding to a given call name by considering the caller's context (file and class) and searching through the graph's nodes. It handles different call formats, such as instance methods, class methods, and standalone functions, by constructing candidate node IDs and checking for their existence in the graph.
+        
         Args:
-            caller_node_id: ID of the calling node
-            call_name: Name of the called function (e.g., "foo", "self.bar", "ClassName.baz")
-
+            caller_node_id: ID of the calling node, used to determine the caller's file and class context.
+            call_name: Name of the called function or method. This can be in various formats:
+                - "foo": a standalone function.
+                - "self.bar": an instance method called on the same class.
+                - "ClassName.baz": a class method or a method from another class.
+        
         Returns:
-            Resolved node_id or None if not found
+            The resolved node ID if a matching node is found; otherwise, None.
+        
+        Why:
+            This resolution is necessary to map dynamic method calls in the source code to static nodes in the dependency graph, enabling accurate dependency tracking and analysis. It supports the tool's goal of understanding and documenting code structure by linking callers to their dependencies.
         """
         caller_file = self.node_to_file[caller_node_id]
         caller_info = self.nodes[caller_node_id]
@@ -123,15 +159,49 @@ class DependencyGraph:
         return None
 
     def get_node_metadata(self, node_id: str) -> dict:
-        """Get metadata for a node."""
+        """
+        Get metadata for a node.
+        
+        This method retrieves the metadata dictionary associated with a given node ID from the graph's internal node storage. It is used to access node-specific information stored during graph construction or analysis, such as labels, properties, or other attributes.
+        
+        Args:
+            node_id: The unique identifier of the node whose metadata is being requested.
+        
+        Returns:
+            The metadata dictionary for the specified node. If the node ID does not exist in the graph, an empty dictionary is returned instead.
+        """
         return self.nodes.get(node_id, {})
 
     def get_dependencies(self, node_id: str) -> Set[str]:
-        """Get direct dependencies of a node."""
+        """
+        Get direct dependencies of a node.
+        
+        Args:
+            node_id: The identifier of the node whose dependencies are requested.
+        
+        Returns:
+            A set containing the identifiers of all nodes that the specified node directly depends on.
+            Returns an empty set if the node has no dependencies or if the node_id is not found in the graph.
+        """
         return self.graph.get(node_id, set())
 
     def get_statistics(self) -> dict:
-        """Get graph statistics for debugging."""
+        """
+        Get graph statistics for debugging.
+        
+        This method computes key metrics about the dependency graph structure, useful for understanding its complexity and verifying its state during development or troubleshooting.
+        
+        Args:
+            self: The DependencyGraph instance.
+        
+        Returns:
+            A dictionary containing the following statistics:
+                - total_nodes: Total number of nodes in the graph.
+                - total_edges: Total number of directed dependency edges in the graph.
+                - nodes_with_dependencies: Count of nodes that have at least one outgoing dependency edge.
+                - max_dependencies_per_node: The highest number of dependencies any single node has.
+                - average_dependencies: The average number of dependencies per node (edges divided by nodes). Returns 0 if the graph is empty.
+        """
         total_nodes = len(self.nodes)
         total_edges = sum(len(deps) for deps in self.graph.values())
         nodes_with_deps = sum(1 for deps in self.graph.values() if deps)
@@ -149,12 +219,12 @@ class DependencyGraph:
 def build_dependency_graph(parsed_structure: dict) -> DependencyGraph:
     """
     Build dependency graph from parsed structure.
-
+    
     Args:
-        parsed_structure: Output from OSA_TreeSitter.analyze_directory()
-
+        parsed_structure: Output from OSA_TreeSitter.analyze_directory(). Contains the parsed code structure used to construct the graph.
+    
     Returns:
-        DependencyGraph instance
+        DependencyGraph instance: The constructed graph, which is logged with node count and statistics for debugging and monitoring purposes.
     """
     graph = DependencyGraph(parsed_structure)
 

@@ -40,10 +40,35 @@ from osa_tool.utils.utils import (
 
 
 def main():
-    """Main function to generate a README.md file for a Git repository.
-
+    """
+    Main function to generate a README.md file for a Git repository.
+    
     Handles command-line arguments, clones the repository, creates and checks out a branch,
     generates the README.md file, and commits and pushes the changes.
+    
+    This function orchestrates the entire OSA Tool pipeline. It parses command-line arguments,
+    sets up logging and the working directory, initializes the Git platform agent and configuration,
+    and executes a series of planned enhancement operations based on the provided arguments and
+    generated plan. Operations may include repository analysis, documentation validation, file
+    conversion, translation, docstring generation, license compilation, community documentation,
+    requirements generation, README creation and translation, about‑section generation, CI/CD
+    workflow generation, repository organization, and final publishing of changes (fork, commit,
+    pull request). The execution is controlled by a ModeScheduler which determines which operations
+    to run.
+    
+    Args:
+        None (uses command-line arguments parsed by `build_parser_from_yaml`).
+    
+    Why:
+        This function serves as the single entry point for the tool, coordinating all steps from
+        argument parsing to final repository updates. It ensures operations are performed in a
+        logical order (e.g., validation and report generation before modifications) and conditionally
+        executes tasks based on the plan and user flags (like `--no-fork` or `--no-pull-request`).
+        The structured pipeline allows the tool to be both comprehensive and adaptable to different
+        repository enhancement scenarios.
+    
+    Returns:
+        None. The function exits the process with code 0 on success or 1 on any exception.
     """
 
     # Create a command line argument parser
@@ -247,6 +272,23 @@ def main():
 
 
 def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
+    """
+    Initializes the appropriate Git agent and workflow manager based on the repository URL.
+    
+    This method determines the Git hosting platform from the repository URL and creates the corresponding platform-specific agent and workflow manager. This allows the tool to perform platform-specific operations such as repository interactions and workflow management.
+    
+    Args:
+        args: An object containing configuration details. Expected attributes include:
+            - repository: The URL of the Git repository.
+            - branch: The branch name to target.
+            - author: Author information for Git operations.
+    
+    Returns:
+        tuple[GitAgent, WorkflowManager]: A tuple containing the initialized Git agent and the corresponding workflow manager.
+    
+    Raises:
+        ValueError: If the repository URL does not match any of the supported platforms (GitHub, GitLab, or Gitverse).
+    """
     if "github.com" in args.repository:
         git_agent = GitHubAgent(args.repository, args.branch, author=args.author)
         workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
@@ -265,9 +307,19 @@ def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
 def _run_plan_operation(plan: Plan, task_key: str, call: callable) -> None:
     """
     Execute a single legacy plan operation and record its result.
-
-    - marks task as IN_PROGRESS/COMPLETED/FAILED in Plan
-    - normalizes and stores {"result", "events"} in plan.results
+    
+    - Marks the task as IN_PROGRESS, COMPLETED, or FAILED in the Plan.
+    - Normalizes and stores a dictionary with keys "result" and "events" in plan.results.
+    
+    Args:
+        plan: The Plan instance containing tasks and results.
+        task_key: The identifier for the task being executed.
+        call: A callable that performs the operation and returns a raw result.
+    
+    Why:
+        This method ensures each operation's outcome is tracked and stored consistently.
+        It updates the task status to reflect progress and captures both successful results and errors,
+        allowing the plan to maintain a complete record of execution for later analysis or reporting.
     """
     if task_key in plan.tasks:
         plan.mark_started(task_key)

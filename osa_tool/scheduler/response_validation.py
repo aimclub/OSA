@@ -8,6 +8,7 @@ class PromptConfig(BaseModel):
     Model for validating the structure of prompts loaded from prompt_for_scheduler.toml.
     """
 
+
     report: bool = Field(
         False,
         description="Generate an additional report describing the analyzed repository for user reference. Does not affect the repository itself.",
@@ -38,7 +39,23 @@ class PromptConfig(BaseModel):
 
     @classmethod
     def safe_validate(cls, data: dict) -> "PromptConfig":
-        """Validate data with fallback to default values for invalid or missing fields."""
+        """
+        Validate data with fallback to default values for invalid or missing fields.
+        
+        This class method ensures robust configuration creation by validating input data
+        against the model's field definitions. If a field is missing, invalid, or fails
+        validation, it gracefully falls back to the field's default value. This prevents
+        configuration errors from crashing the system and guarantees a valid PromptConfig
+        instance is always returned.
+        
+        Args:
+            data: A dictionary containing configuration data to validate. Keys should
+                  correspond to field names defined in the PromptConfig model.
+        
+        Returns:
+            A PromptConfig instance populated with validated data, using defaults for
+            any fields that were missing or invalid in the input.
+        """
         validated_data = {}
 
         for field_name, field in cls.model_fields.items():

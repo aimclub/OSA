@@ -5,6 +5,20 @@ from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
 def test_basic_plan_logic():
+    """
+    Test the basic plan returned by ModeScheduler._basic_plan.
+    
+    This method verifies that the helper function returns a dictionary containing the expected keys, each with a boolean value set to True. It ensures the default execution plan for the 'basic' operational mode is correctly structured and contains all predefined operations.
+    
+    Args:
+        None.
+    
+    Returns:
+        None.
+    
+    Why:
+        This test validates the integrity of the default plan used by the 'basic' mode. Since the plan serves as a consistent, unconfigured starting point for core repository enhancements, confirming its structure and content guarantees that the tool's fundamental operations will be available and active as intended.
+    """
     # Act
     plan = ModeScheduler._basic_plan()
 
@@ -24,6 +38,26 @@ def test_mode_scheduler_initialization_basic(
     mock_args_basic,
     mock_workflow_manager,
 ):
+    """
+    Tests the basic initialization of ModeScheduler with minimal arguments.
+    
+    This test verifies that when ModeScheduler is instantiated with a basic set of arguments, it correctly generates an initial plan. The test mocks external dependencies and uses a patched PlanEditor to control the plan generation outcome.
+    
+    Args:
+        mock_config_manager: Mocked configuration manager.
+        mock_sourcerank: Factory fixture to create a mocked SourceRank instance.
+        mock_repository_metadata: Mocked repository metadata.
+        mock_args_basic: Mocked basic arguments for scheduler initialization.
+        mock_workflow_manager: Mocked workflow manager.
+    
+    The test performs the following steps:
+    1. Arranges a mock repository tree and a SourceRank instance using the factory fixture.
+    2. Patches ModelHandlerFactory.build and PlanEditor to isolate the scheduler from external dependencies.
+    3. Instantiates ModeScheduler with the provided mocked arguments.
+    4. Asserts that the scheduler's generated plan matches the expected mock plan.
+    
+    Why this approach is used: The test isolates the scheduler's initialization logic by mocking all external components (configuration, ranking, metadata, arguments, and workflow). This ensures the test focuses solely on whether the scheduler correctly integrates these dependencies and produces a plan, without relying on actual external services or complex setups.
+    """
     # Arrange
     repo_tree_data = get_mock_repo_tree("FULL")
     sourcerank_instance = mock_sourcerank(repo_tree_data)
@@ -56,6 +90,23 @@ def test_mode_scheduler_initialization_advanced(
     mock_args_advanced,
     mock_workflow_manager,
 ):
+    """
+    Tests the initialization of ModeScheduler in advanced mode.
+    
+    This method verifies that when ModeScheduler is instantiated with advanced arguments,
+    it correctly generates an advanced plan. The test uses mocked dependencies to isolate
+    the scheduler's initialization logic and confirm the resulting plan matches expectations.
+    
+    Args:
+        mock_config_manager: Mock configuration manager.
+        mock_sourcerank: Mock SourceRank instance factory. It is called with a mock repository tree to produce a controlled SourceRank instance for the test.
+        mock_repository_metadata: Mock repository metadata.
+        mock_args_advanced: Mock arguments for advanced mode, which influence the scheduler's plan generation.
+        mock_workflow_manager: Mock workflow manager.
+    
+    Returns:
+        None.
+    """
     # Arrange
     repo_tree_data = get_mock_repo_tree("FULL")
     sourcerank_instance = mock_sourcerank(repo_tree_data)
@@ -88,6 +139,33 @@ def test_mode_scheduler_initialization_auto(
     mock_args_auto,
     mock_workflow_manager,
 ):
+    """
+    Tests the automatic initialization of the ModeScheduler in test mode.
+    
+    This test verifies that when ModeScheduler is instantiated with automatic
+    arguments (mock_args_auto), it correctly generates a plan and initializes
+    its internal state. The test uses mocked dependencies to isolate the
+    scheduler's initialization logic.
+    
+    Args:
+        mock_config_manager: Mocked configuration manager.
+        mock_sourcerank: Factory fixture to create SourceRank instances with
+            patched methods.
+        mock_repository_metadata: Mocked repository metadata.
+        mock_args_auto: Mocked arguments configured for automatic mode.
+        mock_workflow_manager: Mocked workflow manager.
+    
+    The test performs the following steps:
+    1. Arranges test data and mocks external dependencies (ModelHandlerFactory,
+       extract_readme_content, and PlanEditor) to control their behavior.
+    2. Instantiates ModeScheduler with the provided mocked arguments and fixtures.
+    3. Asserts that the scheduler's generated plan contains the expected test data
+       provided by the mocked PlanEditor.
+    
+    The test ensures the scheduler correctly integrates its components and produces
+    a valid execution plan when operating in automatic mode, without relying on
+    real external services or filesystem operations.
+    """
     # Arrange
     repo_tree_data = get_mock_repo_tree("FULL")
     sourcerank_instance = mock_sourcerank(repo_tree_data)

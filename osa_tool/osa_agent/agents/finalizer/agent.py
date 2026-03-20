@@ -14,15 +14,33 @@ class FinalizerAgent(BaseAgent):
     Agent responsible for wrapping up the workflow.
     """
 
+
     name = "Finalizer"
 
     def run(self, state: OSAState) -> OSAState:
         """
-        Finalize the session: format outputs, optionally create PR, and clean up.
-
-        Updates About section if present, collects events and builds a summary,
-        then either publishes a PR (when create_fork and create_pull_request are set)
-        or logs the summary. Optionally deletes the cloned repo.
+        Finalize the session: format outputs, optionally create a pull request, and clean up.
+        
+        Updates the repository's About section if present, collects operation events, and builds a summary.
+        Depending on configuration, it either publishes a pull request (when both a fork and pull request are requested) or logs the summary.
+        Optionally deletes the locally cloned repository after processing.
+        
+        Why:
+        This method serves as the concluding step in the workflow, ensuring that all generated artifacts are properly formatted and delivered. It centralizes the decision-making for whether to create a pull request or simply log results, and handles cleanup to avoid leaving temporary files.
+        
+        Args:
+            state: The current workflow state containing artifacts, session memory, and repository details.
+        
+        Returns:
+            The updated workflow state with status set to COMPLETED.
+        
+        Behavior details:
+        - If an About section artifact exists, it is formatted. When a fork is requested, the About section is updated in the repository; otherwise, it is logged.
+        - Operation events are collected (excluding those from the 'generate_about' operation) and summarized.
+        - When both a fork and a pull request are requested, changes are committed and pushed, and a pull request is created with the summary and About text as the body.
+        - If a pull request is not created, the summary is logged instead.
+        - If configured, the local clone of the repository is deleted to free disk space.
+        - The state's status is updated to COMPLETED and session memory statistics are logged.
         """
         rich_section("Finalizer Agent")
         state.active_agent = self.name
@@ -77,13 +95,15 @@ class FinalizerAgent(BaseAgent):
     @staticmethod
     def _collect_events(state: OSAState) -> list[OperationEvent]:
         """
-        Collect all operation events from state artifacts (excluding generate_about).
-
+        Collect all operation events from state artifacts, excluding those from the 'generate_about' operation.
+        
+        This method aggregates events logged during the workflow's execution, which are stored within each artifact. The 'generate_about' operation is specifically excluded because its events are typically meta-information or summaries that are not intended for the same downstream processing as the core operational events.
+        
         Args:
-            state: Current workflow state.
-
+            state: The current workflow state containing all artifacts.
+        
         Returns:
-            Flat list of OperationEvent instances from all artifacts.
+            A flat list of OperationEvent instances collected from all relevant artifacts.
         """
         events: list[OperationEvent] = []
 
@@ -97,11 +117,13 @@ class FinalizerAgent(BaseAgent):
     def _summarize_events(self, state: OSAState, events: list[OperationEvent]) -> str:
         """
         Use the LLM to produce a PR summary from the collected events.
-
+        
+        The method converts the provided operation events into a formatted text, then uses a prompt template and a system message to instruct an LLM to generate a structured pull request summary. The resulting summary is stored in the session memory for tracking and returned for use in the PR body or logging.
+        
         Args:
-            state: Current workflow state (session_memory is updated with the summary).
-            events: Operation events to summarize.
-
+            state: Current workflow state. The session_memory attribute is updated with the generated summary.
+            events: List of operation events to summarize. Each event describes an operation performed during the workflow.
+        
         Returns:
             Summary string for the PR body or logging.
         """
@@ -121,12 +143,16 @@ class FinalizerAgent(BaseAgent):
     def _events_to_text(events: list[OperationEvent]) -> str:
         """
         Convert operation events to a single text block for the LLM.
-
+        
         Args:
             events: List of OperationEvent instances.
-
+        
         Returns:
-            Newline-separated lines describing each event.
+            Newline-separated lines describing each event. Each line is formatted as:
+            "- <event_kind>: <target> (<key1>=<value1>, <key2>=<value2>, ...)" if data is present,
+            or "- <event_kind>: <target>" if no data is associated. The event_kind is the string value
+            of the OperationEvent's kind attribute, and target is its target attribute. Additional
+            data items are appended in parentheses as comma-separated key-value pairs.
         """
         lines = []
         for e in events:
@@ -140,12 +166,14 @@ class FinalizerAgent(BaseAgent):
     def _format_about_message(about: dict) -> str:
         """
         Format the About section content for display or PR body.
-
+        
+        This method generates a human-readable text block that can be inserted into a repository's `About` section or a pull request body. It extracts key metadata from the provided dictionary and formats it into a clear, bulleted list.
+        
         Args:
-            about: Dict with keys such as description, homepage, topics.
-
+            about: Dictionary containing repository metadata. Expected keys include 'description' (a short project summary), 'homepage' (the project's main URL), and 'topics' (a list of repository tags or keywords). Missing keys are handled gracefully with default empty values.
+        
         Returns:
-            Human-readable About section text.
+            Human-readable About section text as a formatted string. The output includes a header line followed by bullet points for description, homepage, and topics (each topic is formatted as an inline code block).
         """
         return (
             "You can add the following information to the `About` section of your Git repository:\n"

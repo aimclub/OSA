@@ -14,31 +14,34 @@ from osa_tool.utils.utils import rich_section, console
 
 class ExecutorAgent(BaseAgent):
     """
-    Agent responsible for executing planned tasks.
-
-    The ExecutorAgent:
-    - iterates over the execution plan
-    - resolves executor dependencies and task arguments
-    - invokes operation executors (function-style or class-style)
-    - updates task statuses and stores execution results
-    - persists artifacts into the shared agent state
+    Agent responsible for executing planned tasks, orchestrating the systematic processing and enhancement of repository documentation and structure.
+    
+        The ExecutorAgent:
+        - iterates over the execution plan
+        - resolves executor dependencies and task arguments
+        - invokes operation executors (function-style or class-style)
+        - updates task statuses and stores execution results
+        - persists artifacts into the shared agent state
     """
+
 
     name = "Executor"
 
     def run(self, state: OSAState) -> OSAState:
         """
         Execute all pending tasks in the current plan.
-
+        
         Tasks are executed sequentially in plan order. Each task:
         - transitions through PENDING → IN_PROGRESS → COMPLETED / FAILED
         - stores its execution result in both the task and state artifacts
-
+        
+        Why: This method drives the sequential execution of the workflow plan, ensuring each pending task is processed, its status updated, and its results recorded for downstream use.
+        
         Args:
-            state (OSAState): Current workflow state containing the execution plan.
-
+            state: Current workflow state containing the execution plan. The method updates this state in place by setting the active agent, status, current step index, and artifacts.
+        
         Returns:
-            OSAState: Updated state with executed tasks and collected artifacts.
+            Updated state with executed tasks and collected artifacts. The state includes updated task statuses, results stored in artifacts, and logging information about execution outcomes.
         """
         rich_section("Executor Agent")
         state.active_agent = self.name
@@ -65,16 +68,20 @@ class ExecutorAgent(BaseAgent):
     def _run_task(self, task: Task, state: OSAState) -> None:
         """
         Execute a single task and update its lifecycle status.
-
+        
         This method:
         - marks the task as IN_PROGRESS
         - executes the task via its registered operation executor
         - captures execution results or errors
         - updates task status accordingly
-
+        
+        WHY: This method centralizes task execution and error handling to ensure consistent state transitions and logging, which is critical for tracking workflow progress and diagnosing failures in the automated documentation pipeline.
+        
         Args:
-            task (Task): Task to be executed.
-            state (OSAState): Current workflow state.
+            task: Task to be executed. Its status, result, and events attributes are updated based on execution outcome.
+            state: Current workflow state, providing context and data needed for task execution.
+        
+        The method does not return a value; it modifies the provided task object in place.
         """
         task.status = TaskStatus.IN_PROGRESS
         logger.info("Task '%s' in progress", task.id)
@@ -101,20 +108,22 @@ class ExecutorAgent(BaseAgent):
     def _execute_task(self, task: Task, state: OSAState) -> dict[str, Any]:
         """
         Execute a task using its operation execution descriptor.
-
+        
         This method:
         - resolves the operation executor from the OperationRegistry
         - injects dependencies from AgentContext and workflow state
         - supports both function-style and class-style executors
         - normalizes the execution result
-
+        
+        WHY: The method orchestrates task execution by dynamically resolving and injecting dependencies, allowing flexible executor definitions (functions or classes) to handle different operation types within the workflow.
+        
         Args:
-            task (Task): Task to execute.
-            state (OSAState): Current workflow state.
-
+            task: Task to execute.
+            state: Current workflow state.
+        
         Returns:
-            dict: Normalized execution result.
-
+            Normalized execution result.
+        
         Raises:
             ValueError: If the operation has no executor or misconfigured method.
             TypeError: If the executor type is invalid.
@@ -157,16 +166,24 @@ class ExecutorAgent(BaseAgent):
     @staticmethod
     def _normalize_result(result) -> dict:
         """
-        Normalize executor output to a dictionary.
-
-        Ensures consistent task result format regardless of
-        executor return type.
-
+        Normalize executor output to a consistent dictionary format.
+        
+        Ensures uniform task result structure regardless of executor return type,
+        which simplifies downstream processing and error handling. This is necessary
+        because executors may return raw values, dictionaries, or None.
+        
         Args:
-            result (Any): Raw executor result.
-
+            result: Raw executor result. Can be any type, including None.
+        
         Returns:
-            dict: Normalized result dictionary.
+            dict: Normalized dictionary with keys:
+                - "result": The extracted or original result value.
+                - "events": A list of events; defaults to an empty list if not provided.
+        
+        Behavior:
+            - If result is None, returns {"result": None, "events": []}.
+            - If result is a dict, extracts "result" and "events" keys (defaulting events to [] if missing).
+            - Otherwise, treats the entire result as the value for "result" with empty events.
         """
         if result is None:
             return {"result": None, "events": []}
@@ -183,9 +200,17 @@ class ExecutorAgent(BaseAgent):
     def _render_plan_cli(state: OSAState) -> None:
         """
         Render execution plan as a Rich table for CLI users.
-
+        
         Args:
-            state: Current workflow state containing the plan to display.
+            state: Current workflow state containing the plan and reasoning to display.
+        
+        WHY:
+            This method provides a visual summary of the execution plan directly in the terminal, helping CLI users understand the upcoming tasks and the planner's reasoning before execution begins. It enhances user visibility into the workflow.
+        
+        Details:
+            - If no plan exists, an error message is printed and the method returns early.
+            - A formatted table is built showing each task's sequence number, ID, and special arguments.
+            - If planner reasoning is available in the state, it is displayed separately below the table.
         """
         if not state.plan:
             console.print("[bold red]No tasks in the execution plan.[/]")

@@ -6,8 +6,9 @@ from typing import Dict, Optional, List, Any
 class RepositoryData:
     """
     Combined results of repo_analysis.
-    Used by the Planner to understand repository state without reading full context.
+        Used by the Planner to understand repository state without reading full context.
     """
+
 
     # From DependencyExtractor
     dependencies: Dict[str, List[str]] | None = None

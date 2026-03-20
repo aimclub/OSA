@@ -4,7 +4,10 @@ from pydantic import BaseModel
 
 
 class IntentDecision(BaseModel):
-    """Output of IntentRouter agent."""
+    """
+    Output of IntentRouter agent.
+    """
+
 
     intent: Literal["new_task", "feedback", "unknown"]
     task_scope: Optional[

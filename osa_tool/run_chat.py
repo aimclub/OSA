@@ -15,6 +15,29 @@ from osa_tool.utils.utils import osa_project_root, parse_folder_name, switch_to_
 
 
 def main():
+    """
+    Main entry point for the OSA agent workflow.
+    
+    This method orchestrates the full execution flow: it parses command-line arguments,
+    collects user input, initializes logging and infrastructure, constructs the agent
+    execution graph, and runs the graph to process the user's request on the target
+    repository.
+    
+    Args:
+        None
+    
+    Returns:
+        None
+    
+    Why:
+        The method serves as the central coordinator, ensuring all necessary setup steps
+        are completed before executing the main agent workflow. It handles configuration
+        from both command-line arguments and interactive user input, sets up the
+        environment (logging, output directory), initializes platform-specific Git
+        tooling, and prepares the initial state for the workflow graph. This structured
+        approach guarantees that the agent has all required context and resources before
+        beginning its analysis and modification of the repository.
+    """
     # Create a command line argument parser
     parser = build_parser_from_yaml(extra_sections=["settings"])
     args = parser.parse_args()

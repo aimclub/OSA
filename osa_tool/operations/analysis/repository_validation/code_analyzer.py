@@ -16,12 +16,13 @@ from osa_tool.utils.utils import parse_folder_name
 
 class CodeAnalyzer:
     """
-    Analyzes code files in a repository using a language model.
-
-    This class handles the retrieval and processing of code files from a repository,
-    including conversion of Jupyter notebooks to Python scripts, filtering ignored files,
-    and sending code content to a model for analysis.
+    Analyzes code files within a repository to extract structural and semantic insights, supporting automated documentation generation and code quality assessment.
+    
+        This class handles the retrieval and processing of code files from a repository,
+        including conversion of Jupyter notebooks to Python scripts, filtering ignored files,
+        and sending code content to a model for analysis.
     """
+
 
     SOURCEFILE_EXTENSIONS_LIST = "py", "c", "cpp"
     IGNORE_LIST = (
@@ -42,9 +43,12 @@ class CodeAnalyzer:
     def __init__(self, config_manager: ConfigManager):
         """
         Initialize the CodeAnalyzer.
-
+        
         Args:
             config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
+        
+        Why:
+        The constructor centralizes the setup of all components required for code analysis and documentation tasks. It retrieves necessary configurations and initializes handlers for model interaction, notebook conversion, and source code ranking to ensure the analyzer is fully prepared for subsequent operations.
         """
         self.config_manager = config_manager
         self.model_settings = self.config_manager.get_model_settings("validation")
@@ -56,12 +60,25 @@ class CodeAnalyzer:
 
     def get_code_files(self) -> Iterator[str]:
         """
-        Retrieve a list of code files from the repository.
-
-        Converts Jupyter notebooks to Python scripts and filters out ignored files.
-
+        Retrieve code files from the repository as an iterator.
+        
+        This method walks through the repository's file tree, filters out blacklisted files,
+        and yields the absolute paths of source code files. It also handles Jupyter notebooks
+        by converting them to Python scripts and yielding the path of the converted .py file.
+        
+        Why:
+        - The method uses an iterator (yields) instead of returning a list to efficiently
+          process files one by one, especially useful for large repositories.
+        - Jupyter notebooks are converted to Python scripts to allow analysis of their code
+          content as standard Python source files.
+        
+        Args:
+            repo_path: The resolved absolute path of the repository, derived from the Git
+                       settings configuration.
+        
         Returns:
-            list[str]: List of absolute paths to code files.
+            Iterator[str]: An iterator yielding absolute paths to code files (including
+                           converted .py files from .ipynb notebooks).
         """
         repo_path = Path(parse_folder_name(str(self.config_manager.get_git_settings().repository))).resolve()
         for filename in track(self.tree.split("\n"), description="Getting code files ..."):
@@ -78,21 +95,48 @@ class CodeAnalyzer:
 
     @classmethod
     def __is_blacklisted(cls, filename: str) -> bool:
+        """
+        Checks if a given filename matches any patterns in the blacklist.
+        
+        This is used to skip files that should be ignored during analysis, such as configuration files, build artifacts, or other non-source files that are not relevant for documentation generation.
+        
+        Args:
+            filename: The name of the file to check against the blacklist.
+        
+        Returns:
+            bool: True if the filename contains any pattern found in the class's IGNORE_LIST, False otherwise.
+        """
         return any(pattern in filename for pattern in cls.IGNORE_LIST)
 
     @classmethod
     def __is_sourcefile(cls, filename: str) -> bool:
+        """
+        Determines whether a given filename corresponds to a source file based on its extension.
+        
+        This is a class method that checks the filename against a class-level list of source file extensions (SOURCEFILE_EXTENSIONS_LIST). It is used internally to filter source code files from other files in a repository during analysis.
+        
+        Args:
+            filename: The name of the file to check.
+        
+        Returns:
+            bool: True if the file extension matches any of the predefined source file extensions, False otherwise.
+        """
         return any(filename.endswith(f".{pattern}") for pattern in cls.SOURCEFILE_EXTENSIONS_LIST)
 
     async def process_code_files(self, code_files: Iterable[str]) -> str:
         """
         Analyze the content of code files using the language model asynchronously.
-
+        
+        This method processes multiple code files concurrently with a controlled rate limit to avoid overwhelming the language model API. Each file is read and analyzed individually, and results are aggregated into a single string.
+        
         Args:
-            code_files (Iterable[str]): List of code file paths.
-
+            code_files (Iterable[str]): An iterable of paths to code files to be analyzed.
+        
         Returns:
-            str: Aggregated analysis results for all code files.
+            str: Aggregated analysis results for all code files, concatenated with newline separators. If an error occurs while processing a file, an error message for that file is included in the results.
+        
+        Why:
+            The method uses a semaphore to enforce the rate limit specified in the model settings, ensuring that concurrent requests do not exceed the allowed number of simultaneous calls to the language model. This prevents API throttling and manages resource usage effectively.
         """
         rate_limit = self.model_settings.rate_limit
         semaphore = asyncio.Semaphore(rate_limit)

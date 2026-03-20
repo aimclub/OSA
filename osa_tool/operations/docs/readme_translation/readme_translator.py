@@ -16,10 +16,34 @@ from osa_tool.utils.utils import parse_folder_name
 class ReadmeTranslator:
     """
     Translates README.md into multiple languages and stores translated files
-    in the repository root (README_xx.md) and optionally sets a default one.
+        in the repository root (README_xx.md) and optionally sets a default one.
     """
 
+
     def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata, languages: list[str]):
+        """
+        Initializes the ReadmeTranslator instance with configuration, repository metadata, and language information.
+        
+        Args:
+            config_manager: Configuration manager providing model settings, prompts, and git settings.
+            metadata: Metadata about the repository.
+            languages: List of programming languages present in the repository.
+        
+        Initializes the following class fields:
+            config_manager (ConfigManager): Configuration manager instance.
+            model_settings (ModelSettings): Model settings for the 'readme' task type, retrieved from the configuration manager.
+            prompts (PromptLoader): Loader for prompt templates, retrieved from the configuration manager.
+            rate_limit: Rate limit from the model settings, used to control request frequency to the language model.
+            languages (list[str]): List of programming languages.
+            metadata (RepositoryMetadata): Repository metadata.
+            repo_url: URL of the Git repository, obtained from the git settings in the configuration manager.
+            model_handler (ModelHandler): Model handler built from the model settings, used to interact with the language model.
+            base_path: Absolute path to the directory where the repository will be cloned, derived by joining the current working directory with a folder name parsed from the repository URL.
+            events (list[OperationEvent]): List to store operation events, initially empty.
+        
+        Why:
+            The method sets up all necessary components for the ReadmeTranslator to operate, including configuration, model interaction, and repository context. It prepares the model handler for generating or translating README content and establishes the local directory path where the repository will be cloned for processing.
+        """
         self.config_manager = config_manager
         self.model_settings = self.config_manager.get_model_settings("readme")
         self.prompts = self.config_manager.get_prompts()
@@ -34,12 +58,19 @@ class ReadmeTranslator:
 
     def translate_readme(self) -> dict:
         """
-        Synchronous wrapper around async translation.
-
+        Synchronous wrapper around the asynchronous translation workflow.
+        
+        This method provides a synchronous entry point for translating the main README into all target languages. It runs the underlying async translation process (`_translate_readme_async`) and returns a structured summary of the results and events.
+        
+        Why:
+            It allows synchronous callers to invoke the translation without managing an asyncio event loop themselves. The method ensures the async operation completes and returns a consistent result format.
+        
         Returns:
-            dict with:
-                - result: summary of translations
-                - events: list of OperationEvent
+            dict: A dictionary containing:
+                - result: A summary of the translations, including:
+                    - languages: The list of target languages configured for translation.
+                    - translated: A list of language codes for which translations were successfully written.
+                - events: The complete list of OperationEvent objects emitted during the translation process.
         """
         asyncio.run(self._translate_readme_async())
 
@@ -54,6 +85,19 @@ class ReadmeTranslator:
     async def _translate_readme_async(self) -> None:
         """
         Asynchronously translate the main README into all target languages.
+        
+        This method coordinates the translation workflow: it retrieves the main README content,
+        then concurrently translates it into each target language using a rate‑limited semaphore.
+        Each successful translation is saved to a separate file. If no README content is found,
+        the operation is skipped and a warning is logged. After all translations are complete,
+        the first language’s translation is set as the default README in the `.github` directory
+        to provide a standardized entry point for GitHub’s interface.
+        
+        Args:
+            self: The instance of the ReadmeTranslator class.
+        
+        Returns:
+            None
         """
         readme_content = self._get_main_readme_file()
         if not readme_content:
@@ -88,7 +132,32 @@ class ReadmeTranslator:
     async def _translate_readme_request_async(
         self, readme_content: str, target_language: str, semaphore: asyncio.Semaphore
     ) -> dict:
-        """Asynchronous request to translate README content via LLM."""
+        """
+        Asynchronous request to translate README content via LLM.
+        
+        This method constructs a prompt for translation, sends it to the LLM asynchronously
+        with concurrency control via a semaphore, and processes the response into a
+        structured dictionary. It ensures the result contains required fields for downstream use.
+        
+        Args:
+            readme_content: The original README text to be translated.
+            target_language: The language into which the README should be translated.
+            semaphore: An asyncio.Semaphore used to limit concurrent LLM requests.
+        
+        Returns:
+            A dictionary containing the translation result with the following keys:
+                - 'content': The translated README text. If the LLM response does not
+                  provide this, it defaults to a cleaned version of the raw response.
+                - 'suffix': A two‑letter language code derived from `target_language`.
+                - 'target_language': The original `target_language` argument.
+                - Any additional keys parsed from the LLM's JSON response.
+        
+        Why:
+            The semaphore is used to prevent overwhelming the LLM service with too many
+            simultaneous requests, which could lead to rate‑limiting or performance issues.
+            Default values for 'content' and 'suffix' are set to guarantee the dictionary
+            always has the structure expected by the rest of the translation pipeline.
+        """
         prompt = PromptBuilder.render(
             self.prompts.get("readme.translate"),
             target_language=target_language,
@@ -110,11 +179,16 @@ class ReadmeTranslator:
     def _save_translated_readme(self, translation: dict) -> None:
         """
         Save a single translated README to a file.
-
+        
+        WHY: This method handles the final step of persisting a translated README to disk, ensuring the content is non‑empty, properly formatted, and logged for tracking. It also records the operation outcome (written or skipped) in the event list for later reporting.
+        
         Args:
-            translation (dict): Dictionary with keys:
-                - "content": translated README text
-                - "suffix": language code
+            translation (dict): Dictionary containing the translation result. Expected keys are:
+                - "content": the translated README text as a string.
+                - "suffix": language code (e.g., "es", "fr") used in the output filename.
+                - "target_language": full language name for logging and events (optional; defaults to "unknown").
+        
+        If the content is empty, a warning is logged, an event is recorded as skipped, and no file is saved. Otherwise, the content is written to a Markdown file named `README_{suffix}.md` in the instance's base path, extra blank lines are removed for clean formatting, and a written event is appended.
         """
         suffix = translation.get("suffix", "unknown")
         language = translation.get("target_language", "unknown")
@@ -147,8 +221,20 @@ class ReadmeTranslator:
 
     def _set_default_translated_readme(self, translation: dict) -> None:
         """
-        Create a .github/README.md symlink (or copy fallback)
-        pointing to the first translated README.
+        Create a .github/README.md symlink (or copy fallback) pointing to the first translated README.
+        
+        This method ensures that a default README is available in the `.github` directory by copying the first successfully translated README file. It is used to provide a standardized, language-specific README for GitHub's interface when multiple translations exist.
+        
+        Args:
+            translation: A dictionary containing translation metadata, which must include a 'suffix' key (the language suffix for the translated file) and may include a 'target_language' key (the human-readable language name).
+        
+        Behavior:
+        - If the translation dictionary lacks a 'suffix', logs a warning and exits.
+        - If the translated source file does not exist, logs a warning and exits.
+        - Creates the `.github` directory if it does not exist.
+        - Removes any existing `.github/README.md` file before copying the new one.
+        - On success, logs the copy operation and records a SET event with the target language.
+        - On failure (e.g., permission errors, unsupported symlink operations), logs an error and records a FAILED event with the error details.
         """
         suffix = translation.get("suffix")
         language = translation.get("target_language", "unknown")
@@ -190,6 +276,16 @@ class ReadmeTranslator:
             )
 
     def _get_main_readme_file(self) -> str:
-        """Return the content of the main README.md in the repository root, or empty string if not found."""
+        """
+        Return the content of the main README.md file located in the repository root, or an empty string if the file is not found or cannot be read.
+        
+        The method constructs the full path to README.md by joining the repository's base path with the filename. It then delegates reading to a helper function that handles file reading, decoding, and error cases—returning an empty string if the file is missing, unreadable, or an error occurs. This ensures the method safely provides README content when available without raising exceptions.
+        
+        Args:
+            self: The instance of the ReadmeTranslator class.
+        
+        Returns:
+            The content of README.md as a string, or an empty string if the file cannot be read.
+        """
         readme_path = os.path.join(self.base_path, "README.md")
         return read_file(readme_path)

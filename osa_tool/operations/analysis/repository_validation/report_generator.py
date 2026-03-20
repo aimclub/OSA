@@ -15,19 +15,22 @@ from osa_tool.utils.utils import osa_project_root
 
 class ReportGenerator:
     """
-    Generates a PDF validation report for a repository.
-
-    This class builds a PDF report summarizing repository analysis results, including correspondence,
-    percentage metrics, and conclusions. It adds branding, QR codes, and repository metadata to the report.
+    Generates a comprehensive PDF validation report detailing the analysis, documentation quality, and structural improvements for a repository.
+    
+        This class builds a PDF report summarizing repository analysis results, including correspondence,
+        percentage metrics, and conclusions. It adds branding, QR codes, and repository metadata to the report.
     """
+
 
     def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata) -> None:
         """
         Initialize the ReportGenerator.
-
+        
         Args:
-            config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
-            metadata (RepositoryMetadata): Metadata about the repository.
+            config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences. Used to retrieve the repository URL and other configuration.
+            metadata: Metadata about the repository, including its name, which is used to generate the report filename.
+        
+        The constructor sets up paths and filenames needed for generating a PDF validation report. It extracts the repository URL from the configuration and uses the repository name from metadata to create an output filename. It also defines static references, such as the OSA project URL and logo path, for inclusion in the report.
         """
         self.config_manager = config_manager
         self.repo_url = self.config_manager.get_git_settings().repository
@@ -42,13 +45,18 @@ class ReportGenerator:
     def build_pdf(self, type: str, content: dict) -> None:
         """
         Build and save the PDF validation report.
-
+        
+        This method orchestrates the creation of a PDF report by assembling predefined sections (header, correspondence metrics, and conclusion) into a single document. It logs the process and handles any errors that occur during PDF generation.
+        
         Args:
-            type (str): Type of validation (e.g., "Code", "Doc", "Paper").
-            content (dict): JSON containing report data.
-
-        Returns:
-            None
+            type: Type of validation (e.g., "Code", "Doc", "Paper"). This determines the header title.
+            content: A dictionary containing the report data. Expected keys are "correspondence", "percentage", and "conclusion", which are passed to the respective helper methods for section building.
+        
+        Why:
+            The report provides a formatted, persistent record of the validation analysis for the repository, making the results easily shareable and reviewable. The PDF is saved to a predefined output path for later access.
+        
+        Note:
+            The method uses a fixed page layout (A4 with specified margins) and includes a custom background image on the first page via the `onFirstPage` callback.
         """
         logger.info(f"Building validation report for repository {self.metadata.full_name} ...")
         try:
@@ -75,11 +83,13 @@ class ReportGenerator:
     def _draw_images(self, canvas_obj: Canvas, doc: SimpleDocTemplate) -> None:
         """
         Draws branding images, QR code, and lines on the first page of the PDF.
-
+        Specifically, it places the OSA logo and a QR code linking to the OSA Tool report URL, and adds two horizontal lines for visual separation.
+        The QR code is generated temporarily for this purpose and deleted after being drawn.
+        
         Args:
-            canvas_obj (Canvas): The canvas object for drawing.
-            doc (SimpleDocTemplate): The PDF document template.
-
+            canvas_obj: The canvas object for drawing.
+            doc: The PDF document template.
+        
         Returns:
             None
         """
@@ -101,10 +111,14 @@ class ReportGenerator:
 
     def _generate_qr_code(self) -> str:
         """
-        Generates a QR code for the given URL and saves it as an image file.
-
+        Generates a QR code for the OSA Tool report URL and saves it as a temporary image file.
+        The QR code is created from the `osa_url` instance attribute, which contains the URL to the generated report, allowing for easy sharing and access.
+        
+        Args:
+            None: This method uses the instance's `osa_url` attribute as the data for the QR code.
+        
         Returns:
-            str: The file path of the generated QR code image.
+            str: The absolute file path to the generated QR code image (saved as "temp_qr.png" in the current working directory).
         """
         qr = qrcode.make(self.osa_url)
         qr_path = os.path.join(os.getcwd(), "temp_qr.png")
@@ -114,12 +128,17 @@ class ReportGenerator:
     def _build_header(self, type: str) -> list:
         """
         Generates the header section for the repository analysis report.
-
+        
         Args:
-            type (str): Type of validation (e.g., "Code", "Doc", "Paper").
-
+            type: Type of validation (e.g., "Code", "Doc", "Paper"). This determines the first line of the header, such as "Code Validation Report".
+        
         Returns:
-            list: A list of Paragraph elements representing the header content.
+            A list of Paragraph elements representing the header content. The list contains two Paragraphs:
+            - The first displays the validation type as a title.
+            - The second shows a truncated repository name (if longer than 20 characters) as a clickable hyperlink to the repository URL, styled consistently with the first line.
+        
+        Why:
+            The header provides a clear, formatted title for the report and links directly to the analyzed repository, improving accessibility and context. The repository name is truncated to maintain clean formatting in the report layout.
         """
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
@@ -146,13 +165,15 @@ class ReportGenerator:
     def _build_first_part(correspondence: bool, percentages: float) -> list[Paragraph]:
         """
         Builds the first section of the report with correspondence and percentage metrics.
-
+        
+        This section presents a high-level summary of whether the repository content aligns with its associated documentation or paper, along with a quantitative measure of that alignment. The output is formatted as styled paragraphs suitable for inclusion in a generated report.
+        
         Args:
-            correspondence (bool): Whether the repository corresponds to the documentation/paper.
-            percentages (float): Percentage metric for correspondence.
-
+            correspondence: Indicates whether the repository corresponds to the documentation or paper. A value of True means the repository content matches the described work; False indicates a discrepancy.
+            percentages: A percentage metric quantifying the degree of correspondence. This value is displayed directly in the report as a percentage.
+        
         Returns:
-            list[Paragraph]: Paragraph elements for the section.
+            A list containing two Paragraph objects: the first states the correspondence result, and the second displays the percentage metric. Both are styled for consistent report formatting.
         """
         styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(
@@ -170,12 +191,16 @@ class ReportGenerator:
     def _build_second_part(conclusion: str) -> list[Flowable]:
         """
         Builds the conclusion section of the report.
-
+        
         Args:
-            conclusion (str): Conclusion text for the report.
-
+            conclusion: Conclusion text for the report. This text will be formatted as a paragraph with normal styling.
+        
         Returns:
-            list[Flowable]: Flowable elements for the section.
+            list[Flowable]: Flowable elements for the section, consisting of:
+                - A bold "Conclusion:" header paragraph.
+                - A small vertical spacer (5 units).
+                - A paragraph containing the provided conclusion text.
+            The elements are styled with a custom ParagraphStyle ("LeftAlignedNormal") based on the reportlab normal style, using 12pt font size, 16pt leading, and left alignment.
         """
         styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(

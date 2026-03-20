@@ -8,6 +8,7 @@ class ReviewerDecision(BaseModel):
     Output of the ReviewerAgent after analyzing user feedback.
     """
 
+
     requires_new_intent: bool = Field(
         default=False, description="Whether user feedback implies a completely new intent."
     )

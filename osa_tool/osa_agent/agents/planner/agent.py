@@ -16,33 +16,41 @@ from osa_tool.utils.utils import rich_section
 
 class PlannerAgent(BaseAgent):
     """
-    Agent responsible for planning the execution workflow.
-
-    The PlannerAgent:
-    - selects applicable operations based on the current state
-    - decides which operations should be executed
-    - builds an ordered execution plan
-    - detects and injects additional arguments required by operations
+    Agent responsible for planning and orchestrating the execution workflow for repository analysis and enhancement tasks.
+    
+        The PlannerAgent:
+        - selects applicable operations based on the current state
+        - decides which operations should be executed
+        - builds an ordered execution plan
+        - detects and injects additional arguments required by operations
     """
+
 
     name = "Planner"
 
     def run(self, state: OSAState) -> OSAState:
         """
         Execute the planning phase of the workflow.
-
-        This method:
-        1. Retrieves all applicable operations
-        2. Uses an LLM to decide which operations to run
-        3. Builds an ordered task plan
-        4. Detects and assigns required operation arguments
-        5. Updates workflow state and session memory
-
+        
+        This method orchestrates the creation of an execution plan by selecting and ordering operations, detecting required arguments, and preparing the workflow for execution. It also handles re-planning after a reviewer request and manages interactive clarification when user input is needed for missing arguments.
+        
+        The planning process follows these steps:
+        1. Registers all available operations.
+        2. Retrieves operations applicable to the current state.
+        3. Uses an LLM to decide which operations to run.
+        4. Builds an ordered task plan from the selected operations.
+        5. Detects and assigns additional arguments via LLM inference for operations that require it.
+        6. Fills default arguments for operations with an 'auto' argument policy.
+        7. Checks for any remaining missing required arguments that require user clarification.
+        8. Updates the workflow state and session memory with the plan and planning metadata.
+        
+        If the workflow status is WAITING_FOR_USER and this agent is designated to handle clarification, the method enters a clarification loop to collect missing arguments from the user before proceeding.
+        
         Args:
-            state (OSAState): Current workflow state.
-
+            state: Current workflow state. The state's plan_history is maintained when re-planning after a reviewer request; otherwise, it is cleared for a new request.
+        
         Returns:
-            OSAState: Updated state containing the execution plan.
+            Updated state containing the execution plan, plan reasoning, current step index, and updated status. If missing arguments are detected and require user clarification, the returned state will have status WAITING_FOR_USER and contain a clarification payload.
         """
         rich_section("Planner Agent")
         state.active_agent = self.name
@@ -115,10 +123,12 @@ class PlannerAgent(BaseAgent):
     def _get_available_operations(state: OSAState) -> List[Operation]:
         """
         Retrieve all operations applicable to the current state.
-
+        
+        This method queries the operation registry to obtain a filtered list of operations that can be executed given the current workflow state. It delegates the applicability check to the registry, which evaluates each operation's specific constraints (such as intent and scope) against the state.
+        
         Args:
             state: Current workflow state.
-
+        
         Returns:
             List of Operation instances that can run in this state.
         """
@@ -129,6 +139,18 @@ class PlannerAgent(BaseAgent):
         """
         Format plan_history for the planner prompt so the LLM sees which plans were already tried.
         Returns an empty string when there is no history.
+        
+        This method is used to provide the planner agent with context about previously attempted task plans
+        that were not approved, helping to avoid redundant or unsuccessful planning cycles.
+        
+        Args:
+            plan_history: A list of plans, where each plan is a list of task dictionaries.
+                          Each task dictionary should contain an "id" key to identify the task.
+        
+        Returns:
+            A formatted string summarizing the plan history, prefixed with a header.
+            If plan_history is empty, returns an empty string.
+            The output lists each plan cycle by number and the IDs of the tasks it contained.
         """
         if not plan_history:
             return ""
@@ -141,13 +163,15 @@ class PlannerAgent(BaseAgent):
     def _make_decision(self, state: OSAState, available_ops: List[Operation]) -> PlannerDecision:
         """
         Use the language model to decide which operations should be executed.
-
-        Args:
-            state (OSAState): Current workflow state.
-            available_ops (list[Operation]): Operations applicable to the current state.
-
-        Returns:
-            PlannerDecision: Model output describing selected operations.
+        
+                This method constructs a prompt from the current workflow state and available operations, then queries the LLM to produce a structured decision. It provides the LLM with context about the active request, intent, task scope, repository data, plan history (to avoid redundant attempts), and a formatted list of available operations.
+        
+                Args:
+                    state: Current workflow state, containing the active request, intent, task scope, plan history, and repository data.
+                    available_ops: Operations applicable to the current state, each with a name and description.
+        
+                Returns:
+                    Model output describing selected operations, parsed and validated as a PlannerDecision.
         """
         parser = PydanticOutputParser(pydantic_object=PlannerDecision)
         system_message = self._render("system_messages.planner", safe=True)
@@ -167,12 +191,14 @@ class PlannerAgent(BaseAgent):
     def _select_operations(decision: PlannerDecision) -> List[Operation]:
         """
         Resolve and sort selected operations based on priority.
-
+        
+        This method converts operation names from a planner decision into actual operation objects, filters out any names not found in the registry, and sorts the resulting list by each operation's priority attribute. This ensures that operations are executed in the correct order as determined by their defined priorities.
+        
         Args:
-            decision (PlannerDecision): Planner decision containing operation names.
-
+            decision: Planner decision containing a list of operation names to be resolved.
+        
         Returns:
-            list[Operation]: Sorted list of operation descriptors.
+            Sorted list of operation descriptors, ordered from highest to lowest priority (assuming lower priority numbers indicate higher priority, as is typical with sorting in ascending order).
         """
         ops = [OperationRegistry.get(name) for name in decision.operations if OperationRegistry.get(name)]
         ops.sort(key=lambda op: op.priority)
@@ -181,13 +207,24 @@ class PlannerAgent(BaseAgent):
     def _build_execution_plan(self, state: OSAState, operations: List[Operation]) -> None:
         """
         Build the task execution plan from selected operations.
-
+        
         This method also tracks operations that require additional arguments
         for later argument detection.
-
+        
+        WHY: The method constructs a sequential plan of tasks from the selected operations,
+        ensuring that each operation's tasks are added to the overall workflow plan.
+        It simultaneously identifies operations that have an argument schema, so that
+        missing arguments for those operations can be detected and filled in a later step.
+        
         Args:
-            state (OSAState): Current workflow state.
-            operations (list[Operation]): Selected operations.
+            state: Current workflow state. The plan attribute of this state will be
+                   populated with the tasks generated from the operations.
+            operations: Selected operations to be executed. Each operation contributes
+                        one or more tasks to the plan via its plan_tasks method.
+        
+        Returns:
+            None. The method modifies the state.plan in-place and updates the internal
+            list self._operations_with_args.
         """
         state.plan = []
         self._operations_with_args = []
@@ -200,15 +237,22 @@ class PlannerAgent(BaseAgent):
     def _detect_additional_arguments(self, state: OSAState) -> str:
         """
         Detect and assign additional arguments required by operations.
-
-        Uses an LLM to infer missing or optional arguments based on
-        the user's request and operation prompts.
-
+        
+        Uses an LLM to infer missing or optional arguments based on the user's request and operation prompts. This step is performed only for operations that have been flagged as requiring argument detection (stored in `self._operations_with_args`). WHY: Some operations have arguments that are not explicitly provided in the initial user request; this method uses the LLM to intelligently fill in those gaps based on contextual prompts and field definitions.
+        
         Args:
-            state (OSAState): Current workflow state.
-
+            state: Current workflow state containing the active request and plan tasks.
+        
         Returns:
-            str: Prompt used for argument detection (for debugging / traceability).
+            The prompt string used for argument detection, primarily for debugging and traceability. Returns an empty string if no operations require argument detection.
+        
+        Behavior:
+        - If `self._operations_with_args` is empty, returns immediately without calling the LLM.
+        - Constructs a system message and a detailed prompt listing each operation and its argument fields, where each field description is built using `_build_prompt_for_field`.
+        - Sends the prompt to the LLM via `_run_llm` with a Pydantic parser to obtain a structured response.
+        - Iterates over the LLM's response, updating the arguments of the corresponding tasks in the state's plan.
+        - Logs warnings for operations not found in the state or for malformed argument data.
+        - Logs debug information about the LLM output and updated task arguments.
         """
         if not self._operations_with_args:
             return ""
@@ -251,6 +295,15 @@ class PlannerAgent(BaseAgent):
     def _fill_default_args(self, state: OSAState) -> None:
         """
         Sets default argument values for operations if LLM returns nothing and args_policy == 'auto'.
+        
+        Why:
+            When the LLM does not provide arguments for certain operations, this method ensures that tasks are populated with default values as defined by the operation's schema, preventing incomplete task execution.
+        
+        Args:
+            state: The OSAState containing the plan and tasks to be updated.
+        
+        Note:
+            Only operations where args_policy is explicitly 'auto' and the corresponding task currently lacks arguments are affected. If an operation is not in self._operations_with_args or its task already has arguments, no changes are made.
         """
         if not self._operations_with_args:
             return
@@ -270,8 +323,22 @@ class PlannerAgent(BaseAgent):
         """
         Checks whether there are any unfilled required arguments with args_policy == 'ask_if_missing'.
         Prepares state for multi-question clarification via LLM.
-
-        Returns True if clarification is required from the user.
+        
+        WHY: When an operation's argument policy is 'ask_if_missing', the system must prompt the user for any required arguments that were not provided. This method identifies those missing arguments and structures them into a clarification payload so the LLM or UI can ask the user for them collectively.
+        
+        Args:
+            state: The current OSAState containing the plan and tasks.
+        
+        Returns:
+            True if clarification is required from the user (i.e., missing required arguments were found); False otherwise.
+        
+        Behavior:
+            - Iterates over operations registered with the agent that have an args_policy of 'ask_if_missing'.
+            - For each such operation, checks the corresponding task in the state to see if all required arguments (as defined by the operation's schema) have been provided.
+            - If a required argument is missing, builds a prompt for that argument using the field's description and constraints.
+            - Collects all missing arguments across operations and stores them in state.missing_arguments.
+            - Sets state.clarification_required to True and prepares a clarification payload with a consolidated list of fields (each field is identified by task_id::field_name) and their prompts.
+            - Updates the state status to WAITING_FOR_USER and logs the missing fields.
         """
         if not self._operations_with_args:
             return False
@@ -337,8 +404,24 @@ class PlannerAgent(BaseAgent):
     def _clarification_loop(self, state: OSAState) -> None:
         """
         Loop to handle missing arguments clarification from the user.
-        Uses LLM to validate/convert user's answers into proper task.args.
-        Stops if all missing arguments are filled or max attempts are reached.
+        Uses the LLM to validate and convert the user's answers into proper task arguments.
+        Stops when all missing arguments are filled or the maximum number of clarification attempts is reached.
+        
+        WHY: This loop manages an interactive clarification process, ensuring that the agent can collect necessary information from the user to complete its tasks without re-running the entire planning pipeline. It iteratively requests user input, processes the responses via the LLM to update task arguments, and checks for completion.
+        
+        Process:
+        1. For each attempt up to the maximum allowed (state.clarification_attempts), prompt the user for the missing arguments.
+        2. Use the LLM to interpret the user's answers and update the corresponding task arguments in the state.
+        3. After each attempt, check which arguments remain missing.
+        4. If all arguments are filled, reset the clarification state, update the agent status to ANALYZING, and exit.
+        5. If arguments are still missing, update the state with the remaining missing arguments and a new clarification payload for the next attempt.
+        6. When the maximum attempts are reached without filling all arguments, reset the clarification state, set the status to ANALYZING, and log an error.
+        
+        Args:
+            state: The current OSAState containing the plan, tasks, missing arguments, and clarification configuration.
+        
+        Note:
+            The method modifies the provided state in place, updating missing_arguments, clarification_payload, and status as the loop progresses.
         """
 
         attempts = 0
@@ -384,6 +467,19 @@ class PlannerAgent(BaseAgent):
         """
         Use LLM to fill missing arguments AFTER user clarification.
         This prevents re-running the full planning and only updates arguments.
+        
+        WHY: When the user provides clarification answers for previously missing arguments, this method efficiently applies those answers only to the affected tasks, avoiding the cost and potential inconsistency of re-executing the entire planning pipeline.
+        
+        Args:
+            state: The current OSAState containing the plan and its tasks with missing arguments.
+            answers: A dictionary mapping user-provided clarification question identifiers to their answers.
+        
+        Process:
+        1. If no arguments are missing, returns immediately.
+        2. Constructs a prompt for the LLM that lists all missing argument fields (by task and description) and the user's clarification answers.
+        3. Calls the LLM with this prompt and a parser expecting a structured response mapping operation names to argument dictionaries.
+        4. For each operation in the LLM response, finds the corresponding task in the state and updates its arguments with the LLM-processed values.
+        5. Logs updates and warnings for operations not found or with invalid argument formats.
         """
         if not state.missing_arguments:
             return
@@ -426,9 +522,17 @@ class PlannerAgent(BaseAgent):
     def _task_has_arg(state: OSAState, missing_item: dict) -> bool:
         """
         Check that a specific argument for a task is properly filled.
-        Considers empty values as missing.
-
-        missing_item = {"task_id": "...", "field": "...", "prompt": "..."}
+        Considers empty values (None, empty collections, or blank strings) as missing.
+        
+        Args:
+            state: The current state containing the plan and tasks.
+            missing_item: A dictionary with keys "task_id", "field", and "prompt". It identifies which task and argument to validate.
+        
+        Returns:
+            True if the argument exists and has a non‑empty value; False otherwise.
+        
+        Why:
+            This validation ensures that required task arguments are present and meaningful before proceeding with further operations, preventing errors from missing or empty inputs.
         """
         task = state.get_task(missing_item["task_id"])
         if not task or not task.args or missing_item["field"] not in task.args:
@@ -448,16 +552,17 @@ class PlannerAgent(BaseAgent):
     def _build_prompt_for_field(field: FieldInfo) -> str:
         """
         Build a descriptive prompt for a single argument based on its Pydantic FieldInfo.
-
-        - Uses description if provided
-        - Adds type instructions for List or Literal fields
-        - Adds default info for clarity
-
+        
+        - Uses the field's description if provided.
+        - For Literal fields, appends the list of allowed values.
+        - For List fields, adds an instruction to return as a list, even with a single element.
+        - If a default value exists (and is not Ellipsis), appends the default for clarity.
+        
         Args:
-            field: The Pydantic field info object.
-
+            field: The Pydantic field info object containing annotation, description, and default.
+        
         Returns:
-            A single string describing the argument for prompts or UI.
+            A single string describing the argument, suitable for use in prompts or UI displays.
         """
         desc = field.description or ""
 

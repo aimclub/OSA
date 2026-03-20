@@ -8,17 +8,23 @@ from tree_sitter import Parser, Language
 
 
 class OSA_TreeSitter(object):
-    """Class for the extraction of the source code's structure to be processed later by LLM.
-
-    Attributes:
-        cwd: A current working directory with source code files.
+    """
+    Class for extracting and representing source code structure using tree-sitter parsing, enabling detailed analysis and transformation of code syntax and organization for downstream processing.
+    
+        Attributes:
+            cwd: A current working directory with source code files.
     """
 
-    def __init__(self, scripts_path: str, ignore_list: list[str] = None):
-        """Initialization of the instance based on the provided path to the scripts.
 
+    def __init__(self, scripts_path: str, ignore_list: list[str] = None):
+        """
+        Initialization of the OSA_TreeSitter instance.
+        
         Args:
-            scripts_path: provided by user path to the scripts.
+            scripts_path: Path to the scripts directory provided by the user.
+            ignore_list: Optional list of file names to ignore during processing. If not provided, defaults to ["__init__.py"].
+        
+        The method sets up the instance by storing the scripts path, initializing an empty import map, and configuring the ignore list. This prepares the instance for subsequent operations that will analyze or process files within the scripts directory while excluding specified files.
         """
         self.cwd = scripts_path
         self.import_map = {}
@@ -28,20 +34,27 @@ class OSA_TreeSitter(object):
             self.ignore_list = ["__init__.py"]
 
     def files_list(self, path: str) -> tuple[list, 0] | tuple[list[str], 1]:
-        """Method provides a list of files occurring in the provided path.
-
-        If user provided a path to a file with a particular extension
-        the method returns a corresponding status which will trigger
-        inner "_if_file_handler" method to cut the path's tail.
-
+        """
+        Returns a list of Python files from the provided path, along with a status code indicating the input type.
+        
+        If a directory path is provided, recursively walks through it to collect all `.py` files that are not ignored.
+        If a single `.py` file path is provided, returns a list containing only that file.
+        
+        The status code indicates how the input was interpreted:
+        - 0: A directory was provided (or an invalid file path was given).
+        - 1: A valid `.py` file path was provided.
+        
+        This distinction is used internally by `_if_file_handler` to adjust subsequent processing.
+        
         Args:
-            path: provided by user path to the scripts.
-
+            path: A filesystem path pointing to either a directory or a `.py` file.
+        
         Returns:
-            A tuple containing a list of files in the provided directory
-            and status for a specific file usecase. Statuses:
-            0 - a directory was provided
-            1 - a path to the specific file was provided.
+            A tuple containing:
+                - A list of file paths (strings). If a directory was processed, the list contains all non-ignored `.py` files within it.
+                  If a single file was provided, the list contains only that file's absolute path.
+                  If the path is invalid or no matching files are found, an empty list is returned.
+                - An integer status code (0 or 1) as described above.
         """
         script_files = []
 
@@ -59,14 +72,19 @@ class OSA_TreeSitter(object):
         return [], 0
 
     def _is_ignored(self, path: Path) -> bool:
-        """Method checks if current path is relative to any of the ignore list.
-
+        """
+        Method checks if the current path is relative to any directory in the ignore list.
+        
+        WHY: This method is used to skip analysis of files or directories that should be excluded,
+        such as build artifacts, dependencies, or user-specified directories, to focus processing
+        only on relevant source code.
+        
         Args:
-            path: path to the script file.
-
+            path: Path to the file being checked.
+        
         Returns:
-            True: file is relative to the ignored path.
-            False: file is not relative to the ignored path.
+            True if the file is inside any ignored directory.
+            False if the file is not inside any ignored directory.
         """
         for dir in self.ignore_list:
             ignore_path = Path(os.path.join(self.cwd, dir)).resolve()
@@ -79,25 +97,34 @@ class OSA_TreeSitter(object):
 
     @classmethod
     def _if_file_handler(cls, path: str) -> str:
-        """Inner method returns a path's head if status trigger occured.
-
+        """
+        Inner method returns the directory portion of a given file path.
+        
+        This is a class-level utility used to extract the head (parent directory) from a full file path. It is typically called when a status trigger (such as a file change or validation event) occurs, to isolate the directory for further processing—for example, to locate related scripts or resources within the same folder.
+        
         Args:
-            path: provided by user path to the scripts.
-
+            path: The full file path provided by the user.
+        
         Returns:
-            Path's head.
+            The head (directory portion) of the path.
         """
         return os.path.split(path)[0]
 
     @staticmethod
     def open_file(file: str) -> str:
-        """Method reads the content of the occured file.
-
+        """
+        Reads and returns the entire content of a specified file as a string.
+        
+        This static method provides a simple, consistent way to load text file contents
+        with UTF-8 encoding, which is commonly used for source code and documentation files.
+        Using UTF-8 ensures proper handling of international characters and symbols that
+        may appear in modern codebases.
+        
         Args:
-            file: file occured in the provided directory.
-
+            file: The path to the file to be read.
+        
         Returns:
-            Read content.
+            The complete textual content of the file as a string.
         """
         content = None
         with open(file, encoding="utf-8", mode="r") as f:
@@ -106,13 +133,20 @@ class OSA_TreeSitter(object):
 
     @staticmethod
     def _parser_build(filename: str) -> Parser | None:
-        """Inner method builds the corresponding parser based on file's extension.
-
+        """
+        Inner method builds the corresponding parser based on the file's extension.
+        
+        This method determines which language parser to instantiate by checking the file
+        extension. Currently, it only supports Python files; other file types return None.
+        This selective parsing allows the tool to focus on supported languages for
+        documentation generation and code analysis.
+        
         Args:
-            filename: name of the file occured in the provided directory.
-
+            filename: Name of the file found in the provided directory.
+        
         Returns:
-            Compiled parser.
+            A configured Parser object for Python files, or None if the file extension
+            is not supported.
         """
         if filename.endswith(".py"):
             py_language = Language(tspython.language())
@@ -120,13 +154,18 @@ class OSA_TreeSitter(object):
         return None
 
     def _parse_source_code(self, filename: str) -> tuple[tree_sitter.Tree, str]:
-        """Inner method parses the provided file with the source code.
-
+        """
+        Inner method parses the provided file with the source code.
+        
+        This method orchestrates the parsing of a source code file by first building a language-specific parser based on the file extension, then reading the file's content, and finally parsing that content to produce a syntax tree. This process is necessary to convert raw source code into a structured representation that can be analyzed for documentation generation and code understanding.
+        
         Args:
-            filename: name of the file occured in the provided directory.
-
+            filename: The path to the source code file to be parsed.
+        
         Returns:
-            Tuple containing tree structure of the code and source code.
+            A tuple containing:
+                - The tree-sitter syntax tree representing the parsed code structure.
+                - The raw source code content of the file as a string.
         """
         parser: Parser = self._parser_build(filename)
         source_code: str = self.open_file(filename)
@@ -136,13 +175,15 @@ class OSA_TreeSitter(object):
     def _traverse_expression(class_attributes: list, expr_node: tree_sitter.Node) -> list:
         """
         Traverses an expression node and appends any identifiers found in assignment nodes to the class attributes list.
-
+        
+        This method is used to recursively extract attribute names (identifiers) from assignment statements within a class definition, supporting the documentation of class structure.
+        
         Args:
             class_attributes: A list to which identifiers found in assignment nodes will be appended.
-            expr_node: The expression node to be traversed.
-
+            expr_node: The expression node to be traversed, typically representing a block of code (e.g., within a class body).
+        
         Returns:
-            list: The updated class attributes list after traversing the expression node.
+            list: The updated class attributes list after traversing the expression node. The list is modified in place and also returned for convenience.
         """
         for node in expr_node.children:
             if node.type == "assignment":
@@ -153,17 +194,16 @@ class OSA_TreeSitter(object):
 
     def _get_attributes(self, class_attributes: list, block_node: tree_sitter.Node) -> list:
         """
-        Gets the attributes of a class.
-
-        This method traverses the children of a given block node and if the node type is "expression_statement",
-        it calls the _traverse_expression method to get the class attributes.
-
+        Gets the attributes of a class by traversing a block node from a class body.
+        
+        This method iterates through the immediate children of the given block node. When a child node is an "expression_statement", it calls the internal `_traverse_expression` method to extract class attributes from that expression. This process is necessary because class attributes are often defined via assignment statements within the class body, which appear as expression statements in the parsed syntax tree.
+        
         Args:
-            class_attributes: A list of class attributes.
-            block_node: A node in the tree_sitter.
-
+            class_attributes: A list of class attribute names that will be updated with any new attributes found.
+            block_node: A tree-sitter node representing a block of code (typically the body of a class definition).
+        
         Returns:
-            list: The updated list of class attributes after traversing the block node.
+            list: The updated list of class attributes after processing all expression statements in the block node. The list is modified in-place and also returned for convenience.
         """
         for node in block_node.children:
             if node.type == "expression_statement":
@@ -180,15 +220,23 @@ class OSA_TreeSitter(object):
     ) -> list:
         """
         Parses a class from the source code and appends its details to the given structure.
-
+        
+        This method extracts the class name, start line, docstring, attributes, and methods from a syntax tree node representing a class definition. It populates the class's methods by processing both direct function definitions and those nested within the class's block node. The parsed details are appended to the provided structure dictionary under the "structure" key.
+        
         Args:
-            structure: A list where the parsed class details will be appended.
+            structure: A dictionary containing a "structure" list where the parsed class details will be appended, and an "imports" dictionary used for resolving method calls.
             source_code: A string of the source code that contains the class to be parsed.
             node: A tree_sitter.Node object that represents the class in the source code.
             dec_list: A list of decorators for the class. Defaults to an empty list.
-
+        
         Returns:
-            list: The updated structure list with the parsed class details appended."""
+            list: The updated "structure" list with the parsed class details appended. The list is modified in-place and also returned for convenience.
+        
+        Why:
+        - The method processes both top-level function definitions and those inside a block node to ensure all methods are captured, as class methods can appear in either form in the syntax tree.
+        - It extracts attributes and docstrings from the class body block to provide a complete representation of the class.
+        - The imports dictionary from the structure is passed to method extraction to help resolve external method calls within the class's methods.
+        """
 
         class_name = node.child_by_field_name("name").text.decode("utf-8")
         start_line = node.start_point[0] + 1
@@ -230,16 +278,24 @@ class OSA_TreeSitter(object):
     ) -> list:
         """
         Parses a function node and extracts its details to update the structure.
-
-        Parameters:
-            - self: The instance of the class.
-            - structure: A list containing the structure details of the code.
-            - source_code: The source code of the function.
-            - node: The tree-sitter Node representing the function.
-            - dec_list: A list of decorators for the function (default=[]).
-
+        
+        This method processes a tree-sitter function definition node, extracts its detailed information via a helper, and appends a structured entry to the provided structure dictionary. It is used during repository analysis to build a comprehensive representation of functions for documentation generation.
+        
+        Args:
+            structure: A dictionary containing the structural representation of the code, which includes an imports dictionary and a "structure" list to be updated.
+            source_code: The source code of the file as a string.
+            node: The tree-sitter Node representing the function definition.
+            dec_list: A list of decorator names applied to the function. Defaults to an empty list.
+        
         Returns:
-            A list containing the updated structure with the function details added.
+            The updated structure dictionary with the function's details appended to the "structure" list. The appended entry is a dictionary containing:
+                - type: Always "function".
+                - start_line: The 1-indexed starting line number of the function in the source file.
+                - details: A dictionary of extracted function details (name, arguments, docstring, method calls, etc.).
+        
+        Why:
+        - The start_line is converted from tree-sitter's 0-based indexing to 1-based indexing for user-friendly reporting.
+        - The method relies on a helper to extract comprehensive function metadata, which is then stored in a standardized format within the overall code structure.
         """
         method_details = self._extract_function_details(node, source_code, structure["imports"], dec_list)
         start_line = node.start_point[0] + 1  # convert 0-based to 1-based indexing
@@ -255,11 +311,13 @@ class OSA_TreeSitter(object):
     def _get_decorators(dec_list: list, dec_node: tree_sitter.Node) -> list:
         """
         Extracts decorators from a given node and appends them to a list.
-
+        
+        This method iterates through the children of a tree-sitter AST node, identifying decorators by their node types ("identifier" or "call"). Each identified decorator is formatted with an '@' prefix and appended to the provided list.
+        
         Args:
             dec_list: The list to which decorators are to be appended.
-            dec_node: The node from which decorators are to be extracted.
-
+            dec_node: The tree-sitter node from which decorators are to be extracted. The method expects this node to represent a decorator list in the AST.
+        
         Returns:
             list: The updated list with appended decorators.
         """
@@ -272,16 +330,21 @@ class OSA_TreeSitter(object):
     def _resolve_import_path(self, import_text: str):
         """
         Resolve import path from given import text.
-
+        
         This method resolves the import path of entities specified in the import_text. It extracts the module name,
         entity names, and their corresponding paths in case they are found in the current working directory.
-
-        Parameters:
-            - import_text: The import text containing import statements to be resolved.
-
+        It handles both 'from ... import ...' and 'import ...' statements, including aliases (using 'as').
+        The method only resolves paths for modules that exist as .py files within the current working directory (self.cwd);
+        if a module is not found locally, it is omitted from the result.
+        
+        Args:
+            import_text: A string containing a single import statement (e.g., "from module import Class" or "import module as alias").
+        
         Returns:
-            dict: A dictionary containing the import mappings where keys are alias names and values are dictionaries
-                  with 'module', 'class', and 'path' keys indicating the imported module, class, and path respectively.
+            dict: A dictionary where each key is an alias (or the original name if no alias is given). For 'from ... import' statements,
+                  each value is a dictionary with keys 'module', 'class', and 'path'. For 'import' statements (without 'from'),
+                  each value is a dictionary with keys 'module' and 'path' (no 'class' key). Returns an empty dictionary if the input
+                  is not a valid import statement, if parsing fails, or if no local module file is found.
         """
         import_mapping = {}
 
@@ -342,12 +405,18 @@ class OSA_TreeSitter(object):
         """
         Extracts import statements from the given root node and returns a dictionary mapping imported
         module names to their resolved paths.
-
+        
+        This method traverses the immediate children of the root node to find import statements.
+        Only import statements that correspond to local Python files (within the current working directory)
+        are included in the result; unresolved imports are omitted.
+        
         Parameters:
             root_node: The root node from which to extract import statements.
-
+        
         Returns:
-            dict: A dictionary mapping imported module names to their resolved paths.
+            dict: A dictionary mapping imported module names (or aliases) to their resolved paths.
+                  Each value is a dictionary containing 'module' and 'path' keys, and for 'from ... import'
+                  statements also a 'class' key. Returns an empty dictionary if no valid local imports are found.
         """
         import_map = {}
         for node in root_node.children:
@@ -361,25 +430,33 @@ class OSA_TreeSitter(object):
     def _resolve_import(call_text: str, call_alias: str, imports: dict, incantations: dict = None) -> dict:
         """
         Resolves an import call to retrieve module/class information based on provided imports and aliases.
-
+        
         Parameters:
-        - call_text: The full import call text that needs to be resolved.
-        - call_alias: The alias used in the import call.
-        - imports: A dictionary mapping import aliases to corresponding module/class data.
-        - incantations: A dictionary containing any alias substitutions for import resolution. (default None)
-
+        - call_text: The full import call text that needs to be resolved (e.g., "my_module.MyClass.some_method").
+        - call_alias: The alias used in the import call (e.g., "my_alias").
+        - imports: A dictionary mapping import aliases to corresponding module/class data. Each entry should contain at least "module" and "path" keys, optionally a "class" key.
+        - incantations: A dictionary containing alias substitutions for import resolution. If provided, it is used to remap the first part of call_text before lookup. (default None)
+        
         Returns:
         A dictionary containing the resolved import information with the following keys:
         - "module": The module name extracted from imports data.
-        - "class": The class name extracted from imports data if available.
-        - "function": The function/method name extracted from the import call if available, None otherwise.
+        - "class": The class name extracted from imports data if available; otherwise None.
+        - "function": The function/method name extracted from the import call if available; None otherwise.
         - "path": The path to the module extracted from imports data.
-
-        Note:
-        - In case of a chained method call, the "function" key will hold the entire method call string.
-
+        
+        If the alias cannot be found in imports, an empty dictionary is returned.
+        
+        Notes:
+        - The method first splits call_text at the first dot to isolate an alias. If incantations is provided and contains this alias, the alias is substituted.
+        - If call_text contains no dot, the call_alias is mapped to the entire call_text in incantations (if incantations is provided), and no function/class details are extracted.
+        - When rest text exists after the alias, the method parses it to determine class and function details:
+            - If the first part ends with "()", it is treated as a class instantiation, and the class name is extracted.
+            - Otherwise, the first part is treated as a function or attribute.
+            - In case of chained method calls (multiple parts after the first dot), the entire chain is stored under the "function" key.
+        - This resolution enables the OSA Tool to accurately trace and document dependencies and calls within analyzed source code.
+        
         Example:
-        resolved_import = self._resolve_import("my_module.MyClass.some_method", "my_alias", imports_data)
+        resolved_import = OSA_TreeSitter._resolve_import("my_module.MyClass.some_method", "my_alias", imports_data)
         """
         # Split at the first dot to get alias and the rest of the call
         if "." in call_text:
@@ -423,25 +500,32 @@ class OSA_TreeSitter(object):
     def _resolve_method_calls(self, function_node: tree_sitter.Node, source_code: str, imports: dict) -> list:
         """
         Extract all function calls from a function node, filtering by import resolvability.
-
+        
         Returns only:
         - Regular functions: foo(), bar()
         - Self methods: self.method()
         - Class methods: ClassName.method()
-        - Optionally: calls resolvable through imports
-
+        - Optionally: calls resolvable through imports (determined via _resolve_import)
+        
         Excludes:
         - Nested calls within other calls (e.g., calls inside arguments)
         - Instance method calls: obj.method(), result.method()
-        - Internal nested function calls
-
+        - Internal nested function calls (calls inside nested function definitions are skipped)
+        - Calls from assignments that are not resolved to an import path
+        
         Parameters:
             - function_node: The tree_sitter.Node representing the function node to analyze.
-            - source_code: The source code of the function as a string.
-            - imports: A dictionary containing information about imports.
-
+            - source_code: The source code of the function as a string, used to extract call text via byte offsets.
+            - imports: A dictionary containing information about imports for resolution.
+        
         Returns:
-            list: A list of unique function/method names being called from the function node.
+            list: A sorted list of unique function/method names being called from the function node.
+            
+        Why:
+        - The method focuses on calls that are directly in the function body or resolvable via imports to identify dependencies and external interactions.
+        - It excludes nested and instance calls to avoid overcounting and to maintain a clear view of top-level or importable dependencies.
+        - Recursive traversal ensures all calls in the function block are captured, while skipping nested function definitions prevents internal calls from being included.
+        - Assignment nodes are specially checked to capture imported class instantiations (e.g., `obj = SomeClass()`), linking them to import resolution.
         """
         function_calls = set()
         alias_map = {}
@@ -492,13 +576,23 @@ class OSA_TreeSitter(object):
         return sorted(list(function_calls))
 
     def extract_structure(self, filename: str) -> list:
-        """Method extracts the structure of the occured file in the provided directory.
-
+        """
+        Extracts the structural elements of a given source code file and returns them in a structured dictionary.
+        
+        This method parses the specified file to identify and catalog its top-level components: imports, functions, and classes (including their methods and attributes). It handles both plain definitions and definitions that are preceded by decorators. The resulting structure is used by the OSA Tool to generate comprehensive documentation and analyze repository organization.
+        
         Args:
-            filename: name of the file occured in the provided directory.
-
+            filename: The path to the source code file to be analyzed.
+        
         Returns:
-            List containing occurring in file functions, classes, their start lines and methods
+            A dictionary containing two keys:
+                - "imports": A dictionary mapping imported module names (or aliases) to their resolved paths, as extracted from the file's import statements.
+                - "structure": A list of dictionaries, each representing a top-level function or class found in the file. Each entry includes details such as name, start line, docstring, and, for classes, their methods and attributes. Functions and classes that are decorated are recorded with their decorator list.
+        
+        Why:
+        - The method distinguishes between decorated and non-decorated definitions because decorators (like `@staticmethod`) affect how the subsequent definition should be interpreted and documented.
+        - It processes imports separately to enable later resolution of external references within the extracted structure.
+        - The output is structured to support downstream tasks like automated documentation generation, code understanding, and repository enhancement within the OSA Tool pipeline.
         """
         structure = {}
         structure["structure"] = []
@@ -529,13 +623,16 @@ class OSA_TreeSitter(object):
 
     @staticmethod
     def _get_docstring(block_node: tree_sitter.Node) -> str:
-        """Inner method to retrieve class or method's docstring.
-
+        """
+        Inner method to retrieve the docstring from a class or method node.
+        
+        This method extracts the first string literal found within a block node, which typically represents the docstring in Python source code. It is used to capture documentation strings for classes and methods during repository analysis.
+        
         Args:
-            block_node: an occured block node, containing class's methods.
-
+            block_node: A tree-sitter node representing a code block (e.g., class or method definition) that may contain a docstring.
+        
         Returns:
-            List of function/method's details.
+            The decoded docstring as a string, or None if no docstring is found.
         """
         docstring = None
         for child in block_node.children:
@@ -546,14 +643,19 @@ class OSA_TreeSitter(object):
         return docstring
 
     def _traverse_block(self, class_name: str, block_node: tree_sitter.Node, source_code: bytes, imports: dict) -> list:
-        """Inner method traverses occurring in file's tree structure "block" node.
-
+        """
+        Inner method that traverses a "block" node in the parsed syntax tree to extract method definitions.
+        
+        This method processes the children of a block node (typically representing a class body) to identify both decorated and undecorated function definitions. For each function definition found, it extracts detailed method information via `_extract_function_details`. Decorated definitions are handled by first collecting decorators before extracting the function details.
+        
         Args:
-            block_node: an occured block node, containing class's methods.
-            source_code: source code of the file in bytes.
-
+            class_name: The name of the containing class, used to annotate extracted method details.
+            block_node: A tree-sitter node representing a block (e.g., a class body) that contains method definitions.
+            source_code: The source code of the file as bytes, used to extract method source text.
+            imports: Dictionary of import information from the file, used to resolve method calls during extraction.
+        
         Returns:
-            List of function/method's details.
+            A list of dictionaries, each containing detailed information for one method (see `_extract_function_details` for structure).
         """
         methods = []
         for child in block_node.children:
@@ -582,15 +684,42 @@ class OSA_TreeSitter(object):
         dec_list: list = [],
         class_name: str = None,
     ) -> dict:
-        """Inner method extracts the details of "function_definition" node in file's tree structure.
-
+        """
+        Extract detailed information from a function_definition node in the parsed syntax tree.
+        
+        This method processes a function or method node to extract its structural components,
+        including its name, arguments, return type, source code, and related metadata. It is
+        used during repository analysis to build a comprehensive representation of functions
+        and methods for documentation generation.
+        
         Args:
-            function_node: an occured block node, containing class's methods details.
-            source_code: source code of the file in bytes.
-
+            function_node: The tree-sitter node representing a function or method definition.
+            source_code: The source code of the file as a string (not bytes).
+            imports: Dictionary containing import information for resolving method calls.
+            dec_list: List of decorators applied to the function. Defaults to empty list.
+            class_name: Name of the containing class if the function is a method; otherwise None.
+        
         Returns:
-            Dictionary containing method's/function's name, args, return type, start line
-            and source code.
+            Dictionary containing:
+                - class_name: Name of the containing class (or None for standalone functions)
+                - method_name: Name of the function/method
+                - decorators: List of decorator names
+                - docstring: Extracted docstring if present
+                - arguments: List of parameter names (including *args and **kwargs prefixes)
+                - return_type: Return type annotation as string
+                - start_line: Starting line number in the source file (1-indexed)
+                - source_code: Full source code of the function
+                - method_calls: Sorted list of unique function/method calls made within the function body
+        
+        Why:
+        - The method decodes source bytes to UTF-8 strings because tree-sitter nodes store
+          byte offsets, but the analysis requires text.
+        - It handles various parameter patterns (typed, default, splat) to correctly extract
+          argument names regardless of annotation style.
+        - Method calls are resolved using import information to identify external dependencies
+          and filter out unresolved or instance-based calls.
+        - The docstring is extracted from the first string literal in the function's block,
+          following Python convention.
         """
         method_name = function_node.child_by_field_name("name").text.decode("utf-8")
         start_line = function_node.start_point[0] + 1
@@ -659,13 +788,19 @@ class OSA_TreeSitter(object):
         }
 
     def analyze_directory(self, path: str) -> dict:
-        """Method analyzes provided directory.
-
+        """
+        Analyzes a directory or a single Python file, extracting structural information from each `.py` file found.
+        
         Args:
-            path: provided by user path to the scripts.
-
+            path: A filesystem path to a directory or a single `.py` file. If a directory is provided, all non-ignored `.py` files within it are processed recursively.
+        
         Returns:
-            Dictionary containing a filename and its source code's structure.
+            A dictionary where each key is a filename (string) and each value is the extracted structural dictionary for that file. The structure includes imports and top-level definitions (functions and classes) as returned by `extract_structure`. If the path is invalid or contains no `.py` files, an empty dictionary is returned.
+        
+        Why:
+        - The method distinguishes between directory and file inputs to handle both bulk analysis of a project and targeted analysis of a single script.
+        - It filters for `.py` files because the structural extraction is specific to Python source code.
+        - The internal status flag from `files_list` determines whether to update the current working directory, which is used for relative path resolution in subsequent processing steps.
         """
         results = {}
         files_list, status = self.files_list(path)
@@ -678,10 +813,17 @@ class OSA_TreeSitter(object):
         return results
 
     def show_results(self, results: dict) -> None:
-        """Method logs out the results of the directory analyze.
-
+        """
+        Method logs out the results of the directory analysis.
+        
         Args:
             results: dictionary containing a filename and its source code's structure.
+                Each key is a filename, and each value is a dictionary with a "structure" key.
+                The structure is a list of items, where each item is either a class or a function.
+                For classes, the item includes the class name, start line, docstring, and a list of methods.
+                For functions, the item includes details such as the function name, arguments, return type, start line, docstring, and source code.
+        
+        WHY: This method provides a human-readable log of the analyzed source code structure, making it easier to review the extracted classes, functions, methods, and their associated metadata (like docstrings and source code) for debugging or verification purposes.
         """
         logging.info(f"The provided path: '{self.cwd}'")
         for filename, structures in results.items():
@@ -708,10 +850,16 @@ class OSA_TreeSitter(object):
                     logging.info(f"        Source:\n{details['source_code']}")
 
     def log_results(self, results: dict) -> None:
-        """Method logs the results of the directory analyze into "examples/report.txt".
-
+        """
+        Logs the results of the directory analysis into "examples/report.txt".
+        
+        Creates a structured report summarizing the analyzed source code, including classes, functions, methods, their docstrings, and source code snippets. The report is saved in a fixed location relative to the current working directory.
+        
         Args:
-            results: dictionary containing a filename and its source code's structure.
+            results: A dictionary mapping filenames to their parsed source code structures. Each entry is expected to contain a "structure" key with a list of items representing classes or functions.
+        
+        Why:
+            This method provides a human-readable summary of the analysis for review or debugging purposes. It outputs details such as class and method signatures, line numbers, docstrings, and source code excerpts to help verify the accuracy of the parsed structure.
         """
         os.makedirs("examples", exist_ok=True)
         with open("examples/report.txt", "w", encoding="utf-8") as f:
@@ -744,24 +892,21 @@ class OSA_TreeSitter(object):
     def build_function_index(results: dict) -> dict:
         """
         Build an index of all functions and methods for quick lookup by name.
-
-        This allows retrieving source code of called functions without storing it in every reference.
-
+        
+        This allows retrieving source code of called functions without storing it in every reference. The index includes both standalone functions and class methods, with methods indexed under both their simple name and a 'class.method' format for unambiguous access.
+        
         Args:
-            results: Dictionary returned from analyze_directory() containing the parsed structure.
-
+            results: Dictionary returned from analyze_directory() containing the parsed structure. Each key is a filename, and each value contains the 'structure' list of parsed items (classes and functions).
+        
         Returns:
-            A dictionary mapping function names to their full details:
+            A dictionary mapping function names to their full details. For each entry, the value is a dictionary containing the original details from the parsed structure (such as 'source_code', 'arguments', 'docstring', 'return_type', 'start_line', etc.) augmented with metadata:
+            - For a class method: two entries are created: one under the method's simple name and another under 'class_name.method_name'. Both include the original method details plus 'file' and 'class' keys.
+            - For a standalone function: one entry is created under the function name, including the original details plus a 'file' key.
+            The returned dictionary has the form:
             {
-                'function_name': {
-                    'source_code': '...',
-                    'arguments': [...],
-                    'docstring': '...',
-                    'return_type': '...',
-                    'file': 'path/to/file.py',
-                    'start_line': 123,
-                    ...
-                }
+                'function_name': { ...details..., 'file': 'path/to/file.py' },
+                'class_name.method_name': { ...details..., 'file': 'path/to/file.py', 'class': 'class_name' },
+                ...
             }
         """
         function_index = {}

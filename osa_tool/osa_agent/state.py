@@ -13,6 +13,7 @@ class OSAState(BaseModel):
     Mutable workflow state shared by all agents in the OSA graph.
     """
 
+
     # User input
     repo_url: Optional[str] = None
     attachment: Optional[str] = None
@@ -73,12 +74,15 @@ class OSAState(BaseModel):
     def get_task(self, task_id: str) -> Optional[Task]:
         """
         Return a task from the plan by its id.
-
+        
         Args:
-            task_id: The task identifier (typically the operation name).
-
+            task_id: The task identifier (typically the operation name). The method searches through the plan's tasks for an exact match.
+        
         Returns:
-            The matching Task, or None if not found.
+            The matching Task, or None if not found. This allows callers to safely check for the existence of a task without raising an exception.
+        
+        Why:
+            The plan is a list of tasks, and this method provides a convenient lookup by identifier, which is essential for operations that need to reference or modify specific tasks within the plan.
         """
         for task in self.plan:
             if task.id == task_id:
@@ -86,6 +90,19 @@ class OSAState(BaseModel):
         return None
 
     def __str__(self):
+        """
+        Returns a string representation of the OSAState object.
+        
+        The method constructs a formatted, multi-line summary of the current state, designed for human-readable debugging and logging. It includes all key attributes of the state, such as session and repository identifiers, active request details, the current intent and task plan, and the status of the review cycle.
+        
+        Args:
+            self: The instance of the OSAState class.
+        
+        Returns:
+            str: A formatted string displaying the OSAState instance's attributes. The output is structured as a multi-line constructor-like format for clarity, listing each attribute on its own line with its current value. Specific formatting includes:
+                - `plan_tasks`: A list of task summaries formatted as "id: args=...".
+                - `missing_arguments`: A list of missing argument entries formatted as "task_id::field".
+        """
         plan_summary = [f"{t.id}: args={t.args}" for t in self.plan]
         missing_args_summary = [f"{item['task_id']}::{item['field']}" for item in self.missing_arguments]
 

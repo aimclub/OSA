@@ -8,8 +8,9 @@ from osa_tool.scheduler.workflow_manager import WorkflowManager
 class OSAConfig(BaseModel):
     """
     Global, read-only configuration.
-    Initialized once per session.
+        Initialized once per session.
     """
+
 
     config_manager: ConfigManager
     git_agent: GitAgent

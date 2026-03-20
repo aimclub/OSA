@@ -13,7 +13,22 @@ from osa_tool.operations.codebase.requirements_generation.requirements_generatio
 
 @pytest.fixture
 def mock_config():
-    """Mock configuration manager."""
+    """
+    Mock configuration manager for testing purposes.
+    
+    This function creates a MagicMock object that simulates the behavior of a configuration manager. It is used to provide consistent mock responses for configuration-related methods during unit tests, avoiding dependencies on actual configuration files or external services.
+    
+    Args:
+        None.
+    
+    Returns:
+        A MagicMock object configured with predefined return values for:
+        - `get_git_settings().repository`: Returns a test repository URL.
+        - `get_prompts().get()`: Returns a string template for merging requirements.
+    
+    Example of typical usage in tests:
+        The mock is set up so that `config_manager.get_git_settings().repository` yields "https://github.com/test/repo" and `config_manager.get_prompts().get()` yields "Merge {old_requirements} and {new_requirements}".
+    """
     config_manager = MagicMock()
     config_manager.get_git_settings.return_value.repository = "https://github.com/test/repo"
     config_manager.get_prompts.return_value.get.return_value = "Merge {old_requirements} and {new_requirements}"
@@ -22,7 +37,17 @@ def mock_config():
 
 @pytest.fixture
 def generator(mock_config):
-    """Create a generator instance with mocked dependencies."""
+    """
+    Create a RequirementsGenerator instance with mocked dependencies for testing.
+    
+    This method is used in unit tests to instantiate a RequirementsGenerator with its external dependencies patched, ensuring tests run in isolation without relying on actual filesystem paths or model-handling logic. It mocks the ModelHandlerFactory.build method to prevent real model initialization and patches parse_folder_name to return a fixed string, while also setting up a mocked repo_path with predefined behavior.
+    
+    Args:
+        mock_config: The configuration object to pass to the RequirementsGenerator constructor.
+    
+    Returns:
+        A RequirementsGenerator instance with mocked repo_path and patched external dependencies.
+    """
     with patch(
         "osa_tool.operations.codebase.requirements_generation.requirements_generation.ModelHandlerFactory.build"
     ):
@@ -38,6 +63,17 @@ def generator(mock_config):
 
 
 def test_get_existing_context_both_files(generator):
+    """
+    Verifies that the context generator correctly retrieves and formats content from both requirements.txt and pyproject.toml when both files exist.
+    
+    This test ensures that when both dependency files are present, the generator combines their contents into a single formatted context string, preserving the original dependency information for later use.
+    
+    Args:
+        generator: The RequirementsGenerator instance being tested. It provides the _get_existing_context method, which reads and formats the existing dependency files.
+    
+    Returns:
+        None.
+    """
     req_path = MagicMock()
     req_path.exists.return_value = True
     req_path.read_text.return_value = "old-reqs==1.0"
@@ -55,6 +91,17 @@ def test_get_existing_context_both_files(generator):
 
 
 def test_get_existing_context_none(generator):
+    """
+    Verifies that _get_existing_context returns an empty string when neither the requirements file nor the pyproject.toml file exists.
+    
+    This test ensures that the method correctly handles the scenario where no dependency files are present, returning an empty context to indicate no existing dependencies to preserve.
+    
+    Args:
+        generator: The RequirementsGenerator instance being tested.
+    
+    Returns:
+        None.
+    """
     req_path = MagicMock()
     req_path.exists.return_value = False
     pyproj_path = MagicMock()
@@ -66,6 +113,20 @@ def test_get_existing_context_none(generator):
 
 @patch("subprocess.run")
 def test_run_pipreqs_success_first_try(mock_subprocess, generator):
+    """
+    Tests that the _run_pipreqs method successfully executes on the first attempt.
+    
+    This test verifies that when pipreqs runs without error (returncode 0), the method
+    returns the expected result and includes the correct command-line argument for
+    notebook scanning when requested.
+    
+    Args:
+        mock_subprocess: A mock object representing the subprocess.run function.
+        generator: An instance of the RequirementsGenerator class being tested.
+    
+    Returns:
+        None.
+    """
     mock_subprocess.return_value = MagicMock(returncode=0)
 
     result = generator._run_pipreqs(scan_notebooks=True)
@@ -77,6 +138,18 @@ def test_run_pipreqs_success_first_try(mock_subprocess, generator):
 
 @patch("subprocess.run")
 def test_run_pipreqs_fail(mock_subprocess, generator):
+    """
+    Tests that _run_pipreqs raises a subprocess.CalledProcessError when the underlying command fails.
+    
+    This test ensures that the method properly propagates failures from the pipreqs subprocess.
+    
+    Args:
+        mock_subprocess: A mock object representing the subprocess.run function.
+        generator: An instance of the RequirementsGenerator class being tested.
+    
+    Raises:
+        subprocess.CalledProcessError: Expected when the pipreqs command execution returns a non-zero exit code.
+    """
     mock_subprocess.side_effect = subprocess.CalledProcessError(1, "cmd", stderr="error")
 
     with pytest.raises(subprocess.CalledProcessError):
@@ -91,7 +164,25 @@ def test_run_pipreqs_fail(mock_subprocess, generator):
 )
 def test_generate_success_simple(mock_refine, mock_run_pipreqs, generator):
     """
-    Happy path: Repo exists, pipreqs works first time, context found -> LLM called.
+    Tests the successful generation of requirements via the happy path scenario.
+    
+    This test simulates the ideal case where:
+    1. The repository exists.
+    2. The `pipreqs` command runs successfully on the first attempt.
+    3. A requirements file is found in the repository.
+    4. The LLM refinement step is subsequently called.
+    
+    WHY: This test validates the core, error-free workflow of the requirements generation process,
+    ensuring that when all preconditions are met and external tools succeed, the method correctly
+    executes the full pipeline and returns the expected result.
+    
+    Args:
+        mock_refine: Mock of the `_refine_with_llm` method.
+        mock_run_pipreqs: Mock of the `_run_pipreqs` method.
+        generator: The RequirementsGenerator instance under test.
+    
+    Returns:
+        None. This is a test method; assertions are made within the body.
     """
     generator.repo_path.exists.return_value = True
 
@@ -130,7 +221,22 @@ def test_generate_success_simple(mock_refine, mock_run_pipreqs, generator):
 )
 def test_generate_retry_logic(mock_run_pipreqs, generator):
     """
-    Scenario: Pipreqs fails with notebooks, retries without notebooks and succeeds.
+    Test the retry logic in requirements generation when pipreqs fails due to notebook processing.
+    
+    This test verifies that if `pipreqs` fails while scanning notebooks, the generator will
+    retry the operation without scanning notebooks and succeed. It ensures the retry mechanism
+    works correctly and that appropriate events are recorded for each attempt.
+    
+    Args:
+        mock_run_pipreqs: Mock of the internal `_run_pipreqs` method, used to simulate pipreqs failures and successes.
+        generator: An instance of the RequirementsGenerator fixture, configured for testing.
+    
+    The test sets up a scenario where:
+    1. The first call to `_run_pipreqs` (with `scan_notebooks=True`) raises a subprocess error.
+    2. The second call (with `scan_notebooks=False`) completes successfully.
+    It then validates that:
+    - `_run_pipreqs` is called exactly twice, with the expected arguments.
+    - Two events are recorded: a FAILED event for the notebook‑scan attempt and a GENERATED event for the no‑notebook attempt.
     """
     generator.repo_path.exists.return_value = True
 
@@ -163,7 +269,18 @@ def test_generate_retry_logic(mock_run_pipreqs, generator):
     "osa_tool.operations.codebase.requirements_generation.requirements_generation.RequirementsGenerator._run_pipreqs"
 )
 def test_generate_fatal_failure(mock_run_pipreqs, generator):
-    """Scenario: Pipreqs fails both times."""
+    """
+    Test the scenario where pipreqs fails in both attempts during requirements generation.
+    
+    This test verifies that the generator correctly handles a fatal failure when pipreqs cannot produce a requirements.txt file. It simulates two consecutive subprocess errors and ensures the generator raises the appropriate exception and logs failure events.
+    
+    Args:
+        mock_run_pipreqs: Mocked method for running pipreqs, configured to raise CalledProcessError twice.
+        generator: The RequirementsGenerator instance under test, with mocked repository path and file objects.
+    
+    Why:
+        This test ensures the generator does not silently ignore repeated pipreqs failures and properly propagates the error, while also recording the failure event for monitoring or logging purposes.
+    """
     generator.repo_path.exists.return_value = True
 
     req_file_mock = MagicMock()
@@ -185,7 +302,20 @@ def test_generate_fatal_failure(mock_run_pipreqs, generator):
 
 
 def test_refine_with_llm_writes_file(generator):
-    """Test that _refine_with_llm actually writes to the file."""
+    """
+    Test that _refine_with_llm writes the merged dependencies to the requirements file and logs an event.
+    
+    This test verifies that the `_refine_with_llm` method correctly processes a requirements file by:
+    1. Reading the existing requirements content.
+    2. Sending the content to the LLM for merging and parsing.
+    3. Writing the LLM's merged dependency list back to the file.
+    4. Recording a refinement event.
+    
+    Args:
+        generator: A test fixture providing a RequirementsGenerator instance with mocked dependencies.
+    
+    The test uses mocked objects to simulate file reading and LLM responses, ensuring that the file is written with the correct merged content and that an event of kind `EventKind.REFINED` is appended to the generator's events list.
+    """
     # Setup
     req_path = MagicMock()
     req_path.read_text.return_value = "new-lib"
@@ -204,7 +334,16 @@ def test_refine_with_llm_writes_file(generator):
 
 
 def test_run_pipreqs_subprocess(generator):
-    """Test actual subprocess call composition."""
+    """
+    Test actual subprocess call composition for pipreqs execution.
+    
+    This test verifies that the `_run_pipreqs` helper method correctly constructs the subprocess command arguments based on the `scan_notebooks` parameter. It ensures that the `--scan-notebooks` flag is included when `scan_notebooks=True` and omitted when `scan_notebooks=False`, and that the `--force` flag and repository path are properly included in the command.
+    
+    Args:
+        generator: A test fixture or instance providing the `_run_pipreqs` method and `repo_path` attribute.
+    
+    The test uses mocking to intercept the subprocess call and inspect the constructed arguments without actually running pipreqs.
+    """
     with patch("subprocess.run") as mock_sp:
         mock_sp.return_value = MagicMock(stdout="ok")
 

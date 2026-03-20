@@ -48,6 +48,32 @@ HEADERS = {
 
 @pytest.mark.parametrize("mock_config_manager", ["github", "gitlab", "gitverse"], indirect=True)
 def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_factory, repo_info):
+    """
+    Tests successful loading of platform-specific repository metadata.
+    
+    This test verifies that the appropriate metadata loader class correctly
+    fetches and parses repository data from the platform's API endpoint.
+    It mocks the HTTP request and environment variables to simulate a
+    successful API response, then compares the parsed result with expected
+    metadata.
+    
+    The test is parameterized to run for multiple platforms (GitHub, GitLab, GitVerse)
+    via the `mock_config_manager` fixture, ensuring each platform's loader behaves
+    correctly under a successful API call.
+    
+    Args:
+        mock_api_raw_data: Mock raw API response data for the repository.
+        mock_requests_response_factory: Fixture providing a mock HTTP response factory.
+        repo_info: Tuple containing platform name, repository owner, repository name,
+            and repository URL.
+    
+    Why:
+        This test ensures that each platform-specific metadata loader can successfully
+        retrieve and parse repository data from its respective API. It validates the
+        integration of the loader with the platform's API endpoint, including proper
+        URL construction, header usage, and token handling, by mocking the external
+        HTTP request to avoid network dependencies and focus on the loader's logic.
+    """
     # Arrange
     platform, owner, repo_name, repo_url = repo_info
     raw_data = mock_api_raw_data
@@ -79,6 +105,28 @@ def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_fa
 @pytest.mark.parametrize("mock_config_manager", ["github", "gitlab", "gitverse"], indirect=True)
 @pytest.mark.parametrize("status_code", [401, 403, 404, 500])
 def test_load_data_http_errors(status_code, mock_requests_response_factory, repo_info):
+    """
+    Tests that load_data raises an exception for specific HTTP error status codes.
+    
+    This test simulates HTTP error responses (e.g., 401, 403, 404, 500) from a
+    remote repository platform and verifies that the platform-specific loader's
+    `load_data` method raises an exception. The test is parameterized to run for
+    multiple platforms (GitHub, GitLab, Gitverse) and each specified status code.
+    
+    Args:
+        status_code: The HTTP status code to simulate in the mock response.
+        mock_requests_response_factory: Fixture providing a factory to create mock
+            HTTP responses.
+        repo_info: A tuple containing platform identifier and repository URL
+            information used to select the correct loader class.
+    
+    Why:
+        This test ensures that the loader properly handles and propagates HTTP errors
+        encountered during metadata retrieval. It validates that the loader does not
+        silently ignore failures and that appropriate exceptions are raised for
+        client and server errors, which is critical for robust error handling in the
+        documentation pipeline.
+    """
     # Arrange
     platform, _, _, repo_url = repo_info
     mock_response = mock_requests_response_factory(status_code=status_code)

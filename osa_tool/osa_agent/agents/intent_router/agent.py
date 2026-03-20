@@ -11,31 +11,34 @@ from osa_tool.utils.utils import rich_section
 
 class IntentRouterAgent(BaseAgent):
     """
-    Agent responsible for intent and task scope detection.
-
-    The IntentRouterAgent:
-    - determines the user's intent and task scope using an LLM
-    - requests clarification if the intent confidence is low
-    - updates the workflow state accordingly
+    Agent responsible for detecting user intent and determining the appropriate scope of tasks to be executed.
+    
+        The IntentRouterAgent:
+        - determines the user's intent and task scope using an LLM
+        - requests clarification if the intent confidence is low
+        - updates the workflow state accordingly
     """
+
 
     name = "IntentRouter"
 
     def run(self, state: OSAState) -> OSAState:
         """
         Route the user's request to the appropriate workflow path.
-
+        
         This method:
-        1. Handles user clarification if the system is waiting for input
-        2. Uses an LLM to detect intent and task scope
-        3. Updates state status based on confidence score
-        4. Decides whether to continue analysis or wait for user input
-
+        1. Handles user clarification if the system is waiting for input from this agent.
+        2. Uses an LLM to detect the user's intent and task scope.
+        3. Updates the state's status based on the LLM's confidence score.
+        4. Decides whether to proceed with analysis or request user clarification.
+        
+        WHY: The agent determines the user's goal (e.g., documentation generation, code analysis) and ensures the request is sufficiently clear before advancing the workflow. Low‑confidence or ambiguous intents trigger a clarification loop to avoid incorrect downstream processing.
+        
         Args:
-            state (OSAState): Current workflow state.
-
+            state: Current workflow state. If the state indicates this agent is waiting for user clarification, the method collects the user's clarified request and optional attachment before proceeding.
+        
         Returns:
-            OSAState: Updated state with detected intent and routing status.
+            Updated state with detected intent, task scope, confidence score, and a new status. The status is set to ANALYZING if the intent is clear (confidence ≥ 0.5 and intent not "unknown"); otherwise, it is set to WAITING_FOR_USER and clarification fields are populated in the state.
         """
         rich_section("Intent Router Agent")
         state.active_agent = self.name
