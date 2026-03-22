@@ -64,7 +64,7 @@ class ReportGenerator:
                 [
                     *self.__build_header(type_),
                     Spacer(0, 40),
-                    self.__build_brief(experiments),
+                    *self.__build_brief(experiments),
                     Spacer(0, 20),
                     *self.__build_table(experiments),
                 ],
@@ -143,7 +143,7 @@ class ReportGenerator:
         return title_line1, title_line2
 
     @staticmethod
-    def __build_brief(experiments) -> Paragraph:
+    def __build_brief(experiments) -> tuple:
         """
         Builds the first section of the report with correspondence and percentage metrics.
 
@@ -151,7 +151,7 @@ class ReportGenerator:
             experiments (tuple[Experiments])
 
         Returns:
-            Paragraph: Paragraph elements for the section.
+            tuple[Paragraph]: Paragraph elements for the section.
         """
         styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(
@@ -164,7 +164,8 @@ class ReportGenerator:
         # TODO: extract calculations to the separate module, + place for constants
         percentages = int(sum(e.correspondence_percent for e in experiments) / len(experiments) * 100)
         percentages_text = Paragraph(f"<b>Correspondence percentages: {percentages}%</b>", normal_style)
-        return percentages_text
+        num_experiments = Paragraph(f"<b>Number of experiments found: {len(experiments)}</b>", normal_style)
+        return percentages_text, num_experiments
 
     @staticmethod
     def __build_conclusion(self, conclusion: str) -> tuple:
@@ -196,5 +197,6 @@ class ReportGenerator:
         return (Paragraph(f"""<b>Experiment {i + 1}.</b>
                 <b>Formulation stated: </b><p>"{experiment.description_from_paper}"</p>
                 <b>Implementation found: </b><p>{experiment.impl_src_path}</p>
-                <b>Missing components: </b><p>{experiment.missing}</p>
+                <b>Missing components: </b><p>{experiment.missing if bool(experiment.missing) else "None"}</p>
+                <b>Correspondence: </b><p>{experiment.correspondence_percent*100}%</p>
                 """) for i, experiment in enumerate(experiments))
