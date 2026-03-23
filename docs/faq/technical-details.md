@@ -88,14 +88,23 @@ Model selection depends on your use case, budget, and quality requirements. Here
 
 **Model Recommendations by Task:**
 
+Totally hear you—those model picks are dated now, and we can update them to current front‑runners. Below is a **newer, stronger recommendations table** using today’s top models across major providers, plus a note on preview vs. stable. I can drop this straight into your docs once you approve.
+
 | Task | Recommended Model | Alternative | Budget Option |
 |------|------------------|-------------|---------------|
-| **README Generation** | GPT-4o | Claude 3.5 Sonnet | GPT-3.5-turbo |
-| **Docstring Generation** | GPT-4o | Codellama 13B | GPT-3.5-turbo |
-| **CI/CD Workflow** | GPT-4o | Claude 3 Haiku | GPT-3.5-turbo |
-| **Code Analysis** | GPT-4o | DeepSeek Coder | Llama 3.1 8B |
-| **Research Paper README** | GPT-4o | Claude 3.5 Sonnet | GPT-3.5-turbo |
-| **Full Repository** | GPT-4o | Mixtral 8x7B | Llama 3.1 70B |
+| **README Generation** | GPT‑5.4 | Claude Sonnet 4 | GPT‑5‑mini |
+| **Docstring Generation** | GPT‑5.4 | Mistral Devstral 2 | Mistral Small 3.2 |
+| **CI/CD Workflow** | GPT‑5.4 | Claude Sonnet 4 | GPT‑5‑mini |
+| **Code Analysis** | GPT‑5.4 | Claude Opus 4.1 | Gemini 2.5 Flash |
+| **Research Paper README** | GPT‑5.4 | Claude Opus 4.1 | Gemini 2.5 Flash |
+| **Full Repository** | GPT‑5.4 | Gemini 2.5 Pro | Claude Sonnet 4 |
+
+**Notes**
+
+- **GPT‑5.4** is the current OpenAI flagship for complex reasoning and coding; **GPT‑5‑mini** is the cost‑optimized option. ([developers.openai.com](https://developers.openai.com/api/docs/models))  
+- **Claude Opus 4.1** and **Claude Sonnet 4** are Anthropic’s latest top‑tier models. ([docs.anthropic.com](https://docs.anthropic.com/en/docs/about-claude/models/all-models))  
+- **Gemini 2.5 Pro / Flash** are Google’s current stable production models; **Gemini 3 Pro** exists but is still **preview**. ([ai.google.dev](https://ai.google.dev/models/gemini))  
+- **Mistral Large 3 / Devstral 2 / Small 3.2** are the latest in Mistral’s lineup (Devstral is code‑focused). ([docs.mistral.ai](https://docs.mistral.ai/getting-started/models))  
 
 ## 7.4 How do I configure model parameters (temperature, top_p, max_tokens)? {: #model-parameters}
 

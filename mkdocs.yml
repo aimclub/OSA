@@ -39,18 +39,88 @@ nav:
   - Scheduler: scheduler/index.md
   - Workflow Generator: workflow-generator/index.md
   - API Reference:
-      - Git Agent: core/git_agent/git_agent.md
-      - Model Handler: core/llm/lmm.md
+      - Core:
+          - Git Agent: core/git_agent/git_agent.md
+          - Git Metadata: api/core/git/metadata.md
+          - Model Handler: core/llm/llm.md
+          - Models:
+              - Agent Status: api/core/models/agent_status.md
+              - Event: api/core/models/event.md
+              - Task: api/core/models/task.md
+      - Config:
+          - OSA Config: api/config/osa_config.md
+          - Settings: api/config/settings.md
+      - Operations:
+          - Catalog: api/operations/operations_catalog.md
+          - Registry: api/operations/registry.md
+          - Analysis:
+              - Repository Report Generator: api/operations/analysis/repository_report/report_generator.md
+              - Repository Report Maker: api/operations/analysis/repository_report/report_maker.md
+              - Repository Report Validation: api/operations/analysis/repository_report/response_validation.md
+              - Repository Code Analyzer: api/operations/analysis/repository_validation/code_analyzer.md
+              - Repository Doc Validator: api/operations/analysis/repository_validation/doc_validator.md
+              - Repository Paper Validator: api/operations/analysis/repository_validation/paper_validator.md
+              - Repository Validation Report Generator: api/operations/analysis/repository_validation/report_generator.md
+          - Codebase:
+              - Directory Translation: api/operations/codebase/directory_translation/dirs_and_files_translator.md
+              - Docstring Generation:
+                  - Docgen: api/operations/codebase/docstring_generation/docgen.md
+                  - Docstring Generation: api/operations/codebase/docstring_generation/docstring_generation.md
+                  - OSA Tree Sitter: api/operations/codebase/docstring_generation/osa_treesitter.md
+                  - Topology: api/operations/codebase/docstring_generation/topology.md
+              - Notebook Conversion: api/operations/codebase/notebook_conversion/notebook_converter.md
+              - Organization: api/operations/codebase/organization/repo_organizer.md
+              - Requirements Generation: api/operations/codebase/requirements_generation/requirements_generation.md
+          - Docs:
+              - About Generator: api/operations/docs/about_generation/about_generator.md
+              - Community Docs:
+                  - Community: api/operations/docs/community_docs_generation/community.md
+                  - Contributing: api/operations/docs/community_docs_generation/contributing.md
+                  - Docs Run: api/operations/docs/community_docs_generation/docs_run.md
+                  - License Generation: api/operations/docs/community_docs_generation/license_generation.md
+              - README Generation:
+                  - README Core: api/operations/docs/readme_generation/readme_core.md
+                  - README Base Builder: api/operations/docs/readme_generation/generator/base_builder.md
+                  - README Builder: api/operations/docs/readme_generation/generator/builder.md
+                  - README Builder Article: api/operations/docs/readme_generation/generator/builder_article.md
+                  - README Header: api/operations/docs/readme_generation/generator/header.md
+                  - README Installation: api/operations/docs/readme_generation/generator/installation.md
+                  - LLM Service Model: api/operations/docs/readme_generation/models/llm_service.md
+      - Agents:
+          - Base: api/osa_agent/base.md
+          - Context: api/osa_agent/context.md
+          - Graph: api/osa_agent/graph.md
+          - State: api/osa_agent/state.md
+          - Executor Agent: api/osa_agent/agents/executor/agent.md
+          - Finalizer Agent: api/osa_agent/agents/finalizer/agent.md
+          - Finalizer Models: api/osa_agent/agents/finalizer/models.md
+          - Intent Router Agent: api/osa_agent/agents/intent_router/agent.md
+          - Intent Router Models: api/osa_agent/agents/intent_router/models.md
+          - Planner Agent: api/osa_agent/agents/planner/agent.md
+          - Planner Models: api/osa_agent/agents/planner/models.md
+          - Repo Analysis Agent: api/osa_agent/agents/repo_analysis/agent.md
+          - Reviewer Agent: api/osa_agent/agents/reviewer/agent.md
+          - Reviewer Models: api/osa_agent/agents/reviewer/models.md
+      - Scheduler:
+          - Scheduler: api/scheduler/scheduler.md
+          - Plan: api/scheduler/plan.md
+          - Workflow Manager: api/scheduler/workflow_manager.md
+          - Response Validation: api/scheduler/response_validation.md
+      - Workflow:
+          - Workflow Generator: api/workflow/workflow_generator.md
+      - Tools:
+          - Repository Analysis:
+              - Dependencies: api/tools/repository_analysis/dependencies.md
+              - Documentation: api/tools/repository_analysis/documentation.md
+              - Models: api/tools/repository_analysis/models.md
+              - Repo Analyzer: api/tools/repository_analysis/repo_analyzer.md
+              - Sourcerank: api/tools/repository_analysis/sourcerank.md
+              - Testing: api/tools/repository_analysis/testing.md
       - OSA Tree Sitter:
           - core/osatreesitter/osatreesitter.md
           - Documentation Generator: core/osatreesitter/docgen.md
 
 repo_url: https://github.com/aimclub/OSA
-
-extra:
-  social:
-    - icon: fontawesome/brands/github
-      link: https://github.com/aimclub/OSA
 
 markdown_extensions:
   - admonition

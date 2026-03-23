@@ -134,7 +134,7 @@ OSA has been published and presented at several venues:
 | Language   | Publication                                                              | Link                                                                                                                             |
 |------------|--------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
 | 🇬🇧 English | Automate Your Coding with OSA – ITMO-Made AI Assistant for Researchers   | [ITMO News](https://news.itmo.ru/en/news/14282)                                                                                  |
-| 🇬🇧 English | An LLM-Powered Tool for Enhancing Scientific Open-Source Repositories    | [ICML 2025 Workshop]()                                                                                                           |
+| 🇬🇧 English | An LLM-Powered Tool for Enhancing Scientific Open-Source Repositories    | [ICML 2025 Workshop](https://openreview.net/pdf?id=lrWseP67ab)                                                                                                           |
 | 🇬🇧 English | An End-to-End Guide to Beautifying Your Open-Source Repo with Agentic AI | [Towards Data Science](https://towardsdatascience.com/an-end-to-end-guide-to-beautifying-your-open-source-repo-with-agentic-ai/) |
 | 🇷🇺 Russian | OSA: ИИ-помощник для разработчиков научного open source кода             | [Habr](https://habr.com/ru/companies/spbifmo/articles/906018)                                                                    |
 
@@ -148,11 +148,11 @@ The OSA community consists of developers, researchers, and users who contribute 
 
 | Platform | Purpose | Link |
 |----------|---------|------|
-| 💬 **Telegram Chat** | Ask questions, get help, share news | [@OSA_helpdesk](https://t.me/OSA_helpdesk) |
 | 🐙 **GitHub Repository** | Report issues, contribute code, view PRs | [github.com/aimclub/OSA](https://github.com/aimclub/OSA) |
 | 📚 **Documentation** | Learn about API, features, and usage | [aimclub.github.io/OSA](https://aimclub.github.io/OSA/) |
-| 🌐 **Open-source-ops** | Related tools, content, and best practices | [github.com/aimclub/open-source-ops](https://github.com/aimclub/open-source-ops) |
 | 🎬 **Video Demo** | Watch OSA in action | [YouTube](https://www.youtube.com/watch?v=LDSb7JJgKoY) |
+| 🌐 **Open-source-ops** | Related tools, content, and best practices | [github.com/aimclub/open-source-ops](https://github.com/aimclub/open-source-ops) |
+| 💬 **Telegram Chat** | Ask questions, get help, share news | [@OSA_helpdesk](https://t.me/OSA_helpdesk) |
 
 **Community Benefits:**
 

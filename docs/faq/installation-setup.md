@@ -22,15 +22,6 @@ OSA has minimal system requirements and runs on most modern systems.
 | **Docker** | Containerized deployment | If using Docker installation method |
 | **GPU** | Local LLM inference | Only if running local models (Ollama, etc.) |
 
-**Platform-Specific Notes:**
-
-| Platform | Considerations |
-|----------|----------------|
-| **Linux** | ✅ Best supported, recommended for production |
-| **macOS** | ✅ Fully supported, works with Apple Silicon |
-| **Windows** | ✅ Supported, use PowerShell or WSL for best experience |
-| **WSL2** | ✅ Recommended for Windows users |
-
 ## 2.2 How do I install OSA? {: #how-to-install }
 
 OSA can be installed in several ways depending on your needs. Here's the quick start:
@@ -49,26 +40,34 @@ pip install osa_tool
 | 2️⃣ | Install OSA | `pip install osa_tool` |
 | 3️⃣ | Create .env file | Store API keys and tokens |
 | 4️⃣ | Set environment variables | `export OPENAI_API_KEY=your_key` |
-| 5️⃣ | Verify installation | `python -m osa_tool.run --help` |
-| 6️⃣ | Run OSA | `python -m osa_tool.run -r <repository_url>` |
+| 5️⃣ | Verify installation | `osa-tool --help` |
+| 6️⃣ | Run OSA | `osa-tool -r <repository_url>` |
 
 **Quick Verification:**
 
 ```bash
 # Check if OSA is installed correctly
-python -c "import osa_tool; print(osa_tool.__version__)"
+python -c "import importlib.metadata as m; print(m.version('osa_tool'))"
+```
+
+or
+
+```bash
+pip show osa_tool
 ```
 
 ## 2.3 What installation methods are available?
 
 OSA supports multiple installation methods to fit different use cases:
 
+OSA supports multiple installation methods to fit different use cases:
+
 | Method | Best For | Pros | Cons |
 |--------|----------|------|------|
-| **📦 PyPI (pip)** | Most users, quick setup | ✅ Easy, fast, auto-dependencies | ⚠️ Less customization |
+| **📦 [PyPI (pip)](https://pypi.org/project/osa-tool/)** | Most users, quick setup | ✅ Easy, fast, auto-dependencies | ⚠️ Less customization |
+| **🌐 [Web GUI](https://osa.nsslab.onti.actcognitive.org/)** | Non-technical users | ✅ No installation required | ⚠️ Limited to ITMO-hosted instance |
 | **🔧 Source Build** | Developers, contributors | ✅ Full control, latest features | ⚠️ Manual dependency management |
 | **🐳 Docker** | Production, consistent environments | ✅ Isolated, reproducible | ⚠️ Larger footprint, Docker knowledge needed |
-| **🌐 Web GUI** | Non-technical users | ✅ No installation required | ⚠️ Limited to ITMO-hosted instance |
 
 ## 2.4 How do I install using pip?
 
@@ -80,17 +79,11 @@ Installing via PyPI is the recommended method for most users.
 # Step 1: Ensure you have Python 3.11+
 python --version
 
-# Step 2: (Optional) Create a virtual environment
-python -m venv osa_env
-source osa_env/bin/activate  # Linux/macOS
-# OR
-osa_env\Scripts\activate     # Windows
-
-# Step 3: Install OSA from PyPI
+# Step 2: Install OSA from PyPI
 pip install osa_tool
 
-# Step 4: Verify installation
-python -m osa_tool.run --help
+# Step 3: Verify installation
+osa_tool --help
 ```
 
 **Upgrade to Latest Version:**
@@ -122,7 +115,13 @@ Building from source is recommended for developers who want to contribute or use
 git clone https://github.com/aimclub/OSA
 cd OSA
 
-# Step 2: Choose your dependency manager
+# Step 2: Create a virtual environment
+python -m venv osa_env
+source osa_env/bin/activate  # Linux/macOS
+# OR
+osa_env\Scripts\activate     # Windows
+
+# Step 3: Choose your dependency manager
 
 # Option A: Using pip
 pip install -r requirements.txt
@@ -130,7 +129,7 @@ pip install -r requirements.txt
 # Option B: Using poetry (recommended for development)
 poetry install
 
-# Step 3: Verify installation
+# Step 4: Verify installation
 python -m osa_tool.run --help
 ```
 
