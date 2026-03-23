@@ -1,7 +1,7 @@
 # FAQ
 >
 > **Last Updated:** March 2026  
-> **Version:** OSA 1.x  
+> **Version:** OSA 0.2.7  
 > **Repository:** [github.com/aimclub/OSA](https://github.com/aimclub/OSA)
 
 ---

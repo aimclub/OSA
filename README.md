@@ -324,11 +324,13 @@ If you use this software, please cite it as below.
 
 ### BibTeX format
 
+```bibtex
     @inproceedings{nikitinllm,
     title={An LLM-Powered Tool for Enhancing Scientific Open-Source Repositories},
     author={Nikitin, Nikolay and Getmanov, Andrey and Popov, Zakhar and 
         Ulyanova Ekaterina and Aksenkin, Yaroslav and 
         Sokolov, Ilya and Boukhanovsky, Alexander},
     booktitle={Championing Open-source DEvelopment in ML Workshop@ ICML25}}
+```
 
 ---

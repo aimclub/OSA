@@ -263,7 +263,7 @@ Championing Open-source DEvelopment in ML Workshop@ ICML25.
     author={Nikitin, Nikolay and Getmanov, Andrey and Popov, Zakhar and 
         Ulyanova Ekaterina and Aksenkin, Yaroslav and 
         Sokolov, Ilya and Boukhanovsky, Alexander},
-    booktitle={Championing Open-source DEvelopment in ML Workshop@ ICML25}
+    booktitle={Championing Open-source DEvelopment in ML Workshop@ ICML25}}
 ```
 
 **Example Repository Badge:**
