@@ -48,6 +48,8 @@ refine_readme = false
 requirements = false
 organize = false
 about = false
+validate_paper = false
+validate_doc = false
 
 #Workflow Settings
 [workflows]
