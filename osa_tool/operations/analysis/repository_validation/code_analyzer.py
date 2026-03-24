@@ -6,7 +6,6 @@ from rich.progress import track
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
-from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
 from osa_tool.operations.docs.readme_generation.utils import read_file
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
@@ -50,7 +49,6 @@ class CodeAnalyzer:
         self.model_settings = self.config_manager.get_model_settings("validation")
         self.prompts = self.config_manager.get_prompts()
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
-        self.notebook_convertor = NotebookConverter()
         self.sourcerank = SourceRank(self.config_manager)
         self.tree = self.sourcerank.tree
 
@@ -71,10 +69,6 @@ class CodeAnalyzer:
             if self.__is_sourcefile(filename):
                 yield str(repo_path.joinpath(filename))
                 continue
-            if filename.endswith(".ipynb"):
-                logger.debug("Found .ipynb file, converting ...")
-                self.notebook_convertor.convert_notebook(str(repo_path.joinpath(filename)))
-                yield str(repo_path.joinpath(filename.replace(".ipynb", ".py")))
 
     @classmethod
     def __is_blacklisted(cls, filename: str) -> bool:

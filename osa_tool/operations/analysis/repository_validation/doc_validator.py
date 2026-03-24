@@ -53,27 +53,35 @@ class DocValidator:
 
     def run(self) -> dict:
         try:
-            content = asyncio.run(self.validate())
-            if content:
-                va_re_gen = ValidationReportGenerator(self.config_manager, self.git_agent.metadata)
-                va_re_gen.build_pdf("Document", content)
-                self.events.append(OperationEvent(kind=EventKind.GENERATED, target=va_re_gen.filename))
-                if self.create_fork and os.path.exists(va_re_gen.output_path):
-                    self.git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
-                    self.events.append(OperationEvent(kind=EventKind.UPLOADED, target=va_re_gen.filename))
-
-                return {"result": {"report": va_re_gen.filename}, "events": self.events}
-            else:
-                logger.warning("Document validation returned no content. Skipping report generation.")
-                self.events.append(
-                    OperationEvent(kind=EventKind.SKIPPED, target="Document validation", data={"reason": "no content"})
-                )
-                return {"result": None, "events": self.events}
+            return asyncio.run(self._run_async())
         except ValueError as e:
             self.events.append(
                 OperationEvent(kind=EventKind.FAILED, target="Document validation", data={"error": str(e)})
             )
             return {"result": {"error": str(e)}, "events": self.events}
+
+    async def _run_async(self) -> dict:
+        content = await self.validate()
+        if content:
+            va_re_gen = ValidationReportGenerator(self.config_manager, self.git_agent.metadata)
+            va_re_gen.build_pdf("Document", content)
+
+            self.events.append(OperationEvent(kind=EventKind.GENERATED, target=va_re_gen.filename))
+
+            if self.create_fork and os.path.exists(va_re_gen.output_path):
+                self.git_agent.upload_report(va_re_gen.filename, va_re_gen.output_path)
+                self.events.append(OperationEvent(kind=EventKind.UPLOADED, target=va_re_gen.filename))
+
+            return {"result": {"report": va_re_gen.filename}, "events": self.events}
+        logger.warning("Document validation returned no content. Skipping report generation.")
+        self.events.append(
+            OperationEvent(
+                kind=EventKind.SKIPPED,
+                target="Document validation",
+                data={"reason": "no content"},
+            )
+        )
+        return {"result": None, "events": self.events}
 
     def _describe_image(self, image_path: str):
         base64_image = self._encode_image(image_path)
@@ -114,7 +122,7 @@ class DocValidator:
             return result
         except Exception as e:
             logger.error(f"Error while validating doc against repo: {e}")
-            return None
+            raise
 
     async def process_doc(self) -> str:
         """
