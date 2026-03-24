@@ -12,20 +12,22 @@ def test_readme_agent_standard_mode(
     mock_config_manager,
     mock_repository_metadata,
 ):
-    """Graph is invoked and result dict has correct format."""
+    # Arrange
     mock_graph = MagicMock()
     mock_build_graph.return_value = mock_graph
     mock_graph.invoke.return_value = {
         "events": [OperationEvent(kind=EventKind.GENERATED, target="README.md")],
     }
-
     agent = ReadmeAgent(
         config_manager=mock_config_manager,
         metadata=mock_repository_metadata,
         attachment=None,
     )
+
+    # Act
     result = agent.generate_readme()
 
+    # Assert
     mock_build_graph.assert_called_once_with(mock_context_cls.return_value)
     mock_graph.invoke.assert_called_once()
     assert result["result"]["file"] == "README.md"
@@ -42,7 +44,7 @@ def test_readme_agent_with_article(
     mock_config_manager,
     mock_repository_metadata,
 ):
-    """Attachment is passed through to ReadmeState."""
+    # Arrange
     mock_graph = MagicMock()
     mock_build_graph.return_value = mock_graph
     mock_graph.invoke.return_value = {
@@ -55,8 +57,11 @@ def test_readme_agent_with_article(
         metadata=mock_repository_metadata,
         attachment=article_path,
     )
+
+    # Act
     result = agent.generate_readme()
 
+    # Assert
     invoked_state = mock_graph.invoke.call_args[0][0]
     assert invoked_state.attachment == article_path
     assert result["result"] is not None
@@ -70,7 +75,7 @@ def test_readme_agent_with_active_request(
     mock_config_manager,
     mock_repository_metadata,
 ):
-    """active_request maps to ReadmeState.user_request."""
+    # Arrange
     mock_graph = MagicMock()
     mock_build_graph.return_value = mock_graph
     mock_graph.invoke.return_value = {"events": []}
@@ -80,8 +85,11 @@ def test_readme_agent_with_active_request(
         metadata=mock_repository_metadata,
         active_request="Improve the installation section",
     )
+
+    # Act
     agent.generate_readme()
 
+    # Assert
     invoked_state = mock_graph.invoke.call_args[0][0]
     assert invoked_state.user_request == "Improve the installation section"
 
@@ -94,15 +102,17 @@ def test_readme_agent_error_handling(
     mock_config_manager,
     mock_repository_metadata,
 ):
-    """On exception, returns result=None with FAILED event."""
+    # Arrange
     mock_build_graph.return_value.invoke.side_effect = RuntimeError("LLM timeout")
-
     agent = ReadmeAgent(
         config_manager=mock_config_manager,
         metadata=mock_repository_metadata,
     )
+
+    # Act
     result = agent.generate_readme()
 
+    # Assert
     assert result["result"] is None
     assert len(result["events"]) == 1
     assert result["events"][0].kind == EventKind.FAILED
