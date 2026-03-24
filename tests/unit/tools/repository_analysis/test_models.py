@@ -2,7 +2,6 @@ from osa_tool.tools.repository_analysis.models import RepositoryData
 
 
 def test_repository_data_defaults():
-    # Arrange
     # Act
     data = RepositoryData()
 

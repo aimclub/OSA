@@ -44,7 +44,7 @@ def test_git_agent_initialization(git_agent_base_setup):
     # Arrange
     agent, platform, repo_url, temp_dir = git_agent_base_setup
 
-    # Act / Assert
+    # Assert
     assert agent.repo_url == repo_url
     assert agent.token == "fake-token-base-setup"
     assert agent.base_branch == agent.metadata.default_branch
@@ -99,9 +99,9 @@ def test_git_agent_clone_repository_success_existing(git_agent_base_setup, temp_
 def test_git_agent_clone_repository_failure_git_error(git_agent_base_setup):
     # Arrange
     agent, platform, repo_url, temp_dir = git_agent_base_setup
-
-    # Act / Assert
     git_error = GitCommandError("clone", 128, b"fatal: repository not found")
+
+    # Act
     with patch("git.Repo.clone_from", side_effect=git_error):
         # Match changed: now we catch the message from _handle_git_error
         with pytest.raises(Exception, match=r"Git operation 'cloning repository.*' failed"):
@@ -235,7 +235,7 @@ def github_agent_instance(temp_clone_dir, mock_repository_metadata, repo_info, m
 
 
 def test_github_agent_load_metadata(github_agent_instance, mock_repository_metadata):
-    # Arrange / Act / Assert
+    # Assert
     assert github_agent_instance.metadata == mock_repository_metadata
 
 
@@ -263,7 +263,7 @@ def test_github_agent_create_fork_failure(github_agent_instance, mock_requests_r
     # Arrange
     mock_response = mock_requests_response_factory(status_code=401, text_data="Bad credentials")
 
-    # Act / Assert
+    # Act
     with patch.dict(os.environ, {"GIT_TOKEN": "any_token_for_env"}):
         with patch("requests.post", return_value=mock_response):
             with pytest.raises(ValueError, match=r"API operation 'creating GitHub fork' failed with status 401"):

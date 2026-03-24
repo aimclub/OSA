@@ -72,8 +72,5 @@ def test_operation_plan_tasks_returns_single_task(isolated_registry):
 
 
 def test_get_execution_descriptor_unknown_operation_raises(isolated_registry):
-    # Arrange
-    # Act
-    # Assert
     with pytest.raises(ValueError, match="Unknown operation"):
         OperationRegistry.get_execution_descriptor("missing_op")

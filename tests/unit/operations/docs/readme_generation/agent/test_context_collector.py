@@ -14,7 +14,10 @@ from osa_tool.operations.docs.readme_generation.agent.nodes.context_collector im
 class TestComputeBudgets:
 
     def test_standard_context_window(self):
+        # Act
         budgets = _compute_budgets(context_window=16385, max_output_tokens=4096)
+
+        # Assert
         # available = 16385 - 4096 - 200 = 12089
         assert budgets["tree"] == min(4000, int(12089 * 0.30))
         assert budgets["key_files"] == min(6000, int(12089 * 0.40))
@@ -23,7 +26,10 @@ class TestComputeBudgets:
         assert budgets["pdf"] == min(3000, int(12089 * 0.20))
 
     def test_large_context_window_caps_apply(self):
+        # Act
         budgets = _compute_budgets(context_window=200_000, max_output_tokens=4096)
+
+        # Assert
         # Caps should prevent excessively large budgets
         assert budgets["tree"] <= 4000
         assert budgets["key_files"] <= 6000
@@ -32,7 +38,10 @@ class TestComputeBudgets:
         assert budgets["pdf"] <= 3000
 
     def test_tiny_context_window_floors_to_minimum(self):
+        # Act
         budgets = _compute_budgets(context_window=500, max_output_tokens=400)
+
+        # Assert
         # available = 500 - 400 - 200 = -100 → floored to 1000
         assert all(v > 0 for v in budgets.values())
 
@@ -43,14 +52,24 @@ class TestComputeBudgets:
 class TestTruncateTree:
 
     def test_short_tree_unchanged(self):
+        # Arrange
         tree = "README.md\nsrc\nsrc/main.py\ntests\ntests/test_main.py"
+
+        # Act
         result = _truncate_tree(tree, max_tokens=5000, encoding_name="cl100k_base")
+
+        # Assert
         assert result == tree
 
     def test_empty_tree(self):
-        assert _truncate_tree("", max_tokens=100, encoding_name="cl100k_base") == ""
+        # Act
+        out = _truncate_tree("", max_tokens=100, encoding_name="cl100k_base")
+
+        # Assert
+        assert out == ""
 
     def test_preserves_shallow_entries(self):
+        # Arrange
         lines = [
             "README.md",  # depth 0
             "src",  # depth 0
@@ -61,13 +80,17 @@ class TestTruncateTree:
         ]
         tree = "\n".join(lines)
 
+        # Act
         # Use a tiny budget to force pruning
         result = _truncate_tree(tree, max_tokens=1, encoding_name="cl100k_base")
+
+        # Assert
         # Even with tiny budget the function applies smart pruning first
         # then hard truncation — just check it returns something non-empty
         assert isinstance(result, str)
 
     def test_prunes_deep_non_important_files(self):
+        # Arrange
         lines = [
             "README.md",
             "src",
@@ -78,6 +101,7 @@ class TestTruncateTree:
         ]
         tree = "\n".join(lines)
 
+        # Act
         # Mock count_tokens to control pruning behavior
         with patch(
             "osa_tool.operations.docs.readme_generation.agent.nodes.context_collector.count_tokens",
@@ -85,6 +109,7 @@ class TestTruncateTree:
         ):
             result = _truncate_tree(tree, max_tokens=10, encoding_name="cl100k_base")
 
+        # Assert
         # random_module.py at depth 3+ should be pruned
         assert "random_module.py" not in result
         # __init__.py is important, should survive
@@ -100,10 +125,12 @@ class TestReadFilesWithBudget:
     @patch("osa_tool.operations.docs.readme_generation.agent.nodes.context_collector.count_tokens")
     @patch("osa_tool.operations.docs.readme_generation.agent.nodes.context_collector.truncate_to_tokens")
     def test_reads_in_priority_order(self, mock_truncate, mock_count, mock_read):
+        # Arrange
         mock_read.side_effect = ["content_a", "content_b", "content_c"]
         mock_truncate.side_effect = ["content_a", "content_b", "content_c"]
         mock_count.side_effect = [100, 100, 100]
 
+        # Act
         paths, serialized = _read_files_with_budget(
             "/repo",
             ["a.py", "b.py", "c.py"],
@@ -112,6 +139,7 @@ class TestReadFilesWithBudget:
             encoding_name="cl100k_base",
         )
 
+        # Assert
         assert paths == ["a.py", "b.py", "c.py"]
         assert "a.py" in serialized
         assert "b.py" in serialized
@@ -121,10 +149,12 @@ class TestReadFilesWithBudget:
     @patch("osa_tool.operations.docs.readme_generation.agent.nodes.context_collector.count_tokens")
     @patch("osa_tool.operations.docs.readme_generation.agent.nodes.context_collector.truncate_to_tokens")
     def test_stops_when_budget_exhausted(self, mock_truncate, mock_count, mock_read):
+        # Arrange
         mock_read.side_effect = ["content_a", "content_b", "content_c"]
         mock_truncate.side_effect = ["content_a", "content_b"]
         mock_count.side_effect = [150, 150]
 
+        # Act
         paths, serialized = _read_files_with_budget(
             "/repo",
             ["a.py", "b.py", "c.py"],
@@ -133,14 +163,17 @@ class TestReadFilesWithBudget:
             encoding_name="cl100k_base",
         )
 
+        # Assert
         # Only first two files should be read (150 + 150 > 200 after second)
         # Actually: first file uses 150, remaining = 50, second file cap = min(200,50)
         assert len(paths) <= 2
 
     @patch("osa_tool.operations.docs.readme_generation.agent.nodes.context_collector.read_file")
     def test_skips_empty_files(self, mock_read):
+        # Arrange
         mock_read.side_effect = ["", "real content"]
 
+        # Act
         with (
             patch(
                 "osa_tool.operations.docs.readme_generation.agent.nodes.context_collector.truncate_to_tokens",
@@ -159,9 +192,11 @@ class TestReadFilesWithBudget:
                 encoding_name="cl100k_base",
             )
 
+        # Assert
         assert paths == ["real.py"]
 
     def test_empty_file_list(self):
+        # Act
         paths, content = _read_files_with_budget(
             "/repo",
             [],
@@ -169,10 +204,13 @@ class TestReadFilesWithBudget:
             per_file_cap=500,
             encoding_name="cl100k_base",
         )
+
+        # Assert
         assert paths == []
         assert content == ""
 
     def test_zero_budget(self):
+        # Act
         paths, content = _read_files_with_budget(
             "/repo",
             ["a.py"],
@@ -180,6 +218,8 @@ class TestReadFilesWithBudget:
             per_file_cap=500,
             encoding_name="cl100k_base",
         )
+
+        # Assert
         assert paths == []
         assert content == ""
 
@@ -204,7 +244,7 @@ class TestContextCollectorNode:
         mock_config_manager,
         mock_repository_metadata,
     ):
-        # Setup
+        # Arrange
         mock_sourcerank_cls.return_value.tree = "README.md\nsrc\nsrc/main.py"
         mock_extract_readme.return_value = "# Test Project"
         mock_examples.return_value = []
