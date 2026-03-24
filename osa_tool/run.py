@@ -1,7 +1,7 @@
 import os
 import sys
 import time
-from typing import Any
+from typing import Any, Callable
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent
@@ -262,7 +262,7 @@ def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
     return git_agent, workflow_manager
 
 
-def _run_plan_operation(plan: Plan, task_key: str, call: callable) -> None:
+def _run_plan_operation(plan: Plan, task_key: str, call: Callable[[], Any]) -> None:
     """
     Execute a single legacy plan operation and record its result.
 
@@ -278,6 +278,7 @@ def _run_plan_operation(plan: Plan, task_key: str, call: callable) -> None:
         if task_key in plan.tasks:
             plan.mark_done(task_key)
     except Exception as e:
+        logger.error(e)
         plan.record_result(task_key, {"result": {"error": str(e)}, "events": []})
         if task_key in plan.tasks:
             plan.mark_failed(task_key)
