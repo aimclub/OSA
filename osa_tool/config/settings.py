@@ -39,7 +39,11 @@ class GitSettings(BaseModel):
     @model_validator(mode="after")
     def set_git_attributes(self):
         """Parse and set Git repository attributes."""
-        self.host_domain, self.host, self.name, self.full_name = parse_git_url(str(self.repository))
+        if os.path.isdir(self.repository):
+            self.name = os.path.basename(self.repository)
+            self.full_name = os.path.basename(self.repository)
+        else:
+            self.host_domain, self.host, self.name, self.full_name = parse_git_url(str(self.repository))
         return self
 
 

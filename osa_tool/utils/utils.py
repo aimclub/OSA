@@ -40,6 +40,10 @@ def parse_folder_name(repo_url: str) -> str:
             folder_name = match.group(1)
             logger.debug(f"Parsed folder name '{folder_name}' from repo URL '{repo_url}'")
             return folder_name
+    if os.path.exists(repo_url):
+        folder_name = os.path.basename(repo_url)
+        logger.debug(f"Parsed folder name '{folder_name}' from repo URL '{repo_url}'")
+        return folder_name
     folder_name = re.sub(r"[:/]", "_", repo_url.rstrip("/"))
     logger.debug(f"Parsed folder name '{folder_name}' from repo URL '{repo_url}'")
     return folder_name
@@ -161,6 +165,17 @@ def parse_git_url(repo_url: str) -> tuple[str, str, str, str]:
 
     return host_domain, host, name, full_name
 
+
+def get_dir_size(path: str) -> int:
+    """Calculates the total size of a directory and its subdirectories in kb."""
+    total = 0
+    with os.scandir(path) as it:
+        for entry in it:
+            if entry.is_file(follow_symlinks=False):
+                total += entry.stat(follow_symlinks=False).st_size
+            elif entry.is_dir(follow_symlinks=False):
+                total += get_dir_size(entry.path)
+    return int(total / 1024)
 
 def get_repo_tree(repo_path: str) -> str:
     """

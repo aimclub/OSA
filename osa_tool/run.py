@@ -4,7 +4,7 @@ import time
 from typing import Any
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent
+from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent, LocalGitAgent
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.analysis.repository_validation.doc_validator import DocValidator
 from osa_tool.operations.analysis.repository_validation.paper_validator import PaperValidator
@@ -54,6 +54,7 @@ def main():
 
     # Initialize logging
     logs_dir = os.path.join(os.path.dirname(osa_project_root()), "logs")
+    print(logs_dir)
     repo_name = parse_folder_name(args.repository)
     setup_logging(repo_name, logs_dir)
 
@@ -247,7 +248,10 @@ def main():
 
 
 def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
-    if "github.com" in args.repository:
+    if os.path.isdir(args.repository):
+        git_agent = LocalGitAgent(args.repository, args.branch, author=args.author)
+        workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
+    elif "github.com" in args.repository:
         git_agent = GitHubAgent(args.repository, args.branch, author=args.author)
         workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
     elif "gitlab." in args.repository:

@@ -1,4 +1,5 @@
 import abc
+import datetime
 import os
 import re
 import time
@@ -15,7 +16,7 @@ from osa_tool.core.git.metadata import (
     RepositoryMetadata,
 )
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import get_base_repo_url, parse_folder_name
+from osa_tool.utils.utils import get_base_repo_url, parse_folder_name, get_dir_size
 
 
 class GitAgent(abc.ABC):
@@ -121,13 +122,13 @@ class GitAgent(abc.ABC):
 
         # 401/403: Auth/Permission error
         if (
-            "authentication failed" in stderr
-            or "could not read username" in stderr
-            or "access denied" in stderr
-            or "permission denied" in stderr
-            or "unable to access" in stderr
-            or "403" in stderr
-            or "401" in stderr
+                "authentication failed" in stderr
+                or "could not read username" in stderr
+                or "access denied" in stderr
+                or "permission denied" in stderr
+                or "unable to access" in stderr
+                or "403" in stderr
+                or "401" in stderr
         ):
             logger.error(f"Auth/Permission Error during {action}.")
             logger.error(f"Details: {stderr}")
@@ -400,10 +401,10 @@ class GitAgent(abc.ABC):
             logger.info(f"Switched to branch {branch}.")
 
     def commit_and_push_changes(
-        self,
-        branch: str = None,
-        commit_message: str = "osa_tool recommendations",
-        force: bool = False,
+            self,
+            branch: str = None,
+            commit_message: str = "osa_tool recommendations",
+            force: bool = False,
     ) -> bool:
         """Commits and pushes changes to the forked repository.
 
@@ -467,11 +468,11 @@ class GitAgent(abc.ABC):
             return False
 
     def upload_report(
-        self,
-        report_filename: str,
-        report_filepath: str,
-        report_branch: str = "osa_tool_attachments",
-        commit_message: str = "docs: upload pdf report",
+            self,
+            report_filename: str,
+            report_filepath: str,
+            report_branch: str = "osa_tool_attachments",
+            commit_message: str = "docs: upload pdf report",
     ) -> None:
         """Uploads the generated PDF report to a separate branch.
 
@@ -593,6 +594,71 @@ class GitAgent(abc.ABC):
             List[str]: List of validated topics that exist on platform
         """
         pass
+
+
+class LocalGitAgent(GitAgent):
+    def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool", author: str = None):
+        super().__init__(repo_url, repo_branch_name, branch_name, author)
+        self.clone_dir = repo_url
+
+    def _get_token(self) -> str:
+        return ""
+
+    def _load_metadata(self, repo_url: str) -> RepositoryMetadata:
+        mtime = os.path.getmtime(repo_url)
+        formatted_time = datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%dT%H:%M:%SZ')
+        return RepositoryMetadata(
+            name='',
+            full_name='',
+            owner='',
+            owner_url=None,
+            description=None,
+            stars_count=0,
+            forks_count=0,
+            watchers_count=0,
+            open_issues_count=0,
+            default_branch=Repo(repo_url).active_branch.name,
+            created_at=formatted_time,
+            updated_at=formatted_time,
+            pushed_at=formatted_time,
+            size_kb=get_dir_size(repo_url),
+            clone_url_http='',
+            clone_url_ssh='',
+            contributors_url=None,
+            languages_url='',
+            issues_url=None,
+            language=None,
+            languages=[],
+            topics=[],
+            has_wiki=False,
+            has_issues=False,
+            has_projects=False,
+            is_private=False,
+            homepage_url=None,
+            license_name=None,
+            license_url=None,
+        )
+
+    def create_fork(self) -> None:
+        pass
+
+    def star_repository(self) -> None:
+        pass
+
+    def create_pull_request(self, title: str = None, body: str = None) -> None:
+        pass
+
+    def _build_report_url(self, report_branch: str, report_filename: str) -> str:
+        return ""
+
+    def _update_about_section(self, repo_path: str, about_content: dict) -> None:
+        pass
+
+    def _build_auth_url(self, repo_url: str) -> str:
+        return repo_url
+
+    def validate_topics(self, topics: List[str]) -> List[str]:
+        return topics
 
 
 class GitHubAgent(GitAgent):
@@ -811,7 +877,7 @@ class GitHubAgent(GitAgent):
 
     def _build_auth_url(self, repo_url: str) -> str:
         if repo_url.startswith("https://github.com/"):
-            repo_path = repo_url[len("https://github.com/") :]
+            repo_path = repo_url[len("https://github.com/"):]
             return f"https://{self.token}@github.com/{repo_path}.git"
         raise ValueError(f"Unsupported repository URL format for GitHub: {repo_url}")
 
@@ -1392,7 +1458,7 @@ class GitverseAgent(GitAgent):
 
     def _build_auth_url(self, repo_url: str) -> str:
         if repo_url.startswith("https://gitverse.ru/"):
-            repo_path = repo_url[len("https://gitverse.ru/") :]
+            repo_path = repo_url[len("https://gitverse.ru/"):]
             return f"https://{self.token}@gitverse.ru/{repo_path}.git"
         raise ValueError(f"Unsupported repository URL format for Gitverse: {repo_url}")
 
