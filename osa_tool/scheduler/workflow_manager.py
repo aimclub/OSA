@@ -1,7 +1,7 @@
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import yaml
 
@@ -41,7 +41,7 @@ class WorkflowManager(ABC):
         "pypi-publish": ["pypi_publish", "pypi-publish"],
     }
 
-    def __init__(self, repo_url: str, metadata: RepositoryMetadata, args):
+    def __init__(self, repo_url: str, metadata: RepositoryMetadata, args: Any):
         self.repo_url = repo_url
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(repo_url))
         self.metadata = metadata
@@ -170,7 +170,7 @@ class WorkflowManager(ABC):
         Args:
             config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
 
-        Raises:
+        Note:
             Logs error on failure but does not raise.
         """
         try:

@@ -116,10 +116,10 @@ git clone https://github.com/aimclub/OSA
 cd OSA
 
 # Step 2: Create a virtual environment
-python -m venv osa_env
-source osa_env/bin/activate  # Linux/macOS
+python -m venv venv
+source venv/bin/activate  # Linux/macOS
 # OR
-osa_env\Scripts\activate     # Windows
+venv\Scripts\activate     # Windows
 
 # Step 3: Choose your dependency manager
 
@@ -129,7 +129,10 @@ pip install -r requirements.txt
 # Option B: Using poetry (recommended for development)
 poetry install
 
-# Step 4: Verify installation
+# Step 4: Run tests
+pytest .
+
+# Step 5: Verify installation
 python -m osa_tool.run --help
 ```
 

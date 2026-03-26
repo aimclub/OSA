@@ -37,6 +37,12 @@ OSA is built on a modern technology stack designed for flexibility, performance,
 
 OSA employs an experimental multi-agent system (MAS) for automatic and conversational modes:
 
+Multi-agent script can be run with the following command:
+
+```bash
+python -m osa_tool.run_chat
+```
+
 | Agent | Responsibility | Status |
 |-------|----------------|--------|
 | **Repository Analyzer** | Scans repo structure, identifies key files | ✅ Stable |
@@ -93,8 +99,8 @@ Totally hear you—those model picks are dated now, and we can update them to cu
 | Task | Recommended Model | Alternative | Budget Option |
 |------|------------------|-------------|---------------|
 | **README Generation** | GPT‑5.4 | Claude Sonnet 4 | GPT‑5‑mini |
-| **Docstring Generation** | GPT‑5.4 | Mistral Devstral 2 | Mistral Small 3.2 |
-| **CI/CD Workflow** | GPT‑5.4 | Claude Sonnet 4 | GPT‑5‑mini |
+| **Docstring Generation** | GPT‑5‑mini | Mistral Devstral 2 | Mistral Small 3.2 |
+| **CI/CD Workflow** | GPT‑5‑mini | Gemini 2.5 Flash | Mistral Small 3.2 |
 | **Code Analysis** | GPT‑5.4 | Claude Opus 4.1 | Gemini 2.5 Flash |
 | **Research Paper README** | GPT‑5.4 | Claude Opus 4.1 | Gemini 2.5 Flash |
 | **Full Repository** | GPT‑5.4 | Gemini 2.5 Pro | Claude Sonnet 4 |
