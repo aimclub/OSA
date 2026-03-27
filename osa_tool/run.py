@@ -1,14 +1,17 @@
-import asyncio
 import os
 import sys
 import time
+from typing import Any, Callable
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.conversion.notebook_converter import NotebookConverter
 from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
+from osa_tool.operations.analysis.repository_validation.doc_validator import DocValidator
+from osa_tool.operations.analysis.repository_validation.paper_validator import PaperValidator
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
+from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
+from osa_tool.operations.codebase.organization.repo_organizer import RepoOrganizer
 from osa_tool.operations.codebase.requirements_generation.requirements_generation import RequirementsGenerator
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
@@ -19,7 +22,7 @@ from osa_tool.operations.docs.community_docs_generation.docs_run import generate
 from osa_tool.operations.docs.community_docs_generation.license_generation import LicenseCompiler
 from osa_tool.operations.docs.readme_generation.readme_agent import ReadmeAgent
 from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
-from osa_tool.organization.repo_organizer import RepoOrganizer
+from osa_tool.scheduler.plan import Plan
 from osa_tool.scheduler.scheduler import ModeScheduler
 from osa_tool.scheduler.workflow_manager import (
     GitHubWorkflowManager,
@@ -36,11 +39,6 @@ from osa_tool.utils.utils import (
     rich_section,
     switch_to_output_directory,
     format_time,
-)
-from osa_tool.validation.doc_validator import DocValidator
-from osa_tool.validation.paper_validator import PaperValidator
-from osa_tool.validation.report_generator import (
-    ReportGenerator as ValidationReportGenerator,
 )
 
 
