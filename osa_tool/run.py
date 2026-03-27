@@ -140,7 +140,6 @@ def main():
                 lambda: DocstringsGenerator(
                     config_manager=config_manager,
                     ignore_list=args.ignore_list,
-                    plan=plan,
                     incremental=args.incremental,
                     target_files=args.target_files,
                 ).run(),
