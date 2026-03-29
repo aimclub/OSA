@@ -10,6 +10,7 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.core.models.event import OperationEvent, EventKind
+from osa_tool.core.models.llm_output_models import LlmJsonObject
 from osa_tool.operations.analysis.repository_validation.code_analyzer import CodeAnalyzer
 from osa_tool.operations.analysis.repository_validation.report_generator import (
     ReportGenerator as ValidationReportGenerator,
@@ -138,10 +139,10 @@ class DocValidator:
                 self.prompts.get("validation.extract_document_sections"),
                 doc_content=processed_content,
             ),
-            parser=lambda raw: JsonProcessor.parse(raw),
+            parser=LlmJsonObject,
         )
         logger.debug(response)
-        return response
+        return response.root
 
     def _process_multiple_docs(self):
         pass
@@ -213,7 +214,7 @@ class DocValidator:
                 doc_info=doc_info,
                 code_files_info=code_files_info,
             ),
-            parser=lambda raw: JsonProcessor.parse(raw),
+            parser=LlmJsonObject,
         )
         logger.debug(response)
-        return response
+        return response.root

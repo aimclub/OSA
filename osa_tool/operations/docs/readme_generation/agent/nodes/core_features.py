@@ -2,7 +2,7 @@ from osa_tool.operations.docs.readme_generation.agent.context import ReadmeConte
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.response_cleaner import JsonProcessor
+from osa_tool.operations.docs.readme_generation.llm_schemas import CoreFeaturesLLMOutput
 
 
 def core_features_node(state: ReadmeState, context: ReadmeContext) -> dict:
@@ -17,8 +17,8 @@ def core_features_node(state: ReadmeState, context: ReadmeContext) -> dict:
             readme_content=state.existing_readme,
             key_files_content=state.key_files_content,
         ),
-        parser=lambda raw: JsonProcessor.parse(raw),
-    )
+        parser=CoreFeaturesLLMOutput,
+    ).root
 
     logger.info("[CoreFeatures] Done.")
     return {"core_features": core_features}

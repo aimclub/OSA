@@ -2,7 +2,7 @@ from osa_tool.operations.docs.readme_generation.agent.context import ReadmeConte
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.response_cleaner import JsonProcessor
+from osa_tool.core.models.llm_output_models import LlmTextOutput
 
 
 def getting_started_node(state: ReadmeState, context: ReadmeContext) -> dict:
@@ -16,8 +16,8 @@ def getting_started_node(state: ReadmeState, context: ReadmeContext) -> dict:
             readme_content=state.existing_readme,
             examples_files_content=state.examples_content,
         ),
-        parser=lambda raw: JsonProcessor.parse(raw, expected_key="getting_started"),
-    )
+        parser=LlmTextOutput,
+    ).text
 
     logger.info("[GettingStarted] Done.")
     return {"getting_started": getting_started}

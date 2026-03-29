@@ -1,12 +1,12 @@
 import os
 
 from osa_tool.core.models.event import EventKind, OperationEvent
+from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.operations.docs.readme_generation.utils import remove_extra_blank_lines, save_sections
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.utils.utils import parse_folder_name
 
 
@@ -27,8 +27,8 @@ def writer_node(state: ReadmeState, context: ReadmeContext) -> dict:
                     context.prompts.get(step),
                     readme=readme_content,
                 ),
-                parser=lambda raw: JsonProcessor.parse(raw, expected_key="readme", expected_type=str),
-            )
+                parser=LlmTextOutput,
+            ).text
             readme_content = cleaned or readme_content
 
     save_sections(readme_content, file_to_save)

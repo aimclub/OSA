@@ -84,7 +84,7 @@ Your response should be a short paragraph that encapsulates the core use-case, v
 Generate a JSON response following this exact structure:
 
 {{
-    "overview": "text"
+    "text": "text"
 }}
 
 RULES:
@@ -124,7 +124,7 @@ RESPONSE FORMAT:
 Generate a JSON response following this exact structure:
 
 {{
-    "getting_started": "text or null"
+    "text": "text or null"
 }}
 
 RULES:
@@ -135,7 +135,7 @@ RULES:
 - Include relevant images or gifs from the README if they help clarify how to start using the project.
 - DO NOT make up usage instructions — rely only on the provided content.
 - DO NOT invent or modify image paths — use them exactly as found in the provided README content.
-- If no meaningful example files are found and no helpful images or gifs are available, return `"getting_started": null`
+- If no meaningful example files are found and no helpful images or gifs are available, return `"text": null`
 - Do not add a "## Getting Started" heading — only the content for that section.
 - Output valid JSON, strictly following the given structure.
 
@@ -207,7 +207,7 @@ If no citation is present, return an empty string.
 Output JSON exactly in this format:
 
 {{
-    "citation": "text"
+    "text": "text"
 }}
 
 RULES:
@@ -241,7 +241,7 @@ OUTPUT:
 Output JSON exactly in this format:
 
 {{
-    "readme": "text"
+    "text": "text"
 }}
 
 INPUT DATA:
@@ -276,7 +276,7 @@ OUTPUT:
 Output JSON exactly in this format:
 
 {{
-    "readme": "text"
+    "text": "text"
 }}
 
 INPUT DATA:
@@ -303,7 +303,7 @@ OUTPUT:
 Output JSON exactly in this format:
 
 {{
-    "readme": "text"
+    "text": "text"
 }}
 
 INPUT DATA:
@@ -334,7 +334,7 @@ OUTPUT:
 Return a JSON object in the form:
 
 {{
-    "readme": "text"
+    "text": "text"
 }}
 
 INPUT DATA:
@@ -370,7 +370,7 @@ OUTPUT:
 Return a JSON object in the form:
 
 {{
-    "readme": "text"
+    "text": "text"
 }}
 
 INPUT DATA:
@@ -394,7 +394,7 @@ OUTPUT:
 Return a JSON object in the form:
 
 {{
-    "readme": "text"
+    "text": "text"
 }}
 
 INPUT DATA:

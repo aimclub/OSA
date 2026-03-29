@@ -1,8 +1,11 @@
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
+from pydantic import ValidationError
+
+from osa_tool.operations.docs.readme_generation.llm_schemas import DiagnosisLLMOutput
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.response_cleaner import JsonProcessor
+from osa_tool.utils.response_cleaner import JsonParseError
 
 
 def diagnosis_node(state: ReadmeState, context: ReadmeContext) -> dict:
@@ -27,24 +30,23 @@ def diagnosis_node(state: ReadmeState, context: ReadmeContext) -> dict:
         }
 
     # Use LLM to decide generation strategy
-    result = context.model_handler.send_and_parse(
-        prompt=PromptBuilder.render(
-            context.prompts.get("readme_agent.diagnosis"),
-            repo_analysis=state.repo_analysis or "",
-            readme_analysis=state.readme_analysis or "",
-            article_analysis=state.article_analysis or "N/A",
-            user_request=state.user_request or "N/A",
-            has_existing_readme=str(not existing_is_empty),
-        ),
-        parser=lambda raw: JsonProcessor.parse(raw),
-    )
-
-    if isinstance(result, dict):
-        mode = result.get("generation_mode", "full_regen")
-        generation_mode = mode if mode in ("full_regen", "targeted") else "full_regen"
-        target_sections = result.get("target_sections", [])
-        generation_plan = result.get("generation_plan", "")
-    else:
+    try:
+        diagnosis = context.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
+                context.prompts.get("readme_agent.diagnosis"),
+                repo_analysis=state.repo_analysis or "",
+                readme_analysis=state.readme_analysis or "",
+                article_analysis=state.article_analysis or "N/A",
+                user_request=state.user_request or "N/A",
+                has_existing_readme=str(not existing_is_empty),
+            ),
+            parser=DiagnosisLLMOutput,
+        )
+        generation_mode = diagnosis.generation_mode
+        target_sections = diagnosis.target_sections
+        generation_plan = diagnosis.generation_plan or ""
+    except (JsonParseError, ValidationError):
+        logger.warning("[Diagnosis] LLM output failed validation after retries; using defaults.")
         generation_mode = "full_regen"
         target_sections = []
         generation_plan = "Fallback: using heuristic-based mode selection."

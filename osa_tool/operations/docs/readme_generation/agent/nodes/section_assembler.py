@@ -1,10 +1,10 @@
+from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.operations.docs.readme_generation.generator.builder import MarkdownBuilder
 from osa_tool.operations.docs.readme_generation.generator.builder_article import MarkdownBuilderArticle
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.response_cleaner import JsonProcessor
 
 
 def _collect_generated_sections(state: ReadmeState) -> str:
@@ -40,8 +40,9 @@ def section_assembler_node(state: ReadmeState, context: ReadmeContext) -> dict:
                     target_sections=", ".join(state.target_sections),
                     generation_plan=state.generation_plan or "",
                 ),
-                parser=lambda raw: JsonProcessor.parse(raw, expected_key="readme", expected_type=str),
-            )
+                parser=LlmTextOutput,
+            ).text
+            readme_draft = readme_draft if readme_draft is not None else state.existing_readme
         else:
             readme_draft = state.existing_readme
     elif state.readme_mode == "article":

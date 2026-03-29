@@ -18,7 +18,7 @@ OUTPUT:
 Return a JSON object:
 
 {{
-    "repo_analysis": "text"
+    "text": "text"
 }}
 
 INPUT DATA:
@@ -51,7 +51,7 @@ OUTPUT:
 Return a JSON object:
 
 {{
-    "readme_analysis": "text"
+    "text": "text"
 }}
 
 INPUT DATA:
@@ -83,7 +83,7 @@ OUTPUT:
 Return a JSON object:
 
 {{
-    "article_analysis": "text"
+    "text": "text"
 }}
 
 INPUT DATA:
@@ -201,7 +201,7 @@ OUTPUT:
 Return a JSON object:
 
 {{
-    "readme": "text"
+    "text": "text"
 }}
 
 INPUT DATA:
@@ -238,7 +238,7 @@ OUTPUT:
 Return a JSON object:
 
 {{
-    "readme": "text"
+    "text": "text"
 }}
 
 INPUT DATA:

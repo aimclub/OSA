@@ -1,7 +1,9 @@
 import asyncio
 import os
 
+from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
+from osa_tool.operations.docs.readme_generation.llm_schemas import KeyFilesLLMOutput
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
 from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
@@ -9,7 +11,6 @@ from osa_tool.operations.docs.readme_generation.utils import extract_example_pat
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.utils.token_counter import count_tokens, truncate_to_tokens
 from osa_tool.utils.utils import extract_readme_content, parse_folder_name
 
@@ -138,9 +139,7 @@ def _run_parallel_analyses(
                     repo_analysis=repo_analysis or "",
                     repository_tree=repo_tree,
                 ),
-                parser=lambda raw: JsonProcessor.parse(
-                    raw, expected_key="readme_analysis", expected_type=str
-                ),
+                parser=LlmTextOutput,
             ),
         ]
         if pdf_content:
@@ -152,25 +151,27 @@ def _run_parallel_analyses(
                         repo_analysis=repo_analysis or "",
                         existing_readme=existing_readme,
                     ),
-                    parser=lambda raw: JsonProcessor.parse(
-                        raw, expected_key="article_analysis", expected_type=str
-                    ),
+                    parser=LlmTextOutput,
                 ),
             )
         return await asyncio.gather(*tasks, return_exceptions=True)
 
     results = asyncio.run(_gather())
 
-    readme_analysis = results[0] if not isinstance(results[0], BaseException) else None
-    if isinstance(results[0], BaseException):
-        logger.error("[ContextCollector] readme_analysis failed: %s", results[0])
+    readme_analysis = None
+    r0 = results[0]
+    if isinstance(r0, BaseException):
+        logger.error("[ContextCollector] readme_analysis failed: %s", r0)
+    elif r0 is not None:
+        readme_analysis = r0.text
 
     article_analysis = None
     if len(results) > 1:
-        if isinstance(results[1], BaseException):
-            logger.error("[ContextCollector] article_analysis failed: %s", results[1])
-        else:
-            article_analysis = results[1]
+        r1 = results[1]
+        if isinstance(r1, BaseException):
+            logger.error("[ContextCollector] article_analysis failed: %s", r1)
+        elif r1 is not None:
+            article_analysis = r1.text
 
     return readme_analysis, article_analysis
 
@@ -200,16 +201,17 @@ def _gather_raw_context(
     existing_readme = truncate_to_tokens(raw_readme, budgets["existing_readme"], encoding)
 
     # LLM: identify key files (priority-ordered)
-    key_files = context.model_handler.send_and_parse(
-        prompt=PromptBuilder.render(
-            context.prompts.get("readme.preanalysis"),
-            repository_tree=repo_tree,
-            readme_content=existing_readme,
-        ),
-        parser=lambda raw: JsonProcessor.parse(
-            raw, expected_key="key_files", expected_type=list
-        ),
-    ) or []
+    key_files = (
+        context.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
+                context.prompts.get("readme.preanalysis"),
+                repository_tree=repo_tree,
+                readme_content=existing_readme,
+            ),
+            parser=KeyFilesLLMOutput,
+        ).key_files
+        or []
+    )
     logger.info("[ContextCollector] LLM selected %d key files", len(key_files))
 
     # Read key files with token budget (priority order)
@@ -264,10 +266,8 @@ def _run_llm_analyses(
             key_files_content=raw_ctx["key_files_content"],
             existing_readme=raw_ctx["existing_readme"],
         ),
-        parser=lambda raw: JsonProcessor.parse(
-            raw, expected_key="repo_analysis", expected_type=str
-        ),
-    )
+        parser=LlmTextOutput,
+    ).text
 
     readme_analysis, article_analysis = _run_parallel_analyses(
         context,

@@ -4,6 +4,7 @@ import os
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
+from osa_tool.core.models.llm_output_models import LlmJsonObject
 from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.operations.analysis.repository_validation.code_analyzer import CodeAnalyzer
 from osa_tool.operations.analysis.repository_validation.report_generator import (
@@ -13,9 +14,6 @@ from osa_tool.operations.docs.readme_generation.context.article_content import P
 from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.response_cleaner import JsonProcessor
-
-
 class PaperValidator:
     """
     Validates a scientific paper (PDF) against the code repository.
@@ -113,10 +111,10 @@ class PaperValidator:
                 self.prompts.get("validation.extract_paper_section"),
                 paper_content=pdf_content,
             ),
-            parser=lambda raw: JsonProcessor.parse(raw),
+            parser=LlmJsonObject,
         )
         logger.debug(response)
-        return response
+        return response.root
 
     async def validate_paper_against_repo(self, paper_info: str, code_files_info: str) -> dict:
         """
@@ -136,7 +134,7 @@ class PaperValidator:
                 paper_info=paper_info,
                 code_files_info=code_files_info,
             ),
-            parser=lambda raw: JsonProcessor.parse(raw),
+            parser=LlmJsonObject,
         )
         logger.debug(response)
-        return response
+        return response.root

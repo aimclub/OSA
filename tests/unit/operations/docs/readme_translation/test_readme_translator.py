@@ -5,6 +5,8 @@ from unittest.mock import patch, AsyncMock
 
 import pytest
 
+from osa_tool.core.models.llm_output_models import LlmJsonObject
+
 import osa_tool.operations.docs.readme_translation.readme_translator as rt
 
 
@@ -88,7 +90,7 @@ def test_set_default_translated_readme_copy_on_error(translator):
 async def test_translate_readme_request_async_valid_json(translator):
     # Arrange
     response = {"content": "text", "suffix": "fr"}
-    translator.model_handler.async_send_and_parse = AsyncMock(return_value=response)
+    translator.model_handler.async_send_and_parse = AsyncMock(return_value=LlmJsonObject.model_validate(response))
 
     # Act
     result = await translator._translate_readme_request_async("hello", "French", asyncio.Semaphore(1))
@@ -102,7 +104,7 @@ async def test_translate_readme_request_async_valid_json(translator):
 @pytest.mark.asyncio
 async def test_translate_readme_request_async_invalid_json(translator, caplog):
     # Arrange
-    translator.model_handler.async_send_and_parse = AsyncMock(return_value={})
+    translator.model_handler.async_send_and_parse = AsyncMock(return_value=LlmJsonObject.model_validate({}))
 
     # Act
     result = await translator._translate_readme_request_async("hello", "French", asyncio.Semaphore(1))

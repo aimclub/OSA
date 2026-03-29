@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
+from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.generator.base_builder import MarkdownBuilderBase
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
@@ -148,7 +149,7 @@ def test_citation_section_with_llm(builder, sourcerank_with_repo_tree, llm_clien
     repo_tree_data = get_mock_repo_tree("MINIMAL")
     builder.sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
-    llm_client.model_handler = mock_model_handler(side_effect=["LLM CITATION"])
+    llm_client.model_handler = mock_model_handler(side_effect=[LlmTextOutput(text="LLM CITATION")])
 
     with patch("osa_tool.operations.docs.readme_generation.generator.base_builder.LLMClient", return_value=llm_client):
         # Act
@@ -164,7 +165,7 @@ def test_citation_section_fallback(builder, sourcerank_with_repo_tree, llm_clien
     repo_tree_data = get_mock_repo_tree("MINIMAL")
     builder.sourcerank = sourcerank_with_repo_tree(repo_tree_data)
 
-    llm_client.model_handler = mock_model_handler(side_effect=[""])
+    llm_client.model_handler = mock_model_handler(side_effect=[LlmTextOutput(text="")])
 
     with patch("osa_tool.operations.docs.readme_generation.generator.base_builder.LLMClient", return_value=llm_client):
         # Act

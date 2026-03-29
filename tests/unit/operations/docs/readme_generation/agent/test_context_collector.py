@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+from osa_tool.core.models.llm_output_models import LlmTextOutput
+from osa_tool.operations.docs.readme_generation.llm_schemas import KeyFilesLLMOutput
 from osa_tool.operations.docs.readme_generation.agent.nodes.context_collector import (
     _compute_budgets,
     _read_files_with_budget,
@@ -234,8 +236,8 @@ def test_context_collector_node_returns_all_expected_keys(
 
     mock_model_handler = MagicMock()
     mock_model_handler.send_and_parse.side_effect = [
-        ["src/main.py"],
-        "repo analysis result",
+        KeyFilesLLMOutput(key_files=["src/main.py"]),
+        LlmTextOutput(text="repo analysis result"),
     ]
 
     mock_context = MagicMock()

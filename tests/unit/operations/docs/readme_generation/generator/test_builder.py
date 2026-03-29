@@ -1,6 +1,7 @@
 import json
 from unittest.mock import patch
 
+from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.generator.builder import MarkdownBuilder
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
@@ -157,7 +158,7 @@ def test_toc_generation(mock_markdown_builder, llm_client, mock_model_handler):
         getting_started="Test getting started",
     )
 
-    llm_client.model_handler = mock_model_handler(side_effect=['{"citation": null}'])
+    llm_client.model_handler = mock_model_handler(side_effect=[LlmTextOutput(text="")])
 
     with patch("osa_tool.operations.docs.readme_generation.generator.base_builder.LLMClient", return_value=llm_client):
 
@@ -207,7 +208,7 @@ def test_build_method_minimal(mock_markdown_builder, sourcerank_with_repo_tree, 
     )
     builder.sourcerank = sourcerank
 
-    llm_client.model_handler = mock_model_handler(side_effect=['{"citation": ""}'])
+    llm_client.model_handler = mock_model_handler(side_effect=[LlmTextOutput(text="")])
 
     with (
         patch("osa_tool.operations.docs.readme_generation.generator.base_builder.LLMClient", return_value=llm_client),

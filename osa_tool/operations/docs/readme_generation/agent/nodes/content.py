@@ -2,7 +2,7 @@ from osa_tool.operations.docs.readme_generation.agent.context import ReadmeConte
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.response_cleaner import JsonProcessor
+from osa_tool.core.models.llm_output_models import LlmTextOutput
 
 
 def content_node(state: ReadmeState, context: ReadmeContext) -> dict:
@@ -17,8 +17,8 @@ def content_node(state: ReadmeState, context: ReadmeContext) -> dict:
             files_summary=state.file_summary or "",
             readme_content=state.existing_readme,
         ),
-        parser=lambda raw: JsonProcessor.parse(raw, expected_key="content", expected_type=str),
-    )
+        parser=LlmTextOutput,
+    ).text
 
     logger.info("[Content] Done.")
     return {"content": content}
