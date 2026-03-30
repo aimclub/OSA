@@ -2,7 +2,6 @@ from osa_tool.operations.docs.readme_generation.agent.context import ReadmeConte
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.utils.logger import logger
 
-
 SECTION_ALIASES: dict[str, str] = {
     "overview": "overview",
     "intro": "overview",
