@@ -170,9 +170,7 @@ def main():
             _run_plan_operation(
                 plan,
                 "readme",
-                lambda: ReadmeAgent(
-                    config_manager, git_agent.metadata, plan.get("attachment")
-                ).generate_readme(),
+                lambda: ReadmeAgent(config_manager, git_agent.metadata, plan.get("attachment")).generate_readme(),
             )
 
         # Readme translation

@@ -10,6 +10,13 @@ from osa_tool.utils.prompts_builder import PromptBuilder
 def _collect_generated_sections(state: ReadmeState) -> str:
     """Collect all non-None generated sections into a labeled string for the merge prompt."""
     parts = []
+    if state.generated_sections:
+        for name, value in state.generated_sections.items():
+            if value:
+                parts.append(f"### {name}\n{value}")
+        if parts:
+            return "\n\n".join(parts)
+
     section_map = {
         "overview": state.overview,
         "core_features": str(state.core_features) if state.core_features else None,
@@ -32,12 +39,13 @@ def section_assembler_node(state: ReadmeState, context: ReadmeContext) -> dict:
     if state.generation_mode == "targeted":
         new_sections = _collect_generated_sections(state)
         if new_sections:
+            merge_targets = state.resolved_target_sections or state.target_sections
             readme_draft = context.model_handler.send_and_parse(
                 prompt=PromptBuilder.render(
                     context.prompts.get("readme_agent.section_merge"),
                     existing_readme=state.existing_readme,
                     new_sections=new_sections,
-                    target_sections=", ".join(state.target_sections),
+                    target_sections=", ".join(merge_targets),
                     generation_plan=state.generation_plan or "",
                 ),
                 parser=LlmTextOutput,

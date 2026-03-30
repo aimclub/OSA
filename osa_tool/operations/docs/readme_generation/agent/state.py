@@ -32,6 +32,7 @@ class ReadmeState(BaseModel):
     generation_mode: Literal["full_regen", "targeted"] = "full_regen"
     readme_mode: Literal["standard", "article"] = "standard"
     target_sections: List[str] = Field(default_factory=list)
+    resolved_target_sections: List[str] = Field(default_factory=list)
     generation_plan: Optional[str] = None
 
     # Generated content — standard mode
@@ -44,6 +45,8 @@ class ReadmeState(BaseModel):
     pdf_summary: Optional[str] = None
     content: Optional[str] = None
     algorithms: Optional[str] = None
+    generated_sections: dict[str, str] = Field(default_factory=dict)
+    section_generation_errors: dict[str, str] = Field(default_factory=dict)
 
     # Assembly & refinement
     readme_draft: Optional[str] = None

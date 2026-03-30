@@ -10,6 +10,4 @@ class ReadmeContext:
         self.config_manager = config_manager
         self.metadata = metadata
         self.prompts = config_manager.get_prompts()
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(
-            config_manager.get_model_settings("readme")
-        )
+        self.model_handler: ModelHandler = ModelHandlerFactory.build(config_manager.get_model_settings("readme"))

@@ -567,13 +567,12 @@ class ProtollmHandler(ModelHandler):
 
         Calculates: Available Input = Total Context - Max Output - Safety Buffer
         """
-        max_input_tokens = (
-            self.model_settings.context_window
-            - self.model_settings.max_tokens
-            - safety_buffer
-        )
+        max_input_tokens = self.model_settings.context_window - self.model_settings.max_tokens - safety_buffer
         return truncate_to_tokens(
-            text, max_input_tokens, self.model_settings.encoder, mode=mode,
+            text,
+            max_input_tokens,
+            self.model_settings.encoder,
+            mode=mode,
         )
 
 

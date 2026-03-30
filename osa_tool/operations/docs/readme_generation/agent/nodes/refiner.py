@@ -77,9 +77,9 @@ def refiner_node(state: ReadmeState, context: ReadmeContext) -> dict:
                 repo_analysis=state.repo_analysis or "",
                 generation_plan=state.generation_plan or "",
                 user_request=state.user_request or "N/A",
-                previous_issues="\n".join(f"- {i}" for i in state.refinement_issues)
-                if state.refinement_issues
-                else "None",
+                previous_issues=(
+                    "\n".join(f"- {i}" for i in state.refinement_issues) if state.refinement_issues else "None"
+                ),
             ),
             parser=ReadmeSelfEvalLLMOutput,
         )

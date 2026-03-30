@@ -9,6 +9,8 @@ from osa_tool.operations.docs.readme_generation.agent.nodes.content import conte
 from osa_tool.operations.docs.readme_generation.agent.nodes.algorithms import algorithms_node
 from osa_tool.operations.docs.readme_generation.agent.nodes.section_assembler import section_assembler_node
 from osa_tool.operations.docs.readme_generation.agent.nodes.refiner import refiner_node
+from osa_tool.operations.docs.readme_generation.agent.nodes.targeted_executor import targeted_executor_node
+from osa_tool.operations.docs.readme_generation.agent.nodes.targeted_planner import targeted_planner_node
 from osa_tool.operations.docs.readme_generation.agent.nodes.writer import writer_node
 
 __all__ = [
@@ -23,5 +25,7 @@ __all__ = [
     "algorithms_node",
     "section_assembler_node",
     "refiner_node",
+    "targeted_planner_node",
+    "targeted_executor_node",
     "writer_node",
 ]

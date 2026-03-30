@@ -14,10 +14,7 @@ def diagnosis_node(state: ReadmeState, context: ReadmeContext) -> dict:
 
     readme_mode = "article" if (state.attachment and state.pdf_content) else "standard"
 
-    existing_is_empty = (
-        not state.existing_readme
-        or state.existing_readme.strip() == "No README.md file"
-    )
+    existing_is_empty = not state.existing_readme or state.existing_readme.strip() == "No README.md file"
 
     # Fast path: no existing README → always full_regen, skip LLM
     if existing_is_empty:
@@ -53,7 +50,9 @@ def diagnosis_node(state: ReadmeState, context: ReadmeContext) -> dict:
 
     logger.info(
         "[Diagnosis] mode=%s, readme_mode=%s, targets=%s",
-        generation_mode, readme_mode, target_sections,
+        generation_mode,
+        readme_mode,
+        target_sections,
     )
     return {
         "readme_mode": readme_mode,

@@ -17,6 +17,8 @@ from osa_tool.operations.docs.readme_generation.agent.nodes import (
     pdf_summary_node,
     refiner_node,
     section_assembler_node,
+    targeted_executor_node,
+    targeted_planner_node,
     writer_node,
 )
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
@@ -25,12 +27,12 @@ from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 def _route_after_diagnosis(state: ReadmeState) -> Union[str, list[Send]]:
     """Route based on generation_mode and readme_mode after diagnosis.
 
-    - targeted  → section_assembler directly (no content generation)
+    - targeted  → targeted_planner (then targeted_executor → section_assembler)
     - article   → file_summary ∥ pdf_summary  (parallel via Send)
     - standard  → core_features (sequential; fan-out happens after core_features)
     """
     if state.generation_mode == "targeted":
-        return "section_assembler"
+        return "targeted_planner"
 
     if state.readme_mode == "article":
         return [
@@ -97,6 +99,8 @@ def build_readme_graph(context: ReadmeContext) -> Any:
 
     # Fan-in node: waits for file_summary + pdf_summary before article fan-out
     graph.add_node("summary_fan_in", lambda state: {})
+    graph.add_node("targeted_planner", lambda state: targeted_planner_node(state, context))
+    graph.add_node("targeted_executor", lambda state: targeted_executor_node(state, context))
 
     # Assembly, refinement, output
     graph.add_node("section_assembler", lambda state: section_assembler_node(state, context))
@@ -109,6 +113,8 @@ def build_readme_graph(context: ReadmeContext) -> Any:
 
     # ── After diagnosis: route to targeted / article / standard ──
     graph.add_conditional_edges("diagnosis", _route_after_diagnosis)
+    graph.add_edge("targeted_planner", "targeted_executor")
+    graph.add_edge("targeted_executor", "section_assembler")
 
     # ── Standard mode ──
     # core_features → fan-out → overview ∥ getting_started (same superstep)

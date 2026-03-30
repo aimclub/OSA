@@ -15,12 +15,25 @@ from osa_tool.utils.token_counter import count_tokens, truncate_to_tokens
 from osa_tool.utils.utils import extract_readme_content, parse_folder_name
 
 # Files worth keeping in the tree even at deep nesting levels.
-_IMPORTANT_FILENAMES = frozenset({
-    "__init__.py", "__main__.py", "main.py", "app.py", "cli.py",
-    "setup.py", "setup.cfg", "pyproject.toml", "Cargo.toml",
-    "package.json", "go.mod", "Makefile", "Dockerfile",
-    "requirements.txt", "environment.yml",
-})
+_IMPORTANT_FILENAMES = frozenset(
+    {
+        "__init__.py",
+        "__main__.py",
+        "main.py",
+        "app.py",
+        "cli.py",
+        "setup.py",
+        "setup.cfg",
+        "pyproject.toml",
+        "Cargo.toml",
+        "package.json",
+        "go.mod",
+        "Makefile",
+        "Dockerfile",
+        "requirements.txt",
+        "environment.yml",
+    }
+)
 
 
 def _compute_budgets(context_window: int, max_output_tokens: int) -> dict[str, int]:
@@ -217,18 +230,28 @@ def _gather_raw_context(
     # Read key files with token budget (priority order)
     per_file_cap = min(2000, budgets["key_files"] // 3) if budgets["key_files"] > 0 else 0
     key_files_read, key_files_content = _read_files_with_budget(
-        repo_path, key_files, budgets["key_files"], per_file_cap, encoding,
+        repo_path,
+        key_files,
+        budgets["key_files"],
+        per_file_cap,
+        encoding,
     )
     logger.info(
         "[ContextCollector] Read %d/%d key files (%d tokens)",
-        len(key_files_read), len(key_files), count_tokens(key_files_content, encoding),
+        len(key_files_read),
+        len(key_files),
+        count_tokens(key_files_content, encoding),
     )
 
     # Read example files with token budget
     examples_files = extract_example_paths(raw_tree)
     examples_cap = min(800, budgets["examples"] // 3) if budgets["examples"] > 0 else 0
     _, examples_content = _read_files_with_budget(
-        repo_path, examples_files, budgets["examples"], examples_cap, encoding,
+        repo_path,
+        examples_files,
+        budgets["examples"],
+        examples_cap,
+        encoding,
     )
 
     # Parse PDF if attachment present (budget-limited)

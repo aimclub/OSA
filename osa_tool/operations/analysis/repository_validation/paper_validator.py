@@ -14,6 +14,8 @@ from osa_tool.operations.docs.readme_generation.context.article_content import P
 from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
+
+
 class PaperValidator:
     """
     Validates a scientific paper (PDF) against the code repository.
