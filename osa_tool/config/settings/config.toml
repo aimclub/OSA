@@ -19,6 +19,7 @@ max_tokens = 4096
 context_window = 16385
 top_p = 0.95
 max_retries = 3
+fallback_models = ["google/gemini-3-flash-preview", "deepseek/deepseek-v3.2", "x-ai/grok-4.1-fast", "openai/gpt-oss-120b", "anthropic/claude-haiku-4.5"]
 allowed_providers = ["google-vertex", "azure"]
 system_prompt = "You are a helpful assistant for analyzing open-source repositories."
 
@@ -47,6 +48,8 @@ refine_readme = false
 requirements = false
 organize = false
 about = false
+validate_paper = false
+validate_doc = false
 
 #Workflow Settings
 [workflows]

@@ -4,16 +4,16 @@ from unittest.mock import mock_open, patch
 import nbformat
 import pytest
 
-from osa_tool.conversion.notebook_converter import NotebookConverter
+from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
 
 
-def test_is_syntax_correct():
+def test_is_syntax_correct(mock_config_manager):
     # Arrange
-    converter = NotebookConverter()
+    converter = NotebookConverter(mock_config_manager)
 
     # Assert
-    assert converter.is_syntax_correct("x = 1")
-    assert not converter.is_syntax_correct("x ==")
+    assert converter._is_syntax_correct("x = 1")
+    assert not converter._is_syntax_correct("x ==")
 
 
 @pytest.mark.parametrize(
@@ -57,12 +57,12 @@ def test_is_syntax_correct():
         ),
     ],
 )
-def test_process_code_transformations(input_code, expected_parts, unexpected_parts):
+def test_process_code_transformations(mock_config_manager, input_code, expected_parts, unexpected_parts):
     # Arrange
-    converter = NotebookConverter()
+    converter = NotebookConverter(mock_config_manager)
 
     # Act
-    output = converter.process_code("test_dir", input_code)
+    output = converter._process_code("test_dir", input_code)
 
     # Assert
     for part in expected_parts:
@@ -71,46 +71,46 @@ def test_process_code_transformations(input_code, expected_parts, unexpected_par
         assert part not in output
 
 
-def test_process_path_directory():
+def test_process_path_directory(mock_config_manager):
     # Arrange
-    converter = NotebookConverter()
-    with patch.object(converter, "convert_notebooks_in_directory") as mock_dir:
+    converter = NotebookConverter(mock_config_manager)
+    with patch.object(converter, "_convert_directory") as mock_dir:
         with patch("os.path.isdir", return_value=True):
             # Act
-            converter.process_path("some_dir")
+            converter._process_path("some_dir")
 
             # Assert
             mock_dir.assert_called_once_with("some_dir")
 
 
-def test_process_path_single_file():
+def test_process_path_single_file(mock_config_manager):
     # Arrange
-    converter = NotebookConverter()
-    with patch.object(converter, "convert_notebook") as mock_nb:
+    converter = NotebookConverter(mock_config_manager)
+    with patch.object(converter, "_convert_single") as mock_nb:
         with patch("os.path.isdir", return_value=False), patch("os.path.isfile", return_value=True):
             # Act
-            converter.process_path("file.ipynb")
+            converter._process_path("file.ipynb")
 
             # Assert
             mock_nb.assert_called_once_with("file.ipynb")
 
 
-def test_convert_notebooks_in_directory_calls_convert_notebook():
+def test_convert_notebooks_in_directory_calls_convert_notebook(mock_config_manager):
     # Arrange
-    converter = NotebookConverter()
+    converter = NotebookConverter(mock_config_manager)
     with (
         patch("os.walk", return_value=[("root", [], ["file.ipynb", "skip.txt"])]),
-        patch.object(converter, "convert_notebook") as mock_nb,
+        patch.object(converter, "_convert_single") as mock_nb,
     ):
         # Act
-        converter.convert_notebooks_in_directory("some_dir")
+        converter._convert_directory("some_dir")
         # Assert
         mock_nb.assert_called_once_with(os.path.join("root", "file.ipynb"))
 
 
-def test_convert_notebook_success():
+def test_convert_notebook_success(mock_config_manager):
     # Arrange
-    converter = NotebookConverter()
+    converter = NotebookConverter(mock_config_manager)
     fake_notebook = nbformat.v4.new_notebook()
     exporter_output = ("print('hello')", None)
 
@@ -118,21 +118,21 @@ def test_convert_notebook_success():
         patch("builtins.open", mock_open(read_data="{}")),
         patch("nbformat.read", return_value=fake_notebook),
         patch.object(converter.exporter, "from_notebook_node", return_value=exporter_output),
-        patch.object(converter, "process_code", return_value="print('ok')"),
-        patch.object(converter, "is_syntax_correct", return_value=True),
+        patch.object(converter, "_process_code", return_value="print('ok')"),
+        patch.object(converter, "_is_syntax_correct", return_value=True),
         patch("os.path.splitext", side_effect=os.path.splitext),
         patch("builtins.open", mock_open()) as mock_file,
     ):
         # Act
-        converter.convert_notebook("test.ipynb")
+        converter._convert_single("test.ipynb")
 
         # Assert
         mock_file().write.assert_called_once_with("print('ok')")
 
 
-def test_convert_notebook_syntax_error():
+def test_convert_notebook_syntax_error(mock_config_manager):
     # Arrange
-    converter = NotebookConverter()
+    converter = NotebookConverter(mock_config_manager)
     fake_notebook = nbformat.v4.new_notebook()
     exporter_output = ("print('bad')", None)
 
@@ -140,6 +140,6 @@ def test_convert_notebook_syntax_error():
         patch("builtins.open", mock_open(read_data="{}")),
         patch("nbformat.read", return_value=fake_notebook),
         patch.object(converter.exporter, "from_notebook_node", return_value=exporter_output),
-        patch.object(converter, "is_syntax_correct", return_value=False),
+        patch.object(converter, "_is_syntax_correct", return_value=False),
     ):
-        converter.convert_notebook("bad.ipynb")
+        converter._convert_single("bad.ipynb")

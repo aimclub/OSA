@@ -2,17 +2,17 @@ import os
 from typing import Iterable
 
 import qrcode
-from osa_tool.core.git.metadata import RepositoryMetadata
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfgen.canvas import Canvas
-from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 from osa_tool.config.settings import ConfigManager
+from osa_tool.core.git.metadata import RepositoryMetadata
+from osa_tool.operations.analysis.repository_validation.experiment import Experiment
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
-from osa_tool.validation.experiment import Experiment
 
 
 class ReportGenerator:
@@ -41,7 +41,7 @@ class ReportGenerator:
         self.filename = f"{self.metadata.name}_validation_report.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
 
-    def build_pdf(self, type_: str, experiments: tuple[Experiment]) -> None:
+    def build_pdf(self, type_: str, experiments: tuple[Experiment, ...]) -> None:
         """
         Build and save the PDF validation report.
 
@@ -194,9 +194,14 @@ class ReportGenerator:
         return Spacer(0, 10), conclusion_header, Spacer(0, 5), conclusion_text
 
     def __build_table(self, experiments) -> Iterable[Paragraph]:
-        return (Paragraph(f"""<b>Experiment {i + 1}.</b>
+        return (
+            Paragraph(
+                f"""<b>Experiment {i + 1}.</b>
                 <b>Formulation stated: </b><p>"{experiment.description_from_paper}"</p>
                 <b>Implementation found: </b><p>{experiment.impl_src_path}</p>
                 <b>Missing components: </b><p>{experiment.missing if bool(experiment.missing) else "None"}</p>
                 <b>Correspondence: </b><p>{experiment.correspondence_percent*100}%</p>
-                """) for i, experiment in enumerate(experiments))
+                """
+            )
+            for i, experiment in enumerate(experiments)
+        )

@@ -1,17 +1,21 @@
 import os
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Optional
 
 import yaml
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.scheduler.plan import Plan
 from osa_tool.core.git.metadata import RepositoryMetadata
+from osa_tool.operations.codebase.workflow_generation.workflow_generator import (
+    GitHubWorkflowGenerator,
+    GitLabWorkflowGenerator,
+)
+from osa_tool.scheduler.plan import Plan
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.arguments_parser import get_keys_from_group_in_yaml
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
-from osa_tool.workflow.workflow_generator import GitHubWorkflowGenerator, GitLabWorkflowGenerator
 
 
 class WorkflowManager(ABC):
@@ -71,12 +75,21 @@ class WorkflowManager(ABC):
         """
         Checks whether the repository contains Python code.
 
+        First checks the repository metadata language field. If that is absent or
+        does not mention Python, falls back to counting ``.py`` files on disk.
+
         Returns:
             True if Python code is present, False otherwise.
         """
-        if not self.metadata.language:
-            return False
-        return "Python" in self.metadata.language
+        if self.metadata.language and "Python" in self.metadata.language:
+            return True
+
+        py_count = sum(1 for _ in Path(self.base_path).rglob("*.py"))
+        if py_count > 0:
+            logger.info("Metadata did not report Python, but found %d .py file(s) on disk.", py_count)
+            return True
+
+        return False
 
     def build_actual_plan(self, sourcerank: SourceRank) -> dict:
         """
@@ -121,6 +134,19 @@ class WorkflowManager(ABC):
         result_plan["generate_workflow"] = generate
 
         return result_plan
+
+    @staticmethod
+    def apply_workflow_settings(config_manager: ConfigManager, settings: dict) -> None:
+        """
+        Apply workflow settings directly from a dict, bypassing the legacy Plan.
+        Used by the agentic pipeline.
+
+        Args:
+            config_manager: Configuration manager to update.
+            settings: Dict of workflow settings keys and values.
+        """
+        config_manager.config.workflows = config_manager.config.workflows.model_copy(update=settings)
+        logger.info("Config successfully updated with workflow settings")
 
     def update_workflow_config(self, config_manager: ConfigManager, plan: Plan) -> None:
         """

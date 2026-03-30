@@ -2,6 +2,7 @@ from osa_tool.core.models.agent_status import AgentStatus
 from osa_tool.osa_agent.base import BaseAgent
 from osa_tool.osa_agent.state import OSAState
 from osa_tool.tools.repository_analysis.repo_analyzer import RepositoryAnalyzer
+from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import rich_section
 
 
@@ -34,22 +35,27 @@ class RepoAnalysisAgent(BaseAgent):
             OSAState: Updated state containing repository analysis results.
         """
         rich_section("Repository Analysis Agent")
+        logger.info("Repo analysis started")
 
         state.active_agent = self.name
         state.status = AgentStatus.ANALYZING
 
         # Prepare repository if not already prepared
         if not state.repo_prepared:
+            logger.debug("Repository not prepared; cloning and preparing")
             self._prepare_repo(state)
+        else:
+            logger.debug("Repository already prepared at %s", state.repo_path)
 
         # Analyze repository
         analyzer = RepositoryAnalyzer(state.repo_path, self.context.workflow_manager.existing_jobs)
         repo_data = analyzer.analyze()
+        logger.debug("Repository analysis data collected")
 
         # Update state with repository data
         state.repo_data = repo_data
         state.repo_metadata = self.context.git_agent.metadata
-
+        logger.info("Repository analysis completed")
         return state
 
     def _prepare_repo(self, state: OSAState) -> None:
@@ -77,3 +83,4 @@ class RepoAnalysisAgent(BaseAgent):
 
         state.repo_path = self.context.git_agent.clone_dir
         state.repo_prepared = True
+        logger.info("Repository prepared: %s", state.repo_path)

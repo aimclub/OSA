@@ -103,7 +103,7 @@ docker build --build-arg GIT_USER_NAME="your-user-name" --build-arg GIT_USER_EMA
 
 ### Prerequisites
 
-OSA requires Python 3.10 or higher.
+OSA requires Python 3.11 or higher.
 
 File `.env` is required to specify GitHub/GitLab/Gitverse token (GIT_TOKEN) and LLM API key (OPENAI_API_KEY or
 AUTHORIZATION_KEY)

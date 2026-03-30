@@ -1,8 +1,8 @@
 [project]
 name = "osa_tool"
-version = "0.2.7"
+version = "0.2.10"
 description = "Tool that just makes your open source project better!"
-requires-python = ">=3.10,<4.0"
+requires-python = ">=3.11,<4.0"
 authors = [
     { name = "ITMO-NSS-team", email = "itmo.nss.team@gmail.com" }
 ]
@@ -22,6 +22,7 @@ black = ">=25.0.0"
 colorama = ">=0.4.6"
 docx2txt = ">=0.9"
 GitPython = ">=3.1.40"
+libcst = ">=1.8.6"
 mkdocs = ">=1.6.0"
 mkdocs-material = ">=9.6.0"
 mkdocstrings = { extras = ["python"], version = ">=0.29.0" }

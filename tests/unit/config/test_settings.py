@@ -4,8 +4,8 @@ from pydantic import ValidationError
 from osa_tool.config.settings import (
     ConfigManager,
     GitSettings,
-    ModelSettings,
     ModelGroupSettings,
+    ModelSettings,
     Settings,
     WorkflowSettings,
 )
@@ -73,6 +73,7 @@ def test_config_manager_invalid_pep8_tool():
                 "top_p": 0.95,
                 "max_retries": 3,
                 "allowed_providers": ["openai"],
+                "fallback_models": ["gpt-oss-120b", "claude-haiku-4.5"],
                 "system_prompt": "You are a helpful assistant.",
             }
         },
@@ -109,6 +110,7 @@ def test_config_manager_without_llm_default():
                 "top_p": 0.95,
                 "max_retries": 3,
                 "allowed_providers": ["openai"],
+                "fallback_models": ["gpt-oss-120b", "claude-haiku-4.5"],
                 "system_prompt": "You are a helpful assistant.",
             }
         },
@@ -143,6 +145,7 @@ def test_model_group_settings_partial_tasks():
                 "top_p": 0.95,
                 "max_retries": 3,
                 "allowed_providers": ["openai"],
+                "fallback_models": ["gpt-oss-120b", "claude-haiku-4.5"],
                 "system_prompt": "You are a helpful assistant.",
             },
             "for_readme_gen": {
@@ -160,6 +163,7 @@ def test_model_group_settings_partial_tasks():
                 "top_p": 0.95,
                 "max_retries": 3,
                 "allowed_providers": ["openai"],
+                "fallback_models": ["gpt-oss-120b", "claude-haiku-4.5"],
                 "system_prompt": "You are a helpful assistant.",
             },
         },
@@ -282,6 +286,7 @@ def test_model_settings_validation():
         "top_p": 0.95,
         "max_retries": 3,
         "allowed_providers": ["openai"],
+        "fallback_models": ["gpt-oss-120b", "claude-haiku-4.5"],
         "system_prompt": "You are a helpful assistant.",
     }
 
@@ -294,6 +299,7 @@ def test_model_settings_validation():
     assert model_settings.temperature == 0.05
     assert model_settings.max_tokens == 4096
     assert "openai" in model_settings.allowed_providers
+    assert "claude-haiku-4.5" in model_settings.fallback_models
 
 
 def test_model_settings_invalid_temperature():
@@ -313,6 +319,7 @@ def test_model_settings_invalid_temperature():
         "top_p": 0.95,
         "max_retries": 3,
         "allowed_providers": ["openai"],
+        "fallback_models": ["gpt-oss-120b", "claude-haiku-4.5"],
         "system_prompt": "You are a helpful assistant.",
     }
 

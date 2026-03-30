@@ -1,10 +1,12 @@
 import os
 
+from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import ValidationError
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
+from osa_tool.core.models.event import OperationEvent
 from osa_tool.operations.analysis.repository_report.response_validation import (
     RepositoryReport,
     RepositoryStructure,
@@ -13,6 +15,8 @@ from osa_tool.operations.analysis.repository_report.response_validation import (
     OverallAssessment,
     AfterReportBlock,
     AfterReport,
+    AfterReportSummary,
+    AfterReportBlocksPlan,
 )
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
@@ -90,11 +94,17 @@ class TextGenerator:
 
 
 class AfterReportTextGenerator:
-    def __init__(self, config_manger: ConfigManager, what_has_been_done: list[tuple[str, bool]]) -> None:
+    def __init__(
+        self,
+        config_manger: ConfigManager,
+        completed_tasks: list[tuple[str, bool]],
+        task_results: dict[str, dict] | None = None,
+    ) -> None:
         self.config_manager = config_manger
         self.model_settings = self.config_manager.get_model_settings("general")
-        self.prompts = self.config_manager.config.prompts
-        self.what_has_been_done = what_has_been_done
+        self.prompts = self.config_manager.get_prompts()
+        self.completed_tasks = completed_tasks
+        self.task_results = task_results or {}
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
 
     def make_request(self) -> AfterReport:
@@ -104,32 +114,90 @@ class AfterReportTextGenerator:
         Returns:
             The generated OSA work summary response from the model.
         """
-        formatted_tasks = "\n".join(
-            f"Task {i}. {n}: {'Yes' if d else 'No'}" for i, (n, d) in enumerate(self.what_has_been_done)
-        )
-        json_prompt = PromptBuilder.render(
-            self.prompts.get("analysis.after_report_blocks_prompt"),
-            tasks_list=formatted_tasks,
-        )
-        summary_prompt = PromptBuilder.render(
-            self.prompts.get("analysis.after_report_text_prompt"),
-            tasks_list=formatted_tasks,
-        )
+        performed_lookup = {name: done for name, done in self.completed_tasks}
+        operations_text = self._operations_to_text(self.completed_tasks, self.task_results)
 
         try:
-            summary = self.model_handler.send_request(prompt=summary_prompt)
-            json_result = self.model_handler.send_and_parse(
-                prompt=json_prompt,
-                parser=lambda raw: [
-                    AfterReportBlock(
-                        name=d["name"],
-                        description=d["description"],
-                        tasks=[self.what_has_been_done[i] for i in d["tasks"]],
-                    )
-                    for d in JsonProcessor.parse(raw, expected_type=list)
-                ],
+            # Summary (structured JSON -> AfterReportSummary)
+            summary_parser = PydanticOutputParser(pydantic_object=AfterReportSummary)
+            summary_system = self.prompts.get("system_messages.after_report_summary")
+            summary_prompt = PromptBuilder.render(
+                self.prompts.get("analysis.after_report_summary_from_events_prompt"),
+                operations=operations_text,
             )
-            return AfterReport(summary=summary, blocks=json_result)
+            summary_obj: AfterReportSummary = self.model_handler.run_chain(
+                prompt=summary_prompt,
+                parser=summary_parser,
+                system_message=summary_system,
+            )
+
+            # Blocks (structured JSON -> AfterReportBlocksPlan)
+            blocks_parser = PydanticOutputParser(pydantic_object=AfterReportBlocksPlan)
+            blocks_system = self.prompts.get("system_messages.after_report_blocks")
+            blocks_prompt = PromptBuilder.render(
+                self.prompts.get("analysis.after_report_blocks_from_events_prompt"),
+                operations=operations_text,
+            )
+            blocks_plan: AfterReportBlocksPlan = self.model_handler.run_chain(
+                prompt=blocks_prompt,
+                parser=blocks_parser,
+                system_message=blocks_system,
+            )
+
+            blocks: list[AfterReportBlock] = []
+            for block in blocks_plan.root:
+                tasks = [(t, bool(performed_lookup.get(t, False))) for t in block.tasks]
+                blocks.append(AfterReportBlock(name=block.name, description=block.description, tasks=tasks))
+
+            return AfterReport(summary=summary_obj.summary, blocks=blocks)
+
         except Exception as e:
-            logger.error(f"Unexpected error while parsing RepositoryReport: {e}")
-            raise ValueError(f"Failed to process model response: {e}")
+            logger.error("Unexpected error while generating AfterReport: %s", e)
+            raise ValueError(f"Failed to process model response: {e}") from e
+
+    @staticmethod
+    def _events_to_text(events: list[OperationEvent]) -> str:
+        lines: list[str] = []
+        for e in events:
+            kind = getattr(e.kind, "value", str(e.kind))
+            line = "- %s: %s" % (kind, e.target)
+            data = getattr(e, "data", None) or {}
+            if data:
+                line += " (%s)" % ", ".join("%s=%s" % (k, v) for k, v in data.items())
+            lines.append(line)
+        return "\n".join(lines)
+
+    def _operations_to_text(self, completed_tasks: list[tuple[str, bool]], task_results: dict[str, dict]) -> str:
+        parts: list[str] = []
+
+        for name, done in completed_tasks:
+            details = task_results.get(name) or {}
+            result = details.get("result")
+            events = details.get("events") or []
+
+            # Result (truncate)
+            result_text = "None"
+            if result is not None:
+                result_text = str(result)
+                if len(result_text) > 600:
+                    result_text = result_text[:600] + "..."
+
+            # Events text
+            try:
+                events_text = self._events_to_text(events)
+            except Exception:
+                events_text = "\n".join("- %s" % str(e) for e in events) if events else ""
+
+            parts.append(
+                "\n".join(
+                    [
+                        f"Operation: {name}",
+                        f"Performed: {'Yes' if done else 'No'}",
+                        f"Result: {result_text}",
+                        "Events:",
+                        events_text or "- (none)",
+                    ]
+                )
+            )
+
+        return "\n\n---\n\n".join(parts)

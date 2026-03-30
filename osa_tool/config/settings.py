@@ -55,6 +55,7 @@ class ModelSettings(BaseModel):
     host_name: AnyHttpUrl
     localhost: AnyHttpUrl
     model: str
+    fallback_models: list[str]
     path: str
     temperature: NonNegativeFloat
     max_tokens: PositiveInt

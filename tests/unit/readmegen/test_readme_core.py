@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
-from osa_tool.scheduler.plan import Plan
 
 
 @patch("osa_tool.operations.docs.readme_generation.readme_core.remove_extra_blank_lines")
@@ -27,12 +26,12 @@ def test_readme_agent_without_article(
     mock_builder.return_value.build.return_value = "Final README content"
     mock_llm.return_value.refine_readme.return_value = "Refined README content"
     mock_llm.return_value.clean.return_value = "Cleaned README content"
-    plan = Plan({"attachment": None, "refine_readme": True})
 
     agent = ReadmeAgent(
         config_manager=mock_config_manager,
         metadata=mock_repository_metadata,
-        plan=plan,
+        attachment=None,
+        refine_readme=True,
     )
 
     # Act
@@ -77,12 +76,12 @@ def test_readme_agent_with_article(
         "getting_started_from_article",
     )
     mock_builder_article.return_value.build.return_value = "README from article"
-    plan = Plan({"attachment": article_path, "refine_readme": False})
 
     agent = ReadmeAgent(
         config_manager=mock_config_manager,
         metadata=mock_repository_metadata,
-        plan=plan,
+        attachment=article_path,
+        refine_readme=False,
     )
 
     # Act
