@@ -167,7 +167,8 @@ def deterministic_builder_node(state: ReadmeState, context: ReadmeContext) -> di
     if spec is not None:
         deterministic_specs = [spec]
 
-    merged = dict(state.sections)
+    new_sections: dict[str, SectionResult] = {}
+    new_errors: dict[str, str] = {}
 
     for section_spec in deterministic_specs:
         method_name = _BUILDER_MAP.get(section_spec.name)
@@ -181,19 +182,19 @@ def deterministic_builder_node(state: ReadmeState, context: ReadmeContext) -> di
             content = getattr(builder, method_name)()
         except Exception as exc:
             logger.warning("[DeterministicBuilder] Failed to build '%s': %s", section_spec.name, exc)
-            errors = dict(state.section_errors)
-            errors[section_spec.name] = repr(exc)
-            merged_errors = errors
+            new_errors[section_spec.name] = repr(exc)
             continue
 
-        merged[section_spec.name] = SectionResult(
+        new_sections[section_spec.name] = SectionResult(
             name=section_spec.name,
             title=section_spec.title,
             content=content,
             source="deterministic",
         )
 
-    update = {"sections": merged}
+    update: dict = {"sections": new_sections}
+    if new_errors:
+        update["section_errors"] = new_errors
     logger.debug("[DeterministicBuilder] Output update summary: %s", summarize_update(update))
     logger.info("[DeterministicBuilder] Done. Built %d deterministic sections.", len(deterministic_specs))
     return update

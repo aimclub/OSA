@@ -84,10 +84,7 @@ def section_generator_node(state: ReadmeState, context: ReadmeContext) -> dict:
         source="llm",
     )
 
-    merged = dict(state.sections)
-    merged[spec.name] = result
-
-    update = {"sections": merged}
+    update = {"sections": {spec.name: result}}
     logger.debug("[SectionGenerator] Output update summary: %s", summarize_update(update))
     logger.info("[SectionGenerator] Section '%s' done (%d chars).", spec.name, len(result.content))
     return update

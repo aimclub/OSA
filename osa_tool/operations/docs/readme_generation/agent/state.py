@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Annotated, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -13,6 +13,13 @@ from osa_tool.operations.docs.readme_generation.agent.models import (
     SectionSpec,
     TaskIntent,
 )
+
+
+def _merge_dicts(left: dict, right: dict) -> dict:
+    """Reducer that merges two dicts (right overwrites overlapping keys)."""
+    merged = left.copy()
+    merged.update(right)
+    return merged
 
 
 class ReadmeState(BaseModel):
@@ -34,9 +41,9 @@ class ReadmeState(BaseModel):
     # ── Section plan (section_planner) ──
     section_plan: list[SectionSpec] = Field(default_factory=list)
 
-    # ── Generated sections (keyed by section name) ──
-    sections: dict[str, SectionResult] = Field(default_factory=dict)
-    section_errors: dict[str, str] = Field(default_factory=dict)
+    # ── Generated sections — uses a merge reducer so parallel Send writes combine ──
+    sections: Annotated[dict[str, SectionResult], _merge_dicts] = Field(default_factory=dict)
+    section_errors: Annotated[dict[str, str], _merge_dicts] = Field(default_factory=dict)
 
     # ── Current section being generated (set per-Send by fan-out) ──
     current_section: Optional[SectionSpec] = None
