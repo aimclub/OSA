@@ -7,6 +7,7 @@ from osa_tool.operations.docs.readme_generation.llm_schemas import KeyFilesLLMOu
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
 from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
+from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_state, summarize_update
 from osa_tool.operations.docs.readme_generation.utils import extract_example_paths, read_file
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
@@ -310,6 +311,7 @@ def _run_llm_analyses(
 def context_collector_node(state: ReadmeState, context: ReadmeContext) -> dict:
     """Collect repository context with token-budget-aware reading and parallel analyses."""
     logger.info("[ContextCollector] Gathering repository context...")
+    logger.debug("[ContextCollector] Input state summary: %s", summarize_state(state))
 
     model_settings = context.config_manager.get_model_settings("readme")
     encoding = model_settings.encoder
@@ -319,5 +321,7 @@ def context_collector_node(state: ReadmeState, context: ReadmeContext) -> dict:
     raw_ctx = _gather_raw_context(state, context, budgets, encoding)
     analyses = _run_llm_analyses(context, raw_ctx)
 
+    update = {**raw_ctx, **analyses}
+    logger.debug("[ContextCollector] Output update summary: %s", summarize_update(update))
     logger.info("[ContextCollector] Context collection complete.")
-    return {**raw_ctx, **analyses}
+    return update

@@ -1,4 +1,5 @@
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
+from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_state, summarize_update
 from osa_tool.operations.docs.readme_generation.agent.nodes.algorithms import algorithms_node
 from osa_tool.operations.docs.readme_generation.agent.nodes.content import content_node
 from osa_tool.operations.docs.readme_generation.agent.nodes.core_features import core_features_node
@@ -20,6 +21,7 @@ def _extract_generated_section(node_output: dict, section_name: str) -> str | No
 def targeted_executor_node(state: ReadmeState, context: ReadmeContext) -> dict:
     """Generate only resolved target sections for targeted mode."""
     logger.info("[TargetedExecutor] Generating targeted sections...")
+    logger.debug("[TargetedExecutor] Input state summary: %s", summarize_state(state))
 
     sections_to_generate = state.resolved_target_sections or state.target_sections
     generated_sections = dict(state.generated_sections)
@@ -62,7 +64,9 @@ def targeted_executor_node(state: ReadmeState, context: ReadmeContext) -> dict:
                 state.core_features = output.get("core_features")
 
     logger.info("[TargetedExecutor] Generated sections: %s", list(generated_sections.keys()))
-    return {
+    update = {
         "generated_sections": generated_sections,
         "section_generation_errors": generation_errors,
     }
+    logger.debug("[TargetedExecutor] Output update summary: %s", summarize_update(update))
+    return update

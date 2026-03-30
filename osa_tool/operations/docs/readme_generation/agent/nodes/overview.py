@@ -1,5 +1,6 @@
 from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
+from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_state, summarize_update
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
@@ -8,6 +9,7 @@ from osa_tool.utils.prompts_builder import PromptBuilder
 def overview_node(state: ReadmeState, context: ReadmeContext) -> dict:
     """Generate overview section (both modes)."""
     logger.info("[Overview] Generating project overview...")
+    logger.debug("[Overview] Input state summary: %s", summarize_state(state))
 
     if state.readme_mode == "article":
         overview = context.model_handler.send_and_parse(
@@ -31,5 +33,7 @@ def overview_node(state: ReadmeState, context: ReadmeContext) -> dict:
             parser=LlmTextOutput,
         ).text
 
+    update = {"overview": overview}
+    logger.debug("[Overview] Output update summary: %s", summarize_update(update))
     logger.info("[Overview] Done.")
-    return {"overview": overview}
+    return update

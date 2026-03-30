@@ -2,6 +2,7 @@ from osa_tool.operations.docs.readme_generation.agent.context import ReadmeConte
 from pydantic import ValidationError
 
 from osa_tool.operations.docs.readme_generation.llm_schemas import DiagnosisLLMOutput
+from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_state, summarize_update
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
@@ -11,6 +12,7 @@ from osa_tool.utils.response_cleaner import JsonParseError
 def diagnosis_node(state: ReadmeState, context: ReadmeContext) -> dict:
     """Decide generation_mode (full_regen/targeted) and readme_mode (standard/article)."""
     logger.info("[Diagnosis] Analyzing README state and planning generation strategy...")
+    logger.debug("[Diagnosis] Input state summary: %s", summarize_state(state))
 
     readme_mode = "article" if (state.attachment and state.pdf_content) else "standard"
 
@@ -19,12 +21,14 @@ def diagnosis_node(state: ReadmeState, context: ReadmeContext) -> dict:
     # Fast path: no existing README → always full_regen, skip LLM
     if existing_is_empty:
         logger.info("[Diagnosis] mode=full_regen, readme_mode=%s (no existing README)", readme_mode)
-        return {
+        update = {
             "readme_mode": readme_mode,
             "generation_mode": "full_regen",
             "generation_plan": "No existing README found. Generating complete README from scratch.",
             "target_sections": [],
         }
+        logger.debug("[Diagnosis] Output update summary: %s", summarize_update(update))
+        return update
 
     # Use LLM to decide generation strategy
     try:
@@ -54,9 +58,11 @@ def diagnosis_node(state: ReadmeState, context: ReadmeContext) -> dict:
         readme_mode,
         target_sections,
     )
-    return {
+    update = {
         "readme_mode": readme_mode,
         "generation_mode": generation_mode,
         "target_sections": target_sections,
         "generation_plan": generation_plan,
     }
+    logger.debug("[Diagnosis] Output update summary: %s", summarize_update(update))
+    return update

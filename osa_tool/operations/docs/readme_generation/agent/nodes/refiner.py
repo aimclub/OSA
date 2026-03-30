@@ -2,6 +2,7 @@ from pydantic import ValidationError
 
 from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
+from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_state, summarize_update
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.operations.docs.readme_generation.llm_schemas import ReadmeSelfEvalLLMOutput
 from osa_tool.utils.logger import logger
@@ -19,6 +20,7 @@ def refiner_node(state: ReadmeState, context: ReadmeContext) -> dict:
     """
     cycle = state.refinement_cycles + 1
     logger.info("[Refiner] Refinement cycle %d...", cycle)
+    logger.debug("[Refiner] Input state summary: %s", summarize_state(state))
 
     current = state.readme_draft or ""
 
@@ -26,6 +28,7 @@ def refiner_node(state: ReadmeState, context: ReadmeContext) -> dict:
     if state.refinement_issues:
         # Subsequent cycles: targeted fixes based on eval issues
         logger.info("[Refiner] Fixing %d issues from previous evaluation...", len(state.refinement_issues))
+        logger.debug("[Refiner] Previous issues: %s", state.refinement_issues)
         refined = context.model_handler.send_and_parse(
             prompt=PromptBuilder.render(
                 context.prompts.get("readme_agent.refine_with_feedback"),
@@ -95,14 +98,17 @@ def refiner_node(state: ReadmeState, context: ReadmeContext) -> dict:
             len(refinement_issues),
             should_stop,
         )
+        logger.debug("[Refiner] New issues after self-eval: %s", refinement_issues)
     except (JsonParseError, ValidationError) as e:
         refinement_score = 7.0
         refinement_issues = []
         logger.warning("[Refiner] Self-eval failed after retries (%s); score=7.0", e)
 
-    return {
+    update = {
         "readme_draft": current,
         "refinement_cycles": cycle,
         "refinement_score": refinement_score,
         "refinement_issues": refinement_issues,
     }
+    logger.debug("[Refiner] Output update summary: %s", summarize_update(update))
+    return update

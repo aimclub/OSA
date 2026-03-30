@@ -38,6 +38,7 @@ class ReadmeAgent:
                 - result: Information about generated README
                 - events: List of OperationEvent
         """
+        logger.info("========== README GENERATION START ==========")
         logger.info("Started generating README.md. Processing the repository: %s", self.repo_url)
 
         try:
@@ -58,6 +59,7 @@ class ReadmeAgent:
                 events = final.events
 
             logger.info("README.md successfully generated in folder %s", self.repo_path)
+            logger.info("=========== README GENERATION END ===========")
             return {
                 "result": {
                     "file": "README.md",
@@ -67,6 +69,7 @@ class ReadmeAgent:
             }
         except Exception as e:
             logger.error("Error while generating: %s", repr(e), exc_info=True)
+            logger.info("=========== README GENERATION END ===========")
             return {
                 "result": None,
                 "events": [

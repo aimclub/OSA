@@ -1,4 +1,5 @@
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
+from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_state, summarize_update
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.utils.logger import logger
 
@@ -25,6 +26,7 @@ def _default_targets_for_mode(readme_mode: str) -> list[str]:
 def targeted_planner_node(state: ReadmeState, _context: ReadmeContext) -> dict:
     """Resolve target sections for targeted mode."""
     logger.info("[TargetedPlanner] Resolving target sections...")
+    logger.debug("[TargetedPlanner] Input state summary: %s", summarize_state(state))
 
     requested = state.target_sections or []
     normalized: list[str] = []
@@ -45,4 +47,6 @@ def targeted_planner_node(state: ReadmeState, _context: ReadmeContext) -> dict:
         )
 
     logger.info("[TargetedPlanner] Resolved targets: %s", normalized)
-    return {"resolved_target_sections": normalized}
+    update = {"resolved_target_sections": normalized}
+    logger.debug("[TargetedPlanner] Output update summary: %s", summarize_update(update))
+    return update

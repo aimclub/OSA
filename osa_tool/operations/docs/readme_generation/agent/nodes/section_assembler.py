@@ -1,5 +1,6 @@
 from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
+from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_state, summarize_update
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.operations.docs.readme_generation.generator.builder import MarkdownBuilder
 from osa_tool.operations.docs.readme_generation.generator.builder_article import MarkdownBuilderArticle
@@ -35,6 +36,7 @@ def _collect_generated_sections(state: ReadmeState) -> str:
 def section_assembler_node(state: ReadmeState, context: ReadmeContext) -> dict:
     """Assemble sections into readme_draft (full_regen: build, targeted: LLM merge)."""
     logger.info("[SectionAssembler] Assembling README draft (mode=%s)...", state.generation_mode)
+    logger.debug("[SectionAssembler] Input state summary: %s", summarize_state(state))
 
     if state.generation_mode == "targeted":
         new_sections = _collect_generated_sections(state)
@@ -73,5 +75,7 @@ def section_assembler_node(state: ReadmeState, context: ReadmeContext) -> dict:
         )
         readme_draft = builder.build()
 
+    update = {"readme_draft": readme_draft}
+    logger.debug("[SectionAssembler] Output update summary: %s", summarize_update(update))
     logger.info("[SectionAssembler] Draft assembled.")
-    return {"readme_draft": readme_draft}
+    return update
