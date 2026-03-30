@@ -49,6 +49,17 @@ def _extract_existing_section(readme: str, title: str) -> str:
     return match.group(1).strip() if match else ""
 
 
+def _strip_leading_section_heading(text: str, title: str) -> str:
+    """Remove duplicate headings the model may emit despite instructions."""
+    s = (text or "").strip()
+    if not s:
+        return s
+    m = re.match(rf"^#{{1,3}}\s*{re.escape(title)}\s*\n+", s, re.IGNORECASE)
+    if m:
+        return s[m.end() :].lstrip()
+    return s
+
+
 def section_generator_node(state: ReadmeState, context: ReadmeContext) -> dict:
     """Generate a single README section described by ``state.current_section``."""
     spec: SectionSpec | None = state.current_section
@@ -77,10 +88,12 @@ def section_generator_node(state: ReadmeState, context: ReadmeContext) -> dict:
         parser=LlmTextOutput,
     ).text
 
+    text = _strip_leading_section_heading(text or "", spec.title)
+
     result = SectionResult(
         name=spec.name,
         title=spec.title,
-        content=text or "",
+        content=text,
         source="llm",
     )
 

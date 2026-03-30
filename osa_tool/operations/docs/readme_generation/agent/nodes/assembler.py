@@ -14,6 +14,17 @@ from osa_tool.utils.prompts_builder import PromptBuilder
 _SKIP_HEADING = frozenset({"header", "table_of_contents"})
 
 
+def _strip_leading_markdown_heading(content: str, title: str) -> str:
+    """Remove a redundant top-level heading if templates or the LLM already included it."""
+    text = content.strip()
+    if not text:
+        return text
+    m = re.match(rf"^#{{1,3}}\s*{re.escape(title.strip())}\s*\n+", text, re.IGNORECASE)
+    if m:
+        return text[m.end() :].lstrip()
+    return content.strip()
+
+
 def _build_table_of_contents(titles: list[str]) -> str:
     """Generate a markdown ToC from an ordered list of section titles."""
     toc_lines = ["## Table of Contents\n"]
@@ -46,8 +57,9 @@ def _assemble_full(state: ReadmeState) -> str:
             parts.append("")  # placeholder
             continue
 
+        body = _strip_leading_markdown_heading(result.content, result.title)
         heading = f"## {result.title}"
-        parts.append(f"{heading}\n\n{result.content}")
+        parts.append(f"{heading}\n\n{body}")
         toc_titles.append(result.title)
 
     if toc_insert_index is not None and toc_titles:

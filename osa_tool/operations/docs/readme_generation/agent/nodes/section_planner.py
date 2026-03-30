@@ -41,6 +41,61 @@ DETERMINISTIC_SECTIONS: list[SectionSpec] = [
 
 _DETERMINISTIC_NAMES = frozenset(s.name for s in DETERMINISTIC_SECTIONS)
 
+# Keep LLM section count small; the prompt also asks for brevity.
+_MAX_LLM_SECTIONS = 7
+
+_DISCOURAGED_BY_DEFAULT = frozenset(
+    {
+        "faq",
+        "troubleshooting",
+        "changelog",
+        "acknowledgments",
+        "acknowledgements",
+    }
+)
+
+
+def _user_wants_discouraged(user_request: str | None, name: str) -> bool:
+    if not user_request:
+        return False
+    ur = user_request.lower()
+    if name in ("faq",):
+        return "faq" in ur
+    if name in ("troubleshooting",):
+        return "troubleshoot" in ur or "troubleshooting" in ur
+    if name in ("changelog",):
+        return "changelog" in ur
+    if name in ("acknowledgments", "acknowledgements"):
+        return "acknowledgment" in ur or "acknowledgement" in ur
+    return False
+
+
+def _normalize_llm_sections(sections: list[_PlannedSection], user_request: str | None) -> list[_PlannedSection]:
+    """Drop discouraged sections, collapse overlap, and cap count."""
+    names = {s.name for s in sections}
+    out: list[_PlannedSection] = []
+
+    for sec in sections:
+        if sec.name in _DISCOURAGED_BY_DEFAULT and not _user_wants_discouraged(user_request, sec.name):
+            continue
+        if sec.name == "usage" and "getting_started" in names:
+            continue
+        if sec.name == "notebook_usage" and "getting_started" in names:
+            continue
+        if sec.name == "data_requirements" and "getting_started" in names:
+            continue
+        out.append(sec)
+
+    if len(out) > _MAX_LLM_SECTIONS:
+        logger.info(
+            "[SectionPlanner] Truncating LLM section list from %d to %d (max).",
+            len(out),
+            _MAX_LLM_SECTIONS,
+        )
+        out = out[:_MAX_LLM_SECTIONS]
+
+    return out
+
 
 def _extract_existing_headings(readme: str) -> str:
     """Pull markdown headings from existing README for the planner's context."""
@@ -111,6 +166,8 @@ def section_planner_node(state: ReadmeState, context: ReadmeContext) -> dict:
     if not llm_sections:
         logger.warning("[SectionPlanner] LLM returned empty plan; using fallback sections.")
         llm_sections = list(_FALLBACK_SECTIONS)
+
+    llm_sections = _normalize_llm_sections(llm_sections, state.user_request)
 
     # Convert LLM output to SectionSpec, assigning priorities starting at 10 (after header)
     plan: list[SectionSpec] = []

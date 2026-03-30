@@ -232,23 +232,29 @@ INPUT DATA:
 
 section_planning = """
 TASK:
-Plan which sections the README should contain.
+Plan which LLM-written sections the README still needs (a small set — not a textbook).
 
-Based on the repository analysis, intent, and existing README, produce an ordered list of sections.
-Each section needs a name (snake_case identifier), display title, and a brief description of what it should cover.
+The pipeline already adds deterministically: header, table of contents, installation, examples, documentation,
+contributing, license, and citation when applicable. Your list must contain ONLY extra sections that still
+require prose from the LLM (typically 3–6 items; rarely more than 7).
 
-RULES:
-- Tailor sections to the specific repository — a CLI tool needs different sections than an ML library.
-- Do NOT include sections that have no relevant content in the repository.
-- For "improve" or "update" tasks with partial scope, only plan sections that need changes.
-- For "generate" or full-scope tasks, plan a complete README structure.
-- Standard sections to consider (include only if appropriate):
-  overview, core_features, installation, getting_started, usage, api_reference,
-  examples, configuration, architecture, benchmarks, testing, contributing,
-  documentation, faq, changelog, license, citation, acknowledgments
-- You may invent custom section names if the repository warrants it.
+Each section needs: snake_case name, display title, one-line description, and prompt_context_keys.
+
+RULES (read carefully):
+- Prefer a SHORT README: fewer sections beat exhaustive coverage.
+- Do NOT mirror every bullet from README ANALYSIS or any "gaps / recommendations" list as separate sections.
+  Those notes are hints for improving accuracy, not a mandatory checklist.
+- Avoid overlap: use EITHER "getting_started" OR "usage", not both (prefer getting_started for runnable entry).
+- Do NOT add "notebook_usage", "data_requirements", or "architecture" unless the repo is large or clearly needs them.
+- Do NOT add "faq", "troubleshooting", or "changelog" unless the user request explicitly asks for them.
+- Do NOT add "benchmarks" or tables of metrics unless the repository context actually contains measured numbers
+  to cite (e.g. logged results, benchmark outputs, or explicit figures in the provided file extracts).
+- Do NOT add "testing" if there is no tests/ suite, CI config, or test files in the repository analysis/tree.
+- Tailor to the repo: a few scripts and notebooks rarely need API reference, architecture, or FAQ.
+- Do NOT include sections that duplicate deterministic blocks (installation, license, citation, contributing links).
 - Do NOT include "header" or "table_of_contents" — those are generated automatically.
-- If a scientific paper is attached and relevant, include sections like "algorithms", "methodology", or "paper_summary" as appropriate.
+- If a scientific paper is attached and relevant, you may add methodology-focused sections (e.g. algorithms).
+- Custom section names are allowed only when they avoid duplicating topics already covered above.
 
 OUTPUT:
 Return a JSON object:
@@ -309,18 +315,22 @@ SECTION PURPOSE:
 {section_description}
 
 RULES:
-- Write clean, professional Markdown.
-- Do NOT include the section heading (e.g. "## Overview") — it will be added automatically.
-- Be concise but thorough. Avoid filler text.
-- Use concrete details from the repository context provided below.
-- If improving an existing section, preserve valuable content while enhancing quality.
-- Match the tone and style appropriate for the repository's target audience.
+- Facts only: describe what exists in the repository context (files, scripts, notebooks, commands that appear
+  in the snippets). Do NOT invent CLI flags, paths, filenames, package names, hyperparameters, benchmark numbers,
+  or FAQ answers that are not supported by the context.
+- If a detail is unknown, omit it or say briefly that users should inspect the listed files — do not guess.
+- Write lean Markdown: short paragraphs, compact bullets (aim for roughly 4–10 bullets OR 2–4 short paragraphs
+  unless the section is inherently list-heavy like core features).
+- Do NOT include the section heading (no "## {section_title}" or similar) — it is added automatically.
+- Do NOT add a nested "FAQ" inside non-FAQ sections.
+- Escape any backslashes in JSON strings so the output is valid JSON (double backslashes for Windows paths).
+- If improving an existing section, keep accurate facts; drop marketing filler and speculative claims.
 
 OUTPUT:
 Return a JSON object:
 
 {{
-    "text": "the section content in Markdown"
+    "text": "the section body only, in Markdown"
 }}
 
 INPUT DATA:
