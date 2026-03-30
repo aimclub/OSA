@@ -14,6 +14,10 @@ from osa_tool.operations.codebase.notebook_conversion.notebook_converter import 
 from osa_tool.operations.codebase.organization.repo_organizer import RepoOrganizer
 from osa_tool.operations.codebase.requirements_generation.requirements_generation import RequirementsGenerator
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
+
+from osa_tool.config.settings import ConfigManager
+from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
 from osa_tool.operations.docs.community_docs_generation.license_generation import LicenseCompiler
 from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
@@ -27,7 +31,6 @@ from osa_tool.scheduler.workflow_manager import (
     GitverseWorkflowManager,
     WorkflowManager,
 )
-from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.logger import logger, setup_logging
 from osa_tool.utils.utils import (
