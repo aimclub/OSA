@@ -1,3 +1,5 @@
+"""Compact debug-logging helpers for the README generation pipeline."""
+
 from collections.abc import Mapping
 from typing import Any
 
@@ -24,35 +26,32 @@ def _summary_value(value: Any) -> Any:
 
 def summarize_state(state: ReadmeState) -> dict[str, Any]:
     """Compact state snapshot safe for debug logs."""
+    ctx = state.context
+    intent = state.intent
     return {
-        "mode": {
-            "generation_mode": state.generation_mode,
-            "readme_mode": state.readme_mode,
-            "refinement_cycles": state.refinement_cycles,
-            "refinement_score": state.refinement_score,
+        "intent": {
+            "task_type": intent.task_type if intent else None,
+            "scope": intent.scope if intent else None,
+            "affected_sections": intent.affected_sections if intent else [],
+            "incorporate_paper": intent.incorporate_paper if intent else False,
         },
-        "targets": {
-            "target_sections": state.target_sections,
-            "resolved_target_sections": state.resolved_target_sections,
+        "plan": {
+            "section_count": len(state.section_plan),
+            "section_names": [s.name for s in state.section_plan],
+        },
+        "refinement": {
+            "cycles": state.refinement_cycles,
+            "score": state.refinement_score,
         },
         "content_presence": {
-            "repo_tree": _summary_value(state.repo_tree),
-            "existing_readme": _summary_value(state.existing_readme),
-            "repo_analysis": _summary_value(state.repo_analysis),
-            "readme_analysis": _summary_value(state.readme_analysis),
-            "article_analysis": _summary_value(state.article_analysis),
-            "overview": _summary_value(state.overview),
-            "core_features": _summary_value(state.core_features),
-            "getting_started": _summary_value(state.getting_started),
-            "file_summary": _summary_value(state.file_summary),
-            "pdf_summary": _summary_value(state.pdf_summary),
-            "content": _summary_value(state.content),
-            "algorithms": _summary_value(state.algorithms),
-            "generated_sections": _summary_value(state.generated_sections),
-            "section_generation_errors": _summary_value(state.section_generation_errors),
+            "context_present": ctx is not None,
+            "repo_tree": _summary_value(ctx.repo_tree) if ctx else None,
+            "existing_readme": _summary_value(ctx.existing_readme) if ctx else None,
+            "repo_analysis": _summary_value(ctx.repo_analysis) if ctx else None,
+            "sections_generated": _summary_value(state.sections),
+            "section_errors": _summary_value(state.section_errors),
             "readme_draft": _summary_value(state.readme_draft),
             "readme_final": _summary_value(state.readme_final),
-            "refinement_issues": _summary_value(state.refinement_issues),
         },
     }
 

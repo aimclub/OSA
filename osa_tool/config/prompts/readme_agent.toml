@@ -101,50 +101,6 @@ INPUT DATA:
 {existing_readme}
 """
 
-diagnosis = """
-TASK:
-Based on the analyses below, decide how to generate or improve the README.
-
-You must decide:
-1. **generation_mode**: "full_regen" or "targeted"
-   - Use "full_regen" if: README is absent, globally poor, or user requests fresh generation
-   - Use "targeted" if: README is mostly good with specific fixable issues, or user points to specific sections
-2. **target_sections**: (only for targeted mode) list of section names to regenerate
-   - Valid section names: "overview", "core_features", "getting_started", "installation", "content", "algorithms"
-3. **generation_plan**: a brief description of what should be done and why
-
-Consider the user's request carefully. If the user asks for specific improvements, prefer targeted mode.
-
-OUTPUT:
-Return a JSON object:
-
-{{
-    "generation_mode": "full_regen" or "targeted",
-    "target_sections": ["section1", "section2"],
-    "generation_plan": "text"
-}}
-
-INPUT DATA:
-
-1. REPOSITORY ANALYSIS:
-
-{repo_analysis}
-
-2. README ANALYSIS:
-
-{readme_analysis}
-
-3. ARTICLE ANALYSIS (if available):
-
-{article_analysis}
-
-4. USER REQUEST (if any):
-
-{user_request}
-
-5. HAS EXISTING README: {has_existing_readme}
-"""
-
 self_eval = """
 TASK:
 Evaluate the quality of the generated README below.
@@ -217,6 +173,167 @@ INPUT DATA:
 3. GENERATION PLAN:
 
 {generation_plan}
+
+4. USER REQUEST (if any):
+
+{user_request}
+"""
+
+intent_analysis = """
+TASK:
+Analyze the user's request and repository state to determine the intent for README generation.
+
+Based on the inputs below, determine:
+1. **task_type**: one of "generate", "improve", or "update"
+   - "generate": No README exists, or user asks for a fresh README from scratch
+   - "improve": README exists and user wants to enhance it globally (better quality, more sections, etc.)
+   - "update": User requests changes to specific sections only
+2. **scope**: "full" or "partial"
+   - "full": Entire README should be (re)generated or improved
+   - "partial": Only specific sections should be modified
+3. **affected_sections**: list of section names the user explicitly or implicitly refers to (empty list for full scope)
+   - Use descriptive names like "overview", "installation", "getting_started", "api_reference", "benchmarks", etc.
+4. **incorporate_paper**: true if a scientific paper/PDF is attached AND relevant to the README
+5. **reasoning**: brief explanation of your decision
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "task_type": "generate",
+    "scope": "full",
+    "affected_sections": [],
+    "incorporate_paper": false,
+    "reasoning": "text"
+}}
+
+INPUT DATA:
+
+1. REPOSITORY ANALYSIS:
+
+{repo_analysis}
+
+2. README ANALYSIS:
+
+{readme_analysis}
+
+3. ARTICLE ANALYSIS (if available):
+
+{article_analysis}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. HAS EXISTING README: {has_existing_readme}
+
+6. HAS ATTACHMENT: {has_attachment}
+"""
+
+section_planning = """
+TASK:
+Plan which sections the README should contain.
+
+Based on the repository analysis, intent, and existing README, produce an ordered list of sections.
+Each section needs a name (snake_case identifier), display title, and a brief description of what it should cover.
+
+RULES:
+- Tailor sections to the specific repository — a CLI tool needs different sections than an ML library.
+- Do NOT include sections that have no relevant content in the repository.
+- For "improve" or "update" tasks with partial scope, only plan sections that need changes.
+- For "generate" or full-scope tasks, plan a complete README structure.
+- Standard sections to consider (include only if appropriate):
+  overview, core_features, installation, getting_started, usage, api_reference,
+  examples, configuration, architecture, benchmarks, testing, contributing,
+  documentation, faq, changelog, license, citation, acknowledgments
+- You may invent custom section names if the repository warrants it.
+- Do NOT include "header" or "table_of_contents" — those are generated automatically.
+- If a scientific paper is attached and relevant, include sections like "algorithms", "methodology", or "paper_summary" as appropriate.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "sections": [
+        {{
+            "name": "overview",
+            "title": "Overview",
+            "description": "High-level project description covering purpose, key capabilities, and target audience",
+            "prompt_context_keys": ["repo_analysis", "readme_analysis"]
+        }},
+        {{
+            "name": "core_features",
+            "title": "Core Features",
+            "description": "List of main features with brief explanations",
+            "prompt_context_keys": ["repo_analysis", "key_files_content"]
+        }}
+    ]
+}}
+
+For each section, "prompt_context_keys" lists which context fields should be included when generating that section.
+Valid keys: "repo_tree", "existing_readme", "key_files_content", "examples_content", "pdf_content", "repo_analysis", "readme_analysis", "article_analysis"
+
+INPUT DATA:
+
+1. TASK TYPE: {task_type}
+2. SCOPE: {scope}
+3. AFFECTED SECTIONS: {affected_sections}
+4. INCORPORATE PAPER: {incorporate_paper}
+
+5. REPOSITORY ANALYSIS:
+
+{repo_analysis}
+
+6. README ANALYSIS:
+
+{readme_analysis}
+
+7. ARTICLE ANALYSIS (if available):
+
+{article_analysis}
+
+8. USER REQUEST (if any):
+
+{user_request}
+
+9. EXISTING README SECTIONS (extracted headings):
+
+{existing_sections}
+"""
+
+section_generate = """
+TASK:
+Generate the "{section_title}" section for a README file.
+
+SECTION PURPOSE:
+{section_description}
+
+RULES:
+- Write clean, professional Markdown.
+- Do NOT include the section heading (e.g. "## Overview") — it will be added automatically.
+- Be concise but thorough. Avoid filler text.
+- Use concrete details from the repository context provided below.
+- If improving an existing section, preserve valuable content while enhancing quality.
+- Match the tone and style appropriate for the repository's target audience.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section content in Markdown"
+}}
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
 
 4. USER REQUEST (if any):
 

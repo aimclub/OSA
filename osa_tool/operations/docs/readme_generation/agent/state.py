@@ -1,8 +1,18 @@
-from typing import Any, List, Literal, Optional
+"""Mutable workflow state for the README generation LangGraph pipeline."""
+
+from __future__ import annotations
+
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from osa_tool.core.models.event import OperationEvent
+from osa_tool.operations.docs.readme_generation.agent.models import (
+    RepositoryContext,
+    SectionResult,
+    SectionSpec,
+    TaskIntent,
+)
 
 
 class ReadmeState(BaseModel):
@@ -10,52 +20,35 @@ class ReadmeState(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    # Inputs
+    # ── Inputs ──
     repo_url: str
     attachment: Optional[str] = None
     user_request: Optional[str] = None
 
-    # Raw context (ContextCollectorNode)
-    key_files: List[str] = Field(default_factory=list)
-    key_files_content: str = ""
-    existing_readme: str = ""
-    repo_tree: str = ""
-    examples_content: str = ""
-    pdf_content: Optional[str] = None
+    # ── Collected context (context_collector) ──
+    context: Optional[RepositoryContext] = None
 
-    # Structured analysis (ContextCollectorNode)
-    repo_analysis: Optional[str] = None
-    readme_analysis: Optional[str] = None
-    article_analysis: Optional[str] = None
+    # ── Intent analysis (intent_analyzer) ──
+    intent: Optional[TaskIntent] = None
 
-    # Diagnosis (DiagnosisNode)
-    generation_mode: Literal["full_regen", "targeted"] = "full_regen"
-    readme_mode: Literal["standard", "article"] = "standard"
-    target_sections: List[str] = Field(default_factory=list)
-    resolved_target_sections: List[str] = Field(default_factory=list)
-    generation_plan: Optional[str] = None
+    # ── Section plan (section_planner) ──
+    section_plan: list[SectionSpec] = Field(default_factory=list)
 
-    # Generated content — standard mode
-    core_features: Optional[Any] = None
-    overview: Optional[str] = None
-    getting_started: Optional[str] = None
+    # ── Generated sections (keyed by section name) ──
+    sections: dict[str, SectionResult] = Field(default_factory=dict)
+    section_errors: dict[str, str] = Field(default_factory=dict)
 
-    # Generated content — article mode
-    file_summary: Optional[str] = None
-    pdf_summary: Optional[str] = None
-    content: Optional[str] = None
-    algorithms: Optional[str] = None
-    generated_sections: dict[str, str] = Field(default_factory=dict)
-    section_generation_errors: dict[str, str] = Field(default_factory=dict)
+    # ── Current section being generated (set per-Send by fan-out) ──
+    current_section: Optional[SectionSpec] = None
 
-    # Assembly & refinement
+    # ── Assembly & refinement ──
     readme_draft: Optional[str] = None
     readme_final: Optional[str] = None
     refinement_score: Optional[float] = None
-    refinement_issues: List[str] = Field(default_factory=list)
+    refinement_issues: list[str] = Field(default_factory=list)
     refinement_cycles: int = 0
-    max_refinement_cycles: int = 3
+    max_refinement_cycles: int = 2
 
-    # Output
-    events: List[OperationEvent] = Field(default_factory=list)
+    # ── Output ──
+    events: list[OperationEvent] = Field(default_factory=list)
     error: Optional[str] = None

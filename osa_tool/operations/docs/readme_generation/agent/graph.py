@@ -1,72 +1,42 @@
-from typing import Any, Union
+from __future__ import annotations
+
+from typing import Any
 
 from langgraph.constants import END
-from langgraph.types import Send
 from langgraph.graph import StateGraph
+from langgraph.types import Send
 
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
-from osa_tool.operations.docs.readme_generation.agent.nodes import (
-    algorithms_node,
-    content_node,
-    context_collector_node,
-    core_features_node,
-    diagnosis_node,
-    file_summary_node,
-    getting_started_node,
-    overview_node,
-    pdf_summary_node,
-    refiner_node,
-    section_assembler_node,
-    targeted_executor_node,
-    targeted_planner_node,
-    writer_node,
-)
+from osa_tool.operations.docs.readme_generation.agent.nodes.assembler import assembler_node
+from osa_tool.operations.docs.readme_generation.agent.nodes.context_collector import context_collector_node
+from osa_tool.operations.docs.readme_generation.agent.nodes.deterministic_builder import deterministic_builder_node
+from osa_tool.operations.docs.readme_generation.agent.nodes.intent_analyzer import intent_analyzer_node
+from osa_tool.operations.docs.readme_generation.agent.nodes.refiner import refiner_node
+from osa_tool.operations.docs.readme_generation.agent.nodes.section_generator import section_generator_node
+from osa_tool.operations.docs.readme_generation.agent.nodes.section_planner import section_planner_node
+from osa_tool.operations.docs.readme_generation.agent.nodes.writer import writer_node
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 
 
-def _route_after_diagnosis(state: ReadmeState) -> Union[str, list[Send]]:
-    """Route based on generation_mode and readme_mode after diagnosis.
+def _fan_out_to_generators(state: ReadmeState) -> list[Send]:
+    """Fan-out from section_planner to parallel section generators.
 
-    - targeted  → targeted_planner (then targeted_executor → section_assembler)
-    - article   → file_summary ∥ pdf_summary  (parallel via Send)
-    - standard  → core_features (sequential; fan-out happens after core_features)
+    Each LLM section gets its own ``section_generator`` invocation via Send.
+    All deterministic sections are handled by a single ``deterministic_builder`` call.
     """
-    if state.generation_mode == "targeted":
-        return "targeted_planner"
+    sends: list[Send] = []
+    has_deterministic = False
 
-    if state.readme_mode == "article":
-        return [
-            Send("file_summary", state),
-            Send("pdf_summary", state),
-        ]
+    for spec in state.section_plan:
+        if spec.strategy == "llm":
+            sends.append(Send("section_generator", state.model_copy(update={"current_section": spec}).model_dump()))
+        elif spec.strategy == "deterministic":
+            has_deterministic = True
 
-    # Standard: core_features runs first so overview can use its output.
-    # Fan-out to overview ∥ getting_started happens via _route_after_core_features.
-    return "core_features"
+    if has_deterministic:
+        sends.append(Send("deterministic_builder", state.model_dump()))
 
-
-def _route_after_core_features(state: ReadmeState) -> list[Send]:
-    """Fan-out from core_features to overview ∥ getting_started in the same superstep.
-
-    Both nodes complete together, so section_assembler is triggered once (deduplicated).
-    """
-    return [
-        Send("overview", state),
-        Send("getting_started", state),
-    ]
-
-
-def _route_after_summaries(state: ReadmeState) -> list[Send]:
-    """After file_summary + pdf_summary fan-in, fan-out to article content nodes.
-
-    All four complete in the same superstep so section_assembler is triggered once.
-    """
-    return [
-        Send("overview", state),
-        Send("content", state),
-        Send("algorithms", state),
-        Send("getting_started", state),
-    ]
+    return sends
 
 
 def _route_after_refiner(state: ReadmeState) -> str:
@@ -82,67 +52,36 @@ def build_readme_graph(context: ReadmeContext) -> Any:
     """Build and compile the README generation LangGraph."""
     graph = StateGraph(ReadmeState)
 
-    # ── Nodes ──
-    graph.add_node("context_collector", lambda state: context_collector_node(state, context))
-    graph.add_node("diagnosis", lambda state: diagnosis_node(state, context))
+    # ── Register nodes ──
+    graph.add_node("context_collector", lambda s: context_collector_node(s, context))
+    graph.add_node("intent_analyzer", lambda s: intent_analyzer_node(s, context))
+    graph.add_node("section_planner", lambda s: section_planner_node(s, context))
+    graph.add_node("section_generator", lambda s: section_generator_node(s, context))
+    graph.add_node("deterministic_builder", lambda s: deterministic_builder_node(s, context))
+    graph.add_node("assembler", lambda s: assembler_node(s, context))
+    graph.add_node("refiner", lambda s: refiner_node(s, context))
+    graph.add_node("writer", lambda s: writer_node(s, context))
 
-    # Standard mode
-    graph.add_node("core_features", lambda state: core_features_node(state, context))
-    graph.add_node("getting_started", lambda state: getting_started_node(state, context))
-    graph.add_node("overview", lambda state: overview_node(state, context))
-
-    # Article mode
-    graph.add_node("file_summary", lambda state: file_summary_node(state, context))
-    graph.add_node("pdf_summary", lambda state: pdf_summary_node(state, context))
-    graph.add_node("content", lambda state: content_node(state, context))
-    graph.add_node("algorithms", lambda state: algorithms_node(state, context))
-
-    # Fan-in node: waits for file_summary + pdf_summary before article fan-out
-    graph.add_node("summary_fan_in", lambda state: {})
-    graph.add_node("targeted_planner", lambda state: targeted_planner_node(state, context))
-    graph.add_node("targeted_executor", lambda state: targeted_executor_node(state, context))
-
-    # Assembly, refinement, output
-    graph.add_node("section_assembler", lambda state: section_assembler_node(state, context))
-    graph.add_node("refiner", lambda state: refiner_node(state, context))
-    graph.add_node("writer", lambda state: writer_node(state, context))
-
-    # ── Entry ──
+    # ── Sequential edges ──
     graph.set_entry_point("context_collector")
-    graph.add_edge("context_collector", "diagnosis")
+    graph.add_edge("context_collector", "intent_analyzer")
+    graph.add_edge("intent_analyzer", "section_planner")
 
-    # ── After diagnosis: route to targeted / article / standard ──
-    graph.add_conditional_edges("diagnosis", _route_after_diagnosis)
-    graph.add_edge("targeted_planner", "targeted_executor")
-    graph.add_edge("targeted_executor", "section_assembler")
+    # ── Parallel fan-out: section_planner -> N generators + deterministic_builder ──
+    graph.add_conditional_edges("section_planner", _fan_out_to_generators)
 
-    # ── Standard mode ──
-    # core_features → fan-out → overview ∥ getting_started (same superstep)
-    # Both trigger section_assembler in the same superstep → deduplicated → runs once.
-    graph.add_conditional_edges("core_features", _route_after_core_features)
-    graph.add_edge("overview", "section_assembler")
-    graph.add_edge("getting_started", "section_assembler")
-
-    # ── Article mode ──
-    # file_summary ∥ pdf_summary → summary_fan_in → fan-out to 4 nodes (same superstep)
-    # All four trigger section_assembler in same superstep → deduplicated → runs once.
-    graph.add_edge("file_summary", "summary_fan_in")
-    graph.add_edge("pdf_summary", "summary_fan_in")
-    graph.add_conditional_edges("summary_fan_in", _route_after_summaries)
-    graph.add_edge("content", "section_assembler")
-    graph.add_edge("algorithms", "section_assembler")
-    # overview → section_assembler and getting_started → section_assembler defined above
+    # ── Fan-in: all generators / deterministic_builder -> assembler ──
+    graph.add_edge("section_generator", "assembler")
+    graph.add_edge("deterministic_builder", "assembler")
 
     # ── Refinement loop ──
-    graph.add_edge("section_assembler", "refiner")
+    graph.add_edge("assembler", "refiner")
     graph.add_conditional_edges(
         "refiner",
         _route_after_refiner,
-        {
-            "refiner": "refiner",
-            "writer": "writer",
-        },
+        {"refiner": "refiner", "writer": "writer"},
     )
+
     graph.add_edge("writer", END)
 
     return graph.compile()
