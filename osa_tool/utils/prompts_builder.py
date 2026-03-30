@@ -40,7 +40,7 @@ class PromptLoader:
 
     Allows accessing prompts using keys like:
         "readme.preanalysis"
-        "readme_article.file_summary"
+        "readme_article.article_name_extraction"
     """
 
     def __init__(self):

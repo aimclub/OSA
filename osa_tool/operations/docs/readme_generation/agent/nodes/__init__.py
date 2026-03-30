@@ -1,6 +1,5 @@
 from osa_tool.operations.docs.readme_generation.agent.nodes.assembler import assembler_node
 from osa_tool.operations.docs.readme_generation.agent.nodes.context_collector import context_collector_node
-from osa_tool.operations.docs.readme_generation.agent.nodes.deterministic_builder import deterministic_builder_node
 from osa_tool.operations.docs.readme_generation.agent.nodes.intent_analyzer import intent_analyzer_node
 from osa_tool.operations.docs.readme_generation.agent.nodes.readme_patch import readme_patch_node
 from osa_tool.operations.docs.readme_generation.agent.nodes.section_generator import section_generator_node
@@ -11,7 +10,6 @@ from osa_tool.operations.docs.readme_generation.agent.nodes.writer import writer
 __all__ = [
     "assembler_node",
     "context_collector_node",
-    "deterministic_builder_node",
     "intent_analyzer_node",
     "readme_patch_node",
     "section_generator_node",

@@ -8,10 +8,8 @@ import requests
 import tomli
 
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
-from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_update
 from osa_tool.operations.docs.readme_generation.agent.models import SectionResult, SectionSpec
 from osa_tool.operations.docs.readme_generation.agent.section_catalog import BUILDER_METHOD_BY_SECTION_NAME
-from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.operations.docs.readme_generation.generator.header import HeaderBuilder
 from osa_tool.operations.docs.readme_generation.generator.installation import InstallationSectionBuilder
 from osa_tool.operations.docs.readme_generation.models.llm_service import LLMClient
@@ -153,29 +151,3 @@ def build_single_deterministic_section(
         ),
         None,
     )
-
-
-def deterministic_builder_node(state: ReadmeState, context: ReadmeContext) -> dict:
-    """Batch-build deterministic sections (legacy helpers / tests). Prefer section_generator + Send per spec."""
-    logger.info("[DeterministicBuilder] Building deterministic sections (batch mode)...")
-
-    specs = [s for s in state.section_plan if s.strategy == "deterministic"]
-    if state.current_section is not None and state.current_section.strategy == "deterministic":
-        specs = [state.current_section]
-
-    new_sections: dict[str, SectionResult] = {}
-    new_errors: dict[str, str] = {}
-
-    for section_spec in specs:
-        result, err = build_single_deterministic_section(section_spec, context)
-        if err:
-            new_errors[section_spec.name] = err
-        elif result:
-            new_sections[section_spec.name] = result
-
-    update: dict = {"sections": new_sections}
-    if new_errors:
-        update["section_errors"] = new_errors
-    logger.debug("[DeterministicBuilder] Output update summary: %s", summarize_update(update))
-    logger.info("[DeterministicBuilder] Done. Built %d deterministic sections.", len(new_sections))
-    return update
