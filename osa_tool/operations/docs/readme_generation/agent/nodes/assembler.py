@@ -131,7 +131,11 @@ def assembler_node(state: ReadmeState, context: ReadmeContext) -> dict:
     else:
         readme_draft = _assemble_full(state)
 
-    update = {"readme_draft": readme_draft}
+    update = {
+        "readme_draft": readme_draft,
+        "sections_to_rerun": [],
+        "section_regeneration_hints": {},
+    }
     logger.debug("[Assembler] Output update summary: %s", summarize_update(update))
     logger.info("[Assembler] Draft assembled (%d chars).", len(readme_draft))
     return update

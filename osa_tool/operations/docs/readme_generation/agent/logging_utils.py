@@ -44,6 +44,8 @@ def summarize_state(state: ReadmeState) -> dict[str, Any]:
         "refinement": {
             "cycles": state.refinement_cycles,
             "score": state.refinement_score,
+            "sections_to_rerun": state.sections_to_rerun[:8],
+            "hints_keys": list(state.section_regeneration_hints.keys())[:8],
         },
         "content_presence": {
             "context_present": ctx is not None,

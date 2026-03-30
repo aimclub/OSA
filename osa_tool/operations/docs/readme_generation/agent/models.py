@@ -21,6 +21,7 @@ class RepositoryContext(BaseModel):
     repo_analysis: str | None = None
     readme_analysis: str | None = None
     article_analysis: str | None = None
+    has_tests: bool = False
 
 
 class TaskIntent(BaseModel):
@@ -47,6 +48,7 @@ class SectionSpec(BaseModel):
     priority: int = 0
     depends_on: list[str] = Field(default_factory=list)
     prompt_context_keys: list[str] = Field(default_factory=list)
+    prompt_template_key: str | None = None
 
 
 class SectionResult(BaseModel):

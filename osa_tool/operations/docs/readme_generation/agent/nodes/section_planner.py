@@ -1,4 +1,4 @@
-"""Dynamically plan which README sections to generate based on intent and repository context."""
+"""Plan which README sections to generate: LLM picks catalog names; metadata comes from section_catalog."""
 
 from __future__ import annotations
 
@@ -8,40 +8,25 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
 from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_state, summarize_update
-from osa_tool.operations.docs.readme_generation.agent.models import SectionSpec
+from osa_tool.operations.docs.readme_generation.agent.section_catalog import (
+    DEFAULT_FALLBACK_LLM_SECTION_NAMES,
+    deterministic_specs_for_plan,
+    format_llm_catalog_for_planner,
+    section_specs_from_llm_names,
+)
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonParseError
 
 
-class _PlannedSection(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    name: str
-    title: str
-    description: str = ""
-    prompt_context_keys: list[str] = Field(default_factory=list)
-
-
 class SectionPlanLLMOutput(BaseModel):
+    """LLM returns only internal section names; catalog supplies priority, prompts, and context keys."""
+
     model_config = ConfigDict(extra="ignore")
-    sections: list[_PlannedSection] = Field(default_factory=list)
+    section_names: list[str] = Field(default_factory=list)
 
 
-DETERMINISTIC_SECTIONS: list[SectionSpec] = [
-    SectionSpec(name="header", title="Header", strategy="deterministic", priority=0),
-    SectionSpec(name="table_of_contents", title="Table of Contents", strategy="deterministic", priority=5),
-    SectionSpec(name="installation", title="Installation", strategy="deterministic", priority=30),
-    SectionSpec(name="examples", title="Examples", strategy="deterministic", priority=60),
-    SectionSpec(name="documentation", title="Documentation", strategy="deterministic", priority=65),
-    SectionSpec(name="contributing", title="Contributing", strategy="deterministic", priority=80),
-    SectionSpec(name="license", title="License", strategy="deterministic", priority=90),
-    SectionSpec(name="citation", title="Citation", strategy="deterministic", priority=95),
-]
-
-_DETERMINISTIC_NAMES = frozenset(s.name for s in DETERMINISTIC_SECTIONS)
-
-# Keep LLM section count small; the prompt also asks for brevity.
 _MAX_LLM_SECTIONS = 7
 
 _DISCOURAGED_BY_DEFAULT = frozenset(
@@ -70,21 +55,25 @@ def _user_wants_discouraged(user_request: str | None, name: str) -> bool:
     return False
 
 
-def _normalize_llm_sections(sections: list[_PlannedSection], user_request: str | None) -> list[_PlannedSection]:
-    """Drop discouraged sections, collapse overlap, and cap count."""
-    names = {s.name for s in sections}
-    out: list[_PlannedSection] = []
+def _normalize_llm_section_names(names: list[str], user_request: str | None) -> list[str]:
+    """Drop discouraged sections, resolve overlap, cap count. Order preserved."""
+    name_set = {n.strip() for n in names if n and n.strip()}
+    out: list[str] = []
 
-    for sec in sections:
-        if sec.name in _DISCOURAGED_BY_DEFAULT and not _user_wants_discouraged(user_request, sec.name):
+    for raw in names:
+        n = (raw or "").strip()
+        if not n:
             continue
-        if sec.name == "usage" and "getting_started" in names:
+        if n in _DISCOURAGED_BY_DEFAULT and not _user_wants_discouraged(user_request, n):
             continue
-        if sec.name == "notebook_usage" and "getting_started" in names:
+        if n == "usage" and "getting_started" in name_set:
             continue
-        if sec.name == "data_requirements" and "getting_started" in names:
+        if n == "notebook_usage" and "getting_started" in name_set:
             continue
-        out.append(sec)
+        if n == "data_requirements" and "getting_started" in name_set:
+            continue
+        if n not in out:
+            out.append(n)
 
     if len(out) > _MAX_LLM_SECTIONS:
         logger.info(
@@ -105,8 +94,8 @@ def _extract_existing_headings(readme: str) -> str:
     return "\n".join(f"- {h}" for h in headings) if headings else "None"
 
 
-def _build_llm_plan(state: ReadmeState, context: ReadmeContext) -> list[_PlannedSection]:
-    """Ask the LLM to propose the LLM-generated section list."""
+def _build_llm_plan(state: ReadmeState, context: ReadmeContext) -> list[str]:
+    """Ask the LLM to propose which LLM catalog sections to include (names only)."""
     ctx = state.context
     intent = state.intent
 
@@ -124,41 +113,11 @@ def _build_llm_plan(state: ReadmeState, context: ReadmeContext) -> list[_Planned
             article_analysis=ctx.article_analysis or "N/A" if ctx else "N/A",
             user_request=state.user_request or "Generate a comprehensive README",
             existing_sections=existing_sections,
+            llm_section_catalog=format_llm_catalog_for_planner(),
         ),
         parser=SectionPlanLLMOutput,
     )
-    return raw.sections
-
-
-_FALLBACK_SECTIONS: list[_PlannedSection] = [
-    _PlannedSection(
-        name="overview",
-        title="Overview",
-        description=(
-            "2–4 sentences: purpose, audience, main entry points (name actual script/notebook files). "
-            "No bullet lists; do not enumerate Python packages or third-party libraries."
-        ),
-        prompt_context_keys=["repo_analysis", "key_files_content"],
-    ),
-    _PlannedSection(
-        name="core_features",
-        title="Core Features",
-        description=(
-            "At most 4 bullets. Each bullet names a concrete file or function from the repo and one factual sentence. "
-            "No bullets about dependencies, stack, type hints, code quality, or generic extensibility."
-        ),
-        prompt_context_keys=["repo_analysis", "key_files_content"],
-    ),
-    _PlannedSection(
-        name="getting_started",
-        title="Getting Started",
-        description=(
-            "Minimal steps: env hint, data path from code, run commands copied from the repo. "
-            "Do not paste long library lists—refer readers to Installation or requirements."
-        ),
-        prompt_context_keys=["repo_analysis", "examples_content", "key_files_content"],
-    ),
-]
+    return [x.strip() for x in raw.section_names if x and x.strip()]
 
 
 def section_planner_node(state: ReadmeState, context: ReadmeContext) -> dict:
@@ -167,39 +126,19 @@ def section_planner_node(state: ReadmeState, context: ReadmeContext) -> dict:
     logger.debug("[SectionPlanner] Input state summary: %s", summarize_state(state))
 
     try:
-        llm_sections = _build_llm_plan(state, context)
+        llm_names = _build_llm_plan(state, context)
     except (JsonParseError, ValidationError) as exc:
         logger.warning("[SectionPlanner] LLM plan failed (%s); using fallback sections.", exc)
-        llm_sections = list(_FALLBACK_SECTIONS)
+        llm_names = list(DEFAULT_FALLBACK_LLM_SECTION_NAMES)
 
-    if not llm_sections:
+    if not llm_names:
         logger.warning("[SectionPlanner] LLM returned empty plan; using fallback sections.")
-        llm_sections = list(_FALLBACK_SECTIONS)
+        llm_names = list(DEFAULT_FALLBACK_LLM_SECTION_NAMES)
 
-    llm_sections = _normalize_llm_sections(llm_sections, state.user_request)
+    llm_names = _normalize_llm_section_names(llm_names, state.user_request)
 
-    # Convert LLM output to SectionSpec, assigning priorities starting at 10 (after header)
-    plan: list[SectionSpec] = []
-    priority = 10
-    for sec in llm_sections:
-        if sec.name in _DETERMINISTIC_NAMES:
-            continue
-        plan.append(
-            SectionSpec(
-                name=sec.name,
-                title=sec.title,
-                description=sec.description,
-                strategy="llm",
-                priority=priority,
-                prompt_context_keys=sec.prompt_context_keys,
-            )
-        )
-        priority += 10
-
-    # Inject deterministic sections
-    for det in DETERMINISTIC_SECTIONS:
-        plan.append(det)
-
+    plan = section_specs_from_llm_names(llm_names, state.intent, state.context)
+    plan.extend(deterministic_specs_for_plan(state.intent, state.context))
     plan.sort(key=lambda s: s.priority)
 
     logger.info(

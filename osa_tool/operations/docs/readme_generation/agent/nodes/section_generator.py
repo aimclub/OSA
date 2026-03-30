@@ -1,4 +1,4 @@
-"""Generic LLM-powered section generator — produces any README section from a SectionSpec."""
+"""Generate or rebuild one README section from a SectionSpec (LLM or deterministic)."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
 from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_update
 from osa_tool.operations.docs.readme_generation.agent.models import SectionResult, SectionSpec
+from osa_tool.operations.docs.readme_generation.agent.nodes.deterministic_builder import build_single_deterministic_section
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
@@ -69,15 +70,39 @@ def section_generator_node(state: ReadmeState, context: ReadmeContext) -> dict:
 
     logger.info("[SectionGenerator] Generating section '%s' (%s)...", spec.name, spec.title)
 
+    if spec.strategy == "keep_existing":
+        return {}
+
+    if spec.strategy == "deterministic":
+        result, err = build_single_deterministic_section(spec, context)
+        if err:
+            return {"section_errors": {spec.name: err}}
+        if result is None:
+            return {}
+        update = {"sections": {spec.name: result}}
+        logger.debug("[SectionGenerator] Output update summary: %s", summarize_update(update))
+        return update
+
+    # --- LLM ---
     context_block = _build_context_block(state, spec)
 
     existing_section = ""
     if state.intent and state.intent.task_type in ("improve", "update"):
         existing_section = _extract_existing_section(state.context.existing_readme if state.context else "", spec.title)
 
+    reg_hint = ""
+    if state.section_regeneration_hints:
+        reg_hint = (state.section_regeneration_hints.get(spec.name) or "").strip()
+
+    template_key = spec.prompt_template_key or "readme_agent.section_generate"
+    template = context.prompts.get(template_key) or context.prompts.get("readme_agent.section_generate")
+    if template is None:
+        logger.error("[SectionGenerator] Missing prompt template '%s' and fallback; aborting section.", template_key)
+        return {}
+
     text = context.model_handler.send_and_parse(
         prompt=PromptBuilder.render(
-            context.prompts.get("readme_agent.section_generate"),
+            template,
             section_name=spec.name,
             section_title=spec.title,
             section_description=spec.description or spec.title,
@@ -85,6 +110,7 @@ def section_generator_node(state: ReadmeState, context: ReadmeContext) -> dict:
             context_block=context_block,
             existing_section=existing_section or "N/A",
             user_request=state.user_request or "N/A",
+            regeneration_hint=reg_hint or "N/A",
         ),
         parser=LlmTextOutput,
     ).text

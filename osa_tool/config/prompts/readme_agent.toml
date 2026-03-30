@@ -118,8 +118,15 @@ Return a JSON object:
 {{
     "score": 8.5,
     "issues": ["issue 1 description", "issue 2 description"],
-    "should_stop": true
+    "should_stop": true,
+    "sections_to_rerun": [],
+    "section_feedback": {{}}
 }}
+
+- "sections_to_rerun": internal section names from **PLANNED SECTION NAMES** below that need regeneration (LLM prose
+  sections only, e.g. "overview", "getting_started"). Use [] if a whole-document patch is enough.
+- "section_feedback": map section internal name → short instructions for that section's generator (concrete, actionable).
+  Omit keys you do not want to rerun.
 
 Set "should_stop" to true if the README is good enough (score >= 8) or if remaining issues are minor.
 
@@ -144,6 +151,10 @@ INPUT DATA:
 5. PREVIOUS ISSUES (if any):
 
 {previous_issues}
+
+6. PLANNED SECTION INTERNAL NAMES (for sections_to_rerun only):
+
+{planned_section_names}
 """
 
 refine_with_feedback = """
@@ -232,52 +243,38 @@ INPUT DATA:
 
 section_planning = """
 TASK:
-Plan which LLM-written sections the README still needs (a small set — not a textbook).
+Choose which **LLM-written** README sections to include (a small set — not a textbook).
 
-The pipeline already adds deterministically: header, table of contents, installation, examples, documentation,
-contributing, license, and citation when applicable. Your list must contain ONLY extra sections that still
-require prose from the LLM (typically 3–6 items; rarely more than 7).
-
-Each section needs: snake_case name, display title, one-line description, and prompt_context_keys.
+The pipeline already adds **deterministically**: header, table of contents, installation, examples, documentation,
+contributing, license, and citation when applicable. You must **only** pick section **internal names** from the
+allowed list below. Do **not** output titles, descriptions, priorities, or prompt_context_keys — the system fills those
+from a catalog (typically **3–6** names; rarely more than **7**).
 
 RULES (read carefully):
 - Prefer a SHORT README: fewer sections beat exhaustive coverage.
-- Do NOT mirror every bullet from README ANALYSIS or any "gaps / recommendations" list as separate sections.
-  Those notes are hints for improving accuracy, not a mandatory checklist.
-- Avoid overlap: use EITHER "getting_started" OR "usage", not both (prefer getting_started for runnable entry).
-- Do NOT add "notebook_usage", "data_requirements", or "architecture" unless the repo is large or clearly needs them.
-- Do NOT add "faq", "troubleshooting", or "changelog" unless the user request explicitly asks for them.
-- Do NOT add "benchmarks" or tables of metrics unless the repository context actually contains measured numbers
-  to cite (e.g. logged results, benchmark outputs, or explicit figures in the provided file extracts).
-- Do NOT add "testing" if there is no tests/ suite, CI config, or test files in the repository analysis/tree.
-- Tailor to the repo: a few scripts and notebooks rarely need API reference, architecture, or FAQ.
-- Do NOT include sections that duplicate deterministic blocks (installation, license, citation, contributing links).
-- Do NOT include "header" or "table_of_contents" — those are generated automatically.
-- If a scientific paper is attached and relevant, you may add methodology-focused sections (e.g. algorithms).
-- Custom section names are allowed only when they avoid duplicating topics already covered above.
+- Do NOT mirror every bullet from README ANALYSIS or any "gaps / recommendations" list as separate section names.
+  Those notes are hints for accuracy, not a mandatory checklist.
+- Avoid overlap: use EITHER `getting_started` OR `usage`, not both (prefer `getting_started` for runnable entry).
+- Do NOT invent names outside the allowed list. If the user asks for FAQ/troubleshooting/changelog, pick the closest
+  allowed section or omit it (those names are usually not in the list).
+- Do NOT select `benchmarks` unless the repository context contains measured numbers or benchmark-related content.
+- Do NOT select `testing` if there is no tests suite, CI config, or test-related signals in the analysis/tree.
+- Tailor to the repo: a few scripts and notebooks rarely need `api_reference`, `architecture`, or long Method sections.
+- Do NOT pick deterministic-only names (already handled): `header`, `table_of_contents`, `installation`, `examples`,
+  `documentation`, `contributing`, `license`, `citation`.
+- If a scientific paper is attached and relevant (`incorporate_paper` or strong article analysis), consider `algorithms`
+  and/or `content`.
+
+ALLOWED LLM SECTION NAMES (internal snake_case — output **only** these strings in `section_names`):
+
+{llm_section_catalog}
 
 OUTPUT:
 Return a JSON object:
 
 {{
-    "sections": [
-        {{
-            "name": "overview",
-            "title": "Overview",
-            "description": "High-level project description covering purpose, key capabilities, and target audience",
-            "prompt_context_keys": ["repo_analysis", "readme_analysis"]
-        }},
-        {{
-            "name": "core_features",
-            "title": "Core Features",
-            "description": "List of main features with brief explanations",
-            "prompt_context_keys": ["repo_analysis", "key_files_content"]
-        }}
-    ]
+    "section_names": ["overview", "core_features", "getting_started"]
 }}
-
-For each section, "prompt_context_keys" lists which context fields should be included when generating that section.
-Valid keys: "repo_tree", "existing_readme", "key_files_content", "examples_content", "pdf_content", "repo_analysis", "readme_analysis", "article_analysis"
 
 INPUT DATA:
 
@@ -358,6 +355,409 @@ INPUT DATA:
 4. USER REQUEST (if any):
 
 {user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_overview = """
+TASK:
+Generate the **Overview** section for a README file.
+
+SECTION INTERNAL NAME: overview
+
+RULES:
+- 1–3 short paragraphs only. **No bullet lists.**
+- Do NOT enumerate libraries or dependencies by name; you may say "Python" once or refer readers to Installation.
+- Name real entry-point files from the context (scripts, notebooks, packages).
+- Facts only — no invented paths, commands, or features.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+Do NOT include a "## Overview" heading — it is added automatically.
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_core_features = """
+TASK:
+Generate the **Core Features** section for a README file.
+
+SECTION INTERNAL NAME: core_features
+
+RULES:
+- At most **5** bullets. Each bullet must cite at least one concrete **file name** or **function/class** visible in context.
+- Do NOT add bullets about generic tooling, "clean code", type hints only, or dependency stack without a repo artifact.
+- Facts only.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+Do NOT include a "## Core Features" heading — it is added automatically.
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_getting_started = """
+TASK:
+Generate the **Getting Started** section for a README file.
+
+SECTION INTERNAL NAME: getting_started
+
+RULES:
+- Minimal steps: env hint, data paths from code, **run commands** that appear in context.
+- Do NOT paste a long package list — point to Installation or requirements files if mentioned.
+- Include fenced code blocks only for commands/snippets present in context.
+- Facts only.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+Do NOT include a "## Getting Started" heading — it is added automatically.
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_content = """
+TASK:
+Generate the **Project structure and components** section (high-level map of the codebase / modules).
+
+SECTION INTERNAL NAME: content
+
+RULES:
+- Summarize main parts and how they relate; avoid a raw file tree dump.
+- Ground claims in **article_analysis** and repo context when a paper is involved.
+- Facts only.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+Do NOT duplicate Installation or Getting Started commands unless essential for orientation.
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_usage = """
+TASK:
+Generate the **Usage** section (CLI / API patterns **after** install).
+
+SECTION INTERNAL NAME: usage
+
+RULES:
+- Focus on how to **invoke** or **import** the project using examples from context.
+- Do NOT duplicate full Installation steps.
+- Facts only — no invented flags or endpoints.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_architecture = """
+TASK:
+Generate the **Architecture** section.
+
+SECTION INTERNAL NAME: architecture
+
+RULES:
+- Explain major subsystems and data/control flow using **repo_tree** and analysis — no invented components.
+- Keep it concise; use short paragraphs or a small bullet list if needed.
+- Facts only.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_api_reference = """
+TASK:
+Generate a concise **API Reference** (public functions/classes/modules that appear in key files).
+
+SECTION INTERNAL NAME: api_reference
+
+RULES:
+- Only document symbols or patterns explicitly visible in context.
+- Prefer a compact bullet or table layout; no full auto-doc of every private helper.
+- If there is no clear API, state that the project is script-oriented and point to entry files.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_testing = """
+TASK:
+Generate the **Testing** section.
+
+SECTION INTERNAL NAME: testing
+
+RULES:
+- Describe how to run tests **only** using frameworks/commands visible in context (e.g. pytest path, `make test`).
+- If unclear, say what test paths or configs exist without guessing commands.
+- Facts only.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_benchmarks = """
+TASK:
+Generate the **Benchmarks** section.
+
+SECTION INTERNAL NAME: benchmarks
+
+RULES:
+- Include **only** metrics, tables, or commands that appear in context — no fabricated numbers.
+- If benchmarks are mentioned but numbers are absent, describe how benchmarks are run without inventing results.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_algorithms = """
+TASK:
+Generate the **Methods and algorithms** section (research-oriented).
+
+SECTION INTERNAL NAME: algorithms
+
+RULES:
+- Tie methods to **article_analysis** / PDF context and repo analysis; no code dumps.
+- Use clear, accessible language; avoid claiming results not present in context.
+- Facts only.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
 """
 
 section_merge = """

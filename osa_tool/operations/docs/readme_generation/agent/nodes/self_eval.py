@@ -1,10 +1,9 @@
-"""Self-evaluation refinement loop — scores the draft and fixes identified issues."""
+"""Self-evaluate the assembled README draft (score + issues + optional section rerun plan)."""
 
 from __future__ import annotations
 
 from pydantic import ValidationError
 
-from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
 from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_state, summarize_update
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
@@ -14,68 +13,57 @@ from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonParseError
 
 
-def refiner_node(state: ReadmeState, context: ReadmeContext) -> dict:
-    """Single refinement cycle: fix issues (if any) then self-evaluate.
-
-    The graph router decides whether to loop back or proceed to writer.
-    """
+def self_eval_node(state: ReadmeState, context: ReadmeContext) -> dict:
+    """Score the current readme_draft and optionally request LLM section regeneration."""
     cycle = state.refinement_cycles + 1
-    logger.info("[Refiner] Refinement cycle %d...", cycle)
-    logger.debug("[Refiner] Input state summary: %s", summarize_state(state))
+    logger.info("[SelfEval] Evaluation cycle %d...", cycle)
+    logger.debug("[SelfEval] Input state summary: %s", summarize_state(state))
 
-    current = state.readme_draft or ""
+    planned_names = ", ".join(s.name for s in state.section_plan)
 
-    # ── Step 1: Apply targeted fixes if previous cycle found issues ──
-    if state.refinement_issues:
-        logger.info("[Refiner] Fixing %d issues from previous evaluation...", len(state.refinement_issues))
-        refined = context.model_handler.send_and_parse(
-            prompt=PromptBuilder.render(
-                context.prompts.get("readme_agent.refine_with_feedback"),
-                readme=current,
-                issues="\n".join(f"- {issue}" for issue in state.refinement_issues),
-                generation_plan=state.intent.reasoning if state.intent else "",
-                user_request=state.user_request or "N/A",
-            ),
-            parser=LlmTextOutput,
-        ).text
-        current = refined or current
-
-    # ── Step 2: Self-evaluate ──
     try:
         eval_result = context.model_handler.send_and_parse(
             prompt=PromptBuilder.render(
                 context.prompts.get("readme_agent.self_eval"),
-                readme=current,
+                readme=state.readme_draft or "",
                 repo_analysis=state.context.repo_analysis or "" if state.context else "",
                 generation_plan=state.intent.reasoning if state.intent else "",
                 user_request=state.user_request or "N/A",
                 previous_issues=(
                     "\n".join(f"- {i}" for i in state.refinement_issues) if state.refinement_issues else "None"
                 ),
+                planned_section_names=planned_names,
             ),
             parser=ReadmeSelfEvalLLMOutput,
         )
         refinement_score = float(eval_result.score)
         refinement_issues = list(eval_result.issues)
+        sections_to_rerun = [x.strip() for x in eval_result.sections_to_rerun if x and str(x).strip()]
+        hints_raw = eval_result.section_feedback if eval_result.section_feedback else {}
+        section_regeneration_hints = {str(k).strip(): str(v).strip() for k, v in hints_raw.items() if k}
         if eval_result.should_stop:
             refinement_score = max(refinement_score, 8.0)
         logger.info(
-            "[Refiner] Cycle %d: score=%.1f, issues=%d, should_stop=%s",
+            "[SelfEval] Cycle %d: score=%.1f, issues=%d, should_stop=%s, rerun=%s",
             cycle,
             refinement_score,
             len(refinement_issues),
             eval_result.should_stop,
+            sections_to_rerun,
         )
     except (JsonParseError, ValidationError) as exc:
         refinement_score = 7.0
         refinement_issues = []
-        logger.warning("[Refiner] Self-eval failed (%s); defaulting score=7.0", exc)
+        sections_to_rerun = []
+        section_regeneration_hints = {}
+        logger.warning("[SelfEval] Parse failed (%s); defaulting score=7.0", exc)
 
     update = {
-        "readme_draft": current,
         "refinement_cycles": cycle,
         "refinement_score": refinement_score,
         "refinement_issues": refinement_issues,
+        "sections_to_rerun": sections_to_rerun,
+        "section_regeneration_hints": section_regeneration_hints,
     }
-    logger.debug("[Refiner] Output update summary: %s", summarize_update(update))
+    logger.debug("[SelfEval] Output update summary: %s", summarize_update(update))
     return update

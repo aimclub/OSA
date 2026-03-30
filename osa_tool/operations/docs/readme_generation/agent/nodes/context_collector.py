@@ -246,6 +246,7 @@ def _gather_raw_context(
         "key_files_content": key_files_content,
         "examples_content": examples_content,
         "pdf_content": pdf_content,
+        "has_tests": sourcerank.tests_presence(),
     }
 
 
@@ -303,6 +304,7 @@ def context_collector_node(state: ReadmeState, context: ReadmeContext) -> dict:
         repo_analysis=analyses["repo_analysis"],
         readme_analysis=analyses["readme_analysis"],
         article_analysis=analyses["article_analysis"],
+        has_tests=raw_ctx["has_tests"],
     )
 
     update = {"context": repo_context}
