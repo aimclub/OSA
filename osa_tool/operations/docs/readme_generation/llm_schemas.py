@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class KeyFilesLLMOutput(BaseModel):
@@ -24,10 +24,32 @@ class DiagnosisLLMOutput(BaseModel):
         return "full_regen"
 
 
-class CoreFeaturesLLMOutput(RootModel[dict[str, Any]]):
-    """Full JSON object for the core-features prompt (arbitrary keys)."""
+class CoreFeatureItem(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    feature_name: str = ""
+    feature_description: str = ""
+    is_critical: bool = False
 
-    pass
+
+class CoreFeaturesLLMOutput(BaseModel):
+    """Canonical core-features payload with compatibility normalization."""
+    model_config = ConfigDict(extra="ignore")
+    features: list[CoreFeatureItem] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_payload(cls, value: Any) -> Any:
+        # Backward compatibility: bare list -> {"features": [...]}
+        if isinstance(value, list):
+            return {"features": value}
+        if isinstance(value, dict):
+            features = value.get("features")
+            if isinstance(features, list):
+                return value
+            # Graceful handling for a single feature object.
+            if "feature_name" in value and "feature_description" in value:
+                return {"features": [value]}
+        return value
 
 
 class ReadmeSelfEvalLLMOutput(BaseModel):

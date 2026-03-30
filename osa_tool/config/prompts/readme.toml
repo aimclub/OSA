@@ -43,22 +43,28 @@ INPUT DATA:
 core_features = """
 TASK:
 Based on the provided information about the project, generate a list of core features for the project.
-Each core feature should be represented by JSON format following this exact structure:
+Each core feature should be represented in JSON using this exact output shape:
 
 {{
-    "feature_name": "text",
-    "feature_description": "text",
-    "is_critical": boolean
+    "features": [
+        {{
+            "feature_name": "text",
+            "feature_description": "text",
+            "is_critical": boolean
+        }}
+    ]
 }}
 
 RULES:
 
-- The output should be a JSON array.
-- Each element in the array should represent one core feature.
+- The output MUST be a JSON object with a single key: "features".
+- The value of "features" MUST be a JSON array.
+- Each element in the array represents one core feature object.
 - Use double quotes for JSON formatting.
 - Be sure to generate multiple core features, each describing a different aspect of the project.
 - The 'feature_name' should describe a key aspect.
 - The 'feature_description' should be a detailed but short explanation of the feature.
+- Return only valid JSON without explanations.
 
 INPUT DATA:
 

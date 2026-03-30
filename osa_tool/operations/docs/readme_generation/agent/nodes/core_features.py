@@ -18,7 +18,7 @@ def core_features_node(state: ReadmeState, context: ReadmeContext) -> dict:
             key_files_content=state.key_files_content,
         ),
         parser=CoreFeaturesLLMOutput,
-    ).root
+    ).features
 
     logger.info("[CoreFeatures] Done.")
-    return {"core_features": core_features}
+    return {"core_features": [item.model_dump() for item in core_features]}
