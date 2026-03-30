@@ -1,3 +1,7 @@
+"""Shared dependency-injection container passed to all README generation nodes."""
+
+from __future__ import annotations
+
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory

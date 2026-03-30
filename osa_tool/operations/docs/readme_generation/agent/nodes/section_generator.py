@@ -1,3 +1,7 @@
+"""Generic LLM-powered section generator — produces any README section from a SectionSpec."""
+
+from __future__ import annotations
+
 import re
 
 from osa_tool.core.models.llm_output_models import LlmTextOutput

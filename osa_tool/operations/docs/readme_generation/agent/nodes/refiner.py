@@ -1,5 +1,7 @@
 """Self-evaluation refinement loop — scores the draft and fixes identified issues."""
 
+from __future__ import annotations
+
 from pydantic import ValidationError
 
 from osa_tool.core.models.llm_output_models import LlmTextOutput

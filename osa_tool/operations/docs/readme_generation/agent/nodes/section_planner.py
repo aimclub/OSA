@@ -1,3 +1,7 @@
+"""Dynamically plan which README sections to generate based on intent and repository context."""
+
+from __future__ import annotations
+
 import re
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError

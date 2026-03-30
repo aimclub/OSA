@@ -1,5 +1,7 @@
 """Write the final README to disk and emit operation events."""
 
+from __future__ import annotations
+
 import os
 
 from osa_tool.core.models.event import EventKind, OperationEvent

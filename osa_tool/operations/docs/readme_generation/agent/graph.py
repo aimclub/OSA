@@ -1,3 +1,11 @@
+"""LangGraph definition for the README generation pipeline.
+
+Topology:
+    context_collector -> intent_analyzer -> section_planner
+        -> fan-out (section_generator x N || deterministic_builder)
+        -> assembler -> refiner (loop) -> writer -> END
+"""
+
 from __future__ import annotations
 
 from typing import Any

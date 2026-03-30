@@ -1,3 +1,7 @@
+"""Shared file-I/O, tree-search, and markdown utilities for README generation."""
+
+from __future__ import annotations
+
 import json
 import os
 import re

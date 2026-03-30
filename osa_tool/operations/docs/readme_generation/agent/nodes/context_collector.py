@@ -1,3 +1,7 @@
+"""Collect repository context: tree, key files, README, PDF, and LLM analyses."""
+
+from __future__ import annotations
+
 import asyncio
 import os
 

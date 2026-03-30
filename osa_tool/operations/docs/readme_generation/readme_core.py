@@ -1,3 +1,7 @@
+"""Public entry point for the README generation operation."""
+
+from __future__ import annotations
+
 import os
 
 from osa_tool.config.settings import ConfigManager
