@@ -3,7 +3,7 @@ import asyncio
 import docx2txt
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.core.llm.llm import ModelHandlerFactory, ModelHandler
+from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
 from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
 from osa_tool.utils.logger import logger
@@ -36,13 +36,14 @@ class PaperAnalyzer:
             logger.info("Processing DOCX...")
             raw_content = await asyncio.to_thread(self.__parse_docx, document_path)
         elif document_path.endswith(".pdf"):
+            path_to_pdf = get_pdf_path(document_path)
+            if not path_to_pdf:
+                raise ValueError(f"Invalid PDF source provided: {path_to_pdf}. Could not locate a valid PDF.")
             logger.info("Processing PDF...")
             raw_content = await asyncio.to_thread(self.__parse_pdf, document_path)
         else:
             raise ValueError(f"Unprocessable file format: {document_path}")
-        path_to_pdf = get_pdf_path(document_path)
-        if not path_to_pdf:
-            raise ValueError(f"Invalid PDF source provided: {path_to_pdf}. Could not locate a valid PDF.")
+
         logger.info("Sending request to extract experiments section...")
         experiments = await self.__model_handler.async_send_and_parse(
             PromptBuilder.render(
