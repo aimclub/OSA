@@ -194,14 +194,9 @@ class ReportGenerator:
         return Spacer(0, 10), conclusion_header, Spacer(0, 5), conclusion_text
 
     def __build_table(self, experiments) -> Iterable[Paragraph]:
-        return (
-            Paragraph(
-                f"""<b>Experiment {i + 1}.</b>
+        return (Paragraph(f"""<b>Experiment {i + 1}.</b>
                 <b>Formulation stated: </b><p>"{experiment.description_from_paper}"</p>
                 <b>Implementation found: </b><p>{experiment.impl_src_path}</p>
                 <b>Missing components: </b><p>{experiment.missing if bool(experiment.missing) else "None"}</p>
                 <b>Correspondence: </b><p>{experiment.correspondence_percent*100}%</p>
-                """
-            )
-            for i, experiment in enumerate(experiments)
-        )
+                """) for i, experiment in enumerate(experiments))
