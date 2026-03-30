@@ -26,6 +26,13 @@ from osa_tool.operations.docs.readme_generation.agent.nodes.writer import writer
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 
 
+def _ensure_state(s: Any) -> ReadmeState:
+    """LangGraph Send delivers a raw dict — rehydrate into ReadmeState."""
+    if isinstance(s, ReadmeState):
+        return s
+    return ReadmeState.model_validate(s)
+
+
 def _fan_out_to_generators(state: ReadmeState) -> list[Send]:
     """Fan-out from section_planner to parallel section generators.
 
@@ -64,8 +71,8 @@ def build_readme_graph(context: ReadmeContext) -> Any:
     graph.add_node("context_collector", lambda s: context_collector_node(s, context))
     graph.add_node("intent_analyzer", lambda s: intent_analyzer_node(s, context))
     graph.add_node("section_planner", lambda s: section_planner_node(s, context))
-    graph.add_node("section_generator", lambda s: section_generator_node(s, context))
-    graph.add_node("deterministic_builder", lambda s: deterministic_builder_node(s, context))
+    graph.add_node("section_generator", lambda s: section_generator_node(_ensure_state(s), context))
+    graph.add_node("deterministic_builder", lambda s: deterministic_builder_node(_ensure_state(s), context))
     graph.add_node("assembler", lambda s: assembler_node(s, context))
     graph.add_node("refiner", lambda s: refiner_node(s, context))
     graph.add_node("writer", lambda s: writer_node(s, context))
