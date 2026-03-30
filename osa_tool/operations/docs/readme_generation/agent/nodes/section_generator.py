@@ -78,6 +78,7 @@ def section_generator_node(state: ReadmeState, context: ReadmeContext) -> dict:
     text = context.model_handler.send_and_parse(
         prompt=PromptBuilder.render(
             context.prompts.get("readme_agent.section_generate"),
+            section_name=spec.name,
             section_title=spec.title,
             section_description=spec.description or spec.title,
             project_name=context.metadata.name,

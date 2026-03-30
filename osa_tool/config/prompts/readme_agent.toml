@@ -311,6 +311,8 @@ section_generate = """
 TASK:
 Generate the "{section_title}" section for a README file.
 
+SECTION INTERNAL NAME (use for constraints below): {section_name}
+
 SECTION PURPOSE:
 {section_description}
 
@@ -319,12 +321,20 @@ RULES:
   in the snippets). Do NOT invent CLI flags, paths, filenames, package names, hyperparameters, benchmark numbers,
   or FAQ answers that are not supported by the context.
 - If a detail is unknown, omit it or say briefly that users should inspect the listed files — do not guess.
-- Write lean Markdown: short paragraphs, compact bullets (aim for roughly 4–10 bullets OR 2–4 short paragraphs
-  unless the section is inherently list-heavy like core features).
-- Do NOT include the section heading (no "## {section_title}" or similar) — it is added automatically.
+- Write lean Markdown. Do NOT include the section heading (no "## {section_title}") — it is added automatically.
 - Do NOT add a nested "FAQ" inside non-FAQ sections.
 - Escape any backslashes in JSON strings so the output is valid JSON (double backslashes for Windows paths).
 - If improving an existing section, keep accurate facts; drop marketing filler and speculative claims.
+
+SECTION-SPECIFIC CONSTRAINTS (apply when section internal name matches):
+- overview: 1–3 short paragraphs only. No bullet lists. Do NOT enumerate libraries or dependencies by name; you may
+  say "Python" once or refer readers to Installation / requirements. Focus on what the repo does and name real
+  entry-point files from the context.
+- core_features: at most 5 bullets. Each bullet must cite at least one concrete file name or function/class symbol
+  visible in the context. Do NOT add bullets that only restate the dependency stack, IDE tooling, type hints,
+  "clean code", "rich libraries", persistence alone, or other generic claims without a specific repo artifact.
+- getting_started: keep prerequisites short; do not paste a long package list—point to Installation or
+  requirements.txt if mentioned in context.
 
 OUTPUT:
 Return a JSON object:

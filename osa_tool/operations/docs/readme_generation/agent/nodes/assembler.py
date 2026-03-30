@@ -25,11 +25,29 @@ def _strip_leading_markdown_heading(content: str, title: str) -> str:
     return content.strip()
 
 
+def _toc_anchor_slug(title: str) -> str:
+    """Approximate GitHub-style heading anchors for local ToC links."""
+    t = title.lower().strip()
+    t = re.sub(r"[^\w\s-]", "", t, flags=re.UNICODE)
+    t = re.sub(r"\s+", "-", t)
+    return t.strip("-")
+
+
+def _strip_trailing_hr(text: str) -> str:
+    """Remove a trailing horizontal rule so we can add a single consistent divider."""
+    return re.sub(r"\n+---\s*$", "", text.rstrip())
+
+
+def _with_trailing_hr(block: str) -> str:
+    """End a section block with a horizontal rule (README style between sections)."""
+    return f"{_strip_trailing_hr(block)}\n\n---"
+
+
 def _build_table_of_contents(titles: list[str]) -> str:
     """Generate a markdown ToC from an ordered list of section titles."""
     toc_lines = ["## Table of Contents\n"]
     for title in titles:
-        anchor = re.sub(r"\s+", "-", title.lower())
+        anchor = _toc_anchor_slug(title)
         toc_lines.append(f"- [{title}](#{anchor})")
     toc_lines.append("\n---")
     return "\n".join(toc_lines)
@@ -45,25 +63,28 @@ def _assemble_full(state: ReadmeState) -> str:
 
     for spec in plan_order:
         result = state.sections.get(spec.name)
-        if result is None or not result.content:
-            continue
 
         if spec.name == "header":
-            parts.append(result.content)
+            if result and result.content.strip():
+                parts.append(result.content.rstrip())
             continue
 
         if spec.name == "table_of_contents":
             toc_insert_index = len(parts)
-            parts.append("")  # placeholder
+            parts.append("")  # placeholder; content is synthesized from toc_titles
+            continue
+
+        if result is None or not result.content.strip():
             continue
 
         body = _strip_leading_markdown_heading(result.content, result.title)
         heading = f"## {result.title}"
-        parts.append(f"{heading}\n\n{body}")
+        block = _with_trailing_hr(f"{heading}\n\n{body}")
+        parts.append(block)
         toc_titles.append(result.title)
 
     if toc_insert_index is not None and toc_titles:
-        parts[toc_insert_index] = _build_table_of_contents(toc_titles)
+        parts[toc_insert_index] = _with_trailing_hr(_build_table_of_contents(toc_titles).rstrip("\n"))
 
     return "\n\n".join(part for part in parts if part)
 

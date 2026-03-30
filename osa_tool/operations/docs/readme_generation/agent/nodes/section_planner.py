@@ -134,19 +134,28 @@ _FALLBACK_SECTIONS: list[_PlannedSection] = [
     _PlannedSection(
         name="overview",
         title="Overview",
-        description="High-level project description",
-        prompt_context_keys=["repo_analysis", "readme_analysis"],
+        description=(
+            "2–4 sentences: purpose, audience, main entry points (name actual script/notebook files). "
+            "No bullet lists; do not enumerate Python packages or third-party libraries."
+        ),
+        prompt_context_keys=["repo_analysis", "key_files_content"],
     ),
     _PlannedSection(
         name="core_features",
         title="Core Features",
-        description="List of main features with brief explanations",
+        description=(
+            "At most 4 bullets. Each bullet names a concrete file or function from the repo and one factual sentence. "
+            "No bullets about dependencies, stack, type hints, code quality, or generic extensibility."
+        ),
         prompt_context_keys=["repo_analysis", "key_files_content"],
     ),
     _PlannedSection(
         name="getting_started",
         title="Getting Started",
-        description="Quick start guide with code examples",
+        description=(
+            "Minimal steps: env hint, data path from code, run commands copied from the repo. "
+            "Do not paste long library lists—refer readers to Installation or requirements."
+        ),
         prompt_context_keys=["repo_analysis", "examples_content", "key_files_content"],
     ),
 ]
