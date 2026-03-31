@@ -48,93 +48,126 @@ class _DeterministicSections:
         self._branch_path = f"tree/{self._meta.default_branch}/"
 
     def header(self) -> str:
-        return HeaderBuilder(self._cm, self._meta).build_header()
+        logger.info("[DeterministicBuilder] Building section: header")
+        content = HeaderBuilder(self._cm, self._meta).build_header()
+        logger.info("[DeterministicBuilder] Section 'header' built (%d chars)", len(content))
+        return content
 
     def installation(self) -> str:
-        return InstallationSectionBuilder(self._cm, self._meta).build_installation()
+        logger.info("[DeterministicBuilder] Building section: installation")
+        content = InstallationSectionBuilder(self._cm, self._meta).build_installation()
+        logger.info("[DeterministicBuilder] Section 'installation' built (%d chars)", len(content))
+        return content
 
     def examples(self) -> str:
+        logger.info("[DeterministicBuilder] Building section: examples")
         if not self._sr.examples_presence():
+            logger.info("[DeterministicBuilder] Section 'examples' skipped: no examples detected")
             return ""
         pattern = r"\b(tutorials?|examples|notebooks?)\b"
         path = self._url_path + self._branch_path + find_in_repo_tree(self._sr.tree, pattern)
-        return self._tpl["examples"].format(path=path)
+        content = self._tpl["examples"].format(path=path)
+        logger.info("[DeterministicBuilder] Section 'examples' built from path=%s", path)
+        return content
 
     def documentation(self) -> str:
+        logger.info("[DeterministicBuilder] Building section: documentation")
         if not self._meta.homepage_url:
             if self._sr.docs_presence():
                 pattern = r"\b(docs?|documentation|wiki|manuals?)\b"
                 path = self._url_path + self._branch_path + find_in_repo_tree(self._sr.tree, pattern)
             else:
+                logger.info("[DeterministicBuilder] Section 'documentation' skipped: docs not found")
                 return ""
         else:
             path = self._meta.homepage_url
-        return self._tpl["documentation"].format(repo_name=self._meta.name, path=path)
+        content = self._tpl["documentation"].format(repo_name=self._meta.name, path=path)
+        logger.info("[DeterministicBuilder] Section 'documentation' built with path=%s", path)
+        return content
 
     def contributing(self) -> str:
+        logger.info("[DeterministicBuilder] Building section: contributing")
         discussions_url = self._url_path + "discussions"
-        discussions = (
-            self._tpl["discussion_section"].format(discussions_url=discussions_url)
-            if _check_url(discussions_url)
-            else ""
-        )
+        discussions_enabled = _check_url(discussions_url)
+        discussions = self._tpl["discussion_section"].format(discussions_url=discussions_url) if discussions_enabled else ""
 
         issues_url = self._url_path + "issues"
         issues = self._tpl["issues_section"].format(issues_url=issues_url)
 
         contributing_text = ""
-        if self._sr.contributing_presence():
+        has_contributing = self._sr.contributing_presence()
+        if has_contributing:
             pattern = r"\b\w*contribut\w*\.(md|rst|txt)$"
             contributing_url = self._url_path + self._branch_path + find_in_repo_tree(self._sr.tree, pattern)
             contributing_text = self._tpl["contributing_section"].format(
                 contributing_url=contributing_url, name=self._cm.get_git_settings().name
             )
 
-        return self._tpl["contributing"].format(
+        content = self._tpl["contributing"].format(
             dicsussion_section=discussions,
             issue_section=issues,
             contributing_section=contributing_text,
         )
+        logger.info(
+            "[DeterministicBuilder] Section 'contributing' built (discussions=%s, contributing_file=%s)",
+            discussions_enabled,
+            has_contributing,
+        )
+        return content
 
     def license(self) -> str:
+        logger.info("[DeterministicBuilder] Building section: license")
         if not self._meta.license_name:
+            logger.info("[DeterministicBuilder] Section 'license' skipped: repository has no license metadata")
             return ""
         pattern = r"\bLICEN[SC]E(\.\w+)?\b"
         help_var = find_in_repo_tree(self._sr.tree, pattern)
         path = self._url_path + self._branch_path + help_var if help_var else self._meta.license_url
-        return self._tpl["license"].format(license_name=self._meta.license_name, path=path)
+        content = self._tpl["license"].format(license_name=self._meta.license_name, path=path)
+        logger.info("[DeterministicBuilder] Section 'license' built with path=%s", path)
+        return content
 
     def citation(self) -> str:
+        logger.info("[DeterministicBuilder] Building section: citation")
         if self._sr.citation_presence():
-            logger.warning("[DeterministicBuilder] Citation file was detected. ")
+            logger.info("[DeterministicBuilder] Citation file detected in repository")
             pattern = r"\bCITATION(\.\w+)?\b"
             path = self._url_path + self._branch_path + find_in_repo_tree(self._sr.tree, pattern)
-            return self._tpl["citation"] + self._tpl["citation_v1"].format(path=path)
+            content = self._tpl["citation"] + self._tpl["citation_v1"].format(path=path)
+            logger.info("[DeterministicBuilder] Section 'citation' built from repository CITATION file")
+            return content
 
         citation_from_readme = self._extract_citation_from_readme()
         if citation_from_readme:
-            return self._tpl["citation"] + citation_from_readme
+            content = self._tpl["citation"] + citation_from_readme
+            logger.info("[DeterministicBuilder] Section 'citation' built from existing README citation")
+            return content
 
         git = self._cm.get_git_settings()
-        return self._tpl["citation"] + self._tpl["citation_v2"].format(
+        content = self._tpl["citation"] + self._tpl["citation_v2"].format(
             owner=self._meta.owner,
             year=self._meta.created_at.split("-")[0],
             repo_name=git.name,
             publisher=git.host_domain,
             repository_url=git.repository,
         )
+        logger.info("[DeterministicBuilder] Section 'citation' built from fallback template")
+        return content
 
     def _extract_citation_from_readme(self) -> str:
         """Ask the shared model_handler to find citations in the existing README."""
+        logger.info("[DeterministicBuilder] Checking existing README for citation block")
         repo_path = os.path.join(os.getcwd(), parse_folder_name(self._cm.get_git_settings().repository))
         readme_content = extract_readme_content(repo_path)
 
-        logger.info("[DeterministicBuilder] Detecting citations in README...")
+        logger.info("[DeterministicBuilder] Detecting citations in README via LLM...")
         result = self._context.model_handler.send_and_parse(
             prompt=PromptBuilder.render(self._context.prompts.get("readme.citation"), readme=readme_content),
             parser=LlmTextOutput,
         )
-        return result.text or ""
+        detected = result.text or ""
+        logger.info("[DeterministicBuilder] Citation detection complete (found=%s)", bool(detected.strip()))
+        return detected
 
 
 def build_single_deterministic_section(
