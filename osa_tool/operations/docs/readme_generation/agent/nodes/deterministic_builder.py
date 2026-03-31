@@ -89,7 +89,9 @@ class _DeterministicSections:
         logger.info("[DeterministicBuilder] Building section: contributing")
         discussions_url = self._url_path + "discussions"
         discussions_enabled = _check_url(discussions_url)
-        discussions = self._tpl["discussion_section"].format(discussions_url=discussions_url) if discussions_enabled else ""
+        discussions = (
+            self._tpl["discussion_section"].format(discussions_url=discussions_url) if discussions_enabled else ""
+        )
 
         issues_url = self._url_path + "issues"
         issues = self._tpl["issues_section"].format(issues_url=issues_url)

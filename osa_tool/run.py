@@ -34,7 +34,8 @@ from osa_tool.utils.utils import (
     osa_project_root,
     parse_folder_name,
     rich_section,
-    switch_to_output_directory, format_time,
+    switch_to_output_directory,
+    format_time,
 )
 
 
