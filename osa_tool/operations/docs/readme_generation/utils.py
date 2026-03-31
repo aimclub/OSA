@@ -111,3 +111,12 @@ def remove_extra_blank_lines(path: str) -> None:
 
     with open(path, "w", encoding="utf-8") as f:
         f.writelines(cleaned)
+
+
+def build_system_message(context: ReadmeContext, specific_key: str) -> str:
+    """Compose base + node-specific."""
+    parts = [
+        context.prompts.get("readme.system_messages.base"),
+        context.prompts.get(f"readme.system_messages.{specific_key}"),
+    ]
+    return "\n\n".join(p for p in parts if p and p.strip())

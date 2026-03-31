@@ -7,6 +7,7 @@ import re
 from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
+from osa_tool.operations.docs.readme_generation.utils import build_system_message
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 
@@ -88,7 +89,7 @@ def _assemble_full(state: ReadmeState) -> str:
     return "\n\n".join(part for part in parts if part)
 
 
-def _assemble_partial(state: ReadmeState, context: ReadmeContext) -> str:
+def _assemble_partial(state: ReadmeState, ctx: ReadmeContext) -> str:
     """Merge newly generated sections into the existing README via LLM."""
     new_parts: list[str] = []
     target_names: list[str] = []
@@ -104,28 +105,29 @@ def _assemble_partial(state: ReadmeState, context: ReadmeContext) -> str:
     if not new_parts:
         return state.context.existing_readme if state.context else ""
 
-    merged = context.model_handler.send_and_parse(
+    merged = ctx.model_handler.send_and_parse(
         prompt=PromptBuilder.render(
-            context.prompts.get("readme_agent.section_merge"),
+            ctx.prompts.get("readme.prompts.section_merge"),
             existing_readme=state.context.existing_readme if state.context else "",
             new_sections="\n\n".join(new_parts),
             target_sections=", ".join(target_names),
             generation_plan=state.intent.reasoning if state.intent else "",
         ),
         parser=LlmTextOutput,
+        system_message=build_system_message(ctx, "section_merge"),
     ).text
 
     return merged or (state.context.existing_readme if state.context else "")
 
 
-def assembler_node(state: ReadmeState, context: ReadmeContext) -> dict:
+def assembler_node(state: ReadmeState, ctx: ReadmeContext) -> dict:
     """Assemble the final README draft from generated sections."""
     logger.info("[Assembler] Assembling README draft...")
 
     is_partial = state.intent and state.intent.scope == "partial" and state.intent.task_type == "update"
 
     if is_partial:
-        readme_draft = _assemble_partial(state, context)
+        readme_draft = _assemble_partial(state, ctx)
     else:
         readme_draft = _assemble_full(state)
 

@@ -58,13 +58,13 @@ def test_prompt_loader_missing_section():
 
     # Assert
     with pytest.raises(PromptLoadError):
-        loader.get("readme.no_such_section")
+        loader.get("readme.prompts.no_such_section")
 
 
 def test_prompt_builder_format_real_template():
     # Arrange
     loader = PromptLoader()
-    template = loader.get("readme.preanalysis")
+    template = loader.get("readme.prompts.preanalysis")
 
     # Act
     rendered = PromptBuilder.render(template, repository_tree="test_tree", readme_content="test_readme")

@@ -11,6 +11,7 @@ from osa_tool.operations.docs.readme_generation.agent.nodes.deterministic_builde
     build_single_deterministic_section,
 )
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
+from osa_tool.operations.docs.readme_generation.utils import build_system_message
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 
@@ -62,7 +63,7 @@ def _strip_leading_section_heading(text: str, title: str) -> str:
     return s
 
 
-def section_generator_node(state: ReadmeState, context: ReadmeContext) -> dict:
+def section_generator_node(state: ReadmeState, ctx: ReadmeContext) -> dict:
     """Generate a single README section described by ``state.current_section``."""
     spec: SectionSpec | None = state.current_section
     if spec is None:
@@ -75,7 +76,7 @@ def section_generator_node(state: ReadmeState, context: ReadmeContext) -> dict:
         return {}
 
     if spec.strategy == "deterministic":
-        result, err = build_single_deterministic_section(spec, context)
+        result, err = build_single_deterministic_section(spec, ctx)
         if err:
             return {"section_errors": {spec.name: err}}
         if result is None:
@@ -94,25 +95,26 @@ def section_generator_node(state: ReadmeState, context: ReadmeContext) -> dict:
     if state.section_regeneration_hints:
         reg_hint = (state.section_regeneration_hints.get(spec.name) or "").strip()
 
-    template_key = spec.prompt_template_key or "readme_agent.section_generate"
-    template = context.prompts.get(template_key) or context.prompts.get("readme_agent.section_generate")
+    template_key = spec.prompt_template_key or "readme.prompts.section_generate"
+    template = ctx.prompts.get(template_key)
     if template is None:
         logger.error("[SectionGenerator] Missing prompt template '%s' and fallback; aborting section.", template_key)
         return {}
 
-    text = context.model_handler.send_and_parse(
+    text = ctx.model_handler.send_and_parse(
         prompt=PromptBuilder.render(
             template,
             section_name=spec.name,
             section_title=spec.title,
             section_description=spec.description or spec.title,
-            project_name=context.metadata.name,
+            project_name=ctx.metadata.name,
             context_block=context_block,
             existing_section=existing_section or "N/A",
             user_request=state.user_request or "N/A",
             regeneration_hint=reg_hint or "N/A",
         ),
         parser=LlmTextOutput,
+        system_message=build_system_message(ctx, "section_generate"),
     ).text
 
     text = _strip_leading_section_heading(text or "", spec.title)

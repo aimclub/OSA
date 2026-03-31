@@ -1,6 +1,69 @@
 # LLM prompts for the README generation agent pipeline.
 
 [prompts]
+preanalysis = """
+TASK:
+Based on the repository file tree and README, identify the 4-8 most important files
+for understanding the project's purpose, architecture, and usage.
+
+Return files in PRIORITY ORDER - the first file should be the single most important
+file for understanding the project. Prioritize:
+1. Entry points (main.py, app.py, cli.py, __main__.py)
+2. Core module files containing primary business logic
+3. Configuration/setup files (setup.py, pyproject.toml, Cargo.toml, package.json)
+4. Example/demo files that show usage
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "key_files": [
+        "most/important/file.py",
+        "second/important/file.py"
+    ]
+}}
+
+RULES:
+- Return 4-8 files, ordered by importance (most important first).
+- Each string is a relative path exactly matching a path in the tree.
+- Exclude test files, CI configs, and README files.
+- Return only valid JSON without explanations.
+
+INPUT DATA:
+
+1. REPOSITORY FILE TREE:
+
+{repository_tree}
+
+2. README CONTENT:
+
+{readme_content}
+"""
+
+citation = """
+TASK:
+Analyze the README and extract any citation of the repository or any articles (e.g., BibTeX, DOI, or reference text).
+Return only the citation.
+If no citation is present, return an empty string.
+
+Output JSON exactly in this format:
+
+{{
+    "text": "text"
+}}
+
+RULES:
+
+1. Only return the citation text; do not include any other content.
+2. If multiple citations exist, return all of them concatenated.
+3. If no citation is found, return an empty string ("").
+4. Preserve the original formatting of the citation (e.g., BibTeX, DOI, plain text).
+
+INPUT DATA:
+
+{readme}
+"""
+
 repo_analysis = """
 TASK:
 Analyze the repository and produce a structured assessment of its characteristics.
@@ -125,7 +188,7 @@ Return a JSON object:
 
 - "sections_to_rerun": internal section names from **PLANNED SECTION NAMES** below that need regeneration (LLM prose
   sections only, e.g. "overview", "getting_started"). Use [] if a whole-document patch is enough.
-- "section_feedback": map section internal name → short instructions for that section's generator (concrete, actionable).
+- "section_feedback": map section internal name -> short instructions for that section's generator (concrete, actionable).
   Omit keys you do not want to rerun.
 
 Set "should_stop" to true if the README is good enough (score >= 8) or if remaining issues are minor.
@@ -243,12 +306,12 @@ INPUT DATA:
 
 section_planning = """
 TASK:
-Choose which **LLM-written** README sections to include (a small set — not a textbook).
+Choose which **LLM-written** README sections to include (a small set - not a textbook).
 
 The pipeline already adds **deterministically**: header, table of contents, installation, examples, documentation,
 contributing, license, and citation when applicable. You must **only** pick section **internal names** from the
-allowed list below. Do **not** output titles, descriptions, priorities, or prompt_context_keys — the system fills those
-from a catalog (typically **3–6** names; rarely more than **7**).
+allowed list below. Do **not** output titles, descriptions, priorities, or prompt_context_keys - the system fills those
+from a catalog (typically **3-6** names; rarely more than **7**).
 
 RULES (read carefully):
 - Prefer a SHORT README: fewer sections beat exhaustive coverage.
@@ -265,7 +328,7 @@ RULES (read carefully):
 - If a scientific paper is attached and relevant (`incorporate_paper` or strong article analysis), consider `algorithms`
   and/or `content`.
 
-ALLOWED LLM SECTION NAMES (internal snake_case — output **only** these strings in `section_names`):
+ALLOWED LLM SECTION NAMES (internal snake_case - output **only** these strings in `section_names`):
 
 {llm_section_catalog}
 
@@ -317,20 +380,20 @@ RULES:
 - Facts only: describe what exists in the repository context (files, scripts, notebooks, commands that appear
   in the snippets). Do NOT invent CLI flags, paths, filenames, package names, hyperparameters, benchmark numbers,
   or FAQ answers that are not supported by the context.
-- If a detail is unknown, omit it or say briefly that users should inspect the listed files — do not guess.
-- Write lean Markdown. Do NOT include the section heading (no "## {section_title}") — it is added automatically.
+- If a detail is unknown, omit it or say briefly that users should inspect the listed files - do not guess.
+- Write lean Markdown. Do NOT include the section heading (no "## {section_title}") - it is added automatically.
 - Do NOT add a nested "FAQ" inside non-FAQ sections.
 - Escape any backslashes in JSON strings so the output is valid JSON (double backslashes for Windows paths).
 - If improving an existing section, keep accurate facts; drop marketing filler and speculative claims.
 
 SECTION-SPECIFIC CONSTRAINTS (apply when section internal name matches):
-- overview: 1–3 short paragraphs only. No bullet lists. Do NOT enumerate libraries or dependencies by name; you may
+- overview: 1-3 short paragraphs only. No bullet lists. Do NOT enumerate libraries or dependencies by name; you may
   say "Python" once or refer readers to Installation / requirements. Focus on what the repo does and name real
   entry-point files from the context.
 - core_features: at most 5 bullets. Each bullet must cite at least one concrete file name or function/class symbol
   visible in the context. Do NOT add bullets that only restate the dependency stack, IDE tooling, type hints,
   "clean code", "rich libraries", persistence alone, or other generic claims without a specific repo artifact.
-- getting_started: keep prerequisites short; do not paste a long package list—point to Installation or
+- getting_started: keep prerequisites short; do not paste a long package list-point to Installation or
   requirements.txt if mentioned in context.
 
 OUTPUT:
@@ -368,10 +431,10 @@ Generate the **Overview** section for a README file.
 SECTION INTERNAL NAME: overview
 
 RULES:
-- 1–3 short paragraphs only. **No bullet lists.**
+- 1 short paragraph only.
 - Do NOT enumerate libraries or dependencies by name; you may say "Python" once or refer readers to Installation.
 - Name real entry-point files from the context (scripts, notebooks, packages).
-- Facts only — no invented paths, commands, or features.
+- Facts only - no invented paths, commands, or features.
 
 OUTPUT:
 Return a JSON object:
@@ -380,7 +443,7 @@ Return a JSON object:
     "text": "the section body only, in Markdown"
 }}
 
-Do NOT include a "## Overview" heading — it is added automatically.
+Do NOT include a "## Overview" heading - it is added automatically.
 
 INPUT DATA:
 
@@ -421,7 +484,7 @@ Return a JSON object:
     "text": "the section body only, in Markdown"
 }}
 
-Do NOT include a "## Core Features" heading — it is added automatically.
+Do NOT include a "## Core Features" heading - it is added automatically.
 
 INPUT DATA:
 
@@ -452,7 +515,7 @@ SECTION INTERNAL NAME: getting_started
 
 RULES:
 - Minimal steps: env hint, data paths from code, **run commands** that appear in context.
-- Do NOT paste a long package list — point to Installation or requirements files if mentioned.
+- Do NOT paste a long package list - point to Installation or requirements files if mentioned.
 - Include fenced code blocks only for commands/snippets present in context.
 - Facts only.
 
@@ -463,7 +526,7 @@ Return a JSON object:
     "text": "the section body only, in Markdown"
 }}
 
-Do NOT include a "## Getting Started" heading — it is added automatically.
+Do NOT include a "## Getting Started" heading - it is added automatically.
 
 INPUT DATA:
 
@@ -536,7 +599,7 @@ SECTION INTERNAL NAME: usage
 RULES:
 - Focus on how to **invoke** or **import** the project using examples from context.
 - Do NOT duplicate full Installation steps.
-- Facts only — no invented flags or endpoints.
+- Facts only - no invented flags or endpoints.
 
 OUTPUT:
 Return a JSON object:
@@ -573,7 +636,7 @@ Generate the **Architecture** section.
 SECTION INTERNAL NAME: architecture
 
 RULES:
-- Explain major subsystems and data/control flow using **repo_tree** and analysis — no invented components.
+- Explain major subsystems and data/control flow using **repo_tree** and analysis - no invented components.
 - Keep it concise; use short paragraphs or a small bullet list if needed.
 - Facts only.
 
@@ -690,7 +753,7 @@ Generate the **Benchmarks** section.
 SECTION INTERNAL NAME: benchmarks
 
 RULES:
-- Include **only** metrics, tables, or commands that appear in context — no fabricated numbers.
+- Include **only** metrics, tables, or commands that appear in context - no fabricated numbers.
 - If benchmarks are mentioned but numbers are absent, describe how benchmarks are run without inventing results.
 
 OUTPUT:

@@ -104,7 +104,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
             "No bullet lists; do not enumerate Python packages or third-party libraries."
         ),
         prompt_context_keys=("repo_analysis", "key_files_content", "readme_analysis"),
-        prompt_template_key="readme_agent.section_overview",
+        prompt_template_key="readme.prompts.section_overview",
     ),
     SectionCatalogEntry(
         name="core_features",
@@ -116,7 +116,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
             "No bullets about dependencies, stack, type hints, code quality, or generic extensibility."
         ),
         prompt_context_keys=("repo_analysis", "key_files_content"),
-        prompt_template_key="readme_agent.section_core_features",
+        prompt_template_key="readme.prompts.section_core_features",
     ),
     SectionCatalogEntry(
         name="content",
@@ -128,7 +128,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
             "Avoid file-name dump; stay conceptual but grounded in the repo context."
         ),
         prompt_context_keys=("repo_analysis", "key_files_content", "article_analysis"),
-        prompt_template_key="readme_agent.section_content",
+        prompt_template_key="readme.prompts.section_content",
     ),
     SectionCatalogEntry(
         name="getting_started",
@@ -140,7 +140,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
             "Do not paste long library lists—refer readers to Installation or requirements."
         ),
         prompt_context_keys=("repo_analysis", "examples_content", "key_files_content"),
-        prompt_template_key="readme_agent.section_getting_started",
+        prompt_template_key="readme.prompts.section_getting_started",
     ),
     SectionCatalogEntry(
         name="usage",
@@ -152,7 +152,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
             "Do not duplicate Installation; focus on run / import examples."
         ),
         prompt_context_keys=("repo_analysis", "examples_content", "key_files_content"),
-        prompt_template_key="readme_agent.section_usage",
+        prompt_template_key="readme.prompts.section_usage",
     ),
     SectionCatalogEntry(
         name="architecture",
@@ -164,7 +164,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
             "do not invent components."
         ),
         prompt_context_keys=("repo_tree", "repo_analysis", "key_files_content"),
-        prompt_template_key="readme_agent.section_architecture",
+        prompt_template_key="readme.prompts.section_architecture",
     ),
     SectionCatalogEntry(
         name="api_reference",
@@ -176,7 +176,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
             "with no clear API."
         ),
         prompt_context_keys=("key_files_content", "repo_analysis"),
-        prompt_template_key="readme_agent.section_api_reference",
+        prompt_template_key="readme.prompts.section_api_reference",
     ),
     SectionCatalogEntry(
         name="testing",
@@ -185,7 +185,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
         priority=17,
         description="How to run tests and what coverage exists, only from context (commands, frameworks, paths).",
         prompt_context_keys=("repo_tree", "repo_analysis", "key_files_content"),
-        prompt_template_key="readme_agent.section_testing",
+        prompt_template_key="readme.prompts.section_testing",
     ),
     SectionCatalogEntry(
         name="benchmarks",
@@ -194,7 +194,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
         priority=18,
         description="Reported metrics or benchmark commands only if numbers or benchmark outputs exist in context.",
         prompt_context_keys=("repo_analysis", "key_files_content"),
-        prompt_template_key="readme_agent.section_benchmarks",
+        prompt_template_key="readme.prompts.section_benchmarks",
     ),
     SectionCatalogEntry(
         name="algorithms",
@@ -206,7 +206,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
             "ground claims in article_analysis and repo context."
         ),
         prompt_context_keys=("repo_analysis", "key_files_content", "article_analysis", "pdf_content"),
-        prompt_template_key="readme_agent.section_algorithms",
+        prompt_template_key="readme.prompts.section_algorithms",
     ),
 )
 

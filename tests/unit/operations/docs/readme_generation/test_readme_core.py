@@ -95,7 +95,7 @@ def test_readme_agent_with_active_request(
 
 
 @patch("osa_tool.operations.docs.readme_generation.readme_core.build_readme_graph")
-@patch("osa_tool.operations.docs.readme_generation.readme_core.ReadmeContext")
+@patch("osa_tool.operations.docs.readme_generation.readme_core.ReadmeAgentContext")
 def test_readme_agent_error_handling(
     mock_context_cls,
     mock_build_graph,

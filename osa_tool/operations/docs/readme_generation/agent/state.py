@@ -54,7 +54,7 @@ class ReadmeState(BaseModel):
     refinement_score: float | None = None
     refinement_issues: list[str] = Field(default_factory=list)
     refinement_cycles: int = 0
-    max_refinement_cycles: int = 2
+    max_refinement_cycles: int = 3
     sections_to_rerun: list[str] = Field(default_factory=list)
     section_regeneration_hints: dict[str, str] = Field(default_factory=dict)
 

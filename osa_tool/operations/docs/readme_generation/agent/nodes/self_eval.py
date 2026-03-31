@@ -6,13 +6,14 @@ from pydantic import ValidationError
 
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
+from osa_tool.operations.docs.readme_generation.utils import build_system_message
 from osa_tool.operations.docs.readme_generation.llm_schemas import ReadmeSelfEvalLLMOutput
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonParseError
 
 
-def self_eval_node(state: ReadmeState, context: ReadmeContext) -> dict:
+def self_eval_node(state: ReadmeState, ctx: ReadmeContext) -> dict:
     """Score the current readme_draft and optionally request LLM section regeneration."""
     cycle = state.refinement_cycles + 1
     logger.info("[SelfEval] Evaluation cycle %d...", cycle)
@@ -20,9 +21,9 @@ def self_eval_node(state: ReadmeState, context: ReadmeContext) -> dict:
     planned_names = ", ".join(s.name for s in state.section_plan)
 
     try:
-        eval_result = context.model_handler.send_and_parse(
+        eval_result = ctx.model_handler.send_and_parse(
             prompt=PromptBuilder.render(
-                context.prompts.get("readme_agent.self_eval"),
+                ctx.prompts.get("readme.prompts.self_eval"),
                 readme=state.readme_draft or "",
                 repo_analysis=state.context.repo_analysis or "" if state.context else "",
                 generation_plan=state.intent.reasoning if state.intent else "",
@@ -33,6 +34,7 @@ def self_eval_node(state: ReadmeState, context: ReadmeContext) -> dict:
                 planned_section_names=planned_names,
             ),
             parser=ReadmeSelfEvalLLMOutput,
+            system_message=build_system_message(ctx, "self_eval"),
         )
         refinement_score = float(eval_result.score)
         refinement_issues = list(eval_result.issues)

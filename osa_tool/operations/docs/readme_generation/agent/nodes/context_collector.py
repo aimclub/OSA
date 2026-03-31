@@ -12,7 +12,7 @@ from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
 from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
 from osa_tool.operations.docs.readme_generation.llm_schemas import KeyFilesLLMOutput
-from osa_tool.operations.docs.readme_generation.utils import extract_example_paths, read_file
+from osa_tool.operations.docs.readme_generation.utils import extract_example_paths, read_file, build_system_message
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
@@ -138,24 +138,26 @@ def _run_parallel_analyses(
         tasks = [
             context.model_handler.async_send_and_parse(
                 prompt=PromptBuilder.render(
-                    context.prompts.get("readme_agent.readme_analysis"),
+                    context.prompts.get("readme.prompts.readme_analysis"),
                     existing_readme=existing_readme,
                     repo_analysis=repo_analysis or "",
                     repository_tree=repo_tree,
                 ),
                 parser=LlmTextOutput,
+                system_message=build_system_message(context, "repo_analysis"),
             ),
         ]
         if pdf_content:
             tasks.append(
                 context.model_handler.async_send_and_parse(
                     prompt=PromptBuilder.render(
-                        context.prompts.get("readme_agent.article_analysis"),
+                        context.prompts.get("readme.prompts.article_analysis"),
                         pdf_content=pdf_content,
                         repo_analysis=repo_analysis or "",
                         existing_readme=existing_readme,
                     ),
                     parser=LlmTextOutput,
+                    system_message=build_system_message(context, "repo_analysis"),
                 ),
             )
         return await asyncio.gather(*tasks, return_exceptions=True)
@@ -203,11 +205,12 @@ def _gather_raw_context(
     key_files = (
         context.model_handler.send_and_parse(
             prompt=PromptBuilder.render(
-                context.prompts.get("readme.preanalysis"),
+                context.prompts.get("readme.prompts.preanalysis"),
                 repository_tree=repo_tree,
                 readme_content=existing_readme,
             ),
             parser=KeyFilesLLMOutput,
+            system_message=build_system_message(context, "repo_analysis"),
         ).key_files
         or []
     )
@@ -257,12 +260,13 @@ def _run_llm_analyses(context: ReadmeContext, raw_ctx: dict) -> dict:
     """
     repo_analysis = context.model_handler.send_and_parse(
         prompt=PromptBuilder.render(
-            context.prompts.get("readme_agent.repo_analysis"),
+            context.prompts.get("readme.prompts.repo_analysis"),
             repository_tree=raw_ctx["repo_tree"],
             key_files_content=raw_ctx["key_files_content"],
             existing_readme=raw_ctx["existing_readme"],
         ),
         parser=LlmTextOutput,
+        system_message=build_system_message(context, "repo_analysis"),
     ).text
 
     readme_analysis, article_analysis = _run_parallel_analyses(

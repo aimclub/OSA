@@ -13,7 +13,7 @@ from osa_tool.operations.docs.readme_generation.agent.models import SectionResul
 from osa_tool.operations.docs.readme_generation.agent.section_catalog import BUILDER_METHOD_BY_SECTION_NAME
 from osa_tool.operations.docs.readme_generation.generator.header import HeaderBuilder
 from osa_tool.operations.docs.readme_generation.generator.installation import InstallationSectionBuilder
-from osa_tool.operations.docs.readme_generation.utils import find_in_repo_tree
+from osa_tool.operations.docs.readme_generation.utils import find_in_repo_tree, build_system_message
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
@@ -177,8 +177,9 @@ class _DeterministicSections:
 
         logger.info("[DeterministicBuilder] Detecting citations in README via LLM...")
         result = self._context.model_handler.send_and_parse(
-            prompt=PromptBuilder.render(self._context.prompts.get("readme.citation"), readme=readme_content),
+            prompt=PromptBuilder.render(self._context.prompts.get("readme.prompts.citation"), readme=readme_content),
             parser=LlmTextOutput,
+            system_message=build_system_message(self._context, "repo_analysis"),
         )
         detected = result.text or ""
         logger.info("[DeterministicBuilder] Citation detection complete (found=%s)", bool(detected.strip()))

@@ -14,6 +14,7 @@ from osa_tool.operations.docs.readme_generation.agent.section_catalog import (
     section_specs_from_llm_names,
 )
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
+from osa_tool.operations.docs.readme_generation.utils import build_system_message
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonParseError
@@ -102,7 +103,7 @@ def _build_llm_plan(state: ReadmeState, context: ReadmeContext) -> list[str]:
 
     raw = context.model_handler.send_and_parse(
         prompt=PromptBuilder.render(
-            context.prompts.get("readme_agent.section_planning"),
+            context.prompts.get("readme.prompts.section_planning"),
             task_type=intent.task_type if intent else "generate",
             scope=intent.scope if intent else "full",
             affected_sections=", ".join(intent.affected_sections) if intent and intent.affected_sections else "all",
@@ -115,6 +116,7 @@ def _build_llm_plan(state: ReadmeState, context: ReadmeContext) -> list[str]:
             llm_section_catalog=format_llm_catalog_for_planner(),
         ),
         parser=SectionPlanLLMOutput,
+        system_message=build_system_message(context, "section_planning"),
     )
     return [x.strip() for x in raw.section_names if x and x.strip()]
 

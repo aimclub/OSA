@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 
 from osa_tool.core.models.event import EventKind, OperationEvent
-from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.operations.docs.readme_generation.utils import (
     clean_code_block_indents,
@@ -16,7 +15,7 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
 
-def writer_node(state: ReadmeState, context: ReadmeContext) -> dict:
+def writer_node(state: ReadmeState) -> dict:
     """Write final README to disk, emit events."""
     logger.info("[Writer] Writing README.md to disk...")
 

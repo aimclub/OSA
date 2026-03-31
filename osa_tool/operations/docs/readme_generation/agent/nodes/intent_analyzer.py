@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
 from osa_tool.operations.docs.readme_generation.agent.models import TaskIntent
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
+from osa_tool.operations.docs.readme_generation.utils import build_system_message
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonParseError
@@ -34,7 +35,7 @@ def intent_analyzer_node(state: ReadmeState, context: ReadmeContext) -> dict:
     try:
         intent = context.model_handler.send_and_parse(
             prompt=PromptBuilder.render(
-                context.prompts.get("readme_agent.intent_analysis"),
+                context.prompts.get("readme.prompts.intent_analysis"),
                 repo_analysis=ctx.repo_analysis or "" if ctx else "",
                 readme_analysis=ctx.readme_analysis or "" if ctx else "",
                 article_analysis=ctx.article_analysis or "N/A" if ctx else "N/A",
@@ -43,6 +44,7 @@ def intent_analyzer_node(state: ReadmeState, context: ReadmeContext) -> dict:
                 has_attachment=str(has_attachment),
             ),
             parser=TaskIntent,
+            system_message=build_system_message(context, "intent_analysis"),
         )
     except (JsonParseError, ValidationError):
         logger.warning("[IntentAnalyzer] LLM parse failed; falling back to heuristics.")
