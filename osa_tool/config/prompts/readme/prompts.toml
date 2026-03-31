@@ -3,15 +3,17 @@
 [prompts]
 preanalysis = """
 TASK:
-Based on the repository file tree and README, identify the 4-8 most important files
-for understanding the project's purpose, architecture, and usage.
+Select the 4-8 most informative files for downstream README generation.
 
-Return files in PRIORITY ORDER - the first file should be the single most important
-file for understanding the project. Prioritize:
-1. Entry points (main.py, app.py, cli.py, __main__.py)
-2. Core module files containing primary business logic
-3. Configuration/setup files (setup.py, pyproject.toml, Cargo.toml, package.json)
-4. Example/demo files that show usage
+Selection intent:
+- Maximize coverage of purpose, architecture, and usage signals.
+- Return files in strict priority order (most informative first).
+
+Prioritize in this order:
+1. Runtime entry points and orchestration files (main/app/cli/__main__ scripts)
+2. Core modules with primary business logic
+3. Configuration/setup manifests (pyproject, setup, package manifests, build files)
+4. Representative examples or demos that show real usage patterns
 
 OUTPUT:
 Return a JSON object:
@@ -26,7 +28,8 @@ Return a JSON object:
 RULES:
 - Return 4-8 files, ordered by importance (most important first).
 - Each string is a relative path exactly matching a path in the tree.
-- Exclude test files, CI configs, and README files.
+- Exclude tests, CI-only files, generated artifacts, and README files.
+- Prefer files with stable project meaning over incidental utility scripts.
 - Return only valid JSON without explanations.
 
 INPUT DATA:
@@ -42,8 +45,7 @@ INPUT DATA:
 
 citation = """
 TASK:
-Analyze the README and extract any citation of the repository or any articles (e.g., BibTeX, DOI, or reference text).
-Return only the citation.
+Extract repository or paper citation material from the README (BibTeX, DOI, reference text, publication block).
 If no citation is present, return an empty string.
 
 Output JSON exactly in this format:
@@ -54,10 +56,10 @@ Output JSON exactly in this format:
 
 RULES:
 
-1. Only return the citation text; do not include any other content.
-2. If multiple citations exist, return all of them concatenated.
+1. Return only citation content (no labels, commentary, or markdown wrappers unless part of citation).
+2. If multiple citations exist, include all in source order separated by a blank line.
 3. If no citation is found, return an empty string ("").
-4. Preserve the original formatting of the citation (e.g., BibTeX, DOI, plain text).
+4. Preserve original citation formatting as closely as possible.
 
 INPUT DATA:
 
@@ -66,16 +68,16 @@ INPUT DATA:
 
 repo_analysis = """
 TASK:
-Analyze the repository and produce a structured assessment of its characteristics.
+Analyze repository evidence and produce a compact, evidence-grounded assessment.
 
-Based on the repository tree, key files, and existing README, determine:
+Determine the following:
 1. **Project type**: ML/AI, CLI tool, library/SDK, web app, data pipeline, or other
 2. **Tech stack**: primary language(s), frameworks, key dependencies
 3. **Architecture**: monolith, microservices, plugin-based, notebook-based, etc.
 4. **Quality signals**: presence of tests, CI/CD, documentation, examples, type hints
 5. **Target audience**: researchers, developers, data scientists, end-users
 
-Produce a concise but complete analysis covering all five points above.
+Output a concise synthesis covering all five points.
 
 OUTPUT:
 Return a JSON object:
@@ -83,6 +85,12 @@ Return a JSON object:
 {{
     "text": "text"
 }}
+
+RULES:
+- Use only provided evidence; do not infer unsupported frameworks or workflows.
+- Distinguish strong evidence from weak hints (use cautious wording when uncertain).
+- Prefer concrete observations over generic statements.
+- Keep the output compact and scannable.
 
 INPUT DATA:
 
@@ -101,12 +109,12 @@ INPUT DATA:
 
 readme_analysis = """
 TASK:
-Evaluate the quality of the existing README for this repository.
+Evaluate the existing README for quality and fitness for developer onboarding.
 
 Assess the following dimensions:
 1. **Completeness**: which standard sections exist (overview, installation, usage/getting started, examples, API reference, contributing, license) and which are missing
 2. **Accuracy**: does the README reflect the current state of the code (outdated commands, wrong dependencies, etc.)
-3. **Clarity**: is the writing clear, well-structured, and beginner-friendly
+3. **Clarity**: is the writing clear, well-structured, and easy to scan for developers
 4. **Section quality**: for each existing section, rate quality as good/adequate/poor
 5. **Gaps**: specific improvements that would have the highest impact
 
@@ -116,6 +124,12 @@ Return a JSON object:
 {{
     "text": "text"
 }}
+
+RULES:
+- Focus on high-impact, actionable findings.
+- Flag concrete risk points (outdated commands, ambiguous setup, contradictory claims).
+- Avoid generic advice ("add more details") without specifying what and where.
+- Stay concise; prioritize issues by impact.
 
 INPUT DATA:
 
@@ -134,7 +148,7 @@ INPUT DATA:
 
 article_analysis = """
 TASK:
-Analyze the scientific article (PDF) associated with this repository.
+Analyze the associated scientific article (PDF) for README-relevant signals.
 
 Extract and summarize:
 1. **Main contributions**: what novel methods, datasets, or findings does the paper present
@@ -148,6 +162,12 @@ Return a JSON object:
 {{
     "text": "text"
 }}
+
+RULES:
+- Separate paper claims from repository evidence; do not assume full parity.
+- Avoid copying long paper prose; summarize only README-relevant points.
+- Do not invent metrics, datasets, or experimental settings not present in input.
+- Keep output concise and implementation-oriented.
 
 INPUT DATA:
 
@@ -166,7 +186,7 @@ INPUT DATA:
 
 self_eval = """
 TASK:
-Evaluate the quality of the generated README below.
+Evaluate the generated README and decide whether to stop or run targeted regeneration.
 
 Score the README on a scale of 1-10 based on:
 - Completeness: does it cover all essential sections
@@ -179,7 +199,7 @@ OUTPUT:
 Return a JSON object:
 
 {{
-    "score": 8.5,
+    "score": 6,
     "issues": ["issue 1 description", "issue 2 description"],
     "should_stop": true,
     "sections_to_rerun": [],
@@ -192,6 +212,13 @@ Return a JSON object:
   Omit keys you do not want to rerun.
 
 Set "should_stop" to true if the README is good enough (score >= 8) or if remaining issues are minor.
+
+RULES:
+- Report issues as concrete defects, not preferences.
+- Prefer section reruns only when defects are clearly localized to specific sections.
+- If multiple sections repeat the same flaw, mention root cause once and map precise feedback per affected section.
+- Never include section names outside PLANNED SECTION NAMES.
+- Keep issue phrasing short and actionable.
 
 INPUT DATA:
 
@@ -233,6 +260,13 @@ Return a JSON object:
 {{
     "text": "text"
 }}
+
+RULES:
+- Resolve each listed issue explicitly.
+- Preserve accurate content and document structure unless a change is required to fix an issue.
+- Remove redundancy and contradictions introduced during prior generation.
+- Do not introduce unsupported facts, commands, or claims.
+- Keep style and tone consistent with the rest of the README.
 
 INPUT DATA:
 
@@ -302,6 +336,13 @@ INPUT DATA:
 5. HAS EXISTING README: {has_existing_readme}
 
 6. HAS ATTACHMENT: {has_attachment}
+
+RULES:
+- Prioritize explicit user intent over inferred intent.
+- If request scope is ambiguous, choose the conservative option (`update` + `partial`) only when specific sections are clearly referenced.
+- Keep `affected_sections` empty for full-scope tasks.
+- Set `incorporate_paper` to true only when a paper exists and is relevant to requested output.
+- Keep `reasoning` short, concrete, and evidence-based.
 """
 
 section_planning = """
@@ -327,6 +368,8 @@ RULES (read carefully):
   `documentation`, `contributing`, `license`, `citation`.
 - If a scientific paper is attached and relevant (`incorporate_paper` or strong article analysis), consider `algorithms`
   and/or `content`.
+- Prefer sections that improve developer onboarding first (overview/core_features/getting_started or usage).
+- For partial updates, select only sections necessary to satisfy the request.
 
 ALLOWED LLM SECTION NAMES (internal snake_case - output **only** these strings in `section_names`):
 
@@ -385,6 +428,8 @@ RULES:
 - Do NOT add a nested "FAQ" inside non-FAQ sections.
 - Escape any backslashes in JSON strings so the output is valid JSON (double backslashes for Windows paths).
 - If improving an existing section, keep accurate facts; drop marketing filler and speculative claims.
+- Keep output concise and scannable; avoid repeated claims across paragraphs/bullets.
+- Prefer developer-actionable wording and concrete repository anchors (paths, symbols, commands).
 
 SECTION-SPECIFIC CONSTRAINTS (apply when section internal name matches):
 - overview: 1-3 short paragraphs only. No bullet lists. Do NOT enumerate libraries or dependencies by name; you may
@@ -431,10 +476,19 @@ Generate the **Overview** section for a README file.
 SECTION INTERNAL NAME: overview
 
 RULES:
-- 1 short paragraph only.
-- Do NOT enumerate libraries or dependencies by name; you may say "Python" once or refer readers to Installation.
-- Name real entry-point files from the context (scripts, notebooks, packages).
-- Facts only - no invented paths, commands, or features.
+- Purpose: explain what the project does, who it is for, and where to start reading the code.
+- Length: 1 short paragraph (3-5 sentences), no bullet list.
+- Include:
+  1) primary project goal/problem,
+  2) primary developer audience or use context,
+  3) concrete entry points from repository context (script/notebook/package paths).
+- Exclude:
+  - feature enumeration (belongs to Core Features),
+  - setup or run steps (belongs to Installation / Getting Started),
+  - algorithm details (belongs to Methods and algorithms).
+- Do NOT enumerate third-party libraries/dependencies by name (you may mention "Python" once).
+- Facts only - no invented paths, commands, files, claims, or performance statements.
+- Keep tone neutral and technical (no marketing language).
 
 OUTPUT:
 Return a JSON object:
@@ -473,9 +527,20 @@ Generate the **Core Features** section for a README file.
 SECTION INTERNAL NAME: core_features
 
 RULES:
-- At most **5** bullets. Each bullet must cite at least one concrete **file name** or **function/class** visible in context.
-- Do NOT add bullets about generic tooling, "clean code", type hints only, or dependency stack without a repo artifact.
-- Facts only.
+- Purpose: list the project's most important capabilities for developers.
+- Output format: 3-5 bullets only.
+- Each bullet must:
+  1) describe one distinct capability,
+  2) reference at least one concrete repository artifact (file path or function/class symbol),
+  3) state the practical developer value in one concise sentence.
+- Order bullets by importance (most central capability first).
+- Exclude:
+  - installation/run instructions,
+  - repository structure mapping (belongs to Content),
+  - algorithm/method explanations (belongs to Algorithms),
+  - generic quality/tooling claims without concrete evidence.
+- Avoid overlap: do not repeat the same capability in different wording.
+- Facts only - no invented artifacts or behavior.
 
 OUTPUT:
 Return a JSON object:
@@ -514,10 +579,14 @@ Generate the **Getting Started** section for a README file.
 SECTION INTERNAL NAME: getting_started
 
 RULES:
-- Minimal steps: env hint, data paths from code, **run commands** that appear in context.
-- Do NOT paste a long package list - point to Installation or requirements files if mentioned.
-- Include fenced code blocks only for commands/snippets present in context.
-- Facts only.
+- Purpose: help a developer run a first successful execution quickly.
+- Structure: brief prerequisites + minimal ordered steps (usually 3-6).
+- Include only commands, script paths, and config/data hints present in context.
+- Prefer one "quickstart path" over multiple alternatives unless alternatives are explicitly documented.
+- Do NOT paste long dependency lists; reference Installation or requirements files when relevant.
+- Include fenced code blocks only for verified commands/snippets from context.
+- Exclude deep feature explanations and architecture details.
+- Facts only - no invented flags, env vars, files, or setup steps.
 
 OUTPUT:
 Return a JSON object:
@@ -556,9 +625,17 @@ Generate the **Project structure and components** section (high-level map of the
 SECTION INTERNAL NAME: content
 
 RULES:
-- Summarize main parts and how they relate; avoid a raw file tree dump.
-- Ground claims in **article_analysis** and repo context when a paper is involved.
-- Facts only.
+- Purpose: provide a navigational map of repository components and their responsibilities.
+- Structure: short intro sentence + concise bullets (recommended 4-8 bullets).
+- Each bullet should map a major component (module/package/notebook/data/config area) to its role.
+- Describe relationships between components when evidence exists (e.g., "A feeds B", "C orchestrates D").
+- Avoid raw tree dumps and long file listings; prioritize conceptual grouping with concrete anchors.
+- Exclude:
+  - setup/usage commands,
+  - feature marketing statements,
+  - deep algorithm explanations (belongs to Algorithms).
+- If a paper is involved, align terminology with **article_analysis** but keep focus on repository organization.
+- Facts only - no invented modules, responsibilities, or data flows.
 
 OUTPUT:
 Return a JSON object:
@@ -597,9 +674,13 @@ Generate the **Usage** section (CLI / API patterns **after** install).
 SECTION INTERNAL NAME: usage
 
 RULES:
-- Focus on how to **invoke** or **import** the project using examples from context.
-- Do NOT duplicate full Installation steps.
-- Facts only - no invented flags or endpoints.
+- Purpose: show day-to-day invocation/import patterns after setup.
+- Include concrete usage forms (CLI command patterns, API calls, or module invocation) supported by context.
+- Prefer compact examples with short explanatory notes.
+- Do NOT duplicate Installation or full Getting Started flow.
+- Exclude speculative options/flags/endpoints not present in evidence.
+- If usage evidence is thin, provide a minimal safe note pointing to entry-point files.
+- Facts only - no invented interfaces.
 
 OUTPUT:
 Return a JSON object:
@@ -636,9 +717,12 @@ Generate the **Architecture** section.
 SECTION INTERNAL NAME: architecture
 
 RULES:
-- Explain major subsystems and data/control flow using **repo_tree** and analysis - no invented components.
-- Keep it concise; use short paragraphs or a small bullet list if needed.
-- Facts only.
+- Purpose: describe high-level system structure and component interactions.
+- Cover only major subsystems and key data/control flows evidenced by repo context.
+- Keep concise: short paragraphs or 4-7 bullets.
+- Exclude low-level implementation details and repetitive file-by-file listings.
+- If architecture evidence is limited, provide a minimal high-level view with explicit uncertainty.
+- Facts only - do not invent services, pipelines, or boundaries.
 
 OUTPUT:
 Return a JSON object:
@@ -675,9 +759,12 @@ Generate a concise **API Reference** (public functions/classes/modules that appe
 SECTION INTERNAL NAME: api_reference
 
 RULES:
-- Only document symbols or patterns explicitly visible in context.
-- Prefer a compact bullet or table layout; no full auto-doc of every private helper.
-- If there is no clear API, state that the project is script-oriented and point to entry files.
+- Purpose: document stable/public usage surface for developers.
+- Include only symbols/patterns explicitly present in context.
+- Prefer compact bullet/table layout with symbol name + one-line purpose.
+- Exclude private/internal helpers unless they are the only usable interface.
+- If no clear API exists, state that it is script-oriented and point to concrete entry files.
+- Facts only - no invented signatures or behavior.
 
 OUTPUT:
 Return a JSON object:
@@ -714,9 +801,12 @@ Generate the **Testing** section.
 SECTION INTERNAL NAME: testing
 
 RULES:
-- Describe how to run tests **only** using frameworks/commands visible in context (e.g. pytest path, `make test`).
-- If unclear, say what test paths or configs exist without guessing commands.
-- Facts only.
+- Purpose: explain how contributors verify changes.
+- Include only verified test commands/frameworks/config paths from context.
+- Mention test scope signals when available (unit/integration/e2e folders, CI hooks).
+- If exact run command is unknown, state available test artifacts without guessing command syntax.
+- Keep concise and actionable.
+- Facts only - no fabricated commands, coverage numbers, or guarantees.
 
 OUTPUT:
 Return a JSON object:
@@ -753,8 +843,12 @@ Generate the **Benchmarks** section.
 SECTION INTERNAL NAME: benchmarks
 
 RULES:
-- Include **only** metrics, tables, or commands that appear in context - no fabricated numbers.
-- If benchmarks are mentioned but numbers are absent, describe how benchmarks are run without inventing results.
+- Purpose: present benchmark evidence and how it is reproduced.
+- Include only metrics/tables/commands explicitly present in context.
+- If numbers are absent but benchmarking workflow exists, document reproducible benchmark procedure only.
+- Distinguish measured results from expected claims.
+- Keep concise and technical; avoid marketing language.
+- No fabricated numbers, comparisons, or performance claims.
 
 OUTPUT:
 Return a JSON object:
@@ -791,9 +885,21 @@ Generate the **Methods and algorithms** section (research-oriented).
 SECTION INTERNAL NAME: algorithms
 
 RULES:
-- Tie methods to **article_analysis** / PDF context and repo analysis; no code dumps.
-- Use clear, accessible language; avoid claiming results not present in context.
-- Facts only.
+- Purpose: explain the key methods/algorithms implemented or described by the project.
+- Base claims on **article_analysis**, PDF-derived context, and repository evidence.
+- Structure: 1 short intro + concise bullets/mini-subsections for major methods.
+- For each method, include when available:
+  1) what the method does,
+  2) where it appears in the repository (relevant files/modules),
+  3) notable assumptions/inputs/outputs.
+- Exclude:
+  - benchmark/result inflation or unsupported metrics,
+  - code-level implementation dumps,
+  - generic repository-structure narration (belongs to Content).
+- If reliable method detail is insufficient, explicitly provide a minimal fallback statement:
+  "The repository does not expose enough verified detail to document algorithmic internals; see referenced source files/paper sections."
+- Keep language precise and readable for developers.
+- Facts only - no invented methods, formulas, or claims.
 
 OUTPUT:
 Return a JSON object:
@@ -828,11 +934,28 @@ TASK:
 Merge newly generated sections into the existing README.
 
 You have an existing README and one or more newly generated sections.
-Your job is to produce a coherent, unified README by:
-1. Replacing the corresponding sections in the existing README with the new versions
-2. Ensuring smooth transitions between sections
-3. Preserving sections that were NOT regenerated
-4. Maintaining consistent formatting and tone throughout
+Produce one coherent README using the protocol below.
+
+MERGE PROTOCOL:
+1. Targeted replacement:
+   - Replace only sections listed in **SECTIONS BEING REPLACED** with the corresponding new section bodies.
+   - Preserve all non-targeted sections unless minimal edits are required for consistency.
+2. Semantic deduplication:
+   - Detect overlaps by meaning (not only exact text), especially across adjacent conceptual sections.
+   - If two passages communicate the same idea, keep one strongest version and remove/rewrite the weaker duplicate.
+3. Keep-best-content decision rule:
+   - Prefer content that is more specific, evidence-grounded, and actionable for developers.
+   - If specificity is equal, prefer the clearer and shorter wording.
+   - Do not keep multiple variants of the same claim.
+4. Coherence and flow:
+   - Ensure logical progression across sections (overview -> capabilities -> structure/methods -> usage/supporting sections).
+   - Fix abrupt transitions with minimal edits.
+5. Formatting and tone normalization:
+   - Preserve heading hierarchy and section order from the existing README unless a targeted section replacement requires local adjustment.
+   - Keep Markdown style, list formatting, punctuation, and tone uniform across the document.
+6. Safety constraints:
+   - Do not invent new facts, sections, commands, or claims.
+   - Do not remove critical information from unaffected sections.
 
 OUTPUT:
 Return a JSON object:
