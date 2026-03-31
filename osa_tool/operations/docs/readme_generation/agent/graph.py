@@ -83,7 +83,7 @@ def build_readme_graph(context: ReadmeContext) -> Any:
     graph.add_node("assembler", lambda s: assembler_node(s, context))
     graph.add_node("self_eval", lambda s: self_eval_node(s, context))
     graph.add_node("readme_patch", lambda s: readme_patch_node(s, context))
-    graph.add_node("writer", lambda s: writer_node(s, context))
+    graph.add_node("writer", lambda s: writer_node(s))
 
     graph.set_entry_point("context_collector")
     graph.add_edge("context_collector", "intent_analyzer")
