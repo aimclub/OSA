@@ -55,7 +55,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
         name="installation",
         title="Installation",
         strategy="deterministic",
-        priority=30,
+        priority=14,
         deterministic_builder_method="installation",
     ),
     SectionCatalogEntry(
@@ -131,10 +131,22 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
         prompt_template_key="readme.prompts.section_content",
     ),
     SectionCatalogEntry(
+        name="algorithms",
+        title="Methods and algorithms",
+        strategy="llm",
+        priority=13,
+        description=(
+            "Summarize main methods or algorithms tied to the paper or codebase. Academic tone; no code dumps; "
+            "ground claims in article_analysis and repo context."
+        ),
+        prompt_context_keys=("repo_analysis", "key_files_content", "article_analysis", "pdf_content"),
+        prompt_template_key="readme.prompts.section_algorithms",
+    ),
+    SectionCatalogEntry(
         name="getting_started",
         title="Getting Started",
         strategy="llm",
-        priority=13,
+        priority=15,
         description=(
             "Minimal steps: env hint, data path from code, run commands copied from the repo. "
             "Do not paste long library lists—refer readers to Installation or requirements."
@@ -146,7 +158,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
         name="usage",
         title="Usage",
         strategy="llm",
-        priority=14,
+        priority=16,
         description=(
             "How to invoke the tool or library after install: CLI or API patterns visible in the context. "
             "Do not duplicate Installation; focus on run / import examples."
@@ -158,7 +170,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
         name="architecture",
         title="Architecture",
         strategy="llm",
-        priority=15,
+        priority=17,
         description=(
             "Explain layout and major subsystems when the repo is non-trivial. Use the tree and analysis only; "
             "do not invent components."
@@ -170,7 +182,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
         name="api_reference",
         title="API Reference",
         strategy="llm",
-        priority=16,
+        priority=18,
         description=(
             "Document public APIs or stable entry points that appear in key files. Skip if the repo is only scripts "
             "with no clear API."
@@ -182,7 +194,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
         name="testing",
         title="Testing",
         strategy="llm",
-        priority=17,
+        priority=19,
         description="How to run tests and what coverage exists, only from context (commands, frameworks, paths).",
         prompt_context_keys=("repo_tree", "repo_analysis", "key_files_content"),
         prompt_template_key="readme.prompts.section_testing",
@@ -191,22 +203,10 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
         name="benchmarks",
         title="Benchmarks",
         strategy="llm",
-        priority=18,
+        priority=20,
         description="Reported metrics or benchmark commands only if numbers or benchmark outputs exist in context.",
         prompt_context_keys=("repo_analysis", "key_files_content"),
         prompt_template_key="readme.prompts.section_benchmarks",
-    ),
-    SectionCatalogEntry(
-        name="algorithms",
-        title="Methods and algorithms",
-        strategy="llm",
-        priority=19,
-        description=(
-            "Summarize main methods or algorithms tied to the paper or codebase. Academic tone; no code dumps; "
-            "ground claims in article_analysis and repo context."
-        ),
-        prompt_context_keys=("repo_analysis", "key_files_content", "article_analysis", "pdf_content"),
-        prompt_template_key="readme.prompts.section_algorithms",
     ),
 )
 
