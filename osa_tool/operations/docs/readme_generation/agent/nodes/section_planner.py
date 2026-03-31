@@ -138,7 +138,7 @@ def section_planner_node(state: ReadmeState, context: ReadmeContext) -> dict:
     llm_names = _normalize_llm_section_names(llm_names, state.user_request)
 
     plan = section_specs_from_llm_names(llm_names, state.intent, state.context)
-    plan.extend(deterministic_specs_for_plan(state.intent, state.context))
+    plan.extend(deterministic_specs_for_plan())
     plan.sort(key=lambda s: s.priority)
 
     logger.info(

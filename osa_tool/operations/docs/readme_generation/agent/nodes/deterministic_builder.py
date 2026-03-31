@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import requests
 import tomli
@@ -20,7 +21,7 @@ from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.utils import extract_readme_content, osa_project_root, parse_folder_name
 
 
-def _load_template() -> dict:
+def _load_template() -> dict[str, Any]:
     path = os.path.join(osa_project_root(), "config", "templates", "template.toml")
     with open(path, "rb") as f:
         return tomli.load(f)
@@ -29,7 +30,7 @@ def _load_template() -> dict:
 def _check_url(url: str) -> bool:
     try:
         return requests.get(url, timeout=5).status_code == 200
-    except Exception:
+    except requests.RequestException:
         return False
 
 

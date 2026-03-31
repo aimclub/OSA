@@ -6,6 +6,7 @@ import json
 import os
 import re
 
+from osa_tool.operations.docs.readme_generation.agent import ReadmeContext
 from osa_tool.utils.logger import logger
 
 
@@ -42,7 +43,7 @@ def read_ipynb_file(file_path: str) -> str:
                 lines.extend(cell.get("source", []))
                 lines.append("\n")
         return "\n".join(lines)
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         logger.error("Failed to read notebook: %s", file_path, exc_info=True)
         return ""
 
@@ -57,7 +58,7 @@ def extract_relative_paths(paths: list[str]) -> list[str]:
     """Normalize a list of file paths to forward-slash relative paths."""
     try:
         return [os.path.normpath(p.strip()).replace("\\", "/") for p in paths if p.strip()]
-    except Exception as exc:
+    except (AttributeError, TypeError) as exc:
         logger.error("Failed to extract relative paths: %s", exc)
         raise
 

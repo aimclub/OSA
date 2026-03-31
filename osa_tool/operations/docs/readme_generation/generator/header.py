@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from functools import cached_property
+from typing import Any
 
 import tomli
 
@@ -37,16 +38,16 @@ class HeaderBuilder:
         )
         self._template = self.load_template()
 
-    def load_template(self) -> dict:
+    def load_template(self) -> dict[str, Any]:
         with open(self.template_path, "rb") as f:
             return tomli.load(f)
 
     @cached_property
-    def _tech_icons(self) -> dict:
+    def _tech_icons(self) -> dict[str, Any]:
         """Load tech icons once and cache."""
         return self.load_tech_icons()
 
-    def load_tech_icons(self) -> dict:
+    def load_tech_icons(self) -> dict[str, Any]:
         logger.debug("[HeaderBuilder] Loading tech icons: %s", self.icons_tech_path)
         if not os.path.exists(self.icons_tech_path):
             raise FileNotFoundError(f"Icon file not found: {self.icons_tech_path}")

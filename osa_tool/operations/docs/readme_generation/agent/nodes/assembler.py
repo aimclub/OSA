@@ -11,8 +11,6 @@ from osa_tool.operations.docs.readme_generation.utils import build_system_messag
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 
-_SKIP_HEADING = frozenset({"header", "table_of_contents"})
-
 
 def _strip_leading_markdown_heading(content: str, title: str) -> str:
     """Remove a redundant top-level heading if templates or the LLM already included it."""
@@ -105,19 +103,24 @@ def _assemble_partial(state: ReadmeState, ctx: ReadmeContext) -> str:
     if not new_parts:
         return state.context.existing_readme if state.context else ""
 
-    merged = ctx.model_handler.send_and_parse(
-        prompt=PromptBuilder.render(
-            ctx.prompts.get("readme.prompts.section_merge"),
-            existing_readme=state.context.existing_readme if state.context else "",
-            new_sections="\n\n".join(new_parts),
-            target_sections=", ".join(target_names),
-            generation_plan=state.intent.reasoning if state.intent else "",
-        ),
-        parser=LlmTextOutput,
-        system_message=build_system_message(ctx, "section_merge"),
-    ).text
+    existing = state.context.existing_readme if state.context else ""
+    try:
+        merged = ctx.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
+                ctx.prompts.get("readme.prompts.section_merge"),
+                existing_readme=existing,
+                new_sections="\n\n".join(new_parts),
+                target_sections=", ".join(target_names),
+                generation_plan=state.intent.reasoning if state.intent else "",
+            ),
+            parser=LlmTextOutput,
+            system_message=build_system_message(ctx, "section_merge"),
+        ).text
+    except Exception as exc:
+        logger.warning("[Assembler] section_merge LLM failed; keeping existing README. (%s)", exc)
+        return existing
 
-    return merged or (state.context.existing_readme if state.context else "")
+    return merged or existing
 
 
 def assembler_node(state: ReadmeState, ctx: ReadmeContext) -> dict:

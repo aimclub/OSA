@@ -19,17 +19,21 @@ def readme_patch_node(state: ReadmeState, context: ReadmeContext) -> dict:
         return {}
 
     current = state.readme_draft or ""
-    refined = context.model_handler.send_and_parse(
-        prompt=PromptBuilder.render(
-            context.prompts.get("readme.prompts.refine_with_feedback"),
-            readme=current,
-            issues="\n".join(f"- {issue}" for issue in state.refinement_issues),
-            generation_plan=state.intent.reasoning if state.intent else "",
-            user_request=state.user_request or "N/A",
-        ),
-        parser=LlmTextOutput,
-        system_message=build_system_message(context, "refine_with_feedback"),
-    ).text
+    try:
+        refined = context.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
+                context.prompts.get("readme.prompts.refine_with_feedback"),
+                readme=current,
+                issues="\n".join(f"- {issue}" for issue in state.refinement_issues),
+                generation_plan=state.intent.reasoning if state.intent else "",
+                user_request=state.user_request or "N/A",
+            ),
+            parser=LlmTextOutput,
+            system_message=build_system_message(context, "refine_with_feedback"),
+        ).text
+    except Exception as exc:
+        logger.warning("[ReadmePatch] refine_with_feedback failed; draft unchanged. (%s)", exc)
+        refined = current
 
     logger.debug("[ReadmePatch] State after node: %s", state)
     return {"readme_draft": refined or current}

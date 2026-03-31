@@ -9,6 +9,8 @@ import pdfplumber
 from pdfminer.high_level import extract_pages
 from pdfminer.layout import LTLine, LTTextContainer
 
+from osa_tool.utils.logger import logger
+
 Bbox = tuple[float, float, float, float]
 
 
@@ -22,28 +24,28 @@ class PdfParser:
         """Extract non-table text from every page and return as a single string."""
         path_obj = Path(self.path)
         pages_text: list[str] = []
-        doc = pdfplumber.open(self.path)
-        standard_tables = self.extract_table_bboxes(doc)
+        with pdfplumber.open(self.path) as doc:
+            standard_tables = self.extract_table_bboxes(doc)
 
-        for pagenum, page in enumerate(extract_pages(self.path)):
-            verticals, horizontals = self.get_page_lines(page)
-            page_text_elements: list[str] = []
+            for pagenum, page in enumerate(extract_pages(self.path)):
+                verticals, horizontals = self.get_page_lines(page)
+                page_text_elements: list[str] = []
 
-            for element in page:
-                if not isinstance(element, LTTextContainer):
-                    continue
-                text = element.get_text().strip()
-                if len(text) < 5:
-                    continue
-                if self.is_table_text_lines(element, verticals, horizontals):
-                    continue
-                page_tables = standard_tables.get(pagenum, [])
-                if page_tables and self.is_table_text_standard(element, page_tables):
-                    continue
-                page_text_elements.append(text)
+                for element in page:
+                    if not isinstance(element, LTTextContainer):
+                        continue
+                    text = element.get_text().strip()
+                    if len(text) < 5:
+                        continue
+                    if self.is_table_text_lines(element, verticals, horizontals):
+                        continue
+                    page_tables = standard_tables.get(pagenum, [])
+                    if page_tables and self.is_table_text_standard(element, page_tables):
+                        continue
+                    page_text_elements.append(text)
 
-            if page_text_elements:
-                pages_text.append(" ".join(page_text_elements))
+                if page_text_elements:
+                    pages_text.append(" ".join(page_text_elements))
 
         extracted_data = "\n".join(pages_text) if pages_text else ""
 
@@ -51,7 +53,7 @@ class PdfParser:
             try:
                 os.remove(path_obj)
             except OSError:
-                pass
+                logger.warning("Failed to remove temporary PDF file: %s", path_obj, exc_info=True)
 
         return extracted_data
 

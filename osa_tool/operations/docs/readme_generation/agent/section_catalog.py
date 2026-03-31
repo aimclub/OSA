@@ -47,9 +47,9 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
     SectionCatalogEntry(
         name="table_of_contents",
         title="Table of Contents",
-        strategy="deterministic",
+        strategy="keep_existing",
         priority=5,
-        deterministic_builder_method="table_of_contents",
+        description="Markdown body is synthesized by the assembler from generated section titles; no separate build step.",
     ),
     SectionCatalogEntry(
         name="installation",
@@ -218,6 +218,8 @@ BUILDER_METHOD_BY_SECTION_NAME: dict[str, str] = {
 }
 
 DEFAULT_FALLBACK_LLM_SECTION_NAMES: tuple[str, ...] = ("overview", "core_features", "getting_started")
+# Present in the plan for ordering; not dispatched to section_generator (see graph fan-out).
+_ASSEMBLER_SYNTHESIZED_PLAN_NAMES: frozenset[str] = frozenset({"table_of_contents"})
 _PAPER_REQUIRED_SECTIONS: frozenset[str] = frozenset({"content", "algorithms"})
 _TEST_REQUIRED_SECTIONS: frozenset[str] = frozenset({"testing"})
 _BENCHMARK_RELATED_SECTIONS: frozenset[str] = frozenset({"benchmarks"})
@@ -231,10 +233,13 @@ def format_llm_catalog_for_planner() -> str:
     return "\n".join(lines)
 
 
-def deterministic_specs_for_plan(intent: TaskIntent | None, ctx: RepositoryContext | None) -> list[SectionSpec]:
-    """All deterministic sections from the catalog that apply to this run."""
-    _ = (intent, ctx)
-    return [e.to_section_spec() for e in _SECTION_ENTRIES if e.strategy == "deterministic"]
+def deterministic_specs_for_plan() -> list[SectionSpec]:
+    """Sections not chosen by the LLM planner: deterministic builders and assembler-synthesized slots (e.g. ToC)."""
+    return [
+        e.to_section_spec()
+        for e in _SECTION_ENTRIES
+        if e.strategy == "deterministic" or e.name in _ASSEMBLER_SYNTHESIZED_PLAN_NAMES
+    ]
 
 
 def section_specs_from_llm_names(

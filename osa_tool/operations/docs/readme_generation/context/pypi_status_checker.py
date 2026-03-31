@@ -57,10 +57,8 @@ class PyPiPackageInspector:
 
             file_path = os.path.join(self.base_path, filename)
             logger.debug("[PyPiInspector] Reading candidate metadata file: %s", file_path)
-            try:
-                content = read_file(file_path)
-            except Exception:
-                logger.error("[PyPiInspector] Error reading %s", file_path, exc_info=True)
+            content = read_file(file_path)
+            if not content.strip():
                 continue
 
             name: str | None = None

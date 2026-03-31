@@ -101,21 +101,25 @@ def section_generator_node(state: ReadmeState, ctx: ReadmeContext) -> dict:
         logger.error("[SectionGenerator] Missing prompt template '%s' and fallback; aborting section.", template_key)
         return {}
 
-    text = ctx.model_handler.send_and_parse(
-        prompt=PromptBuilder.render(
-            template,
-            section_name=spec.name,
-            section_title=spec.title,
-            section_description=spec.description or spec.title,
-            project_name=ctx.metadata.name,
-            context_block=context_block,
-            existing_section=existing_section or "N/A",
-            user_request=state.user_request or "N/A",
-            regeneration_hint=reg_hint or "N/A",
-        ),
-        parser=LlmTextOutput,
-        system_message=build_system_message(ctx, "section_generate"),
-    ).text
+    try:
+        text = ctx.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(
+                template,
+                section_name=spec.name,
+                section_title=spec.title,
+                section_description=spec.description or spec.title,
+                project_name=ctx.metadata.name,
+                context_block=context_block,
+                existing_section=existing_section or "N/A",
+                user_request=state.user_request or "N/A",
+                regeneration_hint=reg_hint or "N/A",
+            ),
+            parser=LlmTextOutput,
+            system_message=build_system_message(ctx, "section_generate"),
+        ).text
+    except Exception as exc:
+        logger.warning("[SectionGenerator] LLM generation failed for '%s': %s", spec.name, exc)
+        return {"section_errors": {spec.name: repr(exc)}}
 
     text = _strip_leading_section_heading(text or "", spec.title)
 

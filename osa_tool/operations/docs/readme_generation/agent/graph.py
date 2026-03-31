@@ -9,6 +9,7 @@ Topology:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from langgraph.constants import END
@@ -27,11 +28,11 @@ from osa_tool.operations.docs.readme_generation.agent.nodes.writer import writer
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 
 
-def _ensure_state(s: Any) -> ReadmeState:
+def _ensure_state(state: ReadmeState | Mapping[str, Any]) -> ReadmeState:
     """LangGraph Send delivers a raw dict — rehydrate into ReadmeState."""
-    if isinstance(s, ReadmeState):
-        return s
-    return ReadmeState.model_validate(s)
+    if isinstance(state, ReadmeState):
+        return state
+    return ReadmeState.model_validate(state)
 
 
 def _fan_out_to_generators(state: ReadmeState) -> list[Send]:

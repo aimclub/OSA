@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import tomli
 
@@ -33,7 +34,7 @@ class InstallationSectionBuilder:
         self.template_path = os.path.join(osa_project_root(), "config", "templates", "template.toml")
         self._template = self.load_template()
 
-    def load_template(self) -> dict:
+    def load_template(self) -> dict[str, Any]:
         with open(self.template_path, "rb") as f:
             return tomli.load(f)
 

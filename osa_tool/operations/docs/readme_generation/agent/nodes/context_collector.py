@@ -71,7 +71,7 @@ def _truncate_tree(tree: str, max_tokens: int, encoding_name: str) -> str:
     if count_tokens(tree, encoding_name) <= max_tokens:
         return tree
 
-    pruned_lines = []
+    pruned_lines: list[str] = []
     for line in tree.splitlines():
         depth = line.count("/")
         if depth <= 1:
@@ -133,8 +133,7 @@ def _run_parallel_analyses(
     pdf_content: str | None,
 ) -> tuple[str | None, str | None]:
     """Run readme_analysis and article_analysis concurrently."""
-
-    async def _gather() -> list:
+    async def _gather() -> list[object]:
         tasks = [
             context.model_handler.async_send_and_parse(
                 prompt=PromptBuilder.render(
