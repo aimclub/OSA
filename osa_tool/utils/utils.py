@@ -332,3 +332,10 @@ def detect_provider_from_url(url) -> str | None:
                 return provider
 
     return None
+
+
+def format_time(seconds: float) -> str:
+    """Convert *seconds* into ``HH:MM:SS`` format."""
+    hours, remainder = divmod(int(seconds), 3600)
+    minutes, secs = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"

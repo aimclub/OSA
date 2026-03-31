@@ -10,124 +10,71 @@ from osa_tool.utils.logger import logger
 
 
 def read_file(file_path: str) -> str:
-    """
-    Reads the content of a file and returns it as a string.
-
-    Args:
-        file_path: The path to the file to be read.
-
-    Returns:
-        str: The content of the file as a string.
-    """
+    """Read *file_path* and return its text content (empty string on failure)."""
     if file_path.endswith(".ipynb"):
         return read_ipynb_file(file_path)
 
     if not os.path.isfile(file_path):
-        logger.warning(f"File not found: {file_path}")
+        logger.warning("File not found: %s", file_path)
         return ""
 
-    encodings_to_try = ["utf-8", "utf-16", "latin-1"]
-    for encoding in encodings_to_try:
+    for encoding in ("utf-8", "utf-16", "latin-1"):
         try:
-            with open(file_path, "r", encoding=encoding) as file:
-                return file.read()
+            with open(file_path, "r", encoding=encoding) as f:
+                return f.read()
         except UnicodeDecodeError:
             continue
 
-    logger.error(f"Failed to read {file_path} with any supported encoding")
+    logger.error("Failed to read %s with any supported encoding", file_path)
     return ""
 
 
 def read_ipynb_file(file_path: str) -> str:
-    """
-    Extracts and returns only code and markdown cells from a Jupyter notebook file.
-
-    Args:
-        file_path: The path to the .ipynb file.
-
-    Returns:
-        str: The extracted content from code and markdown cells.
-            If an error occurs, returns an empty string.
-    """
+    """Extract code and markdown cells from a Jupyter notebook."""
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             notebook = json.load(f)
-        cells = notebook.get("cells", [])
-        lines = []
-        for cell in cells:
+        lines: list[str] = []
+        for cell in notebook.get("cells", []):
             cell_type = cell.get("cell_type")
             if cell_type in ("code", "markdown"):
-                source = cell.get("source", [])
                 lines.append(f"# --- {cell_type.upper()} CELL ---")
-                lines.extend(source)
+                lines.extend(cell.get("source", []))
                 lines.append("\n")
         return "\n".join(lines)
-    except Exception as e:
-        logger.error(f"Failed to read notebook: {file_path}. Returning empty string. Error: {e}.")
+    except Exception:
+        logger.error("Failed to read notebook: %s", file_path, exc_info=True)
         return ""
 
 
 def save_sections(sections: str, path: str) -> None:
-    """
-    Saves the provided sections of text to a Markdown file.
-
-    Args:
-        sections: The content to be written to the file.
-        path: The file path where the sections will be saved.
-    """
-    with open(path, "w", encoding="utf-8") as file:
-        file.write(sections)
+    """Write *sections* text to a Markdown file at *path*."""
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(sections)
 
 
 def extract_relative_paths(paths: list[str]) -> list[str]:
-    """
-    Converts a list of file or directory paths into a list of normalized relative paths.
-
-    Args:
-        paths: A list of file or directory paths.
-
-    Returns:
-        list[str]: A list of normalized relative paths.
-    """
+    """Normalize a list of file paths to forward-slash relative paths."""
     try:
-        return [os.path.normpath(path.strip()).replace("\\", "/") for path in paths if path.strip()]
-    except Exception as e:
-        logger.error(f"Failed to extract relative paths from model response: {e}")
+        return [os.path.normpath(p.strip()).replace("\\", "/") for p in paths if p.strip()]
+    except Exception as exc:
+        logger.error("Failed to extract relative paths: %s", exc)
         raise
 
 
 def find_in_repo_tree(tree: str, pattern: str) -> str:
-    """
-    Searches for a pattern in the repository tree string and returns the first matching line.
-
-    Args:
-        tree: A string representation of the repository's file tree.
-        pattern: A regular expression pattern to search for.
-
-    Returns:
-        str: The first matching line with normalized path separators,
-             or an empty string if no match is found.
-    """
-    compiled_pattern = re.compile(pattern, re.IGNORECASE)
-
+    """Return the first line in *tree* matching *pattern* (case-insensitive), or ``""``."""
+    compiled = re.compile(pattern, re.IGNORECASE)
     for line in tree.split("\n"):
-        if compiled_pattern.search(line):
+        if compiled.search(line):
             return line.replace("\\", "/")
     return ""
 
 
-def extract_example_paths(tree: str):
-    """
-    Extracts paths from the repository tree that contain 'example' or 'tutorial' in their names.
-    Args:
-        tree: A string representation of the repository's file tree.
-
-    Returns:
-        list[str]: A list of matched paths excluding __init__.py files.
-    """
+def extract_example_paths(tree: str) -> list[str]:
+    """Return file paths from *tree* containing example/tutorial/docs-related keywords."""
     pattern = re.compile(r"\b(tutorials?|examples|docs?|documentation|wiki|manuals?)\b", re.IGNORECASE)
-    result = []
-
+    result: list[str] = []
     for line in tree.splitlines():
         line = line.strip()
         if not line or line.endswith("__init__.py"):
@@ -136,48 +83,31 @@ def extract_example_paths(tree: str):
             continue
         if pattern.search(line):
             result.append(line)
-
     return result
 
 
 def clean_code_block_indents(markdown_text: str) -> str:
-    """
-    Removes leading spaces before opening and closing fenced code blocks in markdown text.
-    """
-    opening_pattern = re.compile(r"^[ \t]+(```\w*)", re.MULTILINE)
-    markdown_text = opening_pattern.sub(r"\1", markdown_text)
-
-    closing_pattern = re.compile(r"^[ \t]+(```)$", re.MULTILINE)
-    markdown_text = closing_pattern.sub(r"\1", markdown_text)
-
-    return markdown_text
+    """Remove leading whitespace before fenced code-block delimiters."""
+    text = re.sub(r"^[ \t]+(```\w*)", r"\1", markdown_text, flags=re.MULTILINE)
+    text = re.sub(r"^[ \t]+(```)$", r"\1", text, flags=re.MULTILINE)
+    return text
 
 
 def remove_extra_blank_lines(path: str) -> None:
-    """
-    Cleans up extra blank lines from a file, leaving only single empty lines between content blocks.
-    """
+    """Collapse consecutive blank lines in a file to at most one."""
     with open(path, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
-    cleaned_lines = []
-    blank_line = False
-
+    cleaned: list[str] = []
+    prev_blank = False
     for line in lines:
         if line.strip() == "":
-            if not blank_line:
-                cleaned_lines.append("\n")
-                blank_line = True
+            if not prev_blank:
+                cleaned.append("\n")
+                prev_blank = True
         else:
-            cleaned_lines.append(line)
-            blank_line = False
+            cleaned.append(line)
+            prev_blank = False
 
     with open(path, "w", encoding="utf-8") as f:
-        f.writelines(cleaned_lines)
-
-
-def format_time(seconds: float) -> str:
-    """Convert seconds into a human-readable HH:MM:SS format."""
-    hours, remainder = divmod(int(seconds), 3600)
-    minutes, seconds = divmod(remainder, 60)
-    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        f.writelines(cleaned)

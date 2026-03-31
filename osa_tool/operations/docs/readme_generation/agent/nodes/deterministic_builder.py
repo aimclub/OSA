@@ -7,16 +7,17 @@ import os
 import requests
 import tomli
 
+from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
 from osa_tool.operations.docs.readme_generation.agent.models import SectionResult, SectionSpec
 from osa_tool.operations.docs.readme_generation.agent.section_catalog import BUILDER_METHOD_BY_SECTION_NAME
 from osa_tool.operations.docs.readme_generation.generator.header import HeaderBuilder
 from osa_tool.operations.docs.readme_generation.generator.installation import InstallationSectionBuilder
-from osa_tool.operations.docs.readme_generation.models.llm_service import LLMClient
 from osa_tool.operations.docs.readme_generation.utils import find_in_repo_tree
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import osa_project_root
+from osa_tool.utils.prompts_builder import PromptBuilder
+from osa_tool.utils.utils import extract_readme_content, osa_project_root, parse_folder_name
 
 
 def _load_template() -> dict:
@@ -33,9 +34,10 @@ def _check_url(url: str) -> bool:
 
 
 class _DeterministicSections:
-    """Encapsulates all script-based section builders reused from the original generator module."""
+    """Script-based section builders that don't require LLM prose generation."""
 
     def __init__(self, context: ReadmeContext) -> None:
+        self._context = context
         self._cm = context.config_manager
         self._meta = context.metadata
         self._sr = SourceRank(self._cm)
@@ -108,21 +110,30 @@ class _DeterministicSections:
             path = self._url_path + self._branch_path + find_in_repo_tree(self._sr.tree, pattern)
             return self._tpl["citation"] + self._tpl["citation_v1"].format(path=path)
 
-        llm_client = LLMClient(self._cm, self._meta)
-        citation_from_readme = llm_client.get_citation_from_readme()
+        citation_from_readme = self._extract_citation_from_readme()
         if citation_from_readme:
             return self._tpl["citation"] + citation_from_readme
 
+        git = self._cm.get_git_settings()
         return self._tpl["citation"] + self._tpl["citation_v2"].format(
             owner=self._meta.owner,
             year=self._meta.created_at.split("-")[0],
-            repo_name=self._cm.get_git_settings().name,
-            publisher=self._cm.get_git_settings().host_domain,
-            repository_url=self._cm.get_git_settings().repository,
+            repo_name=git.name,
+            publisher=git.host_domain,
+            repository_url=git.repository,
         )
 
-    def table_of_contents(self) -> str:
-        return ""
+    def _extract_citation_from_readme(self) -> str:
+        """Ask the shared model_handler to find citations in the existing README."""
+        repo_path = os.path.join(os.getcwd(), parse_folder_name(self._cm.get_git_settings().repository))
+        readme_content = extract_readme_content(repo_path)
+
+        logger.info("[DeterministicBuilder] Detecting citations in README...")
+        result = self._context.model_handler.send_and_parse(
+            prompt=PromptBuilder.render(self._context.prompts.get("readme.citation"), readme=readme_content),
+            parser=LlmTextOutput,
+        )
+        return result.text or ""
 
 
 def build_single_deterministic_section(

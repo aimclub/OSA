@@ -1,4 +1,4 @@
-"""Shared dependency-injection container passed to all README generation nodes."""
+"""Shared dependency-injection container passed to every README generation node."""
 
 from __future__ import annotations
 

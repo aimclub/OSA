@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -23,4 +21,4 @@ class ReadmeSelfEvalLLMOutput(BaseModel):
     issues: list[str] = Field(default_factory=list)
     should_stop: bool = False
     sections_to_rerun: list[str] = Field(default_factory=list)
-    section_feedback: Optional[dict[str, str]] = None
+    section_feedback: dict[str, str] | None = None

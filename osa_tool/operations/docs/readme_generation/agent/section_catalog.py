@@ -36,7 +36,7 @@ class SectionCatalogEntry:
 
 
 _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
-    # —— deterministic (script-based) ——
+    # deterministic (script-based)
     SectionCatalogEntry(
         name="header",
         title="Header",
@@ -93,7 +93,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
         priority=95,
         deterministic_builder_method="citation",
     ),
-    # —— LLM prose sections (priorities sit between ToC and Installation) ——
+    # LLM prose sections (priorities sit between ToC and Installation)
     SectionCatalogEntry(
         name="overview",
         title="Overview",
@@ -221,10 +221,6 @@ DEFAULT_FALLBACK_LLM_SECTION_NAMES: tuple[str, ...] = ("overview", "core_feature
 _PAPER_REQUIRED_SECTIONS: frozenset[str] = frozenset({"content", "algorithms"})
 _TEST_REQUIRED_SECTIONS: frozenset[str] = frozenset({"testing"})
 _BENCHMARK_RELATED_SECTIONS: frozenset[str] = frozenset({"benchmarks"})
-
-
-def catalog_entry(name: str) -> SectionCatalogEntry | None:
-    return SECTION_CATALOG_BY_NAME.get(name)
 
 
 def format_llm_catalog_for_planner() -> str:
