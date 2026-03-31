@@ -5,7 +5,6 @@ from __future__ import annotations
 from pydantic import ValidationError
 
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
-from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_state, summarize_update
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.operations.docs.readme_generation.llm_schemas import ReadmeSelfEvalLLMOutput
 from osa_tool.utils.logger import logger
@@ -17,7 +16,6 @@ def self_eval_node(state: ReadmeState, context: ReadmeContext) -> dict:
     """Score the current readme_draft and optionally request LLM section regeneration."""
     cycle = state.refinement_cycles + 1
     logger.info("[SelfEval] Evaluation cycle %d...", cycle)
-    logger.debug("[SelfEval] Input state summary: %s", summarize_state(state))
 
     planned_names = ", ".join(s.name for s in state.section_plan)
 
@@ -58,12 +56,11 @@ def self_eval_node(state: ReadmeState, context: ReadmeContext) -> dict:
         section_regeneration_hints = {}
         logger.warning("[SelfEval] Parse failed (%s); defaulting score=7.0", exc)
 
-    update = {
+    logger.debug("[SelfEval] State after node: %s", state)
+    return {
         "refinement_cycles": cycle,
         "refinement_score": refinement_score,
         "refinement_issues": refinement_issues,
         "sections_to_rerun": sections_to_rerun,
         "section_regeneration_hints": section_regeneration_hints,
     }
-    logger.debug("[SelfEval] Output update summary: %s", summarize_update(update))
-    return update

@@ -106,6 +106,7 @@ class _DeterministicSections:
 
     def citation(self) -> str:
         if self._sr.citation_presence():
+            logger.warning("[DeterministicBuilder] Citation file was detected. ")
             pattern = r"\bCITATION(\.\w+)?\b"
             path = self._url_path + self._branch_path + find_in_repo_tree(self._sr.tree, pattern)
             return self._tpl["citation"] + self._tpl["citation_v1"].format(path=path)

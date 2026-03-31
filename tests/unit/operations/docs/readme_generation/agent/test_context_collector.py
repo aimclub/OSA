@@ -252,19 +252,9 @@ def test_context_collector_node_returns_all_expected_keys(
     result = context_collector_node(state, mock_context)
 
     # Assert
-    expected_keys = {
-        "repo_tree",
-        "existing_readme",
-        "key_files",
-        "key_files_content",
-        "examples_content",
-        "pdf_content",
-        "repo_analysis",
-        "readme_analysis",
-        "article_analysis",
-    }
-    assert set(result.keys()) == expected_keys
-    assert result["repo_analysis"] == "repo analysis result"
-    assert result["readme_analysis"] == "readme analysis result"
-    assert result["pdf_content"] is None
-    assert result["article_analysis"] is None
+    assert "context" in result
+    ctx = result["context"]
+    assert ctx.repo_analysis == "repo analysis result"
+    assert ctx.readme_analysis == "readme analysis result"
+    assert ctx.pdf_content is None
+    assert ctx.article_analysis is None

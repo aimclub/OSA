@@ -6,7 +6,6 @@ import re
 
 from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
-from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_state, summarize_update
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
@@ -122,7 +121,6 @@ def _assemble_partial(state: ReadmeState, context: ReadmeContext) -> str:
 def assembler_node(state: ReadmeState, context: ReadmeContext) -> dict:
     """Assemble the final README draft from generated sections."""
     logger.info("[Assembler] Assembling README draft...")
-    logger.debug("[Assembler] Input state summary: %s", summarize_state(state))
 
     is_partial = state.intent and state.intent.scope == "partial" and state.intent.task_type == "update"
 
@@ -131,11 +129,10 @@ def assembler_node(state: ReadmeState, context: ReadmeContext) -> dict:
     else:
         readme_draft = _assemble_full(state)
 
-    update = {
+    logger.info("[Assembler] Draft assembled (%d chars).", len(readme_draft))
+    logger.debug("[Assembler] State after node: %s", state)
+    return {
         "readme_draft": readme_draft,
         "sections_to_rerun": [],
         "section_regeneration_hints": {},
     }
-    logger.debug("[Assembler] Output update summary: %s", summarize_update(update))
-    logger.info("[Assembler] Draft assembled (%d chars).", len(readme_draft))
-    return update

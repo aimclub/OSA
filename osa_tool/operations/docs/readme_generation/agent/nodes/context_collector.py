@@ -7,7 +7,6 @@ import os
 
 from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
-from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_state, summarize_update
 from osa_tool.operations.docs.readme_generation.agent.models import RepositoryContext
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
@@ -284,7 +283,6 @@ def _run_llm_analyses(context: ReadmeContext, raw_ctx: dict) -> dict:
 def context_collector_node(state: ReadmeState, context: ReadmeContext) -> dict:
     """Collect repository context and return it as a RepositoryContext object."""
     logger.info("[ContextCollector] Gathering repository context...")
-    logger.debug("[ContextCollector] Input state summary: %s", summarize_state(state))
 
     model_settings = context.config_manager.get_model_settings("readme")
     encoding = model_settings.encoder
@@ -307,7 +305,11 @@ def context_collector_node(state: ReadmeState, context: ReadmeContext) -> dict:
         has_tests=raw_ctx["has_tests"],
     )
 
-    update = {"context": repo_context}
-    logger.debug("[ContextCollector] Output update summary: %s", summarize_update(update))
-    logger.info("[ContextCollector] Context collection complete.")
-    return update
+    logger.info(
+        "[ContextCollector] Context collected: key_files=%s, has_tests=%s, pdf=%s",
+        raw_ctx["key_files"],
+        raw_ctx["has_tests"],
+        bool(raw_ctx["pdf_content"]),
+    )
+    logger.debug("[ContextCollector] State after node: %s", state)
+    return {"context": repo_context}

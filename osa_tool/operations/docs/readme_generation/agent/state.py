@@ -61,3 +61,34 @@ class ReadmeState(BaseModel):
     # Output
     events: list[OperationEvent] = Field(default_factory=list)
     error: str | None = None
+
+    def __str__(self) -> str:
+        ctx = self.context
+        intent = self.intent
+        plan_summary = ", ".join(f"{s.name}({s.strategy})" for s in self.section_plan)
+        sections_done = list(self.sections.keys())
+        errors = list(self.section_errors.keys())
+
+        return (
+            f"ReadmeState(\n"
+            f"  repo_url={self.repo_url},\n"
+            f"  attachment={'yes' if self.attachment else 'no'},\n"
+            f"  user_request={self.user_request!r},\n"
+            f"  context={'collected' if ctx else 'not collected'},\n"
+            f"  context.has_tests={ctx.has_tests if ctx else 'N/A'},\n"
+            f"  context.pdf={'yes' if ctx and ctx.pdf_content else 'no'},\n"
+            f"  intent={intent.task_type if intent else None}/{intent.scope if intent else None},\n"
+            f"  incorporate_paper={intent.incorporate_paper if intent else False},\n"
+            f"  section_plan=[{plan_summary}],\n"
+            f"  sections_generated={sections_done},\n"
+            f"  section_errors={errors},\n"
+            f"  current_section={self.current_section.name if self.current_section else None},\n"
+            f"  readme_draft={'%d chars' % len(self.readme_draft) if self.readme_draft else None},\n"
+            f"  readme_final={'%d chars' % len(self.readme_final) if self.readme_final else None},\n"
+            f"  refinement_cycles={self.refinement_cycles}/{self.max_refinement_cycles},\n"
+            f"  refinement_score={self.refinement_score},\n"
+            f"  sections_to_rerun={self.sections_to_rerun},\n"
+            f"  events={len(self.events)},\n"
+            f"  error={self.error}\n"
+            f")"
+        )

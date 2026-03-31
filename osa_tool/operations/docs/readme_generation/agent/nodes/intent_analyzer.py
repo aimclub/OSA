@@ -5,7 +5,6 @@ from __future__ import annotations
 from pydantic import ValidationError
 
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
-from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_state, summarize_update
 from osa_tool.operations.docs.readme_generation.agent.models import TaskIntent
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.utils.logger import logger
@@ -16,13 +15,11 @@ from osa_tool.utils.response_cleaner import JsonParseError
 def intent_analyzer_node(state: ReadmeState, context: ReadmeContext) -> dict:
     """Analyze user request + repository state to produce a TaskIntent."""
     logger.info("[IntentAnalyzer] Analyzing user intent...")
-    logger.debug("[IntentAnalyzer] Input state summary: %s", summarize_state(state))
 
     ctx = state.context
     has_existing = bool(ctx and ctx.existing_readme and ctx.existing_readme.strip() != "No README.md file")
     has_attachment = bool(state.attachment and ctx and ctx.pdf_content)
 
-    # Fast path: no existing README and no specific request → generate/full
     if not has_existing and not state.user_request:
         intent = TaskIntent(
             task_type="generate",
@@ -71,6 +68,5 @@ def intent_analyzer_node(state: ReadmeState, context: ReadmeContext) -> dict:
         intent.affected_sections,
         intent.incorporate_paper,
     )
-    update = {"intent": intent}
-    logger.debug("[IntentAnalyzer] Output update summary: %s", summarize_update(update))
-    return update
+    logger.debug("[IntentAnalyzer] State after node: %s", state)
+    return {"intent": intent}

@@ -7,7 +7,6 @@ import re
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
-from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_state, summarize_update
 from osa_tool.operations.docs.readme_generation.agent.section_catalog import (
     DEFAULT_FALLBACK_LLM_SECTION_NAMES,
     deterministic_specs_for_plan,
@@ -123,7 +122,6 @@ def _build_llm_plan(state: ReadmeState, context: ReadmeContext) -> list[str]:
 def section_planner_node(state: ReadmeState, context: ReadmeContext) -> dict:
     """Produce an ordered list of SectionSpec for the README."""
     logger.info("[SectionPlanner] Planning README sections...")
-    logger.debug("[SectionPlanner] Input state summary: %s", summarize_state(state))
 
     try:
         llm_names = _build_llm_plan(state, context)
@@ -146,6 +144,5 @@ def section_planner_node(state: ReadmeState, context: ReadmeContext) -> dict:
         len(plan),
         [(s.name, s.strategy) for s in plan],
     )
-    update = {"section_plan": plan}
-    logger.debug("[SectionPlanner] Output update summary: %s", summarize_update(update))
-    return update
+    logger.debug("[SectionPlanner] State after node: %s", state)
+    return {"section_plan": plan}

@@ -6,9 +6,10 @@ import re
 
 from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
-from osa_tool.operations.docs.readme_generation.agent.logging_utils import summarize_update
 from osa_tool.operations.docs.readme_generation.agent.models import SectionResult, SectionSpec
-from osa_tool.operations.docs.readme_generation.agent.nodes.deterministic_builder import build_single_deterministic_section
+from osa_tool.operations.docs.readme_generation.agent.nodes.deterministic_builder import (
+    build_single_deterministic_section,
+)
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
@@ -79,9 +80,8 @@ def section_generator_node(state: ReadmeState, context: ReadmeContext) -> dict:
             return {"section_errors": {spec.name: err}}
         if result is None:
             return {}
-        update = {"sections": {spec.name: result}}
-        logger.debug("[SectionGenerator] Output update summary: %s", summarize_update(update))
-        return update
+        logger.info("[SectionGenerator] Section '%s' done (deterministic, %d chars).", spec.name, len(result.content))
+        return {"sections": {spec.name: result}}
 
     # --- LLM ---
     context_block = _build_context_block(state, spec)
@@ -124,7 +124,5 @@ def section_generator_node(state: ReadmeState, context: ReadmeContext) -> dict:
         source="llm",
     )
 
-    update = {"sections": {spec.name: result}}
-    logger.debug("[SectionGenerator] Output update summary: %s", summarize_update(update))
-    logger.info("[SectionGenerator] Section '%s' done (%d chars).", spec.name, len(result.content))
-    return update
+    logger.info("[SectionGenerator] Section '%s' done (llm, %d chars).", spec.name, len(result.content))
+    return {"sections": {spec.name: result}}
