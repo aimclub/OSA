@@ -117,12 +117,27 @@ class _DeterministicSections:
 
     def license(self) -> str:
         logger.info("[DeterministicBuilder] Building section: license")
-        if not self._meta.license_name:
-            logger.info("[DeterministicBuilder] Section 'license' skipped: repository has no license metadata")
-            return ""
         pattern = r"\bLICEN[SC]E(\.\w+)?\b"
-        help_var = find_in_repo_tree(self._sr.tree, pattern)
-        path = self._url_path + self._branch_path + help_var if help_var else self._meta.license_url
+        local_license_file = find_in_repo_tree(self._sr.tree, pattern)
+
+        if local_license_file:
+            path = self._url_path + self._branch_path + local_license_file
+            license_name = self._meta.license_name or "License"
+            content = self._tpl["license"].format(license_name=license_name, path=path)
+            logger.info(
+                "[DeterministicBuilder] Section 'license' built from local file=%s (license_name=%s)",
+                local_license_file,
+                license_name,
+            )
+            return content
+
+        if not self._meta.license_name or not self._meta.license_url:
+            logger.info(
+                "[DeterministicBuilder] Section 'license' skipped: no local LICENSE file and no complete license metadata"
+            )
+            return ""
+
+        path = self._meta.license_url
         content = self._tpl["license"].format(license_name=self._meta.license_name, path=path)
         logger.info("[DeterministicBuilder] Section 'license' built with path=%s", path)
         return content
