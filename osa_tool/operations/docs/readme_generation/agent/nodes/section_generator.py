@@ -1,7 +1,5 @@
 """Generate or rebuild one README section from a SectionSpec (LLM or deterministic)."""
 
-from __future__ import annotations
-
 import re
 
 from osa_tool.core.models.llm_output_models import LlmTextOutput

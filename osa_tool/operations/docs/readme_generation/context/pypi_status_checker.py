@@ -1,7 +1,5 @@
 """Inspect PyPI for package metadata (name, version, downloads)."""
 
-from __future__ import annotations
-
 import os
 import re
 

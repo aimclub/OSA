@@ -1,7 +1,5 @@
 """Build the README header section (project name, info badges, tech badges)."""
 
-from __future__ import annotations
-
 import json
 import os
 from functools import cached_property

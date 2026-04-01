@@ -1,7 +1,5 @@
 """Self-evaluate the assembled README draft (score + issues + optional section rerun plan)."""
 
-from __future__ import annotations
-
 from pydantic import ValidationError
 
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext

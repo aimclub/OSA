@@ -1,7 +1,5 @@
 """Apply whole-README LLM patch using self-eval issues (global refinement path)."""
 
-from __future__ import annotations
-
 from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState

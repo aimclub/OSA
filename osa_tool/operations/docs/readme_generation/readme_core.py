@@ -1,7 +1,5 @@
 """Public entry point for the README generation operation."""
 
-from __future__ import annotations
-
 import os
 from typing import Any
 

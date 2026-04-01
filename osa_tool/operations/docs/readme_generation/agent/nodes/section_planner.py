@@ -1,7 +1,5 @@
 """Plan which README sections to generate: LLM picks catalog names; metadata comes from section_catalog."""
 
-from __future__ import annotations
-
 import re
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError

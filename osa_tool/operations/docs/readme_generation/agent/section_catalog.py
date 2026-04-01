@@ -1,7 +1,5 @@
 """Predefined README section catalog — ownership of priority, prompts, context keys, and availability."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Literal
 

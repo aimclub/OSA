@@ -1,7 +1,5 @@
 """Resolve a PDF source (URL or local path) to a local file path."""
 
-from __future__ import annotations
-
 import os
 from tempfile import NamedTemporaryFile
 
@@ -37,9 +35,7 @@ def fetch_pdf_from_url(url: str) -> str | None:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
             return tmp.name
-        logger.error(
-            "PDF download failed for %s (status=%s, content-type=%s)", url, response.status_code, content_type
-        )
+        logger.error("PDF download failed for %s (status=%s, content-type=%s)", url, response.status_code, content_type)
 
     except requests.exceptions.RequestException:
         logger.error("Failed to download PDF from %s", url, exc_info=True)

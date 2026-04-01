@@ -1,7 +1,5 @@
 """Collect repository context: tree, key files, README, PDF, and LLM analyses."""
 
-from __future__ import annotations
-
 import asyncio
 import os
 
@@ -133,6 +131,7 @@ def _run_parallel_analyses(
     pdf_content: str | None,
 ) -> tuple[str | None, str | None]:
     """Run readme_analysis and article_analysis concurrently."""
+
     async def _gather() -> list[object]:
         tasks = [
             context.model_handler.async_send_and_parse(

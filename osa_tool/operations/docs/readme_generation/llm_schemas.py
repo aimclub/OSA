@@ -1,7 +1,5 @@
 """README-specific Pydantic schemas for structured LLM outputs."""
 
-from __future__ import annotations
-
 from pydantic import BaseModel, ConfigDict, Field
 
 

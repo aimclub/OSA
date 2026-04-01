@@ -1,7 +1,5 @@
 """Determine the user's intent: generate / improve / update, scope, and paper relevance."""
 
-from __future__ import annotations
-
 from pydantic import ValidationError
 
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
