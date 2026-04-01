@@ -29,7 +29,7 @@ def fetch_pdf_from_url(url: str) -> str | None:
         response = requests.get(url, stream=True, timeout=30)
         content_type = response.headers.get("Content-Type", "")
 
-        if response.ok and "application/pdf" in content_type.lower():
+        if response.status_code == 200 and "application/pdf" in content_type.lower():
             tmp = NamedTemporaryFile(delete=False, suffix=".pdf", prefix="downloaded_", dir=os.getcwd())
             with open(tmp.name, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):

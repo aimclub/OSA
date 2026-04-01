@@ -3,6 +3,8 @@
 [prompts]
 preanalysis = """
 TASK:
+Based on the repository file tree and README, select the 4-8 most informative files for downstream README generation.
+
 Select the 4-8 most informative files for downstream README generation.
 
 Selection intent:
