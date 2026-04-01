@@ -98,10 +98,11 @@ def _assemble_partial(state: ReadmeState, ctx: ReadmeContext) -> str:
             new_parts.append(f"### {result.title}\n{result.content}")
             target_names.append(result.title)
 
-    if not new_parts:
-        return state.context.existing_readme if state.context else ""
-
     existing = state.context.existing_readme if state.context else ""
+
+    if not new_parts:
+        return existing
+
     try:
         merged = ctx.model_handler.send_and_parse(
             prompt=PromptBuilder.render(
@@ -131,7 +132,7 @@ def assembler_node(state: ReadmeState, ctx: ReadmeContext) -> dict:
         readme_draft = _assemble_full(state)
 
     logger.info("[Assembler] Draft assembled (%d chars).", len(readme_draft))
-    logger.debug("[Assembler] State after node: %s", state)
+    logger.debug("[Assembler] README draft: %s", readme_draft)
     return {
         "readme_draft": readme_draft,
         "sections_to_rerun": [],

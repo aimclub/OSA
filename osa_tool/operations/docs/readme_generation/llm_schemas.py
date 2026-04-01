@@ -10,6 +10,13 @@ class KeyFilesLLMOutput(BaseModel):
     key_files: list[str] = Field(default_factory=list)
 
 
+class SectionPlanLLMOutput(BaseModel):
+    """LLM returns only internal section names; catalog supplies priority, prompts, and context keys."""
+
+    model_config = ConfigDict(extra="ignore")
+    section_names: list[str] = Field(default_factory=list)
+
+
 class ReadmeSelfEvalLLMOutput(BaseModel):
     """LLM self-evaluation of a generated README."""
 

@@ -226,7 +226,7 @@ _BENCHMARK_RELATED_SECTIONS: frozenset[str] = frozenset({"benchmarks"})
 def format_llm_catalog_for_planner() -> str:
     """Bulleted list of allowed LLM section internal names for the planning prompt."""
     lines: list[str] = []
-    for e in sorted((x for x in _SECTION_ENTRIES if x.strategy == "llm"), key=lambda x: x.name):
+    for e in sorted((x for x in _SECTION_ENTRIES if x.strategy == "llm"), key=lambda x: (x.priority, x.name)):
         lines.append(f"- `{e.name}` — {e.title}: {e.description or 'see catalog'}")
     return "\n".join(lines)
 

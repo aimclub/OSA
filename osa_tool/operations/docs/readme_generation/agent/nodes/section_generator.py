@@ -86,7 +86,7 @@ def section_generator_node(state: ReadmeState, ctx: ReadmeContext) -> dict:
         logger.info("[SectionGenerator] Section '%s' done (deterministic, %d chars).", spec.name, len(result.content))
         return {"sections": {spec.name: result}}
 
-    # --- LLM ---
+    # LLM
     context_block = _build_context_block(state, spec)
 
     existing_section = ""
@@ -133,4 +133,5 @@ def section_generator_node(state: ReadmeState, ctx: ReadmeContext) -> dict:
     )
 
     logger.info("[SectionGenerator] Section '%s' done (llm, %d chars).", spec.name, len(result.content))
+    logger.debug("[SectionGenerator] Section result: %s", result)
     return {"sections": {spec.name: result}}

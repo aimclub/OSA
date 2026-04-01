@@ -2,7 +2,7 @@
 
 import re
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import ValidationError
 
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
 from osa_tool.operations.docs.readme_generation.agent.section_catalog import (
@@ -12,20 +12,12 @@ from osa_tool.operations.docs.readme_generation.agent.section_catalog import (
     section_specs_from_llm_names,
 )
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
+from osa_tool.operations.docs.readme_generation.llm_schemas import SectionPlanLLMOutput
 from osa_tool.operations.docs.readme_generation.utils import build_system_message
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonParseError
 
-
-class SectionPlanLLMOutput(BaseModel):
-    """LLM returns only internal section names; catalog supplies priority, prompts, and context keys."""
-
-    model_config = ConfigDict(extra="ignore")
-    section_names: list[str] = Field(default_factory=list)
-
-
-_MAX_LLM_SECTIONS = 7
 
 _DISCOURAGED_BY_DEFAULT = frozenset(
     {
@@ -55,6 +47,7 @@ def _user_wants_discouraged(user_request: str | None, name: str) -> bool:
 
 def _normalize_llm_section_names(names: list[str], user_request: str | None) -> list[str]:
     """Drop discouraged sections, resolve overlap, cap count. Order preserved."""
+    _MAX_LLM_SECTIONS = 6
     name_set = {n.strip() for n in names if n and n.strip()}
     out: list[str] = []
 

@@ -50,7 +50,6 @@ class ReadmeState(BaseModel):
 
     # Assembly & self-eval refinement
     readme_draft: str | None = None
-    readme_final: str | None = None
     refinement_score: float | None = None
     refinement_issues: list[str] = Field(default_factory=list)
     refinement_cycles: int = 0
@@ -60,17 +59,14 @@ class ReadmeState(BaseModel):
 
     # Output
     events: list[OperationEvent] = Field(default_factory=list)
-    error: str | None = None
 
     def readme_assembly_mode(self) -> AssemblyMode:
         """Merge into existing README vs compose from section results (see assembler node).
 
         Missing README is represented by empty ``context.existing_readme`` (see ``extract_readme_content``).
         """
-        intent = self.intent
-        ctx = self.context
-        has_readme = bool((ctx.existing_readme or "").strip()) if ctx else False
-        if intent is not None and intent.scope == "partial" and has_readme:
+        has_readme = bool((self.context.existing_readme or "").strip()) if self.context else False
+        if self.intent is not None and self.intent.scope == "partial" and has_readme:
             return "merge_existing"
         return "full_compose"
 
@@ -79,7 +75,6 @@ class ReadmeState(BaseModel):
         intent = self.intent
         plan_summary = ", ".join(f"{s.name}({s.strategy})" for s in self.section_plan)
         sections_done = list(self.sections.keys())
-        errors = list(self.section_errors.keys())
 
         return (
             f"ReadmeState(\n"
@@ -93,14 +88,11 @@ class ReadmeState(BaseModel):
             f"  incorporate_paper={intent.incorporate_paper if intent else False},\n"
             f"  section_plan=[{plan_summary}],\n"
             f"  sections_generated={sections_done},\n"
-            f"  section_errors={errors},\n"
             f"  current_section={self.current_section.name if self.current_section else None},\n"
             f"  readme_draft={'%d chars' % len(self.readme_draft) if self.readme_draft else None},\n"
-            f"  readme_final={'%d chars' % len(self.readme_final) if self.readme_final else None},\n"
             f"  refinement_cycles={self.refinement_cycles}/{self.max_refinement_cycles},\n"
             f"  refinement_score={self.refinement_score},\n"
             f"  sections_to_rerun={self.sections_to_rerun},\n"
             f"  events={len(self.events)},\n"
-            f"  error={self.error}\n"
             f")"
         )
