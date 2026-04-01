@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
 from osa_tool.operations.docs.readme_generation.agent.section_catalog import (
     DEFAULT_FALLBACK_LLM_SECTION_NAMES,
-    deterministic_specs_for_plan,
+    deterministic_specs_for_intent,
     format_llm_catalog_for_planner,
     section_specs_from_llm_names,
 )
@@ -138,7 +138,7 @@ def section_planner_node(state: ReadmeState, context: ReadmeContext) -> dict:
     llm_names = _normalize_llm_section_names(llm_names, state.user_request)
 
     plan = section_specs_from_llm_names(llm_names, state.intent, state.context)
-    plan.extend(deterministic_specs_for_plan())
+    plan.extend(deterministic_specs_for_intent(state.intent, state.context))
     plan.sort(key=lambda s: s.priority)
 
     logger.info(

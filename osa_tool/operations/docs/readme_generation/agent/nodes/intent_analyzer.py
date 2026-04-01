@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import ValidationError
 
-from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
+from osa_tool.operations.docs.readme_generation.agent import ReadmeContext
 from osa_tool.operations.docs.readme_generation.agent.models import TaskIntent
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.operations.docs.readme_generation.utils import build_system_message
@@ -13,12 +13,23 @@ from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonParseError
 
 
+def _normalize_task_intent(intent: TaskIntent) -> TaskIntent:
+    """Align task_type and affected_sections with scope (conservative, rule-based)."""
+    if intent.scope == "full":
+        if intent.affected_sections:
+            return intent.model_copy(update={"affected_sections": []})
+        return intent
+    if intent.scope == "partial" and intent.affected_sections and intent.task_type != "update":
+        return intent.model_copy(update={"task_type": "update"})
+    return intent
+
+
 def intent_analyzer_node(state: ReadmeState, context: ReadmeContext) -> dict:
     """Analyze user request + repository state to produce a TaskIntent."""
     logger.info("[IntentAnalyzer] Analyzing user intent...")
 
     ctx = state.context
-    has_existing = bool(ctx and ctx.existing_readme and ctx.existing_readme.strip() != "No README.md file")
+    has_existing = bool((ctx.existing_readme or "").strip()) if ctx else False
     has_attachment = bool(state.attachment and ctx and ctx.pdf_content)
 
     if not has_existing and not state.user_request:
@@ -30,7 +41,7 @@ def intent_analyzer_node(state: ReadmeState, context: ReadmeContext) -> dict:
             reasoning="No existing README found. Generating complete README from scratch.",
         )
         logger.info("[IntentAnalyzer] Fast-path: %s/%s", intent.task_type, intent.scope)
-        return {"intent": intent}
+        return {"intent": _normalize_task_intent(intent)}
 
     try:
         intent = context.model_handler.send_and_parse(
@@ -62,6 +73,15 @@ def intent_analyzer_node(state: ReadmeState, context: ReadmeContext) -> dict:
                 incorporate_paper=has_attachment,
                 reasoning="Fallback: no existing README, defaulting to full generation.",
             )
+
+    normalized = _normalize_task_intent(intent)
+    if normalized.model_dump() != intent.model_dump():
+        logger.info(
+            "[IntentAnalyzer] Normalized intent from %s to %s",
+            intent.model_dump(),
+            normalized.model_dump(),
+        )
+        intent = normalized
 
     logger.info(
         "[IntentAnalyzer] intent=%s/%s, affected=%s, paper=%s",

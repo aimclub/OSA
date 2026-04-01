@@ -6,7 +6,7 @@ from typing import Any, Callable
 from uuid import uuid4
 
 import dotenv
-from langchain.schema import SystemMessage
+from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from protollm.connectors import create_llm_connector

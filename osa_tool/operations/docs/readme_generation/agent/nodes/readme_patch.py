@@ -19,6 +19,11 @@ def readme_patch_node(state: ReadmeState, context: ReadmeContext) -> dict:
         return {}
 
     current = state.readme_draft or ""
+    intent_scope = state.intent.scope if state.intent else "N/A"
+    affected_sections = (
+        ", ".join(state.intent.affected_sections) if state.intent and state.intent.affected_sections else "N/A"
+    )
+    assembly_mode = state.readme_assembly_mode()
     try:
         refined = context.model_handler.send_and_parse(
             prompt=PromptBuilder.render(
@@ -27,6 +32,9 @@ def readme_patch_node(state: ReadmeState, context: ReadmeContext) -> dict:
                 issues="\n".join(f"- {issue}" for issue in state.refinement_issues),
                 generation_plan=state.intent.reasoning if state.intent else "",
                 user_request=state.user_request or "N/A",
+                intent_scope=intent_scope,
+                affected_sections=affected_sections,
+                assembly_mode=assembly_mode,
             ),
             parser=LlmTextOutput,
             system_message=build_system_message(context, "refine_with_feedback"),

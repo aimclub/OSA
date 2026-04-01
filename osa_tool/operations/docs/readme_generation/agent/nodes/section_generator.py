@@ -33,6 +33,10 @@ def _build_context_block(state: ReadmeState, spec: SectionSpec) -> str:
         "article_analysis": ctx.article_analysis or "",
     }
 
+    if state.intent is not None and not state.intent.incorporate_paper:
+        field_map["pdf_content"] = ""
+        field_map["article_analysis"] = ""
+
     keys = spec.prompt_context_keys or ["repo_analysis"]
     parts: list[str] = []
     for key in keys:

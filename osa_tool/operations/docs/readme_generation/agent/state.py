@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -13,6 +13,8 @@ from osa_tool.operations.docs.readme_generation.agent.models import (
     SectionSpec,
     TaskIntent,
 )
+
+AssemblyMode = Literal["full_compose", "merge_existing"]
 
 
 def _merge_dicts(left: dict, right: dict) -> dict:
@@ -61,6 +63,18 @@ class ReadmeState(BaseModel):
     # Output
     events: list[OperationEvent] = Field(default_factory=list)
     error: str | None = None
+
+    def readme_assembly_mode(self) -> AssemblyMode:
+        """Merge into existing README vs compose from section results (see assembler node).
+
+        Missing README is represented by empty ``context.existing_readme`` (see ``extract_readme_content``).
+        """
+        intent = self.intent
+        ctx = self.context
+        has_readme = bool((ctx.existing_readme or "").strip()) if ctx else False
+        if intent is not None and intent.scope == "partial" and has_readme:
+            return "merge_existing"
+        return "full_compose"
 
     def __str__(self) -> str:
         ctx = self.context

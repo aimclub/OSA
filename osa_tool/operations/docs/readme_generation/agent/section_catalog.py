@@ -100,8 +100,8 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
         strategy="llm",
         priority=10,
         description=(
-            "2–4 sentences: purpose, audience, main entry points (name actual script/notebook files). "
-            "No bullet lists; do not enumerate Python packages or third-party libraries."
+            "One short paragraph (3–5 sentences): purpose, audience, main entry points "
+            "(name actual script/notebook files). No bullet lists; do not enumerate third-party libraries by name."
         ),
         prompt_context_keys=("repo_analysis", "key_files_content", "readme_analysis"),
         prompt_template_key="readme.prompts.section_overview",
@@ -112,7 +112,7 @@ _SECTION_ENTRIES: tuple[SectionCatalogEntry, ...] = (
         strategy="llm",
         priority=11,
         description=(
-            "At most 4 bullets. Each bullet names a concrete file or function from the repo and one factual sentence. "
+            "3–5 bullets only. Each bullet names a concrete file or function from the repo and one factual sentence. "
             "No bullets about dependencies, stack, type hints, code quality, or generic extensibility."
         ),
         prompt_context_keys=("repo_analysis", "key_files_content"),
@@ -233,13 +233,28 @@ def format_llm_catalog_for_planner() -> str:
     return "\n".join(lines)
 
 
-def deterministic_specs_for_plan() -> list[SectionSpec]:
-    """Sections not chosen by the LLM planner: deterministic builders and assembler-synthesized slots (e.g. ToC)."""
-    return [
+def deterministic_specs_for_intent(intent: TaskIntent | None, ctx: RepositoryContext | None) -> list[SectionSpec]:
+    """Deterministic and assembler-only plan slots; filtered on partial updates when ``affected_sections`` is set.
+
+    For partial scope with a non-empty ``affected_sections`` list, only deterministic/catalog
+    sections whose internal names appear in that list (case-insensitive) are included. If none match,
+    returns an empty list so only LLM sections from the planner run. When ``affected_sections`` is empty
+    under partial scope, the full deterministic set is kept (defensive fallback).
+
+    ``ctx`` is reserved for future conditional rules (e.g. repo signals); currently unused.
+    """
+    _ = ctx
+    base = [
         e.to_section_spec()
         for e in _SECTION_ENTRIES
         if e.strategy == "deterministic" or e.name in _ASSEMBLER_SYNTHESIZED_PLAN_NAMES
     ]
+    if intent is None or intent.scope != "partial":
+        return base
+    if not intent.affected_sections:
+        return base
+    want = {s.strip().lower() for s in intent.affected_sections if s and str(s).strip()}
+    return [spec for spec in base if spec.name.lower() in want]
 
 
 def section_specs_from_llm_names(

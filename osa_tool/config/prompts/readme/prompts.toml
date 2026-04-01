@@ -219,6 +219,9 @@ RULES:
 - If multiple sections repeat the same flaw, mention root cause once and map precise feedback per affected section.
 - Never include section names outside PLANNED SECTION NAMES.
 - Keep issue phrasing short and actionable.
+- If **INTENT SCOPE** is `partial` or **ASSEMBLY MODE** is `merge_existing`, prefer `sections_to_rerun` for
+  localized defects; avoid listing whole-document rewrite issues unless the defect is global (broken markdown,
+  wrong repository, contradictory title).
 
 INPUT DATA:
 
@@ -245,6 +248,22 @@ INPUT DATA:
 6. PLANNED SECTION INTERNAL NAMES (for sections_to_rerun only):
 
 {planned_section_names}
+
+7. INTENT SCOPE:
+
+{intent_scope}
+
+8. INTENT TASK TYPE:
+
+{intent_task_type}
+
+9. AFFECTED SECTIONS:
+
+{affected_sections}
+
+10. ASSEMBLY MODE:
+
+{assembly_mode}
 """
 
 refine_with_feedback = """
@@ -267,6 +286,8 @@ RULES:
 - Remove redundancy and contradictions introduced during prior generation.
 - Do not introduce unsupported facts, commands, or claims.
 - Keep style and tone consistent with the rest of the README.
+- If **INTENT SCOPE** is `partial` or **ASSEMBLY MODE** is `merge_existing`, apply **surgical** edits only:
+  do not restructure the whole README, reorder major sections, or rewrite unrelated parts.
 
 INPUT DATA:
 
@@ -285,6 +306,18 @@ INPUT DATA:
 4. USER REQUEST (if any):
 
 {user_request}
+
+5. INTENT SCOPE:
+
+{intent_scope}
+
+6. AFFECTED SECTIONS:
+
+{affected_sections}
+
+7. ASSEMBLY MODE:
+
+{assembly_mode}
 """
 
 intent_analysis = """
@@ -339,7 +372,17 @@ INPUT DATA:
 
 RULES:
 - Prioritize explicit user intent over inferred intent.
-- If request scope is ambiguous, choose the conservative option (`update` + `partial`) only when specific sections are clearly referenced.
+- Decision table (apply first matching row):
+  1) User names specific README sections or a narrow edit (e.g. "fix Usage", "add install step") ->
+     `task_type` = "update", `scope` = "partial", fill `affected_sections` with matching internal names
+     (overview, installation, getting_started, usage, api_reference, etc.).
+  2) User asks to rewrite / regenerate the whole README, or no README exists and they want one ->
+     `scope` = "full"; use `task_type` "generate" if no README, else "improve" unless they clearly want
+     only specific sections (row 1).
+  3) Request is vague but a README exists (e.g. "make it better") ->
+     default `task_type` = "improve", `scope` = "full", `affected_sections` = [].
+  4) Request is vague and no README exists ->
+     default `task_type` = "generate", `scope` = "full", `affected_sections` = [].
 - Keep `affected_sections` empty for full-scope tasks.
 - Set `incorporate_paper` to true only when a paper exists and is relevant to requested output.
 - Keep `reasoning` short, concrete, and evidence-based.
@@ -349,10 +392,14 @@ section_planning = """
 TASK:
 Choose which **LLM-written** README sections to include (a small set - not a textbook).
 
-The pipeline already adds **deterministically**: header, table of contents, installation, examples, documentation,
-contributing, license, and citation when applicable. You must **only** pick section **internal names** from the
-allowed list below. Do **not** output titles, descriptions, priorities, or prompt_context_keys - the system fills those
-from a catalog (typically **3-6** names; rarely more than **7**).
+For **full**-scope runs, the pipeline also schedules deterministic sections (header, table of contents, installation,
+examples, documentation, contributing, license, citation) when applicable. For **partial**-scope runs, only
+deterministic sections explicitly referenced in **AFFECTED SECTIONS** are scheduled; do not assume every
+deterministic block will be rebuilt.
+
+You must **only** pick section **internal names** from the allowed list below. Do **not** output titles,
+descriptions, priorities, or prompt_context_keys - the system fills those from a catalog (typically **3-6** names;
+rarely more than **7**).
 
 RULES (read carefully):
 - Prefer a SHORT README: fewer sections beat exhaustive coverage.
@@ -369,7 +416,8 @@ RULES (read carefully):
 - If a scientific paper is attached and relevant (`incorporate_paper` or strong article analysis), consider `algorithms`
   and/or `content`.
 - Prefer sections that improve developer onboarding first (overview/core_features/getting_started or usage).
-- For partial updates, select only sections necessary to satisfy the request.
+- For partial updates, select only sections necessary to satisfy the request; do not add extra LLM sections
+  for completeness unless the user or **AFFECTED SECTIONS** clearly requires them.
 
 ALLOWED LLM SECTION NAMES (internal snake_case - output **only** these strings in `section_names`):
 
@@ -956,6 +1004,10 @@ MERGE PROTOCOL:
 6. Safety constraints:
    - Do not invent new facts, sections, commands, or claims.
    - Do not remove critical information from unaffected sections.
+7. Strict targeting:
+   - Edit **only** the sections listed in **SECTIONS BEING REPLACED** (match by heading/topic to the new bodies).
+   - Do **not** rewrite, reorder, or substantially rephrase sections that are not listed there; at most allow
+     a single bridging sentence for readability if strictly necessary.
 
 OUTPUT:
 Return a JSON object:

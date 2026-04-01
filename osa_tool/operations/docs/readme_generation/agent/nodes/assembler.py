@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from osa_tool.core.models.llm_output_models import LlmTextOutput
-from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
+from osa_tool.operations.docs.readme_generation.agent import ReadmeContext
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.operations.docs.readme_generation.utils import build_system_message
 from osa_tool.utils.logger import logger
@@ -127,9 +127,7 @@ def assembler_node(state: ReadmeState, ctx: ReadmeContext) -> dict:
     """Assemble the final README draft from generated sections."""
     logger.info("[Assembler] Assembling README draft...")
 
-    is_partial = state.intent and state.intent.scope == "partial" and state.intent.task_type == "update"
-
-    if is_partial:
+    if state.readme_assembly_mode() == "merge_existing":
         readme_draft = _assemble_partial(state, ctx)
     else:
         readme_draft = _assemble_full(state)
