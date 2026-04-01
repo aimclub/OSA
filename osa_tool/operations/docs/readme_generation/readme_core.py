@@ -8,11 +8,9 @@ from typing import Any
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.core.models.event import EventKind, OperationEvent
-from osa_tool.operations.docs.readme_generation.agent import (
-    ReadmeContext,
-    ReadmeState,
-    build_readme_graph,
-)
+from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
+from osa_tool.operations.docs.readme_generation.agent.graph import build_readme_graph
+from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 

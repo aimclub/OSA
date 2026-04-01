@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from osa_tool.core.models.llm_output_models import LlmTextOutput
-from osa_tool.operations.docs.readme_generation.agent import ReadmeContext
+from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
 from osa_tool.operations.docs.readme_generation.agent.state import ReadmeState
 from osa_tool.operations.docs.readme_generation.utils import build_system_message
 from osa_tool.utils.logger import logger

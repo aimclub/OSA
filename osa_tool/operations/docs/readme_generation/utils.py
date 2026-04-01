@@ -6,7 +6,7 @@ import json
 import os
 import re
 
-from osa_tool.operations.docs.readme_generation.agent import ReadmeContext
+from osa_tool.operations.docs.readme_generation.agent.context import ReadmeContext
 from osa_tool.utils.logger import logger
 
 
