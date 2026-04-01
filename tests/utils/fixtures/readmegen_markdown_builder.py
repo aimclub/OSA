@@ -2,15 +2,15 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from osa_tool.operations.docs.readme_generation.generator.header import HeaderBuilder
-from osa_tool.operations.docs.readme_generation.generator.installation import InstallationSectionBuilder
+from osa_tool.operations.docs.readme_generation.sections.header import HeaderBuilder
+from osa_tool.operations.docs.readme_generation.sections.installation import InstallationSectionBuilder
 from tests.utils.fixtures.analytics_sourcerank import sourcerank_with_repo_tree
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 
 @pytest.fixture
 def mock_pypi_inspector():
-    with patch("osa_tool.operations.docs.readme_generation.generator.header.PyPiPackageInspector") as mock_inspector:
+    with patch("osa_tool.operations.docs.readme_generation.sections.header.PyPiPackageInspector") as mock_inspector:
         mock_instance = MagicMock()
         mock_instance.get_info.return_value = {"name": "test-package", "version": "1.0.0", "downloads": 1000}
         mock_inspector.return_value = mock_instance
@@ -19,7 +19,7 @@ def mock_pypi_inspector():
 
 @pytest.fixture
 def mock_dependency_extractor():
-    with patch("osa_tool.operations.docs.readme_generation.generator.header.DependencyExtractor") as mock_extractor:
+    with patch("osa_tool.operations.docs.readme_generation.sections.header.DependencyExtractor") as mock_extractor:
         mock_instance = MagicMock()
         mock_instance.extract_techs.return_value = {"python", "numpy"}
         mock_extractor.return_value = mock_instance

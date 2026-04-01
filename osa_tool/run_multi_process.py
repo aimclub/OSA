@@ -13,8 +13,8 @@ from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
-from osa_tool.operations.docs.readme_generation.context.pypi_status_checker import PyPiPackageInspector
-from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
+from osa_tool.operations.docs.readme_generation.inputs.pypi_status_checker import PyPiPackageInspector
+from osa_tool.operations.docs.readme_generation.readme_agent import ReadmeAgent
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.utils import logger, rich_section, parse_git_url, delete_repository, format_time

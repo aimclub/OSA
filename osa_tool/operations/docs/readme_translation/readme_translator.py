@@ -7,7 +7,7 @@ from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.core.models.llm_output_models import LlmJsonObject
 from osa_tool.core.models.event import OperationEvent, EventKind
-from osa_tool.operations.docs.readme_generation.utils import read_file, save_sections, remove_extra_blank_lines
+from osa_tool.operations.docs.readme_generation.readme_utils import read_file, save_sections, remove_extra_blank_lines
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.utils import parse_folder_name

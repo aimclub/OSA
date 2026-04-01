@@ -16,7 +16,7 @@ from osa_tool.operations.codebase.workflow_generation.workflow_executor import W
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
 from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
 from osa_tool.operations.docs.community_docs_generation.license_generation import LicenseCompiler
-from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
+from osa_tool.operations.docs.readme_generation.readme_agent import ReadmeAgent
 from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
 from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.utils.utils import osa_project_root
