@@ -39,6 +39,7 @@ def test_generate_description(
     # Arrange
     generator = AboutGenerator(mock_config_manager, mock_git_agent)
     generator.metadata.description = ""
+    generator.readme_content = "README content"
 
     # Act
     description = generator._generate_description()

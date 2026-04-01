@@ -16,7 +16,7 @@ def test_get_published_package_name(tree_type, mock_requests_response_factory):
         patch("requests.get") as mock_get,
     ):
 
-        # Assert
+        # Act + Assert
         if tree_type == "WITH_PYPROJECT":
             mock_read_file.return_value = """
 [project]
@@ -35,12 +35,17 @@ name = "mockproject"
 
 
 def test_extract_package_name_from_pyproject():
+    # Arrange
     content = """
 [tool.poetry]
 name = "mypoetry"
 """
+
+    # Act
+    package_name = PyPiPackageInspector._extract_package_name_from_pyproject(content)
+
     # Assert
-    assert PyPiPackageInspector._extract_package_name_from_pyproject(content) == "mypoetry"
+    assert package_name == "mypoetry"
 
 
 def test_extract_package_name_from_setup():
@@ -85,8 +90,12 @@ name = "mockproject"
 def test_get_info_not_published():
     # Arrange
     inspector = PyPiPackageInspector(get_mock_repo_tree("MINIMAL"), base_path=".")
+
+    # Act
+    info = inspector.get_info()
+
     # Assert
-    assert inspector.get_info() is None
+    assert info is None
 
 
 def test_get_package_version_from_pypi(mock_requests_response_factory):
