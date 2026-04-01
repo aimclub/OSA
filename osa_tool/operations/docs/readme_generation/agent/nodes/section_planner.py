@@ -18,7 +18,6 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonParseError
 
-
 _DISCOURAGED_BY_DEFAULT = frozenset(
     {
         "faq",

@@ -1,6 +1,4 @@
 import asyncio
-import base64
-import json
 import os
 
 from rich.progress import track
@@ -22,7 +20,6 @@ from osa_tool.operations.analysis.repository_validation.report_generator import 
 )
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.response_cleaner import JsonProcessor
 
 
 class DocValidator:
