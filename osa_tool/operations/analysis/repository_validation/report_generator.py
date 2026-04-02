@@ -1,5 +1,4 @@
 import os
-from typing import Iterable
 
 import qrcode
 from reportlab.lib import colors
@@ -168,7 +167,7 @@ class ReportGenerator:
         return percentages_text, num_experiments
 
     @staticmethod
-    def __build_conclusion(self, conclusion: str) -> tuple:
+    def __build_conclusion(conclusion: str) -> tuple:
         """
         Builds the conclusion section of the report.
 
@@ -193,10 +192,46 @@ class ReportGenerator:
         )
         return Spacer(0, 10), conclusion_header, Spacer(0, 5), conclusion_text
 
-    def __build_table(self, experiments) -> Iterable[Paragraph]:
-        return (Paragraph(f"""<b>Experiment {i + 1}.</b>
-                <b>Formulation stated: </b><p>"{experiment.description_from_paper}"</p>
-                <b>Implementation found: </b><p>{experiment.impl_src_path}</p>
-                <b>Missing components: </b><p>{experiment.missing if bool(experiment.missing) else "None"}</p>
-                <b>Correspondence: </b><p>{experiment.correspondence_percent*100}%</p>
-                """) for i, experiment in enumerate(experiments))
+    def __build_table(self, experiments) -> tuple:
+        styles = getSampleStyleSheet()
+        normal_style = ParagraphStyle(
+            name="LeftAlignedNormal",
+            parent=styles["Normal"],
+            fontSize=12,
+            leading=16,
+            alignment=0,
+        )
+
+        flowables = []
+        for i, experiment in enumerate(experiments):
+            flowables.append(Paragraph(f"<b>Experiment {i + 1}.</b>", normal_style))
+            flowables.append(
+                Paragraph(
+                    f"<b>Formulation stated:</b> {experiment.description_from_paper}",
+                    normal_style,
+                )
+            )
+            flowables.append(Paragraph("<b>Implementation found:</b>", normal_style))
+
+            if experiment.impl_src_path:
+                for impl in experiment.impl_src_path:
+                    flowables.append(Paragraph(f"• {impl}", normal_style))
+            else:
+                flowables.append(Paragraph("• None", normal_style))
+
+            flowables.append(Paragraph("<b>Missing components:</b>", normal_style))
+            if experiment.missing:
+                for missing in experiment.missing:
+                    flowables.append(Paragraph(f"• {missing}", normal_style))
+            else:
+                flowables.append(Paragraph("• None", normal_style))
+
+            flowables.append(
+                Paragraph(
+                    f"<b>Correspondence:</b> {experiment.correspondence_percent * 100:.1f}%",
+                    normal_style,
+                )
+            )
+            flowables.append(Spacer(0, 12))
+
+        return tuple(flowables)
