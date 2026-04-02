@@ -5,13 +5,55 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfgen.canvas import Canvas
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.analysis.repository_validation.experiment import Experiment
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
+
+
+class RoundedCard(Flowable):
+    def __init__(
+        self,
+        content: list,
+        width: int,
+        padding: int = 10,
+        radius: int = 8,
+        stroke_color=colors.HexColor("#B8C1CC"),
+    ) -> None:
+        super().__init__()
+        self.content = content
+        self.width = width
+        self.padding = padding
+        self.radius = radius
+        self.stroke_color = stroke_color
+        self._wrapped_content: list[tuple[Flowable, float]] = []
+        self._height = 0
+
+    def wrap(self, availWidth, availHeight):
+        inner_width = max(1, self.width - (2 * self.padding))
+        self._wrapped_content = []
+
+        inner_height = 0.0
+        for flowable in self.content:
+            _, h = flowable.wrap(inner_width, availHeight)
+            self._wrapped_content.append((flowable, h))
+            inner_height += h
+
+        self._height = inner_height + (2 * self.padding)
+        return self.width, self._height
+
+    def draw(self):
+        self.canv.setStrokeColor(self.stroke_color)
+        self.canv.setLineWidth(1)
+        self.canv.roundRect(0, 0, self.width, self._height, self.radius, stroke=1, fill=0)
+
+        y = self._height - self.padding
+        for flowable, h in self._wrapped_content:
+            y -= h
+            flowable.drawOn(self.canv, self.padding, y)
 
 
 class ReportGenerator:
@@ -161,8 +203,19 @@ class ReportGenerator:
             alignment=0,
         )
         # TODO: extract calculations to the separate module, + place for constants
-        percentages = int(sum(e.correspondence_percent for e in experiments) / len(experiments) * 100)
-        percentages_text = Paragraph(f"<b>Correspondence percentages: {percentages}%</b>", normal_style)
+        correspondence_sum = sum(e.correspondence_percent for e in experiments)
+        percentages = int(correspondence_sum / len(experiments) * 100)
+        formula = (
+            "C = (Σ p<sub>i</sub> / n) × 100"
+            f" = ({correspondence_sum:.2f} / {len(experiments)}) × 100"
+        )
+        percentages_text = Paragraph(
+            (
+                f"<b>Correspondence percentages: {percentages}%</b> "
+                f"(<i>{formula}</i>)"
+            ),
+            normal_style,
+        )
         num_experiments = Paragraph(f"<b>Number of experiments found: {len(experiments)}</b>", normal_style)
         return percentages_text, num_experiments
 
@@ -201,37 +254,64 @@ class ReportGenerator:
             leading=16,
             alignment=0,
         )
+        bullet_style = ParagraphStyle(
+            name="IndentedBullet",
+            parent=normal_style,
+            leftIndent=12,
+        )
 
-        flowables = []
+        cards = []
         for i, experiment in enumerate(experiments):
-            flowables.append(Paragraph(f"<b>Experiment {i + 1}.</b>", normal_style))
-            flowables.append(
+            header_row = Table(
+                [
+                    [
+                        Paragraph(f"<b>Experiment {i + 1}</b>", normal_style),
+                        Paragraph(
+                            f"<b>Correspondence:</b> {experiment.correspondence_percent * 100:.1f}%",
+                            normal_style,
+                        ),
+                    ]
+                ],
+                colWidths=[240, 240],
+            )
+            header_row.setStyle(
+                TableStyle(
+                    [
+                        ("ALIGN", (0, 0), (0, 0), "LEFT"),
+                        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                        ("TOPPADDING", (0, 0), (-1, -1), 0),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                        ("LINEBELOW", (0, 0), (-1, 0), 0.4, colors.HexColor("#D5DCE3")),
+                    ]
+                )
+            )
+
+            card_content = [header_row]
+            card_content.append(
                 Paragraph(
                     f"<b>Formulation stated:</b> {experiment.description_from_paper}",
                     normal_style,
                 )
             )
-            flowables.append(Paragraph("<b>Implementation found:</b>", normal_style))
+            card_content.append(Paragraph("<b>Implementation found:</b>", normal_style))
 
             if experiment.impl_src_path:
                 for impl in experiment.impl_src_path:
-                    flowables.append(Paragraph(f"• {impl}", normal_style))
+                    card_content.append(Paragraph(f"• {impl}", bullet_style))
             else:
-                flowables.append(Paragraph("• None", normal_style))
+                card_content.append(Paragraph("• None", bullet_style))
 
-            flowables.append(Paragraph("<b>Missing components:</b>", normal_style))
+            card_content.append(Paragraph("<b>Missing components:</b>", normal_style))
             if experiment.missing:
                 for missing in experiment.missing:
-                    flowables.append(Paragraph(f"• {missing}", normal_style))
+                    card_content.append(Paragraph(f"• {missing}", bullet_style))
             else:
-                flowables.append(Paragraph("• None", normal_style))
+                card_content.append(Paragraph("• None", bullet_style))
 
-            flowables.append(
-                Paragraph(
-                    f"<b>Correspondence:</b> {experiment.correspondence_percent * 100:.1f}%",
-                    normal_style,
-                )
-            )
-            flowables.append(Spacer(0, 12))
+            cards.append(RoundedCard(card_content, width=500))
+            cards.append(Spacer(0, 12))
 
-        return tuple(flowables)
+        return tuple(cards)
