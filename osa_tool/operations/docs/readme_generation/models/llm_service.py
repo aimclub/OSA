@@ -5,13 +5,15 @@ from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
 from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
-from osa_tool.operations.docs.readme_generation.context.files_contents import FileProcessor
+from osa_tool.operations.docs.readme_generation.context.files_contents import (
+    FileProcessor,
+)
 from osa_tool.operations.docs.readme_generation.utils import extract_example_paths
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor
-from osa_tool.utils.utils import parse_folder_name, extract_readme_content
+from osa_tool.utils.utils import extract_readme_content, parse_folder_name
 
 
 class LLMClient:
@@ -84,9 +86,9 @@ class LLMClient:
 
         Returns:
             tuple[str, str, str]: A tuple containing:
-             - overview: General description and project context.
-             - content: Content section based on key files and documentation.
-             - algorithms: Description of algorithms used.
+                - overview: General description and project context.
+                - content: Content section based on key files and documentation.
+                - algorithms: Description of algorithms used.
         """
         logger.info("Started generating Article-style summary.")
         key_files = self.get_key_files()
