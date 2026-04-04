@@ -19,6 +19,7 @@ from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.utils import logger, rich_section, parse_git_url, delete_repository, format_time
 
+
 # === Stage 1: Generate report and README asynchronously ===
 
 
@@ -38,7 +39,7 @@ async def generate_readme(config_manager: ConfigManager, metadata: RepositoryMet
     readmes_dir = os.path.join(os.path.dirname(args.table_path), "readmes")
     os.makedirs(readmes_dir, exist_ok=True)
 
-    readme_agent = ReadmeAgent(config_manager, metadata)
+    readme_agent = ReadmeAgent(config_manager, metadata, None, "Generate or upgrade README")
     readme_agent.file_to_save = os.path.join(readmes_dir, f"{metadata.name}_README.md")
 
     await asyncio.to_thread(readme_agent.generate_readme)
