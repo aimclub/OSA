@@ -247,6 +247,7 @@ class LocalMetadataLoader(MetadataLoader):
 
         basename = os.path.basename(repo_url)
         owner = cls.repo.config_reader().get("user", "name")
+        owner_email = cls.repo.config_reader().get("user", "email")
         dates = cls._load_dates()
         size = cls._get_repository_size()
         languages = cls._get_languages()
@@ -258,7 +259,7 @@ class LocalMetadataLoader(MetadataLoader):
             name=basename,
             full_name=basename,
             owner=owner,
-            owner_url=None,
+            owner_url=f"mailto:{owner_email}",
             description=None,
             stars_count=0,
             forks_count=0,
