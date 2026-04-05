@@ -1,11 +1,11 @@
 import os
 import tempfile
-from unittest.mock import Mock, patch, ANY
+from unittest.mock import Mock, patch, ANY, MagicMock
 
 import pytest
 from git import Repo, GitCommandError
 
-from osa_tool.core.git.git_agent import GitHubAgent, GitverseAgent, GitLabAgent
+from osa_tool.core.git.git_agent import GitHubAgent, GitverseAgent, GitLabAgent, LocalGitAgent
 from osa_tool.core.git.metadata import (
     GitHubMetadataLoader,
     GitverseMetadataLoader,
@@ -438,3 +438,24 @@ def test_gitverse_agent_star_repository_already_starred(
             # Assert
             mock_get.assert_called_once()
             mock_put.assert_not_called()
+
+@patch("osa_tool.core.git.git_agent.Repo")
+@patch("osa_tool.core.git.metadata.Repo")
+@patch.object(LocalGitAgent, "_clone_chosen_branch")
+@patch.object(LocalGitAgent, "_clone_default_branch")
+def test_local_git_agent_cloning(mock_clone_default_branch, mock_clone_chosen_branch, mock_repo_class_meta, mock_repo_class):
+    # Arrange
+    mock_repo_class_meta.return_value.heads = [
+        MagicMock(name='main'),
+    ]
+    mock_repo_instance = mock_repo_class.return_value
+
+    # Act
+    git_agent = LocalGitAgent("tests")
+    git_agent.clone_repository()
+
+    # Assert
+    print(git_agent.repo)
+    assert git_agent.repo == mock_repo_instance
+    mock_clone_chosen_branch.assert_not_called()
+    mock_clone_default_branch.assert_not_called()
