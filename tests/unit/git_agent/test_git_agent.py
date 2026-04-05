@@ -439,14 +439,17 @@ def test_gitverse_agent_star_repository_already_starred(
             mock_get.assert_called_once()
             mock_put.assert_not_called()
 
+
 @patch("osa_tool.core.git.git_agent.Repo")
 @patch("osa_tool.core.git.metadata.Repo")
 @patch.object(LocalGitAgent, "_clone_chosen_branch")
 @patch.object(LocalGitAgent, "_clone_default_branch")
-def test_local_git_agent_cloning(mock_clone_default_branch, mock_clone_chosen_branch, mock_repo_class_meta, mock_repo_class):
+def test_local_git_agent_cloning(
+    mock_clone_default_branch, mock_clone_chosen_branch, mock_repo_class_meta, mock_repo_class
+):
     # Arrange
     mock_repo_class_meta.return_value.heads = [
-        MagicMock(name='main'),
+        MagicMock(name="main"),
     ]
     mock_repo_instance = mock_repo_class.return_value
 
