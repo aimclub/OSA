@@ -12,7 +12,6 @@ from pandas import DataFrame
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent
 from osa_tool.core.git.metadata import RepositoryMetadata
-from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
 from osa_tool.operations.docs.readme_generation.inputs.pypi_status_checker import PyPiPackageInspector
 from osa_tool.operations.docs.readme_generation.readme_agent import ReadmeAgent
@@ -25,14 +24,15 @@ from osa_tool.utils.utils import logger, rich_section, parse_git_url, delete_rep
 
 
 async def generate_report(config_manager: ConfigManager, metadata: RepositoryMetadata, args) -> None:
-    """Async wrapper for generating PDF report."""
-    reports_dir = os.path.join(os.path.dirname(args.table_path), "reports")
-    os.makedirs(reports_dir, exist_ok=True)
-
-    report_gen = ReportGenerator(config_manager, metadata)
-    report_gen.output_path = os.path.join(reports_dir, f"{metadata.name}_report.pdf")
-
-    await asyncio.to_thread(report_gen.build_pdf)
+    # """Async wrapper for generating PDF report."""
+    # reports_dir = os.path.join(os.path.dirname(args.table_path), "reports")
+    # os.makedirs(reports_dir, exist_ok=True)
+    #
+    # report_gen = ReportGenerator(config_manager, metadata)
+    # report_gen.output_path = os.path.join(reports_dir, f"{metadata.name}_report.pdf")
+    #
+    # await asyncio.to_thread(report_gen.build_pdf)
+    pass
 
 
 async def generate_readme(config_manager: ConfigManager, metadata: RepositoryMetadata, args) -> None:
