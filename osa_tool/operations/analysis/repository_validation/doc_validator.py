@@ -93,7 +93,7 @@ class DocValidator:
         Asynchronously validate a documentation file against the code repository.
 
         Returns:
-            dict: Validation result from the language model.
+            Tuple of assessed experiments with implementation paths and correspondence fields set.
         """
         if not self.__path_to_doc:
             raise ValueError("Document is missing! Please pass it using --attachment argument.")
@@ -109,15 +109,12 @@ class DocValidator:
             logger.error(f"Error while validating doc against repo: {e}")
             raise
 
-    async def __validate_doc_against_repo(self, code_files_info: str):
+    async def __validate_doc_against_repo(self, code_files_info: str) -> None:
         """
         Asynchronously validate the processed document content against the code repository.
 
         Args:
             code_files_info (str): Aggregated code files analysis.
-
-        Returns:
-            dict: Validation result from the language model.
         """
         logger.info("Validating doc against repository ...")
         for experiment in track(self.__experiments, description="Assessing experiments"):
