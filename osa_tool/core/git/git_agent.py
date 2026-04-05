@@ -12,7 +12,8 @@ from osa_tool.core.git.metadata import (
     GitHubMetadataLoader,
     GitLabMetadataLoader,
     GitverseMetadataLoader,
-    RepositoryMetadata, LocalMetadataLoader,
+    RepositoryMetadata,
+    LocalMetadataLoader,
 )
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import get_base_repo_url, parse_folder_name
@@ -593,7 +594,6 @@ class GitAgent(abc.ABC):
             List[str]: List of validated topics that exist on platform
         """
         pass
-
 
 
 class LocalGitAgent(GitAgent):

@@ -210,6 +210,7 @@ class GitHubMetadataLoader(MetadataLoader):
             license_url=license_info.get("url", ""),
         )
 
+
 FILE_MAP = {"makefile": "Makefile", "dockerfile": "Dockerfile", "cmakelists.txt": "CMake", "jenkinsfile": "Groovy"}
 EXT_MAP = {
     ".py": "Python",
@@ -235,7 +236,8 @@ EXT_MAP = {
     ".tsx": "React TSX",
     ".vue": "Vue",
 }
-LICENSE_NAMES = {'license', 'copying', 'license.md', 'license.txt', 'copying.md'}
+LICENSE_NAMES = {"license", "copying", "license.md", "license.txt", "copying.md"}
+
 
 class LocalMetadataLoader(MetadataLoader):
     @classmethod
@@ -263,9 +265,9 @@ class LocalMetadataLoader(MetadataLoader):
             watchers_count=0,
             open_issues_count=0,
             default_branch=default_branch,
-            created_at=dates['created_at'],
-            updated_at=dates['updated_at'],
-            pushed_at=dates['pushed_at'],
+            created_at=dates["created_at"],
+            updated_at=dates["updated_at"],
+            pushed_at=dates["pushed_at"],
             size_kb=size,
             clone_url_http=remotes["clone_url_http"],
             clone_url_ssh=remotes["clone_url_ssh"],
@@ -286,7 +288,7 @@ class LocalMetadataLoader(MetadataLoader):
 
     @classmethod
     def _find_license(cls) -> str | None:
-        files = [f for f in cls.repo.git.ls_files().split('\n') if '/' not in f]
+        files = [f for f in cls.repo.git.ls_files().split("\n") if "/" not in f]
         license_file = None
         for f in files:
             if f.lower() in LICENSE_NAMES:
@@ -295,20 +297,19 @@ class LocalMetadataLoader(MetadataLoader):
 
         if license_file:
             full_path = os.path.join(cls.repo_path, license_file)
-            with open(full_path, 'r', encoding='utf-8') as f:
+            with open(full_path, "r", encoding="utf-8") as f:
                 content = f.read(500)
 
-                if re.search(r'MIT', content, re.I):
+                if re.search(r"MIT", content, re.I):
                     return "MIT"
-                if re.search(r'Apache', content, re.I):
+                if re.search(r"Apache", content, re.I):
                     return "Apache 2.0"
-                if re.search(r'GNU|GPL', content, re.I):
+                if re.search(r"GNU|GPL", content, re.I):
                     return "GPL"
-                if re.search(r'BSD', content, re.I):
+                if re.search(r"BSD", content, re.I):
                     return "BSD"
 
         return None
-
 
     @classmethod
     def _load_dates(cls) -> dict[str, str]:
@@ -380,7 +381,7 @@ class LocalMetadataLoader(MetadataLoader):
     def _get_default_branch(cls) -> str:
         local_branches = [b.name for b in cls.repo.heads]
 
-        for priority_name in ['master', 'main']:
+        for priority_name in ["master", "main"]:
             if priority_name in local_branches:
                 return priority_name
 
