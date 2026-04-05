@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import shutil
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -40,9 +41,16 @@ async def generate_readme(config_manager: ConfigManager, metadata: RepositoryMet
     os.makedirs(readmes_dir, exist_ok=True)
 
     readme_agent = ReadmeAgent(config_manager, metadata, None, "Generate or upgrade README")
-    readme_agent.file_to_save = os.path.join(readmes_dir, f"{metadata.name}_README.md")
+    dest_path = os.path.join(readmes_dir, f"{metadata.name}_README.md")
+    readme_agent.file_to_save = dest_path
 
     await asyncio.to_thread(readme_agent.generate_readme)
+    # Pipeline writer always writes under the clone; copy to aggregated readmes for multi-run.
+    src = os.path.join(readme_agent.repo_path, "README.md")
+    if os.path.isfile(src):
+        shutil.copy2(src, dest_path)
+    else:
+        logger.warning("README not found at clone path after generation: %s", src)
 
 
 async def run_async_tasks(config_manager: ConfigManager, git_agent, args):
@@ -74,7 +82,9 @@ def process_repository_stage1(repo_url: str, args) -> dict:
     # Setup logging per repository
     _, _, repo_name, _ = parse_git_url(repo_url)
     log_file = os.path.join(logs_dir, f"{repo_name}.log")
+    logger.setLevel(logging.DEBUG)
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     logger.addHandler(file_handler)
     logger.info(f"Started processing repository: {repo_url}")
@@ -138,6 +148,8 @@ def process_repository_stage1(repo_url: str, args) -> dict:
         logger.error(f"Error during Stage 1 for {repo_url}: {e}")
 
     finally:
+        file_handler.flush()
+        file_handler.close()
         logger.removeHandler(file_handler)
 
         # Remove cloned repo if docstring generation not required
@@ -167,7 +179,9 @@ def process_docstrings_for_repo(repo_url: str, args, df: DataFrame) -> None:
     log_file = os.path.join(logs_dir, f"{repo_name}.log")
 
     # Append to existing log file
+    logger.setLevel(logging.DEBUG)
     file_handler = logging.FileHandler(log_file, encoding="utf-8", mode="a")
+    file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     logger.addHandler(file_handler)
 
@@ -206,6 +220,8 @@ def process_docstrings_for_repo(repo_url: str, args, df: DataFrame) -> None:
         logger.error(f"Error generating docstrings for {repo_url}: {e}")
 
     finally:
+        file_handler.flush()
+        file_handler.close()
         logger.removeHandler(file_handler)
 
 
