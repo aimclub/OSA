@@ -74,13 +74,28 @@ nav:
                   - Docs Run: api/operations/docs/community_docs_generation/docs_run.md
                   - License Generation: api/operations/docs/community_docs_generation/license_generation.md
               - README Generation:
-                  - README Core: api/operations/docs/readme_generation/readme_core.md
-                  - README Base Builder: api/operations/docs/readme_generation/generator/base_builder.md
-                  - README Builder: api/operations/docs/readme_generation/generator/builder.md
-                  - README Builder Article: api/operations/docs/readme_generation/generator/builder_article.md
-                  - README Header: api/operations/docs/readme_generation/generator/header.md
-                  - README Installation: api/operations/docs/readme_generation/generator/installation.md
-                  - LLM Service Model: api/operations/docs/readme_generation/models/llm_service.md
+                  - README Agent: api/operations/docs/readme_generation/readme_agent.md
+                  - Sections:
+                      - Header: api/operations/docs/readme_generation/sections/header.md
+                      - Installation: api/operations/docs/readme_generation/sections/installation.md
+                  - Pipeline:
+                      - Graph: api/operations/docs/readme_generation/pipeline/graph.md
+                      - State: api/operations/docs/readme_generation/pipeline/state.md
+                      - Runtime Context: api/operations/docs/readme_generation/pipeline/runtime_context.md
+                      - Models: api/operations/docs/readme_generation/pipeline/models.md
+                      - LLM Schemas: api/operations/docs/readme_generation/pipeline/llm_schemas.md
+                      - Section Catalog: api/operations/docs/readme_generation/pipeline/section_catalog.md
+                      - Section Catalog Entries: api/operations/docs/readme_generation/pipeline/section_catalog_entries.md
+                      - Nodes:
+                          - Assembler: api/operations/docs/readme_generation/pipeline/nodes/assembler.md
+                          - Context Collector: api/operations/docs/readme_generation/pipeline/nodes/context_collector.md
+                          - Deterministic Builder: api/operations/docs/readme_generation/pipeline/nodes/deterministic_builder.md
+                          - Intent Analyzer: api/operations/docs/readme_generation/pipeline/nodes/intent_analyzer.md
+                          - README Patch: api/operations/docs/readme_generation/pipeline/nodes/readme_patch.md
+                          - Section Generator: api/operations/docs/readme_generation/pipeline/nodes/section_generator.md
+                          - Section Planner: api/operations/docs/readme_generation/pipeline/nodes/section_planner.md
+                          - Self Eval: api/operations/docs/readme_generation/pipeline/nodes/self_eval.md
+                          - Writer: api/operations/docs/readme_generation/pipeline/nodes/writer.md
       - Agents:
           - Base: api/osa_agent/base.md
           - Context: api/osa_agent/context.md
