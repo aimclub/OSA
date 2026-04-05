@@ -166,17 +166,6 @@ def parse_git_url(repo_url: str) -> tuple[str, str, str, str]:
     return host_domain, host, name, full_name
 
 
-def get_dir_size(path: str) -> int:
-    """Calculates the total size of a directory and its subdirectories in kb."""
-    total = 0
-    with os.scandir(path) as it:
-        for entry in it:
-            if entry.is_file(follow_symlinks=False):
-                total += entry.stat(follow_symlinks=False).st_size
-            elif entry.is_dir(follow_symlinks=False):
-                total += get_dir_size(entry.path)
-    return int(total / 1024)
-
 def get_repo_tree(repo_path: str) -> str:
     """
     Builds a text representation of the project file tree, excluding the .git directory.

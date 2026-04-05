@@ -54,7 +54,6 @@ def main():
 
     # Initialize logging
     logs_dir = os.path.join(os.path.dirname(osa_project_root()), "logs")
-    print(logs_dir)
     repo_name = parse_folder_name(args.repository)
     setup_logging(repo_name, logs_dir)
 
@@ -69,6 +68,10 @@ def main():
 
         # Initialize Git agent and Workflow Manager for used platform, perform operations
         git_agent, workflow_manager = initialize_git_platform(args)
+
+        if isinstance(git_agent, LocalGitAgent):
+            create_fork = False
+            create_pull_request = False
 
         if create_fork:
             git_agent.star_repository()
