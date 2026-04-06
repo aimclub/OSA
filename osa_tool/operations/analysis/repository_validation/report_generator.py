@@ -191,12 +191,12 @@ class ReportGenerator:
         return title_line1, title_line2
 
     @staticmethod
-    def __build_brief(experiments) -> tuple:
+    def __build_brief(experiments: tuple[Experiment, ...]) -> tuple:
         """
         Builds the first section of the report with correspondence and percentage metrics.
 
         Args:
-            experiments (tuple[Experiments])
+            experiments (tuple[Experiment]): JSON containing report data.
 
         Returns:
             tuple[Paragraph]: Paragraph elements for the section.
@@ -209,7 +209,7 @@ class ReportGenerator:
             leading=16,
             alignment=0,
         )
-        correspondence_sum = sum(e.correspondence_percent for e in experiments)
+        correspondence_sum = sum(e.correspondence_percent for e in experiments if e.correspondence_percent)
         percentages = int(correspondence_sum / len(experiments) * 100)
         formula = "C = (Σ p<sub>i</sub> / n) × 100" f" = ({correspondence_sum:.2f} / {len(experiments)}) × 100"
         percentages_text = Paragraph(
