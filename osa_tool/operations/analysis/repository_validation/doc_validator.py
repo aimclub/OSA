@@ -1,6 +1,4 @@
 import asyncio
-import base64
-import json
 import os
 
 from rich.progress import track
