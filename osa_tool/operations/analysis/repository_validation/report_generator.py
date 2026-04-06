@@ -5,7 +5,14 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfgen.canvas import Canvas
-from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import (
+    Flowable,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
@@ -32,13 +39,13 @@ class RoundedCard(Flowable):
         self._wrapped_content: list[tuple[Flowable, float]] = []
         self._height = 0
 
-    def wrap(self, availWidth, availHeight):
+    def wrap(self, aW: float, aH: float):
         inner_width = max(1, self.width - (2 * self.padding))
         self._wrapped_content = []
 
         inner_height = 0.0
         for flowable in self.content:
-            _, h = flowable.wrap(inner_width, availHeight)
+            _, h = flowable.wrap(inner_width, aH)
             self._wrapped_content.append((flowable, h))
             inner_height += h
 
@@ -202,18 +209,11 @@ class ReportGenerator:
             leading=16,
             alignment=0,
         )
-        # TODO: extract calculations to the separate module, + place for constants
         correspondence_sum = sum(e.correspondence_percent for e in experiments)
         percentages = int(correspondence_sum / len(experiments) * 100)
-        formula = (
-            "C = (Σ p<sub>i</sub> / n) × 100"
-            f" = ({correspondence_sum:.2f} / {len(experiments)}) × 100"
-        )
+        formula = "C = (Σ p<sub>i</sub> / n) × 100" f" = ({correspondence_sum:.2f} / {len(experiments)}) × 100"
         percentages_text = Paragraph(
-            (
-                f"<b>Correspondence percentages: {percentages}%</b> "
-                f"(<i>{formula}</i>)"
-            ),
+            (f"<b>Correspondence percentages: {percentages}%</b> " f"(<i>{formula}</i>)"),
             normal_style,
         )
         num_experiments = Paragraph(f"<b>Number of experiments found: {len(experiments)}</b>", normal_style)
@@ -262,6 +262,7 @@ class ReportGenerator:
 
         cards = []
         for i, experiment in enumerate(experiments):
+            card_content = []
             header_row = Table(
                 [
                     [
@@ -288,8 +289,7 @@ class ReportGenerator:
                     ]
                 )
             )
-
-            card_content = [header_row]
+            card_content.append(header_row)
             card_content.append(
                 Paragraph(
                     f"<b>Formulation stated:</b> {experiment.description_from_paper}",
