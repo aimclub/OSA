@@ -38,6 +38,7 @@ def generator(mock_config):
 
 
 def test_get_existing_context_both_files(generator):
+    # Arrange
     req_path = MagicMock()
     req_path.exists.return_value = True
     req_path.read_text.return_value = "old-reqs==1.0"
@@ -46,8 +47,10 @@ def test_get_existing_context_both_files(generator):
     pyproj_path.exists.return_value = True
     pyproj_path.read_text.return_value = "[project] dependencies"
 
+    # Act
     context = generator._get_existing_context(req_path, pyproj_path)
 
+    # Assert
     assert "--- EXISTING REQUIREMENTS.TXT ---" in context
     assert "old-reqs==1.0" in context
     assert "--- EXISTING PYPROJECT.TOML ---" in context
@@ -55,21 +58,28 @@ def test_get_existing_context_both_files(generator):
 
 
 def test_get_existing_context_none(generator):
+    # Arrange
     req_path = MagicMock()
     req_path.exists.return_value = False
     pyproj_path = MagicMock()
     pyproj_path.exists.return_value = False
 
+    # Act
     context = generator._get_existing_context(req_path, pyproj_path)
+
+    # Assert
     assert context == ""
 
 
 @patch("subprocess.run")
 def test_run_pipreqs_success_first_try(mock_subprocess, generator):
+    # Arrange
     mock_subprocess.return_value = MagicMock(returncode=0)
 
+    # Act
     result = generator._run_pipreqs(scan_notebooks=True)
 
+    # Assert
     assert result.returncode == 0
     cmd_args = mock_subprocess.call_args[0][0]
     assert "--scan-notebooks" in cmd_args
@@ -77,8 +87,10 @@ def test_run_pipreqs_success_first_try(mock_subprocess, generator):
 
 @patch("subprocess.run")
 def test_run_pipreqs_fail(mock_subprocess, generator):
+    # Arrange
     mock_subprocess.side_effect = subprocess.CalledProcessError(1, "cmd", stderr="error")
 
+    # Act
     with pytest.raises(subprocess.CalledProcessError):
         generator._run_pipreqs(scan_notebooks=False)
 
@@ -90,9 +102,7 @@ def test_run_pipreqs_fail(mock_subprocess, generator):
     "osa_tool.operations.codebase.requirements_generation.requirements_generation.RequirementsGenerator._refine_with_llm"
 )
 def test_generate_success_simple(mock_refine, mock_run_pipreqs, generator):
-    """
-    Happy path: Repo exists, pipreqs works first time, context found -> LLM called.
-    """
+    # Arrange
     generator.repo_path.exists.return_value = True
 
     req_file_mock = MagicMock()
@@ -129,19 +139,15 @@ def test_generate_success_simple(mock_refine, mock_run_pipreqs, generator):
     "osa_tool.operations.codebase.requirements_generation.requirements_generation.RequirementsGenerator._run_pipreqs"
 )
 def test_generate_retry_logic(mock_run_pipreqs, generator):
-    """
-    Scenario: Pipreqs fails with notebooks, retries without notebooks and succeeds.
-    """
+    # Arrange
     generator.repo_path.exists.return_value = True
 
-    # Mock file reading (no context)
     req_file = generator.repo_path / "requirements.txt"
     req_file.exists.return_value = False
 
-    # Mock pipreqs
     mock_run_pipreqs.side_effect = [
-        subprocess.CalledProcessError(1, "cmd", stderr="notebook error"),  # 1st call
-        MagicMock(returncode=0),  # 2nd call
+        subprocess.CalledProcessError(1, "cmd", stderr="notebook error"),
+        MagicMock(returncode=0),
     ]
 
     # Act
@@ -163,7 +169,7 @@ def test_generate_retry_logic(mock_run_pipreqs, generator):
     "osa_tool.operations.codebase.requirements_generation.requirements_generation.RequirementsGenerator._run_pipreqs"
 )
 def test_generate_fatal_failure(mock_run_pipreqs, generator):
-    """Scenario: Pipreqs fails both times."""
+    # Arrange
     generator.repo_path.exists.return_value = True
 
     req_file_mock = MagicMock()
@@ -175,18 +181,18 @@ def test_generate_fatal_failure(mock_run_pipreqs, generator):
         subprocess.CalledProcessError(1, "cmd", stderr="err2"),
     ]
 
-    # Act / Assert
+    # Act
     with pytest.raises(subprocess.CalledProcessError):
         generator.generate()
 
+    # Assert
     assert len(generator.events) == 3
     assert generator.events[2].kind == EventKind.FAILED
     assert generator.events[2].data["mode"] == "no-notebooks"
 
 
 def test_refine_with_llm_writes_file(generator):
-    """Test that _refine_with_llm actually writes to the file."""
-    # Setup
+    # Arrange
     req_path = MagicMock()
     req_path.read_text.return_value = "new-lib"
     old_context = "old-lib==1.0"
@@ -204,18 +210,22 @@ def test_refine_with_llm_writes_file(generator):
 
 
 def test_run_pipreqs_subprocess(generator):
-    """Test actual subprocess call composition."""
+    # Arrange
     with patch("subprocess.run") as mock_sp:
         mock_sp.return_value = MagicMock(stdout="ok")
 
-        # Test True
+        # Act
         generator._run_pipreqs(scan_notebooks=True)
         args_true = mock_sp.call_args[0][0]
+
+        # Assert
         assert "--scan-notebooks" in args_true
         assert "--force" in args_true
 
-        # Test False
+        # Act
         generator._run_pipreqs(scan_notebooks=False)
         args_false = mock_sp.call_args[0][0]
+
+        # Assert
         assert "--scan-notebooks" not in args_false
         assert str(generator.repo_path) in args_false

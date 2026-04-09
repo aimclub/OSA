@@ -278,13 +278,13 @@ def extract_readme_content(repo_path: str) -> str:
 
     If a README file exists in the repository, it will return its content.
     It checks for both "README.md" and "README.rst" files. If no README is found,
-    it returns a default message.
+    it returns a empty string.
 
     Args:
         repo_path: Path to the repository being explored.
 
     Returns:
-        str: The content of the README file or a message indicating absence.
+        str: The content of the README file or an empty string.
     """
     for file in ["README.md", "README_en.rst", "README.rst"]:
         readme_path = os.path.join(repo_path, file)
@@ -293,7 +293,7 @@ def extract_readme_content(repo_path: str) -> str:
             with open(readme_path, "r", encoding="utf-8") as f:
                 return f.read()
     else:
-        return "No README.md file"
+        return ""
 
 
 def detect_provider_from_url(url) -> str | None:
@@ -332,3 +332,10 @@ def detect_provider_from_url(url) -> str | None:
                 return provider
 
     return None
+
+
+def format_time(seconds: float) -> str:
+    """Convert *seconds* into ``HH:MM:SS`` format."""
+    hours, remainder = divmod(int(seconds), 3600)
+    minutes, secs = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"

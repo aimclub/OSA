@@ -1,6 +1,4 @@
 import asyncio
-import base64
-import json
 import os
 
 from rich.progress import track
@@ -9,6 +7,7 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.core.models.event import EventKind, OperationEvent
+from osa_tool.core.models.llm_output_models import LlmJsonObject
 from osa_tool.operations.analysis.repository_validation.analyze.paper_analyzer import (
     PaperAnalyzer,
 )
@@ -21,7 +20,6 @@ from osa_tool.operations.analysis.repository_validation.report_generator import 
 )
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.response_cleaner import JsonProcessor
 
 
 class DocValidator:
@@ -95,7 +93,7 @@ class DocValidator:
         Asynchronously validate a documentation file against the code repository.
 
         Returns:
-            dict: Validation result from the language model.
+            Tuple of assessed experiments with implementation paths and correspondence fields set.
         """
         if not self.__path_to_doc:
             raise ValueError("Document is missing! Please pass it using --attachment argument.")
@@ -111,15 +109,12 @@ class DocValidator:
             logger.error(f"Error while validating doc against repo: {e}")
             raise
 
-    async def __validate_doc_against_repo(self, code_files_info: str):
+    async def __validate_doc_against_repo(self, code_files_info: str) -> None:
         """
         Asynchronously validate the processed document content against the code repository.
 
         Args:
             code_files_info (str): Aggregated code files analysis.
-
-        Returns:
-            dict: Validation result from the language model.
         """
         logger.info("Validating doc against repository ...")
         for experiment in track(self.__experiments, description="Assessing experiments"):
@@ -129,7 +124,7 @@ class DocValidator:
                     experiment_description=experiment.description_from_paper,
                     code_files_info=code_files_info,
                 ),
-                parser=lambda raw: JsonProcessor.parse(raw),
+                parser=LlmJsonObject,
             )
             experiment.impl_src_path = experiment_assessment["implemented_in"]
             experiment.missing = experiment_assessment["missing_critical_components"]

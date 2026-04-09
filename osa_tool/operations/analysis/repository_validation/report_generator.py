@@ -143,15 +143,15 @@ class ReportGenerator:
         return title_line1, title_line2
 
     @staticmethod
-    def __build_brief(experiments) -> tuple:
+    def __build_brief(experiments: tuple[Experiment, ...]) -> tuple[Paragraph, Paragraph]:
         """
         Builds the first section of the report with correspondence and percentage metrics.
 
         Args:
-            experiments (tuple[Experiments])
+            experiments: Assessed experiments used to compute aggregate correspondence.
 
         Returns:
-            tuple[Paragraph]: Paragraph elements for the section.
+            Paragraph elements for correspondence summary and experiment count.
         """
         styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(

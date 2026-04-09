@@ -208,7 +208,7 @@ def test_extract_readme_content_no_readme():
         content = extract_readme_content("/fake/path")
 
         # Assert
-        assert content == "No README.md file"
+        assert content == ""
 
 
 def test_extract_readme_content_prefer_md():
