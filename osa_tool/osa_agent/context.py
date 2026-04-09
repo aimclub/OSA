@@ -1,5 +1,5 @@
 from osa_tool.config.osa_config import OSAConfig
-from osa_tool.core.llm.llm import ModelHandlerFactory
+from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 
 
 class AgentContext:
@@ -29,7 +29,7 @@ class AgentContext:
         self.create_pull_request = self.agent_config.create_pull_request
         self.delete_repo = self.agent_config.delete_dir
 
-    def get_model_handler(self, task_type: str = "general"):
+    def get_model_handler(self, task_type: str = "general") -> ModelHandler:
         """
         Get a model handler configured for a specific task type.
 

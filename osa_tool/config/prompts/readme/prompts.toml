@@ -1,0 +1,1038 @@
+# LLM prompts for the README generation agent pipeline.
+
+[prompts]
+preanalysis = """
+TASK:
+Based on the repository file tree and README, select the 4-8 most informative files for downstream README generation.
+
+Select the 4-8 most informative files for downstream README generation.
+
+Selection intent:
+- Maximize coverage of purpose, architecture, and usage signals.
+- Return files in strict priority order (most informative first).
+
+Prioritize in this order:
+1. Runtime entry points and orchestration files (main/app/cli/__main__ scripts)
+2. Core modules with primary business logic
+3. Configuration/setup manifests (pyproject, setup, package manifests, build files)
+4. Representative examples or demos that show real usage patterns
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "key_files": [
+        "most/important/file.py",
+        "second/important/file.py"
+    ]
+}}
+
+RULES:
+- Return 4-8 files, ordered by importance (most important first).
+- Each string is a relative path exactly matching a path in the tree.
+- Exclude tests, CI-only files, generated artifacts, and README files.
+- Prefer files with stable project meaning over incidental utility scripts.
+- Return only valid JSON without explanations.
+
+INPUT DATA:
+
+1. REPOSITORY FILE TREE:
+
+{repository_tree}
+
+2. README CONTENT:
+
+{readme_content}
+"""
+
+citation = """
+TASK:
+Extract repository or paper citation material from the README (BibTeX, DOI, reference text, publication block).
+If no citation is present, return an empty string.
+
+Output JSON exactly in this format:
+
+{{
+    "text": "text"
+}}
+
+RULES:
+
+1. Return only citation content (no labels, commentary, or markdown wrappers unless part of citation).
+2. If multiple citations exist, include all in source order separated by a blank line.
+3. If no citation is found, return an empty string ("").
+4. Preserve original citation formatting as closely as possible.
+
+INPUT DATA:
+
+{readme}
+"""
+
+repo_analysis = """
+TASK:
+Analyze repository evidence and produce a compact, evidence-grounded assessment.
+
+Determine the following:
+1. **Project type**: ML/AI, CLI tool, library/SDK, web app, data pipeline, or other
+2. **Tech stack**: primary language(s), frameworks, key dependencies
+3. **Architecture**: monolith, microservices, plugin-based, notebook-based, etc.
+4. **Quality signals**: presence of tests, CI/CD, documentation, examples, type hints
+5. **Target audience**: researchers, developers, data scientists, end-users
+
+Output a concise synthesis covering all five points.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "text"
+}}
+
+RULES:
+- Use only provided evidence; do not infer unsupported frameworks or workflows.
+- Distinguish strong evidence from weak hints (use cautious wording when uncertain).
+- Prefer concrete observations over generic statements.
+- Keep the output compact and scannable.
+
+INPUT DATA:
+
+1. REPOSITORY TREE:
+
+{repository_tree}
+
+2. KEY FILES CONTENT:
+
+{key_files_content}
+
+3. EXISTING README:
+
+{existing_readme}
+"""
+
+readme_analysis = """
+TASK:
+Evaluate the existing README for quality and fitness for developer onboarding.
+
+Assess the following dimensions:
+1. **Completeness**: which standard sections exist (overview, installation, usage/getting started, examples, API reference, contributing, license) and which are missing
+2. **Accuracy**: does the README reflect the current state of the code (outdated commands, wrong dependencies, etc.)
+3. **Clarity**: is the writing clear, well-structured, and easy to scan for developers
+4. **Section quality**: for each existing section, rate quality as good/adequate/poor
+5. **Gaps**: specific improvements that would have the highest impact
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "text"
+}}
+
+RULES:
+- Focus on high-impact, actionable findings.
+- Flag concrete risk points (outdated commands, ambiguous setup, contradictory claims).
+- Avoid generic advice ("add more details") without specifying what and where.
+- Stay concise; prioritize issues by impact.
+
+INPUT DATA:
+
+1. EXISTING README:
+
+{existing_readme}
+
+2. REPOSITORY ANALYSIS:
+
+{repo_analysis}
+
+3. REPOSITORY TREE:
+
+{repository_tree}
+"""
+
+article_analysis = """
+TASK:
+Analyze the associated scientific article (PDF) for README-relevant signals.
+
+Extract and summarize:
+1. **Main contributions**: what novel methods, datasets, or findings does the paper present
+2. **Methodology**: key algorithms, experimental setup, evaluation approach
+3. **Results**: primary findings and their significance
+4. **Code connection**: how well the repository reflects or implements the paper's methodology
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "text"
+}}
+
+RULES:
+- Separate paper claims from repository evidence; do not assume full parity.
+- Avoid copying long paper prose; summarize only README-relevant points.
+- Do not invent metrics, datasets, or experimental settings not present in input.
+- Keep output concise and implementation-oriented.
+
+INPUT DATA:
+
+1. PDF CONTENT:
+
+{pdf_content}
+
+2. REPOSITORY ANALYSIS:
+
+{repo_analysis}
+
+3. EXISTING README:
+
+{existing_readme}
+"""
+
+self_eval = """
+TASK:
+Evaluate the generated README and decide whether to stop or run targeted regeneration.
+
+Score the README on a scale of 1-10 based on:
+- Completeness: does it cover all essential sections
+- Accuracy: does it reflect the repository correctly
+- Clarity: is it well-written and easy to follow
+- Structure: proper markdown formatting, logical flow
+- User request alignment: does it address what the user asked for (if applicable)
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "score": 6,
+    "issues": ["issue 1 description", "issue 2 description"],
+    "should_stop": true,
+    "sections_to_rerun": [],
+    "section_feedback": {{}}
+}}
+
+- "sections_to_rerun": internal section names from **PLANNED SECTION NAMES** below that need regeneration (LLM prose
+  sections only, e.g. "overview", "getting_started"). Use [] if a whole-document patch is enough.
+- "section_feedback": map section internal name -> short instructions for that section's generator (concrete, actionable).
+  Omit keys you do not want to rerun.
+
+Set "should_stop" to true if the README is good enough (score >= 8) or if remaining issues are minor.
+
+RULES:
+- Report issues as concrete defects, not preferences.
+- Prefer section reruns only when defects are clearly localized to specific sections.
+- If multiple sections repeat the same flaw, mention root cause once and map precise feedback per affected section.
+- Never include section names outside PLANNED SECTION NAMES.
+- Keep issue phrasing short and actionable.
+- If **INTENT SCOPE** is `partial` or **ASSEMBLY MODE** is `merge_existing`, prefer `sections_to_rerun` for
+  localized defects; avoid listing whole-document rewrite issues unless the defect is global (broken markdown,
+  wrong repository, contradictory title).
+
+INPUT DATA:
+
+1. GENERATED README:
+
+{readme}
+
+2. REPOSITORY ANALYSIS:
+
+{repo_analysis}
+
+3. GENERATION PLAN:
+
+{generation_plan}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. PREVIOUS ISSUES (if any):
+
+{previous_issues}
+
+6. PLANNED SECTION INTERNAL NAMES (for sections_to_rerun only):
+
+{planned_section_names}
+
+7. INTENT SCOPE:
+
+{intent_scope}
+
+8. INTENT TASK TYPE:
+
+{intent_task_type}
+
+9. AFFECTED SECTIONS:
+
+{affected_sections}
+
+10. ASSEMBLY MODE:
+
+{assembly_mode}
+"""
+
+refine_with_feedback = """
+TASK:
+Improve the README based on the specific issues identified during evaluation.
+
+Fix each issue while preserving the overall structure and content that is already good.
+Do not rewrite from scratch; make targeted improvements.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "text"
+}}
+
+RULES:
+- Resolve each listed issue explicitly.
+- Preserve accurate content and document structure unless a change is required to fix an issue.
+- Remove redundancy and contradictions introduced during prior generation.
+- Do not introduce unsupported facts, commands, or claims.
+- Keep style and tone consistent with the rest of the README.
+- If **INTENT SCOPE** is `partial` or **ASSEMBLY MODE** is `merge_existing`, apply **surgical** edits only:
+  do not restructure the whole README, reorder major sections, or rewrite unrelated parts.
+
+INPUT DATA:
+
+1. CURRENT README:
+
+{readme}
+
+2. ISSUES TO FIX:
+
+{issues}
+
+3. GENERATION PLAN:
+
+{generation_plan}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. INTENT SCOPE:
+
+{intent_scope}
+
+6. AFFECTED SECTIONS:
+
+{affected_sections}
+
+7. ASSEMBLY MODE:
+
+{assembly_mode}
+"""
+
+intent_analysis = """
+TASK:
+Analyze the user's request and repository state to determine the intent for README generation.
+
+Based on the inputs below, determine:
+1. **task_type**: one of "generate", "improve", or "update"
+   - "generate": No README exists, or user asks for a fresh README from scratch
+   - "improve": README exists and user wants to enhance it globally (better quality, more sections, etc.)
+   - "update": User requests changes to specific sections only
+2. **scope**: "full" or "partial"
+   - "full": Entire README should be (re)generated or improved
+   - "partial": Only specific sections should be modified
+3. **affected_sections**: list of section names the user explicitly or implicitly refers to (empty list for full scope)
+   - Use descriptive names like "overview", "installation", "getting_started", "api_reference", "benchmarks", etc.
+4. **incorporate_paper**: true if a scientific paper/PDF is attached AND relevant to the README
+5. **reasoning**: brief explanation of your decision
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "task_type": "generate",
+    "scope": "full",
+    "affected_sections": [],
+    "incorporate_paper": false,
+    "reasoning": "text"
+}}
+
+INPUT DATA:
+
+1. REPOSITORY ANALYSIS:
+
+{repo_analysis}
+
+2. README ANALYSIS:
+
+{readme_analysis}
+
+3. ARTICLE ANALYSIS (if available):
+
+{article_analysis}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. HAS EXISTING README: {has_existing_readme}
+
+6. HAS ATTACHMENT: {has_attachment}
+
+RULES:
+- Prioritize explicit user intent over inferred intent.
+- Decision table (apply first matching row):
+  1) User names specific README sections or a narrow edit (e.g. "fix Usage", "add install step") ->
+     `task_type` = "update", `scope` = "partial", fill `affected_sections` with matching internal names
+     (overview, installation, getting_started, usage, api_reference, etc.).
+  2) User asks to rewrite / regenerate the whole README, or no README exists and they want one ->
+     `scope` = "full"; use `task_type` "generate" if no README, else "improve" unless they clearly want
+     only specific sections (row 1).
+  3) Request is vague but a README exists (e.g. "make it better") ->
+     default `task_type` = "improve", `scope` = "full", `affected_sections` = [].
+  4) Request is vague and no README exists ->
+     default `task_type` = "generate", `scope` = "full", `affected_sections` = [].
+- Keep `affected_sections` empty for full-scope tasks.
+- Set `incorporate_paper` to true only when a paper exists and is relevant to requested output.
+- Keep `reasoning` short, concrete, and evidence-based.
+"""
+
+section_planning = """
+TASK:
+Choose which **LLM-written** README sections to include (a small set - not a textbook).
+
+For **full**-scope runs, the pipeline also schedules deterministic sections (header, table of contents, installation,
+examples, documentation, contributing, license, citation) when applicable. For **partial**-scope runs, only
+deterministic sections explicitly referenced in **AFFECTED SECTIONS** are scheduled; do not assume every
+deterministic block will be rebuilt.
+
+You must **only** pick section **internal names** from the allowed list below. Do **not** output titles,
+descriptions, priorities, or prompt_context_keys - the system fills those from a catalog (typically **3-6** names;
+rarely more than **7**).
+
+RULES (read carefully):
+- Prefer a SHORT README: fewer sections beat exhaustive coverage.
+- Do NOT mirror every bullet from README ANALYSIS or any "gaps / recommendations" list as separate section names.
+  Those notes are hints for accuracy, not a mandatory checklist.
+- Avoid overlap: use EITHER `getting_started` OR `usage`, not both (prefer `getting_started` for runnable entry).
+- Do NOT invent names outside the allowed list. If the user asks for FAQ/troubleshooting/changelog, pick the closest
+  allowed section or omit it (those names are usually not in the list).
+- Do NOT select `benchmarks` unless the repository context contains measured numbers or benchmark-related content.
+- Do NOT select `testing` if there is no tests suite, CI config, or test-related signals in the analysis/tree.
+- Tailor to the repo: a few scripts and notebooks rarely need `api_reference`, `architecture`, or long Method sections.
+- Do NOT pick deterministic-only names (already handled): `header`, `table_of_contents`, `installation`, `examples`,
+  `documentation`, `contributing`, `license`, `citation`.
+- If a scientific paper is attached and relevant (`incorporate_paper` or strong article analysis), consider `algorithms`
+  and/or `content`.
+- Prefer sections that improve developer onboarding first (overview/core_features/getting_started or usage).
+- For partial updates, select only sections necessary to satisfy the request; do not add extra LLM sections
+  for completeness unless the user or **AFFECTED SECTIONS** clearly requires them.
+
+ALLOWED LLM SECTION NAMES (internal snake_case - output **only** these strings in `section_names`):
+
+{llm_section_catalog}
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "section_names": ["overview", "core_features", "getting_started"]
+}}
+
+INPUT DATA:
+
+1. TASK TYPE: {task_type}
+2. SCOPE: {scope}
+3. AFFECTED SECTIONS: {affected_sections}
+4. INCORPORATE PAPER: {incorporate_paper}
+
+5. REPOSITORY ANALYSIS:
+
+{repo_analysis}
+
+6. README ANALYSIS:
+
+{readme_analysis}
+
+7. ARTICLE ANALYSIS (if available):
+
+{article_analysis}
+
+8. USER REQUEST (if any):
+
+{user_request}
+
+9. EXISTING README SECTIONS (extracted headings):
+
+{existing_sections}
+"""
+
+section_generate = """
+TASK:
+Generate the "{section_title}" section for a README file.
+
+SECTION INTERNAL NAME (use for constraints below): {section_name}
+
+SECTION PURPOSE:
+{section_description}
+
+RULES:
+- Facts only: describe what exists in the repository context (files, scripts, notebooks, commands that appear
+  in the snippets). Do NOT invent CLI flags, paths, filenames, package names, hyperparameters, benchmark numbers,
+  or FAQ answers that are not supported by the context.
+- If a detail is unknown, omit it or say briefly that users should inspect the listed files - do not guess.
+- Write lean Markdown. Do NOT include the section heading (no "## {section_title}") - it is added automatically.
+- Do NOT add a nested "FAQ" inside non-FAQ sections.
+- Escape any backslashes in JSON strings so the output is valid JSON (double backslashes for Windows paths).
+- If improving an existing section, keep accurate facts; drop marketing filler and speculative claims.
+- Keep output concise and scannable; avoid repeated claims across paragraphs/bullets.
+- Prefer developer-actionable wording and concrete repository anchors (paths, symbols, commands).
+
+SECTION-SPECIFIC CONSTRAINTS (apply when section internal name matches):
+- overview: 1-3 short paragraphs only. No bullet lists. Do NOT enumerate libraries or dependencies by name; you may
+  say "Python" once or refer readers to Installation / requirements. Focus on what the repo does and name real
+  entry-point files from the context.
+- core_features: at most 5 bullets. Each bullet must cite at least one concrete file name or function/class symbol
+  visible in the context. Do NOT add bullets that only restate the dependency stack, IDE tooling, type hints,
+  "clean code", "rich libraries", persistence alone, or other generic claims without a specific repo artifact.
+- getting_started: keep prerequisites short; do not paste a long package list-point to Installation or
+  requirements.txt if mentioned in context.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_overview = """
+TASK:
+Generate the **Overview** section for a README file.
+
+SECTION INTERNAL NAME: overview
+
+RULES:
+- Purpose: explain what the project does, who it is for, and where to start reading the code.
+- Length: 1 short paragraph (3-5 sentences), no bullet list.
+- Include:
+  1) primary project goal/problem,
+  2) primary developer audience or use context,
+  3) concrete entry points from repository context (script/notebook/package paths).
+- Exclude:
+  - feature enumeration (belongs to Core Features),
+  - setup or run steps (belongs to Installation / Getting Started),
+  - algorithm details (belongs to Methods and algorithms).
+- Do NOT enumerate third-party libraries/dependencies by name (you may mention "Python" once).
+- Facts only - no invented paths, commands, files, claims, or performance statements.
+- Keep tone neutral and technical (no marketing language).
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+Do NOT include a "## Overview" heading - it is added automatically.
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_core_features = """
+TASK:
+Generate the **Core Features** section for a README file.
+
+SECTION INTERNAL NAME: core_features
+
+RULES:
+- Purpose: list the project's most important capabilities for developers.
+- Output format: 3-5 bullets only.
+- Each bullet must:
+  1) describe one distinct capability,
+  2) reference at least one concrete repository artifact (file path or function/class symbol),
+  3) state the practical developer value in one concise sentence.
+- Order bullets by importance (most central capability first).
+- Exclude:
+  - installation/run instructions,
+  - repository structure mapping (belongs to Content),
+  - algorithm/method explanations (belongs to Algorithms),
+  - generic quality/tooling claims without concrete evidence.
+- Avoid overlap: do not repeat the same capability in different wording.
+- Facts only - no invented artifacts or behavior.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+Do NOT include a "## Core Features" heading - it is added automatically.
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_getting_started = """
+TASK:
+Generate the **Getting Started** section for a README file.
+
+SECTION INTERNAL NAME: getting_started
+
+RULES:
+- Purpose: help a developer run a first successful execution quickly.
+- Structure: brief prerequisites + minimal ordered steps (usually 3-6).
+- Include only commands, script paths, and config/data hints present in context.
+- Prefer one "quickstart path" over multiple alternatives unless alternatives are explicitly documented.
+- Do NOT paste long dependency lists; reference Installation or requirements files when relevant.
+- Include fenced code blocks only for verified commands/snippets from context.
+- Exclude deep feature explanations and architecture details.
+- Facts only - no invented flags, env vars, files, or setup steps.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+Do NOT include a "## Getting Started" heading - it is added automatically.
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_content = """
+TASK:
+Generate the **Project structure and components** section (high-level map of the codebase / modules).
+
+SECTION INTERNAL NAME: content
+
+RULES:
+- Purpose: provide a navigational map of repository components and their responsibilities.
+- Structure: short intro sentence + concise bullets (recommended 4-8 bullets).
+- Each bullet should map a major component (module/package/notebook/data/config area) to its role.
+- Describe relationships between components when evidence exists (e.g., "A feeds B", "C orchestrates D").
+- Avoid raw tree dumps and long file listings; prioritize conceptual grouping with concrete anchors.
+- Exclude:
+  - setup/usage commands,
+  - feature marketing statements,
+  - deep algorithm explanations (belongs to Algorithms).
+- If a paper is involved, align terminology with **article_analysis** but keep focus on repository organization.
+- Facts only - no invented modules, responsibilities, or data flows.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+Do NOT duplicate Installation or Getting Started commands unless essential for orientation.
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_usage = """
+TASK:
+Generate the **Usage** section (CLI / API patterns **after** install).
+
+SECTION INTERNAL NAME: usage
+
+RULES:
+- Purpose: show day-to-day invocation/import patterns after setup.
+- Include concrete usage forms (CLI command patterns, API calls, or module invocation) supported by context.
+- Prefer compact examples with short explanatory notes.
+- Do NOT duplicate Installation or full Getting Started flow.
+- Exclude speculative options/flags/endpoints not present in evidence.
+- If usage evidence is thin, provide a minimal safe note pointing to entry-point files.
+- Facts only - no invented interfaces.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_architecture = """
+TASK:
+Generate the **Architecture** section.
+
+SECTION INTERNAL NAME: architecture
+
+RULES:
+- Purpose: describe high-level system structure and component interactions.
+- Cover only major subsystems and key data/control flows evidenced by repo context.
+- Keep concise: short paragraphs or 4-7 bullets.
+- Exclude low-level implementation details and repetitive file-by-file listings.
+- If architecture evidence is limited, provide a minimal high-level view with explicit uncertainty.
+- Facts only - do not invent services, pipelines, or boundaries.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_api_reference = """
+TASK:
+Generate a concise **API Reference** (public functions/classes/modules that appear in key files).
+
+SECTION INTERNAL NAME: api_reference
+
+RULES:
+- Purpose: document stable/public usage surface for developers.
+- Include only symbols/patterns explicitly present in context.
+- Prefer compact bullet/table layout with symbol name + one-line purpose.
+- Exclude private/internal helpers unless they are the only usable interface.
+- If no clear API exists, state that it is script-oriented and point to concrete entry files.
+- Facts only - no invented signatures or behavior.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_testing = """
+TASK:
+Generate the **Testing** section.
+
+SECTION INTERNAL NAME: testing
+
+RULES:
+- Purpose: explain how contributors verify changes.
+- Include only verified test commands/frameworks/config paths from context.
+- Mention test scope signals when available (unit/integration/e2e folders, CI hooks).
+- If exact run command is unknown, state available test artifacts without guessing command syntax.
+- Keep concise and actionable.
+- Facts only - no fabricated commands, coverage numbers, or guarantees.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_benchmarks = """
+TASK:
+Generate the **Benchmarks** section.
+
+SECTION INTERNAL NAME: benchmarks
+
+RULES:
+- Purpose: present benchmark evidence and how it is reproduced.
+- Include only metrics/tables/commands explicitly present in context.
+- If numbers are absent but benchmarking workflow exists, document reproducible benchmark procedure only.
+- Distinguish measured results from expected claims.
+- Keep concise and technical; avoid marketing language.
+- No fabricated numbers, comparisons, or performance claims.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_algorithms = """
+TASK:
+Generate the **Methods and algorithms** section (research-oriented).
+
+SECTION INTERNAL NAME: algorithms
+
+RULES:
+- Purpose: explain the key methods/algorithms implemented or described by the project.
+- Base claims on **article_analysis**, PDF-derived context, and repository evidence.
+- Structure: 1 short intro + concise bullets/mini-subsections for major methods.
+- For each method, include when available:
+  1) what the method does,
+  2) where it appears in the repository (relevant files/modules),
+  3) notable assumptions/inputs/outputs.
+- Exclude:
+  - benchmark/result inflation or unsupported metrics,
+  - code-level implementation dumps,
+  - generic repository-structure narration (belongs to Content).
+- If reliable method detail is insufficient, explicitly provide a minimal fallback statement:
+  "The repository does not expose enough verified detail to document algorithmic internals; see referenced source files/paper sections."
+- Keep language precise and readable for developers.
+- Facts only - no invented methods, formulas, or claims.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "the section body only, in Markdown"
+}}
+
+INPUT DATA:
+
+1. PROJECT NAME: {project_name}
+
+2. REPOSITORY CONTEXT:
+
+{context_block}
+
+3. EXISTING SECTION CONTENT (if improving):
+
+{existing_section}
+
+4. USER REQUEST (if any):
+
+{user_request}
+
+5. REGENERATION FEEDBACK (if not N/A, apply to this section):
+
+{regeneration_hint}
+"""
+
+section_merge = """
+TASK:
+Merge newly generated sections into the existing README.
+
+You have an existing README and one or more newly generated sections.
+Produce one coherent README using the protocol below.
+
+MERGE PROTOCOL:
+1. Targeted replacement:
+   - Replace only sections listed in **SECTIONS BEING REPLACED** with the corresponding new section bodies.
+   - Preserve all non-targeted sections unless minimal edits are required for consistency.
+2. Semantic deduplication:
+   - Detect overlaps by meaning (not only exact text), especially across adjacent conceptual sections.
+   - If two passages communicate the same idea, keep one strongest version and remove/rewrite the weaker duplicate.
+3. Keep-best-content decision rule:
+   - Prefer content that is more specific, evidence-grounded, and actionable for developers.
+   - If specificity is equal, prefer the clearer and shorter wording.
+   - Do not keep multiple variants of the same claim.
+4. Coherence and flow:
+   - Ensure logical progression across sections (overview -> capabilities -> structure/methods -> usage/supporting sections).
+   - Fix abrupt transitions with minimal edits.
+5. Formatting and tone normalization:
+   - Preserve heading hierarchy and section order from the existing README unless a targeted section replacement requires local adjustment.
+   - Keep Markdown style, list formatting, punctuation, and tone uniform across the document.
+6. Safety constraints:
+   - Do not invent new facts, sections, commands, or claims.
+   - Do not remove critical information from unaffected sections.
+7. Strict targeting:
+   - Edit **only** the sections listed in **SECTIONS BEING REPLACED** (match by heading/topic to the new bodies).
+   - Do **not** rewrite, reorder, or substantially rephrase sections that are not listed there; at most allow
+     a single bridging sentence for readability if strictly necessary.
+
+OUTPUT:
+Return a JSON object:
+
+{{
+    "text": "text"
+}}
+
+INPUT DATA:
+
+1. EXISTING README:
+
+{existing_readme}
+
+2. NEWLY GENERATED SECTIONS:
+
+{new_sections}
+
+3. SECTIONS BEING REPLACED:
+
+{target_sections}
+
+4. GENERATION PLAN:
+
+{generation_plan}
+"""

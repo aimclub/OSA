@@ -20,8 +20,7 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
 from osa_tool.operations.docs.community_docs_generation.license_generation import LicenseCompiler
-from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
-from osa_tool.operations.docs.readme_generation.utils import format_time
+from osa_tool.operations.docs.readme_generation.readme_agent import ReadmeAgent
 from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
 from osa_tool.scheduler.plan import Plan
 from osa_tool.scheduler.scheduler import ModeScheduler
@@ -39,6 +38,7 @@ from osa_tool.utils.utils import (
     parse_folder_name,
     rich_section,
     switch_to_output_directory,
+    format_time,
 )
 
 
@@ -173,9 +173,7 @@ def main():
             _run_plan_operation(
                 plan,
                 "readme",
-                lambda: ReadmeAgent(
-                    config_manager, git_agent.metadata, plan.get("attachment"), plan.get("refine_readme")
-                ).generate_readme(),
+                lambda: ReadmeAgent(config_manager, git_agent.metadata, plan.get("attachment")).generate_readme(),
             )
 
         # Readme translation

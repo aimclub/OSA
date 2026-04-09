@@ -21,7 +21,7 @@ from osa_tool.operations.analysis.repository_report.response_validation import (
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.response_cleaner import JsonProcessor, JsonParseError
+from osa_tool.utils.response_cleaner import JsonParseError
 from osa_tool.utils.utils import extract_readme_content, parse_folder_name
 
 
@@ -53,11 +53,10 @@ class TextGenerator:
         )
 
         try:
-            data = self.model_handler.send_and_parse(
+            return self.model_handler.send_and_parse(
                 prompt=prompt,
-                parser=lambda raw: RepositoryReport.model_validate(JsonProcessor.parse(raw, expected_type=dict)),
+                parser=RepositoryReport,
             )
-            return data
 
         except (ValidationError, JsonParseError) as e:
             logger.warning(f"Parsing failed, fallback applied: {e}")

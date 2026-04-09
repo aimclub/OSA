@@ -4,8 +4,8 @@ import docx2txt
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
-from osa_tool.operations.docs.readme_generation.context.article_content import PdfParser
-from osa_tool.operations.docs.readme_generation.context.article_path import get_pdf_path
+from osa_tool.operations.docs.readme_generation.inputs.article_content import PdfParser
+from osa_tool.operations.docs.readme_generation.inputs.article_path import get_pdf_path
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder, PromptLoader
 from osa_tool.utils.response_cleaner import JsonProcessor
