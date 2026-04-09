@@ -52,7 +52,9 @@ class PaperAnalyzer:
             ),
             parser=lambda raw: JsonProcessor.parse(raw),
         )
-        experiments_list = experiments["experiment_list"]
+        experiments_list = experiments.get("experiment_list")
+        if not experiments_list:
+            raise ValueError("No experiments were found in the provided document.")
         logger.info(f"Found {len(experiments_list)} experiment(s) described in the paper.")
         return experiments_list
 
