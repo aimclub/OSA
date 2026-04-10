@@ -166,6 +166,25 @@ def parse_git_url(repo_url: str) -> tuple[str, str, str, str]:
     return host_domain, host, name, full_name
 
 
+def is_path(path_str: str) -> bool:
+    if not path_str or not isinstance(path_str, str) or not path_str.strip():
+        return False
+
+    if re.match(r"^[a-zA-Z]+://", path_str):
+        return False
+
+    try:
+        p = Path(path_str)
+
+        if "\0" in path_str:
+            return False
+        _ = p.parts
+
+        return True
+    except (ValueError, TypeError, OSError):
+        return False
+
+
 def get_repo_tree(repo_path: str) -> str:
     """
     Builds a text representation of the project file tree, excluding the .git directory.

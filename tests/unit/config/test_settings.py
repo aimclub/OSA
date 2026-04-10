@@ -235,6 +235,17 @@ def test_git_settings_invalid_url():
     assert "Provided URL is not correct" in str(exc_info.value)
 
 
+def test_git_settings_not_existing_path():
+    # Arrange
+    not_existing_path = "not_existing_path"
+
+    # Act & Assert
+    with pytest.raises(ValidationError) as exc_info:
+        GitSettings(repository=not_existing_path)
+
+    assert "does not exist" in str(exc_info.value)
+
+
 def test_git_settings_valid_url_with_special_characters():
     # Arrange
     repo_url = "https://github.com/test-user/test_repo-123"
