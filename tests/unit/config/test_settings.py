@@ -226,7 +226,7 @@ def test_git_settings_validation():
 
 def test_git_settings_invalid_url():
     # Arrange
-    invalid_url = "not-a-valid-url"
+    invalid_url = "htttp://not-a-valid-url"
 
     # Act & Assert
     with pytest.raises(ValidationError) as exc_info:
