@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import os.path
+from argparse import Namespace
 from pathlib import Path
-from typing import List, Literal
+from typing import Any, List, Literal
 
 import tomli
 from pydantic import (
@@ -146,7 +147,7 @@ class ConfigManager:
     Manages configuration loading and provides model settings for different tasks.
     """
 
-    def __init__(self, args=None):
+    def __init__(self, args: Namespace | None = None):
         """
         Initialize ConfigManager with CLI arguments.
 
@@ -191,7 +192,7 @@ class ConfigManager:
         return config_path
 
     @staticmethod
-    def _apply_cli_args_to_config_data(config_data: dict, args) -> dict:
+    def _apply_cli_args_to_config_data(config_data: dict, args: Namespace) -> dict:
         """
         Apply CLI arguments to raw config data.
 

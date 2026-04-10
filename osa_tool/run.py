@@ -1,7 +1,7 @@
 import os
 import sys
 import time
-from typing import Any
+from typing import Any, Callable
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent, LocalGitAgent
@@ -14,10 +14,13 @@ from osa_tool.operations.codebase.notebook_conversion.notebook_converter import 
 from osa_tool.operations.codebase.organization.repo_organizer import RepoOrganizer
 from osa_tool.operations.codebase.requirements_generation.requirements_generation import RequirementsGenerator
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
+
+from osa_tool.config.settings import ConfigManager
+from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
 from osa_tool.operations.docs.community_docs_generation.license_generation import LicenseCompiler
-from osa_tool.operations.docs.readme_generation.readme_core import ReadmeAgent
-from osa_tool.operations.docs.readme_generation.utils import format_time
+from osa_tool.operations.docs.readme_generation.readme_agent import ReadmeAgent
 from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
 from osa_tool.scheduler.plan import Plan
 from osa_tool.scheduler.scheduler import ModeScheduler
@@ -27,7 +30,6 @@ from osa_tool.scheduler.workflow_manager import (
     GitverseWorkflowManager,
     WorkflowManager,
 )
-from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.logger import logger, setup_logging
 from osa_tool.utils.utils import (
@@ -36,6 +38,7 @@ from osa_tool.utils.utils import (
     parse_folder_name,
     rich_section,
     switch_to_output_directory,
+    format_time,
 )
 
 
@@ -174,9 +177,7 @@ def main():
             _run_plan_operation(
                 plan,
                 "readme",
-                lambda: ReadmeAgent(
-                    config_manager, git_agent.metadata, plan.get("attachment"), plan.get("refine_readme")
-                ).generate_readme(),
+                lambda: ReadmeAgent(config_manager, git_agent.metadata, plan.get("attachment")).generate_readme(),
             )
 
         # Readme translation
@@ -269,7 +270,7 @@ def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
     return git_agent, workflow_manager
 
 
-def _run_plan_operation(plan: Plan, task_key: str, call: callable) -> None:
+def _run_plan_operation(plan: Plan, task_key: str, call: Callable[[], Any]) -> None:
     """
     Execute a single legacy plan operation and record its result.
 
@@ -285,6 +286,7 @@ def _run_plan_operation(plan: Plan, task_key: str, call: callable) -> None:
         if task_key in plan.tasks:
             plan.mark_done(task_key)
     except Exception as e:
+        logger.error(e)
         plan.record_result(task_key, {"result": {"error": str(e)}, "events": []})
         if task_key in plan.tasks:
             plan.mark_failed(task_key)

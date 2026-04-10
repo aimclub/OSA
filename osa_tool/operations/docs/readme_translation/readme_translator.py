@@ -4,12 +4,12 @@ import shutil
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
-from osa_tool.core.llm.llm import ModelHandlerFactory, ModelHandler
+from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
+from osa_tool.core.models.llm_output_models import LlmJsonObject
 from osa_tool.core.models.event import OperationEvent, EventKind
-from osa_tool.operations.docs.readme_generation.utils import read_file, save_sections, remove_extra_blank_lines
+from osa_tool.operations.docs.readme_generation.readme_utils import read_file, save_sections, remove_extra_blank_lines
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.utils.utils import parse_folder_name
 
 
@@ -96,10 +96,12 @@ class ReadmeTranslator:
         )
 
         async with semaphore:
-            parsed = await self.model_handler.async_send_and_parse(
-                prompt=prompt,
-                parser=lambda raw: JsonProcessor.parse(raw, expected_type=dict),
-            )
+            parsed = (
+                await self.model_handler.async_send_and_parse(
+                    prompt=prompt,
+                    parser=LlmJsonObject,
+                )
+            ).root
         # Ensure required fields after validation
         parsed.setdefault("content", parsed.get("raw", "").strip())
         parsed.setdefault("suffix", target_language[:2].lower())

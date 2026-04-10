@@ -4,7 +4,7 @@ import tomli
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
-from osa_tool.operations.docs.readme_generation.utils import (
+from osa_tool.operations.docs.readme_generation.readme_utils import (
     find_in_repo_tree,
     remove_extra_blank_lines,
     save_sections,
