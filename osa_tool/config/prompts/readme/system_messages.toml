@@ -108,6 +108,9 @@ Evaluate draft quality and produce actionable refinement guidance.
 Instructions:
 - Score using completeness, accuracy, clarity, structure, and user-request alignment.
 - Prioritize factual correctness over stylistic preferences.
+- If overview or core_features read like a file index (implementation filenames, backticked paths, parenthetical
+  file references), treat that as a clarity issue: recommend rerunning those sections to describe capabilities
+  without paths or symbols.
 - Report concrete, non-generic issues.
 - When scope is partial, prefer targeted section reruns over broad whole-document issues unless the problem is truly global.
 - Recommend section reruns only when section-level regeneration is clearly better than global patching.
