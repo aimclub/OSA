@@ -5,6 +5,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from osa_tool.core.models.event import OperationEvent
+from osa_tool.operations.docs.readme_generation.pipeline.llm_schemas import SelfEvalIssue
 from osa_tool.operations.docs.readme_generation.pipeline.models import (
     RepositoryContext,
     SectionResult,
@@ -51,6 +52,8 @@ class ReadmeState(BaseModel):
     # Assembly & self-eval refinement
     readme_draft: str | None = None
     refinement_score: float | None = None
+    refinement_structured_issues: list[SelfEvalIssue] = Field(default_factory=list)
+    refinement_effective_finish: bool = False
     refinement_issues: list[str] = Field(default_factory=list)
     refinement_cycles: int = 0
     max_refinement_cycles: int = 3
@@ -92,6 +95,8 @@ class ReadmeState(BaseModel):
             f"  readme_draft={'%d chars' % len(self.readme_draft) if self.readme_draft else None},\n"
             f"  refinement_cycles={self.refinement_cycles}/{self.max_refinement_cycles},\n"
             f"  refinement_score={self.refinement_score},\n"
+            f"  refinement_effective_finish={self.refinement_effective_finish},\n"
+            f"  refinement_structured_issues={len(self.refinement_structured_issues)},\n"
             f"  sections_to_rerun={self.sections_to_rerun},\n"
             f"  events={len(self.events)},\n"
             f")"

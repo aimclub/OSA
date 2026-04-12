@@ -190,37 +190,50 @@ self_eval = """
 TASK:
 Evaluate the generated README and decide whether to stop or run targeted regeneration.
 
-Score the README on a scale of 1-10 based on:
-- Completeness: does it cover all essential sections
-- Accuracy: does it reflect the repository correctly
-- Clarity: is it well-written and easy to follow
-- Structure: proper markdown formatting, logical flow
-- User request alignment: does it address what the user asked for (if applicable)
+Assess along these dimensions (no numeric score in your output):
+- Completeness: essential sections present for this repo
+- Accuracy: matches repository analysis and does not invent facts
+- Clarity: readable and scannable for developers
+- Structure: sound Markdown and logical flow
+- User request alignment: satisfies the user request when one was given
+
+SEVERITY (each issue must use exactly one):
+- "blocker": wrong repo, fabricated commands/paths, broken Markdown, contradicts analysis, or fails the user request
+- "major": materially misleading, missing critical install/run/API steps that belong in this README, or large clarity gaps
+- "minor": typos, wording polish, optional structure tweaks, or small gaps that do not block publication
 
 OUTPUT:
 Return a JSON object:
 
 {{
-    "score": 6,
-    "issues": ["issue 1 description", "issue 2 description"],
-    "should_stop": true,
+    "issues": [
+        {{"severity": "major", "description": "short concrete defect"}},
+        {{"severity": "minor", "description": "optional polish item"}}
+    ],
+    "should_stop": false,
     "sections_to_rerun": [],
-    "section_feedback": {{}}
+    "section_feedback": {{}},
+    "quality_notes": "optional one-line summary for logs only"
 }}
 
+- "issues": list every **blocker** and **major** defect you find; add **minor** items when useful. Use [] only if
+  there are genuinely no defects (rare—assume drafts usually need at least small fixes unless evidence says otherwise).
 - "sections_to_rerun": internal section names from **PLANNED SECTION NAMES** below that need regeneration (LLM prose
   sections only, e.g. "overview", "getting_started"). Use [] if a whole-document patch is enough.
 - "section_feedback": map section internal name -> short instructions for that section's generator (concrete, actionable).
   Omit keys you do not want to rerun.
 
-Set "should_stop" to true if the README is good enough (score >= 8) or if remaining issues are minor.
+Set "should_stop" to true only when:
+- "issues" contains **no** "blocker" or "major" entries, **and**
+- "sections_to_rerun" is empty (if any section still needs regeneration, list it and set should_stop to false), **and**
+- any remaining "minor" issues are optional to fix before publication.
 
 RULES:
 - Report issues as concrete defects, not preferences.
 - Prefer section reruns only when defects are clearly localized to specific sections.
 - If multiple sections repeat the same flaw, mention root cause once and map precise feedback per affected section.
 - Never include section names outside PLANNED SECTION NAMES.
-- Keep issue phrasing short and actionable.
+- Keep each issue "description" short and actionable.
 - If **INTENT SCOPE** is `partial` or **ASSEMBLY MODE** is `merge_existing`, prefer `sections_to_rerun` for
   localized defects; avoid listing whole-document rewrite issues unless the defect is global (broken markdown,
   wrong repository, contradictory title).

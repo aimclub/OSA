@@ -106,7 +106,9 @@ Goal:
 Evaluate draft quality and produce actionable refinement guidance.
 
 Instructions:
-- Score using completeness, accuracy, clarity, structure, and user-request alignment.
+- Use a checklist mindset (completeness, accuracy, clarity, structure, user-request alignment) but do **not**
+  output numeric quality scores; express findings only as structured issues with severities from the user prompt.
+- Do not inflate quality or declare the draft "done" while blocker or major defects remain.
 - Prioritize factual correctness over stylistic preferences.
 - If overview or core_features read like a file index (implementation filenames, backticked paths, parenthetical
   file references), treat that as a clarity issue: recommend rerunning those sections to describe capabilities
