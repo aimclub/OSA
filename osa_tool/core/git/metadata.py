@@ -370,3 +370,91 @@ class GitverseMetadataLoader(MetadataLoader):
             license_name=license_info.get("name", ""),
             license_url=license_info.get("url", ""),
         )
+
+
+class SourceCraftMetadataLoader(MetadataLoader):
+    API_BASE = "https://api.sourcecraft.dev"
+
+    @classmethod
+    def _load_platform_data(cls, repo_url: str, use_token: bool) -> RepositoryMetadata:
+        """
+        Load SourceCraft repository metadata via SourceCraft API.
+        """
+        # Извлекаем org/repo из URL
+        clean_url = repo_url[:-4] if repo_url.endswith('.git') else repo_url
+        parts = clean_url.strip("/").split("/")
+        org_slug, repo_slug = parts[-2], parts[-1]
+
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+
+        if use_token:
+            token = os.getenv("SOURCECRAFT_TOKEN", os.getenv("GIT_TOKEN", ""))
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+
+        url = f"{cls.API_BASE}/repos/{org_slug}/{repo_slug}"
+        
+        response = requests.get(url=url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        
+        logger.info(f"Successfully fetched SourceCraft metadata for repository: '{org_slug}/{repo_slug}'")
+        return cls._parse_metadata(data)
+
+    @classmethod
+    def _parse_metadata(cls, repo_data: dict) -> RepositoryMetadata:
+        """
+        Parse SourceCraft API response into RepositoryMetadata.
+        """
+        # Маппинг данных из Swagger в наш внутренний формат
+        counters = repo_data.get("counters", {})
+        clone_url = repo_data.get("clone_url", {})
+        org_info = repo_data.get("organization", {})
+        lang_info = repo_data.get("language", {}) or {}
+
+        return RepositoryMetadata(
+            name=repo_data.get("name", ""),
+            full_name=repo_data.get("slug", ""), # В SourceCraft slug обычно и есть full_name
+            owner=org_info.get("slug", ""),
+            owner_url=f"https://sourcecraft.dev/{org_info.get('slug')}" if org_info.get("slug") else None,
+            description=repo_data.get("description", ""),
+            
+            # Статистика
+            stars_count=0,  # В Swagger счетчика звезд нет
+            forks_count=int(counters.get("forks", 0)),
+            watchers_count=0,
+            open_issues_count=int(counters.get("issues", 0)),
+            
+            # Детали
+            default_branch=repo_data.get("default_branch", "master"),
+            created_at="", # В базовом ответе Repository нет даты создания
+            updated_at=repo_data.get("last_updated", ""),
+            pushed_at=repo_data.get("last_updated", ""),
+            size_kb=0, # В Swagger нет поля размера
+            
+            # URLs
+            clone_url_http=clone_url.get("https", ""),
+            clone_url_ssh=clone_url.get("ssh", ""),
+            contributors_url=None,
+            languages_url="", 
+            issues_url=f"https://sourcecraft.dev/{repo_data.get('slug')}/issues",
+            
+            # Языки и темы
+            language=lang_info.get("name", ""),
+            languages=[], 
+            topics=[], # В Swagger для Repository не указаны теги
+            
+            # Настройки
+            has_wiki=False,
+            has_issues=int(counters.get("issues", 0)) > 0,
+            has_projects=False,
+            is_private=repo_data.get("visibility") == "private",
+            homepage_url=repo_data.get("web_url", ""),
+            
+            # Лицензия
+            license_name=None,
+            license_url=None
+        )

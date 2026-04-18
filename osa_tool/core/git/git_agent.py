@@ -12,6 +12,7 @@ from osa_tool.core.git.metadata import (
     GitHubMetadataLoader,
     GitLabMetadataLoader,
     GitverseMetadataLoader,
+    SourceCraftMetadataLoader, 
     RepositoryMetadata,
 )
 from osa_tool.utils.logger import logger
@@ -1398,4 +1399,154 @@ class GitverseAgent(GitAgent):
 
     def validate_topics(self, topics: List[str]) -> List[str]:
         logger.warning("Topic validation is not yet implemented for Gitverse. Returning original topics list.")
+        return topics
+
+
+class SourceCraftAgent(GitAgent):
+    API_BASE = "https://api.sourcecraft.dev" 
+
+    def _get_token(self) -> str:
+        return os.getenv("SOURCECRAFT_TOKEN", os.getenv("GIT_TOKEN", ""))
+
+    def _load_metadata(self, repo_url: str) -> RepositoryMetadata:
+        return SourceCraftMetadataLoader.load_data(repo_url)
+
+    def _get_headers(self) -> dict:
+        """Вспомогательный метод для генерации заголовков"""
+        return {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
+    def _extract_slugs(self) -> tuple[str, str]:
+        """Извлекает org_slug и repo_slug из URL (например, https://sourcecraft.dev/Yandex/OSA)"""
+        # Убираем .git если есть
+        clean_url = self.repo_url[:-4] if self.repo_url.endswith('.git') else self.repo_url
+        parts = clean_url.strip("/").split("/")
+        return parts[-2], parts[-1]  # org_slug, repo_slug
+
+    def create_fork(self) -> None:
+        if not self.token:
+            raise ValueError("SourceCraft token is required to create a fork.")
+
+        org_slug, repo_slug = self._extract_slugs()
+        
+        # узнаем свой username чтобы понять куда форкать
+        user_response = requests.get(f"{self.API_BASE}/user", headers=self._get_headers())
+        if user_response.status_code != 200:
+             self._handle_api_error(user_response, "getting SourceCraft user profile", raise_exception=True)
+             
+        current_username = user_response.json().get("username")
+
+        # если мы уже владеем репо - форк не нужен
+        if org_slug == current_username:
+            self.fork_url = self.repo_url
+            logger.info(f"User '{current_username}' already owns the repository. Using original URL.")
+            return
+
+        # Делаем форк
+        url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/fork"
+        body = {
+            "org_slug": current_username, # Форкаем к себе
+        }
+        
+        response = requests.post(url, headers=self._get_headers(), json=body)
+        
+        if response.status_code in {200, 201, 202}:
+            # Из Swagger: возвращается объект Repository, у которого есть web_url
+            self.fork_url = response.json().get("web_url", f"https://sourcecraft.dev/{current_username}/{repo_slug}")
+            logger.info(f"SourceCraft fork created successfully: {self.fork_url}")
+        else:
+            self._handle_api_error(response, "creating SourceCraft fork", raise_exception=True)
+
+    def star_repository(self) -> None:
+        # В Swagger нет эндпоинта для звезд. 
+        logger.warning("Starring repositories is not supported via SourceCraft public API yet.")
+
+    def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
+        if not self.token:
+            raise ValueError("SourceCraft token is required to create a pull request.")
+
+        org_slug, repo_slug = self._extract_slugs()
+        fork_org, _ = self.fork_url.strip("/").split("/")[-2:]
+        
+        # На SourceCraft ветка форка указывается в формате: fork_owner:branch
+        head_branch = f"{fork_org}:{self.branch_name}"
+        
+        url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/pulls"
+        headers = self._get_headers()
+
+        last_commit = self.repo_head_commit_message() if hasattr(self, 'repo_head_commit_message') else "Auto-generated PR by OSA"
+        pr_title = title if title else last_commit
+        pr_body = (body if body else "") + self.agent_signature
+
+        # Ищем существующие PR
+        params = {"state": "open", "source_branch": head_branch, "target_branch": self.base_branch}
+        list_response = requests.get(url, headers=headers, params=params)
+
+        prs = list_response.json().get("pull_requests",[]) if list_response.status_code == 200 else []
+
+        if prs:
+            existing_pr = prs[0]
+            pr_slug = existing_pr["slug"]
+            logger.info(f"Pull request {pr_slug} already exists.")
+            
+            # Обновление PR
+            update_url = f"{url}/{pr_slug}"
+            update_data = {"description": pr_body}
+            update_res = requests.patch(update_url, headers=headers, json=update_data)
+            
+            if update_res.status_code == 200:
+                logger.info(f"Successfully updated PR {pr_slug}.")
+            else:
+                self._handle_api_error(update_res, f"updating PR {pr_slug}", raise_exception=False)
+                
+        elif changes:
+            # Создание нового PR
+            pr_data = {
+                "title": pr_title,
+                "description": pr_body,
+                "source_branch": head_branch,
+                "target_branch": self.base_branch
+            }
+
+            response = requests.post(url, json=pr_data, headers=headers)
+            if response.status_code == 201:
+                pr_slug = response.json().get("slug", "unknown")
+                logger.info(f"SourceCraft pull request created successfully: {pr_slug}")
+            else:
+                self._handle_api_error(response, "creating pull request", raise_exception=True)
+
+    def _update_about_section(self, repo_path: str, about_content: dict) -> None:
+        parts = repo_path.strip("/").split("/")
+        org_slug, repo_slug = parts[-2], parts[-1]
+        
+        url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}"
+        about_data = {
+            "description": about_content.get("description", "")
+        }
+        
+        response = requests.patch(url, headers=self._get_headers(), json=about_data)
+        if response.status_code in {200, 201}:
+            logger.info(f"Successfully updated SourceCraft repository description for '{repo_path}'.")
+        else:
+            self._handle_api_error(response, f"updating description for '{repo_path}'", raise_exception=False)
+
+    def _build_report_url(self, report_branch: str, report_filename: str) -> str:
+        return f"{self.fork_url}/tree/{report_branch}/{report_filename}"
+
+    def _build_auth_url(self, repo_url: str) -> str:
+        # Для SourceCraft обычно так же, как в GitHub
+        import re
+        match = re.match(r"https?://([^/]+)/(.+)", repo_url)
+        if match:
+            host = match.group(1)
+            path = match.group(2)
+            # Вставляем токен перед хостом
+            return f"https://oauth2:{self.token}@{host}/{path}.git"
+        raise ValueError(f"Unsupported repository URL format for SourceCraft: {repo_url}")
+
+    def validate_topics(self, topics: list[str]) -> list[str]:
+        logger.warning("Topic validation is not yet implemented for SourceCraft.")
         return topics
