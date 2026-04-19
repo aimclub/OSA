@@ -71,6 +71,7 @@ class ReadmeSelfEvalLLMOutput(BaseModel):
             else:
                 out.append(item)
         return out
+
     should_stop: bool = False
     sections_to_rerun: list[str] = Field(default_factory=list)
     section_feedback: dict[str, str] | None = None

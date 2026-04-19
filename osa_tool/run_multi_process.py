@@ -44,7 +44,7 @@ async def generate_readme(config_manager: ConfigManager, metadata: RepositoryMet
         metadata,
         None,
         "Evaluate the existing README for quality: if it’s missing, generate one;"
-        " if it’s poor, rewrite it completely; if it’s good, identify and apply targeted improvements."
+        " if it’s poor, rewrite it completely; if it’s good, identify and apply targeted improvements.",
     )
     dest_path = os.path.join(readmes_dir, f"{metadata.name}_README.md")
     readme_agent.file_to_save = dest_path
