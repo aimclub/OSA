@@ -14,14 +14,12 @@ from osa_tool.utils.response_cleaner import JsonProcessor
 class PaperAnalyzer:
 
     def __init__(self, config_manager: ConfigManager, prompts: PromptLoader):
-        self.__config = config_manager
         self.__prompts = prompts
-        model_settings = config_manager.get_model_settings("validation")
-        self.__model_handler: ModelHandler = ModelHandlerFactory.build(model_settings)
+        self.__model_handler: ModelHandler = ModelHandlerFactory.build(config_manager.get_model_settings("validation"))
 
-    async def process_paper(self, document_path: str) -> list[str]:
+    async def extract_experiments(self, document_path: str) -> list[str]:
         """
-        Asynchronously extract and process content from a scientific paper (PDF).
+        Asynchronously extract and process content from a scientific paper.
 
         Args:
             document_path (str): Path to the paper PDF file.
@@ -30,7 +28,7 @@ class PaperAnalyzer:
             list[str]: Processed paper content.
 
         Raises:
-            ValueError: If the PDF source is invalid.
+            ValueError: If the document source is invalid.
         """
         if document_path.endswith(".docx"):
             logger.info("Processing DOCX...")

@@ -248,3 +248,54 @@ Return a valid JSON obect with the following structure:
   }}
 }}
 """
+
+validate_single_experiment_preprocessed = """
+INPUT DATA:
+Experiment description:
+{experiment_description}
+
+The following code snippets were retrieved as the most relevant parts of the repository:
+{code_snippets}
+
+TASK:
+For provided experiment description assess how much of the proposed experiment is actually present in the code snippets and exactly where in the code such experiment is implemented and return a valid JSON object with following structure
+{{
+  "implemented_in": "list of exact file paths and function/class names where experiment logic is found",
+  "reasoning": "descriprion of what exactly was implemented"
+  "missing_critical_components": "list of key elements from description absent in code",
+  "correlation_percent": float in range from 0.0 to 1.0 with your estimation of how much the code correlates with the provided experiment description.
+}}
+
+RULES:
+- Return ONLY a valid JSON object with no additional text, explanations, or formatting.
+- "correlation_percent": A confidence score between 0.0 and 1.0 indicating whether this experiment is implemented (0=not implemented, 0.5=partially implemented, 1=fully implemented)
+- Consider partial implementations (e.g., model implemented but training loop missing = ~0.3-0.4). If something is missing, explain why it is crucial to have it.
+- "implemented_in": MUST contain exact locations like "train.py:train_sar_model()" or "NOT IMPLEMENTED"
+- "reasoning": must be extreamly specific on what's actually present in the code which corresponds with the wording of the experiment.
+- "missing_critical_components": list ONLY critical missing parts that prevent experiment reproduction
+
+Use the following as an example:
+{{
+  "implemented_in": [
+    "models/sar_predictor.py:train_sar_model()",
+    "data/preprocessing.py:extract_11_descriptors()"
+  ],
+  "reasoning": "The requirement specifies training separate SAR and relaxivity models using 11 and 8 descriptors respectively"
+  "missing_critical_components": [
+    "Relaxivity prediction with 8 descriptors (no implementation found)",
+    "Explicit descriptor count validation in training loop"
+  ],
+  "correlation_percent": 0.65
+}}
+
+OUTPUT FORMAT:
+Return a valid JSON obect with the following structure:
+{{
+  {{
+    "implemented_in": list[string],
+    "reasoning": string,
+    "missing_critical_components": list[string],
+    "correlation_percent": float
+  }}
+}}
+"""
