@@ -361,7 +361,7 @@ class GitverseWorkflowManager(WorkflowManager):
 class SourceCraftWorkflowManager(WorkflowManager):
     """
     Workflow manager implementation for SourceCraft platform.
-    
+
     Uses `.sourcecraft/ci.yaml` file (or similar) for workflows storage.
     Note: Currently acts as a stub until specific SourceCraft workflow generators are implemented.
     """
@@ -391,7 +391,7 @@ class SourceCraftWorkflowManager(WorkflowManager):
         # Предполагаем структуру, похожую на GitHub/GitLab
         if "jobs" in content:
             return set(content["jobs"].keys())
-        
+
         # Если структура плоская
         special_keys = {"image", "variables", "stages", "before_script", "after_script"}
         jobs = {k for k in content.keys() if k not in special_keys and isinstance(content[k], dict)}
@@ -410,7 +410,7 @@ class SourceCraftWorkflowManager(WorkflowManager):
         """
         logger.warning("SourceCraft workflow generation is currently in stub mode.")
         workflow_file = os.path.join(output_dir, "ci.yaml")
-        
+
         stub_workflow = """# Auto-generated SourceCraft CI/CD pipeline
 name: OSA CI
 on: [push, pull_request]

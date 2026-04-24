@@ -12,7 +12,7 @@ from osa_tool.core.git.metadata import (
     GitHubMetadataLoader,
     GitLabMetadataLoader,
     GitverseMetadataLoader,
-    SourceCraftMetadataLoader, 
+    SourceCraftMetadataLoader,
     RepositoryMetadata,
 )
 from osa_tool.utils.logger import logger
@@ -459,12 +459,14 @@ class GitAgent(abc.ABC):
             return True
         except GitCommandError as e:
             self._handle_git_error(e, f"pushing to {branch}")
-            logger.error(f"""Push failed: Branch '{branch}' already exists in the fork.
+            logger.error(
+                f"""Push failed: Branch '{branch}' already exists in the fork.
                  To resolve this, please either:
                    1. Choose a different branch name that doesn't exist in the fork 
                       by modifying the `branch_name` parameter.
                    2. Delete the existing branch from forked repository.
-                   3. Delete the fork entirely.""")
+                   3. Delete the fork entirely."""
+            )
             return False
 
     def upload_report(
@@ -1403,13 +1405,14 @@ class GitverseAgent(GitAgent):
 
 
 class SourceCraftAgent(GitAgent):
-    API_BASE = "https://api.sourcecraft.dev" # Или актуальный домен API
+    API_BASE = "https://api.sourcecraft.dev"  # Или актуальный домен API
 
     def _get_token(self) -> str:
         return os.getenv("SOURCECRAFT_TOKEN", os.getenv("GIT_TOKEN", ""))
 
     def _load_metadata(self, repo_url: str) -> RepositoryMetadata:
         from osa_tool.core.git.metadata import SourceCraftMetadataLoader
+
         return SourceCraftMetadataLoader.load_data(repo_url)
 
     def _get_headers(self) -> dict:
@@ -1422,7 +1425,7 @@ class SourceCraftAgent(GitAgent):
 
     def _extract_slugs(self) -> tuple[str, str]:
         """Извлекает org_slug и repo_slug из URL"""
-        clean_url = self.repo_url[:-4] if self.repo_url.endswith('.git') else self.repo_url
+        clean_url = self.repo_url[:-4] if self.repo_url.endswith(".git") else self.repo_url
         parts = clean_url.strip("/").split("/")
         return parts[-2], parts[-1]
 
@@ -1431,14 +1434,14 @@ class SourceCraftAgent(GitAgent):
             raise ValueError("SourceCraft token is required to create a fork.")
 
         org_slug, repo_slug = self._extract_slugs()
-        
+
         # Получаем профиль текущего пользователя
         user_response = requests.get(f"{self.API_BASE}/user", headers=self._get_headers())
         if user_response.status_code != 200:
-             self._handle_api_error(user_response, "getting SourceCraft user profile", raise_exception=True)
+            self._handle_api_error(user_response, "getting SourceCraft user profile", raise_exception=True)
 
         bot_username = user_response.json().get("username", "") if user_response.status_code == 200 else ""
-             
+
         current_username = user_response.json().get("username")
 
         if org_slug == current_username:
@@ -1448,13 +1451,10 @@ class SourceCraftAgent(GitAgent):
 
         # ИСПРАВЛЕНО СОГЛАСНО SWAGGER: Передаем org_slug и default_branch_only
         url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/fork"
-        body = {
-            "org_slug": current_username,
-            "default_branch_only": True
-        }
-        
+        body = {"org_slug": current_username, "default_branch_only": True}
+
         response = requests.post(url, headers=self._get_headers(), json=body)
-        
+
         if response.status_code in {200, 201, 202}:
             repo_data = response.json()
             self.fork_url = repo_data.get("web_url", f"https://sourcecraft.dev/{current_username}/{repo_slug}")
@@ -1476,7 +1476,9 @@ class SourceCraftAgent(GitAgent):
         url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/pulls"
         headers = self._get_headers()
 
-        last_commit = self.repo_head_commit_message() if hasattr(self, 'repo_head_commit_message') else "Auto-generated PR by OSA"
+        last_commit = (
+            self.repo_head_commit_message() if hasattr(self, "repo_head_commit_message") else "Auto-generated PR by OSA"
+        )
         pr_title = title if title else last_commit
         pr_body = (body if body else "") + self.agent_signature
 
@@ -1485,25 +1487,25 @@ class SourceCraftAgent(GitAgent):
         if bot_username:
             ql_filter += f' and author_slug="{bot_username}"'
         params = {"filter": ql_filter}
-        
+
         list_response = requests.get(url, headers=headers, params=params)
-        prs = list_response.json().get("pull_requests",[]) if list_response.status_code == 200 else []
+        prs = list_response.json().get("pull_requests", []) if list_response.status_code == 200 else []
 
         if prs:
             existing_pr = prs[0]
             pr_slug = existing_pr.get("slug")
             logger.info(f"Pull request {pr_slug} already exists.")
-            
+
             # Обновление PR
             update_url = f"{url}/{pr_slug}"
             update_data = {"description": pr_body}
             update_res = requests.patch(update_url, headers=headers, json=update_data)
-            
+
             if update_res.status_code == 200:
                 logger.info(f"Successfully updated PR {pr_slug}.")
             else:
                 self._handle_api_error(update_res, f"updating PR {pr_slug}", raise_exception=False)
-                
+
         elif changes:
             # ВАЖНО:
             # Если PR создается из форка, то source_branch в фильтре может нуждаться в указании пространства имен (например, fork_owner:branch), как в GitHub. Swagger об этом умалчивает.
@@ -1513,10 +1515,10 @@ class SourceCraftAgent(GitAgent):
                 "description": pr_body,
                 "source_branch": self.branch_name,
                 "target_branch": self.base_branch,
-                "publish": True  # Чтобы PR не остался в статусе Draft
+                "publish": True,  # Чтобы PR не остался в статусе Draft
             }
-            
-            if hasattr(self, 'fork_id') and self.fork_id:
+
+            if hasattr(self, "fork_id") and self.fork_id:
                 pr_data["fork_repo_id"] = self.fork_id
 
             response = requests.post(url, json=pr_data, headers=headers)
@@ -1529,13 +1531,11 @@ class SourceCraftAgent(GitAgent):
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
         parts = repo_path.strip("/").split("/")
         org_slug, repo_slug = parts[-2], parts[-1]
-        
+
         # Согласно Swagger, UpdateRepositoryBody принимает description
         url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}"
-        about_data = {
-            "description": about_content.get("description", "")
-        }
-        
+        about_data = {"description": about_content.get("description", "")}
+
         response = requests.patch(url, headers=self._get_headers(), json=about_data)
         if response.status_code in {200, 201}:
             logger.info(f"Successfully updated SourceCraft repository description for '{repo_path}'.")
@@ -1547,6 +1547,7 @@ class SourceCraftAgent(GitAgent):
 
     def _build_auth_url(self, repo_url: str) -> str:
         import re
+
         match = re.match(r"https?://([^/]+)/(.+)", repo_url)
         if match:
             host = match.group(1)
