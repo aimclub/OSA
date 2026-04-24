@@ -59,13 +59,13 @@ def _build_section_regeneration_sends(state: ReadmeState) -> list[Send]:
 
 
 def _route_after_self_eval(state: ReadmeState) -> str | list[Send]:
-    if state.refinement_score is not None and state.refinement_score >= 8.0:
-        return "writer"
     if state.refinement_cycles >= state.max_refinement_cycles:
         return "writer"
     sends = _build_section_regeneration_sends(state)
     if sends:
         return sends
+    if state.refinement_effective_finish:
+        return "writer"
     if state.refinement_issues:
         return "readme_patch"
     return "writer"
