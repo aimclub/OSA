@@ -3,9 +3,11 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Counter
 
 import requests
 from dotenv import load_dotenv
+from git import Repo
 from requests import HTTPError
 
 from osa_tool.utils.logger import logger
@@ -207,6 +209,192 @@ class GitHubMetadataLoader(MetadataLoader):
             license_name=license_info.get("name", ""),
             license_url=license_info.get("url", ""),
         )
+
+
+FILE_MAP = {"makefile": "Makefile", "dockerfile": "Dockerfile", "cmakelists.txt": "CMake", "jenkinsfile": "Groovy"}
+EXT_MAP = {
+    ".py": "Python",
+    ".js": "JavaScript",
+    ".ts": "TypeScript",
+    ".cpp": "C++",
+    ".hpp": "C++",
+    ".c": "C",
+    ".h": "C/C++",
+    ".go": "Go",
+    ".rs": "Rust",
+    ".java": "Java",
+    ".kt": "Kotlin",
+    ".swift": "Swift",
+    ".rb": "Ruby",
+    ".php": "PHP",
+    ".cs": "C#",
+    ".sh": "Shell",
+    ".html": "HTML",
+    ".css": "CSS",
+    ".sql": "SQL",
+    ".jsx": "React JSX",
+    ".tsx": "React TSX",
+    ".vue": "Vue",
+}
+LICENSE_NAMES = {"license", "copying", "license.md", "license.txt", "copying.md"}
+
+
+class LocalMetadataLoader(MetadataLoader):
+    @classmethod
+    def _load_platform_data(cls, repo_url: str, use_token: bool) -> RepositoryMetadata:
+        cls.repo = Repo(repo_url)
+        cls.repo_path = repo_url
+
+        basename = os.path.basename(repo_url)
+        owner = cls.repo.config_reader().get("user", "name")
+        owner_email = cls.repo.config_reader().get("user", "email")
+        dates = cls._load_dates()
+        size = cls._get_repository_size()
+        languages = cls._get_languages()
+        remotes = cls._get_remotes()
+        default_branch = cls._get_default_branch()
+        license_name = cls._find_license()
+
+        return RepositoryMetadata(
+            name=basename,
+            full_name=basename,
+            owner=owner,
+            owner_url=f"mailto:{owner_email}",
+            description=None,
+            stars_count=0,
+            forks_count=0,
+            watchers_count=0,
+            open_issues_count=0,
+            default_branch=default_branch,
+            created_at=dates["created_at"],
+            updated_at=dates["updated_at"],
+            pushed_at=dates["pushed_at"],
+            size_kb=size,
+            clone_url_http=remotes["clone_url_http"],
+            clone_url_ssh=remotes["clone_url_ssh"],
+            contributors_url=None,
+            languages_url="",
+            issues_url=None,
+            language=languages[0] if languages else None,
+            languages=languages,
+            topics=[],
+            has_wiki=False,
+            has_issues=False,
+            has_projects=False,
+            is_private=False,
+            homepage_url=None,
+            license_name=license_name,
+            license_url=None,
+        )
+
+    @classmethod
+    def _find_license(cls) -> str | None:
+        files = [f for f in cls.repo.git.ls_files().split("\n") if "/" not in f]
+        license_file = None
+        for f in files:
+            if f.lower() in LICENSE_NAMES:
+                license_file = f
+                break
+
+        if license_file:
+            full_path = os.path.join(cls.repo_path, license_file)
+            with open(full_path, "r", encoding="utf-8") as f:
+                content = f.read(500)
+
+                if re.search(r"MIT", content, re.I):
+                    return "MIT"
+                if re.search(r"Apache", content, re.I):
+                    return "Apache 2.0"
+                if re.search(r"GNU|GPL", content, re.I):
+                    return "GPL"
+                if re.search(r"BSD", content, re.I):
+                    return "BSD"
+
+        return None
+
+    @classmethod
+    def _load_dates(cls) -> dict[str, str]:
+        first_commit_time = next(cls.repo.iter_commits(reverse=True, max_count=1)).committed_datetime
+        last_commit_time = cls.repo.head.commit.committed_datetime
+        time_format = "%Y-%m-%dT%H:%M:%SZ"
+
+        return {
+            "created_at": first_commit_time.strftime(time_format),
+            "updated_at": last_commit_time.strftime(time_format),
+            "pushed_at": last_commit_time.strftime(time_format),
+        }
+
+    @classmethod
+    def _get_repository_size(cls) -> int:
+        total_bytes = 0
+
+        files = cls.repo.git.ls_files().split("\n")
+
+        for file_path in files:
+            full_path = os.path.join(cls.repo_path, file_path)
+            if os.path.exists(full_path):
+                total_bytes += os.path.getsize(full_path)
+
+        return round(total_bytes / 1024)
+
+    @classmethod
+    def _get_languages(cls) -> list[str]:
+        files = cls.repo.git.ls_files().split("\n")
+
+        weights = Counter()
+
+        for f in files:
+            if not f:
+                continue
+
+            abs_path = os.path.join(cls.repo_path, f)
+            if not os.path.isfile(abs_path):
+                continue
+
+            name = os.path.basename(f).lower()
+            ext = os.path.splitext(name)[1].lower()
+
+            lang = FILE_MAP.get(name) or EXT_MAP.get(ext)
+
+            if lang:
+                weights[lang] += os.path.getsize(abs_path)
+
+        return sorted(weights, key=weights.get, reverse=True)
+
+    @classmethod
+    def _get_remotes(cls) -> dict[str, str]:
+        http_url = ""
+        ssh_url = ""
+        for remote in cls.repo.remotes:
+            remote_data = {"name": remote.name, "ssh_url": None, "http_url": None}
+
+            for url in remote.urls:
+                if url.startswith("http"):
+                    http_url = url
+                elif url.startswith("git@") or url.startswith("ssh://"):
+                    ssh_url = url
+        return {
+            "clone_url_http": http_url,
+            "clone_url_ssh": ssh_url,
+        }
+
+    @classmethod
+    def _get_default_branch(cls) -> str:
+        local_branches = [b.name for b in cls.repo.heads]
+
+        for priority_name in ["master", "main"]:
+            if priority_name in local_branches:
+                return priority_name
+
+        if not cls.repo.head.is_detached:
+            return cls.repo.active_branch.name
+        if local_branches:
+            return local_branches[0]
+        raise ValueError("Repository has no default branch")
+
+    @classmethod
+    def _parse_metadata(cls, repo_data: dict) -> RepositoryMetadata:
+        pass
 
 
 class GitLabMetadataLoader(MetadataLoader):

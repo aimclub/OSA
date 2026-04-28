@@ -27,6 +27,7 @@ EXCLUDED_TASK = {
     "no_pull_request",
     "branches",
     "codecov_token",
+    "max_retries",
 }
 
 
