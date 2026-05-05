@@ -274,8 +274,7 @@ Detailed description of OSA API is available [here](https://aimclub.github.io/OS
 ## Chat with developers: OSA_helpdesk
 
 In our Telegram chat [OSA_helpdesk](https://t.me/osa_helpdesk) you can ask questions about working with OSA and find the
-latest
-news about the project.
+latest news about the project.
 
 ---
 
