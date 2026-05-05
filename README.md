@@ -216,7 +216,7 @@ different types of tasks, disable the `--use-single-model` flag and specify mode
 `--model-docstring`, `--model-readme`, `--model-validation`, `--model-general`).
 
 To learn how to work with the interactive CLI and view descriptions of all available keys, visit
-the [CLI usage guide](./osa_tool/scheduler/README.md).
+the [CLI usage guide](./docs/scheduler/index.md).
 
 ---
 
@@ -273,8 +273,8 @@ Detailed description of OSA API is available [here](https://aimclub.github.io/OS
 
 ## Chat with developers: OSA_helpdesk
 
-In our Telegram chat [OSA_helpdesk](https://t.me/osa_helpdesk) you can ask questions about working with OSA and find the latest
-news about the project.
+In our Telegram chat [OSA_helpdesk](https://t.me/osa_helpdesk) you can ask questions about working with OSA and find the
+latest news about the project.
 
 ---
 
