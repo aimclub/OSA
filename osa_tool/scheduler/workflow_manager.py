@@ -356,3 +356,74 @@ class GitverseWorkflowManager(WorkflowManager):
     def _generate_files(self, workflow_settings, output_dir) -> list[str]:
         generator = GitHubWorkflowGenerator(output_dir)
         return generator.generate_selected_jobs(workflow_settings, self.plan)
+
+
+class SourceCraftWorkflowManager(WorkflowManager):
+    """
+    Workflow manager implementation for SourceCraft platform.
+
+    Uses `.sourcecraft/ci.yaml` file (or similar) for workflows storage.
+    Note: Currently acts as a stub until specific SourceCraft workflow generators are implemented.
+    """
+
+    def _locate_workflow_path(self) -> str | None:
+        # Предполагаем, что CI хранится в .sourcecraft/ci.yaml
+        wdir = os.path.join(self.base_path, ".sourcecraft")
+        fpath = os.path.join(wdir, "ci.yaml")
+        if os.path.isfile(fpath):
+            return fpath
+        return None
+
+    def _find_existing_jobs(self) -> set[str]:
+        if not self.workflow_path:
+            return set()
+
+        try:
+            with open(self.workflow_path, encoding="utf-8") as f:
+                content = yaml.safe_load(f)
+        except (yaml.YAMLError, IOError, OSError) as e:
+            logger.warning(f"Failed to load {self.workflow_path}: {e}")
+            return set()
+
+        if not content:
+            return set()
+
+        # Предполагаем структуру, похожую на GitHub/GitLab
+        if "jobs" in content:
+            return set(content["jobs"].keys())
+
+        # Если структура плоская
+        special_keys = {"image", "variables", "stages", "before_script", "after_script"}
+        jobs = {k for k in content.keys() if k not in special_keys and isinstance(content[k], dict)}
+        return jobs
+
+    def _get_output_dir(self) -> str:
+        out_dir = os.path.join(self.base_path, ".sourcecraft")
+        os.makedirs(out_dir, exist_ok=True)
+        return out_dir
+
+    def _generate_files(self, workflow_settings, output_dir) -> list[str]:
+        """
+        Stub for generating SourceCraft workflows.
+        Since we don't have a dedicated SourceCraftWorkflowGenerator yet,
+        we just create a dummy file to simulate the process.
+        """
+        logger.warning("SourceCraft workflow generation is currently in stub mode.")
+        workflow_file = os.path.join(output_dir, "ci.yaml")
+
+        stub_workflow = """# Auto-generated SourceCraft CI/CD pipeline
+name: OSA CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "OSA SourceCraft workflow generated successfully!"
+"""
+        try:
+            with open(workflow_file, "w", encoding="utf-8") as f:
+                f.write(stub_workflow)
+            return [workflow_file]
+        except Exception as e:
+            logger.error(f"Failed to write SourceCraft workflow: {e}")
+            return
