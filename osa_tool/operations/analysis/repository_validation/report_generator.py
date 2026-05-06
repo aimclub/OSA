@@ -213,7 +213,7 @@ class ReportGenerator:
         percentages = int(correspondence_sum / len(experiments) * 100)
         formula = "C = (Σ p<sub>i</sub> / n) × 100" f" = ({correspondence_sum:.2f} / {len(experiments)}) × 100"
         percentages_text = Paragraph(
-            (f"<b>Correspondence percentages: {percentages}%</b> " f"(<i>{formula}</i>)"),
+            f"<b>Correspondence percentages: {percentages}%</b> " f"(<i>{formula}</i>)",
             normal_style,
         )
         num_experiments = Paragraph(f"<b>Number of experiments found: {len(experiments)}</b>", normal_style)
@@ -261,12 +261,12 @@ class ReportGenerator:
         )
 
         cards = []
-        for i, experiment in enumerate(experiments):
+        for i, experiment in enumerate(experiments, 1):
             card_content = []
             header_row = Table(
                 [
                     [
-                        Paragraph(f"<b>Experiment {i + 1}</b>", normal_style),
+                        Paragraph(f"<b>Experiment {i}</b>", normal_style),
                         Paragraph(
                             f"<b>Correspondence:</b> {experiment.correspondence_percent * 100:.1f}%",
                             normal_style,
@@ -303,6 +303,10 @@ class ReportGenerator:
                     card_content.append(Paragraph(f"• {impl}", bullet_style))
             else:
                 card_content.append(Paragraph("• None", bullet_style))
+
+            reasoning = experiment.reasoning
+            if reasoning != "":
+                card_content.append(Paragraph(f"<b>Reasoning:</b> {reasoning}", normal_style))
 
             card_content.append(Paragraph("<b>Missing components:</b>", normal_style))
             if experiment.missing:

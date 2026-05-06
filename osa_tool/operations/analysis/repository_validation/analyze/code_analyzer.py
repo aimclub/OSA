@@ -7,6 +7,7 @@ from rich.progress import track
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.operations.docs.readme_generation.readme_utils import read_file
+from osa_tool.tools.repository_analysis.repo_graph import RepositoryGraph
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
@@ -51,6 +52,10 @@ class CodeAnalyzer:
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
         self.sourcerank = SourceRank(self.config_manager)
         self.tree = self.sourcerank.tree
+        self.__repo_path = Path(parse_folder_name(str(self.config_manager.get_git_settings().repository))).resolve()
+        source_files = self.get_code_files()
+        self.repo_graph = RepositoryGraph(self.__repo_path)
+        self.repo_graph.build(source_files)
 
     def get_code_files(self) -> Iterator[str]:
         """
@@ -61,13 +66,12 @@ class CodeAnalyzer:
         Returns:
             list[str]: List of absolute paths to code files.
         """
-        repo_path = Path(parse_folder_name(str(self.config_manager.get_git_settings().repository))).resolve()
-        for filename in track(self.tree.split("\n"), description="Getting code files ..."):
+        for filename in track(self.sourcerank.tree.split("\n"), description="Getting code files ..."):
             if self.__is_blacklisted(filename):
                 logger.debug(f"File '{filename}' is ignored. Skipping")
                 continue
             if self.__is_sourcefile(filename):
-                yield str(repo_path.joinpath(filename))
+                yield str(self.__repo_path.joinpath(filename))
                 continue
 
     @classmethod
