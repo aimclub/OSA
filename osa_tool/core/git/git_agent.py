@@ -1471,7 +1471,7 @@ class SourceCraftAgent(GitAgent):
         return ""
 
     def _extract_slugs(self) -> tuple[str, str]:
-        """Извлекает org_slug и repo_slug из URL"""
+        """Extracts org_slug and repo_slug from the repository URL."""
         clean_url = self.repo_url[:-4] if self.repo_url.endswith(".git") else self.repo_url
         parts = clean_url.strip("/").split("/")
         return parts[-2], parts[-1]
@@ -1491,7 +1491,6 @@ class SourceCraftAgent(GitAgent):
             logger.info(f"User '{current_username}' already owns the repository. Using original URL.")
             return
 
-        # ИСПРАВЛЕНО СОГЛАСНО SWAGGER: Передаем org_slug и default_branch_only
         url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/fork"
         body = {"org_slug": current_username, "default_branch_only": True}
 
@@ -1500,14 +1499,12 @@ class SourceCraftAgent(GitAgent):
         if response.status_code in {200, 201, 202}:
             repo_data = response.json()
             self.fork_url = repo_data.get("web_url", f"https://sourcecraft.dev/{current_username}/{repo_slug}")
-            # ИСПРАВЛЕНО: Сохраняем ID форка для создания PR
             self.fork_id = repo_data.get("id")
             logger.info(f"SourceCraft fork created successfully: {self.fork_url}")
         else:
             self._handle_api_error(response, "creating SourceCraft fork", raise_exception=True)
 
     def star_repository(self) -> None:
-        # В Swagger действительно нет эндпоинта для постановки звезд.
         logger.warning("Starring repositories is not supported via SourceCraft public API yet.")
 
     def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
@@ -1535,7 +1532,6 @@ class SourceCraftAgent(GitAgent):
             pr_slug = existing_pr.get("slug")
             logger.info(f"Pull request {pr_slug} already exists.")
 
-            # Обновление PR
             update_url = f"{url}/{pr_slug}"
             update_data = {"description": pr_body}
             update_res = requests.patch(update_url, headers=headers, json=update_data)
@@ -1546,15 +1542,12 @@ class SourceCraftAgent(GitAgent):
                 self._handle_api_error(update_res, f"updating PR {pr_slug}", raise_exception=False)
 
         elif changes:
-            # ВАЖНО:
-            # Если PR создается из форка, то source_branch в фильтре может нуждаться в указании пространства имен (например, fork_owner:branch), как в GitHub. Swagger об этом умалчивает.
-            # Если при тестировании поиск существующего PR сломается (будет создавать дубликаты), то фильтр нужно будет уточнить (возможно, добавив author_slug).
             pr_data = {
                 "title": pr_title,
                 "description": pr_body,
                 "source_branch": self.branch_name,
                 "target_branch": self.base_branch,
-                "publish": True,  # Чтобы PR не остался в статусе Draft
+                "publish": True,  # prevents draft PR creation
             }
 
             if hasattr(self, "fork_id") and self.fork_id:
