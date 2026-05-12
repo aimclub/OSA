@@ -28,7 +28,8 @@ class RequirementsGenerator:
         self.repo_path = Path(parse_folder_name(self.repo_url)).resolve()
         self.events: list[OperationEvent] = []
         self.prompts = self.config_manager.get_prompts()
-        self.model_handler = ModelHandlerFactory.build(self.config_manager.config)
+        self.model_settings = self.config_manager.get_model_settings("general")
+        self.model_handler = ModelHandlerFactory.build(self.model_settings)
 
     def generate(self) -> dict:
         logger.info(f"Starting the generation of requirements for: {self.repo_url}")

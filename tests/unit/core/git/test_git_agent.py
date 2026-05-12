@@ -1,11 +1,11 @@
 import os
 import tempfile
-from unittest.mock import Mock, patch, ANY
+from unittest.mock import Mock, patch, ANY, MagicMock
 
 import pytest
-from git import Repo, GitCommandError
+from git import Repo, GitCommandError, InvalidGitRepositoryError
 
-from osa_tool.core.git.git_agent import GitHubAgent, GitverseAgent, GitLabAgent, SourceCraftAgent
+from osa_tool.core.git.git_agent import GitHubAgent, GitverseAgent, GitLabAgent, SourceCraftAgent, LocalGitAgent
 from osa_tool.core.git.metadata import (
     GitHubMetadataLoader,
     GitverseMetadataLoader,
@@ -441,6 +441,7 @@ def test_gitverse_agent_star_repository_already_starred(
             mock_put.assert_not_called()
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # SourceCraft Agent
 # ---------------------------------------------------------------------------
@@ -639,3 +640,47 @@ def test_sourcecraft_agent_build_report_url(sourcecraft_agent_instance, repo_inf
     assert "/blob/" in report_url
     assert "attachments" in report_url
     assert "report.pdf" in report_url
+
+
+@patch("osa_tool.core.git.git_agent.Repo")
+@patch("osa_tool.core.git.metadata.Repo")
+@patch.object(LocalGitAgent, "_clone_chosen_branch")
+@patch.object(LocalGitAgent, "_clone_default_branch")
+def test_local_git_agent_cloning(
+    mock_clone_default_branch, mock_clone_chosen_branch, mock_repo_class_meta, mock_repo_class, tmp_path
+):
+    # Arrange
+    mock_repo_class_meta.return_value.heads = [
+        MagicMock(name="main"),
+    ]
+    mock_repo_instance = mock_repo_class.return_value
+    directory = tmp_path / "test"
+    directory.mkdir()
+
+    # Act
+    git_agent = LocalGitAgent(str(directory))
+    git_agent.clone_repository()
+
+    # Assert
+    assert git_agent.repo == mock_repo_instance
+    mock_clone_chosen_branch.assert_not_called()
+    mock_clone_default_branch.assert_not_called()
+
+
+def test_local_git_agent_with_not_existing_directory():
+    dirname = "does_not_exist"
+    with pytest.raises(ValueError, match=f"{dirname} does not exist."):
+        LocalGitAgent(dirname)
+
+
+def test_local_git_agent_with_empty_directory(tmp_path):
+    directory = tmp_path / "empty"
+    directory.mkdir()
+
+    with pytest.raises(InvalidGitRepositoryError):
+        LocalGitAgent(str(directory))
+
+
+def test_local_git_agent_with_directory_without_git(tmp_path):
+    with pytest.raises(InvalidGitRepositoryError):
+        LocalGitAgent("tests")

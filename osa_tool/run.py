@@ -4,7 +4,7 @@ import time
 from typing import Any, Callable
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, SourceCraftAgent, GitAgent
+from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, SourceCraftAgent, GitAgent, LocalGitAgent
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.analysis.repository_validation.doc_validator import DocValidator
 from osa_tool.operations.analysis.repository_validation.paper_validator import PaperValidator
@@ -71,7 +71,11 @@ def main():
         config_manager = ConfigManager(args)
 
         # Initialize Git agent and Workflow Manager for used platform, perform operations
-        git_agent, workflow_manager = initialize_git_platform(args)
+        git_agent, workflow_manager = initialize_git_platform(args, config_manager)
+
+        if isinstance(git_agent, LocalGitAgent):
+            create_fork = False
+            create_pull_request = False
 
         if create_fork:
             git_agent.star_repository()
@@ -138,7 +142,12 @@ def main():
             _run_plan_operation(
                 plan,
                 "docstring",
-                lambda: DocstringsGenerator(config_manager, args.ignore_list).run(),
+                lambda: DocstringsGenerator(
+                    config_manager=config_manager,
+                    ignore_list=args.ignore_list,
+                    incremental=args.incremental,
+                    target_files=args.target_files,
+                ).run(),
             )
 
         # License compiling
@@ -248,15 +257,29 @@ def main():
         sys.exit(1)
 
 
-def initialize_git_platform(args) -> tuple[GitAgent, WorkflowManager]:
-    if "github.com" in args.repository:
-        git_agent = GitHubAgent(args.repository, args.branch, author=args.author)
+def initialize_git_platform(args, config_manager: ConfigManager) -> tuple[GitAgent, WorkflowManager]:
+    if (os.getenv("GITHUB_ACTIONS") is not None) and (os.getenv("GITHUB_ACTIONS").lower() == "true"):
+        target_branch = args.branch
+    else:
+        target_branch = getattr(config_manager.config.git, "osa_branch_name", "osa_tool")
+
+    if os.path.isdir(args.repository):
+        git_agent = LocalGitAgent(args.repository, args.branch, author=args.author)
+        workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
+    elif "github.com" in args.repository:
+        git_agent = GitHubAgent(
+            args.repository, repo_branch_name=args.branch, branch_name=target_branch, author=args.author
+        )
         workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
     elif "gitlab." in args.repository:
-        git_agent = GitLabAgent(args.repository, args.branch, author=args.author)
+        git_agent = GitLabAgent(
+            args.repository, repo_branch_name=args.branch, branch_name=target_branch, author=args.author
+        )
         workflow_manager = GitLabWorkflowManager(args.repository, git_agent.metadata, args)
     elif "gitverse.ru" in args.repository:
-        git_agent = GitverseAgent(args.repository, args.branch, author=args.author)
+        git_agent = GitverseAgent(
+            args.repository, repo_branch_name=args.branch, branch_name=target_branch, author=args.author
+        )
         workflow_manager = GitverseWorkflowManager(args.repository, git_agent.metadata, args)
     elif "sourcecraft.dev" in args.repository:
         git_agent = SourceCraftAgent(args.repository, args.branch, author=args.author)

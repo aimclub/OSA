@@ -190,37 +190,50 @@ self_eval = """
 TASK:
 Evaluate the generated README and decide whether to stop or run targeted regeneration.
 
-Score the README on a scale of 1-10 based on:
-- Completeness: does it cover all essential sections
-- Accuracy: does it reflect the repository correctly
-- Clarity: is it well-written and easy to follow
-- Structure: proper markdown formatting, logical flow
-- User request alignment: does it address what the user asked for (if applicable)
+Assess along these dimensions (no numeric score in your output):
+- Completeness: essential sections present for this repo
+- Accuracy: matches repository analysis and does not invent facts
+- Clarity: readable and scannable for developers
+- Structure: sound Markdown and logical flow
+- User request alignment: satisfies the user request when one was given
+
+SEVERITY (each issue must use exactly one):
+- "blocker": wrong repo, fabricated commands/paths, broken Markdown, contradicts analysis, or fails the user request
+- "major": materially misleading, missing critical install/run/API steps that belong in this README, or large clarity gaps
+- "minor": typos, wording polish, optional structure tweaks, or small gaps that do not block publication
 
 OUTPUT:
 Return a JSON object:
 
 {{
-    "score": 6,
-    "issues": ["issue 1 description", "issue 2 description"],
-    "should_stop": true,
+    "issues": [
+        {{"severity": "major", "description": "short concrete defect"}},
+        {{"severity": "minor", "description": "optional polish item"}}
+    ],
+    "should_stop": false,
     "sections_to_rerun": [],
-    "section_feedback": {{}}
+    "section_feedback": {{}},
+    "quality_notes": "optional one-line summary for logs only"
 }}
 
+- "issues": list every **blocker** and **major** defect you find; add **minor** items when useful. Use [] only if
+  there are genuinely no defects (rare—assume drafts usually need at least small fixes unless evidence says otherwise).
 - "sections_to_rerun": internal section names from **PLANNED SECTION NAMES** below that need regeneration (LLM prose
   sections only, e.g. "overview", "getting_started"). Use [] if a whole-document patch is enough.
 - "section_feedback": map section internal name -> short instructions for that section's generator (concrete, actionable).
   Omit keys you do not want to rerun.
 
-Set "should_stop" to true if the README is good enough (score >= 8) or if remaining issues are minor.
+Set "should_stop" to true only when:
+- "issues" contains **no** "blocker" or "major" entries, **and**
+- "sections_to_rerun" is empty (if any section still needs regeneration, list it and set should_stop to false), **and**
+- any remaining "minor" issues are optional to fix before publication.
 
 RULES:
 - Report issues as concrete defects, not preferences.
 - Prefer section reruns only when defects are clearly localized to specific sections.
 - If multiple sections repeat the same flaw, mention root cause once and map precise feedback per affected section.
 - Never include section names outside PLANNED SECTION NAMES.
-- Keep issue phrasing short and actionable.
+- Keep each issue "description" short and actionable.
 - If **INTENT SCOPE** is `partial` or **ASSEMBLY MODE** is `merge_existing`, prefer `sections_to_rerun` for
   localized defects; avoid listing whole-document rewrite issues unless the defect is global (broken markdown,
   wrong repository, contradictory title).
@@ -479,15 +492,20 @@ RULES:
 - Escape any backslashes in JSON strings so the output is valid JSON (double backslashes for Windows paths).
 - If improving an existing section, keep accurate facts; drop marketing filler and speculative claims.
 - Keep output concise and scannable; avoid repeated claims across paragraphs/bullets.
-- Prefer developer-actionable wording and concrete repository anchors (paths, symbols, commands).
+- Prefer developer-actionable wording. Use concrete repository anchors (paths, symbols, commands) only where
+  section-specific rules allow (e.g. getting_started, examples); for overview and core_features, describe
+  capabilities without naming source files—follow section-specific constraints below.
 
 SECTION-SPECIFIC CONSTRAINTS (apply when section internal name matches):
-- overview: 1-3 short paragraphs only. No bullet lists. Do NOT enumerate libraries or dependencies by name; you may
-  say "Python" once or refer readers to Installation / requirements. Focus on what the repo does and name real
-  entry-point files from the context.
-- core_features: at most 5 bullets. Each bullet must cite at least one concrete file name or function/class symbol
-  visible in the context. Do NOT add bullets that only restate the dependency stack, IDE tooling, type hints,
-  "clean code", "rich libraries", persistence alone, or other generic claims without a specific repo artifact.
+- overview: 1-3 short paragraphs only. No bullet lists. Audience: first-scan readers. Do NOT enumerate libraries
+  or dependencies by name; you may say "Python" once or refer readers to Installation / requirements. Focus on
+  what the repo does; orient readers with capability-level surfaces (CLI, HTTP API, notebooks, training workflows)
+  supported by context—without repo paths, parenthetical filenames, or backticked file paths. Defer exact paths to
+  Getting Started.
+- core_features: at most 5 bullets. Each bullet = one distinct capability plus practical developer value in one
+  concise sentence; ground claims only in what context supports, but do NOT cite file names, paths, or
+  function/class symbols. Do NOT add bullets that only restate the dependency stack, IDE tooling, type hints,
+  "clean code", "rich libraries", persistence alone, or other generic claims.
 - getting_started: keep prerequisites short; do not paste a long package list-point to Installation or
   requirements.txt if mentioned in context.
 
@@ -526,16 +544,21 @@ Generate the **Overview** section for a README file.
 SECTION INTERNAL NAME: overview
 
 RULES:
-- Purpose: explain what the project does, who it is for, and where to start reading the code.
+- Purpose: explain what the project does, who it is for, and how newcomers orient themselves—without acting as a file index.
+- Audience: first-scan readers; where code or scripts live belongs in Getting Started, Examples, or Documentation.
 - Length: 1 short paragraph (3-5 sentences), no bullet list.
 - Include:
   1) primary project goal/problem,
   2) primary developer audience or use context,
-  3) concrete entry points from repository context (script/notebook/package paths).
+  3) orientation without file names: types of surfaces the repo offers (e.g. CLI, REST API, notebook workflows,
+     training or fine-tuning flows) only as supported by context, and/or point readers to Getting Started for
+     runnable steps.
 - Exclude:
   - feature enumeration (belongs to Core Features),
   - setup or run steps (belongs to Installation / Getting Started),
   - algorithm details (belongs to Methods and algorithms).
+- Do NOT name repository files, extensions, or paths (no backticked paths, no parenthetical filenames like (api.py)).
+- Style check: BAD: "start with cli_demo.py"; GOOD: "includes a command-line interface for interactive use."
 - Do NOT enumerate third-party libraries/dependencies by name (you may mention "Python" once).
 - Facts only - no invented paths, commands, files, claims, or performance statements.
 - Keep tone neutral and technical (no marketing language).
@@ -577,20 +600,21 @@ Generate the **Core Features** section for a README file.
 SECTION INTERNAL NAME: core_features
 
 RULES:
-- Purpose: list the project's most important capabilities for developers.
+- Purpose: list the project's most important capabilities for developers (not a map of source files).
+- Audience: first-scan readers; file-level detail belongs in Getting Started, Examples, or project layout sections.
 - Output format: 3-5 bullets only.
 - Each bullet must:
-  1) describe one distinct capability,
-  2) reference at least one concrete repository artifact (file path or function/class symbol),
-  3) state the practical developer value in one concise sentence.
+  1) describe one distinct capability supported by repository context,
+  2) state the practical developer value in one concise sentence.
+- Do NOT cite file paths, parenthetical filenames, backticked paths, or function/class symbols.
 - Order bullets by importance (most central capability first).
 - Exclude:
   - installation/run instructions,
   - repository structure mapping (belongs to Content),
   - algorithm/method explanations (belongs to Algorithms),
-  - generic quality/tooling claims without concrete evidence.
+  - generic quality/tooling claims without evidence from context.
 - Avoid overlap: do not repeat the same capability in different wording.
-- Facts only - no invented artifacts or behavior.
+- Facts only - do not invent capabilities or behavior.
 
 OUTPUT:
 Return a JSON object:

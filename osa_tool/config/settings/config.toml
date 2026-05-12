@@ -50,6 +50,8 @@ organize = false
 about = false
 validate_paper = false
 validate_doc = false
+incremental = false
+target_files = []
 
 #Workflow Settings
 [workflows]
