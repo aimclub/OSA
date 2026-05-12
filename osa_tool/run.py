@@ -5,11 +5,11 @@ from typing import Any, Callable
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import (
-    GitHubAgent, 
-    GitLabAgent, 
-    GitverseAgent, 
-    SourceCraftAgent, 
-    GitAgent, 
+    GitHubAgent,
+    GitLabAgent,
+    GitverseAgent,
+    SourceCraftAgent,
+    GitAgent,
     LocalGitAgent
 )
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
