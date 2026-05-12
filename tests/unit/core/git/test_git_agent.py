@@ -457,9 +457,7 @@ def sourcecraft_agent_instance(temp_clone_dir, mock_repository_metadata, repo_in
 
 
 @pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
-def test_sourcecraft_agent_create_fork_success(
-    sourcecraft_agent_instance, mock_requests_response_factory, repo_info
-):
+def test_sourcecraft_agent_create_fork_success(sourcecraft_agent_instance, mock_requests_response_factory, repo_info):
     # Arrange
     platform, owner, repo_name, repo_url = repo_info
     expected_api_url = f"https://api.sourcecraft.tech/repos/{owner}/{repo_name}/fork"
@@ -595,9 +593,7 @@ def test_sourcecraft_agent_create_pull_request_dedup(
 
 
 @pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
-def test_sourcecraft_agent_update_about_section(
-    sourcecraft_agent_instance, mock_requests_response_factory, repo_info
-):
+def test_sourcecraft_agent_update_about_section(sourcecraft_agent_instance, mock_requests_response_factory, repo_info):
     # Arrange
     platform, owner, repo_name, repo_url = repo_info
     sourcecraft_agent_instance.fork_url = repo_url

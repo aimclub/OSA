@@ -583,7 +583,9 @@ class SourceCraftWorkflowGenerator(WorkflowGenerator):
             "script": script,
         }
 
-    def generate_black_formatter(self, python_version: str = "3.11", src: str = ".", options: str = "--check --diff") -> dict:
+    def generate_black_formatter(
+        self, python_version: str = "3.11", src: str = ".", options: str = "--check --diff"
+    ) -> dict:
         return self._cube("black", python_version, [f"pip install black", f"black {options} {src}"])
 
     def generate_unit_test(self, python_version: str = "3.11", test_command: str = "pytest tests/") -> dict:
@@ -600,7 +602,9 @@ class SourceCraftWorkflowGenerator(WorkflowGenerator):
         return self._cube("autopep8", python_version, ["pip install autopep8", f"autopep8 --check --recursive {src}"])
 
     def generate_fix_pep8_command(self, python_version: str = "3.11", src: str = ".") -> dict:
-        return self._cube("fix-pep8", python_version, ["pip install autopep8", f"autopep8 --in-place --recursive {src}"])
+        return self._cube(
+            "fix-pep8", python_version, ["pip install autopep8", f"autopep8 --in-place --recursive {src}"]
+        )
 
     def generate_slash_command_dispatch(self) -> None:
         pass
