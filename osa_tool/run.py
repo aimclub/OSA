@@ -10,7 +10,7 @@ from osa_tool.core.git.git_agent import (
     GitverseAgent,
     SourceCraftAgent,
     GitAgent,
-    LocalGitAgent
+    LocalGitAgent,
 )
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.analysis.repository_validation.doc_validator import DocValidator
