@@ -441,7 +441,6 @@ def test_gitverse_agent_star_repository_already_starred(
             mock_put.assert_not_called()
 
 
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # SourceCraft Agent
 # ---------------------------------------------------------------------------
