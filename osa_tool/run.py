@@ -4,7 +4,7 @@ import time
 from typing import Any, Callable
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent
+from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent, LocalGitAgent
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.analysis.repository_validation.doc_validator import DocValidator
 from osa_tool.operations.analysis.repository_validation.paper_validator import PaperValidator
@@ -71,6 +71,10 @@ def main():
 
         # Initialize Git agent and Workflow Manager for used platform, perform operations
         git_agent, workflow_manager = initialize_git_platform(args, config_manager)
+
+        if isinstance(git_agent, LocalGitAgent):
+            create_fork = False
+            create_pull_request = False
 
         if create_fork:
             git_agent.star_repository()
@@ -258,7 +262,10 @@ def initialize_git_platform(args, config_manager: ConfigManager) -> tuple[GitAge
     else:
         target_branch = getattr(config_manager.config.git, "osa_branch_name", "osa_tool")
 
-    if "github.com" in args.repository:
+    if os.path.isdir(args.repository):
+        git_agent = LocalGitAgent(args.repository, args.branch, author=args.author)
+        workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
+    elif "github.com" in args.repository:
         git_agent = GitHubAgent(
             args.repository, repo_branch_name=args.branch, branch_name=target_branch, author=args.author
         )
