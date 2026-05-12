@@ -4,7 +4,14 @@ import time
 from typing import Any, Callable
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, SourceCraftAgent, GitAgent, LocalGitAgent
+from osa_tool.core.git.git_agent import (
+    GitHubAgent, 
+    GitLabAgent, 
+    GitverseAgent, 
+    SourceCraftAgent, 
+    GitAgent, 
+    LocalGitAgent
+)
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.analysis.repository_validation.doc_validator import DocValidator
 from osa_tool.operations.analysis.repository_validation.paper_validator import PaperValidator
