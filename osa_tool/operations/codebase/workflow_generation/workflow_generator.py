@@ -669,7 +669,6 @@ class SourceCraftWorkflowGenerator(WorkflowGenerator):
         if not any([lint_cubes, test_cubes, publish_cubes]):
             return []
 
-        # Build on: section
         ci_workflows = []
         if lint_cubes:
             ci_workflows.append("lint")
@@ -688,7 +687,6 @@ class SourceCraftWorkflowGenerator(WorkflowGenerator):
             on_section.setdefault("push", [])
             on_section["push"].append({"workflows": ["publish"], "filter": {"tags": ["*.*.*"]}})
 
-        # Build workflows: section
         workflows_section = {}
         if lint_cubes:
             workflows_section["lint"] = {"tasks": [{"name": "lint", "cubes": lint_cubes}]}

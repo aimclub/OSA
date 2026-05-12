@@ -363,12 +363,10 @@ class SourceCraftWorkflowManager(WorkflowManager):
     """
     Workflow manager implementation for SourceCraft platform.
 
-    Uses `.sourcecraft/ci.yaml` file (or similar) for workflows storage.
-    Note: Currently acts as a stub until specific SourceCraft workflow generators are implemented.
+    Uses `.sourcecraft/ci.yaml` file for workflows storage.
     """
 
     def _locate_workflow_path(self) -> str | None:
-        # Предполагаем, что CI хранится в .sourcecraft/ci.yaml
         wdir = os.path.join(self.base_path, ".sourcecraft")
         fpath = os.path.join(wdir, "ci.yaml")
         if os.path.isfile(fpath):
@@ -389,11 +387,9 @@ class SourceCraftWorkflowManager(WorkflowManager):
         if not content:
             return set()
 
-        # Предполагаем структуру, похожую на GitHub/GitLab
         if "jobs" in content:
             return set(content["jobs"].keys())
 
-        # Если структура плоская
         special_keys = {"image", "variables", "stages", "before_script", "after_script"}
         jobs = {k for k in content.keys() if k not in special_keys and isinstance(content[k], dict)}
         return jobs

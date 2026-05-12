@@ -568,7 +568,6 @@ class SourceCraftMetadataLoader(MetadataLoader):
         """
         Load SourceCraft repository metadata via SourceCraft API.
         """
-        # Извлекаем org/repo из URL
         clean_url = repo_url[:-4] if repo_url.endswith(".git") else repo_url
         parts = clean_url.strip("/").split("/")
         org_slug, repo_slug = parts[-2], parts[-1]
@@ -597,7 +596,6 @@ class SourceCraftMetadataLoader(MetadataLoader):
         """
         Parse SourceCraft API response into RepositoryMetadata.
         """
-        # Маппинг данных из Swagger в наш внутренний формат
         counters = repo_data.get("counters", {})
         clone_url = repo_data.get("clone_url", {})
         org_info = repo_data.get("organization", {})
@@ -609,34 +607,28 @@ class SourceCraftMetadataLoader(MetadataLoader):
             owner=org_info.get("slug", ""),
             owner_url=f"https://sourcecraft.dev/{org_info.get('slug')}" if org_info.get("slug") else None,
             description=repo_data.get("description", ""),
-            # Статистика
-            stars_count=0,  # В Swagger счетчика звезд нет
+            stars_count=0,  # not provided by SourceCraft API
             forks_count=int(counters.get("forks", 0)),
             watchers_count=0,
             open_issues_count=int(counters.get("issues", 0)),
-            # Детали
             default_branch=repo_data.get("default_branch", "master"),
-            created_at="",  # В базовом ответе Repository нет даты создания
+            created_at="",  # not in base Repository response
             updated_at=repo_data.get("last_updated", ""),
             pushed_at=repo_data.get("last_updated", ""),
-            size_kb=0,  # В Swagger нет поля размера
-            # URLs
+            size_kb=0,  # not provided by SourceCraft API
             clone_url_http=clone_url.get("https", ""),
             clone_url_ssh=clone_url.get("ssh", ""),
             contributors_url=None,
             languages_url="",
             issues_url=f"https://sourcecraft.dev/{org_info.get('slug')}/{repo_data.get('slug')}/issues",
-            # Языки и темы
             language=lang_info.get("name", ""),
             languages=[],
-            topics=[],  # В Swagger для Repository не указаны теги
-            # Настройки
+            topics=[],  # not in Repository response
             has_wiki=False,
             has_issues=int(counters.get("issues", 0)) > 0,
             has_projects=False,
             is_private=repo_data.get("visibility") == "private",
             homepage_url=repo_data.get("web_url", ""),
-            # Лицензия
             license_name=None,
             license_url=None,
         )

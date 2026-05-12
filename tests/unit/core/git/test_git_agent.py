@@ -104,7 +104,6 @@ def test_git_agent_clone_repository_failure_git_error(git_agent_base_setup):
 
     # Act
     with patch("git.Repo.clone_from", side_effect=git_error):
-        # Match changed: now we catch the message from _handle_git_error
         with pytest.raises(Exception, match=r"Git operation 'cloning repository.*' failed"):
             agent.clone_repository()
 
