@@ -8,6 +8,7 @@ from osa_tool.scheduler.workflow_manager import (
     GitHubWorkflowManager,
     GitLabWorkflowManager,
     GitverseWorkflowManager,
+    SourceCraftWorkflowManager,
 )
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 
@@ -250,3 +251,94 @@ def test_gitverse_locate_workflow_path_fallback_to_github(mock_config_manager, m
         # Assert
         assert manager.workflow_path is not None
         assert ".github/workflows" in manager.workflow_path.replace("\\", "/")
+
+
+# ---------------------------------------------------------------------------
+# SourceCraft WorkflowManager
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_locate_workflow_path_exists(mock_config_manager, mock_repository_metadata, mock_args):
+    # Arrange
+    with (
+        patch("osa_tool.scheduler.workflow_manager.os.path.isfile", return_value=True),
+        patch("osa_tool.scheduler.workflow_manager.open", mock_open()),
+        patch("osa_tool.scheduler.workflow_manager.yaml.safe_load", return_value={}),
+    ):
+        manager = SourceCraftWorkflowManager(
+            repo_url=mock_config_manager.config.git.repository,
+            metadata=mock_repository_metadata,
+            args=mock_args,
+        )
+
+        # Assert
+        assert manager.workflow_path is not None
+        assert manager.workflow_path.endswith("ci.yaml")
+        assert ".sourcecraft" in manager.workflow_path.replace("\\", "/")
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_locate_workflow_path_missing(mock_config_manager, mock_repository_metadata, mock_args):
+    # Arrange
+    with patch("osa_tool.scheduler.workflow_manager.os.path.isfile", return_value=False):
+        manager = SourceCraftWorkflowManager(
+            repo_url=mock_config_manager.config.git.repository,
+            metadata=mock_repository_metadata,
+            args=mock_args,
+        )
+
+        # Assert
+        assert manager.workflow_path is None
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_find_existing_jobs_with_jobs_key(mock_config_manager, mock_repository_metadata, mock_args):
+    # Arrange — ci.yaml uses GitHub-like jobs: section
+    yaml_content = {"jobs": {"lint": {}, "tests": {}}}
+    with (
+        patch("osa_tool.scheduler.workflow_manager.os.path.isfile", return_value=True),
+        patch("osa_tool.scheduler.workflow_manager.open", mock_open(read_data=yaml.dump(yaml_content))),
+        patch("osa_tool.scheduler.workflow_manager.yaml.safe_load", return_value=yaml_content),
+    ):
+        manager = SourceCraftWorkflowManager(
+            repo_url=mock_config_manager.config.git.repository,
+            metadata=mock_repository_metadata,
+            args=mock_args,
+        )
+
+        # Act
+        jobs = manager._find_existing_jobs()
+
+        # Assert
+        assert jobs == {"lint", "tests"}
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_find_existing_jobs_flat_structure(mock_config_manager, mock_repository_metadata, mock_args):
+    # Arrange — flat ci.yaml without a jobs: key (SourceCraft native format)
+    yaml_content = {
+        "image": "python:3.11",
+        "variables": {"ENV": "test"},
+        "lint": {"script": ["flake8 ."]},
+        "tests": {"script": ["pytest"]},
+    }
+    with (
+        patch("osa_tool.scheduler.workflow_manager.os.path.isfile", return_value=True),
+        patch("osa_tool.scheduler.workflow_manager.open", mock_open(read_data=yaml.dump(yaml_content))),
+        patch("osa_tool.scheduler.workflow_manager.yaml.safe_load", return_value=yaml_content),
+    ):
+        manager = SourceCraftWorkflowManager(
+            repo_url=mock_config_manager.config.git.repository,
+            metadata=mock_repository_metadata,
+            args=mock_args,
+        )
+
+        # Act
+        jobs = manager._find_existing_jobs()
+
+        # Assert — special keys excluded, only real job dicts kept
+        assert "image" not in jobs
+        assert "variables" not in jobs
+        assert "lint" in jobs
+        assert "tests" in jobs

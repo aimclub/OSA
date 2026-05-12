@@ -373,7 +373,7 @@ class GitverseMetadataLoader(MetadataLoader):
 
 
 class SourceCraftMetadataLoader(MetadataLoader):
-    API_BASE = "https://api.sourcecraft.dev"
+    API_BASE = "https://api.sourcecraft.tech"
 
     @classmethod
     def _load_platform_data(cls, repo_url: str, use_token: bool) -> RepositoryMetadata:
@@ -417,7 +417,7 @@ class SourceCraftMetadataLoader(MetadataLoader):
 
         return RepositoryMetadata(
             name=repo_data.get("name", ""),
-            full_name=repo_data.get("slug", ""),  # В SourceCraft slug обычно и есть full_name
+            full_name=f"{org_info.get('slug', '')}/{repo_data.get('slug', '')}",
             owner=org_info.get("slug", ""),
             owner_url=f"https://sourcecraft.dev/{org_info.get('slug')}" if org_info.get("slug") else None,
             description=repo_data.get("description", ""),
@@ -437,7 +437,7 @@ class SourceCraftMetadataLoader(MetadataLoader):
             clone_url_ssh=clone_url.get("ssh", ""),
             contributors_url=None,
             languages_url="",
-            issues_url=f"https://sourcecraft.dev/{repo_data.get('slug')}/issues",
+            issues_url=f"https://sourcecraft.dev/{org_info.get('slug')}/{repo_data.get('slug')}/issues",
             # Языки и темы
             language=lang_info.get("name", ""),
             languages=[],

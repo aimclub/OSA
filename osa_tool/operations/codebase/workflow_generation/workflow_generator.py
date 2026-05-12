@@ -560,6 +560,148 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
         return generated_files
 
 
+class SourceCraftWorkflowGenerator(WorkflowGenerator):
+    """
+    Generates .sourcecraft/ci.yaml using SourceCraft's native CI format.
+
+    SourceCraft CI structure: on → workflows → tasks → cubes.
+    All workflows run concurrently; all cubes within a task run on the same VM.
+    Reference: https://sourcecraft.dev/portal/docs/en/sourcecraft/ci-cd-ref/
+    """
+
+    def load_template(self, template_name: str) -> str:
+        template_path = os.path.join(
+            osa_project_root(), "config", "templates", "workflow", "sourcecraft", template_name
+        )
+        with open(template_path, "r", encoding="utf-8") as f:
+            return f.read()
+
+    def _cube(self, name: str, python_version: str, script: List[str]) -> dict:
+        return {
+            "name": name,
+            "image": f"docker.io/library/python:{python_version}",
+            "script": script,
+        }
+
+    def generate_black_formatter(self, python_version: str = "3.11", src: str = ".", options: str = "--check --diff") -> dict:
+        return self._cube("black", python_version, [f"pip install black", f"black {options} {src}"])
+
+    def generate_unit_test(self, python_version: str = "3.11", test_command: str = "pytest tests/") -> dict:
+        return self._cube(
+            f"pytest-{python_version}",
+            python_version,
+            ["pip install -r requirements.txt pytest pytest-cov", test_command],
+        )
+
+    def generate_pep8(self, tool: str = "flake8", python_version: str = "3.11", src: str = ".") -> dict:
+        return self._cube(tool, python_version, [f"pip install {tool}", f"{tool} {src}"])
+
+    def generate_autopep8(self, python_version: str = "3.11", src: str = ".") -> dict:
+        return self._cube("autopep8", python_version, ["pip install autopep8", f"autopep8 --check --recursive {src}"])
+
+    def generate_fix_pep8_command(self, python_version: str = "3.11", src: str = ".") -> dict:
+        return self._cube("fix-pep8", python_version, ["pip install autopep8", f"autopep8 --in-place --recursive {src}"])
+
+    def generate_slash_command_dispatch(self) -> None:
+        pass
+
+    def generate_pypi_publish(self, python_version: str = "3.11", use_poetry: bool = False) -> dict:
+        if use_poetry:
+            script = [
+                "pip install poetry",
+                "poetry build",
+                "poetry publish --username __token__ --password ${{ secrets.PYPI_TOKEN }}",
+            ]
+        else:
+            script = [
+                "pip install build twine",
+                "python -m build",
+                "twine upload dist/* -u __token__ -p ${{ secrets.PYPI_TOKEN }}",
+            ]
+        return self._cube("pypi-publish", python_version, script)
+
+    def generate_selected_jobs(self, settings: WorkflowSettings, plan: Plan) -> List[str]:
+        self._ensure_output_dir()
+
+        python_versions: List[str] = settings.python_versions or ["3.11"]
+        latest = python_versions[-1]
+        branches: List[str] = settings.branches or []
+
+        lint_cubes = []
+        test_cubes = []
+        publish_cubes = []
+
+        if settings.include_black:
+            lint_cubes.append(self.generate_black_formatter(python_version=latest))
+            if plan is not None:
+                plan.mark_done("include_black")
+
+        if settings.include_pep8:
+            lint_cubes.append(self.generate_pep8(tool=settings.pep8_tool, python_version=latest))
+            if plan is not None:
+                plan.mark_done("include_pep8")
+
+        if settings.include_autopep8:
+            lint_cubes.append(self.generate_autopep8(python_version=latest))
+            if plan is not None:
+                plan.mark_done("include_autopep8")
+
+        if settings.include_fix_pep8:
+            lint_cubes.append(self.generate_fix_pep8_command(python_version=latest))
+            if plan is not None:
+                plan.mark_done("include_fix_pep8")
+
+        if settings.include_tests:
+            for version in python_versions:
+                test_cubes.append(self.generate_unit_test(python_version=version))
+            if plan is not None:
+                plan.mark_done("include_tests")
+
+        if settings.include_pypi:
+            publish_cubes.append(self.generate_pypi_publish(python_version=latest, use_poetry=settings.use_poetry))
+            if plan is not None:
+                plan.mark_done("include_pypi")
+
+        if not any([lint_cubes, test_cubes, publish_cubes]):
+            return []
+
+        # Build on: section
+        ci_workflows = []
+        if lint_cubes:
+            ci_workflows.append("lint")
+        if test_cubes:
+            ci_workflows.append("tests")
+
+        on_section = {}
+        if ci_workflows:
+            push_entry: dict = {"workflows": list(ci_workflows)}
+            if branches:
+                push_entry["filter"] = {"branches": branches}
+            on_section["push"] = [push_entry]
+            on_section["pull_request"] = [{"workflows": list(ci_workflows)}]
+
+        if publish_cubes:
+            on_section.setdefault("push", [])
+            on_section["push"].append({"workflows": ["publish"], "filter": {"tags": ["*.*.*"]}})
+
+        # Build workflows: section
+        workflows_section = {}
+        if lint_cubes:
+            workflows_section["lint"] = {"tasks": [{"name": "lint", "cubes": lint_cubes}]}
+        if test_cubes:
+            workflows_section["tests"] = {"tasks": [{"name": "tests", "cubes": test_cubes}]}
+        if publish_cubes:
+            workflows_section["publish"] = {"tasks": [{"name": "publish", "cubes": publish_cubes}]}
+
+        config = {"on": on_section, "workflows": workflows_section}
+
+        file_path = os.path.join(self.output_dir, "ci.yaml")
+        with open(file_path, "w", encoding="utf-8") as f:
+            yaml.dump(config, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+
+        return [file_path]
+
+
 class GitLabWorkflowGenerator(WorkflowGenerator):
     def load_template(self, template_name: str) -> str:
         """

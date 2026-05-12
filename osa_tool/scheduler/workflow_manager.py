@@ -10,6 +10,7 @@ from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.codebase.workflow_generation.workflow_generator import (
     GitHubWorkflowGenerator,
     GitLabWorkflowGenerator,
+    SourceCraftWorkflowGenerator,
 )
 from osa_tool.scheduler.plan import Plan
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
@@ -403,27 +404,5 @@ class SourceCraftWorkflowManager(WorkflowManager):
         return out_dir
 
     def _generate_files(self, workflow_settings, output_dir) -> list[str]:
-        """
-        Stub for generating SourceCraft workflows.
-        Since we don't have a dedicated SourceCraftWorkflowGenerator yet,
-        we just create a dummy file to simulate the process.
-        """
-        logger.warning("SourceCraft workflow generation is currently in stub mode.")
-        workflow_file = os.path.join(output_dir, "ci.yaml")
-
-        stub_workflow = """# Auto-generated SourceCraft CI/CD pipeline
-name: OSA CI
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "OSA SourceCraft workflow generated successfully!"
-"""
-        try:
-            with open(workflow_file, "w", encoding="utf-8") as f:
-                f.write(stub_workflow)
-            return [workflow_file]
-        except Exception as e:
-            logger.error(f"Failed to write SourceCraft workflow: {e}")
-            return
+        generator = SourceCraftWorkflowGenerator(output_dir)
+        return generator.generate_selected_jobs(workflow_settings, self.plan)

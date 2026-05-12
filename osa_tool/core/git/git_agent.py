@@ -235,6 +235,8 @@ class GitAgent(abc.ABC):
             return self._check_gitlab_branch_exists(branch)
         elif "gitverse.ru" in self.repo_url:
             return self._check_gitverse_branch_exists(branch)
+        elif "sourcecraft.dev" in self.repo_url:
+            return self._check_sourcecraft_branch_exists(branch)
 
         logger.warning(f"Cannot check branch existence for platform: {self.repo_url}")
         return False
@@ -1403,7 +1405,7 @@ class GitverseAgent(GitAgent):
 
 
 class SourceCraftAgent(GitAgent):
-    API_BASE = "https://api.sourcecraft.dev"  # Или актуальный домен API
+    API_BASE = "https://api.sourcecraft.tech"
 
     def _get_token(self) -> str:
         return os.getenv("SOURCECRAFT_TOKEN", os.getenv("GIT_TOKEN", ""))
@@ -1414,12 +1416,19 @@ class SourceCraftAgent(GitAgent):
         return SourceCraftMetadataLoader.load_data(repo_url)
 
     def _get_headers(self) -> dict:
-        """Вспомогательный метод для генерации заголовков"""
         return {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
+
+    def _get_current_username(self) -> str:
+        """Returns the authenticated user's username, or empty string on failure."""
+        response = requests.get(f"{self.API_BASE}/user", headers=self._get_headers())
+        if response.status_code == 200:
+            return response.json().get("username", "")
+        logger.warning(f"Could not fetch SourceCraft user profile: {response.status_code}")
+        return ""
 
     def _extract_slugs(self) -> tuple[str, str]:
         """Извлекает org_slug и repo_slug из URL"""
@@ -1433,14 +1442,9 @@ class SourceCraftAgent(GitAgent):
 
         org_slug, repo_slug = self._extract_slugs()
 
-        # Получаем профиль текущего пользователя
-        user_response = requests.get(f"{self.API_BASE}/user", headers=self._get_headers())
-        if user_response.status_code != 200:
-            self._handle_api_error(user_response, "getting SourceCraft user profile", raise_exception=True)
-
-        bot_username = user_response.json().get("username", "") if user_response.status_code == 200 else ""
-
-        current_username = user_response.json().get("username")
+        current_username = self._get_current_username()
+        if not current_username:
+            raise ValueError("Failed to get SourceCraft user profile.")
 
         if org_slug == current_username:
             self.fork_url = self.repo_url
@@ -1474,13 +1478,10 @@ class SourceCraftAgent(GitAgent):
         url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/pulls"
         headers = self._get_headers()
 
-        last_commit = (
-            self.repo_head_commit_message() if hasattr(self, "repo_head_commit_message") else "Auto-generated PR by OSA"
-        )
-        pr_title = title if title else last_commit
+        pr_title = title if title else self.repo.head.commit.message.strip()
         pr_body = (body if body else "") + self.agent_signature
 
-        # ИСПРАВЛЕНО СОГЛАСНО SWAGGER: Использование QL фильтра для поиска PR
+        bot_username = self._get_current_username()
         ql_filter = f'status=open and source_branch="{self.branch_name}" and target_branch="{self.base_branch}"'
         if bot_username:
             ql_filter += f' and author_slug="{bot_username}"'
@@ -1526,11 +1527,26 @@ class SourceCraftAgent(GitAgent):
             else:
                 self._handle_api_error(response, "creating pull request", raise_exception=True)
 
+    def update_about_section(self, about_content: dict) -> None:
+        if not self.token:
+            raise ValueError("Git-platform token is required to fill repository's 'About' section.")
+        if not self.fork_url:
+            raise ValueError("Fork URL is not set. Please create a fork first.")
+
+        org_slug, repo_slug = self._extract_slugs()
+        logger.info(f"Updating 'About' section for base repository - {self.repo_url}")
+        self._update_about_section(f"{org_slug}/{repo_slug}", about_content)
+
+        clean_fork = self.fork_url[:-4] if self.fork_url.endswith(".git") else self.fork_url
+        fork_parts = clean_fork.strip("/").split("/")
+        fork_path = f"{fork_parts[-2]}/{fork_parts[-1]}"
+        logger.info(f"Updating 'About' section for the fork - {self.fork_url}")
+        self._update_about_section(fork_path, about_content)
+
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
         parts = repo_path.strip("/").split("/")
         org_slug, repo_slug = parts[-2], parts[-1]
 
-        # Согласно Swagger, UpdateRepositoryBody принимает description
         url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}"
         about_data = {"description": about_content.get("description", "")}
 
@@ -1541,18 +1557,33 @@ class SourceCraftAgent(GitAgent):
             self._handle_api_error(response, f"updating description for '{repo_path}'", raise_exception=False)
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
-        return f"{self.fork_url}/tree/{report_branch}/{report_filename}"
+        return f"{self.fork_url}/blob/{report_branch}/{report_filename}"
 
     def _build_auth_url(self, repo_url: str) -> str:
-        import re
-
-        match = re.match(r"https?://([^/]+)/(.+)", repo_url)
+        # SourceCraft git operations go through git.sourcecraft.dev.
+        # API returns clone URLs as https://git@git.sourcecraft.dev/org/repo.git,
+        # so we use 'git' as username and the PAT as password.
+        match = re.match(r"https?://(?:git\.)?sourcecraft\.dev/(.+)", repo_url)
         if match:
-            host = match.group(1)
-            path = match.group(2)
-            # Используем токен как username для HTTP basic auth
-            return f"https://{self.token}@{host}/{path}.git"
+            path = match.group(1).rstrip("/").removesuffix(".git")
+            return f"https://git:{self.token}@git.sourcecraft.dev/{path}.git"
         raise ValueError(f"Unsupported repository URL format for SourceCraft: {repo_url}")
+
+    def _check_sourcecraft_branch_exists(self, branch: str) -> bool:
+        """Check if branch exists on SourceCraft using API."""
+        org_slug, repo_slug = self._extract_slugs()
+        url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/branches"
+        try:
+            response = requests.get(url, headers=self._get_headers(), timeout=10)
+            if response.status_code == 200:
+                branches = response.json().get("branches", [])
+                return any(b.get("name") == branch for b in branches)
+            else:
+                logger.warning(f"SourceCraft API returned {response.status_code} for branch check")
+                return False
+        except Exception as e:
+            logger.warning(f"Failed to check SourceCraft branch: {e}")
+            return False
 
     def validate_topics(self, topics: list[str]) -> list[str]:
         logger.warning("Topic validation is not yet implemented for SourceCraft.")
