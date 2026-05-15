@@ -1,5 +1,5 @@
 import os
-from unittest.mock import patch, ANY
+from unittest.mock import patch
 
 import pytest
 
@@ -15,18 +15,21 @@ LOADER_CLASSES = {
     "github": GitHubMetadataLoader,
     "gitlab": GitLabMetadataLoader,
     "gitverse": GitverseMetadataLoader,
+    "sourcecraft": SourceCraftMetadataLoader,
 }
 
 TOKEN_ENVS = {
     "github": {"GIT_TOKEN": "fake_token", "GITHUB_TOKEN": ""},
     "gitlab": {"GITLAB_TOKEN": "fake_token", "GIT_TOKEN": ""},
     "gitverse": {"GITVERSE_TOKEN": "fake_token", "GIT_TOKEN": ""},
+    "sourcecraft": {"SOURCECRAFT_TOKEN": "fake_token", "GIT_TOKEN": ""},
 }
 
 BASE_URLS = {
     "github": "https://api.github.com/repos/{base}",
     "gitlab": "https://gitlab.com/api/v4/projects/{base}",
     "gitverse": "https://api.gitverse.ru/repos/{base}",
+    "sourcecraft": "https://api.sourcecraft.tech/repos/{base}",
 }
 
 HEADERS = {
@@ -44,10 +47,15 @@ HEADERS = {
         "Content-Type": "application/json",
         "User-Agent": "Mozilla/5.0",
     },
+    "sourcecraft": {
+        "Authorization": "Bearer fake_token",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    },
 }
 
 
-@pytest.mark.parametrize("mock_config_manager", ["github", "gitlab", "gitverse"], indirect=True)
+@pytest.mark.parametrize("mock_config_manager", ["github", "gitlab", "gitverse", "sourcecraft"], indirect=True)
 def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_factory, repo_info):
     # Arrange
     platform, owner, repo_name, repo_url = repo_info
@@ -64,12 +72,13 @@ def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_fa
     expected = loader_class._parse_metadata(raw_data)
     assert result == expected
 
-    base_url = get_base_repo_url(repo_url)
     if platform == "gitlab":
-        base_url = base_url.replace("/", "%2F")
+        base_url = get_base_repo_url(repo_url).replace("/", "%2F")
         expected_url = BASE_URLS["gitlab"].format(base=base_url)
+    elif platform == "sourcecraft":
+        expected_url = BASE_URLS["sourcecraft"].format(base=f"{owner}/{repo_name}")
     else:
-        expected_url = BASE_URLS[platform].format(base=base_url)
+        expected_url = BASE_URLS[platform].format(base=get_base_repo_url(repo_url))
 
     mock_get.assert_called_once_with(
         url=expected_url,
@@ -77,7 +86,7 @@ def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_fa
     )
 
 
-@pytest.mark.parametrize("mock_config_manager", ["github", "gitlab", "gitverse"], indirect=True)
+@pytest.mark.parametrize("mock_config_manager", ["github", "gitlab", "gitverse", "sourcecraft"], indirect=True)
 @pytest.mark.parametrize("status_code", [401, 403, 404, 500])
 def test_load_data_http_errors(status_code, mock_requests_response_factory, repo_info):
     # Arrange
@@ -91,15 +100,7 @@ def test_load_data_http_errors(status_code, mock_requests_response_factory, repo
             with pytest.raises(Exception):
                 loader_class.load_data(repo_url)
 
-
-# ---------------------------------------------------------------------------
-# SourceCraft MetadataLoader — standalone tests (API format differs from other platforms)
-# ---------------------------------------------------------------------------
-
-_SC_REPO_URL = "https://sourcecraft.dev/testorg/testrepo"
-_SC_API_URL = "https://api.sourcecraft.tech/repos/testorg/testrepo"
-_SC_TOKEN_ENV = {"SOURCECRAFT_TOKEN": "fake_sc_token", "GIT_TOKEN": ""}
-
+# Sourcecraft
 
 def _make_sc_raw_data() -> dict:
     return {
@@ -118,34 +119,6 @@ def _make_sc_raw_data() -> dict:
         "organization": {"slug": "testorg"},
         "language": {"name": "Python", "color": "#3572A5"},
     }
-
-
-def test_sourcecraft_load_platform_data_success(mock_requests_response_factory):
-    # Arrange
-    raw_data = _make_sc_raw_data()
-    mock_response = mock_requests_response_factory(status_code=200, json_data=raw_data)
-
-    # Act
-    with patch("osa_tool.core.git.metadata.requests.get", return_value=mock_response) as mock_get:
-        with patch.dict(os.environ, _SC_TOKEN_ENV):
-            result = SourceCraftMetadataLoader._load_platform_data(_SC_REPO_URL, use_token=True)
-
-    # Assert
-    expected = SourceCraftMetadataLoader._parse_metadata(raw_data)
-    assert result == expected
-    mock_get.assert_called_once_with(url=_SC_API_URL, headers=ANY)
-
-
-@pytest.mark.parametrize("status_code", [401, 403, 404, 500])
-def test_sourcecraft_load_data_http_errors(status_code, mock_requests_response_factory):
-    # Arrange
-    mock_response = mock_requests_response_factory(status_code=status_code)
-
-    # Act & Assert
-    with patch("osa_tool.core.git.metadata.requests.get", return_value=mock_response):
-        with patch.dict(os.environ, _SC_TOKEN_ENV):
-            with pytest.raises(Exception):
-                SourceCraftMetadataLoader.load_data(_SC_REPO_URL)
 
 
 def test_sourcecraft_parse_metadata_full_name():

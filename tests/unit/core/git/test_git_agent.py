@@ -483,7 +483,7 @@ def test_sourcecraft_agent_create_fork_success(sourcecraft_agent_instance, mock_
 def test_sourcecraft_agent_create_fork_self_owned(
     sourcecraft_agent_instance, mock_requests_response_factory, repo_info
 ):
-    # Arrange — user is already the owner, no fork should be created
+    # Arrange - user is already the owner, no fork should be created
     platform, owner, repo_name, repo_url = repo_info
     mock_user_response = mock_requests_response_factory(status_code=200, json_data={"username": owner})
 
@@ -518,7 +518,7 @@ def test_sourcecraft_agent_create_fork_failure(sourcecraft_agent_instance, mock_
 
 @pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
 def test_sourcecraft_agent_star_repository_noop(sourcecraft_agent_instance):
-    # SourceCraft has no starring API — must not call any HTTP endpoint
+    # SourceCraft has no starring API - must not call any HTTP endpoint
     with patch("requests.put") as mock_put, patch("requests.get") as mock_get:
         sourcecraft_agent_instance.star_repository()
 
@@ -562,7 +562,7 @@ def test_sourcecraft_agent_create_pull_request_new(
 def test_sourcecraft_agent_create_pull_request_new_with_reports(
     sourcecraft_agent_instance, mock_repo, mock_requests_response_factory, repo_info
 ):
-    # Arrange — new PR, attachment branch has one PDF — link must appear in PR description
+    # Arrange - new PR, attachment branch has one PDF - link must appear in PR description
     platform, owner, repo_name, repo_url = repo_info
     sourcecraft_agent_instance.repo = mock_repo
     sourcecraft_agent_instance.fork_url = repo_url
@@ -594,7 +594,7 @@ def test_sourcecraft_agent_create_pull_request_new_with_reports(
 def test_sourcecraft_agent_create_pull_request_dedup(
     sourcecraft_agent_instance, mock_repo, mock_requests_response_factory, repo_info
 ):
-    # Arrange — existing PR found, no new reports → must not POST a new PR
+    # Arrange - existing PR found, no new reports - must not POST a new PR
     platform, owner, repo_name, repo_url = repo_info
     sourcecraft_agent_instance.repo = mock_repo
     mock_repo.head.commit.message = "Test commit"
@@ -613,7 +613,7 @@ def test_sourcecraft_agent_create_pull_request_dedup(
                 with patch("requests.patch") as mock_patch:
                     sourcecraft_agent_instance.create_pull_request(changes=True)
 
-                    # Assert — no new PR created, no unnecessary PATCH
+                    # Assert - no new PR created, no unnecessary PATCH
                     mock_post.assert_not_called()
                     mock_patch.assert_not_called()
 
@@ -622,7 +622,7 @@ def test_sourcecraft_agent_create_pull_request_dedup(
 def test_sourcecraft_agent_create_pull_request_update_reports(
     sourcecraft_agent_instance, mock_repo, mock_requests_response_factory, repo_info
 ):
-    # Arrange — existing PR with old report, new report in pr_report_body → PATCH with merged reports
+    # Arrange - existing PR with old report, new report in pr_report_body - PATCH with merged reports
     platform, owner, repo_name, repo_url = repo_info
     sourcecraft_agent_instance.repo = mock_repo
     mock_repo.head.commit.message = "Test commit"
@@ -645,7 +645,7 @@ def test_sourcecraft_agent_create_pull_request_update_reports(
                 with patch("requests.patch", return_value=mock_update_response) as mock_patch:
                     sourcecraft_agent_instance.create_pull_request(changes=True)
 
-                    # Assert — no new PR, description updated with both report links
+                    # Assert - no new PR, description updated with both report links
                     mock_post.assert_not_called()
                     mock_patch.assert_called_once()
                     patched_description = mock_patch.call_args.kwargs["json"]["description"]
@@ -665,7 +665,7 @@ def test_sourcecraft_agent_update_about_section(sourcecraft_agent_instance, mock
         with patch("requests.patch", return_value=mock_response) as mock_patch:
             sourcecraft_agent_instance.update_about_section({"description": "Test description"})
 
-            # Assert — called twice: once for base repo, once for fork
+            # Assert - called twice: once for base repo, once for fork
             assert mock_patch.call_count == 2
             for call in mock_patch.call_args_list:
                 _, kwargs = call

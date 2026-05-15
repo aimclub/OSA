@@ -233,7 +233,11 @@ class DataFactory:
                 clone_url_ssh=clone_url.get("ssh", ""),
                 contributors_url=None,
                 languages_url="",
-                issues_url=f"https://sourcecraft.dev/{org_info.get('slug')}/{raw.get('slug')}/issues",
+                issues_url=(
+                    f"https://sourcecraft.dev/{org_info.get('slug')}/{raw.get('slug')}/issues"
+                    if org_info.get("slug") and raw.get("slug")
+                    else ""
+                ),
                 language=lang_info.get("name", ""),
                 languages=[],
                 topics=[],
