@@ -34,12 +34,12 @@ class WorkflowManager(ABC):
 
     job_name_for_key = {
         "include_black": ["black", "lint", "Lint", "format"],
-        "include_tests": ["test", "unit_tests"],
+        "include_tests": ["test", "unit_tests", "tests"],
         "include_pep8": ["lint", "Lint", "pep8_check"],
         "include_autopep8": ["autopep8"],
         "include_fix_pep8": ["fix_pep8_command", "fix-pep8"],
         "slash-command-dispatch": ["slash_command_dispatch", "slashCommandDispatch"],
-        "pypi-publish": ["pypi_publish", "pypi-publish"],
+        "pypi-publish": ["pypi_publish", "pypi-publish", "publish"],
     }
 
     def __init__(self, repo_url: str, metadata: RepositoryMetadata, args: Any):
@@ -387,12 +387,11 @@ class SourceCraftWorkflowManager(WorkflowManager):
         if not content:
             return set()
 
-        if "jobs" in content:
-            return set(content["jobs"].keys())
+        workflows = content.get("workflows")
+        if isinstance(workflows, dict):
+            return set(workflows.keys())
 
-        special_keys = {"image", "variables", "stages", "before_script", "after_script"}
-        jobs = {k for k in content.keys() if k not in special_keys and isinstance(content[k], dict)}
-        return jobs
+        return set()
 
     def _get_output_dir(self) -> str:
         out_dir = os.path.join(self.base_path, ".sourcecraft")

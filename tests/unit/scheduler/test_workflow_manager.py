@@ -293,9 +293,15 @@ def test_sourcecraft_locate_workflow_path_missing(mock_config_manager, mock_repo
 
 
 @pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
-def test_sourcecraft_find_existing_jobs_with_jobs_key(mock_config_manager, mock_repository_metadata, mock_args):
-    # Arrange — ci.yaml uses GitHub-like jobs: section
-    yaml_content = {"jobs": {"lint": {}, "tests": {}}}
+def test_sourcecraft_find_existing_jobs_native_format(mock_config_manager, mock_repository_metadata, mock_args):
+    # Arrange — actual SourceCraft ci.yaml format produced by SourceCraftWorkflowGenerator
+    yaml_content = {
+        "on": {"push": [{"workflows": ["lint", "tests"]}]},
+        "workflows": {
+            "lint": {"tasks": [{"name": "lint", "cubes": []}]},
+            "tests": {"tasks": [{"name": "tests", "cubes": []}]},
+        },
+    }
     with (
         patch("osa_tool.scheduler.workflow_manager.os.path.isfile", return_value=True),
         patch("osa_tool.scheduler.workflow_manager.open", mock_open(read_data=yaml.dump(yaml_content))),
@@ -315,14 +321,9 @@ def test_sourcecraft_find_existing_jobs_with_jobs_key(mock_config_manager, mock_
 
 
 @pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
-def test_sourcecraft_find_existing_jobs_flat_structure(mock_config_manager, mock_repository_metadata, mock_args):
-    # Arrange — flat ci.yaml without a jobs: key (SourceCraft native format)
-    yaml_content = {
-        "image": "python:3.11",
-        "variables": {"ENV": "test"},
-        "lint": {"script": ["flake8 ."]},
-        "tests": {"script": ["pytest"]},
-    }
+def test_sourcecraft_find_existing_jobs_unknown_format(mock_config_manager, mock_repository_metadata, mock_args):
+    # Arrange — unrecognized ci.yaml structure (no workflows: key)
+    yaml_content = {"some_key": {"value": 1}}
     with (
         patch("osa_tool.scheduler.workflow_manager.os.path.isfile", return_value=True),
         patch("osa_tool.scheduler.workflow_manager.open", mock_open(read_data=yaml.dump(yaml_content))),
@@ -337,8 +338,5 @@ def test_sourcecraft_find_existing_jobs_flat_structure(mock_config_manager, mock
         # Act
         jobs = manager._find_existing_jobs()
 
-        # Assert — special keys excluded, only real job dicts kept
-        assert "image" not in jobs
-        assert "variables" not in jobs
-        assert "lint" in jobs
-        assert "tests" in jobs
+        # Assert
+        assert jobs == set()

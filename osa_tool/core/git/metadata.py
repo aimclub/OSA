@@ -596,9 +596,9 @@ class SourceCraftMetadataLoader(MetadataLoader):
         """
         Parse SourceCraft API response into RepositoryMetadata.
         """
-        counters = repo_data.get("counters", {})
-        clone_url = repo_data.get("clone_url", {})
-        org_info = repo_data.get("organization", {})
+        counters = repo_data.get("counters", {}) or {}
+        clone_url = repo_data.get("clone_url", {}) or {}
+        org_info = repo_data.get("organization", {}) or {}
         lang_info = repo_data.get("language", {}) or {}
 
         return RepositoryMetadata(
@@ -620,7 +620,7 @@ class SourceCraftMetadataLoader(MetadataLoader):
             clone_url_ssh=clone_url.get("ssh", ""),
             contributors_url=None,
             languages_url="",
-            issues_url=f"https://sourcecraft.dev/{org_info.get('slug')}/{repo_data.get('slug')}/issues",
+            issues_url=f"https://sourcecraft.dev/{org_info.get('slug')}/{repo_data.get('slug')}/issues" if org_info.get("slug") and repo_data.get("slug") else "",
             language=lang_info.get("name", ""),
             languages=[],
             topics=[],  # not in Repository response

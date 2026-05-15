@@ -1507,7 +1507,18 @@ class SourceCraftAgent(GitAgent):
     def star_repository(self) -> None:
         logger.warning("Starring repositories is not supported via SourceCraft public API yet.")
 
-    def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
+    def post_comment(self, pr_slug: str, comment_body: str) -> None:
+        org_slug, repo_slug = self._extract_slugs()
+        url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/pulls/{pr_slug}/comments"
+        response = requests.post(url, headers=self._get_headers(), json={"body": comment_body})
+        if response.status_code == 201:
+            logger.info(f"Successfully posted a comment to PR {pr_slug}.")
+        else:
+            self._handle_api_error(response, f"posting comment to PR {pr_slug}", raise_exception=False)
+
+    def create_pull_request(
+        self, title: str = None, body: str = None, changes: bool = False, target_branch: str = None
+    ) -> None:
         if not self.token:
             raise ValueError("SourceCraft token is required to create a pull request.")
 
@@ -1516,10 +1527,10 @@ class SourceCraftAgent(GitAgent):
         headers = self._get_headers()
 
         pr_title = title if title else self.repo.head.commit.message.strip()
-        pr_body = (body if body else "") + self.agent_signature
+        base_branch = target_branch or self.base_branch
 
         bot_username = self._get_current_username()
-        ql_filter = f'status=open and source_branch="{self.branch_name}" and target_branch="{self.base_branch}"'
+        ql_filter = f'status=open and source_branch="{self.branch_name}" and target_branch="{base_branch}"'
         if bot_username:
             ql_filter += f' and author_slug="{bot_username}"'
         params = {"filter": ql_filter}
@@ -1532,21 +1543,49 @@ class SourceCraftAgent(GitAgent):
             pr_slug = existing_pr.get("slug")
             logger.info(f"Pull request {pr_slug} already exists.")
 
-            update_url = f"{url}/{pr_slug}"
-            update_data = {"description": pr_body}
-            update_res = requests.patch(update_url, headers=headers, json=update_data)
+            if body and body.strip():
+                self.post_comment(pr_slug, body)
 
-            if update_res.status_code == 200:
-                logger.info(f"Successfully updated PR {pr_slug}.")
-            else:
-                self._handle_api_error(update_res, f"updating PR {pr_slug}", raise_exception=False)
+            if self.pr_report_body.strip():
+                old_description = existing_pr.get("description", "") or ""
+
+                report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
+                old_reports = report_pattern.findall(old_description)
+                new_reports = report_pattern.findall(self.pr_report_body)
+                all_reports = sorted(list(set(old_reports + new_reports)))
+
+                clean_body = report_pattern.sub("", old_description).replace(self.agent_signature, "").strip()
+
+                updated_body = clean_body
+                if all_reports:
+                    updated_body += "\n\n" + "\n".join(all_reports)
+                updated_body += self.agent_signature
+
+                update_url = f"{url}/{pr_slug}"
+                update_res = requests.patch(update_url, headers=headers, json={"description": updated_body.strip()})
+
+                if update_res.status_code == 200:
+                    logger.info(f"Successfully updated PR {pr_slug} with new reports.")
+                else:
+                    self._handle_api_error(update_res, f"updating PR {pr_slug}", raise_exception=False)
 
         elif changes:
+            report_files = self.get_attachment_branch_files()
+            report_branch = "osa_tool_attachments"
+            for report_file in report_files:
+                report_url = self._build_report_url(report_branch, report_file)
+                report_link = f"\nGenerated report - [{report_file}]({report_url})\n"
+                if report_link not in self.pr_report_body:
+                    self.pr_report_body += report_link
+
+            content = (body if body else "") + self.pr_report_body
+            pr_body = content + self.agent_signature
+
             pr_data = {
                 "title": pr_title,
                 "description": pr_body,
                 "source_branch": self.branch_name,
-                "target_branch": self.base_branch,
+                "target_branch": base_branch,
                 "publish": True,  # prevents draft PR creation
             }
 

@@ -197,3 +197,31 @@ def test_sourcecraft_parse_metadata_public_visibility():
     raw["visibility"] = "public"
     result = SourceCraftMetadataLoader._parse_metadata(raw)
     assert result.is_private is False
+
+
+def test_sourcecraft_parse_metadata_organization_none():
+    # organization=null must not raise; owner/full_name/issues_url degrade gracefully
+    raw = _make_sc_raw_data()
+    raw["organization"] = None
+    result = SourceCraftMetadataLoader._parse_metadata(raw)
+    assert result.owner == ""
+    assert result.owner_url is None
+    assert result.issues_url == ""
+
+
+def test_sourcecraft_parse_metadata_counters_none():
+    # counters=null must not raise; counts default to 0
+    raw = _make_sc_raw_data()
+    raw["counters"] = None
+    result = SourceCraftMetadataLoader._parse_metadata(raw)
+    assert result.forks_count == 0
+    assert result.open_issues_count == 0
+
+
+def test_sourcecraft_parse_metadata_clone_url_none():
+    # clone_url=null must not raise; URLs default to empty string
+    raw = _make_sc_raw_data()
+    raw["clone_url"] = None
+    result = SourceCraftMetadataLoader._parse_metadata(raw)
+    assert result.clone_url_http == ""
+    assert result.clone_url_ssh == ""
