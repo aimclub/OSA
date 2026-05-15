@@ -620,7 +620,11 @@ class SourceCraftMetadataLoader(MetadataLoader):
             clone_url_ssh=clone_url.get("ssh", ""),
             contributors_url=None,
             languages_url="",
-            issues_url=f"https://sourcecraft.dev/{org_info.get('slug')}/{repo_data.get('slug')}/issues" if org_info.get("slug") and repo_data.get("slug") else "",
+            issues_url=(
+                f"https://sourcecraft.dev/{org_info.get('slug')}/{repo_data.get('slug')}/issues"
+                if org_info.get("slug") and repo_data.get("slug")
+                else ""
+            ),
             language=lang_info.get("name", ""),
             languages=[],
             topics=[],  # not in Repository response
