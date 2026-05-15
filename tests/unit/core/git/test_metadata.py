@@ -100,7 +100,9 @@ def test_load_data_http_errors(status_code, mock_requests_response_factory, repo
             with pytest.raises(Exception):
                 loader_class.load_data(repo_url)
 
+
 # Sourcecraft
+
 
 def _make_sc_raw_data() -> dict:
     return {
