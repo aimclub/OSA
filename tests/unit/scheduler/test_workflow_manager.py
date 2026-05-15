@@ -253,10 +253,6 @@ def test_gitverse_locate_workflow_path_fallback_to_github(mock_config_manager, m
         assert ".github/workflows" in manager.workflow_path.replace("\\", "/")
 
 
-# ---------------------------------------------------------------------------
-# SourceCraft WorkflowManager
-# ---------------------------------------------------------------------------
-
 
 @pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
 def test_sourcecraft_locate_workflow_path_exists(mock_config_manager, mock_repository_metadata, mock_args):
