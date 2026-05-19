@@ -1,0 +1,16 @@
+You are analyzing a GitHub repository. Below is the complete list of file paths in the repository.
+
+Identify files that are likely main entry-point or execution scripts — files that a user would run to start the program, train a model, run an experiment, or launch a server.
+
+Look for files with names like: main.py, run.py, run_*.py, train.py, train_*.py, app.py, server.py, manage.py, start.py, launch.py, inference.py, predict.py, evaluate.py, demo.py, index.js, index.ts, main.js, main.go, main.cpp, main.c, __main__.py, Makefile (with run targets), run.sh, start.sh, etc.
+
+File list:
+{file_list}
+
+Respond with JSON in this exact format:
+{
+  "entry_points": ["path/to/main.py", "another/run.py"]
+}
+
+If no entry-point files are found, return {"entry_points": []}.
+Do not include test files, utility modules, or library files — only files meant to be executed directly.

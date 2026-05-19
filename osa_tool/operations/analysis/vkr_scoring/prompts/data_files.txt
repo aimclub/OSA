@@ -1,0 +1,22 @@
+You are analyzing a GitHub repository file list.
+Identify files that are data files used for machine learning, data science, or analysis work.
+
+Look for files with these extensions or patterns:
+- Tabular data: .csv, .tsv, .xlsx, .xls, .ods
+- Binary data formats: .h5, .hdf5, .parquet, .feather, .arrow
+- Serialized objects: .pkl, .pickle, .joblib
+- NumPy arrays: .npy, .npz
+- JSON/YAML datasets: .json or .yaml files inside folders named data/, dataset/, datasets/
+- Archives likely containing data: .zip, .tar.gz, .tar.bz2 inside a data/ folder
+- Text corpora: .txt files inside a data/ folder, .conll, .tsv corpora files
+- Image datasets: folders named data/, images/, dataset/ containing many image files
+
+File list:
+{file_list}
+
+Respond with JSON in this exact format:
+{
+  "data_files": ["data/train.csv", "data/embeddings.npy", "dataset/labels.pkl"]
+}
+
+If no data files are found, return {"data_files": []}.

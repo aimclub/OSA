@@ -1,0 +1,22 @@
+You are analyzing a GitHub repository file structure for a student thesis project.
+Below is the file and folder tree (paths only, no file contents).
+
+Repository tree:
+{file_list}
+
+Classify this repository into exactly one of these three categories:
+
+- app: any application with a user interface — web (Flask, Django, FastAPI, Express, React, Vue, Angular, Next.js, HTML/CSS/JS), mobile (Android, iOS, Flutter, React Native), or desktop (Tkinter, PyQt, Electron, JavaFX, WPF, GTK, etc.)
+- algorithm_experiments: implements and compares algorithms or methods through systematic experiments — includes classical ML, heuristics, distillation, or custom algorithms; contains experiment scripts and/or result files
+- model_training_experiments: trains or fine-tunes ML/DL models (neural networks, transformers, etc.) AND systematically compares approaches through multiple experiment runs
+
+If repo contains more than one type choose the one that fits most.
+
+Respond with JSON in this exact format:
+{
+  "repo_type": "algorithm_experiments",
+  "confidence": "high",
+  "reasoning": "Contains an experiments/ folder with exp*.py scripts comparing different distillation methods and visualize scripts"
+}
+
+Use only one of the three exact type strings above for "repo_type".

@@ -108,6 +108,14 @@ arguments:
     type: flag
     description: "Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository."
 
+  vkr_score:
+    aliases: [ "--vkr-score" ]
+    type: flag
+    description: |
+      Run VKR repository quality scoring (0-100) with optional claim extraction and verification.
+      Evaluates README, license, commits, entry points, tests/data/experiment files, syntax, and docstrings.
+      If --attachment points to a PDF paper, also extracts verifiable claims and checks them against the code.
+
 settings:
   use_single_model:
       aliases: [ "--use-single-model" ]

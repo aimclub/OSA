@@ -1,0 +1,15 @@
+You are analyzing a GitHub repository file list.
+Identify files that are test files — unit tests, integration tests, end-to-end tests, or any automated test scripts.
+
+Look for files matching patterns like: test_*.py, *_test.py, *_spec.py, *.test.js, *.test.ts, *.spec.js, *.spec.ts, test*.go, *_test.go, *Test.java, *Spec.java, etc.
+Also look for files inside folders named: test, tests, __tests__, spec, specs, e2e.
+
+File list:
+{file_list}
+
+Respond with JSON in this exact format:
+{
+  "test_files": ["tests/test_main.py", "tests/test_utils.py"]
+}
+
+If no test files are found, return {"test_files": []}.
