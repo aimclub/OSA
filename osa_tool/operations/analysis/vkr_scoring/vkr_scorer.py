@@ -11,6 +11,7 @@ Steps:
   3. If a paper path is provided: parse PDF → extract claims → verify against code.
   4. Save JSON + text reports to output_dir.
 """
+
 from __future__ import annotations
 
 import json
@@ -115,8 +116,6 @@ class VkrScorer:
 
         sections_out = Path(self._output_dir) / "paper_sections.json"
         sections_out.parent.mkdir(parents=True, exist_ok=True)
-        sections_out.write_text(
-            json.dumps(sections, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        sections_out.write_text(json.dumps(sections, ensure_ascii=False, indent=2), encoding="utf-8")
         logger.info(f"Paper sections saved: {sections_out}")
         return sections

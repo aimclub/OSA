@@ -4,6 +4,7 @@ Lightweight CSV analysis for claim verification.
 Extracts row count, column names, dtypes, missing-value stats, and
 unique-value counts from raw CSV text — no pandas required.
 """
+
 from __future__ import annotations
 
 import csv
@@ -157,10 +158,7 @@ def format_csv_stats_for_prompt(stats: dict[str, Any]) -> str:
         dtype = cs["dtype"]
 
         if dtype == "numeric":
-            num_info = (
-                f"min={cs.get('min')}, max={cs.get('max')}, "
-                f"mean={cs.get('mean')}, std={cs.get('std')}"
-            )
+            num_info = f"min={cs.get('min')}, max={cs.get('max')}, " f"mean={cs.get('mean')}, std={cs.get('std')}"
             lines.append(f"    {col}: {dtype}, {missing_info}, {unique_info}, {num_info}")
         else:
             samples = ", ".join(repr(v) for v in cs.get("sample_values", [])[:3])

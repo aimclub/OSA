@@ -1,4 +1,5 @@
 """VKR repository quality checks — uses OSA's LLM and the already-cloned repo."""
+
 from __future__ import annotations
 
 import ast
@@ -31,13 +32,15 @@ _SYSTEM_JSON = "You are a code repository analyst. Always respond with valid JSO
 @dataclass
 class VkrConfig:
     """Thin config object threaded through all VKR check/claim functions."""
-    clone_dir: str    # absolute path to the already-cloned repository
-    repo_url: str     # original URL — used only in report metadata
-    repo: Any         # git.Repo (GitPython) — for commit count
+
+    clone_dir: str  # absolute path to the already-cloned repository
+    repo_url: str  # original URL — used only in report metadata
+    repo: Any  # git.Repo (GitPython) — for commit count
     model_handler: Any  # osa_tool.core.llm.llm.ModelHandler
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _load_prompt(name: str) -> str:
     with open(os.path.join(_PROMPTS_DIR, name), encoding="utf-8") as f:
@@ -61,9 +64,7 @@ def _sample_tree(all_paths: list, max_per_dir: int = 5, max_total: int = 500) ->
 def _call_llm(prompt: str, config: VkrConfig, system: str = None) -> dict:
     """Single-turn JSON call via OSA's send_and_parse."""
     try:
-        result = config.model_handler.send_and_parse(
-            prompt, JsonProcessor.parse, system or _SYSTEM_JSON
-        )
+        result = config.model_handler.send_and_parse(prompt, JsonProcessor.parse, system or _SYSTEM_JSON)
         return result if isinstance(result, dict) else {"error": "unexpected_type"}
     except (JsonParseError, Exception) as exc:
         return {"error": "llm_parse_failed", "raw": str(exc)[:500]}
@@ -82,6 +83,7 @@ def _commit_count(repo: Any, threshold: int = 5) -> int:
 
 
 # ── Checks ────────────────────────────────────────────────────────────────────
+
 
 def check_readme(flat_paths: list, config: VkrConfig) -> dict:
     for path in flat_paths:
@@ -128,8 +130,12 @@ def check_repo_type(all_paths: list, config: VkrConfig) -> dict:
     prompt = _load_prompt("repo_type.txt").replace("{file_list}", "\n".join(_sample_tree(all_paths)))
     result = _call_llm(prompt, config)
     if "error" in result:
-        return {"value": "algorithm_experiments", "confidence": "low",
-                "reasoning": result.get("error", ""), "error": result["error"]}
+        return {
+            "value": "algorithm_experiments",
+            "confidence": "low",
+            "reasoning": result.get("error", ""),
+            "error": result["error"],
+        }
     return {
         "value": result.get("repo_type", "algorithm_experiments"),
         "confidence": result.get("confidence", "low"),
@@ -184,7 +190,10 @@ def check_syntax(flat_paths: list, clone_dir: str) -> dict:
         return {"ok": True, "errors": [], "summary": "no Python files"}
     result = subprocess.run(
         [sys.executable, "-m", "compileall", "-q", "."],
-        cwd=clone_dir, capture_output=True, text=True, timeout=60,
+        cwd=clone_dir,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     error_lines = [
         line.strip()
@@ -210,19 +219,26 @@ def check_docstrings(flat_paths: list, clone_dir: str) -> dict:
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 total += 1
-                if (node.body
-                        and isinstance(node.body[0], ast.Expr)
-                        and isinstance(node.body[0].value, ast.Constant)
-                        and isinstance(node.body[0].value.value, str)):
+                if (
+                    node.body
+                    and isinstance(node.body[0], ast.Expr)
+                    and isinstance(node.body[0].value, ast.Constant)
+                    and isinstance(node.body[0].value.value, str)
+                ):
                     documented += 1
     if total == 0:
         return {"coverage_pct": 0, "documented": 0, "total": 0, "summary": "no functions or classes found"}
     pct = round(documented / total * 100)
-    return {"coverage_pct": pct, "documented": documented, "total": total,
-            "summary": f"{pct}% ({documented}/{total} functions/classes)"}
+    return {
+        "coverage_pct": pct,
+        "documented": documented,
+        "total": total,
+        "summary": f"{pct}% ({documented}/{total} functions/classes)",
+    }
 
 
 # ── File-tree builder (replaces github_client.get_tree) ───────────────────────
+
 
 def build_file_tree(clone_dir: str):
     """Walk the local clone and return (flat_paths, all_paths)."""

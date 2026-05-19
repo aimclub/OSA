@@ -8,6 +8,7 @@ Strategy mirrors VKR's original:
   3. Group body text between consecutive headings.
   4. Fallback to regex heuristic if fewer than 3 sections found.
 """
+
 from __future__ import annotations
 
 import io
@@ -72,9 +73,7 @@ def _collect_line_spans(pdf_bytes: bytes) -> list[dict]:
                     return
                 sizes = [c.get("size", 0) for c in lchars if c.get("size")]
                 max_size = round(max(sizes), 1) if sizes else 0.0
-                is_bold = any(
-                    "bold" in (c.get("fontname") or "").lower() for c in lchars
-                )
+                is_bold = any("bold" in (c.get("fontname") or "").lower() for c in lchars)
                 spans.append({"text": text, "size": max_size, "bold": is_bold})
 
             for char in chars_sorted:
@@ -122,9 +121,7 @@ def _sections_from_pdfplumber(pdf_bytes: bytes) -> list[dict]:
     for span in spans:
         if _is_heading(span):
             if current_name and current_lines:
-                sections.append(
-                    {"name": current_name, "text": " ".join(current_lines).strip()}
-                )
+                sections.append({"name": current_name, "text": " ".join(current_lines).strip()})
             current_name = span["text"].strip().rstrip(":")
             current_lines = []
         else:

@@ -11,6 +11,7 @@ Uses OSA's ModelHandler.send_and_parse() for all LLM calls (retries, JSON
 cleaning, and fence stripping are handled there — no duplication needed).
 File access goes through the already-cloned local repo.
 """
+
 from __future__ import annotations
 
 import json
@@ -317,15 +318,17 @@ def verify_claims(
     annotated: list[dict] = []
     for i, claim in enumerate(claims):
         ver = ver_by_index.get(i, {})
-        annotated.append({
-            **claim,
-            "implementation": {
-                "implemented": ver.get("implemented", False),
-                "confidence": ver.get("confidence", "low"),
-                "evidence_file": ver.get("evidence_file"),
-                "explanation": ver.get("explanation", ""),
-            },
-        })
+        annotated.append(
+            {
+                **claim,
+                "implementation": {
+                    "implemented": ver.get("implemented", False),
+                    "confidence": ver.get("confidence", "low"),
+                    "evidence_file": ver.get("evidence_file"),
+                    "explanation": ver.get("explanation", ""),
+                },
+            }
+        )
 
     implemented = sum(1 for c in annotated if c["implementation"]["implemented"])
     total = len(annotated)

@@ -1,4 +1,5 @@
 """Build VKR scoring report (JSON + human-readable text)."""
+
 from __future__ import annotations
 
 import json
