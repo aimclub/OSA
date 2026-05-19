@@ -7,14 +7,14 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.core.models.event import EventKind, OperationEvent
-from osa_tool.core.models.llm_output_models import LlmJsonObject
+from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.operations.analysis.repository_validation.analyze.paper_analyzer import (
     PaperAnalyzer,
 )
 from osa_tool.operations.analysis.repository_validation.code_analyzer import (
     CodeAnalyzer,
 )
-from osa_tool.operations.analysis.repository_validation.experiment import Experiment
+from osa_tool.operations.analysis.repository_validation.models import Experiment, ExperimentValidationResult
 from osa_tool.operations.analysis.repository_validation.report_generator import (
     ReportGenerator as ValidationReportGenerator,
 )
@@ -54,7 +54,7 @@ class PaperValidator:
 
         self.__code_analyzer = CodeAnalyzer(config_manager)
         self.__paper_analyzer = PaperAnalyzer(config_manager, self.__prompts)
-        self.__experiments = None
+        self.__experiments = ()
 
     def run(self) -> dict:
         try:
@@ -105,7 +105,9 @@ class PaperValidator:
             raise ValueError("Article is missing! Please pass it using --attachment argument.")
         try:
             experiments_list = await self.__paper_analyzer.process_paper(self.__path_to_article)
-            self.__experiments = tuple(Experiment(experiment_descr) for experiment_descr in experiments_list)
+            self.__experiments = tuple(
+                Experiment(description_from_paper=experiment_descr) for experiment_descr in experiments_list
+            )
             code_files = await asyncio.to_thread(self.__code_analyzer.get_code_files)
             code_files_info = await self.__code_analyzer.process_code_files(code_files)
 
@@ -124,14 +126,15 @@ class PaperValidator:
         """
         logger.info("Validating paper against repository ...")
         for experiment in track(self.__experiments, description="Assessing experiments"):
-            experiment_assessment = await self.__model_handler.async_send_and_parse(
+            raw_assessment = await self.__model_handler.async_send_and_parse(
                 PromptBuilder.render(
                     self.__prompts.get("validation.validate_single_experiment"),
                     experiment_description=experiment.description_from_paper,
                     code_files_info=code_files_info,
                 ),
-                parser=LlmJsonObject,
+                parser=lambda raw: JsonProcessor.parse(raw),
             )
-            experiment.impl_src_path = experiment_assessment["implemented_in"]
-            experiment.missing = experiment_assessment["missing_critical_components"]
-            experiment.correspondence_percent = experiment_assessment["correlation_percent"]
+            experiment_assessment = ExperimentValidationResult.model_validate(raw_assessment)
+            experiment.impl_src_path = experiment_assessment.implemented_in
+            experiment.missing = experiment_assessment.missing_critical_components
+            experiment.correspondence_percent = experiment_assessment.correlation_percent
