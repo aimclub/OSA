@@ -321,6 +321,42 @@ def test_github_agent_star_repository_failure_non_critical(
             mock_get.assert_called_once()
 
 
+def test_github_agent_create_pull_request_update_reports(
+    github_agent_instance, mock_repo, mock_requests_response_factory, repo_info
+):
+    # Arrange - existing PR already has an old report; new report must be merged in
+    platform, owner, repo_name, repo_url = repo_info
+    github_agent_instance.repo = mock_repo
+    github_agent_instance.fork_url = repo_url
+    github_agent_instance.base_branch = "main"
+    github_agent_instance.branch_name = "osa_tool"
+
+    old_report = "Generated report - [old.pdf](https://example.com/old.pdf)"
+    new_report = "Generated report - [new.pdf](https://example.com/new.pdf)"
+    github_agent_instance.pr_report_body = f"\n{new_report}\n"
+
+    existing_pr_body = f"User content\n\n{old_report}{github_agent_instance.agent_signature}"
+    mock_get_response = mock_requests_response_factory(
+        status_code=200, json_data=[{"number": 42, "body": existing_pr_body}]
+    )
+    mock_patch_response = mock_requests_response_factory(status_code=200, json_data={})
+
+    # Act
+    with patch.dict(os.environ, {"GIT_TOKEN": "any_token"}):
+        with (
+            patch("osa_tool.core.git.git_agent.requests.get", return_value=mock_get_response),
+            patch("osa_tool.core.git.git_agent.requests.patch", return_value=mock_patch_response) as mock_patch,
+        ):
+            github_agent_instance.create_pull_request(changes=True)
+
+    # Assert
+    mock_patch.assert_called_once()
+    sent_body = mock_patch.call_args.kwargs["json"]["body"]
+    assert old_report in sent_body
+    assert new_report in sent_body
+    assert github_agent_instance.agent_signature in sent_body
+
+
 @pytest.fixture
 def gitlab_agent_instance(temp_clone_dir, mock_repository_metadata, repo_info, monkeypatch):
     platform, owner, repo_name, repo_url = repo_info
@@ -363,6 +399,48 @@ def test_gitlab_agent_create_fork_success(
             assert expected_api_url == args[0]
             assert kwargs["headers"]["Authorization"].startswith("Bearer")
             assert gitlab_agent_instance.fork_url == expected_fork_web_url
+
+
+@pytest.mark.parametrize("mock_config_manager", ["gitlab"], indirect=True)
+def test_gitlab_agent_create_pull_request_update_reports(
+    gitlab_agent_instance, mock_repo, mock_requests_response_factory, repo_info
+):
+    # Arrange - existing MR already has an old report; new report must be merged in
+    platform, owner, repo_name, repo_url = repo_info
+    gitlab_agent_instance.repo = mock_repo
+    gitlab_agent_instance.fork_url = repo_url
+    gitlab_agent_instance.base_branch = "main"
+    gitlab_agent_instance.branch_name = "osa_tool"
+
+    old_report = "Generated report - [old.pdf](https://example.com/old.pdf)"
+    new_report = "Generated report - [new.pdf](https://example.com/new.pdf)"
+    gitlab_agent_instance.pr_report_body = f"\n{new_report}\n"
+
+    existing_mr_body = f"User content\n\n{old_report}{gitlab_agent_instance.agent_signature}"
+
+    mock_project_response = mock_requests_response_factory(status_code=200, json_data={"id": 456})
+    mock_mr_list_response = mock_requests_response_factory(
+        status_code=200, json_data=[{"iid": 7, "id": 7, "description": existing_mr_body}]
+    )
+    mock_put_response = mock_requests_response_factory(status_code=200, json_data={})
+
+    # Act
+    with patch.dict(os.environ, {"GITLAB_TOKEN": "any_token"}):
+        with (
+            patch(
+                "osa_tool.core.git.git_agent.requests.get",
+                side_effect=[mock_project_response, mock_mr_list_response],
+            ),
+            patch("osa_tool.core.git.git_agent.requests.put", return_value=mock_put_response) as mock_put,
+        ):
+            gitlab_agent_instance.create_pull_request(changes=True)
+
+    # Assert
+    mock_put.assert_called_once()
+    sent_description = mock_put.call_args.kwargs["json"]["description"]
+    assert old_report in sent_description
+    assert new_report in sent_description
+    assert gitlab_agent_instance.agent_signature in sent_description
 
 
 @pytest.fixture
