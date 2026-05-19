@@ -16,7 +16,6 @@ import re
 from collections import Counter
 from typing import Optional
 
-
 _HEADING_RE = re.compile(
     r"^(?:"
     r"\d+(?:\.\d+)*\.?\s+[A-Z][A-Za-z ,:\-]{2,60}"
