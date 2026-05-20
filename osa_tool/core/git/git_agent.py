@@ -1629,7 +1629,7 @@ class SourceCraftAgent(GitAgent):
             self._handle_api_error(response, f"updating description for '{repo_path}'", raise_exception=False)
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
-        return f"{self.fork_url}/blob/{report_branch}/{report_filename}"
+        return f"{self.fork_url}/browse/{report_filename}?rev={report_branch}"
 
     def _build_auth_url(self, repo_url: str) -> str:
         # SourceCraft git operations go through git.sourcecraft.dev.

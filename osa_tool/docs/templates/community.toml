@@ -109,7 +109,7 @@ Please check all that apply (`x` inside `[ ]`):
 ## Context
 
 <!--
-  Is this related to any GitHub issue(s)?
+  Is this related to any issue(s)?
 
   You can use keywords to automatically close the related issue.
   For example, (all of) the following will close issue #4567 when your PR is merged.
@@ -409,6 +409,7 @@ security_sourcecraft = """
 Our team take security bugs seriously. We appreciate your efforts to responsibly disclose your
 findings, and will make every effort to acknowledge your contributions.
 
-To report a security issue, please open an issue in the repository at {repo_url}/issues
-and mark it as confidential, or contact the maintainers directly.
+To report a security issue, please open a **private** issue in the repository at {repo_url}/issues —
+set the Visibility to **Private** so only the maintainers can see it. Do not open a public issue,
+as it may expose the vulnerability before a fix is available.
 """
