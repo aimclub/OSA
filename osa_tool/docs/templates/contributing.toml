@@ -16,7 +16,7 @@ guide = """
 2. Clone this copy to your local disk:
 
    ```bash
-   git clone {url}
+   git clone {clone_url}
    ```
 
 3. Create a branch to hold your changes:

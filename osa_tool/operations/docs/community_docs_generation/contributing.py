@@ -59,7 +59,11 @@ class ContributingBuilder:
     @property
     def guide(self) -> str:
         """Generates the guide section with basic project contribution instructions."""
-        return self._template["guide"].format(url=self.url_path, project_name=self.metadata.name)
+        return self._template["guide"].format(
+            url=self.url_path,
+            project_name=self.metadata.name,
+            clone_url=self.metadata.clone_url_http or self.url_path,
+        )
 
     @property
     def before_pr(self) -> str:

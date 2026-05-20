@@ -1407,6 +1407,85 @@ class DocGen(object):
                 f"GitLab CI created: {gitlab_file}.\nThe resulting OSA documentation can be downloaded and reviewed at the 'mkdocs_build' job's artifacts initated by MR.\nIt will be automatically deployed once MR is proceeded into the main branch.\nNote that artifacts of the 'mkdocs_build' job are set to expire in a span of 1 week."
             )
 
+        if "sourcecraft" in git_host:
+            sc_cfg = cfg.get("sourcecraft", {})
+            full_name = self.config_manager.get_git_settings().full_name
+
+            sc_ci_dir = Path(path).resolve() / ".sourcecraft"
+            sc_ci_dir.mkdir(parents=True, exist_ok=True)
+            sc_ci_file = sc_ci_dir / "ci.yaml"
+
+            sc_data = yaml.safe_load(sc_ci_file.read_text()) or {} if sc_ci_file.exists() else {}
+
+            build_wf = sc_cfg["build"]["workflow_name"]
+            deploy_wf = sc_cfg["deploy"]["workflow_name"]
+
+            on_section = sc_data.get("on", {})
+
+            pr_list = on_section.get("pull_request", [])
+            if pr_list:
+                existing = pr_list[0].setdefault("workflows", [])
+                if build_wf not in existing:
+                    existing.append(build_wf)
+            else:
+                pr_list.append({"workflows": [build_wf]})
+            on_section["pull_request"] = pr_list
+
+            push_list = on_section.get("push", [])
+            if not any(deploy_wf in entry.get("workflows", []) for entry in push_list):
+                push_list.append({"workflows": [deploy_wf], "filter": {"branches": ["main", "master"]}})
+            on_section["push"] = push_list
+            sc_data["on"] = on_section
+
+            workflows_section = sc_data.get("workflows", {})
+
+            if build_wf not in workflows_section:
+                workflows_section[build_wf] = {
+                    "tasks": [{
+                        "name": build_wf,
+                        "cubes": [{
+                            "name": "mkdocs-build",
+                            "image": f"docker.io/library/python:{sc_cfg['build']['python_version']}",
+                            "script": sc_cfg["build"]["script"],
+                        }],
+                    }]
+                }
+
+            if deploy_wf not in workflows_section:
+                deploy_script = [s.replace("{full_name}", full_name) for s in sc_cfg["deploy"]["script_template"]]
+                workflows_section[deploy_wf] = {
+                    "tasks": [{
+                        "name": deploy_wf,
+                        "cubes": [{
+                            "name": "mkdocs-deploy",
+                            "image": f"docker.io/library/python:{sc_cfg['deploy']['python_version']}",
+                            "script": deploy_script,
+                        }],
+                    }]
+                }
+
+            sc_data["workflows"] = workflows_section
+
+            yaml.Dumper.ignore_aliases = lambda *args: True
+            sc_ci_file.write_text(yaml.safe_dump(sc_data, default_flow_style=False, sort_keys=False, allow_unicode=True))
+
+            sites_cfg = sc_cfg.get("sites", {})
+            sites_file = sc_ci_dir / "sites.yaml"
+            sites_data = {"site": {"root": sites_cfg.get("root", "."), "ref": sites_cfg.get("ref", "release")}}
+            sites_file.write_text(yaml.safe_dump(sites_data, default_flow_style=False, sort_keys=False))
+
+            full_name = self.config_manager.get_git_settings().full_name
+            org_slug = full_name.split("/")[0]
+            repo_name = self.config_manager.get_git_settings().name
+            logger.info(
+                f"SourceCraft CI updated: {sc_ci_file}\n"
+                f"SourceCraft Sites config created: {sites_file}\n"
+                "To enable automatic documentation deployment:\n"
+                "1. Create a SourceCraft personal access token with repository write access.\n"
+                "2. Add it as a CI secret named 'SC_TOKEN' in your repository settings.\n"
+                f"3. The documentation will be served at https://{org_slug}.sourcecraft.site/{repo_name}"
+            )
+
     @staticmethod
     def _sanitize_name(name: str) -> str:
         """
