@@ -399,6 +399,16 @@ release.
 security_gitverse = """
 # Reporting Security Issues
 
-Our team take security bugs seriously. We appreciate your efforts to responsibly disclose your 
+Our team take security bugs seriously. We appreciate your efforts to responsibly disclose your
 findings, and will make every effort to acknowledge your contributions.
+"""
+
+security_sourcecraft = """
+# Reporting Security Issues
+
+Our team take security bugs seriously. We appreciate your efforts to responsibly disclose your
+findings, and will make every effort to acknowledge your contributions.
+
+To report a security issue, please open an issue in the repository at {repo_url}/issues
+and mark it as confidential, or contact the maintainers directly.
 """

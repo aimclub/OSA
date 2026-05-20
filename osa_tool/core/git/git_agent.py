@@ -1657,6 +1657,26 @@ class SourceCraftAgent(GitAgent):
             logger.warning(f"Failed to check SourceCraft branch: {e}")
             return False
 
+    def get_attachment_branch_files(self, branch: str = "osa_tool_attachments") -> List[str]:
+        try:
+            if not self._check_sourcecraft_branch_exists(branch):
+                return []
+            self.repo.git.fetch("origin", f"{branch}:{branch}_tmp", depth=1)
+            files_output = self.repo.git.ls_tree("-r", "--name-only", f"{branch}_tmp")
+            report_files = [f for f in files_output.split("\n") if f and f.endswith("report.pdf")]
+            self.repo.git.branch("-D", f"{branch}_tmp")
+            logger.debug(f"Found {len(report_files)} report files in branch '{branch}'")
+            return report_files
+        except Exception as e:
+            logger.warning(f"Failed to get files from attachment branch: {e}")
+            return []
+
     def validate_topics(self, topics: list[str]) -> list[str]:
-        logger.warning("Topic validation is not yet implemented for SourceCraft.")
-        return topics
+        valid = []
+        for topic in topics[:20]:
+            normalized = topic.lower().strip()
+            if re.match(r"^[a-z0-9][a-z0-9\-]{0,49}$", normalized):
+                valid.append(normalized)
+            else:
+                logger.debug(f"SourceCraft: skipping invalid topic '{topic}'")
+        return valid
