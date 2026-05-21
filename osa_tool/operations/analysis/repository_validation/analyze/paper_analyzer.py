@@ -9,6 +9,7 @@ from osa_tool.operations.docs.readme_generation.inputs.article_path import get_p
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder, PromptLoader
 from osa_tool.utils.response_cleaner import JsonProcessor
+from osa_tool.operations.analysis.repository_validation.models import ExtractedExperimentsResult
 
 
 class PaperAnalyzer:
@@ -16,7 +17,7 @@ class PaperAnalyzer:
     def __init__(self, config_manager: ConfigManager, prompts: PromptLoader):
         self.__config = config_manager
         self.__prompts = prompts
-        model_settings = config_manager.get_model_settings("validation")
+        model_settings = self.__config.get_model_settings("validation")
         self.__model_handler: ModelHandler = ModelHandlerFactory.build(model_settings)
 
     async def process_paper(self, document_path: str) -> list[str]:
@@ -45,14 +46,14 @@ class PaperAnalyzer:
             raise ValueError(f"Unprocessable file format: {document_path}")
 
         logger.info("Sending request to extract experiments section...")
-        experiments = await self.__model_handler.async_send_and_parse(
+        raw_experiments = await self.__model_handler.async_send_and_parse(
             PromptBuilder.render(
                 self.__prompts.get("validation.extract_paper_experiments_list"),
                 paper_content=raw_content,
             ),
             parser=lambda raw: JsonProcessor.parse(raw),
         )
-        experiments_list = experiments.get("experiment_list")
+        experiments_list = ExtractedExperimentsResult.model_validate(raw_experiments).experiment_list
         if not experiments_list:
             raise ValueError("No experiments were found in the provided document.")
         logger.info(f"Found {len(experiments_list)} experiment(s) described in the paper.")

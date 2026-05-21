@@ -16,7 +16,7 @@ from reportlab.platypus import (
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
-from osa_tool.operations.analysis.repository_validation.experiment import Experiment
+from osa_tool.operations.analysis.repository_validation.models import Experiment
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 
