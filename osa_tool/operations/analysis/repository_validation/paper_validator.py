@@ -18,6 +18,7 @@ from osa_tool.operations.analysis.repository_validation.experiment import Experi
 from osa_tool.operations.analysis.repository_validation.report_generator import (
     ReportGenerator as ValidationReportGenerator,
 )
+from osa_tool.operations.analysis.vkr_scoring.vkr_scorer import VkrScorer
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 
@@ -56,6 +57,8 @@ class PaperValidator:
         self.__paper_analyzer = PaperAnalyzer(config_manager, self.__prompts)
         self.__experiments = None
 
+        self.__vkr_scorer = VkrScorer(config_manager, git_agent)
+
     def run(self) -> dict:
         try:
             return asyncio.run(self._run_async())
@@ -68,9 +71,11 @@ class PaperValidator:
     async def _run_async(self) -> dict:
         content = await self.validate()
 
+        vkr_report = await self.__run_vkr_checks()
+
         if content:
             va_re_gen = ValidationReportGenerator(self.__config_manager, self.__git_agent.metadata)
-            va_re_gen.build_pdf("Paper", content)
+            va_re_gen.build_pdf("Paper", content, vkr_report=vkr_report)
 
             self.__events.append(OperationEvent(kind=EventKind.GENERATED, target=va_re_gen.filename))
 
@@ -89,6 +94,14 @@ class PaperValidator:
             )
         )
         return {"result": None, "events": self.__events}
+
+    async def __run_vkr_checks(self) -> dict | None:
+        """Run VKR repository quality checks and return the structured report dict."""
+        try:
+            return await asyncio.to_thread(self.__vkr_scorer.get_quality_report)
+        except Exception as e:
+            logger.warning(f"VKR quality checks failed, skipping: {e}")
+            return None
 
     async def validate(self) -> tuple[Experiment, ...]:
         """
@@ -132,6 +145,6 @@ class PaperValidator:
                 ),
                 parser=LlmJsonObject,
             )
-            experiment.impl_src_path = experiment_assessment["implemented_in"]
-            experiment.missing = experiment_assessment["missing_critical_components"]
-            experiment.correspondence_percent = experiment_assessment["correlation_percent"]
+            experiment.impl_src_path = experiment_assessment.root["implemented_in"]
+            experiment.missing = experiment_assessment.root["missing_critical_components"]
+            experiment.correspondence_percent = experiment_assessment.root["correlation_percent"]

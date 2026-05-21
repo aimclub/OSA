@@ -8,7 +8,6 @@ from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent,
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.analysis.repository_validation.doc_validator import DocValidator
 from osa_tool.operations.analysis.repository_validation.paper_validator import PaperValidator
-from osa_tool.operations.analysis.vkr_scoring.vkr_scorer import VkrScorer
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
 from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
@@ -116,20 +115,6 @@ def main():
                 plan,
                 "validate_paper",
                 lambda: PaperValidator(config_manager, git_agent, create_fork, plan.get("attachment")).run(),
-            )
-
-        # VKR repository quality scoring (+ optional claim verification)
-        if plan.get("vkr_score"):
-            rich_section("VKR repository scoring")
-            _run_plan_operation(
-                plan,
-                "vkr_score",
-                lambda: VkrScorer(
-                    config_manager,
-                    git_agent,
-                    paper_path=plan.get("attachment"),
-                    output_dir=args.output,
-                ).run(),
             )
 
         # .ipynb to .py conversion
