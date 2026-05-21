@@ -8,17 +8,11 @@ import pytest
 
 from osa_tool.operations.analysis.vkr_scoring.pdf_parser import PdfSectionParser
 
-
 # ── _sections_from_regex ──────────────────────────────────────────────────────
 
 
 def test_sections_from_regex_finds_headings():
-    text = (
-        "Abstract\n"
-        "This is the abstract text.\n\n"
-        "Results\n"
-        "Here are the results.\n"
-    )
+    text = "Abstract\n" "This is the abstract text.\n\n" "Results\n" "Here are the results.\n"
     parser = PdfSectionParser(b"")  # pdf_bytes not needed for this method
     sections = parser._sections_from_regex(text)
     names = [s["name"] for s in sections]

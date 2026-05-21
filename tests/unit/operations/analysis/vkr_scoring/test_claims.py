@@ -11,7 +11,6 @@ from osa_tool.operations.analysis.vkr_scoring.claims import (
     _truncate,
 )
 
-
 # ── _parse_json_list ──────────────────────────────────────────────────────────
 
 

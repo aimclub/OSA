@@ -14,7 +14,6 @@ from osa_tool.operations.analysis.vkr_scoring.checks import (
     build_file_tree,
 )
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 
