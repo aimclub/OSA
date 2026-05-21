@@ -779,12 +779,12 @@ class GitHubAgent(GitAgent):
                 new_reports = report_pattern.findall(self.pr_report_body)
                 all_reports = sorted(list(set(old_reports + new_reports)))
 
-                clean_body = report_pattern.sub("", old_pr_body).replace(self.AGENT_SIGNATURE, "").strip()
+                clean_body = report_pattern.sub("", old_pr_body).replace(self.agent_signature, "").strip()
 
                 updated_body = clean_body
                 if all_reports:
                     updated_body += "\n\n" + "\n".join(all_reports)
-                updated_body += self.AGENT_SIGNATURE
+                updated_body += self.agent_signature
 
                 update_url = f"{url}/{pr_number}"
                 update_data = {"body": updated_body.strip()}
@@ -1096,12 +1096,12 @@ class GitLabAgent(GitAgent):
                 new_reports = report_pattern.findall(self.pr_report_body)
                 all_reports = sorted(list(set(old_reports + new_reports)))
 
-                clean_body = report_pattern.sub("", old_mr_body).replace(self.AGENT_SIGNATURE, "").strip()
+                clean_body = report_pattern.sub("", old_mr_body).replace(self.agent_signature, "").strip()
 
                 updated_body = clean_body
                 if all_reports:
                     updated_body += "\n\n" + "\n".join(all_reports)
-                updated_body += self.AGENT_SIGNATURE
+                updated_body += self.agent_signature
 
                 update_url = f"{gitlab_instance}/api/v4/projects/{target_project_id}/merge_requests/{mr_iid}"
                 update_data = {"description": updated_body.strip()}
@@ -1366,7 +1366,7 @@ class GitverseAgent(GitAgent):
                 parts.append(initial_and_history.strip())
             if reports:
                 parts.append("\n".join(reports).strip())
-            return "\n\n".join(parts).strip() + self.AGENT_SIGNATURE
+            return "\n\n".join(parts).strip() + self.agent_signature
 
         params = {"state": "open", "head": self.branch_name, "base": self.base_branch}
         response = requests.get(url, headers=headers, params=params)
