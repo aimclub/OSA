@@ -182,6 +182,7 @@ class DocGen(object):
         # Construct a structured prompt
         prompt = (
             f"""Generate a single Python docstring for the following class {class_details[0]}. The docstring should follow Google-style format and include:\n"""
+            "- Respond strictly in English.\n"
             "- A short summary of what the class does.\n"
             "- A list of its methods without details if class has them otherwise do not mention a list of methods.\n"
             "- A list of its attributes that explicitly mentioned at the constructor method's docstring (can be adressed as attributes, properties, class fields, etc.), without types if class or constructor method has them otherwise do not mention a list of attributes.\n"
@@ -249,6 +250,7 @@ class DocGen(object):
             "Generate a Python docstring for the following method. The docstring should follow Google-style format and include:\n"
             "- A short summary of what the method does.\n"
             "- A description of its parameters without types.\n"
+            "- Respond strictly in English.\n"
             "- If the method is a class constructor, explicitly list all class fields (object properties) that are initialized, "
             "including their names and purposes. These fields should match the attributes assigned within the constructor "
             "(e.g., this.field = ..., self.field = ...). This information will be used to generate the class-level documentation.\n"
