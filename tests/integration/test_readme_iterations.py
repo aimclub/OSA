@@ -18,8 +18,7 @@ from osa_tool.operations.docs.readme_generation.pipeline.models import SectionSp
 @patch("osa_tool.operations.docs.readme_generation.pipeline.graph.intent_analyzer_node", return_value={})
 @patch("osa_tool.operations.docs.readme_generation.pipeline.graph.context_collector_node", return_value={})
 async def test_readme_self_correction_loop(
-        mock_context, mock_intent, mock_planner, mock_generator,
-        mock_assembler, mock_patch, mock_writer
+    mock_context, mock_intent, mock_planner, mock_generator, mock_assembler, mock_patch, mock_writer
 ):
     """
     Tests the self-evaluation and refinement cycle of the README generation graph.
@@ -29,7 +28,7 @@ async def test_readme_self_correction_loop(
         repo_url="https://github.com/fake/repo",
         user_request="Make a good readme",
         max_refinement_cycles=3,
-        section_plan=[SectionSpec(name="Overview", title="Overview", strategy="llm", tools=[])]
+        section_plan=[SectionSpec(name="Overview", title="Overview", strategy="llm", tools=[])],
     )
 
     ctx = MagicMock()
@@ -38,10 +37,10 @@ async def test_readme_self_correction_loop(
     ctx.prompts.get.return_value = "fake_prompt"
 
     def mock_send_and_parse(*args, **kwargs):
-        parser = kwargs.get('parser')
+        parser = kwargs.get("parser")
 
         if parser == ReadmeSelfEvalLLMOutput:
-            mock_send_and_parse.eval_call_count = getattr(mock_send_and_parse, 'eval_call_count', 0) + 1
+            mock_send_and_parse.eval_call_count = getattr(mock_send_and_parse, "eval_call_count", 0) + 1
 
             if mock_send_and_parse.eval_call_count == 1:
                 # ИТЕРАЦИЯ 1: Комплексный провал по нескольким параметрам
@@ -49,20 +48,18 @@ async def test_readme_self_correction_loop(
                     should_stop=False,
                     issues=[
                         SelfEvalIssue(
-                            severity="blocker",
-                            description="CRITICAL: Missing installation and setup instructions."
+                            severity="blocker", description="CRITICAL: Missing installation and setup instructions."
                         ),
                         SelfEvalIssue(
                             severity="warning",
-                            description="FORMATTING: Inconsistent Markdown headers and missing code blocks."
+                            description="FORMATTING: Inconsistent Markdown headers and missing code blocks.",
                         ),
                     ],
-
                     sections_to_rerun=["Overview"],
                     section_feedback={
                         "Overview": "Rewrite to include setup steps, fix Markdown formatting, and enforce strictly English."
                     },
-                    quality_notes="Failed multiple quality checks: missing dependencies info, bad formatting, wrong language."
+                    quality_notes="Failed multiple quality checks: missing dependencies info, bad formatting, wrong language.",
                 )
             else:
 
@@ -71,7 +68,7 @@ async def test_readme_self_correction_loop(
                     issues=[],
                     sections_to_rerun=[],
                     section_feedback={},
-                    quality_notes="Passed all quality metrics: structure, formatting, and language are perfect."
+                    quality_notes="Passed all quality metrics: structure, formatting, and language are perfect.",
                 )
         return MagicMock()
 
@@ -83,5 +80,6 @@ async def test_readme_self_correction_loop(
 
     assert final_state.refinement_cycles == 2, f"Expected 2 cycles, got {final_state.refinement_cycles}"
     assert final_state.refinement_effective_finish is True, "Graph finished with unresolved errors"
-    assert len(
-        final_state.refinement_structured_issues) == 0, "Issues list should be empty on final successful iteration"
+    assert (
+        len(final_state.refinement_structured_issues) == 0
+    ), "Issues list should be empty on final successful iteration"
