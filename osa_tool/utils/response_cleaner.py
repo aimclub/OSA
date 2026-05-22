@@ -20,6 +20,10 @@ class JsonProcessor:
         if not isinstance(text, str):
             raise ValueError("Input must be a string.")
 
+        # Strip raw control characters that are invalid in JSON string values.
+        # Preserves \t (0x09), \n (0x0A), \r (0x0D) which JSON parsers accept unescaped.
+        text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", text)
+
         replacements = {"None": "null", "True": "true", "False": "false"}
         for key, value in replacements.items():
             text = text.replace(key, value)
