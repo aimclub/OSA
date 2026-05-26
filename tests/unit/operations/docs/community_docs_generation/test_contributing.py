@@ -238,9 +238,7 @@ def test_build_handles_exception_and_logs_error(mock_config_manager, mock_reposi
 
 
 @pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
-def test_contributing_builder_sourcecraft_file_to_save_in_repo_root(
-    mock_config_manager, mock_repository_metadata
-):
+def test_contributing_builder_sourcecraft_file_to_save_in_repo_root(mock_config_manager, mock_repository_metadata):
     builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
 
     assert builder.file_to_save.endswith("CONTRIBUTING.md")

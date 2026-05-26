@@ -701,7 +701,8 @@ def test_sourcecraft_agent_build_report_url(sourcecraft_agent_instance, repo_inf
     assert "?rev=" in report_url
     assert "attachments" in report_url
     assert "report.pdf" in report_url
-    
+
+
 
 @patch("osa_tool.core.git.git_agent.Repo")
 @patch("osa_tool.core.git.metadata.Repo")

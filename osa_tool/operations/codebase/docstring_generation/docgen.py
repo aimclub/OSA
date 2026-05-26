@@ -1441,33 +1441,43 @@ class DocGen(object):
 
             if build_wf not in workflows_section:
                 workflows_section[build_wf] = {
-                    "tasks": [{
-                        "name": build_wf,
-                        "cubes": [{
-                            "name": "mkdocs-build",
-                            "image": f"docker.io/library/python:{sc_cfg['build']['python_version']}",
-                            "script": sc_cfg["build"]["script"],
-                        }],
-                    }]
+                    "tasks": [
+                        {
+                            "name": build_wf,
+                            "cubes": [
+                                {
+                                    "name": "mkdocs-build",
+                                    "image": f"docker.io/library/python:{sc_cfg['build']['python_version']}",
+                                    "script": sc_cfg["build"]["script"],
+                                }
+                            ],
+                        }
+                    ]
                 }
 
             if deploy_wf not in workflows_section:
                 deploy_script = [s.replace("{full_name}", full_name) for s in sc_cfg["deploy"]["script_template"]]
                 workflows_section[deploy_wf] = {
-                    "tasks": [{
-                        "name": deploy_wf,
-                        "cubes": [{
-                            "name": "mkdocs-deploy",
-                            "image": f"docker.io/library/python:{sc_cfg['deploy']['python_version']}",
-                            "script": deploy_script,
-                        }],
-                    }]
+                    "tasks": [
+                        {
+                            "name": deploy_wf,
+                            "cubes": [
+                                {
+                                    "name": "mkdocs-deploy",
+                                    "image": f"docker.io/library/python:{sc_cfg['deploy']['python_version']}",
+                                    "script": deploy_script,
+                                }
+                            ],
+                        }
+                    ]
                 }
 
             sc_data["workflows"] = workflows_section
 
             yaml.Dumper.ignore_aliases = lambda *args: True
-            sc_ci_file.write_text(yaml.safe_dump(sc_data, default_flow_style=False, sort_keys=False, allow_unicode=True))
+            sc_ci_file.write_text(
+                yaml.safe_dump(sc_data, default_flow_style=False, sort_keys=False, allow_unicode=True)
+            )
 
             sites_cfg = sc_cfg.get("sites", {})
             sites_file = sc_ci_dir / "sites.yaml"

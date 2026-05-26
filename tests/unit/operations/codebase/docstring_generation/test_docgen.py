@@ -918,6 +918,7 @@ def test_create_mkdocs_git_workflow_sourcecraft(mock_config_manager, tmp_path):
     assert ci_file.exists(), "ci.yaml was not created"
 
     import yaml
+
     ci_data = yaml.safe_load(ci_file.read_text())
 
     # on: pull_request includes build_docs
@@ -955,6 +956,7 @@ def test_create_mkdocs_git_workflow_sourcecraft_merges_existing_ci(mock_config_m
     sc_dir = tmp_path / ".sourcecraft"
     sc_dir.mkdir()
     import yaml
+
     existing = {
         "on": {
             "push": [{"workflows": ["lint"]}],

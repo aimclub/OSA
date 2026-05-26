@@ -42,9 +42,7 @@ def test_community_template_builder_init(
 
 
 @pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
-def test_community_template_builder_sourcecraft_paths_in_repo_root(
-    mock_config_manager, mock_repository_metadata
-):
+def test_community_template_builder_sourcecraft_paths_in_repo_root(mock_config_manager, mock_repository_metadata):
     builder = CommunityTemplateBuilder(mock_config_manager, mock_repository_metadata)
 
     for attr in (
