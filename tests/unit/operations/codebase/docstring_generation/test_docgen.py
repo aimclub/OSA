@@ -903,6 +903,83 @@ async def test_get_project_source_code_with_config(tmp_path, mock_config_manager
     assert result == expected
 
 
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_create_mkdocs_git_workflow_sourcecraft(mock_config_manager, tmp_path):
+    # Arrange
+    docgen = DocGen(mock_config_manager)
+    repo_url = mock_config_manager.get_git_settings().repository
+    full_name = mock_config_manager.get_git_settings().full_name
+
+    # Act
+    docgen.create_mkdocs_git_workflow(repo_url, str(tmp_path))
+
+    # Assert — .sourcecraft/ci.yaml created
+    ci_file = tmp_path / ".sourcecraft" / "ci.yaml"
+    assert ci_file.exists(), "ci.yaml was not created"
+
+    import yaml
+    ci_data = yaml.safe_load(ci_file.read_text())
+
+    # on: pull_request includes build_docs
+    pr_workflows = ci_data["on"]["pull_request"][0]["workflows"]
+    assert "build_docs" in pr_workflows
+
+    # on: push includes deploy_docs with main/master filter
+    push_entries = ci_data["on"]["push"]
+    deploy_entry = next((e for e in push_entries if "deploy_docs" in e.get("workflows", [])), None)
+    assert deploy_entry is not None
+    assert set(deploy_entry["filter"]["branches"]) == {"main", "master"}
+
+    # workflows: build_docs and deploy_docs defined
+    assert "build_docs" in ci_data["workflows"]
+    assert "deploy_docs" in ci_data["workflows"]
+
+    # deploy script has full_name substituted (no {full_name} placeholder left)
+    deploy_cubes = ci_data["workflows"]["deploy_docs"]["tasks"][0]["cubes"]
+    deploy_script = " ".join(deploy_cubes[0]["script"])
+    assert "{full_name}" not in deploy_script
+    assert full_name in deploy_script
+
+    # Assert — .sourcecraft/sites.yaml created
+    sites_file = tmp_path / ".sourcecraft" / "sites.yaml"
+    assert sites_file.exists(), "sites.yaml was not created"
+
+    sites_data = yaml.safe_load(sites_file.read_text())
+    assert sites_data["site"]["ref"] == "release"
+    assert sites_data["site"]["root"] == "."
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_create_mkdocs_git_workflow_sourcecraft_merges_existing_ci(mock_config_manager, tmp_path):
+    # Arrange — pre-existing ci.yaml with lint workflow
+    sc_dir = tmp_path / ".sourcecraft"
+    sc_dir.mkdir()
+    import yaml
+    existing = {
+        "on": {
+            "push": [{"workflows": ["lint"]}],
+            "pull_request": [{"workflows": ["lint"]}],
+        },
+        "workflows": {"lint": {"tasks": [{"name": "lint", "cubes": []}]}},
+    }
+    (sc_dir / "ci.yaml").write_text(yaml.safe_dump(existing))
+
+    docgen = DocGen(mock_config_manager)
+
+    # Act
+    docgen.create_mkdocs_git_workflow(mock_config_manager.get_git_settings().repository, str(tmp_path))
+
+    # Assert — existing lint workflow preserved, mkdocs workflows added
+    ci_data = yaml.safe_load((sc_dir / "ci.yaml").read_text())
+    assert "lint" in ci_data["workflows"]
+    assert "build_docs" in ci_data["workflows"]
+    assert "deploy_docs" in ci_data["workflows"]
+
+    pr_workflows = ci_data["on"]["pull_request"][0]["workflows"]
+    assert "lint" in pr_workflows
+    assert "build_docs" in pr_workflows
+
+
 @pytest.mark.asyncio
 async def test_write_augmented_code_with_config(tmp_path, mock_config_manager):
     # Arrange

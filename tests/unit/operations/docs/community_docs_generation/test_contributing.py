@@ -1,6 +1,8 @@
 import os
 from unittest.mock import patch
 
+import pytest
+
 from osa_tool.operations.docs.community_docs_generation.contributing import ContributingBuilder
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
@@ -56,6 +58,20 @@ def test_guide_property(mock_config_manager, mock_repository_metadata):
     # Assert
     assert builder.url_path in guide_text
     assert mock_repository_metadata.name in guide_text
+    # clone_url must be present - real clone URL, not a hardcoded GitHub URL
+    expected_clone = mock_repository_metadata.clone_url_http or builder.url_path
+    assert expected_clone in guide_text
+    assert "https://github.com/" not in guide_text or "github" in mock_config_manager.get_git_settings().host
+
+
+@pytest.mark.parametrize("mock_config_manager", ["github", "gitlab", "gitverse"], indirect=True)
+def test_guide_property_clone_url_per_platform(mock_config_manager, mock_repository_metadata):
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
+
+    guide_text = builder.guide
+
+    expected_clone = mock_repository_metadata.clone_url_http or builder.url_path
+    assert expected_clone in guide_text
 
 
 def test_before_pr_property(mock_config_manager, mock_repository_metadata):
@@ -219,3 +235,26 @@ def test_build_handles_exception_and_logs_error(mock_config_manager, mock_reposi
 
         # Assert
         assert "Error while generating CONTRIBUTING.md" in caplog.text
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_contributing_builder_sourcecraft_file_to_save_in_repo_root(
+    mock_config_manager, mock_repository_metadata
+):
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
+
+    assert builder.file_to_save.endswith("CONTRIBUTING.md")
+    # Must be directly in repo root, not inside a .sourcecraft/ or .github/ subdirectory
+    parent = os.path.basename(os.path.dirname(builder.file_to_save))
+    assert parent != ".sourcecraft"
+    assert parent != ".github"
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_guide_property_contains_clone_url(mock_config_manager, mock_repository_metadata):
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
+
+    guide_text = builder.guide
+
+    expected_clone_url = mock_repository_metadata.clone_url_http or builder.url_path
+    assert expected_clone_url in guide_text
