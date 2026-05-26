@@ -703,7 +703,6 @@ def test_sourcecraft_agent_build_report_url(sourcecraft_agent_instance, repo_inf
     assert "report.pdf" in report_url
 
 
-
 @patch("osa_tool.core.git.git_agent.Repo")
 @patch("osa_tool.core.git.metadata.Repo")
 @patch.object(LocalGitAgent, "_clone_chosen_branch")
