@@ -947,7 +947,7 @@ def test_create_mkdocs_git_workflow_sourcecraft(mock_config_manager, tmp_path):
 
     sites_data = yaml.safe_load(sites_file.read_text())
     assert sites_data["site"]["ref"] == "release"
-    assert sites_data["site"]["root"] == "."
+    assert "root" not in sites_data["site"]
 
 
 @pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
