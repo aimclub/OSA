@@ -8,6 +8,8 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
 
+_ASCII_ONLY = re.compile(r'^[a-zA-Z0-9_.#\-]+$')
+
 class RepositoryStructureTranslator:
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
@@ -199,8 +201,11 @@ class RepositoryStructureTranslator:
             f"Input name: {text}\n"
             "Output:"
         )
-        response = self.model_handler.send_request(prompt)
 
+        if self._needs_translation(text.replace(" ", "_")):
+            response = self.model_handler.send_request(prompt)
+        else:
+            response = text
         return response.replace(" ", "_").lower() if response else text
 
     def _get_all_files(self) -> list[str]:
@@ -245,6 +250,9 @@ class RepositoryStructureTranslator:
             logger.error("Error: %s", e, exc_info=True)
 
         return all_dirs
+
+    def _needs_translation(self, text: str) -> bool:
+        return not _ASCII_ONLY.match(text)
 
     @staticmethod
     def update_code(file_path: str, rename_map: dict) -> None:
