@@ -251,6 +251,7 @@ def test_gitverse_locate_workflow_path_fallback_to_github(mock_config_manager, m
         assert manager.workflow_path is not None
         assert ".github/workflows" in manager.workflow_path.replace("\\", "/")
 
+
 def test_refresh_after_clone_clears_stale_state(tmp_path, monkeypatch, mock_repository_metadata, mock_args):
     """Stale local workflow files must be invisible after refresh_after_clone()
     when the freshly cloned repo has no CI directory."""
