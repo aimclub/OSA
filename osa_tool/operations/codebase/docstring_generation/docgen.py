@@ -1481,7 +1481,7 @@ class DocGen(object):
 
             sites_cfg = sc_cfg.get("sites", {})
             sites_file = sc_ci_dir / "sites.yaml"
-            sites_data = {"site": {"root": sites_cfg.get("root", "."), "ref": sites_cfg.get("ref", "release")}}
+            sites_data = {"site": {"ref": sites_cfg.get("ref", "release")}}
             sites_file.write_text(yaml.safe_dump(sites_data, default_flow_style=False, sort_keys=False))
 
             full_name = self.config_manager.get_git_settings().full_name

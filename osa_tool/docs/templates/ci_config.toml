@@ -69,4 +69,3 @@ script_template = [
 
 [sourcecraft.sites]
 ref = "release"
-root = "."
