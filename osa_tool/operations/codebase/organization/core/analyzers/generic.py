@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Set, Optional, List
 
-from osa_tool.organization.core.analyzers.base import BaseAnalyzer
+from .base import BaseAnalyzer
 
 
 class GenericReferenceAnalyzer(BaseAnalyzer):
@@ -180,6 +180,20 @@ class GenericReferenceAnalyzer(BaseAnalyzer):
         """
         return file_path
 
+    def update_imports_in_content(self, file_path: str, content: str, old_import: str, new_import: str) -> Optional[str]:
+        """
+        Update references in in-memory text content by replacing old path with new one.
+        """
+        prefix_pattern = r'(^|[\s"\'`(\[{,;])'
+        suffix_pattern = r'(?=$|[\s"\'`)\]},;])'
+        pattern = prefix_pattern + f"({re.escape(old_import)})" + suffix_pattern
+
+        def replace_match(match: re.Match[str]) -> str:
+            return f"{match.group(1)}{new_import}"
+
+        new_content, count = re.subn(pattern, replace_match, content, flags=re.MULTILINE)
+        return new_content if count > 0 else None
+
     def update_imports_in_file(self, file_path: str, old_import: str, new_import: str) -> Optional[str]:
         """
         Update references in a text file by replacing old path with new one.
@@ -195,10 +209,6 @@ class GenericReferenceAnalyzer(BaseAnalyzer):
         full_path = self.base_path / file_path
         try:
             content = full_path.read_text(encoding="utf-8")
-            boundary = r'(?<=^|\s|["\'`([{])'
-            end_boundary = r'(?=$|\s|["\'`)\]}]|,|;)'
-            pattern = boundary + re.escape(old_import) + end_boundary
-            new_content, count = re.subn(pattern, new_import, content)
-            return new_content if count > 0 else None
+            return self.update_imports_in_content(file_path, content, old_import, new_import)
         except Exception:
             return None

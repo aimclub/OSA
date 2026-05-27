@@ -6,8 +6,13 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from osa_tool.utils.logger import logger
-from osa_tool.organization.core.analyzers.base import BaseAnalyzer
-from osa_tool.organization.core.executor.batch_updater import BatchImportUpdater
+
+from ..analyzers.base import BaseAnalyzer
+from .batch_updater import BatchImportUpdater
+
+
+class ActionExecutionError(RuntimeError):
+    """Raised when a reorganization action cannot be completed safely."""
 
 
 class ActionExecutor:
@@ -30,6 +35,7 @@ class ActionExecutor:
         self.base_path = base_path
         self.analyzers = analyzers
         self.moves: List[Tuple[str, str]] = []
+        self.failures: List[str] = []
 
     def execute_all(self, actions: List[dict]):
         """
@@ -40,6 +46,7 @@ class ActionExecutor:
         Args:
             actions: List of action dictionaries to execute
         """
+        self.failures.clear()
         for action in actions:
             if action["type"] in ("move_file", "rename_file"):
                 src = action.get("source") or action["old_path"]
@@ -48,12 +55,20 @@ class ActionExecutor:
             else:
                 self._execute_single(action)
 
+        if self.failures:
+            raise ActionExecutionError("; ".join(self.failures))
+
         if self.moves:
             updater = BatchImportUpdater(self.base_path, self.analyzers)
             for old, new in self.moves:
                 updater.add_move(old, new)
             updater.apply_all()
         self.moves.clear()
+
+    def _fail(self, message: str):
+        logger.error(message)
+        self.failures.append(message)
+        raise ActionExecutionError(message)
 
     def _execute_single(self, action: dict):
         """
@@ -101,8 +116,7 @@ class ActionExecutor:
         """
         full = self.base_path / path
         if full.exists():
-            logger.warning("File already exists: %s", path)
-            return
+            self._fail(f"File already exists: {path}")
         full.parent.mkdir(parents=True, exist_ok=True)
         full.write_text(content, encoding="utf-8")
 
@@ -118,12 +132,10 @@ class ActionExecutor:
         dst = self.base_path / destination
 
         if not src.exists():
-            logger.warning(f"Source file does not exist: {source}")
-            return
+            self._fail(f"Source file does not exist: {source}")
 
         if dst.exists():
-            logger.warning(f"Destination file already exists: {destination}")
-            return
+            self._fail(f"Destination file already exists: {destination}")
 
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)
@@ -143,12 +155,10 @@ class ActionExecutor:
         dst = self.base_path / destination
 
         if not src.exists() or not src.is_dir():
-            logger.warning(f"Source directory does not exist or is not a directory: {source}")
-            return
+            self._fail(f"Source directory does not exist or is not a directory: {source}")
 
         if dst.exists():
-            logger.warning(f"Destination directory already exists: {destination}")
-            return
+            self._fail(f"Destination directory already exists: {destination}")
 
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(src), str(dst))
@@ -173,8 +183,7 @@ class ActionExecutor:
         full_dest = self.base_path / destination_dir
         matched = list(self.base_path.glob(source_pattern))
         if not matched:
-            logger.warning(f"No files match pattern '{source_pattern}'")
-            return
+            self._fail(f"No files match pattern '{source_pattern}'")
 
         for src_path in matched:
             if not src_path.is_file():
@@ -192,8 +201,11 @@ class ActionExecutor:
             path: File path relative to base_path
         """
         full = self.base_path / path
-        if full.exists():
-            full.unlink()
+        if not full.exists():
+            self._fail(f"File does not exist: {path}")
+        if not full.is_file():
+            self._fail(f"Path is not a file: {path}")
+        full.unlink()
 
     def _delete_directory(self, path: str):
         """
@@ -204,16 +216,13 @@ class ActionExecutor:
         """
         full = self.base_path / path
         if not full.exists():
-            logger.warning(f"Directory does not exist: {path}")
-            return
+            self._fail(f"Directory does not exist: {path}")
 
         if not full.is_dir():
-            logger.warning(f"Path is not a directory: {path}")
-            return
+            self._fail(f"Path is not a directory: {path}")
 
         if any(full.iterdir()):
-            logger.warning(f"Directory {path} is not empty, skipping deletion")
-            return
+            self._fail(f"Directory {path} is not empty")
 
         full.rmdir()
         logger.debug(f"Deleted empty directory: {path}")

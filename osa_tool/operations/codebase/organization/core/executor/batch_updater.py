@@ -5,8 +5,9 @@ from typing import Dict, List, Tuple
 from collections import defaultdict
 
 from osa_tool.utils.logger import logger
-from osa_tool.organization.core.utils import atomic_write_file
-from osa_tool.organization.core.analyzers.base import BaseAnalyzer
+
+from ..analyzers.base import BaseAnalyzer
+from ..utils import atomic_write_file
 
 
 class BatchImportUpdater:
@@ -82,7 +83,7 @@ class BatchImportUpdater:
             changed = False
             for old_key, new_key, lang in replacements:
                 analyzer = self.analyzers[lang]
-                new_content = analyzer.update_imports_in_file(target_file, old_key, new_key)
+                new_content = analyzer.update_imports_in_content(target_file, content, old_key, new_key)
                 if new_content is not None:
                     content = new_content
                     changed = True

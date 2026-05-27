@@ -12,7 +12,7 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor, JsonParseError
 from osa_tool.core.llm.llm import ModelHandler
-from osa_tool.organization.core.utils import atomic_write_file
+from .utils import atomic_write_file
 
 
 class HealthChecker:

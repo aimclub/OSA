@@ -1,6 +1,7 @@
 """Base analyzer class for all language-specific analyzers."""
 
 import os
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 from collections import defaultdict
@@ -100,6 +101,34 @@ class BaseAnalyzer:
             NotImplementedError: Must be implemented by subclasses
         """
         raise NotImplementedError
+
+    def update_imports_in_content(self, file_path: str, content: str, old_import: str, new_import: str) -> str | None:
+        """
+        Update imports using an in-memory content snapshot.
+
+        Subclasses can override this for efficiency. The default implementation
+        delegates to update_imports_in_file via a temporary file created next to
+        the target so existing file-based implementations continue to work.
+        """
+        target_path = self.base_path / file_path
+        temp_path: Path | None = None
+        try:
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=target_path.parent,
+                prefix=".osa_org_tmp_",
+                suffix=target_path.suffix,
+                delete=False,
+            ) as tmp:
+                tmp.write(content)
+                temp_path = Path(tmp.name)
+            temp_rel_path = str(temp_path.relative_to(self.base_path))
+            return self.update_imports_in_file(temp_rel_path, old_import, new_import)
+        finally:
+            if temp_path and temp_path.exists():
+                temp_path.unlink()
 
     def build_import_map(self):
         """

@@ -3,7 +3,7 @@
 import re
 from typing import Set, Optional
 
-from osa_tool.organization.core.analyzers.base import BaseAnalyzer
+from .base import BaseAnalyzer
 
 
 class CppImportAnalyzer(BaseAnalyzer):

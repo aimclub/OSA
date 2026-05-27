@@ -9,15 +9,16 @@ from typing import Dict
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandlerFactory
-from osa_tool.organization.core.analyzers.base import BaseAnalyzer
-from osa_tool.organization.core.analyzers.factory import AnalyzerFactory
-from osa_tool.organization.core.utils import extract_error_files_advanced
-from osa_tool.organization.core.executor.action_executor import ActionExecutor
-from osa_tool.organization.core.health_checker import HealthChecker
-from osa_tool.organization.core.planning_manager import PlanningManager
-from osa_tool.organization.core.snapshot_manager import SnapshotManager
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
+
+from .core.analyzers.base import BaseAnalyzer
+from .core.analyzers.factory import AnalyzerFactory
+from .core.executor.action_executor import ActionExecutionError, ActionExecutor
+from .core.health_checker import HealthChecker
+from .core.planning_manager import PlanningManager
+from .core.snapshot_manager import SnapshotManager
+from .core.utils import extract_error_files_advanced
 
 
 class RepoOrganizer:
@@ -239,9 +240,9 @@ class RepoOrganizer:
                 logger.info("Attempting to fix %d files...", len(error_files))
                 fixed = self.health.fix_errors_with_llm(errors, error_files)
                 if fixed:
-                    logger.info("Pre‑reorganization issues fixed.")
+                    logger.info("Pre-reorganization issues fixed.")
                 else:
-                    logger.error("Could not fix pre‑reorganization issues automatically.")
+                    logger.error("Could not fix pre-reorganization issues automatically.")
             else:
                 logger.warning("No specific files identified for fixing.")
         else:
@@ -329,7 +330,7 @@ class RepoOrganizer:
                     logger.info("Attempting to fix %d files...", len(error_files_post))
                     fixed_post = self.health.fix_errors_with_llm(errors_post, error_files_post)
                     if fixed_post:
-                        logger.info("Post‑reorganization issues fixed.")
+                        logger.info("Post-reorganization issues fixed.")
                         is_healthy_post, _ = self.health.check_health()
                 if not is_healthy_post:
                     logger.error("Project still unhealthy after reorganization. Rolling back...")
@@ -337,15 +338,21 @@ class RepoOrganizer:
                         logger.info("Rollback successful.")
                     else:
                         logger.error("Rollback failed. Manual intervention required.")
-                else:
-                    logger.info("Project is healthy after reorganization.")
-            else:
-                logger.info("Project is healthy after reorganization.")
+                    return
 
-            logger.info("Reorganization completed successfully.")
+            logger.info("Project is healthy after reorganization.")
 
             if not self.snapshot.transfer_changes():
                 logger.error("Failed to transfer changes back to original branch.")
+                return
+
+            logger.info("Reorganization completed successfully.")
+
+        except ActionExecutionError as e:
+            logger.error("Reorganization action execution failed: %s", e)
+            logger.warning("Rolling back...")
+            self.snapshot.rollback()
+            raise
 
         except Exception as e:
             logger.error("Error during reorganization: %s", e)

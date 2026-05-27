@@ -6,8 +6,9 @@ import re
 import subprocess
 from typing import List, Set, Optional
 
-from osa_tool.organization.core.analyzers.base import BaseAnalyzer
 from osa_tool.utils.logger import logger
+
+from .base import BaseAnalyzer
 
 
 class GoPackagesAnalyzer(BaseAnalyzer):

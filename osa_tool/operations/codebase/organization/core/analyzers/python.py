@@ -4,7 +4,7 @@ import ast
 import re
 from typing import Set, Optional
 
-from osa_tool.organization.core.analyzers.base import BaseAnalyzer
+from .base import BaseAnalyzer
 
 
 class PythonImportAnalyzer(BaseAnalyzer):
@@ -61,7 +61,26 @@ class PythonImportAnalyzer(BaseAnalyzer):
         Returns:
             str: Dotted module path (e.g., 'package.module')
         """
-        return file_path.replace(".py", "").replace("/", ".").replace("\\", ".")
+        normalized = file_path.replace("\\", "/")
+        for extension in self.file_extensions:
+            if normalized.endswith(extension):
+                normalized = normalized[: -len(extension)]
+                break
+        module_path = normalized.replace("/", ".")
+        if module_path.endswith(".__init__"):
+            module_path = module_path[: -len(".__init__")]
+        return module_path
+
+    def update_imports_in_content(self, file_path: str, content: str, old_import: str, new_import: str) -> Optional[str]:
+        """
+        Update import statements in in-memory Python content.
+        """
+        updated = content
+        from_pattern = rf"from\s+{re.escape(old_import)}\s+import"
+        updated = re.sub(from_pattern, f"from {new_import} import", updated)
+        import_pattern = rf"import\s+{re.escape(old_import)}(\s|$|,)"
+        updated = re.sub(import_pattern, f"import {new_import}\\1", updated)
+        return updated if updated != content else None
 
     def update_imports_in_file(self, file_path: str, old_import: str, new_import: str) -> Optional[str]:
         """
@@ -79,10 +98,6 @@ class PythonImportAnalyzer(BaseAnalyzer):
         try:
             with open(full_path, "r", encoding="utf-8") as f:
                 content = f.read()
-            from_pattern = rf"from\s+{re.escape(old_import)}\s+import"
-            content = re.sub(from_pattern, f"from {new_import} import", content)
-            import_pattern = rf"import\s+{re.escape(old_import)}(\s|$|,)"
-            content = re.sub(import_pattern, f"import {new_import}\\1", content)
-            return content
+            return self.update_imports_in_content(file_path, content, old_import, new_import)
         except Exception:
             return None

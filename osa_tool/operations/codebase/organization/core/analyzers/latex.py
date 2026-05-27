@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Set, Optional
 
-from osa_tool.organization.core.analyzers.base import BaseAnalyzer
+from .base import BaseAnalyzer
 
 
 class LatexImportAnalyzer(BaseAnalyzer):

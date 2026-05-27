@@ -2,19 +2,19 @@
 
 from typing import Dict, List, Optional, Set, Type
 
-from osa_tool.organization.core.analyzers.base import BaseAnalyzer
-from osa_tool.organization.core.analyzers.python import PythonImportAnalyzer
-from osa_tool.organization.core.analyzers.java import JavaImportAnalyzer
-from osa_tool.organization.core.analyzers.javascript import JavaScriptImportAnalyzer
-from osa_tool.organization.core.analyzers.cpp import CppImportAnalyzer
-from osa_tool.organization.core.analyzers.go import GoPackagesAnalyzer
-from osa_tool.organization.core.analyzers.rust import RustImportAnalyzer
-from osa_tool.organization.core.analyzers.latex import LatexImportAnalyzer
-from osa_tool.organization.core.analyzers.csharp import CSharpImportAnalyzer
-from osa_tool.organization.core.analyzers.swift import SwiftImportAnalyzer
-from osa_tool.organization.core.analyzers.ruby import RubyImportAnalyzer
-from osa_tool.organization.core.analyzers.kotlin import KotlinImportAnalyzer
-from osa_tool.organization.core.analyzers.generic import GenericReferenceAnalyzer
+from .base import BaseAnalyzer
+from .cpp import CppImportAnalyzer
+from .csharp import CSharpImportAnalyzer
+from .generic import GenericReferenceAnalyzer
+from .go import GoPackagesAnalyzer
+from .java import JavaImportAnalyzer
+from .javascript import JavaScriptImportAnalyzer
+from .kotlin import KotlinImportAnalyzer
+from .latex import LatexImportAnalyzer
+from .python import PythonImportAnalyzer
+from .ruby import RubyImportAnalyzer
+from .rust import RustImportAnalyzer
+from .swift import SwiftImportAnalyzer
 
 
 class AnalyzerFactory:
