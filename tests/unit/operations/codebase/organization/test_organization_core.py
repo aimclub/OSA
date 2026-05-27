@@ -1,7 +1,10 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from osa_tool.operations.codebase.organization.core.health_checker import HealthChecker
+from osa_tool.operations.codebase.organization.core.snapshot_manager import SnapshotManager
 from osa_tool.operations.codebase.organization.organize import RepoOrganizer
 from osa_tool.operations.codebase.organization.core.analyzers.generic import GenericReferenceAnalyzer
 from osa_tool.operations.codebase.organization.core.analyzers.python import PythonImportAnalyzer
@@ -131,3 +134,52 @@ def test_validate_actions_rejects_python_entrypoint_src_migration(tmp_path: Path
 
     assert not valid
     assert any("Python entrypoint should not be moved into src/" in issue for issue in issues)
+
+
+def test_repo_organizer_prefers_platform_metadata_for_kotlin(tmp_path: Path):
+    (tmp_path / "build.gradle").write_text("plugins {}\n", encoding="utf-8")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "Main.kt").write_text("fun main() = Unit\n", encoding="utf-8")
+
+    organizer = RepoOrganizer.__new__(RepoOrganizer)
+    organizer.base_path = tmp_path
+    organizer.metadata = SimpleNamespace(language="Kotlin", languages=["Kotlin", "Java"])
+
+    assert organizer._detect_project_type() == "kotlin"
+
+
+def test_repo_organizer_uses_cpp_metadata_for_cpp_python_repo(tmp_path: Path):
+    (tmp_path / "main.py").write_text("print('hello')\n", encoding="utf-8")
+    (tmp_path / "native.cpp").write_text("int main() { return 0; }\n", encoding="utf-8")
+    (tmp_path / "native.hpp").write_text("#pragma once\n", encoding="utf-8")
+
+    organizer = RepoOrganizer.__new__(RepoOrganizer)
+    organizer.base_path = tmp_path
+    organizer.metadata = SimpleNamespace(language="C++", languages=["C++", "Python"])
+
+    assert organizer._detect_project_type() == "cpp"
+
+
+def test_health_checker_skips_missing_toolchain(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    checker = HealthChecker(tmp_path, "go", None, {})
+    monkeypatch.setattr(checker, "_command_is_available", lambda command: False)
+
+    assert checker.check_health() == (True, "")
+
+
+def test_snapshot_manager_merges_using_resolved_temp_branch_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    calls = []
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        if command[:3] == ["git", "rev-parse", "--verify"]:
+            return SimpleNamespace(stdout="deadbeef\n", stderr="")
+        return SimpleNamespace(stdout="", stderr="")
+
+    monkeypatch.setattr("osa_tool.operations.codebase.organization.core.snapshot_manager.subprocess.run", fake_run)
+
+    manager = SnapshotManager(tmp_path)
+    manager.original_branch = "main"
+
+    assert manager.transfer_changes() is True
+    assert ["git", "merge", "--squash", "deadbeef"] in calls

@@ -102,7 +102,9 @@ class PlanningManager:
         normalized_lower = normalized.lower()
         if normalized_lower in self.protected_exact_paths:
             return True
-        return any(normalized_lower == prefix[:-1] or normalized_lower.startswith(prefix) for prefix in self.protected_prefixes)
+        return any(
+            normalized_lower == prefix[:-1] or normalized_lower.startswith(prefix) for prefix in self.protected_prefixes
+        )
 
     def _is_build_artifact_path(self, path: str) -> bool:
         normalized = self._normalize_path(path)

@@ -92,7 +92,7 @@ class ConvertNotebooksOperation(Operation):
 
     executor = NotebookConverter
     executor_method = "convert_notebooks"
-    executor_dependencies = ["config_manager"]
+    executor_dependencies = ["config_manager", "metadata"]
 
 
 class TranslateRepositoryStructureOperation(Operation):

@@ -71,7 +71,9 @@ class PythonImportAnalyzer(BaseAnalyzer):
             module_path = module_path[: -len(".__init__")]
         return module_path
 
-    def update_imports_in_content(self, file_path: str, content: str, old_import: str, new_import: str) -> Optional[str]:
+    def update_imports_in_content(
+        self, file_path: str, content: str, old_import: str, new_import: str
+    ) -> Optional[str]:
         """
         Update import statements in in-memory Python content.
         """

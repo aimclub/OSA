@@ -1,13 +1,15 @@
 """Main orchestrator for repository reorganization."""
 
 import os
-import sys
-import subprocess
 import shutil
+import subprocess
+import sys
+from collections import Counter
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 from osa_tool.config.settings import ConfigManager
+from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.core.llm.llm import ModelHandlerFactory
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
@@ -33,15 +35,89 @@ class RepoOrganizer:
     - Action execution
     - Health checking and error fixing
     """
+
     BUILD_ARTIFACT_DIRS = {"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", "build", "dist"}
     BUILD_ARTIFACT_SUFFIXES = {".pyc", ".pyo", ".pyd", ".class", ".o", ".obj"}
+    LANGUAGE_ALIASES = {
+        "c": "cpp",
+        "c#": "csharp",
+        "c++": "cpp",
+        "c/c++": "cpp",
+        "cpp": "cpp",
+        "csharp": "csharp",
+        "go": "go",
+        "golang": "go",
+        "java": "java",
+        "javascript": "javascript",
+        "kotlin": "kotlin",
+        "latex": "latex",
+        "python": "python",
+        "react jsx": "javascript",
+        "react tsx": "javascript",
+        "ruby": "ruby",
+        "rust": "rust",
+        "swift": "swift",
+        "typescript": "javascript",
+    }
+    FILE_LANGUAGE_MAP = {
+        ".py": "python",
+        ".pyi": "python",
+        ".java": "java",
+        ".js": "javascript",
+        ".jsx": "javascript",
+        ".ts": "javascript",
+        ".tsx": "javascript",
+        ".go": "go",
+        ".c": "cpp",
+        ".cc": "cpp",
+        ".cpp": "cpp",
+        ".cxx": "cpp",
+        ".h": "cpp",
+        ".hh": "cpp",
+        ".hpp": "cpp",
+        ".hxx": "cpp",
+        ".rs": "rust",
+        ".tex": "latex",
+        ".bib": "latex",
+        ".sty": "latex",
+        ".cls": "latex",
+        ".cs": "csharp",
+        ".swift": "swift",
+        ".rb": "ruby",
+        ".kt": "kotlin",
+        ".kts": "kotlin",
+    }
+    BUILD_FILE_BONUSES = {
+        "requirements.txt": "python",
+        "setup.py": "python",
+        "pyproject.toml": "python",
+        "pom.xml": "java",
+        "build.gradle": "java",
+        "build.gradle.kts": "kotlin",
+        "gradlew": "java",
+        "package.json": "javascript",
+        "package-lock.json": "javascript",
+        "yarn.lock": "javascript",
+        "go.mod": "go",
+        "go.sum": "go",
+        "cargo.toml": "rust",
+        "cargo.lock": "rust",
+        "cmakelists.txt": "cpp",
+        "makefile": "cpp",
+        ".csproj": "csharp",
+        ".sln": "csharp",
+        "package.swift": "swift",
+        "gemfile": "ruby",
+        "gemfile.lock": "ruby",
+    }
 
-    def __init__(self, config_manager: ConfigManager):
+    def __init__(self, config_manager: ConfigManager, metadata: Optional[RepositoryMetadata] = None):
         """
         Initialize the repository organizer.
 
         Args:
             config_manager: Configuration manager instance
+            metadata: Optional repository metadata from the hosting platform
         """
         self.config_manager = config_manager
         self.model_settings = self.config_manager.get_model_settings("general")
@@ -50,6 +126,8 @@ class RepoOrganizer:
         self.repo_url = self.config_manager.get_git_settings().repository
         self.base_path = Path(os.getcwd()) / parse_folder_name(self.repo_url)
         self.repo_name = self.base_path.name
+        self.metadata = metadata
+        self.skip_health_check = bool(getattr(self.config_manager.args, "skip_health_check", False))
         self.analyzers: Dict[str, BaseAnalyzer] = {}
         self.moved_files: Dict[str, str] = {}
         self.project_type = self._detect_project_type()
@@ -57,44 +135,65 @@ class RepoOrganizer:
         self.health = HealthChecker(self.base_path, self.project_type, self.model_handler, self.prompts)
         self.snapshot = SnapshotManager(self.base_path)
 
+    @classmethod
+    def _normalize_language_name(cls, language: Optional[str]) -> Optional[str]:
+        if not language:
+            return None
+        return cls.LANGUAGE_ALIASES.get(language.strip().lower())
+
+    def _collect_local_language_scores(self) -> Counter:
+        scores: Counter = Counter()
+        for root, _, files in os.walk(self.base_path):
+            for file_name in files:
+                path = Path(root) / file_name
+                if not path.is_file():
+                    continue
+
+                normalized_name = file_name.lower()
+                build_language = self.BUILD_FILE_BONUSES.get(normalized_name)
+                if build_language:
+                    scores[build_language] += 50
+
+                language = self.FILE_LANGUAGE_MAP.get(path.suffix.lower())
+                if language:
+                    # Weighting by size is more stable for mixed repos than file counts.
+                    scores[language] += max(path.stat().st_size, 1)
+        return scores
+
+    def _collect_metadata_language_scores(self) -> Counter:
+        scores: Counter = Counter()
+        if not self.metadata:
+            return scores
+
+        primary = self._normalize_language_name(self.metadata.language)
+        if primary:
+            scores[primary] += 5000
+
+        for rank, language in enumerate(self.metadata.languages or []):
+            normalized = self._normalize_language_name(language)
+            if normalized:
+                scores[normalized] += max(3000 - rank * 500, 500)
+        return scores
+
     def _detect_project_type(self) -> str:
         """
-        Detect the project type based on files present in the repository.
-
-        Analyzes file extensions and key project files to determine the
-        primary programming language of the project.
+        Detect the project type based on repository metadata and local files.
 
         Returns:
             str: Detected project type ('python', 'java', etc.) or 'unknown'/'mixed'
         """
-        key_files = {
-            "python": ["requirements.txt", "setup.py", "pyproject.toml", "__init__.py", ".py"],
-            "java": ["pom.xml", "build.gradle", "build.sbt", ".java", "gradlew"],
-            "javascript": ["package.json", "package-lock.json", "yarn.lock", "node_modules", ".js", ".ts"],
-            "go": ["go.mod", "go.sum", "main.go", ".go"],
-            "cpp": ["CMakeLists.txt", "Makefile", ".c", ".cpp", ".h", ".hpp"],
-            "rust": ["Cargo.toml", "Cargo.lock", ".rs"],
-            "latex": [".tex", ".bib", ".sty", ".cls"],
-            "csharp": [".csproj", ".sln", ".cs"],
-            "swift": ["Package.swift", ".swift"],
-            "ruby": ["Gemfile", "Gemfile.lock", ".rb", ".gemspec"],
-            "kotlin": ["build.gradle.kts", ".kt", ".kts"],
-        }
-        counts = {lang: 0 for lang in key_files}
-        for root, dirs, files in os.walk(self.base_path):
-            for file in files:
-                for lang, indicators in key_files.items():
-                    if file in indicators:
-                        counts[lang] += 1
-                    elif any(file.endswith(ext) for ext in indicators if ext.startswith(".")):
-                        counts[lang] += 1
-        counts = {k: v for k, v in counts.items() if v > 0}
-        if not counts:
+        scores = self._collect_local_language_scores()
+        scores.update(self._collect_metadata_language_scores())
+        scores = Counter({language: score for language, score in scores.items() if score > 0})
+
+        if not scores:
             return "unknown"
-        max_lang = max(counts.items(), key=lambda x: x[1])
-        if len(counts) > 1 and max_lang[1] / sum(counts.values()) < 0.7:
+
+        top_language, top_score = scores.most_common(1)[0]
+        total_score = sum(scores.values())
+        if len(scores) > 1 and total_score and (top_score / total_score) < 0.6:
             return "mixed"
-        return max_lang[0]
+        return top_language
 
     def _init_analyzers(self):
         """
@@ -106,7 +205,7 @@ class RepoOrganizer:
         if self.analyzers:
             return
 
-        if self.project_type == "mixed" or self.project_type == "unknown":
+        if self.project_type in {"mixed", "unknown"}:
             languages = AnalyzerFactory.get_supported_languages()
         else:
             languages = [self.project_type]
@@ -152,14 +251,6 @@ class RepoOrganizer:
             return item.is_file() and item.suffix.lower() in self.BUILD_ARTIFACT_SUFFIXES
 
         def build_tree(path: Path, prefix: str = "", is_last: bool = True):
-            """
-            Recursively build tree representation.
-
-            Args:
-                path: Current path to process
-                prefix: Prefix string for indentation
-                is_last: Whether this is the last item in its parent
-            """
             items = [
                 item for item in sorted(path.iterdir()) if not item.name.startswith(".") and not is_build_artifact(item)
             ]
@@ -168,19 +259,19 @@ class RepoOrganizer:
 
             if path != self.base_path:
                 connector = "└── " if is_last else "├── "
-                lines.append(f"{prefix}{connector} {path.name}/")
+                lines.append(f"{prefix}{connector}{path.name}/")
                 new_prefix = prefix + ("    " if is_last else "│   ")
             else:
                 new_prefix = prefix
 
-            for i, f in enumerate(files):
+            for i, file_path in enumerate(files):
                 file_last = (i == len(files) - 1) and not dirs
-                file_con = "└── " if file_last else "├── "
-                lines.append(f"{new_prefix}{file_con} {f.name}")
+                file_connector = "└── " if file_last else "├── "
+                lines.append(f"{new_prefix}{file_connector}{file_path.name}")
 
-            for i, d in enumerate(dirs):
+            for i, directory in enumerate(dirs):
                 dir_last = i == len(dirs) - 1
-                build_tree(d, new_prefix, dir_last)
+                build_tree(directory, new_prefix, dir_last)
 
         build_tree(self.base_path)
         return "\n".join(lines)
@@ -188,9 +279,6 @@ class RepoOrganizer:
     def _clean_pycache(self):
         """
         Remove Python/cache build artifacts before planning and committing.
-
-        Cleans up bytecode files and common cache directories that should not
-        influence LLM planning or be committed.
 
         Returns:
             bool: True if cleanup succeeded or partially succeeded
@@ -202,12 +290,12 @@ class RepoOrganizer:
                         if cache_dir in self.BUILD_ARTIFACT_DIRS:
                             cache_path = Path(root) / cache_dir
                             shutil.rmtree(cache_path, ignore_errors=True)
-                            logger.debug(f"Removed {cache_path}")
-                    for file in files:
-                        if Path(file).suffix.lower() in self.BUILD_ARTIFACT_SUFFIXES:
-                            artifact_path = Path(root) / file
+                            logger.debug("Removed %s", cache_path)
+                    for file_name in files:
+                        if Path(file_name).suffix.lower() in self.BUILD_ARTIFACT_SUFFIXES:
+                            artifact_path = Path(root) / file_name
                             artifact_path.unlink()
-                            logger.debug(f"Removed {artifact_path}")
+                            logger.debug("Removed %s", artifact_path)
             else:
                 subprocess.run(
                     ["find", ".", "-type", "d", "-name", "__pycache__", "-exec", "rm", "-rf", "{}", "+"],
@@ -229,11 +317,38 @@ class RepoOrganizer:
                     subprocess.run(
                         ["find", ".", "-name", suffix, "-delete"], cwd=self.base_path, check=True, capture_output=True
                     )
-            logger.debug("Cleaned __pycache__ directories and .pyc files")
+            logger.debug("Cleaned cache and build artifacts")
             return True
-        except Exception as e:
-            logger.warning("Failed to clean pycache: %s", e)
+        except Exception as exc:
+            logger.warning("Failed to clean build artifacts: %s", exc)
             return False
+
+    def _run_health_phase(self, phase_label: str) -> bool:
+        if self.skip_health_check:
+            logger.info("%s skipped by configuration", phase_label)
+            return True
+
+        logger.info(phase_label)
+        is_healthy, errors = self.health.check_health()
+        if is_healthy:
+            return True
+
+        logger.warning("Project has issues during health check (see debug log for details)")
+        hint = self.health._get_compiler_hint()
+        error_files = extract_error_files_advanced(errors, self.base_path, hint)
+        if not error_files:
+            logger.warning("No specific files identified for fixing.")
+            return False
+
+        logger.info("Attempting to fix %d files...", len(error_files))
+        fixed = self.health.fix_errors_with_llm(errors, error_files)
+        if not fixed:
+            logger.error("Could not fix health check issues automatically.")
+            return False
+
+        logger.info("Health check issues were fixed.")
+        is_healthy_after_fix, _ = self.health.check_health()
+        return is_healthy_after_fix
 
     def organize(self):
         """
@@ -251,23 +366,10 @@ class RepoOrganizer:
         logger.info("Starting repository reorganization for: %s", self.repo_name)
         logger.info("Project type detected: %s", self.project_type)
 
-        logger.info("PHASE 1: Pre‑reorganization health check")
-        is_healthy, errors = self.health.check_health()
-        if not is_healthy:
-            logger.warning("Project has issues before reorganization (see debug log for details)")
-
-            hint = self.health._get_compiler_hint()
-            error_files = extract_error_files_advanced(errors, self.base_path, hint)
-            if error_files:
-                logger.info("Attempting to fix %d files...", len(error_files))
-                fixed = self.health.fix_errors_with_llm(errors, error_files)
-                if fixed:
-                    logger.info("Pre-reorganization issues fixed.")
-                else:
-                    logger.error("Could not fix pre-reorganization issues automatically.")
-            else:
-                logger.warning("No specific files identified for fixing.")
-        else:
+        pre_health_ok = self._run_health_phase("PHASE 1: Pre-reorganization health check")
+        if not pre_health_ok and not self.skip_health_check:
+            logger.warning("Continuing reorganization despite pre-existing health issues.")
+        elif pre_health_ok and not self.skip_health_check:
             logger.info("Project is healthy before reorganization.")
 
         logger.info("PHASE 2: Creating project snapshot")
@@ -289,7 +391,7 @@ class RepoOrganizer:
             if suggested:
                 logger.info("LLM suggested alternative repository names:")
                 for name in suggested:
-                    logger.info(f"  - {name}")
+                    logger.info("  - %s", name)
 
             logger.info("PHASE 4: Validating plan programmatically")
             valid, issues = self.planning.validate_actions(actions)
@@ -297,9 +399,9 @@ class RepoOrganizer:
             attempt = 0
             while not valid and attempt < max_attempts:
                 attempt += 1
-                logger.warning(f"Plan validation failed (attempt {attempt}):")
+                logger.warning("Plan validation failed (attempt %d):", attempt)
                 for issue in issues:
-                    logger.warning(f"  * {issue}")
+                    logger.warning("  * %s", issue)
                 logger.info("Asking LLM to correct the plan...")
                 corrected_plan = self.planning.validate_plan_with_ai(plan, tree, issues=issues)
                 plan = corrected_plan
@@ -339,32 +441,21 @@ class RepoOrganizer:
                     logger.info("Changes committed to %s", self.snapshot.temp_branch)
                 else:
                     logger.info("No changes to commit in temporary branch.")
-            except subprocess.CalledProcessError as e:
-                logger.error("Failed to commit reorganization changes: %s", e.stderr)
+            except subprocess.CalledProcessError as exc:
+                logger.error("Failed to commit reorganization changes: %s", exc.stderr)
                 self.snapshot.rollback()
                 return
 
-            logger.info("PHASE 6: Post‑reorganization health check")
-            is_healthy_post, errors_post = self.health.check_health()
-            if not is_healthy_post:
-                logger.warning("Project has issues after reorganization (see debug log for details)")
-                hint = self.health._get_compiler_hint()
-                error_files_post = extract_error_files_advanced(errors_post, self.base_path, hint)
-                if error_files_post:
-                    logger.info("Attempting to fix %d files...", len(error_files_post))
-                    fixed_post = self.health.fix_errors_with_llm(errors_post, error_files_post)
-                    if fixed_post:
-                        logger.info("Post-reorganization issues fixed.")
-                        is_healthy_post, _ = self.health.check_health()
-                if not is_healthy_post:
-                    logger.error("Project still unhealthy after reorganization. Rolling back...")
-                    if self.snapshot.rollback():
-                        logger.info("Rollback successful.")
-                    else:
-                        logger.error("Rollback failed. Manual intervention required.")
-                    return
-
-            logger.info("Project is healthy after reorganization.")
+            post_health_ok = self._run_health_phase("PHASE 6: Post-reorganization health check")
+            if not post_health_ok and not self.skip_health_check:
+                logger.error("Project still unhealthy after reorganization. Rolling back...")
+                if self.snapshot.rollback():
+                    logger.info("Rollback successful.")
+                else:
+                    logger.error("Rollback failed. Manual intervention required.")
+                return
+            if not self.skip_health_check:
+                logger.info("Project is healthy after reorganization.")
 
             if not self.snapshot.transfer_changes():
                 logger.error("Failed to transfer changes back to original branch.")
@@ -372,14 +463,14 @@ class RepoOrganizer:
 
             logger.info("Reorganization completed successfully.")
 
-        except ActionExecutionError as e:
-            logger.error("Reorganization action execution failed: %s", e)
+        except ActionExecutionError as exc:
+            logger.error("Reorganization action execution failed: %s", exc)
             logger.warning("Rolling back...")
             self.snapshot.rollback()
             raise
 
-        except Exception as e:
-            logger.error("Error during reorganization: %s", e)
+        except Exception as exc:
+            logger.error("Error during reorganization: %s", exc)
             logger.exception("Detailed error trace:")
             logger.warning("Rolling back...")
             self.snapshot.rollback()

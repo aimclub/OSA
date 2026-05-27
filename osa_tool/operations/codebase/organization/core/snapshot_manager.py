@@ -26,6 +26,7 @@ class SnapshotManager:
         self.base_path = base_path
         self.original_branch = None
         self.temp_branch = f"osa-temp-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        self.temp_branch_head = None
 
     def create_snapshot(self) -> bool:
         """
@@ -59,6 +60,15 @@ class SnapshotManager:
                     capture_output=True,
                 )
 
+            head = subprocess.run(
+                ["git", "rev-parse", "--verify", "HEAD"],
+                cwd=self.base_path,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            self.temp_branch_head = head.stdout.strip()
+
             logger.info("Snapshot created in temporary branch: %s", self.temp_branch)
             return True
 
@@ -83,12 +93,24 @@ class SnapshotManager:
         try:
             logger.info("Merging changes from %s into %s (squashed)", self.temp_branch, self.original_branch)
 
+            temp_ref = subprocess.run(
+                ["git", "rev-parse", "--verify", f"refs/heads/{self.temp_branch}"],
+                cwd=self.base_path,
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
+            self.temp_branch_head = temp_ref or self.temp_branch_head
+
             subprocess.run(
                 ["git", "checkout", self.original_branch], cwd=self.base_path, check=True, capture_output=True
             )
 
             subprocess.run(
-                ["git", "merge", "--squash", self.temp_branch], cwd=self.base_path, check=True, capture_output=True
+                ["git", "merge", "--squash", self.temp_branch_head],
+                cwd=self.base_path,
+                check=True,
+                capture_output=True,
             )
 
             subprocess.run(
