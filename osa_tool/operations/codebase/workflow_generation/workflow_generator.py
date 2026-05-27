@@ -695,11 +695,47 @@ class SourceCraftWorkflowGenerator(WorkflowGenerator):
         if publish_cubes:
             workflows_section["publish"] = {"tasks": [{"name": "publish", "cubes": publish_cubes}]}
 
-        config = {"on": on_section, "workflows": workflows_section}
-
         file_path = os.path.join(self.output_dir, "ci.yaml")
+
+        # Merge with existing ci.yaml to avoid overwriting e.g. build_docs/deploy_docs
+        if os.path.isfile(file_path):
+            try:
+                with open(file_path, encoding="utf-8") as f:
+                    existing = yaml.safe_load(f) or {}
+            except (yaml.YAMLError, IOError, OSError):
+                existing = {}
+        else:
+            existing = {}
+
+        # Merge on_section into existing
+        existing_on = existing.get("on", {})
+        for trigger, new_entries in on_section.items():
+            existing_entries = existing_on.get(trigger, [])
+            for new_entry in new_entries:
+                new_wfs = set(new_entry.get("workflows", []))
+                # Append workflows to first matching entry or add a new entry
+                merged = False
+                for ex_entry in existing_entries:
+                    ex_wfs = set(ex_entry.get("workflows", []))
+                    # Same filter context → merge workflow lists
+                    if ex_entry.get("filter") == new_entry.get("filter"):
+                        ex_entry["workflows"] = list(ex_wfs | new_wfs)
+                        merged = True
+                        break
+                if not merged:
+                    existing_entries.append(new_entry)
+            existing_on[trigger] = existing_entries
+        existing["on"] = existing_on
+
+        # Merge workflows_section into existing (don't overwrite existing keys)
+        existing_workflows = existing.get("workflows", {})
+        for name, definition in workflows_section.items():
+            if name not in existing_workflows:
+                existing_workflows[name] = definition
+        existing["workflows"] = existing_workflows
+
         with open(file_path, "w", encoding="utf-8") as f:
-            yaml.dump(config, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+            yaml.dump(existing, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
         return [file_path]
 

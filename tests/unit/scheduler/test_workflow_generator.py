@@ -148,6 +148,44 @@ def test_publish_with_twine(tmp_path):
     assert any("twine" in step for step in cube["script"])
 
 
+def test_generate_selected_jobs_preserves_existing_workflows(tmp_path):
+    """Existing docs workflows (build_docs, deploy_docs) must survive a second generate call."""
+    # Arrange: ci.yaml already has lint/tests + docs workflows from create_mkdocs_git_workflow
+    existing = {
+        "on": {
+            "push": [
+                {"workflows": ["lint", "tests"]},
+                {"workflows": ["deploy_docs"], "filter": {"branches": ["main"]}},
+            ],
+            "pull_request": [{"workflows": ["lint", "tests", "build_docs"]}],
+        },
+        "workflows": {
+            "lint": {"tasks": []},
+            "tests": {"tasks": []},
+            "build_docs": {"tasks": [{"name": "build_docs", "cubes": []}]},
+            "deploy_docs": {"tasks": [{"name": "deploy_docs", "cubes": []}]},
+        },
+    }
+    ci_path = tmp_path / "ci.yaml"
+    with open(ci_path, "w") as f:
+        yaml.dump(existing, f)
+
+    # Act: workflow_manager regenerates lint/tests (simulates normal OSA run)
+    gen = SourceCraftWorkflowGenerator(str(tmp_path))
+    gen.generate_selected_jobs(_settings(include_black=True, include_tests=True), plan=None)
+
+    # Assert: docs workflows must still be present
+    config = _load_ci(tmp_path)
+    assert "build_docs" in config["workflows"], "build_docs was lost after second generate"
+    assert "deploy_docs" in config["workflows"], "deploy_docs was lost after second generate"
+    pr_wfs = config["on"]["pull_request"][0]["workflows"]
+    assert "build_docs" in pr_wfs, "build_docs disappeared from pull_request trigger"
+    push_entries = config["on"]["push"]
+    assert any(
+        "deploy_docs" in e.get("workflows", []) for e in push_entries
+    ), "deploy_docs disappeared from push trigger"
+
+
 def test_push_and_pull_request_triggers_for_lint(tmp_path):
     gen = SourceCraftWorkflowGenerator(str(tmp_path))
     gen.generate_selected_jobs(_settings(include_black=True), plan=None)
