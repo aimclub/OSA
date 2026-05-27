@@ -143,7 +143,11 @@ def test_repo_organizer_prefers_platform_metadata_for_kotlin(tmp_path: Path):
 
     organizer = RepoOrganizer.__new__(RepoOrganizer)
     organizer.base_path = tmp_path
-    organizer.metadata = SimpleNamespace(language="Kotlin", languages=["Kotlin", "Java"])
+    organizer.metadata = SimpleNamespace(
+        language="Kotlin",
+        languages=["Kotlin", "Java"],
+        language_stats={"Kotlin": 80.0, "Java": 20.0},
+    )
 
     assert organizer._detect_project_type() == "kotlin"
 
@@ -155,7 +159,26 @@ def test_repo_organizer_uses_cpp_metadata_for_cpp_python_repo(tmp_path: Path):
 
     organizer = RepoOrganizer.__new__(RepoOrganizer)
     organizer.base_path = tmp_path
-    organizer.metadata = SimpleNamespace(language="C++", languages=["C++", "Python"])
+    organizer.metadata = SimpleNamespace(
+        language="C++",
+        languages=["C++", "Python"],
+        language_stats={"C++": 70.0, "Python": 30.0},
+    )
+
+    assert organizer._detect_project_type() == "cpp"
+
+
+def test_repo_organizer_platform_stats_override_local_files(tmp_path: Path):
+    (tmp_path / "main.py").write_text("print('hello')\n", encoding="utf-8")
+    (tmp_path / "helper.py").write_text("print('world')\n", encoding="utf-8")
+
+    organizer = RepoOrganizer.__new__(RepoOrganizer)
+    organizer.base_path = tmp_path
+    organizer.metadata = SimpleNamespace(
+        language="C++",
+        languages=["C++", "Python"],
+        language_stats={"C++": 95.0, "Python": 5.0},
+    )
 
     assert organizer._detect_project_type() == "cpp"
 
@@ -165,6 +188,40 @@ def test_health_checker_skips_missing_toolchain(tmp_path: Path, monkeypatch: pyt
     monkeypatch.setattr(checker, "_command_is_available", lambda command: False)
 
     assert checker.check_health() == (True, "")
+
+
+def test_repo_organizer_detects_mixed_project_from_platform_language_stats(tmp_path: Path):
+    organizer = RepoOrganizer.__new__(RepoOrganizer)
+    organizer.base_path = tmp_path
+    organizer.metadata = SimpleNamespace(
+        language="C++",
+        languages=["C++", "Python", "CSS"],
+        language_stats={"C++": 7514.0, "Python": 5198.0, "CSS": 3438.0},
+    )
+
+    assert organizer._detect_project_type() == "mixed"
+
+
+def test_repo_organizer_ignores_small_platform_language_noise(tmp_path: Path):
+    organizer = RepoOrganizer.__new__(RepoOrganizer)
+    organizer.base_path = tmp_path
+    organizer.metadata = SimpleNamespace(
+        language="Python",
+        languages=["Python", "CSS"],
+        language_stats={"Python": 91.0, "CSS": 9.0},
+    )
+
+    assert organizer._detect_project_type() == "python"
+
+
+def test_repo_organizer_detects_cpp_from_ino_file_locally(tmp_path: Path):
+    (tmp_path / "firmware.ino").write_text("void setup() {}\n", encoding="utf-8")
+
+    organizer = RepoOrganizer.__new__(RepoOrganizer)
+    organizer.base_path = tmp_path
+    organizer.metadata = None
+
+    assert organizer._detect_project_type() == "cpp"
 
 
 def test_snapshot_manager_merges_using_resolved_temp_branch_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

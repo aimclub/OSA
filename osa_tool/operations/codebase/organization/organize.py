@@ -38,6 +38,8 @@ class RepoOrganizer:
 
     BUILD_ARTIFACT_DIRS = {"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", "build", "dist"}
     BUILD_ARTIFACT_SUFFIXES = {".pyc", ".pyo", ".pyd", ".class", ".o", ".obj"}
+    DOMINANT_LANGUAGE_SHARE = 0.7
+    MIN_PLATFORM_LANGUAGE_SHARE = 0.1
     LANGUAGE_ALIASES = {
         "c": "cpp",
         "c#": "csharp",
@@ -68,6 +70,7 @@ class RepoOrganizer:
         ".ts": "javascript",
         ".tsx": "javascript",
         ".go": "go",
+        ".ino": "cpp",
         ".c": "cpp",
         ".cc": "cpp",
         ".cpp": "cpp",
@@ -155,6 +158,14 @@ class RepoOrganizer:
                     scores[build_language] += 50
 
                 language = self.FILE_LANGUAGE_MAP.get(path.suffix.lower())
+                if not language and not path.suffix:
+                    try:
+                        with open(path, "r", encoding="utf-8", errors="ignore") as file_obj:
+                            first_line = file_obj.readline(200)
+                        if first_line.startswith("#!") and "python" in first_line.lower():
+                            language = "python"
+                    except OSError:
+                        pass
                 if language:
                     # Weighting by size is more stable for mixed repos than file counts.
                     scores[language] += max(path.stat().st_size, 1)
@@ -163,6 +174,14 @@ class RepoOrganizer:
     def _collect_metadata_language_scores(self) -> Counter:
         scores: Counter = Counter()
         if not self.metadata:
+            return scores
+
+        language_stats = getattr(self.metadata, "language_stats", {}) or {}
+        for language, weight in language_stats.items():
+            normalized = self._normalize_language_name(language)
+            if normalized:
+                scores[normalized] += float(weight)
+        if scores:
             return scores
 
         primary = self._normalize_language_name(self.metadata.language)
@@ -175,6 +194,21 @@ class RepoOrganizer:
                 scores[normalized] += max(3000 - rank * 500, 500)
         return scores
 
+    @classmethod
+    def _filter_platform_language_scores(cls, scores: Counter) -> Counter:
+        total_score = sum(scores.values())
+        if total_score <= 0:
+            return Counter()
+
+        filtered = Counter(
+            {
+                language: score
+                for language, score in scores.items()
+                if (score / total_score) >= cls.MIN_PLATFORM_LANGUAGE_SHARE
+            }
+        )
+        return filtered or Counter(scores)
+
     def _detect_project_type(self) -> str:
         """
         Detect the project type based on repository metadata and local files.
@@ -182,8 +216,12 @@ class RepoOrganizer:
         Returns:
             str: Detected project type ('python', 'java', etc.) or 'unknown'/'mixed'
         """
-        scores = self._collect_local_language_scores()
-        scores.update(self._collect_metadata_language_scores())
+        platform_stats = getattr(self.metadata, "language_stats", {}) if self.metadata else {}
+        if platform_stats:
+            scores = self._filter_platform_language_scores(self._collect_metadata_language_scores())
+        else:
+            metadata_scores = self._collect_metadata_language_scores()
+            scores = metadata_scores if metadata_scores else self._collect_local_language_scores()
         scores = Counter({language: score for language, score in scores.items() if score > 0})
 
         if not scores:
@@ -191,7 +229,7 @@ class RepoOrganizer:
 
         top_language, top_score = scores.most_common(1)[0]
         total_score = sum(scores.values())
-        if len(scores) > 1 and total_score and (top_score / total_score) < 0.6:
+        if len(scores) > 1 and total_score and (top_score / total_score) < self.DOMINANT_LANGUAGE_SHARE:
             return "mixed"
         return top_language
 

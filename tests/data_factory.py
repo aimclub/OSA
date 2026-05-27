@@ -205,6 +205,7 @@ class DataFactory:
             issues_url=raw["issues_url"],
             language=raw["language"],
             languages=list(raw["languages"].keys()),
+            language_stats={k: float(v) for k, v in raw["languages"].items()},
             topics=raw["topics"],
             has_wiki=raw["has_wiki"],
             has_issues=raw["has_issues"],

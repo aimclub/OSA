@@ -65,8 +65,10 @@ def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_fa
     expected_payload = dict(raw_data)
     if isinstance(original_languages, dict):
         expected_payload["languages"] = list(original_languages.keys())
+        expected_payload["language_stats"] = {k: float(v) for k, v in original_languages.items()}
     else:
         expected_payload["languages"] = list(original_languages)
+        expected_payload["language_stats"] = {}
     if platform == "gitlab" and expected_payload["languages"] and not expected_payload.get("language"):
         expected_payload["language"] = expected_payload["languages"][0]
     if platform == "gitverse" and expected_payload["languages"] and not expected_payload.get("language"):
