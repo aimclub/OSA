@@ -34,6 +34,97 @@ class PlanningManager:
         self.prompts = prompts
         self.base_path = base_path
         self.project_type = project_type
+        self.protected_exact_paths = {
+            ".gitignore",
+            "pyproject.toml",
+            "setup.py",
+            "setup.cfg",
+            "tox.ini",
+            "requirements.txt",
+            "package.json",
+            "package-lock.json",
+            "yarn.lock",
+            "cargo.toml",
+            "cargo.lock",
+            "go.mod",
+            "go.sum",
+            "pom.xml",
+            "build.gradle",
+            "build.gradle.kts",
+            "dockerfile",
+            "makefile",
+            "readme.md",
+            "license",
+        }
+        self.protected_prefixes = {
+            ".github/",
+            ".gitlab/",
+            ".circleci/",
+            "docs/",
+        }
+        self.build_artifact_exact_paths = {
+            "__pycache__",
+            ".pytest_cache",
+            ".mypy_cache",
+            ".ruff_cache",
+            ".tox",
+            "build",
+            "dist",
+        }
+        self.build_artifact_suffixes = {
+            ".pyc",
+            ".pyo",
+            ".pyd",
+            ".class",
+            ".o",
+            ".obj",
+        }
+        self.protected_entrypoints = {
+            "main.py",
+            "app.py",
+            "manage.py",
+            "wsgi.py",
+            "asgi.py",
+        }
+
+    @staticmethod
+    def _normalize_path(path: str) -> str:
+        normalized = path.replace("\\", "/").strip()
+        normalized = normalized.rstrip("/")
+        if normalized.startswith("./"):
+            normalized = normalized[2:]
+        return normalized
+
+    def _is_protected_path(self, path: str) -> bool:
+        normalized = self._normalize_path(path)
+        if not normalized:
+            return False
+        normalized_lower = normalized.lower()
+        if normalized_lower in self.protected_exact_paths:
+            return True
+        return any(normalized_lower == prefix[:-1] or normalized_lower.startswith(prefix) for prefix in self.protected_prefixes)
+
+    def _is_build_artifact_path(self, path: str) -> bool:
+        normalized = self._normalize_path(path)
+        if not normalized:
+            return False
+        normalized_lower = normalized.lower()
+        parts = normalized_lower.split("/")
+        if normalized_lower in self.build_artifact_exact_paths:
+            return True
+        if any(part in self.build_artifact_exact_paths for part in parts):
+            return True
+        return any(normalized_lower.endswith(suffix) for suffix in self.build_artifact_suffixes)
+
+    def _is_probable_python_module_move(self, src: str, dst: str) -> bool:
+        src_path = Path(self._normalize_path(src))
+        dst_path = Path(self._normalize_path(dst))
+        return (
+            self.project_type in {"python", "mixed"}
+            and src_path.suffix == ".py"
+            and dst_path.suffix == ".py"
+            and src_path.name not in self.protected_entrypoints
+        )
 
     def generate_plan(self, tree_structure: str, repo_name: str) -> dict:
         """
@@ -122,9 +213,14 @@ class PlanningManager:
         sources = set()
         destinations = set()
         created_paths = set()
+        planned_create_files = set()
+        planned_create_directories = set()
         for action in actions:
-            if action["type"] in ("create_directory", "create_file"):
-                created_paths.add(action["path"])
+            action_path = action.get("path")
+            if action["type"] == "create_file" and action_path:
+                planned_create_files.add(self._normalize_path(action_path))
+            elif action["type"] == "create_directory" and action_path:
+                planned_create_directories.add(self._normalize_path(action_path))
 
         for action in actions:
             if action["type"] in ("move_file", "rename_file"):
@@ -132,13 +228,13 @@ class PlanningManager:
                 if dst:
                     dst_dir = str(Path(dst).parent)
                     if dst_dir and dst_dir != ".":
-                        created_paths.add(dst_dir)
+                        created_paths.add(self._normalize_path(dst_dir))
             elif action["type"] == "move_directory":
                 dst = action.get("destination")
                 if dst:
                     dst_dir = str(Path(dst).parent)
                     if dst_dir and dst_dir != ".":
-                        created_paths.add(dst_dir)
+                        created_paths.add(self._normalize_path(dst_dir))
 
         for i, action in enumerate(actions):
             typ = action["type"]
@@ -150,21 +246,35 @@ class PlanningManager:
                 if not src or not dst:
                     issues.append(f"Action {i}: Missing source or destination")
                     continue
+                src_norm = self._normalize_path(src)
+                dst_norm = self._normalize_path(dst)
 
-                src_path = self.base_path / src
+                if self._is_build_artifact_path(src_norm) or self._is_build_artifact_path(dst_norm):
+                    issues.append(f"Move action cannot target build artifacts: {src} -> {dst}")
+                if self._is_protected_path(src_norm):
+                    issues.append(f"Protected path cannot be moved or renamed: {src}")
+                if self.project_type in {"python", "mixed"}:
+                    src_name = Path(src_norm).name.lower()
+                    dst_parts = Path(dst_norm).parts
+                    if src_name in self.protected_entrypoints and "src" in dst_parts:
+                        issues.append(
+                            f"Python entrypoint should not be moved into src/ without an explicit packaging migration: {src} -> {dst}"
+                        )
+
+                src_path = self.base_path / src_norm
                 if not src_path.exists():
-                    if src not in created_paths:
+                    if src_norm not in created_paths:
                         issues.append(f"Source does not exist and not created in plan: {src}")
 
-                dst_path = self.base_path / dst
-                if dst_path.exists() and dst not in created_paths:
+                dst_path = self.base_path / dst_norm
+                if dst_path.exists():
                     issues.append(f"Destination already exists: {dst}")
 
-                if src == dst:
+                if src_norm == dst_norm:
                     issues.append(f"Source and destination are the same: {src}")
 
-                sources.add(src)
-                destinations.add(dst)
+                sources.add(src_norm)
+                destinations.add(dst_norm)
 
             elif typ == "move_directory":
                 src = action.get("source")
@@ -172,17 +282,25 @@ class PlanningManager:
                 if not src or not dst:
                     issues.append(f"Action {i}: Missing source or destination for move_directory")
                     continue
-                src_path = self.base_path / src
+                src_norm = self._normalize_path(src)
+                dst_norm = self._normalize_path(dst)
+
+                if self._is_build_artifact_path(src_norm) or self._is_build_artifact_path(dst_norm):
+                    issues.append(f"Move action cannot target build artifacts: {src} -> {dst}")
+                if self._is_protected_path(src_norm):
+                    issues.append(f"Protected path cannot be moved: {src}")
+
+                src_path = self.base_path / src_norm
                 if not src_path.exists():
-                    if src not in created_paths:
+                    if src_norm not in created_paths:
                         issues.append(f"Source directory does not exist and not created in plan: {src}")
-                dst_path = self.base_path / dst
-                if dst_path.exists() and dst not in created_paths:
+                dst_path = self.base_path / dst_norm
+                if dst_path.exists():
                     issues.append(f"Destination directory already exists: {dst}")
-                if src == dst:
+                if src_norm == dst_norm:
                     issues.append(f"Source and destination are the same: {src}")
-                sources.add(src)
-                destinations.add(dst)
+                sources.add(src_norm)
+                destinations.add(dst_norm)
 
             elif typ == "move_files":
                 pattern = action.get("source_pattern")
@@ -194,37 +312,58 @@ class PlanningManager:
                     issues.append(f"Action {i}: Invalid pattern '{pattern}' (cannot contain '..' or start with '/')")
                 if os.path.isabs(dest_dir):
                     issues.append(f"Action {i}: destination_dir must be relative, got '{dest_dir}'")
-                full_dest = self.base_path / dest_dir
+                dest_norm = self._normalize_path(dest_dir)
+                if self._is_build_artifact_path(dest_norm):
+                    issues.append(f"Move action cannot target build artifacts: {dest_dir}")
+                full_dest = self.base_path / dest_norm
                 if not full_dest.exists() and dest_dir not in created_paths:
-                    created_paths.add(dest_dir)
+                    created_paths.add(dest_norm)
 
             elif typ == "create_file":
-                dst = action["path"]
+                dst = self._normalize_path(action["path"])
                 full_path = self.base_path / dst
-                if full_path.exists() and dst not in created_paths:
+                if self._is_build_artifact_path(dst):
+                    issues.append(f"Build artifacts must not be created by the plan: {dst}")
+                if full_path.exists():
                     issues.append(f"File already exists: {dst}")
+                if dst in planned_create_directories:
+                    issues.append(f"Conflicting actions for path {dst}: both create_file and create_directory")
                 destinations.add(dst)
                 created_paths.add(dst)
 
             elif typ == "create_directory":
-                dst = action["path"]
+                dst = self._normalize_path(action["path"])
                 full_path = self.base_path / dst
-                if full_path.exists() and dst not in created_paths:
+                if self._is_build_artifact_path(dst):
+                    issues.append(f"Build artifacts must not be created by the plan: {dst}")
+                if full_path.exists():
                     if full_path.is_file():
                         issues.append(f"Path exists as file, cannot create directory: {dst}")
+                    else:
+                        issues.append(f"Directory already exists: {dst}")
+                if dst in planned_create_files:
+                    issues.append(f"Conflicting actions for path {dst}: both create_file and create_directory")
                 destinations.add(dst)
                 created_paths.add(dst)
 
             elif typ == "delete_file":
-                src = action["path"]
+                src = self._normalize_path(action["path"])
                 full_path = self.base_path / src
+                if self._is_protected_path(src):
+                    issues.append(f"Protected path cannot be deleted: {src}")
+                if self._is_build_artifact_path(src):
+                    issues.append(f"Build artifacts should be cleaned automatically, not deleted via plan: {src}")
                 if not full_path.exists() and src not in created_paths:
                     issues.append(f"File to delete does not exist: {src}")
                 sources.add(src)
 
             elif typ == "delete_directory":
-                src = action["path"]
+                src = self._normalize_path(action["path"])
                 full_path = self.base_path / src
+                if self._is_protected_path(src):
+                    issues.append(f"Protected path cannot be deleted: {src}")
+                if self._is_build_artifact_path(src):
+                    issues.append(f"Build artifacts should be cleaned automatically, not deleted via plan: {src}")
 
                 if not full_path.exists() and src not in created_paths:
                     issues.append(f"Directory to delete does not exist: {src}")
@@ -239,12 +378,12 @@ class PlanningManager:
                 src = action.get("source") or action.get("old_path")
                 dst = action.get("destination") or action.get("new_path")
                 if src and dst:
-                    move_pairs.append((src, dst))
+                    move_pairs.append((self._normalize_path(src), self._normalize_path(dst)))
             elif action["type"] == "move_directory":
                 src = action.get("source")
                 dst = action.get("destination")
                 if src and dst:
-                    move_pairs.append((src, dst))
+                    move_pairs.append((self._normalize_path(src), self._normalize_path(dst)))
 
         graph = defaultdict(list)
         for src, dst in move_pairs:
@@ -285,7 +424,7 @@ class PlanningManager:
             if action["type"] in ("move_file", "rename_file"):
                 dst = action.get("destination") or action.get("new_path")
                 if dst:
-                    dst_dir = str(Path(dst).parent)
+                    dst_dir = self._normalize_path(str(Path(dst).parent))
                     if dst_dir and dst_dir != ".":
                         dir_exists = (self.base_path / dst_dir).exists()
                         dir_created = dst_dir in created_paths
@@ -296,7 +435,7 @@ class PlanningManager:
             elif action["type"] == "move_directory":
                 dst = action.get("destination")
                 if dst:
-                    dst_dir = str(Path(dst).parent)
+                    dst_dir = self._normalize_path(str(Path(dst).parent))
                     if dst_dir and dst_dir != ".":
                         dir_exists = (self.base_path / dst_dir).exists()
                         dir_created = dst_dir in created_paths
@@ -308,9 +447,9 @@ class PlanningManager:
         path_actions = defaultdict(list)
         for i, action in enumerate(actions):
             if "path" in action:
-                path_actions[action["path"]].append((i, action["type"]))
+                path_actions[self._normalize_path(action["path"])].append((i, action["type"]))
             elif "destination" in action:
-                path_actions[action["destination"]].append((i, action["type"]))
+                path_actions[self._normalize_path(action["destination"])].append((i, action["type"]))
 
         for path, acts in path_actions.items():
             if len(acts) > 1:

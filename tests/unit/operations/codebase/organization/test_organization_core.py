@@ -10,6 +10,7 @@ from osa_tool.operations.codebase.organization.core.executor.action_executor imp
     ActionExecutor,
 )
 from osa_tool.operations.codebase.organization.core.executor.batch_updater import BatchImportUpdater
+from osa_tool.operations.codebase.organization.core.planning_manager import PlanningManager
 
 
 def test_repo_organizer_is_importable_from_new_package():
@@ -65,3 +66,68 @@ def test_action_executor_raises_on_missing_source_and_stops_following_actions(tm
         )
 
     assert not (tmp_path / "should_not_exist.txt").exists()
+
+
+def test_validate_actions_rejects_existing_create_file_and_directory(tmp_path: Path):
+    (tmp_path / ".gitignore").write_text("existing\n", encoding="utf-8")
+    (tmp_path / "tests").mkdir()
+    planner = PlanningManager(None, {}, tmp_path, "python")
+
+    valid, issues = planner.validate_actions(
+        [
+            {"type": "create_file", "path": ".gitignore", "content": "new"},
+            {"type": "create_directory", "path": "tests"},
+        ]
+    )
+
+    assert not valid
+    assert "File already exists: .gitignore" in issues
+    assert "Directory already exists: tests" in issues
+
+
+def test_validate_actions_rejects_protected_and_build_artifact_cleanup(tmp_path: Path):
+    (tmp_path / "tox.ini").write_text("[tox]\n", encoding="utf-8")
+    artifact_dir = tmp_path / "__pycache__"
+    artifact_dir.mkdir()
+    planner = PlanningManager(None, {}, tmp_path, "python")
+
+    valid, issues = planner.validate_actions(
+        [
+            {"type": "delete_file", "path": "tox.ini"},
+            {"type": "delete_directory", "path": "__pycache__"},
+        ]
+    )
+
+    assert not valid
+    assert "Protected path cannot be deleted: tox.ini" in issues
+    assert "Build artifacts should be cleaned automatically, not deleted via plan: __pycache__" in issues
+
+
+def test_validate_actions_allows_safe_python_module_extraction(tmp_path: Path):
+    (tmp_path / "helpers.py").write_text("VALUE = 1\n", encoding="utf-8")
+    planner = PlanningManager(None, {}, tmp_path, "python")
+
+    valid, issues = planner.validate_actions(
+        [
+            {"type": "create_directory", "path": "pkg"},
+            {"type": "move_file", "source": "helpers.py", "destination": "pkg/helpers.py"},
+            {"type": "create_file", "path": "pkg/__init__.py", "content": ""},
+        ]
+    )
+
+    assert valid, issues
+
+
+def test_validate_actions_rejects_python_entrypoint_src_migration(tmp_path: Path):
+    (tmp_path / "main.py").write_text("print('run')\n", encoding="utf-8")
+    planner = PlanningManager(None, {}, tmp_path, "python")
+
+    valid, issues = planner.validate_actions(
+        [
+            {"type": "create_directory", "path": "src"},
+            {"type": "move_file", "source": "main.py", "destination": "src/main.py"},
+        ]
+    )
+
+    assert not valid
+    assert any("Python entrypoint should not be moved into src/" in issue for issue in issues)

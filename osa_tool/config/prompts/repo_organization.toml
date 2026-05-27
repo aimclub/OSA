@@ -32,6 +32,8 @@ You are an expert software architect analyzing repository structures. Generate a
 - Invalid file extensions
 - Duplicate or redundant files
 - Empty directories with no purpose
+- Do NOT delete or move protected project files such as `.gitignore`, `pyproject.toml`, `setup.py`, `setup.cfg`, `tox.ini`, `requirements.txt`, `package.json`, `Cargo.toml`, `go.mod`, `pom.xml`, `Dockerfile`, or files under `.github/`.
+- Do NOT propose actions for build artifacts and caches such as `__pycache__/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.tox/`, `build/`, `dist/`, `*.pyc`, `*.pyo`, `*.class`, `*.o`, or `*.obj`; these are cleaned automatically by the system.
 
 ## 4. Reorganization Principles
 - **Minimal changes**: Only reorganize if clear benefit exists
@@ -39,6 +41,9 @@ You are an expert software architect analyzing repository structures. Generate a
 - **Preserve build/config**: Don't break build scripts or configuration paths
 - **Group similar files**: When many files of the same type need to be moved, use a single `move_files` action with a glob pattern instead of listing each file individually. - Never use commas inside the pattern – it will be interpreted as part of the filename.
 - **Move directories**: To move an entire directory, use `move_directory` action.
+- **Module extraction is allowed when safe**: Prefer moving individual modules into an existing package or a clearly named new subpackage when this improves cohesion.
+- **Avoid speculative src-migration**: Do not introduce a new `src/` layout for a flat Python project unless the repository already partially uses `src/` or the required packaging changes are obvious from the structure.
+- **Do not recreate existing files**: If a standard file already appears in the repository structure, do not propose `create_file` for it.
 
 ## 5. Repository Name Suggestions
 - Based on the project type and purpose visible from the structure, suggest **up to 3 alternative names** that would better reflect the content.
@@ -51,6 +56,7 @@ You are an expert software architect analyzing repository structures. Generate a
 4. Preserve build scripts and deployment configurations
 5. Use `move_files` for bulk operations (e.g., all .png, all .sty) to keep the plan concise.
 6. Use `move_directory` for moving whole folders (e.g., a dataset folder to data/).
+7. For Python, prefer targeted module extraction over whole-project layout migration.
 
 # TASK
 Analyze the repository and generate a JSON object with reorganization actions. If no changes are needed, return {{"actions": []}}. Optionally, suggest better repository names.

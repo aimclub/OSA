@@ -33,6 +33,8 @@ class RepoOrganizer:
     - Action execution
     - Health checking and error fixing
     """
+    BUILD_ARTIFACT_DIRS = {"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", "build", "dist"}
+    BUILD_ARTIFACT_SUFFIXES = {".pyc", ".pyo", ".pyd", ".class", ".o", ".obj"}
 
     def __init__(self, config_manager: ConfigManager):
         """
@@ -144,6 +146,11 @@ class RepoOrganizer:
         """
         lines = []
 
+        def is_build_artifact(item: Path) -> bool:
+            if item.name in self.BUILD_ARTIFACT_DIRS:
+                return True
+            return item.is_file() and item.suffix.lower() in self.BUILD_ARTIFACT_SUFFIXES
+
         def build_tree(path: Path, prefix: str = "", is_last: bool = True):
             """
             Recursively build tree representation.
@@ -153,7 +160,9 @@ class RepoOrganizer:
                 prefix: Prefix string for indentation
                 is_last: Whether this is the last item in its parent
             """
-            items = [item for item in sorted(path.iterdir()) if not item.name.startswith(".")]
+            items = [
+                item for item in sorted(path.iterdir()) if not item.name.startswith(".") and not is_build_artifact(item)
+            ]
             files = [item for item in items if item.is_file()]
             dirs = [item for item in items if item.is_dir()]
 
@@ -178,9 +187,10 @@ class RepoOrganizer:
 
     def _clean_pycache(self):
         """
-        Remove __pycache__ directories and .pyc files before committing.
+        Remove Python/cache build artifacts before planning and committing.
 
-        Cleans up Python bytecode files that shouldn't be committed.
+        Cleans up bytecode files and common cache directories that should not
+        influence LLM planning or be committed.
 
         Returns:
             bool: True if cleanup succeeded or partially succeeded
@@ -188,15 +198,16 @@ class RepoOrganizer:
         try:
             if sys.platform == "win32":
                 for root, dirs, files in os.walk(self.base_path):
-                    if "__pycache__" in dirs:
-                        pycache_path = Path(root) / "__pycache__"
-                        shutil.rmtree(pycache_path, ignore_errors=True)
-                        logger.debug(f"Removed {pycache_path}")
+                    for cache_dir in list(dirs):
+                        if cache_dir in self.BUILD_ARTIFACT_DIRS:
+                            cache_path = Path(root) / cache_dir
+                            shutil.rmtree(cache_path, ignore_errors=True)
+                            logger.debug(f"Removed {cache_path}")
                     for file in files:
-                        if file.endswith(".pyc"):
-                            pyc_path = Path(root) / file
-                            pyc_path.unlink()
-                            logger.debug(f"Removed {pyc_path}")
+                        if Path(file).suffix.lower() in self.BUILD_ARTIFACT_SUFFIXES:
+                            artifact_path = Path(root) / file
+                            artifact_path.unlink()
+                            logger.debug(f"Removed {artifact_path}")
             else:
                 subprocess.run(
                     ["find", ".", "-type", "d", "-name", "__pycache__", "-exec", "rm", "-rf", "{}", "+"],
@@ -204,9 +215,20 @@ class RepoOrganizer:
                     check=True,
                     capture_output=True,
                 )
+                for cache_dir in (".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", "build", "dist"):
+                    subprocess.run(
+                        ["find", ".", "-type", "d", "-name", cache_dir, "-exec", "rm", "-rf", "{}", "+"],
+                        cwd=self.base_path,
+                        check=True,
+                        capture_output=True,
+                    )
                 subprocess.run(
                     ["find", ".", "-name", "*.pyc", "-delete"], cwd=self.base_path, check=True, capture_output=True
                 )
+                for suffix in ("*.pyo", "*.pyd", "*.class", "*.o", "*.obj"):
+                    subprocess.run(
+                        ["find", ".", "-name", suffix, "-delete"], cwd=self.base_path, check=True, capture_output=True
+                    )
             logger.debug("Cleaned __pycache__ directories and .pyc files")
             return True
         except Exception as e:
@@ -255,6 +277,8 @@ class RepoOrganizer:
 
         try:
             logger.info("PHASE 3: Generating reorganization plan")
+            logger.info("Cleaning build artifacts before planning...")
+            self._clean_pycache()
             tree = self.get_repo_structure()
             logger.info("Generating plan using AI...")
 
