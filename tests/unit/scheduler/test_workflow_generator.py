@@ -102,9 +102,9 @@ def test_tests_workflow_one_cube_per_version(tmp_path):
     cubes = config["workflows"]["tests"]["tasks"][0]["cubes"]
     assert len(cubes) == 3
     cube_names = {c["name"] for c in cubes}
-    assert "pytest-3.9" in cube_names
-    assert "pytest-3.10" in cube_names
-    assert "pytest-3.11" in cube_names
+    assert "pytest-3-9" in cube_names
+    assert "pytest-3-10" in cube_names
+    assert "pytest-3-11" in cube_names
 
 
 def test_tests_cube_uses_correct_docker_image(tmp_path):

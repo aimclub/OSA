@@ -588,11 +588,11 @@ class SourceCraftWorkflowGenerator(WorkflowGenerator):
     ) -> dict:
         return self._cube("black", python_version, [f"pip install black", f"black {options} {src}"])
 
-    def generate_unit_test(self, python_version: str = "3.11", test_command: str = "pytest tests/") -> dict:
+    def generate_unit_test(self, python_version: str = "3.11", test_command: str = "pytest") -> dict:
         return self._cube(
-            f"pytest-{python_version}",
+            f"pytest-{python_version.replace('.', '-')}",
             python_version,
-            ["pip install -r requirements.txt pytest pytest-cov", test_command],
+            ["pip install -r requirements.txt pytest pytest-cov", f"{test_command} || test $? -eq 5"],
         )
 
     def generate_pep8(self, tool: str = "flake8", python_version: str = "3.11", src: str = ".") -> dict:
