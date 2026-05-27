@@ -8,7 +8,8 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
 
-_ASCII_ONLY = re.compile(r'^[a-zA-Z0-9_.#\-]+$')
+_ASCII_ONLY = re.compile(r"^[a-zA-Z0-9_.#\-]+$")
+
 
 class RepositoryStructureTranslator:
     def __init__(self, config_manager: ConfigManager) -> None:

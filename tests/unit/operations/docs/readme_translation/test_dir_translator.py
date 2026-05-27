@@ -34,7 +34,7 @@ def test_translate_text_excluded_name_returns_same(mock_config_manager):
 def test_translate_text_calls_model_handler(mock_config_manager):
     # Arrange
     translator = RepositoryStructureTranslator(mock_config_manager)
-    translator.model_handler.send_request = Mock(return_value="some text")
+    translator.model_handler.send_request = Mock(return_value="some текст")
 
     # Act
     result = translator._translate_text("test")
