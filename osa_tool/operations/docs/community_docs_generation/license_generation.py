@@ -6,7 +6,6 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.core.models.event import EventKind, OperationEvent
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
-from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 
@@ -25,12 +24,11 @@ class LicenseCompiler:
         self,
         config_manager: ConfigManager,
         metadata: RepositoryMetadata,
-        plan: Plan,
+        license_type: str,
     ):
         self.sourcerank = SourceRank(config_manager)
         self.metadata = metadata
-        self.license_type = plan.get("ensure_license")
-        self.plan = plan
+        self.license_type = license_type
         self.license_template_path = os.path.join(osa_project_root(), "docs", "templates", "licenses.toml")
 
         self.events: list[OperationEvent] = []
@@ -47,7 +45,6 @@ class LicenseCompiler:
         Raises:
             KeyError: If the specified license_type is not found in the license templates.
         """
-        self.plan.mark_started("ensure_license")
         if self.sourcerank.license_presence():
             logger.info("LICENSE file already exists.")
             self.events.append(
@@ -82,7 +79,6 @@ class LicenseCompiler:
             "license": self.license_type,
             "path": license_path,
         }
-        self.plan.mark_done("ensure_license")
         return self._out(result)
 
     def _render_license(self) -> str:
@@ -108,7 +104,6 @@ class LicenseCompiler:
                 f"Couldn't resolve {self.license_type} license type, "
                 "try to look up available licenses at documentation."
             )
-            self.plan.mark_failed("ensure_license")
             raise
 
     def _out(self, result: dict | None) -> dict:

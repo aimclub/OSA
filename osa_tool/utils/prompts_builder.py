@@ -39,8 +39,9 @@ class PromptLoader:
     Loads all prompt TOML files inside: osa_tool/config/prompts/
 
     Allows accessing prompts using keys like:
-        "readme.preanalysis"
-        "readme_article.file_summary"
+        "readme.translate"
+        "readme.prompts.section_generate"
+        "readme.system_messages.base"
     """
 
     def __init__(self):
@@ -49,45 +50,49 @@ class PromptLoader:
         self._load_all()
 
     def _load_all(self):
-        """Load all TOML prompt files into memory."""
+        """Load all TOML prompt files (including nested directories) into memory."""
         if not os.path.exists(self.prompts_dir):
             raise PromptLoadError(f"Prompts directory not found: {self.prompts_dir}")
 
-        for filename in os.listdir(self.prompts_dir):
-            if not filename.endswith(".toml"):
-                continue
+        for root, _, files in os.walk(self.prompts_dir):
+            for filename in files:
+                if not filename.endswith(".toml"):
+                    continue
 
-            path = os.path.join(self.prompts_dir, filename)
-            section_name = filename[:-5]  # strip ".toml"
+                path = os.path.join(root, filename)
+                rel_path = os.path.relpath(path, self.prompts_dir)
+                # Example: "readme/system_messages.toml" -> "readme.system_messages"
+                section_name = os.path.splitext(rel_path)[0].replace(os.sep, ".")
 
-            try:
-                with open(path, "rb") as f:
-                    data = tomli.load(f)
-            except Exception as e:
-                raise PromptLoadError(f"Failed to parse {filename}: {e}") from e
+                try:
+                    with open(path, "rb") as f:
+                        data = tomli.load(f)
+                except Exception as e:
+                    raise PromptLoadError(f"Failed to parse {rel_path}: {e}") from e
 
-            if "prompts" not in data:
-                raise PromptLoadError(f"No [prompts] section in {filename}")
+                if "prompts" not in data:
+                    raise PromptLoadError(f"No [prompts] section in {rel_path}")
 
-            self.cache[section_name] = data["prompts"]
+                self.cache[section_name] = data["prompts"]
 
     def get(self, key: str) -> str:
         """
-        Get a prompt by global key: "section.prompt_name".
+        Get a prompt by global key: "<section_path>.<prompt_name>".
 
-        Example:
-            get("readme.preanalysis")
-            get("article.main_prompt")
+        Examples:
+            get("readme.translate")
+            get("readme.prompts.section_generate")
+            get("readme.system_messages.base")
 
         Raises:
             PromptLoadError: If section or key does not exist.
         """
         if "." not in key:
             raise PromptLoadError(
-                f"Invalid prompt key '{key}'. Expected format: section.name (e.g. 'readme.preanalysis')"
+                f"Invalid prompt key '{key}'. Expected format: section.name (e.g. 'readme.translate')"
             )
 
-        section, name = key.split(".", 1)
+        section, name = key.rsplit(".", 1)
 
         try:
             return self.cache[section][name]

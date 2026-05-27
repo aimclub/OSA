@@ -41,11 +41,12 @@ class ExecutorAgent(BaseAgent):
             OSAState: Updated state with executed tasks and collected artifacts.
         """
         rich_section("Executor Agent")
-
-        self._render_plan_cli(state)
-
         state.active_agent = self.name
         state.status = AgentStatus.GENERATING
+
+        pending_count = sum(1 for t in state.plan if t.status is TaskStatus.PENDING)
+        logger.info("Executor started; %s pending tasks in plan", pending_count)
+        self._render_plan_cli(state)
 
         for idx, task in enumerate(state.plan):
             if task.status is not TaskStatus.PENDING:
@@ -56,6 +57,9 @@ class ExecutorAgent(BaseAgent):
 
             state.artifacts[task.id] = {"result": task.result, "events": task.events}
 
+        completed = sum(1 for t in state.plan if t.status is TaskStatus.COMPLETED)
+        failed = sum(1 for t in state.plan if t.status is TaskStatus.FAILED)
+        logger.info("Executor completed: %s succeeded, %s failed", completed, failed)
         return state
 
     def _run_task(self, task: Task, state: OSAState) -> None:
@@ -73,14 +77,14 @@ class ExecutorAgent(BaseAgent):
             state (OSAState): Current workflow state.
         """
         task.status = TaskStatus.IN_PROGRESS
-        logger.info(f"Task '{task.id}' in progress")
+        logger.info("Task '%s' in progress", task.id)
 
         try:
             result = self._execute_task(task, state)
             task.result = result.get("result")
             task.events = result.get("events", [])
             task.status = TaskStatus.COMPLETED
-            logger.info(f"Task '{task.id}' completed")
+            logger.info("Task '%s' completed", task.id)
 
         except Exception as e:
             task.status = TaskStatus.FAILED
@@ -92,7 +96,7 @@ class ExecutorAgent(BaseAgent):
                 task.result = {"error": str(e)}
                 task.events = []
 
-            logger.error(f"Task '{task.id}' failed", exc_info=True)
+            logger.error("Task '%s' failed: %s", task.id, e, exc_info=True)
 
     def _execute_task(self, task: Task, state: OSAState) -> dict[str, Any]:
         """
@@ -179,8 +183,10 @@ class ExecutorAgent(BaseAgent):
     def _render_plan_cli(state: OSAState) -> None:
         """
         Render execution plan as a Rich table for CLI users.
-        """
 
+        Args:
+            state: Current workflow state containing the plan to display.
+        """
         if not state.plan:
             console.print("[bold red]No tasks in the execution plan.[/]")
             return
@@ -205,3 +211,7 @@ class ExecutorAgent(BaseAgent):
             )
 
         console.print(table)
+
+        if state.plan_reasoning:
+            console.print("\n[bold cyan]Planner Reasoning[/]:")
+            console.print(f"[dim]{state.plan_reasoning}[/]")

@@ -30,8 +30,6 @@ class Operation(ABC):
     # possible values:
     # - "auto"           = infer silently
     # - "ask_if_missing" = WAITING_FOR_USER
-    # - "required"       = error if not resolved
-    prompt_for_args: Optional[str] = None
 
     # Execution
     executor: Optional[Union[Callable[..., Any], Type[Any]]] = None

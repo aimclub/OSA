@@ -10,6 +10,7 @@
 [![Acknowledgement ITMO](https://raw.githubusercontent.com/aimclub/open-source-ops/43bb283758b43d75ec1df0a6bb4ae3eb20066323/badges/ITMO_badge.svg)](https://itmo.ru/)
 [![Open-source-ops website](https://raw.githubusercontent.com/aimclub/open-source-ops/7de1e1321389ec177f236d0a5f41f876811a912a/badges/open--source--ops-black.svg)](https://aimclub.github.io/open-source-ops/)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![CI Pipeline](https://github.com/aimclub/OSA/actions/workflows/ci.yml/badge.svg)](https://github.com/aimclub/OSA/actions/workflows/ci.yml)
 [![PyPi](https://badge.fury.io/py/osa_tool.svg)](https://badge.fury.io/py/osa_tool)
 [![OSA-improved](https://img.shields.io/badge/improved%20by-OSA-yellow)](https://github.com/aimclub/OSA)
 [![Telegram Chat](https://img.shields.io/badge/Telegram-group-blue)](https://t.me/OSA_helpdesk)
@@ -96,13 +97,13 @@ pip install osa_tool
 git clone https://github.com/aimclub/OSA
 ```
 
-2. Navigate to the project directory:
+1. Navigate to the project directory:
 
 ```sh
 cd Open-Source-Advisor
 ```
 
-3. Install the project dependencies:
+1. Install the project dependencies:
 
 **Using `pip`** &nbsp;
 [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
@@ -185,7 +186,7 @@ Docker, ensure that you upload the PDF file to the OSA folder before building th
 /app/OSA/... or just use volume mounting to access the file.
 
 The --generate-workflows option is intended to create customizable CI/CD pipelines for Python repositories. For detailed
-documentation, see the [Workflow Generator README](./osa_tool/workflow/README.md).
+documentation, see the [Workflow Generator README](./osa_tool/operations/codebase/workflow_generation/README.md).
 
 ### Configuration
 
@@ -207,12 +208,15 @@ documentation, see the [Workflow Generator README](./osa_tool/workflow/README.md
 | `--no-fork`          | Avoid create fork for target repository                                             | `False`                        |
 | `--no-pull-request`  | Avoid create pull request for target repository                                     | `False`                        |
 
-Also OSA supports custom configuration via TOML files. Use the `--config-file` option to specify a path to custom configuration file. If no custom configuration file is provided, OSA will use the default configuration.
+Also OSA supports custom configuration via TOML files. Use the `--config-file` option to specify a path to custom
+configuration file. If no custom configuration file is provided, OSA will use the default configuration.
 
-By default, OSA uses a single model for all tasks (specified via `--model`). If you want to use different models for different types of tasks, disable the `--use-single-model` flag and specify models for each task type (`--model-docstring`, `--model-readme`, `--model-validation`, `--model-general`).
+By default, OSA uses a single model for all tasks (specified via `--model`). If you want to use different models for
+different types of tasks, disable the `--use-single-model` flag and specify models for each task type (
+`--model-docstring`, `--model-readme`, `--model-validation`, `--model-general`).
 
 To learn how to work with the interactive CLI and view descriptions of all available keys, visit
-the [CLI usage guide](./osa_tool/scheduler/README.md).
+the [CLI usage guide](./docs/scheduler/index.md).
 
 ---
 
@@ -269,8 +273,8 @@ Detailed description of OSA API is available [here](https://aimclub.github.io/OS
 
 ## Chat with developers: OSA_helpdesk
 
-In our Telegram chat [OSA_helpdesk](t.me/osa_helpdesk) you can ask questions about working with OSA and find the latest
-news about the project.
+In our Telegram chat [OSA_helpdesk](https://t.me/osa_helpdesk) you can ask questions about working with OSA and find the
+latest news about the project.
 
 ---
 
@@ -323,11 +327,13 @@ If you use this software, please cite it as below.
 
 ### BibTeX format
 
+```bibtex
     @inproceedings{nikitinllm,
     title={An LLM-Powered Tool for Enhancing Scientific Open-Source Repositories},
     author={Nikitin, Nikolay and Getmanov, Andrey and Popov, Zakhar and 
         Ulyanova Ekaterina and Aksenkin, Yaroslav and 
         Sokolov, Ilya and Boukhanovsky, Alexander},
     booktitle={Championing Open-source DEvelopment in ML Workshop@ ICML25}}
+```
 
 ---

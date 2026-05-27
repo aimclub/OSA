@@ -14,11 +14,13 @@ class OSA_TreeSitter(object):
         cwd: A current working directory with source code files.
     """
 
-    def __init__(self, scripts_path: str, ignore_list: list[str] = None):
+    def __init__(self, scripts_path: str, ignore_list: list[str] = None, target_files: list[str] = None):
         """Initialization of the instance based on the provided path to the scripts.
 
         Args:
             scripts_path: provided by user path to the scripts.
+            ignore_list: files that will be ignored.
+            target_files: files that need to be checked.
         """
         self.cwd = scripts_path
         self.import_map = {}
@@ -26,6 +28,7 @@ class OSA_TreeSitter(object):
             self.ignore_list = ignore_list
         else:
             self.ignore_list = ["__init__.py"]
+        self.target_files = target_files
 
     def files_list(self, path: str) -> tuple[list, 0] | tuple[list[str], 1]:
         """Method provides a list of files occurring in the provided path.
@@ -44,6 +47,13 @@ class OSA_TreeSitter(object):
             1 - a path to the specific file was provided.
         """
         script_files = []
+
+        if self.target_files:
+            for file_path in self.target_files:
+                p = Path(os.path.join(self.cwd, file_path)).resolve()
+                if p.exists() and str(p).endswith(".py") and not self._is_ignored(p) and p.name not in self.ignore_list:
+                    script_files.append(str(p))
+            return script_files, 0
 
         if os.path.isdir(path):
             for root, _, files in os.walk(path):
@@ -200,11 +210,13 @@ class OSA_TreeSitter(object):
             if child.type == "block":
                 class_attributes = self._get_attributes(class_attributes, child)
                 docstring = self._get_docstring(child)
-                method_details = self._traverse_block(child, source_code, structure["imports"])
+                method_details = self._traverse_block(class_name, child, source_code, structure["imports"])
                 class_methods.extend(method_details)
 
             if child.type == "function_definition":
-                method_details = self._extract_function_details(child, source_code, structure["imports"])
+                method_details = self._extract_function_details(
+                    child, source_code, structure["imports"], class_name=class_name
+                )
                 class_methods.append(method_details)
 
         structure["structure"].append(
@@ -543,7 +555,7 @@ class OSA_TreeSitter(object):
                         docstring = c_c.text.decode("utf-8")
         return docstring
 
-    def _traverse_block(self, block_node: tree_sitter.Node, source_code: bytes, imports: dict) -> list:
+    def _traverse_block(self, class_name: str, block_node: tree_sitter.Node, source_code: bytes, imports: dict) -> list:
         """Inner method traverses occurring in file's tree structure "block" node.
 
         Args:
@@ -562,11 +574,13 @@ class OSA_TreeSitter(object):
                         dec_list = self._get_decorators(dec_list, dec_child)
 
                     if dec_child.type == "function_definition":
-                        method_details = self._extract_function_details(dec_child, source_code, imports, dec_list)
+                        method_details = self._extract_function_details(
+                            dec_child, source_code, imports, dec_list, class_name
+                        )
                         methods.append(method_details)
 
             if child.type == "function_definition":
-                method_details = self._extract_function_details(child, source_code, imports)
+                method_details = self._extract_function_details(child, source_code, imports, class_name=class_name)
                 methods.append(method_details)
         return methods
 
@@ -576,6 +590,7 @@ class OSA_TreeSitter(object):
         source_code: str,
         imports: dict,
         dec_list: list = [],
+        class_name: str = None,
     ) -> dict:
         """Inner method extracts the details of "function_definition" node in file's tree structure.
 
@@ -632,7 +647,7 @@ class OSA_TreeSitter(object):
                     arguments.append(param_node.text.decode("utf-8"))
 
         source_bytes = source_code.encode("utf-8")
-        source = source_bytes[function_node.start_byte : node.end_byte].decode("utf-8")
+        source = source_bytes[function_node.start_byte : function_node.end_byte].decode("utf-8")
 
         return_node = function_node.child_by_field_name("return_type")
         return_type = None
@@ -642,6 +657,7 @@ class OSA_TreeSitter(object):
         method_calls = self._resolve_method_calls(function_node, source_code, imports)
 
         return {
+            "class_name": class_name,
             "method_name": method_name,
             "decorators": dec_list,
             "docstring": docstring,

@@ -13,9 +13,10 @@ from osa_tool.core.git.metadata import (
     GitLabMetadataLoader,
     GitverseMetadataLoader,
     RepositoryMetadata,
+    LocalMetadataLoader,
 )
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import get_base_repo_url, parse_folder_name
+from osa_tool.utils.utils import get_base_repo_url, parse_folder_name, is_path
 
 
 class GitAgent(abc.ABC):
@@ -346,8 +347,8 @@ class GitAgent(abc.ABC):
                 logger.error(f"Directory {self.clone_dir} exists but is not a valid Git repository")
                 raise
 
-        elif self._check_branch_existence():
-            self._clone_chosen_branch()
+        elif self._check_branch_existence(None):
+            self._clone_chosen_branch(None)
         else:
             self._clone_default_branch()
 
@@ -595,6 +596,45 @@ class GitAgent(abc.ABC):
         pass
 
 
+class LocalGitAgent(GitAgent):
+    def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool", author: str = None):
+        if is_path(repo_url):
+            if os.path.isdir(repo_url):
+                super().__init__(repo_url, repo_branch_name, branch_name, author)
+                self.clone_dir = repo_url
+            else:
+                raise ValueError(f"{repo_url} does not exist.")
+        else:
+            raise ValueError(f"{repo_url} is not a local path")
+
+    def _get_token(self) -> str:
+        return ""
+
+    def _load_metadata(self, repo_url: str) -> RepositoryMetadata:
+        return LocalMetadataLoader.load_data(repo_url)
+
+    def create_fork(self) -> None:
+        pass
+
+    def star_repository(self) -> None:
+        pass
+
+    def create_pull_request(self, title: str = None, body: str = None) -> None:
+        pass
+
+    def _build_report_url(self, report_branch: str, report_filename: str) -> str:
+        return ""
+
+    def _update_about_section(self, repo_path: str, about_content: dict) -> None:
+        pass
+
+    def _build_auth_url(self, repo_url: str) -> str:
+        return repo_url
+
+    def validate_topics(self, topics: List[str]) -> List[str]:
+        return topics
+
+
 class GitHubAgent(GitAgent):
     def _get_token(self) -> str:
         return os.getenv("GIT_TOKEN", os.getenv("GITHUB_TOKEN", ""))
@@ -739,12 +779,12 @@ class GitHubAgent(GitAgent):
                 new_reports = report_pattern.findall(self.pr_report_body)
                 all_reports = sorted(list(set(old_reports + new_reports)))
 
-                clean_body = report_pattern.sub("", old_pr_body).replace(self.AGENT_SIGNATURE, "").strip()
+                clean_body = report_pattern.sub("", old_pr_body).replace(self.agent_signature, "").strip()
 
                 updated_body = clean_body
                 if all_reports:
                     updated_body += "\n\n" + "\n".join(all_reports)
-                updated_body += self.AGENT_SIGNATURE
+                updated_body += self.agent_signature
 
                 update_url = f"{url}/{pr_number}"
                 update_data = {"body": updated_body.strip()}
@@ -1056,12 +1096,12 @@ class GitLabAgent(GitAgent):
                 new_reports = report_pattern.findall(self.pr_report_body)
                 all_reports = sorted(list(set(old_reports + new_reports)))
 
-                clean_body = report_pattern.sub("", old_mr_body).replace(self.AGENT_SIGNATURE, "").strip()
+                clean_body = report_pattern.sub("", old_mr_body).replace(self.agent_signature, "").strip()
 
                 updated_body = clean_body
                 if all_reports:
                     updated_body += "\n\n" + "\n".join(all_reports)
-                updated_body += self.AGENT_SIGNATURE
+                updated_body += self.agent_signature
 
                 update_url = f"{gitlab_instance}/api/v4/projects/{target_project_id}/merge_requests/{mr_iid}"
                 update_data = {"description": updated_body.strip()}
@@ -1326,7 +1366,7 @@ class GitverseAgent(GitAgent):
                 parts.append(initial_and_history.strip())
             if reports:
                 parts.append("\n".join(reports).strip())
-            return "\n\n".join(parts).strip() + self.AGENT_SIGNATURE
+            return "\n\n".join(parts).strip() + self.agent_signature
 
         params = {"state": "open", "head": self.branch_name, "base": self.base_branch}
         response = requests.get(url, headers=headers, params=params)

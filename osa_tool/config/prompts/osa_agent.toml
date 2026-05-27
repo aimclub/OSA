@@ -1,19 +1,22 @@
 [prompts]
 intent_router = """
-Analyze the following user request and any attached context:
+Analyze the following active request and any attached context:
 
-User Request: {user_request}
+Active Request: {active_request}
 Attachment: {attachment}
 
 Return the result **strictly in the JSON format described above**.
 """
 
 planner = """
-User request:
-{user_request}
+Active Request:
+{active_request}
 
 Detected intent: {intent}
 Task scope: {task_scope}
+
+Plan history:
+{plan_history_section}
 
 Repository overview:
 {repo_data}
@@ -25,11 +28,37 @@ Select the operations that best satisfy the user request.
 """
 
 detect_arguments = """
-User request:
-{user_request}
+Active Request:
+{active_request}
 
 Operations with additional arguments:
 {operations}
+"""
+
+fill_missing_after_clarification = """
+Missing Fields (to fill):
+{missing}
+
+User Provided Answers:
+{user_answers}
+"""
+
+reviewer_user_prompt = """
+User feedback received: {feedback_text}
+
+Current workflow configuration:
+- Current intent: {current_intent}
+- Current task_scope: {current_task_scope}
+
+Analyze the feedback and determine:
+
+1. Does it require a new intent? (set "requires_new_intent")
+2. Does it require only a new or updated task_scope? (set "requires_new_task_scope")
+3. If new intent or task_scope is required, fill in "new_intent" and/or "new_task_scope".
+4. If no changes are needed, leave new_intent and new_task_scope as null.
+5. Provide a short summary in "reviewer_summary" explaining your decision.
+
+Return the output **strictly in JSON format** as specified in the system message.
 """
 
 pr_summarizer = """

@@ -10,7 +10,7 @@ from osa_tool.osa_agent.state import OSAState
 from osa_tool.run import initialize_git_platform
 from osa_tool.ui.input_for_chat import InitialChatInput, collect_user_input
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
-from osa_tool.utils.logger import setup_logging
+from osa_tool.utils.logger import setup_logging, logger
 from osa_tool.utils.utils import osa_project_root, parse_folder_name, switch_to_output_directory
 
 
@@ -51,8 +51,9 @@ def main():
     # Create initial state from user input
     initial_state = OSAState(
         repo_url=user_input.repo_url,
-        user_request=user_input.user_request,
         attachment=user_input.attachment,
+        active_request=user_input.user_request,
+        active_request_source="user",
         session_id=f"session_{int(time.time())}",
         status=AgentStatus.INIT,
     )
@@ -63,9 +64,7 @@ def main():
     # Execute the graph
     result_state_dict = graph.invoke(initial_state)
     result_state = OSAState.model_validate(result_state_dict)
-
-    print("Result plan:")
-    print(result_state.plan)
+    logger.debug(f"Result plan:\n{result_state.plan}")
 
 
 if __name__ == "__main__":

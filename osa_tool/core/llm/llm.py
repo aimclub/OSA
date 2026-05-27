@@ -2,20 +2,38 @@ import asyncio
 import os
 import time
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid4
 
 import dotenv
-import tiktoken
-from langchain.schema import SystemMessage
+from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from protollm.connectors import create_llm_connector
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
+
+from osa_tool.utils.token_counter import truncate_to_tokens
 
 from osa_tool.config.settings import ModelSettings
 from osa_tool.utils.logger import logger
-from osa_tool.utils.response_cleaner import JsonParseError
+from osa_tool.utils.response_cleaner import JsonParseError, JsonProcessor
+
+
+def _normalize_send_and_parse_parser(parser: Any) -> Callable[[str], Any]:
+    """If ``parser`` is a ``BaseModel`` subclass, build ``JsonProcessor.process_text`` + ``model_validate_json``.
+
+    Otherwise ``parser`` must be a ``Callable[[str], Any]`` (e.g. scheduler ``PromptConfig.safe_validate``,
+    or ``JsonProcessor.parse`` for non-standard JSON handling). Both paths stay supported.
+    """
+    if isinstance(parser, type) and issubclass(parser, BaseModel):
+        model_cls = parser
+
+        def _parse(raw: str) -> BaseModel:
+            cleaned = JsonProcessor.process_text(raw)
+            return model_cls.model_validate_json(cleaned)
+
+        return _parse
+    return parser
 
 
 class ModelHandler(ABC):
@@ -39,7 +57,7 @@ class ModelHandler(ABC):
     def send_request(self, prompt: str, system_message: str = None, retry_delay: float = 1) -> str: ...
 
     @abstractmethod
-    def send_and_parse(self, prompt: str, parser: callable, system_message: str = None, retry_delay: float = 0.5): ...
+    def send_and_parse(self, prompt: str, parser: Any, system_message: str = None, retry_delay: float = 0.5): ...
 
     @abstractmethod
     async def async_request(self, prompt: str, system_message: str = None, retry_delay: float = 1) -> str: ...
@@ -48,7 +66,7 @@ class ModelHandler(ABC):
     async def async_send_and_parse(
         self,
         prompt: str,
-        parser: callable,
+        parser: Any,
         system_message: str = None,
         retry_delay: float = 0.5,
     ): ...
@@ -253,7 +271,7 @@ class ProtollmHandler(ModelHandler):
         logger.error(f"All models failed. Last error: {last_error}")
         raise last_error
 
-    def send_and_parse(self, prompt: str, parser: callable, system_message: str = None, retry_delay: float = 0.5):
+    def send_and_parse(self, prompt: str, parser: Any, system_message: str = None, retry_delay: float = 0.5):
         """
         Sends a prompt to the LLM, applies a parser to the response, and retries on parsing or validation errors.
 
@@ -264,7 +282,9 @@ class ProtollmHandler(ModelHandler):
 
         Args:
             prompt (str): The prompt to send to the LLM.
-            parser (callable): A function that parses and validates the raw LLM response.
+            parser: Either a ``Callable[[str], Any]`` on the raw model text, or a
+                Pydantic ``BaseModel`` subclass. The latter is parsed as JSON via
+                ``JsonProcessor.process_text`` then ``model_validate_json``.
             system_message (str, optional): The system message to initialize the payload with.
             retry_delay (float, optional): Delay in seconds between retry attempts. Defaults to 0.5.
 
@@ -277,12 +297,13 @@ class ProtollmHandler(ModelHandler):
         """
         last_error = None
         last_raw = None
+        parser_fn = _normalize_send_and_parse_parser(parser)
 
         for attempt in range(1, self.max_retries + 1):
             last_raw = self.send_request(prompt, system_message)
 
             try:
-                result = parser(last_raw)
+                result = parser_fn(last_raw)
 
                 logger.info(f"Send and parse request success on attempt {attempt}/{self.max_retries}.")
                 return result
@@ -295,7 +316,7 @@ class ProtollmHandler(ModelHandler):
 
         logger.debug("Final failed LLM response after retries:\n%s", last_raw)
         logger.debug(repr(last_error))
-        raise
+        raise last_error
 
     async def async_request(self, prompt: str, system_message: str = None, retry_delay: float = 1) -> str:
         """
@@ -337,7 +358,7 @@ class ProtollmHandler(ModelHandler):
     async def async_send_and_parse(
         self,
         prompt: str,
-        parser: callable,
+        parser: Any,
         system_message: str = None,
         retry_delay: float = 0.5,
     ):
@@ -352,7 +373,7 @@ class ProtollmHandler(ModelHandler):
 
         Args:
             prompt (str): The prompt to send to the LLM.
-            parser (callable): A function that parses and validates the raw LLM response.
+            parser: Callable on raw text, or a Pydantic ``BaseModel`` subclass (same as ``send_and_parse``).
             system_message (str, optional): The system message to initialize the payload with.
             retry_delay (float, optional): Delay in seconds between retry attempts. Defaults to 0.5.
 
@@ -365,17 +386,18 @@ class ProtollmHandler(ModelHandler):
         """
         last_error = None
         last_raw = None
+        parser_fn = _normalize_send_and_parse_parser(parser)
 
         for attempt in range(1, self.max_retries + 1):
             last_raw = await self.async_request(prompt, system_message)
 
             try:
-                result = parser(last_raw)
+                result = parser_fn(last_raw)
 
                 logger.info(f"Async send and parse request success on attempt {attempt}/{self.max_retries}.")
                 return result
 
-            except JsonParseError as e:
+            except (JsonParseError, ValidationError) as e:
                 last_error = e
                 logger.warning(f"Async parse failed (attempt {attempt}/{self.max_retries}): {e}")
                 self.reset_to_primary_model()
@@ -385,7 +407,7 @@ class ProtollmHandler(ModelHandler):
 
         logger.debug("Final failed async LLM response after retries:\n%s", last_raw)
         logger.debug(repr(last_error))
-        raise
+        raise last_error
 
     async def generate_concurrently(self, prompts: list[str], system_message: str = None) -> list[str]:
         """
@@ -545,33 +567,13 @@ class ProtollmHandler(ModelHandler):
 
         Calculates: Available Input = Total Context - Max Output - Safety Buffer
         """
-        model_context_limit = getattr(self.model_settings, "context_window")
-        max_output_tokens = self.model_settings.max_tokens
-        encoding_name = self.model_settings.encoder
-
-        max_input_tokens = model_context_limit - max_output_tokens - safety_buffer
-
-        try:
-            encoding = tiktoken.get_encoding(encoding_name)
-        except ValueError:
-            encoding = tiktoken.get_encoding("cl100k_base")
-
-        tokens = encoding.encode(text)
-
-        if len(tokens) <= max_input_tokens:
-            return text
-
-        if mode == "start":
-            truncated_tokens = tokens[:max_input_tokens]
-        elif mode == "end":
-            truncated_tokens = tokens[-max_input_tokens:]
-        elif mode == "middle-out":
-            half_limit = max_input_tokens // 2
-            truncated_tokens = tokens[:half_limit] + tokens[-half_limit:]
-        else:
-            raise ValueError(f"Unknown mode: {mode}")
-
-        return encoding.decode(truncated_tokens)
+        max_input_tokens = self.model_settings.context_window - self.model_settings.max_tokens - safety_buffer
+        return truncate_to_tokens(
+            text,
+            max_input_tokens,
+            self.model_settings.encoder,
+            mode=mode,
+        )
 
 
 class ModelHandlerFactory:

@@ -4,12 +4,16 @@ from pydantic import BaseModel
 
 
 class EventKind(str, Enum):
+    ANALYZED = "analyzed"
+    CREATED = "created"
     GENERATED = "generated"
+    SET = "set"
     REFINED = "refined"
+    UPDATED = "updated"
+    MOVED = "moved"
     WRITTEN = "written"
     EXISTS = "exists"
-    UPDATED = "updated"
-    SET = "set"
+    UPLOADED = "uploaded"
     SKIPPED = "skipped"
     FAILED = "failed"
 

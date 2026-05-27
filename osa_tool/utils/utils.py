@@ -40,6 +40,10 @@ def parse_folder_name(repo_url: str) -> str:
             folder_name = match.group(1)
             logger.debug(f"Parsed folder name '{folder_name}' from repo URL '{repo_url}'")
             return folder_name
+    if os.path.exists(repo_url):
+        folder_name = os.path.basename(repo_url)
+        logger.debug(f"Parsed folder name '{folder_name}' from repo URL '{repo_url}'")
+        return folder_name
     folder_name = re.sub(r"[:/]", "_", repo_url.rstrip("/"))
     logger.debug(f"Parsed folder name '{folder_name}' from repo URL '{repo_url}'")
     return folder_name
@@ -162,6 +166,25 @@ def parse_git_url(repo_url: str) -> tuple[str, str, str, str]:
     return host_domain, host, name, full_name
 
 
+def is_path(path_str: str) -> bool:
+    if not path_str or not isinstance(path_str, str) or not path_str.strip():
+        return False
+
+    if re.match(r"^[a-zA-Z]+://", path_str):
+        return False
+
+    try:
+        p = Path(path_str)
+
+        if "\0" in path_str:
+            return False
+        _ = p.parts
+
+        return True
+    except (ValueError, TypeError, OSError):
+        return False
+
+
 def get_repo_tree(repo_path: str) -> str:
     """
     Builds a text representation of the project file tree, excluding the .git directory.
@@ -278,13 +301,13 @@ def extract_readme_content(repo_path: str) -> str:
 
     If a README file exists in the repository, it will return its content.
     It checks for both "README.md" and "README.rst" files. If no README is found,
-    it returns a default message.
+    it returns a empty string.
 
     Args:
         repo_path: Path to the repository being explored.
 
     Returns:
-        str: The content of the README file or a message indicating absence.
+        str: The content of the README file or an empty string.
     """
     for file in ["README.md", "README_en.rst", "README.rst"]:
         readme_path = os.path.join(repo_path, file)
@@ -293,7 +316,7 @@ def extract_readme_content(repo_path: str) -> str:
             with open(readme_path, "r", encoding="utf-8") as f:
                 return f.read()
     else:
-        return "No README.md file"
+        return ""
 
 
 def detect_provider_from_url(url) -> str | None:
@@ -332,3 +355,10 @@ def detect_provider_from_url(url) -> str | None:
                 return provider
 
     return None
+
+
+def format_time(seconds: float) -> str:
+    """Convert *seconds* into ``HH:MM:SS`` format."""
+    hours, remainder = divmod(int(seconds), 3600)
+    minutes, secs = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"

@@ -1,3 +1,5 @@
+from typing import Any
+
 from langgraph.constants import END
 from langgraph.graph import StateGraph
 
@@ -12,7 +14,7 @@ from osa_tool.osa_agent.context import AgentContext
 from osa_tool.osa_agent.state import OSAState
 
 
-def build_graph(context: AgentContext):
+def build_graph(context: AgentContext) -> Any:
     """
     Build and compile the OSA agent execution graph.
 
@@ -59,13 +61,16 @@ def build_graph(context: AgentContext):
     )
 
     graph.add_edge("repo_analysis", "planner")
-    graph.add_edge("planner", "executor")
+    # planner → executor | planner
+    graph.add_conditional_edges(
+        "planner", lambda state: ("planner" if state.status == AgentStatus.WAITING_FOR_USER else "executor")
+    )
     graph.add_edge("executor", "reviewer")
 
     # reviewer → finalizer | planner
     graph.add_conditional_edges(
         "reviewer",
-        lambda state: ("finalizer" if state.approval is True else "planner"),
+        lambda state: ("finalizer" if state.approval else "planner"),
     )
 
     graph.add_edge("finalizer", END)

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import os.path
+from argparse import Namespace
 from pathlib import Path
-from typing import List, Literal
+from typing import Any, List, Literal
 
 import tomli
 from pydantic import (
@@ -22,6 +23,7 @@ from osa_tool.utils.utils import (
     build_config_path,
     detect_provider_from_url,
     parse_git_url,
+    is_path,
 )
 
 
@@ -35,11 +37,20 @@ class GitSettings(BaseModel):
     host_domain: str | None = None
     host: str | None = None
     name: str = ""
+    osa_branch_name: str = "osa_tool"
 
     @model_validator(mode="after")
     def set_git_attributes(self):
         """Parse and set Git repository attributes."""
-        self.host_domain, self.host, self.name, self.full_name = parse_git_url(str(self.repository))
+        if is_path(self.repository):
+            if os.path.isdir(self.repository):
+                basename = os.path.basename(self.repository)
+                self.name = basename
+                self.full_name = f"local/{basename}"
+            else:
+                raise ValueError(f"{self.repository} does not exist.")
+        else:
+            self.host_domain, self.host, self.name, self.full_name = parse_git_url(str(self.repository))
         return self
 
 
@@ -137,7 +148,7 @@ class ConfigManager:
     Manages configuration loading and provides model settings for different tasks.
     """
 
-    def __init__(self, args=None):
+    def __init__(self, args: Namespace | None = None):
         """
         Initialize ConfigManager with CLI arguments.
 
@@ -182,7 +193,7 @@ class ConfigManager:
         return config_path
 
     @staticmethod
-    def _apply_cli_args_to_config_data(config_data: dict, args) -> dict:
+    def _apply_cli_args_to_config_data(config_data: dict, args: Namespace) -> dict:
         """
         Apply CLI arguments to raw config data.
 

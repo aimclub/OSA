@@ -5,67 +5,40 @@ import shutil
 import subprocess
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import List, Dict, Callable
+from typing import Any, Callable, Dict, List
 
 import aiofiles
 import black
 import dotenv
+import libcst as cst
 import tiktoken
 import tomli
 import yaml
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandlerFactory, ProtollmHandler
+from osa_tool.operations.codebase.docstring_generation.docstring_transformer import (
+    DocstringTransformer,
+)
+from osa_tool.operations.codebase.docstring_generation.osa_treesitter import (
+    OSA_TreeSitter,
+)
+from osa_tool.operations.codebase.docstring_generation.topology import (
+    build_dependency_graph,
+)
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
-from osa_tool.operations.codebase.docstring_generation.osa_treesitter import OSA_TreeSitter
-from osa_tool.operations.codebase.docstring_generation.topology import build_dependency_graph
 
 dotenv.load_dotenv()
 
 
 class DocGen(object):
     """
-    This class is a utility for generating Python docstrings using OpenAI's GPT model. It includes methods
-    for generating docstrings for a class, a single method, formatting the structure of Python files,
-    counting the number of tokens in a given prompt, extracting the docstring from GPT's response,
-    inserting a generated docstring into the source code and also processing a Python file by generating
-    and inserting missing docstrings.
+    Utility class for generating and inserting Python docstrings with an LLM.
 
-    Methods:
-        __init__(self)
-            Initializes the class instance by setting the 'api_key' attribute to the value of the
-            'OPENAI_API_KEY' environment variable.
-
-        format_structure_openai(structure)
-            Formats the structure of Python files in a readable string format by iterating over the given
-            'structure' dictionary and generating a formatted string.
-
-        count_tokens(prompt, model)
-            Counts the number of tokens in a given prompt using a specified model.
-
-        generate_class_documentation(class_details, model)
-            Generates documentation for a class using OpenAI GPT.
-
-        generate_method_documentation()
-            Generates documentation for a single method using OpenAI GPT.
-
-        extract_pure_docstring(gpt_response)
-            Extracts only the docstring from the GPT-4 response while keeping triple quotes.
-
-        insert_docstring_in_code(source_code, method_details, generated_docstring)
-            Inserts a generated docstring into the specified location in the source code.
-
-        insert_cls_docstring_in_code(source_code, class_details, generated_docstring)
-            Inserts a generated class docstring into the class definition and returns the updated source code.
-
-        process_python_file(parsed_structure, file_path)
-            Processes a Python file by generating and inserting missing docstrings and updates the source file
-            with the new docstrings.
-
-        generate_documentation_openai(file_structure, model)
-            Generates the documentation for a given file structure using OpenAI's API by traversing the given
-            file structure and for each class or standalone function, generating its documentation.
+    The class formats parsed code structures, requests documentation for classes
+    and methods, extracts clean docstring text from model output, and writes
+    generated docstrings back into source files.
     """
 
     def __init__(self, config_manager: ConfigManager):
@@ -73,7 +46,7 @@ class DocGen(object):
         Instantiates the object of the class.
 
         Args:
-            config_loader: Configuration loader instance
+            config_manager: Configuration manager instance
         """
         self.config_manager = config_manager
         self.model_settings = self.config_manager.get_model_settings("docstrings")
@@ -91,7 +64,7 @@ class DocGen(object):
         source code and docstrings if available.
 
         Args:
-            structure: A dictionary containing details of the Python files structure. The dictionary should
+        -structure: A dictionary containing details of the Python files structure. The dictionary should
             have filenames as keys and values as lists of dictionaries. Each dictionary in the list represents a
             class or function and should contain keys like 'type', 'name', 'start_line', 'docstring', 'methods'
             (for classes), 'details' (for functions) etc. Each 'methods' or 'details' is also a dictionary that
@@ -213,7 +186,7 @@ class DocGen(object):
             "- A list of its methods without details if class has them otherwise do not mention a list of methods.\n"
             "- A list of its attributes that explicitly mentioned at the constructor method's docstring (can be adressed as attributes, properties, class fields, etc.), without types if class or constructor method has them otherwise do not mention a list of attributes.\n"
             "- A brief summary of what its methods and attributes do if one has them for.\n\n"
-            "Return only docstring without any quotation. Follow such format:\n <triple_quotes>\ncontent\n<triple_quotes>"
+            "Return only docstring without any quotation."
         )
 
         if len(class_details[1]) > 0:
@@ -227,7 +200,8 @@ class DocGen(object):
                 prompt += f"- {method['method_name']}: {method['docstring']}\n"
 
         async with semaphore:
-            return await self.model_handler.async_request(prompt)
+            docstring = await self.model_handler.async_request(prompt)
+            return docstring.strip('"""')
 
     async def update_class_documentation(self, class_details: list, semaphore: asyncio.Semaphore) -> str:
         """
@@ -244,7 +218,7 @@ class DocGen(object):
             desc, other = class_details[-1].split("\n\n", maxsplit=1)
             desc = desc.replace('"', "")
         except:
-            return class_details[-1]
+            return class_details[-1].strip().strip('"').strip("'")
 
         old_desc = desc.strip('"\n ')
         prompt = (
@@ -257,8 +231,9 @@ class DocGen(object):
 
         async with semaphore:
             new_desc = await self.model_handler.async_request(prompt)
+            new_desc = new_desc.strip().strip('"').strip("'")
 
-        return "\n\n".join(['"""\n' + new_desc, other])
+        return "\n\n".join([new_desc, other])
 
     async def generate_method_documentation(
         self,
@@ -281,7 +256,8 @@ class DocGen(object):
             f"- Method Name: {method_details['method_name']}\n\n"
             "Method source code: You are given only the body of a single method, without its signature. "
             "All visible code, including any inner functions or nested logic, belongs to this single method. "
-            "Do not write separate docstrings for inner functions — they are part of the main method's logic.\n"
+            "Do NOT write separate docstrings for inner functions — they are part of the main method's logic.\n"
+            "Do NOT repeat the function signature or decorators.\n"
             "```\n"
             f"{method_details['source_code']}\n"
             "```\n\n"
@@ -309,14 +285,11 @@ class DocGen(object):
             "- DO NOT lose any parameter.\n"
             "- DO NOT wrap any sections of the docstring into <any_tag> — remove such tags if generated.\n\n"
             "Return only the docstring without any quotation marks.\n"
-            "Follow this format exactly:\n"
-            "<triple_quotes>\n"
-            "content\n"
-            "<triple_quotes>\n"
         )
 
         async with semaphore:
-            return await self.model_handler.async_request(prompt)
+            docstring = await self.model_handler.async_request(prompt)
+            return docstring.strip('"""')
 
     async def update_method_documentation(
         self,
@@ -366,12 +339,14 @@ class DocGen(object):
             f"The main idea of the project (for context only): {self.main_idea}\n\n"
             "Return only the updated docstring.\n"
             "DO NOT return code.\n"
+            "Do NOT repeat the function signature or decorators.\n"
             "DO NOT return other documentation sections.\n"
-            "Use triple quotes format.\n"
+            "Return only the docstring without any quotation marks.\n"
         )
 
         async with semaphore:
-            return await self.model_handler.async_request(prompt)
+            docstring = await self.model_handler.async_request(prompt)
+            return docstring.strip('"""')
 
     @staticmethod
     def extract_pure_docstring(gpt_response: str) -> str:
@@ -456,16 +431,15 @@ class DocGen(object):
         using the method's body from method_details['source_code'] to locate the method.
         Handles multi-line signatures, decorators, async definitions, and existing docstrings.
         """
-        method_body = DocGen.strip_docstring_from_body(method_details["source_code"].strip())
-        docstring_clean = DocGen.extract_pure_docstring(generated_docstring)
+        source_code = source_code.replace("\r\n", "\n")
+        method_source = method_details["source_code"].replace("\r\n", "\n")
+
+        docstring_clean = DocGen.extract_pure_docstring(generated_docstring.replace("\r\n", f"\n"))
 
         # Find method within a source code
-        match = re.search(re.escape(method_details["source_code"]), source_code)
-        if not match:
-            return source_code
-        body_start = match.start()
+        body_start = source_code.find(method_source)
 
-        if not body_start:
+        if body_start == -1:
             return source_code
 
         start = body_start
@@ -473,7 +447,7 @@ class DocGen(object):
         while start > 0 and source_code[start - 1] in " \t\n":
             start -= 1
 
-        end = body_start + len(method_body)
+        end = body_start + len(method_source)
 
         method_block = source_code[start:end]
         method_lines = method_block.splitlines(keepends=True)
@@ -483,7 +457,7 @@ class DocGen(object):
         def indent_docstring(docstring: str) -> str:
             lines = docstring.strip().splitlines()
             if len(lines) == 1:
-                return f'{indent}"""{lines[0]}"""'
+                return f'{indent}"""{lines[0]}"""\n'
             indented = [f"{indent}" + lines[0]]
             for line in lines[1:]:
                 indented.append(f"{indent}{line}")
@@ -492,7 +466,7 @@ class DocGen(object):
         # Check for existing docstring right after signature
         signature_end_index = None
         for i, line in enumerate(method_lines):
-            if line.strip().endswith(":"):
+            if line.split("#")[0].strip().endswith(":"):
                 signature_end_index = i
                 break
 
@@ -671,14 +645,14 @@ class DocGen(object):
         )
 
     @staticmethod
-    def format_with_black(filename):
+    def format_with_black(filename) -> None:
         """
         Formats a Python source code file using the `black` code formatter.
 
         This method takes a filename as input and formats the code in the specified file using the `black` code formatter.
 
         Parameters:
-            - filename: The path to the Python source code file to be formatted.
+        - filename: The path to the Python source code file to be formatted.
 
         Returns:
             None
@@ -738,26 +712,16 @@ class DocGen(object):
 
         logger.info(f"Augmenting code for the file: {file}")
 
-        # iterating over given docstrings dictionary and choosing of insertion strategy.
-        for _type, generated in docstrings.items():
+        if not docstrings:
+            return {file: source_code}
 
-            # note that "source_code" variable is from outer scope.
-            match _type:
-
-                case "methods":
-                    for docstring, m in generated:
-                        source_code = DocGen.insert_docstring_in_code(source_code, m, docstring, class_method=True)
-
-                case "functions":
-                    for docstring, f in generated:
-                        source_code = DocGen.insert_docstring_in_code(source_code, f, docstring)
-
-                case "classes":
-                    for docstring, c in generated:
-                        source_code = DocGen.insert_cls_docstring_in_code(source_code, c, docstring)
+        module = cst.parse_module(source_code)
+        wrapper = cst.MetadataWrapper(module)
+        transformer = DocstringTransformer(docstrings, source_code.splitlines(True), module.default_indent)
+        new_module = wrapper.visit(transformer)
 
         # serialize the results to a dictionary
-        return {file: source_code}
+        return {file: new_module.code}
 
     async def _generate_docstrings_for_items(
         self, parsed_structure: dict, docstring_type: tuple | str, rate_limit: int = 10
@@ -1188,7 +1152,7 @@ class DocGen(object):
 
         self.main_idea = await self.model_handler.async_request(prompt.format(components=components))
 
-    async def summarize_submodules(self, project_structure, rate_limit: int = 20) -> Dict[str, str]:
+    async def summarize_submodules(self, project_structure: dict[str, Any], rate_limit: int = 20) -> Dict[str, str]:
         """
         This method performs recursive traversal over given parsed structure of a Python codebase and
         generates short summaries for each directory (submodule).

@@ -6,7 +6,6 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.core.models.event import OperationEvent, EventKind
-from osa_tool.scheduler.plan import Plan
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.utils import extract_readme_content, parse_folder_name
@@ -26,7 +25,7 @@ HOMEPAGE_KEYS = [
 class AboutGenerator:
     """Generates Git repository About section content."""
 
-    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent, plan: Plan):
+    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent):
         self.config_manager = config_manager
         self.model_settings = config_manager.get_model_settings("general")
         self.prompts = self.config_manager.get_prompts()
@@ -38,7 +37,6 @@ class AboutGenerator:
         self.validate_topics = git_agent.validate_topics
         self._content: dict | None = None
         self.events: list[OperationEvent] = []
-        self.plan = plan
 
     def generate_about_content(self) -> dict:
         """
@@ -49,10 +47,8 @@ class AboutGenerator:
                 - result: generated about section fields
                 - events: list of OperationEvent
         """
-        self.plan.mark_started("about")
         if self._content is not None:
             logger.warning("About section content already generated. Skipping generation.")
-            self.plan.mark_done("about")
             return {
                 "result": self._content,
                 "events": self.events,
@@ -63,10 +59,7 @@ class AboutGenerator:
             description = self._generate_description()
             homepage = self._detect_homepage()
             topics = self._generate_topics()
-            if description and homepage and topics:
-                self.plan.mark_done("about")
-            else:
-                self.plan.mark_failed("about")
+
             self._content = {
                 "description": description,
                 "homepage": homepage,
