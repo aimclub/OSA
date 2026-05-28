@@ -51,29 +51,45 @@ def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_fa
     # Arrange
     platform, owner, repo_name, repo_url = repo_info
     raw_data = mock_api_raw_data
+    original_languages = raw_data.get("languages", {})
     mock_response = mock_requests_response_factory(status_code=200, json_data=raw_data)
+    languages_response = mock_requests_response_factory(status_code=200, json_data=original_languages)
     loader_class = LOADER_CLASSES[platform]
 
     # Act
-    with patch("osa_tool.core.git.metadata.requests.get", return_value=mock_response) as mock_get:
+    with patch("osa_tool.core.git.metadata.requests.get", side_effect=[mock_response, languages_response]) as mock_get:
         with patch.dict(os.environ, TOKEN_ENVS[platform]):
             result = loader_class._load_platform_data(repo_url, use_token=True)
 
     # Assert
-    expected = loader_class._parse_metadata(raw_data)
+    expected_payload = dict(raw_data)
+    if isinstance(original_languages, dict):
+        expected_payload["languages"] = list(original_languages.keys())
+        expected_payload["language_stats"] = {k: float(v) for k, v in original_languages.items()}
+    else:
+        expected_payload["languages"] = list(original_languages)
+        expected_payload["language_stats"] = {}
+    if platform == "gitlab" and expected_payload["languages"] and not expected_payload.get("language"):
+        expected_payload["language"] = expected_payload["languages"][0]
+    if platform == "gitverse" and expected_payload["languages"] and not expected_payload.get("language"):
+        expected_payload["language"] = expected_payload["languages"][0]
+    expected = loader_class._parse_metadata(expected_payload)
     assert result == expected
 
     base_url = get_base_repo_url(repo_url)
     if platform == "gitlab":
         base_url = base_url.replace("/", "%2F")
         expected_url = BASE_URLS["gitlab"].format(base=base_url)
+        expected_language_url = f"{expected_url}/languages"
     else:
         expected_url = BASE_URLS[platform].format(base=base_url)
+        expected_language_url = raw_data["languages_url"]
 
-    mock_get.assert_called_once_with(
-        url=expected_url,
-        headers=HEADERS[platform],
-    )
+    assert mock_get.call_count == 2
+    first_call = mock_get.call_args_list[0]
+    second_call = mock_get.call_args_list[1]
+    assert first_call.kwargs == {"url": expected_url, "headers": HEADERS[platform]}
+    assert second_call.kwargs == {"url": expected_language_url, "headers": HEADERS[platform]}
 
 
 @pytest.mark.parametrize("mock_config_manager", ["github", "gitlab", "gitverse"], indirect=True)
