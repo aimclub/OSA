@@ -250,3 +250,61 @@ def test_gitverse_locate_workflow_path_fallback_to_github(mock_config_manager, m
         # Assert
         assert manager.workflow_path is not None
         assert ".github/workflows" in manager.workflow_path.replace("\\", "/")
+
+
+def test_refresh_after_clone_clears_stale_state(tmp_path, monkeypatch, mock_repository_metadata, mock_args):
+    """Stale local workflow files must be invisible after refresh_after_clone()
+    when the freshly cloned repo has no CI directory."""
+    import shutil
+
+    # Arrange: stale local state - .github/workflows with a lint job exists before clone
+    repo_name = "test-repo"
+    repo_url = f"https://github.com/owner/{repo_name}"
+    wf_dir = tmp_path / repo_name / ".github" / "workflows"
+    wf_dir.mkdir(parents=True)
+    (wf_dir / "lint.yml").write_text(yaml.dump({"jobs": {"lint": {}}}))
+    monkeypatch.chdir(tmp_path)
+    manager = GitHubWorkflowManager(
+        repo_url=repo_url,
+        metadata=mock_repository_metadata,
+        args=mock_args,
+    )
+    assert manager.workflow_path is not None
+    assert "lint" in manager.existing_jobs
+    # Simulate clone: remote repo has no .github/workflows → directory is gone
+    shutil.rmtree(wf_dir)
+
+    # Act
+    manager.refresh_after_clone()
+
+    # Assert
+    assert manager.workflow_path is None
+    assert manager.existing_jobs == set()
+
+
+def test_refresh_after_clone_picks_up_new_workflows(tmp_path, monkeypatch, mock_repository_metadata, mock_args):
+    """CI files introduced by clone must be visible after refresh_after_clone()
+    even though they did not exist when WorkflowManager was initialised."""
+    # Arrange: repo directory exists but has no CI files before clone
+    repo_name = "test-repo"
+    repo_url = f"https://github.com/owner/{repo_name}"
+    (tmp_path / repo_name).mkdir()
+    monkeypatch.chdir(tmp_path)
+    manager = GitHubWorkflowManager(
+        repo_url=repo_url,
+        metadata=mock_repository_metadata,
+        args=mock_args,
+    )
+    assert manager.workflow_path is None
+    assert manager.existing_jobs == set()
+    # Simulate clone: remote repo has .github/workflows with a tests job
+    wf_dir = tmp_path / repo_name / ".github" / "workflows"
+    wf_dir.mkdir(parents=True)
+    (wf_dir / "tests.yml").write_text(yaml.dump({"jobs": {"tests": {}}}))
+
+    # Act
+    manager.refresh_after_clone()
+
+    # Assert
+    assert manager.workflow_path is not None
+    assert "tests" in manager.existing_jobs
