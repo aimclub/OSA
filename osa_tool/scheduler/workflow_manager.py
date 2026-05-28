@@ -10,6 +10,7 @@ from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.codebase.workflow_generation.workflow_generator import (
     GitHubWorkflowGenerator,
     GitLabWorkflowGenerator,
+    SourceCraftWorkflowGenerator,
 )
 from osa_tool.scheduler.plan import Plan
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
@@ -33,12 +34,12 @@ class WorkflowManager(ABC):
 
     job_name_for_key = {
         "include_black": ["black", "lint", "Lint", "format"],
-        "include_tests": ["test", "unit_tests"],
+        "include_tests": ["test", "unit_tests", "tests"],
         "include_pep8": ["lint", "Lint", "pep8_check"],
         "include_autopep8": ["autopep8"],
         "include_fix_pep8": ["fix_pep8_command", "fix-pep8"],
         "slash-command-dispatch": ["slash_command_dispatch", "slashCommandDispatch"],
-        "pypi-publish": ["pypi_publish", "pypi-publish"],
+        "pypi-publish": ["pypi_publish", "pypi-publish", "publish"],
     }
 
     def __init__(self, repo_url: str, metadata: RepositoryMetadata, args: Any):
@@ -355,4 +356,48 @@ class GitverseWorkflowManager(WorkflowManager):
 
     def _generate_files(self, workflow_settings, output_dir) -> list[str]:
         generator = GitHubWorkflowGenerator(output_dir)
+        return generator.generate_selected_jobs(workflow_settings, self.plan)
+
+
+class SourceCraftWorkflowManager(WorkflowManager):
+    """
+    Workflow manager implementation for SourceCraft platform.
+
+    Uses `.sourcecraft/ci.yaml` file for workflows storage.
+    """
+
+    def _locate_workflow_path(self) -> str | None:
+        wdir = os.path.join(self.base_path, ".sourcecraft")
+        fpath = os.path.join(wdir, "ci.yaml")
+        if os.path.isfile(fpath):
+            return fpath
+        return None
+
+    def _find_existing_jobs(self) -> set[str]:
+        if not self.workflow_path:
+            return set()
+
+        try:
+            with open(self.workflow_path, encoding="utf-8") as f:
+                content = yaml.safe_load(f)
+        except (yaml.YAMLError, IOError, OSError) as e:
+            logger.warning(f"Failed to load {self.workflow_path}: {e}")
+            return set()
+
+        if not content:
+            return set()
+
+        workflows = content.get("workflows")
+        if isinstance(workflows, dict):
+            return set(workflows.keys())
+
+        return set()
+
+    def _get_output_dir(self) -> str:
+        out_dir = os.path.join(self.base_path, ".sourcecraft")
+        os.makedirs(out_dir, exist_ok=True)
+        return out_dir
+
+    def _generate_files(self, workflow_settings, output_dir) -> list[str]:
+        generator = SourceCraftWorkflowGenerator(output_dir)
         return generator.generate_selected_jobs(workflow_settings, self.plan)

@@ -43,3 +43,29 @@ before_script = ["pip install mkdocs mkdocs-material mkdocstrings[python]"]
 script = ["mkdocs build --config-file osa_mkdocs.yml", "mv site public"]
 artifacts.paths = ["public"]
 rules = [{ if = '$CI_COMMIT_BRANCH == "main"'}]
+
+[sourcecraft.build]
+workflow_name = "build_docs"
+python_version = "3.12"
+script = [
+    "pip install mkdocs mkdocs-material mkdocstrings[python]",
+    "mkdocs build --config-file osa_mkdocs.yml"
+]
+
+[sourcecraft.deploy]
+workflow_name = "deploy_docs"
+python_version = "3.12"
+script_template = [
+    "pip install mkdocs mkdocs-material mkdocstrings[python]",
+    "mkdocs build --config-file osa_mkdocs.yml",
+    "cd site",
+    "git init",
+    "git config user.email 'osa-bot@users.noreply.sourcecraft.dev'",
+    "git config user.name 'OSA Bot'",
+    "git add .",
+    "git commit -m 'Deploy docs'",
+    "git push --force 'https://osa-bot:${{ secrets.SC_TOKEN }}@git.sourcecraft.dev/{full_name}.git' HEAD:release"
+]
+
+[sourcecraft.sites]
+ref = "release"
