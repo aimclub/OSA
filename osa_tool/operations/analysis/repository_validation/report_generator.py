@@ -89,13 +89,19 @@ class ReportGenerator:
         self.filename = f"{self.metadata.name}_validation_report.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
 
-    def build_pdf(self, type_: str, experiments: tuple[Experiment, ...]) -> None:
+    def build_pdf(
+        self,
+        type_: str,
+        experiments: tuple[Experiment, ...],
+        vkr_report: dict | None = None,
+    ) -> None:
         """
         Build and save the PDF validation report.
 
         Args:
             type_ (str): Type of validation (e.g., "Code", "Doc", "Paper").
             experiments (tuple[Experiment]): JSON containing report data.
+            vkr_report (dict | None): Optional VKR quality-check report to include.
 
         Returns:
             None
@@ -108,16 +114,16 @@ class ReportGenerator:
                 topMargin=50,
                 bottomMargin=40,
             )
-            doc.build(
-                [
-                    *self.__build_header(type_),
-                    Spacer(0, 40),
-                    *self.__build_brief(experiments),
-                    Spacer(0, 20),
-                    *self.__build_table(experiments),
-                ],
-                onFirstPage=self.__draw_images,
-            )
+            elements = [
+                *self.__build_header(type_),
+                Spacer(0, 20),
+                *self.__build_vkr_section(vkr_report),
+                Spacer(0, 20),
+                *self.__build_brief(experiments),
+                Spacer(0, 20),
+                *self.__build_table(experiments),
+            ]
+            doc.build(elements, onFirstPage=self.__draw_images)
             logger.info(f"PDF report successfully created in {self.output_path}")
         except Exception as e:
             logger.error("Error while building PDF report, %s", e, exc_info=True)
@@ -244,6 +250,76 @@ class ReportGenerator:
             normal_style,
         )
         return Spacer(0, 10), conclusion_header, Spacer(0, 5), conclusion_text
+
+    @staticmethod
+    def __build_vkr_section(vkr_report: dict | None) -> list:
+        """Build PDF elements for the VKR repository quality score section."""
+        if not vkr_report:
+            return []
+
+        from osa_tool.operations.analysis.vkr_scoring.scoring_engine import (
+            CHECK_ORDER,
+            REPO_TYPE_LABELS,
+            ScoringEngine,
+        )
+
+        styles = getSampleStyleSheet()
+        header_style = ParagraphStyle(
+            name="VkrHeader",
+            parent=styles["Normal"],
+            fontSize=13,
+            leading=18,
+            spaceBefore=4,
+        )
+        normal_style = ParagraphStyle(
+            name="VkrNormal",
+            parent=styles["Normal"],
+            fontSize=11,
+            leading=15,
+        )
+
+        checks = vkr_report.get("checks", {})
+        summary = vkr_report.get("summary", {})
+        score = summary.get("score", 0)
+        repo_type = summary.get("repo_type", "")
+        type_label = REPO_TYPE_LABELS.get(repo_type, repo_type)
+
+        elements: list = [
+            Paragraph(f"<b>Repository Quality Score: {score}/100</b>", header_style),
+            Spacer(0, 4),
+            Paragraph(f"Repository type: {type_label}", normal_style),
+            Spacer(0, 8),
+        ]
+
+        table_data = [[Paragraph("<b>Check</b>", normal_style), Paragraph("<b>Result</b>", normal_style)]]
+        for key in CHECK_ORDER:
+            if key not in checks:
+                continue
+            line = ScoringEngine.format_check_line(key, checks[key])
+            # lines look like "  readme          : OK (9424 chars)"
+            name_part, _, value_part = line.strip().partition(":")
+            table_data.append(
+                [
+                    Paragraph(name_part.strip(), normal_style),
+                    Paragraph(value_part.strip(), normal_style),
+                ]
+            )
+
+        table = Table(table_data, colWidths=[160, 320])
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E8EEF4")),
+                    ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#C0C8D0")),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ]
+            )
+        )
+        elements.append(table)
+        return elements
 
     def __build_table(self, experiments) -> tuple:
         styles = getSampleStyleSheet()
