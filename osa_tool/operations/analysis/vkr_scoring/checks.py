@@ -56,11 +56,12 @@ def _sample_tree(all_paths: list, max_per_dir: int = 5, max_total: int = 500) ->
     return sampled
 
 
-# ── File-tree builder (replaces github_client.get_tree) ───────────────────────
-
-
 def build_file_tree(clone_dir: str):
-    """Walk the local clone and return (flat_paths, all_paths)."""
+    """Walk the local clone and return *(flat_paths, all_paths)* lists.
+
+    *flat_paths* contains only files; *all_paths* contains both files and
+    directories.  Hidden entries and ``__pycache__`` are skipped.
+    """
     flat_paths: list[str] = []
     all_paths: list[str] = []
     for root, dirs, files in os.walk(clone_dir):
@@ -340,13 +341,3 @@ class VkrChecker:
         results["docstrings"] = self.check_docstrings(flat_paths)
 
         return results
-
-
-def run_all_checks(
-    flat_paths: list,
-    all_paths: list,
-    config: VkrConfig,
-    on_progress: Progress = None,
-) -> dict:
-    """Backward-compatible wrapper around VkrChecker.run_all()."""
-    return VkrChecker(config).run_all(flat_paths, all_paths, on_progress)

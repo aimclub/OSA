@@ -29,46 +29,7 @@ from .csv_analyzer import CsvAnalyzer
 
 _PROMPTS = PromptLoader()
 
-_CANDIDATE_PATTERNS = [
-    r"(^|/)train[^/]*\.py$",
-    r"(^|/)main\.py$",
-    r"(^|/)run[^/]*\.py$",
-    r"(^|/)model[^/]*\.py$",
-    r"(^|/)experiment[^/]*\.py$",
-    r"(^|/)configs?[^/]*\.(py|yaml|yml|json)$",
-    r"(^|/)configs?/.*\.(yaml|yml|json)$",
-    r"(^|/)dataset[^/]*\.py$",
-    r"(^|/)data[^/]*\.py$",
-    r"(^|/)solver[^/]*\.py$",
-    r"(^|/)trainer[^/]*\.py$",
-]
-
-_CSV_PATTERN = re.compile(r"\.(csv|tsv)$", re.IGNORECASE)
-
 Progress = Optional[Callable[[str, float], None]]
-
-
-def _parse_json_list(raw: str) -> list:
-    """Parse raw LLM output as a JSON array via OSA's JsonProcessor."""
-    return JsonProcessor.parse(raw, expected_type=list)
-
-
-def _candidate_files(flat_paths: list[str], max_files: int = 6) -> list[str]:
-    found: list[str] = []
-    for pat in _CANDIDATE_PATTERNS:
-        for path in flat_paths:
-            if path not in found and re.search(pat, path, re.IGNORECASE):
-                found.append(path)
-                if len(found) >= max_files:
-                    return found
-    return found
-
-
-def _truncate(text: str, max_lines: int = 250) -> str:
-    lines = text.splitlines()
-    if len(lines) <= max_lines:
-        return text
-    return "\n".join(lines[:max_lines]) + f"\n... (truncated, {len(lines)} total lines)"
 
 
 class ClaimsPipeline:
@@ -82,12 +43,30 @@ class ClaimsPipeline:
     result   = pipeline.verify(claims, flat_paths)
     """
 
+    # ── Class-level constants ─────────────────────────────────────────────────
+
+    _CANDIDATE_PATTERNS: list[str] = [
+        r"(^|/)train[^/]*\.py$",
+        r"(^|/)main\.py$",
+        r"(^|/)run[^/]*\.py$",
+        r"(^|/)model[^/]*\.py$",
+        r"(^|/)experiment[^/]*\.py$",
+        r"(^|/)configs?[^/]*\.(py|yaml|yml|json)$",
+        r"(^|/)configs?/.*\.(yaml|yml|json)$",
+        r"(^|/)dataset[^/]*\.py$",
+        r"(^|/)data[^/]*\.py$",
+        r"(^|/)solver[^/]*\.py$",
+        r"(^|/)trainer[^/]*\.py$",
+    ]
+
+    _CSV_PATTERN = re.compile(r"\.(csv|tsv)$", re.IGNORECASE)
+
+    # ── Construction ──────────────────────────────────────────────────────────
+
     def __init__(self, config: VkrConfig) -> None:
         self._config = config
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+    # ── Public API ────────────────────────────────────────────────────────────
 
     def extract(
         self,
@@ -101,56 +80,17 @@ class ClaimsPipeline:
             if on_progress:
                 on_progress(msg, pct)
 
-        # Step 1: filter sections
         _prog("Filtering relevant sections...", 0.0)
-        section_names = [s["name"] for s in paper_sections]
-        retained_names: list[str] = self._config.model_handler.send_and_parse(
-            (
-                "Below is the list of section headings extracted from the target paper:\n"
-                f"{json.dumps(section_names, ensure_ascii=False)}\n"
-                "Filter the list and return ONLY a JSON array of the retained section names."
-            ),
-            _parse_json_list,
-            _PROMPTS.get("vkr_scoring.filter_system"),
-        )
+        retained_names = self._filter_sections(paper_sections)
         _prog(f"Retained {len(retained_names)} sections for claim extraction.", 0.15)
 
-        # Step 2: extract claims per section
-        all_raw_claims: list[str] = []
-        section_map = {s["name"]: s.get("text", "") for s in paper_sections}
-
-        for i, name in enumerate(retained_names):
-            text = section_map.get(name, "")
-            if not text.strip():
-                continue
-            _prog(
-                f"Extracting claims from '{name}'...",
-                0.15 + 0.50 * (i / max(len(retained_names), 1)),
-            )
-            claims_list: list = self._config.model_handler.send_and_parse(
-                (
-                    f"Analyze the following report section and extract all verifiable factual claims:\n\n"
-                    f"{text}\n\nReturn ONLY the JSON array."
-                ),
-                _parse_json_list,
-                _PROMPTS.get("vkr_scoring.extract_system"),
-            )
-            all_raw_claims.append(json.dumps(claims_list, ensure_ascii=False))
+        all_raw_claims = self._extract_per_section(retained_names, paper_sections, _prog)
 
         if not all_raw_claims:
             return []
 
-        # Step 3: deduplicate
         _prog("Deduplicating claims...", 0.70)
-        final_claims: list = self._config.model_handler.send_and_parse(
-            (
-                "Below are claims extracted from all sections. Deduplicate and flag contradictions:\n"
-                f"{json.dumps(all_raw_claims, ensure_ascii=False)}\n"
-                "Return ONLY the final processed JSON array."
-            ),
-            _parse_json_list,
-            _PROMPTS.get("vkr_scoring.dedup_system"),
-        )
+        final_claims = self._deduplicate_claims(all_raw_claims)
         _prog(f"Extracted {len(final_claims)} unique claims.", 1.0)
         return final_claims
 
@@ -179,31 +119,124 @@ class ClaimsPipeline:
             }
 
         _prog("Identifying candidate source files...", 0.0)
-        candidates = _candidate_files(flat_paths)
+        code_snippets = self._read_candidate_code(flat_paths, _prog)
+
+        csv_section, csv_stats_list = self._collect_csv_context(claims, flat_paths, _prog)
+
+        _prog("Verifying claims against source code...", 0.4)
+        verifications = self._run_verification(claims, flat_paths, code_snippets, csv_section)
+
+        _prog("Verification complete.", 1.0)
+
+        annotated = self._annotate_claims(claims, verifications)
+        return self._build_verify_result(annotated, csv_stats_list)
+
+    # ── Private: extract helpers ──────────────────────────────────────────────
+
+    def _filter_sections(self, paper_sections: list[dict]) -> list[str]:
+        """Ask the LLM to retain only methodology/results sections."""
+        section_names = [s["name"] for s in paper_sections]
+        return self._config.model_handler.send_and_parse(
+            (
+                "Below is the list of section headings extracted from the target paper:\n"
+                f"{json.dumps(section_names, ensure_ascii=False)}\n"
+                "Filter the list and return ONLY a JSON array of the retained section names."
+            ),
+            self._parse_json_list,
+            _PROMPTS.get("vkr_scoring.filter_system"),
+        )
+
+    def _extract_per_section(
+        self,
+        retained_names: list[str],
+        paper_sections: list[dict],
+        _prog: Callable,
+    ) -> list[str]:
+        """Extract claims from each retained section; return list of JSON strings."""
+        section_map = {s["name"]: s.get("text", "") for s in paper_sections}
+        all_raw_claims: list[str] = []
+
+        for i, name in enumerate(retained_names):
+            text = section_map.get(name, "")
+            if not text.strip():
+                continue
+            _prog(
+                f"Extracting claims from '{name}'...",
+                0.15 + 0.50 * (i / max(len(retained_names), 1)),
+            )
+            claims_list: list = self._config.model_handler.send_and_parse(
+                (
+                    f"Analyze the following report section and extract all verifiable factual claims:\n\n"
+                    f"{text}\n\nReturn ONLY the JSON array."
+                ),
+                self._parse_json_list,
+                _PROMPTS.get("vkr_scoring.extract_system"),
+            )
+            all_raw_claims.append(json.dumps(claims_list, ensure_ascii=False))
+
+        return all_raw_claims
+
+    def _deduplicate_claims(self, all_raw_claims: list[str]) -> list[dict]:
+        """Merge and deduplicate raw claims from all sections."""
+        return self._config.model_handler.send_and_parse(
+            (
+                "Below are claims extracted from all sections. Deduplicate and flag contradictions:\n"
+                f"{json.dumps(all_raw_claims, ensure_ascii=False)}\n"
+                "Return ONLY the final processed JSON array."
+            ),
+            self._parse_json_list,
+            _PROMPTS.get("vkr_scoring.dedup_system"),
+        )
+
+    # ── Private: verify helpers ───────────────────────────────────────────────
+
+    def _read_candidate_code(
+        self,
+        flat_paths: list[str],
+        _prog: Callable,
+    ) -> list[str]:
+        """Read the most likely source files and return formatted snippets."""
+        candidates = self._candidate_files(flat_paths)
         code_snippets: list[str] = []
         for path in candidates:
             content = read_file(os.path.join(self._config.clone_dir, path))
-            if content:
-                code_snippets.append(f"### {path}\n{_truncate(content)}")
-            else:
-                code_snippets.append(f"### {path}\n[could not read]")
+            snippet = f"### {path}\n{self._truncate(content)}" if content else f"### {path}\n[could not read]"
+            code_snippets.append(snippet)
             _prog(f"Read {path}", 0.1 + 0.3 * (len(code_snippets) / max(len(candidates), 1)))
+        return code_snippets
 
+    def _collect_csv_context(
+        self,
+        claims: list[dict],
+        flat_paths: list[str],
+        _prog: Callable,
+    ) -> tuple[str, list[dict]]:
+        """Collect CSV statistics when dataset-related claims are present."""
         has_dataset_claims = any(c.get("category") in ("dataset", "data_preprocessing") for c in claims)
-        csv_section = ""
-        csv_stats_list: list[dict] = []
-        if has_dataset_claims:
-            _prog("Analysing data files (CSV/TSV)...", 0.35)
+        if not has_dataset_claims:
+            return "", []
 
-            def _csv_prog(msg: str, pct: float) -> None:
-                _prog(msg, 0.35 + pct * 0.05)
+        _prog("Analysing data files (CSV/TSV)...", 0.35)
 
-            csv_stats_list = self._collect_csv_stats(flat_paths, on_progress=_csv_prog)
-            if csv_stats_list:
-                csv_blocks = [CsvAnalyzer.format_for_prompt(s) for s in csv_stats_list]
-                csv_section = "## Data file statistics\n" + "\n\n".join(csv_blocks)
+        def _csv_prog(msg: str, pct: float) -> None:
+            _prog(msg, 0.35 + pct * 0.05)
 
-        _prog("Verifying claims against source code...", 0.4)
+        csv_stats_list = self._collect_csv_stats(flat_paths, on_progress=_csv_prog)
+        if not csv_stats_list:
+            return "", []
+
+        csv_blocks = [CsvAnalyzer.format_for_prompt(s) for s in csv_stats_list]
+        csv_section = "## Data file statistics\n" + "\n\n".join(csv_blocks)
+        return csv_section, csv_stats_list
+
+    def _run_verification(
+        self,
+        claims: list[dict],
+        flat_paths: list[str],
+        code_snippets: list[str],
+        csv_section: str,
+    ) -> list:
+        """Send claims + code context to the LLM and return raw verification list."""
         claims_for_prompt = [
             {
                 "index": i,
@@ -226,13 +259,14 @@ class ClaimsPipeline:
             user_content += csv_section + "\n\n"
         user_content += "Return the JSON array."
 
-        verifications: list = self._config.model_handler.send_and_parse(
+        return self._config.model_handler.send_and_parse(
             user_content,
-            _parse_json_list,
+            self._parse_json_list,
             _PROMPTS.get("vkr_scoring.verify_system"),
         )
-        _prog("Verification complete.", 1.0)
 
+    def _annotate_claims(self, claims: list[dict], verifications: list) -> list[dict]:
+        """Merge LLM verification results back onto the original claim objects."""
         ver_by_index = {v.get("index", i): v for i, v in enumerate(verifications)}
         annotated: list[dict] = []
         for i, claim in enumerate(claims):
@@ -248,7 +282,10 @@ class ClaimsPipeline:
                     },
                 }
             )
+        return annotated
 
+    def _build_verify_result(self, annotated: list[dict], csv_stats_list: list[dict]) -> dict:
+        """Assemble the final verification result dict with stats."""
         implemented = sum(1 for c in annotated if c["implementation"]["implemented"])
         total = len(annotated)
         result: dict = {
@@ -265,9 +302,7 @@ class ClaimsPipeline:
             result["csv_stats"] = csv_stats_list
         return result
 
-    # ------------------------------------------------------------------
-    # Private helpers
-    # ------------------------------------------------------------------
+    # ── Private: CSV stats ────────────────────────────────────────────────────
 
     def _collect_csv_stats(
         self,
@@ -275,7 +310,7 @@ class ClaimsPipeline:
         on_progress: Progress = None,
         max_files: int = 5,
     ) -> list[dict]:
-        csv_paths = [p for p in flat_paths if _CSV_PATTERN.search(p)][:max_files]
+        csv_paths = [p for p in flat_paths if self._CSV_PATTERN.search(p)][:max_files]
         results = []
         for i, path in enumerate(csv_paths):
             if on_progress:
@@ -295,44 +330,29 @@ class ClaimsPipeline:
             results.append(stats)
         return results
 
+    # ── Static helpers ────────────────────────────────────────────────────────
 
-# ---------------------------------------------------------------------------
-# Backward-compatible module-level wrappers
-# ---------------------------------------------------------------------------
+    @staticmethod
+    def _parse_json_list(raw: str) -> list:
+        """Parse raw LLM output as a JSON array via OSA's JsonProcessor."""
+        return JsonProcessor.parse(raw, expected_type=list)
 
+    @classmethod
+    def _candidate_files(cls, flat_paths: list[str], max_files: int = 6) -> list[str]:
+        """Return paths most likely to contain model/training/experiment code."""
+        found: list[str] = []
+        for pat in cls._CANDIDATE_PATTERNS:
+            for path in flat_paths:
+                if path not in found and re.search(pat, path, re.IGNORECASE):
+                    found.append(path)
+                    if len(found) >= max_files:
+                        return found
+        return found
 
-def collect_csv_stats(
-    flat_paths: list[str],
-    clone_dir: str,
-    on_progress: Progress = None,
-    max_files: int = 5,
-) -> list[dict]:
-    """Backward-compatible wrapper. Use ``ClaimsPipeline._collect_csv_stats`` directly."""
-    from .checks import VkrConfig as _VkrConfig  # local import to avoid circular
-
-    # Minimal config — only clone_dir is needed for file I/O
-    class _MinimalConfig:
-        def __init__(self, d: str) -> None:
-            self.clone_dir = d
-
-    pipeline = ClaimsPipeline(_MinimalConfig(clone_dir))  # type: ignore[arg-type]
-    return pipeline._collect_csv_stats(flat_paths, on_progress=on_progress, max_files=max_files)
-
-
-def extract_claims(
-    paper_sections: list[dict],
-    config: VkrConfig,
-    on_progress: Progress = None,
-) -> list[dict]:
-    """Backward-compatible wrapper. Use ``ClaimsPipeline`` directly for new code."""
-    return ClaimsPipeline(config).extract(paper_sections, on_progress)
-
-
-def verify_claims(
-    claims: list[dict],
-    flat_paths: list[str],
-    config: VkrConfig,
-    on_progress: Progress = None,
-) -> dict:
-    """Backward-compatible wrapper. Use ``ClaimsPipeline`` directly for new code."""
-    return ClaimsPipeline(config).verify(claims, flat_paths, on_progress)
+    @staticmethod
+    def _truncate(text: str, max_lines: int = 250) -> str:
+        """Trim *text* to *max_lines* lines and append a truncation note."""
+        lines = text.splitlines()
+        if len(lines) <= max_lines:
+            return text
+        return "\n".join(lines[:max_lines]) + f"\n... (truncated, {len(lines)} total lines)"

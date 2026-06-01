@@ -257,10 +257,10 @@ class ReportGenerator:
         if not vkr_report:
             return []
 
-        from osa_tool.operations.analysis.vkr_scoring.vkr_scorer import (
-            _CHECK_ORDER,
-            _REPO_TYPE_LABELS,
-            _format_check_line,
+        from osa_tool.operations.analysis.vkr_scoring.scoring_engine import (
+            CHECK_ORDER,
+            REPO_TYPE_LABELS,
+            ScoringEngine,
         )
 
         styles = getSampleStyleSheet()
@@ -282,7 +282,7 @@ class ReportGenerator:
         summary = vkr_report.get("summary", {})
         score = summary.get("score", 0)
         repo_type = summary.get("repo_type", "")
-        type_label = _REPO_TYPE_LABELS.get(repo_type, repo_type)
+        type_label = REPO_TYPE_LABELS.get(repo_type, repo_type)
 
         elements: list = [
             Paragraph(f"<b>Repository Quality Score: {score}/100</b>", header_style),
@@ -292,10 +292,10 @@ class ReportGenerator:
         ]
 
         table_data = [[Paragraph("<b>Check</b>", normal_style), Paragraph("<b>Result</b>", normal_style)]]
-        for key in _CHECK_ORDER:
+        for key in CHECK_ORDER:
             if key not in checks:
                 continue
-            line = _format_check_line(key, checks[key])
+            line = ScoringEngine.format_check_line(key, checks[key])
             # lines look like "  readme          : OK (9424 chars)"
             name_part, _, value_part = line.strip().partition(":")
             table_data.append(

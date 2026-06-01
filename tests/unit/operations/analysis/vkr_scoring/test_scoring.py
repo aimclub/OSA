@@ -1,14 +1,17 @@
-"""Tests for compute_score — scoring logic now inside vkr_scorer.py."""
+"""Tests for ScoringEngine.compute_score — scoring logic in scoring_engine.py."""
 
 from __future__ import annotations
 
 import pytest
 
-from osa_tool.operations.analysis.vkr_scoring.vkr_scorer import (
+from osa_tool.operations.analysis.vkr_scoring.scoring_engine import (
     WEIGHTS_APPS,
     WEIGHTS_DATA_EXPERIMENT,
-    compute_score,
+    ScoringEngine,
 )
+
+_engine = ScoringEngine("https://github.com/test/repo")
+compute_score = _engine.compute_score
 
 
 def _all_pass(weights: dict) -> dict:

@@ -176,18 +176,3 @@ class CsvAnalyzer:
                 lines.append(f"    {col}: {dtype}, {missing_info}, {unique_info}, samples=[{samples}]")
 
         return "\n".join(lines)
-
-
-# ---------------------------------------------------------------------------
-# Backward-compatible module-level wrappers
-# ---------------------------------------------------------------------------
-
-
-def analyze_csv(content: str, filename: str = "") -> dict[str, Any]:
-    """Backward-compatible wrapper. Use ``CsvAnalyzer`` directly for new code."""
-    return CsvAnalyzer(content, filename).analyze()
-
-
-def format_csv_stats_for_prompt(stats: dict[str, Any]) -> str:
-    """Backward-compatible wrapper. Use ``CsvAnalyzer.format_for_prompt`` directly."""
-    return CsvAnalyzer.format_for_prompt(stats)
