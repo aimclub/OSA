@@ -55,6 +55,7 @@ def _compute_effective_finish(
     should_stop: bool,
     structured: list[SelfEvalIssue],
     sections_to_rerun: list[str],
+    all_reruns_dropped: bool = False,
 ) -> bool:
     has_blocker_or_major = any(i.severity in ("blocker", "major") for i in structured)
     if should_stop and has_blocker_or_major:
@@ -65,6 +66,12 @@ def _compute_effective_finish(
         logger.warning(
             "[SelfEval] Model set should_stop but sections_to_rerun is non-empty; regenerating sections first.",
         )
+    if all_reruns_dropped and not has_blocker_or_major:
+        logger.warning(
+            "[SelfEval] All requested sections_to_rerun are non-LLM (deterministic/keep_existing); "
+            "nothing actionable remains — treating as effective finish.",
+        )
+        return True
     return bool(
         should_stop and not has_blocker_or_major and not sections_to_rerun,
     )
@@ -105,16 +112,16 @@ def self_eval_node(state: ReadmeState, ctx: ReadmeContext) -> dict:
         )
         structured = list(eval_result.issues)
         refinement_issues = _structured_issues_to_strings(structured)
-        sections_to_rerun = _filter_sections_to_rerun(
-            [x.strip() for x in eval_result.sections_to_rerun if x and str(x).strip()],
-            state.section_plan,
-        )
+        requested_sections = [x.strip() for x in eval_result.sections_to_rerun if x and str(x).strip()]
+        sections_to_rerun = _filter_sections_to_rerun(requested_sections, state.section_plan)
+        all_reruns_dropped = bool(requested_sections) and not sections_to_rerun
         hints_raw = eval_result.section_feedback if eval_result.section_feedback else {}
         section_regeneration_hints = {str(k).strip(): str(v).strip() for k, v in hints_raw.items() if k}
         refinement_effective_finish = _compute_effective_finish(
             eval_result.should_stop,
             structured,
             sections_to_rerun,
+            all_reruns_dropped=all_reruns_dropped,
         )
         refinement_score = _derived_refinement_score(structured)
         if eval_result.quality_notes:

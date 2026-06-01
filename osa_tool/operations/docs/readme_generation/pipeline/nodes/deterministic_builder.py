@@ -1,6 +1,7 @@
 """Deterministic README sections (header, installation, license, etc.) — logic reused by section_generator."""
 
 import os
+from datetime import datetime
 from typing import Any
 
 import requests
@@ -160,9 +161,10 @@ class _DeterministicSections:
             return content
 
         git = self._cm.get_git_settings()
+        year = self._meta.created_at.split("-")[0] if self._meta.created_at else str(datetime.now().year)
         content = self._tpl["citation"] + self._tpl["citation_v2"].format(
             owner=self._meta.owner,
-            year=self._meta.created_at.split("-")[0],
+            year=year,
             repo_name=git.name,
             publisher=git.host_domain,
             repository_url=git.repository,

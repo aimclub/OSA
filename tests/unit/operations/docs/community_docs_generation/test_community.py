@@ -41,6 +41,23 @@ def test_community_template_builder_init(
     assert builder.bug_issue_to_save.endswith("BUG_ISSUE.md")
 
 
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_community_template_builder_sourcecraft_paths_in_repo_root(mock_config_manager, mock_repository_metadata):
+    builder = CommunityTemplateBuilder(mock_config_manager, mock_repository_metadata)
+
+    for attr in (
+        "code_of_conduct_to_save",
+        "security_to_save",
+        "pr_to_save",
+        "docs_issue_to_save",
+        "feature_issue_to_save",
+        "bug_issue_to_save",
+    ):
+        path = getattr(builder, attr)
+        assert ".sourcecraft" not in path, f"{attr} must not be inside .sourcecraft/"
+        assert os.path.dirname(path) == os.path.dirname(builder.code_of_conduct_to_save)
+
+
 def test_build_code_of_conduct(mock_config_manager, mock_repository_metadata, tmp_path, caplog):
     # Arrange
     builder = CommunityTemplateBuilder(mock_config_manager, mock_repository_metadata)

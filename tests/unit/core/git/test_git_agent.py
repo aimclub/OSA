@@ -5,11 +5,12 @@ from unittest.mock import Mock, patch, ANY, MagicMock
 import pytest
 from git import Repo, GitCommandError, InvalidGitRepositoryError
 
-from osa_tool.core.git.git_agent import GitHubAgent, GitverseAgent, GitLabAgent, LocalGitAgent
+from osa_tool.core.git.git_agent import GitHubAgent, GitverseAgent, GitLabAgent, SourceCraftAgent, LocalGitAgent
 from osa_tool.core.git.metadata import (
     GitHubMetadataLoader,
     GitverseMetadataLoader,
     GitLabMetadataLoader,
+    SourceCraftMetadataLoader,
 )
 from osa_tool.utils.utils import parse_folder_name
 
@@ -103,7 +104,6 @@ def test_git_agent_clone_repository_failure_git_error(git_agent_base_setup):
 
     # Act
     with patch("git.Repo.clone_from", side_effect=git_error):
-        # Match changed: now we catch the message from _handle_git_error
         with pytest.raises(Exception, match=r"Git operation 'cloning repository.*' failed"):
             agent.clone_repository()
 
@@ -516,6 +516,269 @@ def test_gitverse_agent_star_repository_already_starred(
             # Assert
             mock_get.assert_called_once()
             mock_put.assert_not_called()
+
+
+@pytest.fixture
+def sourcecraft_agent_instance(temp_clone_dir, mock_repository_metadata, repo_info, monkeypatch):
+    platform, owner, repo_name, repo_url = repo_info
+    monkeypatch.setenv("SOURCECRAFT_TOKEN", "fixture-token-sourcecraft")
+    with patch.object(SourceCraftMetadataLoader, "load_data", return_value=mock_repository_metadata):
+        agent = SourceCraftAgent(repo_url)
+        agent.clone_dir = os.path.join(temp_clone_dir, parse_folder_name(repo_url))
+        yield agent
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_agent_create_fork_success(sourcecraft_agent_instance, mock_requests_response_factory, repo_info):
+    # Arrange
+    platform, owner, repo_name, repo_url = repo_info
+    expected_api_url = f"https://api.sourcecraft.tech/repos/{owner}/{repo_name}/fork"
+    expected_fork_url = f"https://sourcecraft.dev/other_user/{repo_name}"
+
+    mock_user_response = mock_requests_response_factory(status_code=200, json_data={"username": "other_user"})
+    mock_fork_response = mock_requests_response_factory(
+        status_code=201, json_data={"web_url": expected_fork_url, "id": 42}
+    )
+
+    # Act
+    with patch.dict(os.environ, {"SOURCECRAFT_TOKEN": "any_token"}):
+        with (
+            patch("requests.get", return_value=mock_user_response),
+            patch("requests.post", return_value=mock_fork_response) as mock_post,
+        ):
+            sourcecraft_agent_instance.create_fork()
+
+            # Assert
+            mock_post.assert_called_once()
+            args, kwargs = mock_post.call_args
+            assert expected_api_url in args[0]
+            assert kwargs["headers"]["Authorization"].startswith("Bearer")
+            assert sourcecraft_agent_instance.fork_url == expected_fork_url
+            assert sourcecraft_agent_instance.fork_id == 42
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_agent_create_fork_self_owned(
+    sourcecraft_agent_instance, mock_requests_response_factory, repo_info
+):
+    # Arrange - user is already the owner, no fork should be created
+    platform, owner, repo_name, repo_url = repo_info
+    mock_user_response = mock_requests_response_factory(status_code=200, json_data={"username": owner})
+
+    # Act
+    with patch.dict(os.environ, {"SOURCECRAFT_TOKEN": "any_token"}):
+        with (
+            patch("requests.get", return_value=mock_user_response),
+            patch("requests.post") as mock_post,
+        ):
+            sourcecraft_agent_instance.create_fork()
+
+            # Assert
+            mock_post.assert_not_called()
+            assert sourcecraft_agent_instance.fork_url == repo_url
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_agent_create_fork_failure(sourcecraft_agent_instance, mock_requests_response_factory):
+    # Arrange
+    mock_user_response = mock_requests_response_factory(status_code=200, json_data={"username": "other_user"})
+    mock_fork_response = mock_requests_response_factory(status_code=401, text_data="Unauthorized")
+
+    # Act & Assert
+    with patch.dict(os.environ, {"SOURCECRAFT_TOKEN": "any_token"}):
+        with (
+            patch("requests.get", return_value=mock_user_response),
+            patch("requests.post", return_value=mock_fork_response),
+        ):
+            with pytest.raises(ValueError, match=r"API operation 'creating SourceCraft fork' failed"):
+                sourcecraft_agent_instance.create_fork()
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_agent_star_repository_noop(sourcecraft_agent_instance):
+    # SourceCraft has no starring API - must not call any HTTP endpoint
+    with patch("requests.put") as mock_put, patch("requests.get") as mock_get:
+        sourcecraft_agent_instance.star_repository()
+
+        # Assert
+        mock_put.assert_not_called()
+        mock_get.assert_not_called()
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_agent_create_pull_request_new(
+    sourcecraft_agent_instance, mock_repo, mock_requests_response_factory, repo_info
+):
+    # Arrange
+    platform, owner, repo_name, repo_url = repo_info
+    sourcecraft_agent_instance.repo = mock_repo
+    sourcecraft_agent_instance.fork_url = repo_url
+    mock_repo.head.commit.message = "Test commit"
+    sourcecraft_agent_instance.base_branch = "main"
+    sourcecraft_agent_instance.branch_name = "osa_tool"
+
+    mock_user_response = mock_requests_response_factory(status_code=200, json_data={"username": "bot_user"})
+    mock_list_response = mock_requests_response_factory(status_code=200, json_data={"pull_requests": []})
+    mock_create_response = mock_requests_response_factory(status_code=201, json_data={"slug": "pr-1"})
+
+    # Act
+    with patch.dict(os.environ, {"SOURCECRAFT_TOKEN": "any_token"}):
+        with patch("requests.get", side_effect=[mock_user_response, mock_list_response]):
+            with patch("requests.post", return_value=mock_create_response) as mock_post:
+                with patch.object(sourcecraft_agent_instance, "get_attachment_branch_files", return_value=[]):
+                    sourcecraft_agent_instance.create_pull_request(changes=True)
+
+                    # Assert
+                    mock_post.assert_called_once()
+                    _, kwargs = mock_post.call_args
+                    assert kwargs["json"]["source_branch"] == "osa_tool"
+                    assert kwargs["json"]["target_branch"] == "main"
+                    assert kwargs["json"]["publish"] is True
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_agent_create_pull_request_new_with_reports(
+    sourcecraft_agent_instance, mock_repo, mock_requests_response_factory, repo_info
+):
+    # Arrange - new PR, attachment branch has one PDF - link must appear in PR description
+    platform, owner, repo_name, repo_url = repo_info
+    sourcecraft_agent_instance.repo = mock_repo
+    sourcecraft_agent_instance.fork_url = repo_url
+    mock_repo.head.commit.message = "Test commit"
+    sourcecraft_agent_instance.base_branch = "main"
+    sourcecraft_agent_instance.branch_name = "osa_tool"
+
+    mock_user_response = mock_requests_response_factory(status_code=200, json_data={"username": "bot_user"})
+    mock_list_response = mock_requests_response_factory(status_code=200, json_data={"pull_requests": []})
+    mock_create_response = mock_requests_response_factory(status_code=201, json_data={"slug": "pr-2"})
+
+    # Act
+    with patch.dict(os.environ, {"SOURCECRAFT_TOKEN": "any_token"}):
+        with patch("requests.get", side_effect=[mock_user_response, mock_list_response]):
+            with patch("requests.post", return_value=mock_create_response) as mock_post:
+                with patch.object(
+                    sourcecraft_agent_instance, "get_attachment_branch_files", return_value=["report.pdf"]
+                ):
+                    sourcecraft_agent_instance.create_pull_request(changes=True)
+
+                    # Assert — report link included in PR description
+                    mock_post.assert_called_once()
+                    _, kwargs = mock_post.call_args
+                    assert "Generated report" in kwargs["json"]["description"]
+                    assert "report.pdf" in kwargs["json"]["description"]
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_agent_create_pull_request_dedup(
+    sourcecraft_agent_instance, mock_repo, mock_requests_response_factory, repo_info
+):
+    # Arrange - existing PR found, no new reports - must not POST a new PR
+    platform, owner, repo_name, repo_url = repo_info
+    sourcecraft_agent_instance.repo = mock_repo
+    mock_repo.head.commit.message = "Test commit"
+    sourcecraft_agent_instance.base_branch = "main"
+    sourcecraft_agent_instance.branch_name = "osa_tool"
+
+    mock_user_response = mock_requests_response_factory(status_code=200, json_data={"username": "bot_user"})
+    mock_list_response = mock_requests_response_factory(
+        status_code=200, json_data={"pull_requests": [{"slug": "pr-42", "description": ""}]}
+    )
+
+    # Act
+    with patch.dict(os.environ, {"SOURCECRAFT_TOKEN": "any_token"}):
+        with patch("requests.get", side_effect=[mock_user_response, mock_list_response]):
+            with patch("requests.post") as mock_post:
+                with patch("requests.patch") as mock_patch:
+                    sourcecraft_agent_instance.create_pull_request(changes=True)
+
+                    # Assert - no new PR created, no unnecessary PATCH
+                    mock_post.assert_not_called()
+                    mock_patch.assert_not_called()
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_agent_create_pull_request_update_reports(
+    sourcecraft_agent_instance, mock_repo, mock_requests_response_factory, repo_info
+):
+    # Arrange - existing PR with old report, new report in pr_report_body - PATCH with merged reports
+    platform, owner, repo_name, repo_url = repo_info
+    sourcecraft_agent_instance.repo = mock_repo
+    mock_repo.head.commit.message = "Test commit"
+    sourcecraft_agent_instance.base_branch = "main"
+    sourcecraft_agent_instance.branch_name = "osa_tool"
+    sourcecraft_agent_instance.pr_report_body = "\nGenerated report - [report_new.pdf](https://example.com/new)\n"
+
+    old_description = "Previous description\n\nGenerated report - [report_old.pdf](https://example.com/old)"
+    mock_user_response = mock_requests_response_factory(status_code=200, json_data={"username": "bot_user"})
+    mock_list_response = mock_requests_response_factory(
+        status_code=200,
+        json_data={"pull_requests": [{"slug": "pr-42", "description": old_description}]},
+    )
+    mock_update_response = mock_requests_response_factory(status_code=200, json_data={"slug": "pr-42"})
+
+    # Act
+    with patch.dict(os.environ, {"SOURCECRAFT_TOKEN": "any_token"}):
+        with patch("requests.get", side_effect=[mock_user_response, mock_list_response]):
+            with patch("requests.post") as mock_post:
+                with patch("requests.patch", return_value=mock_update_response) as mock_patch:
+                    sourcecraft_agent_instance.create_pull_request(changes=True)
+
+                    # Assert - no new PR, description updated with both report links
+                    mock_post.assert_not_called()
+                    mock_patch.assert_called_once()
+                    patched_description = mock_patch.call_args.kwargs["json"]["description"]
+                    assert "report_old.pdf" in patched_description
+                    assert "report_new.pdf" in patched_description
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_agent_update_about_section(sourcecraft_agent_instance, mock_requests_response_factory, repo_info):
+    # Arrange
+    platform, owner, repo_name, repo_url = repo_info
+    sourcecraft_agent_instance.fork_url = repo_url
+    mock_response = mock_requests_response_factory(status_code=200, json_data={})
+
+    # Act
+    with patch.dict(os.environ, {"SOURCECRAFT_TOKEN": "any_token"}):
+        with patch("requests.patch", return_value=mock_response) as mock_patch:
+            sourcecraft_agent_instance.update_about_section({"description": "Test description"})
+
+            # Assert - called twice: once for base repo, once for fork
+            assert mock_patch.call_count == 2
+            for call in mock_patch.call_args_list:
+                _, kwargs = call
+                assert kwargs["json"]["description"] == "Test description"
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_agent_build_auth_url(sourcecraft_agent_instance, repo_info):
+    # Arrange
+    platform, owner, repo_name, repo_url = repo_info
+
+    # Act
+    auth_url = sourcecraft_agent_instance._build_auth_url(repo_url)
+
+    # Assert
+    assert auth_url.startswith("https://git:")
+    assert "git.sourcecraft.dev" in auth_url
+    assert auth_url.endswith(".git")
+    assert "fixture-token-sourcecraft" in auth_url
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_agent_build_report_url(sourcecraft_agent_instance, repo_info):
+    # Arrange
+    platform, owner, repo_name, repo_url = repo_info
+    sourcecraft_agent_instance.fork_url = repo_url
+
+    # Act
+    report_url = sourcecraft_agent_instance._build_report_url("attachments", "report.pdf")
+
+    # Assert
+    assert "/browse/" in report_url
+    assert "?rev=" in report_url
+    assert "attachments" in report_url
+    assert "report.pdf" in report_url
 
 
 @patch("osa_tool.core.git.git_agent.Repo")
