@@ -26,4 +26,6 @@ structlog>=24.4.0
 tiktoken>=0.8.0
 tomli>=2.0.0
 tree-sitter>=0.23.0
+tree-sitter-javascript>=0.25.0
 tree-sitter-python>=0.23.0
+tree-sitter-typescript>=0.23.2
