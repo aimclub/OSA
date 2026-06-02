@@ -2,6 +2,7 @@ import tree_sitter_python as tspython
 from tree_sitter import Parser, Language
 from osa_tool.operations.codebase.docstring_generation.adapters.base import LanguageAdapter
 
+
 class PythonAdapter(LanguageAdapter):
 
     EXTENSIONS = (".py",)

@@ -1,6 +1,7 @@
 import re
 from osa_tool.operations.codebase.docstring_generation.insert.base_augmentor import BaseAugmentor
 
+
 class TSJSAugmentor(BaseAugmentor):
 
     DOC_START = "/**"
@@ -22,9 +23,7 @@ class TSJSAugmentor(BaseAugmentor):
     def _inject_classes(self, lines, classes):
         for doc, class_name in classes:
 
-            class_pattern = re.compile(
-                rf"^\s*(export\s+)?(abstract\s+)?class\s+{re.escape(class_name)}\b"
-            )
+            class_pattern = re.compile(rf"^\s*(export\s+)?(abstract\s+)?class\s+{re.escape(class_name)}\b")
 
             for i, line in enumerate(lines):
                 if class_pattern.search(line):
@@ -40,24 +39,12 @@ class TSJSAugmentor(BaseAugmentor):
         for doc, meta in functions:
             name = meta["method_name"]
             patterns = [
-                re.compile(
-                    rf"^\s*export\s+(async\s+)?function\s+{re.escape(name)}\s*\("
-                ),
-                re.compile(
-                    rf"^\s*(async\s+)?function\s+{re.escape(name)}\s*\("
-                ),
-                re.compile(
-                    rf"^\s*export\s+const\s+{re.escape(name)}\s*=\s*(async\s*)?\("
-                ),
-                re.compile(
-                    rf"^\s*const\s+{re.escape(name)}\s*=\s*(async\s*)?\("
-                ),
-                re.compile(
-                    rf"^\s*export\s+const\s+{re.escape(name)}\s*=\s*(async\s*)?.*=>"
-                ),
-                re.compile(
-                    rf"^\s*const\s+{re.escape(name)}\s*=\s*(async\s*)?.*=>"
-                ),
+                re.compile(rf"^\s*export\s+(async\s+)?function\s+{re.escape(name)}\s*\("),
+                re.compile(rf"^\s*(async\s+)?function\s+{re.escape(name)}\s*\("),
+                re.compile(rf"^\s*export\s+const\s+{re.escape(name)}\s*=\s*(async\s*)?\("),
+                re.compile(rf"^\s*const\s+{re.escape(name)}\s*=\s*(async\s*)?\("),
+                re.compile(rf"^\s*export\s+const\s+{re.escape(name)}\s*=\s*(async\s*)?.*=>"),
+                re.compile(rf"^\s*const\s+{re.escape(name)}\s*=\s*(async\s*)?.*=>"),
             ]
 
             for i, line in enumerate(lines):
@@ -88,9 +75,8 @@ class TSJSAugmentor(BaseAugmentor):
                     \s*
                     \(
                     """,
-                    re.VERBOSE
+                    re.VERBOSE,
                 ),
-
                 # async method<T>(
                 re.compile(
                     rf"""^\s*
@@ -101,9 +87,8 @@ class TSJSAugmentor(BaseAugmentor):
                     \s*
                     \(
                     """,
-                    re.VERBOSE
+                    re.VERBOSE,
                 ),
-
                 # method<T>(
                 re.compile(
                     rf"""^\s*
@@ -113,9 +98,8 @@ class TSJSAugmentor(BaseAugmentor):
                     \s*
                     \(
                     """,
-                    re.VERBOSE
+                    re.VERBOSE,
                 ),
-
                 # getter/setter
                 re.compile(
                     rf"""^\s*
@@ -124,7 +108,7 @@ class TSJSAugmentor(BaseAugmentor):
                     {re.escape(name)}
                     \b
                     """,
-                    re.VERBOSE
+                    re.VERBOSE,
                 ),
             ]
 
@@ -195,11 +179,7 @@ class TSJSAugmentor(BaseAugmentor):
 
         new_block = self._format(doc, lines[i])
 
-        return (
-            lines[:start]
-            + [new_block]
-            + lines[end + 1:]
-        )
+        return lines[:start] + [new_block] + lines[end + 1 :]
 
     def _format(self, text: str, line: str) -> str:
         indent = re.match(r"\s*", line).group(0)
@@ -219,14 +199,6 @@ class TSJSAugmentor(BaseAugmentor):
         clean = "\n".join(clean_lines)
         clean = clean.replace("*/", "* /")
 
-        body = "\n".join(
-            indent + " * " + l if l.strip()
-            else indent + " *"
-            for l in clean.split("\n")
-        )
+        body = "\n".join(indent + " * " + l if l.strip() else indent + " *" for l in clean.split("\n"))
 
-        return (
-            f"{indent}/**\n"
-            f"{body}\n"
-            f"{indent} */\n"
-        )
+        return f"{indent}/**\n" f"{body}\n" f"{indent} */\n"

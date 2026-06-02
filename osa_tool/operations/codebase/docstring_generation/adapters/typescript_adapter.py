@@ -10,9 +10,7 @@ class TypeScriptAdapter(LanguageAdapter):
     EXTENSIONS = (".ts", ".tsx")
 
     def build_parser(self):
-        return Parser(Language(
-            tstypescript.language_typescript()
-        ))
+        return Parser(Language(tstypescript.language_typescript()))
 
     def is_class(self, node):
         return node.type == "class_declaration"
@@ -29,7 +27,7 @@ class TypeScriptAdapter(LanguageAdapter):
         n = node.child_by_field_name("name")
 
         return sv.text(n) if n else "anonymous"
-    
+
     def _get_doc_owner(self, node):
         parent = node.parent
 
@@ -103,7 +101,7 @@ class TypeScriptAdapter(LanguageAdapter):
 
         if not pnode:
             return params
-        
+
         for c in pnode.children:
             if c.type in (
                 "identifier",
