@@ -79,7 +79,7 @@ class OSA_TreeSitter:
                 cls = {
                     "type": "class",
                     "name": class_name,
-                    "docstring": adapter.get_docstring(node,sv),
+                    "docstring": adapter.get_docstring(node, sv),
                     "start_line": node.start_point[0] + 1,
                     "methods": [],
                     "attributes": adapter.get_attributes(node, sv),

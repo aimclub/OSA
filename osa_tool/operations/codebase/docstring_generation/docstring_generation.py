@@ -4,7 +4,7 @@ import multiprocessing
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.operations.codebase.docstring_generation.docgen import DocGen
-#from osa_tool.operations.codebase.docstring_generation.osa_treesitter import OSA_TreeSitter
+# from osa_tool.operations.codebase.docstring_generation.osa_treesitter import OSA_TreeSitter
 
 from osa_tool.operations.codebase.docstring_generation.core.osa_parser import OSA_TreeSitter
 from osa_tool.utils.logger import logger
