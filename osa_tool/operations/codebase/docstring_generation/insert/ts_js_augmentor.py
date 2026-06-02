@@ -21,8 +21,13 @@ class TSJSAugmentor(BaseAugmentor):
 
     def _inject_classes(self, lines, classes):
         for doc, class_name in classes:
+
+            class_pattern = re.compile(
+                rf"^\s*(export\s+)?(abstract\s+)?class\s+{re.escape(class_name)}\b"
+            )
+
             for i, line in enumerate(lines):
-                if re.search(rf"\bexport\s+class\s+{class_name}\b", line):
+                if class_pattern.search(line):
                     if self._has_doc(lines, i):
                         lines = self._replace_doc(lines, i, doc)
                     else:
@@ -34,13 +39,34 @@ class TSJSAugmentor(BaseAugmentor):
     def _inject_functions(self, lines, functions):
         for doc, meta in functions:
             name = meta["method_name"]
+            patterns = [
+                re.compile(
+                    rf"^\s*export\s+(async\s+)?function\s+{re.escape(name)}\s*\("
+                ),
+                re.compile(
+                    rf"^\s*(async\s+)?function\s+{re.escape(name)}\s*\("
+                ),
+                re.compile(
+                    rf"^\s*export\s+const\s+{re.escape(name)}\s*=\s*(async\s*)?\("
+                ),
+                re.compile(
+                    rf"^\s*const\s+{re.escape(name)}\s*=\s*(async\s*)?\("
+                ),
+                re.compile(
+                    rf"^\s*export\s+const\s+{re.escape(name)}\s*=\s*(async\s*)?.*=>"
+                ),
+                re.compile(
+                    rf"^\s*const\s+{re.escape(name)}\s*=\s*(async\s*)?.*=>"
+                ),
+            ]
 
             for i, line in enumerate(lines):
-                if re.search(rf"\bexport\s+function\s+{name}\b", line):
+                if any(p.search(line) for p in patterns):
                     if self._has_doc(lines, i):
                         lines = self._replace_doc(lines, i, doc)
                     else:
                         lines.insert(i, self._format(doc, line))
+
                     break
 
         return lines
@@ -48,10 +74,77 @@ class TSJSAugmentor(BaseAugmentor):
     def _inject_methods(self, lines, methods):
         for doc, meta in methods:
             name = meta["method_name"]
+            patterns = [
+                # public/private/protected async static method<T>(
+                re.compile(
+                    rf"""^\s*
+                    (?:
+                        public|private|protected|static|readonly|async|get|set
+                    |\s)+
+                    \s*
+                    {re.escape(name)}
+                    \s*
+                    (?:<[^>]*>)?
+                    \s*
+                    \(
+                    """,
+                    re.VERBOSE
+                ),
+
+                # async method<T>(
+                re.compile(
+                    rf"""^\s*
+                    async\s+
+                    {re.escape(name)}
+                    \s*
+                    (?:<[^>]*>)?
+                    \s*
+                    \(
+                    """,
+                    re.VERBOSE
+                ),
+
+                # method<T>(
+                re.compile(
+                    rf"""^\s*
+                    {re.escape(name)}
+                    \s*
+                    (?:<[^>]*>)?
+                    \s*
+                    \(
+                    """,
+                    re.VERBOSE
+                ),
+
+                # getter/setter
+                re.compile(
+                    rf"""^\s*
+                    (?:public|private|protected|static\s+)*?
+                    (?:get|set)\s+
+                    {re.escape(name)}
+                    \b
+                    """,
+                    re.VERBOSE
+                ),
+            ]
 
             for i, line in enumerate(lines):
-                # async + normal
-                if re.search(rf"\basync\s+{name}\b|\b{name}\s*\(", line):
+                stripped = line.strip()
+                # skip obvious calls/usages
+                if (
+                    stripped.startswith("return ")
+                    or stripped.startswith("if ")
+                    or stripped.startswith("while ")
+                    or stripped.startswith("for ")
+                    or stripped.startswith("switch ")
+                    or stripped.startswith("catch ")
+                    or stripped.startswith("new ")
+                    or re.search(rf"\.\s*{re.escape(name)}\s*\(", stripped)
+                    or "=" in stripped
+                ):
+                    continue
+
+                if any(p.search(line) for p in patterns):
                     if self._has_doc(lines, i):
                         lines = self._replace_doc(lines, i, doc)
                     else:
@@ -60,37 +153,80 @@ class TSJSAugmentor(BaseAugmentor):
 
         return lines
 
- 
-    # detect existing doc
     def _has_doc(self, lines, i):
-        # look backwards for /**
-        for j in range(i, max(i - 5, 0), -1):
-            if "/**" in lines[j]:
-                return True
+        j = i - 1
+        while j >= 0:
+            current = lines[j].strip()
+            # skip empty lines
+            if not current:
+                j -= 1
+                continue
+
+            # direct jsdoc above declaration
+            if current.endswith("*/"):
+                k = j
+                while k >= 0:
+                    if "/**" in lines[k]:
+                        return True
+                    # stop if another code construct encountered
+                    if lines[k].strip() and not lines[k].strip().startswith("*"):
+                        break
+                    k -= 1
+            return False
+
         return False
 
     def _replace_doc(self, lines, i, doc):
-        # remove old block
-        start = i
-        while start > 0 and "/**" not in lines[start]:
+        start = i - 1
+        while start >= 0:
+            if "/**" in lines[start]:
+                break
             start -= 1
 
+        if start < 0:
+            return lines
+
         end = start
-        while end < len(lines) and "*/" not in lines[end]:
+
+        while end < len(lines):
+            if "*/" in lines[end]:
+                break
             end += 1
 
         new_block = self._format(doc, lines[i])
 
-        return lines[:start] + [new_block + "\n"] + lines[end+1:]
+        return (
+            lines[:start]
+            + [new_block]
+            + lines[end + 1:]
+        )
 
     def _format(self, text: str, line: str) -> str:
         indent = re.match(r"\s*", line).group(0)
+        clean = text.strip()
 
-        clean = text.strip().replace("*/", "* /")
+        # remove existing jsdoc wrappers if already present
+        clean = re.sub(r"^\s*/\*\*", "", clean)
+        clean = re.sub(r"\*/\s*$", "", clean)
+
+        # remove leading *
+        clean_lines = []
+
+        for l in clean.splitlines():
+            l = re.sub(r"^\s*\*\s?", "", l.rstrip())
+            clean_lines.append(l)
+
+        clean = "\n".join(clean_lines)
+        clean = clean.replace("*/", "* /")
 
         body = "\n".join(
-            indent + " * " + l if l.strip() else indent + " *"
+            indent + " * " + l if l.strip()
+            else indent + " *"
             for l in clean.split("\n")
         )
 
-        return f"{indent}/**\n{body}\n{indent} */\n"
+        return (
+            f"{indent}/**\n"
+            f"{body}\n"
+            f"{indent} */\n"
+        )
