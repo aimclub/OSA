@@ -16,23 +16,14 @@ class OSA_TreeSitter:
         TypeScriptAdapter(),
     ]
 
-    def __init__(
-        self,
-        scripts_path: str,
-        ignore_list: list[str] = None,
-        target_files: list[str] = None
-    ):
+    def __init__(self, scripts_path: str, ignore_list: list[str] = None, target_files: list[str] = None):
 
         self.cwd = scripts_path
         self.ignore_list = ignore_list or ["__init__.py"]
         self.target_files = target_files
 
     def files_list(self, path: str):
-        exts = tuple(
-            ext
-            for a in self.ADAPTERS
-            for ext in a.EXTENSIONS
-        )
+        exts = tuple(ext for a in self.ADAPTERS for ext in a.EXTENSIONS)
 
         script_files = []
         if self.target_files:
@@ -48,9 +39,7 @@ class OSA_TreeSitter:
             for root, _, files in os.walk(path):
                 for f in files:
                     if f.endswith(exts):
-                        script_files.append(
-                            os.path.join(root, f)
-                        )
+                        script_files.append(os.path.join(root, f))
 
             return script_files, 0
 
@@ -77,11 +66,7 @@ class OSA_TreeSitter:
         tree = parser.parse(source.encode())
         root = tree.root_node
 
-        imports = adapter.extract_imports(
-            root,
-            sv,
-            self.cwd
-        )
+        imports = adapter.extract_imports(root, sv, self.cwd)
 
         result = {
             "structure": [],
@@ -94,20 +79,11 @@ class OSA_TreeSitter:
                 cls = {
                     "type": "class",
                     "name": class_name,
-                    "docstring": adapter.get_docstring(
-                        node,
-                        sv
-                    ),
+                    "docstring": adapter.get_docstring(node,sv),
                     "start_line": node.start_point[0] + 1,
                     "methods": [],
-                    "attributes": adapter.get_attributes(
-                        node,
-                        sv
-                    ),
-                    "decorators": adapter.get_decorators(
-                        node,
-                        sv
-                    ),
+                    "attributes": adapter.get_attributes(node, sv),
+                    "decorators": adapter.get_decorators(node, sv),
                 }
 
                 for c in node.children:
@@ -119,43 +95,21 @@ class OSA_TreeSitter:
 
             if adapter.is_function(node):
                 fn = {
-                    "class_name": (
-                        class_ctx["name"]
-                        if class_ctx
-                        else None
-                    ),
-                    "method_name": adapter.get_name(
-                        node,
-                        sv
-                    ),
-                    "arguments": adapter.get_parameters(
-                        node,
-                        sv
-                    ),
-                    "docstring": adapter.get_docstring(
-                        node,
-                        sv
-                    ),
+                    "class_name": (class_ctx["name"] if class_ctx else None),
+                    "method_name": adapter.get_name(node, sv),
+                    "arguments": adapter.get_parameters(node, sv),
+                    "docstring": adapter.get_docstring(node, sv),
                     "start_line": node.start_point[0] + 1,
                     "source_code": sv.text(node),
-                    "method_calls": adapter.resolve_method_calls(
-                        node,
-                        sv
-                    ),
-                    "decorators": adapter.get_decorators(
-                        node,
-                        sv
-                    ),
+                    "method_calls": adapter.resolve_method_calls(node, sv),
+                    "decorators": adapter.get_decorators(node, sv),
                 }
 
                 if class_ctx:
                     class_ctx["methods"].append(fn)
 
                 else:
-                    result["structure"].append({
-                        "type": "function",
-                        "details": fn
-                    })
+                    result["structure"].append({"type": "function", "details": fn})
 
             for c in node.children:
                 walk(c, class_ctx)
@@ -167,10 +121,7 @@ class OSA_TreeSitter:
     @staticmethod
     def open_file(file: str):
         with open(file, "rb") as f:
-            return f.read().decode(
-                "utf-8",
-                errors="ignore"
-            )
+            return f.read().decode("utf-8", errors="ignore")
 
     def analyze_directory(self, path: str):
         results = {}
@@ -188,10 +139,7 @@ class OSA_TreeSitter:
             for item in data["structure"]:
                 if item["type"] == "class":
                     for m in item["methods"]:
-                        full = (
-                            f"{item['name']}."
-                            f"{m['method_name']}"
-                        )
+                        full = f"{item['name']}." f"{m['method_name']}"
 
                         index[full] = {
                             **m,

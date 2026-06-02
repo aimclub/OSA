@@ -4,7 +4,4 @@ class SourceView:
         self.bytes = source.encode("utf-8")
 
     def text(self, node):
-        return self.bytes[node.start_byte:node.end_byte].decode(
-            "utf-8",
-            errors="ignore"
-        )
+        return self.bytes[node.start_byte : node.end_byte].decode("utf-8", errors="ignore")
