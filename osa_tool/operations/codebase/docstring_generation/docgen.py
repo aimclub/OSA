@@ -1263,14 +1263,12 @@ class DocGen(object):
                         else ""
                     )
 
-                prompt_structure.append(
-                    f"""
+                prompt_structure.append(f"""
                     {_type.capitalize()} name: {component["name"] if _type == "class" else component["details"]["method_name"]}
                     Component description: {docstring}
                     Component place in hierarchy: {file}
                     Component importance score: {score}
-                    """
-                )
+                    """)
 
         logger.info(f"Generating the main idea of the project...")
 

@@ -7,7 +7,6 @@ from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
-
 _ASCII_ONLY = re.compile(r"^[a-zA-Z0-9_.#\-]+$")
 
 
