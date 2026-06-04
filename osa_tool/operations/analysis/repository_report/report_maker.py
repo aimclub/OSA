@@ -45,9 +45,7 @@ class AbstractReportGenerator(ABC):
         self.repo_path: str = git_agent.clone_dir
         self.scorecard_result: ScorecardResult | None = None
 
-        self.logo_path = os.path.join(
-            osa_project_root(), "docs", "images", "osa_logo.PNG"
-        )
+        self.logo_path = os.path.join(osa_project_root(), "docs", "images", "osa_logo.PNG")
 
         self.filename = f"{self.metadata.name}_report.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
@@ -173,9 +171,7 @@ class AbstractReportGenerator(ABC):
         qr.save(qr_path)
         return qr_path
 
-    def draw_images_and_tables(
-        self, canvas_obj: Canvas, doc: SimpleDocTemplate
-    ) -> None:
+    def draw_images_and_tables(self, canvas_obj: Canvas, doc: SimpleDocTemplate) -> None:
         """
         Draws images, a QR code, lines, and tables on the given PDF canvas.
 
@@ -318,9 +314,9 @@ class AbstractReportGenerator(ABC):
         )
         if self.metadata.created_at:
             try:
-                created_at_text = datetime.strptime(
-                    self.metadata.created_at, "%Y-%m-%dT%H:%M:%SZ"
-                ).strftime("%d.%m.%Y %H:%M")
+                created_at_text = datetime.strptime(self.metadata.created_at, "%Y-%m-%dT%H:%M:%SZ").strftime(
+                    "%d.%m.%Y %H:%M"
+                )
             except ValueError:
                 created_at_text = self.metadata.created_at
         else:
@@ -403,9 +399,7 @@ class AbstractReportGenerator(ABC):
 
 
 class ReportGenerator(AbstractReportGenerator):
-    def __init__(
-        self, config_manager: ConfigManager, git_agent: GitAgent, create_fork: bool
-    ):
+    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent, create_fork: bool):
         super().__init__(config_manager, git_agent)
         self.text_generator = TextGenerator(config_manager, self.metadata)
         self.create_fork = create_fork
@@ -415,17 +409,11 @@ class ReportGenerator(AbstractReportGenerator):
         try:
             self.scorecard_result = ScorecardRunner(self.repo_path).run()
             self.build_pdf()
-            self.events.append(
-                OperationEvent(kind=EventKind.GENERATED, target=f"{self.filename}")
-            )
+            self.events.append(OperationEvent(kind=EventKind.GENERATED, target=f"{self.filename}"))
             if self.create_fork and os.path.exists(self.output_path):
                 self.git_agent.upload_report(self.filename, self.output_path)
-                self.events.append(
-                    OperationEvent(kind=EventKind.UPLOADED, target=f"{self.filename}")
-                )
-            scorecard_dict = (
-                self.scorecard_result.to_dict() if self.scorecard_result else None
-            )
+                self.events.append(OperationEvent(kind=EventKind.UPLOADED, target=f"{self.filename}"))
+            scorecard_dict = self.scorecard_result.to_dict() if self.scorecard_result else None
             return {
                 "result": {"report": self.filename, "scorecard": scorecard_dict},
                 "events": self.events,
@@ -454,25 +442,15 @@ class ReportGenerator(AbstractReportGenerator):
 
         # Repository Structure
         story.append(Paragraph("<b>Repository Structure:</b>", custom_style))
-        story.append(
-            Paragraph(
-                f"• Compliance: {parsed_report.structure.compliance}", normal_style
-            )
-        )
+        story.append(Paragraph(f"• Compliance: {parsed_report.structure.compliance}", normal_style))
         if parsed_report.structure.missing_files:
             missing_files = ", ".join(parsed_report.structure.missing_files)
             story.append(Paragraph(f"• Missing files: {missing_files}", normal_style))
-        story.append(
-            Paragraph(
-                f"• Organization: {parsed_report.structure.organization}", normal_style
-            )
-        )
+        story.append(Paragraph(f"• Organization: {parsed_report.structure.organization}", normal_style))
 
         # README Analysis
         story.append(Paragraph("<b>README Analysis:</b>", custom_style))
-        story.append(
-            Paragraph(f"• Quality: {parsed_report.readme.readme_quality}", normal_style)
-        )
+        story.append(Paragraph(f"• Quality: {parsed_report.readme.readme_quality}", normal_style))
 
         for field_name, value in parsed_report.readme.model_dump().items():
             if field_name == "readme_quality":
@@ -533,19 +511,13 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         self.output_path = os.path.join(os.getcwd(), self.filename)
         self.completed_tasks = plan.list_for_report
         self.task_results = plan.results or {}
-        self.text_generator = AfterReportTextGenerator(
-            config_manager, self.completed_tasks, self.task_results
-        )
+        self.text_generator = AfterReportTextGenerator(config_manager, self.completed_tasks, self.task_results)
         self.start_log = f"Starting creating summary for OSA work"
         self.report_header = "OSA Work Summary"
         self.events: list[OperationEvent] = []
 
-        before_dict = (
-            self.task_results.get("report", {}).get("result", {}).get("scorecard")
-        )
-        self.before_scorecard: ScorecardResult | None = (
-            ScorecardResult.from_dict(before_dict) if before_dict else None
-        )
+        before_dict = self.task_results.get("report", {}).get("result", {}).get("scorecard")
+        self.before_scorecard: ScorecardResult | None = ScorecardResult.from_dict(before_dict) if before_dict else None
 
     def run(self) -> dict:
         """
@@ -558,14 +530,10 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         try:
             self.scorecard_result = ScorecardRunner(self.repo_path).run()
             self.build_pdf()
-            self.events.append(
-                OperationEvent(kind=EventKind.GENERATED, target=self.filename)
-            )
+            self.events.append(OperationEvent(kind=EventKind.GENERATED, target=self.filename))
             if self.create_fork and os.path.exists(self.output_path):
                 self.git_agent.upload_report(self.filename, self.output_path)
-                self.events.append(
-                    OperationEvent(kind=EventKind.UPLOADED, target=f"{self.filename}")
-                )
+                self.events.append(OperationEvent(kind=EventKind.UPLOADED, target=f"{self.filename}"))
             return {"result": {"report": self.filename}, "events": self.events}
         except ValueError as e:
             self.events.append(
@@ -654,19 +622,11 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         ]
         for row_idx, row_data in enumerate(rows, start=1):
             _, _, _, _, b_score, a_score = row_data
-            style.append(
-                ("BACKGROUND", (1, row_idx), (1, row_idx), self._score_color(b_score))
-            )
-            style.append(
-                ("BACKGROUND", (2, row_idx), (2, row_idx), self._score_color(a_score))
-            )
+            style.append(("BACKGROUND", (1, row_idx), (1, row_idx), self._score_color(b_score)))
+            style.append(("BACKGROUND", (2, row_idx), (2, row_idx), self._score_color(a_score)))
             if b_score != -1 and a_score != -1:
                 d = a_score - b_score
-                delta_color = (
-                    colors.lightgreen
-                    if d > 0
-                    else (colors.lightcoral if d < 0 else colors.white)
-                )
+                delta_color = colors.lightgreen if d > 0 else (colors.lightcoral if d < 0 else colors.white)
                 style.append(("BACKGROUND", (3, row_idx), (3, row_idx), delta_color))
         table.setStyle(TableStyle(style))
         elements.append(table)
