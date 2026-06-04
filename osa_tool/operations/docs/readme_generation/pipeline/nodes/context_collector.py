@@ -2,8 +2,11 @@
 
 import asyncio
 import os
+import json
+from typing import Any
 
-from osa_tool.core.models.llm_output_models import LlmTextOutput
+from pydantic import BaseModel, model_validator
+
 from osa_tool.operations.docs.readme_generation.pipeline.runtime_context import ReadmeContext
 from osa_tool.operations.docs.readme_generation.pipeline.models import RepositoryContext
 from osa_tool.operations.docs.readme_generation.pipeline.state import ReadmeState
@@ -20,6 +23,20 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.token_counter import count_tokens, truncate_to_tokens
 from osa_tool.utils.utils import extract_readme_content, parse_folder_name
+
+
+class FlexibleTextOutput(BaseModel):
+    text: str
+
+    @model_validator(mode='before')
+    @classmethod
+    def _wrap_in_text(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "text" in data and isinstance(data["text"], str):
+                return data
+            return {"text": json.dumps(data, ensure_ascii=False, indent=2)}
+        return data
+
 
 _IMPORTANT_FILENAMES = frozenset(
     {
@@ -145,7 +162,7 @@ def _run_parallel_analyses(
                     repo_analysis=repo_analysis or "",
                     repository_tree=repo_tree,
                 ),
-                parser=LlmTextOutput,
+                parser=FlexibleTextOutput,
                 system_message=build_system_message(context, "repo_analysis"),
             ),
         ]
@@ -158,7 +175,7 @@ def _run_parallel_analyses(
                         repo_analysis=repo_analysis or "",
                         existing_readme=existing_readme,
                     ),
-                    parser=LlmTextOutput,
+                    parser=FlexibleTextOutput,
                     system_message=build_system_message(context, "repo_analysis"),
                 ),
             )
@@ -267,7 +284,7 @@ def _run_llm_analyses(context: ReadmeContext, raw_ctx: dict) -> dict:
             key_files_content=raw_ctx["key_files_content"],
             existing_readme=raw_ctx["existing_readme"],
         ),
-        parser=LlmTextOutput,
+        parser=FlexibleTextOutput,
         system_message=build_system_message(context, "repo_analysis"),
     ).text
 
