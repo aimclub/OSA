@@ -13,7 +13,9 @@ def test_extract_from_requirements(tmp_path):
         """
     )
     (tmp_path / "requirements.txt").write_text(require)
-    extractor = DependencyExtractor(get_mock_repo_tree("WITH_REQUIREMENTS_ONLY"), str(tmp_path))
+    extractor = DependencyExtractor(
+        get_mock_repo_tree("WITH_REQUIREMENTS_ONLY"), str(tmp_path)
+    )
 
     # Act
     techs = extractor.extract_techs()
@@ -121,14 +123,19 @@ def test_extract_from_pyproject_toml_invalid(tmp_path, caplog):
     # Assert
     assert extractor.extract_techs() == set()
     assert extractor.extract_python_version_requirement() is None
-    assert "Failed to parse pyproject.toml" in caplog.text or "Failed to decode pyproject.toml" in caplog.text
+    assert (
+        "Failed to parse pyproject.toml" in caplog.text
+        or "Failed to decode pyproject.toml" in caplog.text
+    )
 
 
 def test_extract_from_requirements_different_encodings(tmp_path):
     req_content = "scipy>=1.7\n"
     (tmp_path / "requirements.txt").write_text(req_content, encoding="utf-16")
 
-    extractor = DependencyExtractor(get_mock_repo_tree("WITH_REQUIREMENTS_ONLY"), str(tmp_path))
+    extractor = DependencyExtractor(
+        get_mock_repo_tree("WITH_REQUIREMENTS_ONLY"), str(tmp_path)
+    )
     techs = extractor.extract_techs()
     assert "scipy" in techs
 

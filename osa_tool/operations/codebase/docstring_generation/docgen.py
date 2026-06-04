@@ -50,7 +50,9 @@ class DocGen(object):
         """
         self.config_manager = config_manager
         self.model_settings = self.config_manager.get_model_settings("docstrings")
-        self.model_handler: ProtollmHandler = ModelHandlerFactory.build(self.model_settings)
+        self.model_handler: ProtollmHandler = ModelHandlerFactory.build(
+            self.model_settings
+        )
         self.main_idea = None
         self._function_index_cache = None
 
@@ -169,7 +171,9 @@ class DocGen(object):
         tokens = enc.encode(prompt)
         return len(tokens)
 
-    async def generate_class_documentation(self, class_details: list, semaphore: asyncio.Semaphore) -> str:
+    async def generate_class_documentation(
+        self, class_details: list, semaphore: asyncio.Semaphore
+    ) -> str:
         """
         Generate documentation for a class.
 
@@ -204,7 +208,9 @@ class DocGen(object):
             docstring = await self.model_handler.async_request(prompt)
             return docstring.strip('"""')
 
-    async def update_class_documentation(self, class_details: list, semaphore: asyncio.Semaphore) -> str:
+    async def update_class_documentation(
+        self, class_details: list, semaphore: asyncio.Semaphore
+    ) -> str:
         """
         Generate documentation for a class.
 
@@ -365,7 +371,9 @@ class DocGen(object):
         response = gpt_response.strip().replace("<triple quotes>", '"""')
 
         # 1 — Strip Markdown-style code block
-        markdown_match = re.search(r"```[a-z]*\n([\s\S]+?)\n```", response, re.IGNORECASE)
+        markdown_match = re.search(
+            r"```[a-z]*\n([\s\S]+?)\n```", response, re.IGNORECASE
+        )
         if markdown_match:
             response = markdown_match.group(1).strip()
 
@@ -383,7 +391,9 @@ class DocGen(object):
             content = match.group(2).strip()
 
             # Remove accidental leaked `def ...():`
-            content = re.sub(r"^\s*def\s+\w+\(.*?\):\s*", "", content, flags=re.MULTILINE).strip()
+            content = re.sub(
+                r"^\s*def\s+\w+\(.*?\):\s*", "", content, flags=re.MULTILINE
+            ).strip()
 
             # De-indent "Args" section
             if "Args" in content:
@@ -426,7 +436,10 @@ class DocGen(object):
 
     @staticmethod
     def insert_docstring_in_code(
-        source_code: str, method_details: dict, generated_docstring: str, class_method: bool = False
+        source_code: str,
+        method_details: dict,
+        generated_docstring: str,
+        class_method: bool = False,
     ) -> str:
         """
         Inserts or replaces a method-level docstring in the provided source code,
@@ -436,7 +449,9 @@ class DocGen(object):
         source_code = source_code.replace("\r\n", "\n")
         method_source = method_details["source_code"].replace("\r\n", "\n")
 
-        docstring_clean = DocGen.extract_pure_docstring(generated_docstring.replace("\r\n", f"\n"))
+        docstring_clean = DocGen.extract_pure_docstring(
+            generated_docstring.replace("\r\n", f"\n")
+        )
 
         # Find method within a source code
         body_start = source_code.find(method_source)
@@ -476,19 +491,26 @@ class DocGen(object):
 
         if signature_end_index is not None:
             next_line_index = signature_end_index + 1
-            while next_line_index < len(method_lines) and method_lines[next_line_index].strip() == "":
+            while (
+                next_line_index < len(method_lines)
+                and method_lines[next_line_index].strip() == ""
+            ):
                 next_line_index += 1
 
-            if next_line_index < len(method_lines) and method_lines[next_line_index].strip().startswith(('"""', "'''")):
+            if next_line_index < len(method_lines) and method_lines[
+                next_line_index
+            ].strip().startswith(('"""', "'''")):
                 # Replace old docstring
                 closing = method_lines[next_line_index].strip()[:3]
                 end_doc_idx = next_line_index
 
-                if len(method_lines[next_line_index].strip()) > 3 and method_lines[next_line_index].strip().endswith(
-                    closing
-                ):
+                if len(method_lines[next_line_index].strip()) > 3 and method_lines[
+                    next_line_index
+                ].strip().endswith(closing):
                     method_lines = (
-                        method_lines[:next_line_index] + [docstring_inserted] + method_lines[end_doc_idx + 1 :]
+                        method_lines[:next_line_index]
+                        + [docstring_inserted]
+                        + method_lines[end_doc_idx + 1 :]
                     )
                     updated_block = "".join(method_lines)
                     result = source_code[:start] + updated_block + source_code[end:]
@@ -498,7 +520,11 @@ class DocGen(object):
                     if closing in method_lines[j]:
                         end_doc_idx = j
                         break
-                method_lines = method_lines[:next_line_index] + [docstring_inserted] + method_lines[end_doc_idx + 1 :]
+                method_lines = (
+                    method_lines[:next_line_index]
+                    + [docstring_inserted]
+                    + method_lines[end_doc_idx + 1 :]
+                )
             else:
                 # Insert new docstring
                 method_lines.insert(signature_end_index + 1, docstring_inserted)
@@ -509,7 +535,9 @@ class DocGen(object):
         return result
 
     @staticmethod
-    def insert_cls_docstring_in_code(source_code: str, class_name: str, generated_docstring: str) -> str:
+    def insert_cls_docstring_in_code(
+        source_code: str, class_name: str, generated_docstring: str
+    ) -> str:
         """
         Inserts or replaces a class-level docstring for a given class name.
 
@@ -538,18 +566,27 @@ class DocGen(object):
         docstring = DocGen.extract_pure_docstring(generated_docstring)
 
         # Applying indentation to all docstring lines
-        indented_lines = [indent + line if line.strip() else indent for line in docstring.strip().splitlines()]
+        indented_lines = [
+            indent + line if line.strip() else indent
+            for line in docstring.strip().splitlines()
+        ]
         indented_docstring = "\n".join(indented_lines) + "\n"
 
         start, end = match.span()
 
         if existing_docstring:
             # Substituting an existing docstring
-            updated_code = source_code[:start] + signature + indented_docstring + source_code[end:]
+            updated_code = (
+                source_code[:start] + signature + indented_docstring + source_code[end:]
+            )
         else:
             # Inserting new docstring
             insert_point = source_code.find("\n", start) + 1
-            updated_code = source_code[:insert_point] + indented_docstring + source_code[insert_point:]
+            updated_code = (
+                source_code[:insert_point]
+                + indented_docstring
+                + source_code[insert_point:]
+            )
 
         return updated_code
 
@@ -565,7 +602,9 @@ class DocGen(object):
             Dictionary mapping function names to their details
         """
         if self._function_index_cache is None:
-            self._function_index_cache = OSA_TreeSitter.build_function_index(parsed_structure)
+            self._function_index_cache = OSA_TreeSitter.build_function_index(
+                parsed_structure
+            )
         return self._function_index_cache
 
     def context_extractor(
@@ -609,7 +648,9 @@ class DocGen(object):
             if search_name in function_index:
                 func_info = function_index[search_name]
                 class_name = func_info.get("class", "")
-                display_name = f"{class_name}.{search_name}" if class_name else search_name
+                display_name = (
+                    f"{class_name}.{search_name}" if class_name else search_name
+                )
 
                 # Use generated docstring if available (from topological sort)
                 docstring = None
@@ -632,7 +673,9 @@ class DocGen(object):
 
                 separator = "=" * 10
                 instance_prompt = (
-                    separator + "\n" f"Helper function name: {display_name}\n" f"Documentation:\n{docstring}\n"
+                    separator + "\n"
+                    f"Helper function name: {display_name}\n"
+                    f"Documentation:\n{docstring}\n"
                 )
 
                 context.append(instance_prompt)
@@ -668,7 +711,10 @@ class DocGen(object):
 
     @staticmethod
     def _run_in_executor(
-        parsed_structure: dict, project_source_code: dict, generated_docstrings: dict, n_workers: int = 8
+        parsed_structure: dict,
+        project_source_code: dict,
+        generated_docstrings: dict,
+        n_workers: int = 8,
     ) -> list[dict]:
         """
         Runs docstrings insertion tasks in multiprocessing mode.
@@ -688,7 +734,10 @@ class DocGen(object):
         structure = [k for k, v in parsed_structure.items() if v.get("structure")]
 
         # mapping the arguments for cpu-bound tasks
-        args = [(file, project_source_code[file], generated_docstrings[file]) for file in structure]
+        args = [
+            (file, project_source_code[file], generated_docstrings[file])
+            for file in structure
+        ]
 
         with ProcessPoolExecutor(max_workers=n_workers) as executor:
             result = list(executor.map(DocGen._perform_code_augmentations, args))
@@ -719,7 +768,9 @@ class DocGen(object):
 
         module = cst.parse_module(source_code)
         wrapper = cst.MetadataWrapper(module)
-        transformer = DocstringTransformer(docstrings, source_code.splitlines(True), module.default_indent)
+        transformer = DocstringTransformer(
+            docstrings, source_code.splitlines(True), module.default_indent
+        )
         new_module = wrapper.visit(transformer)
 
         # serialize the results to a dictionary
@@ -746,7 +797,9 @@ class DocGen(object):
 
         semaphore = asyncio.Semaphore(rate_limit)
 
-        async def _iterate_and_collect(project_structure: dict, collect_fn: Callable, *args) -> dict[str, dict]:
+        async def _iterate_and_collect(
+            project_structure: dict, collect_fn: Callable, *args
+        ) -> dict[str, dict]:
             """Iterates over project structure and generates the docstrings by given callable"""
             results = {}
 
@@ -755,10 +808,14 @@ class DocGen(object):
                 if structure.get("structure"):
                     results[filename] = await collect_fn(filename, structure, *args)
                 else:
-                    logger.info(f"File {filename} does not contain any functions, methods or class constructions.")
+                    logger.info(
+                        f"File {filename} does not contain any functions, methods or class constructions."
+                    )
             return results
 
-        logger.info(f"Docstrings {'update' if self.main_idea else 'generation'} for the project has started!")
+        logger.info(
+            f"Docstrings {'update' if self.main_idea else 'generation'} for the project has started!"
+        )
 
         match docstring_type:
             case ("functions", "methods") | ("functions", "methods", "classes"):
@@ -769,12 +826,20 @@ class DocGen(object):
                 total_classes = sum(
                     1
                     for file_meta in parsed_structure.values()
-                    for item in (file_meta.get("structure") if isinstance(file_meta.get("structure"), list) else [])
-                    if item.get("type") == "class" and (not item.get("docstring") or self.main_idea)
+                    for item in (
+                        file_meta.get("structure")
+                        if isinstance(file_meta.get("structure"), list)
+                        else []
+                    )
+                    if item.get("type") == "class"
+                    and (not item.get("docstring") or self.main_idea)
                 )
                 class_progress = {"count": 0, "total": total_classes}
                 generating_results = await _iterate_and_collect(
-                    parsed_structure, self._fetch_docstrings_for_class, semaphore, class_progress
+                    parsed_structure,
+                    self._fetch_docstrings_for_class,
+                    semaphore,
+                    class_progress,
                 )
 
             case _:
@@ -786,7 +851,9 @@ class DocGen(object):
         return generating_results
 
     @staticmethod
-    async def _get_project_source_code(parsed_structure: dict, sem: asyncio.Semaphore) -> dict[str, str]:
+    async def _get_project_source_code(
+        parsed_structure: dict, sem: asyncio.Semaphore
+    ) -> dict[str, str]:
         """
         Concurrently reads each file of given project and serialize source code in pickle-able object
         for future use in multiprocessing cpu-bound tasks.
@@ -813,7 +880,9 @@ class DocGen(object):
         return {file: code for file, code in result}
 
     @staticmethod
-    async def _write_augmented_code(parsed_structure: dict, augmented_code: list[dict], sem: asyncio.Semaphore) -> None:
+    async def _write_augmented_code(
+        parsed_structure: dict, augmented_code: list[dict], sem: asyncio.Semaphore
+    ) -> None:
         """
         Writes given code after docstrings insertion in necessary files concurrently
 
@@ -835,7 +904,9 @@ class DocGen(object):
                     await f.write(code)
 
         # executing coroutines concurrently
-        await asyncio.gather(*[_write_code(f, augmented_code[i][f]) for i, f in enumerate(structure)])
+        await asyncio.gather(
+            *[_write_code(f, augmented_code[i][f]) for i, f in enumerate(structure)]
+        )
 
     async def _generate_node(
         self,
@@ -884,19 +955,31 @@ class DocGen(object):
                 f"""{progress_label} Requesting for docstrings {"update" if self.main_idea else "generation"} for the function: {metadata["method_name"]} at {file_path}"""
             )
 
-        context = self.context_extractor(metadata, parsed_structure, function_index, generated_docstrings)
+        context = self.context_extractor(
+            metadata, parsed_structure, function_index, generated_docstrings
+        )
 
         try:
             if self.main_idea:
                 if node_type == "method":
                     class_name = node_info.get("class", "")
-                    docstring = await self.update_method_documentation(metadata, semaphore, context, class_name)
+                    docstring = await self.update_method_documentation(
+                        metadata, semaphore, context, class_name
+                    )
                 else:
-                    docstring = await self.update_method_documentation(metadata, semaphore, context)
+                    docstring = await self.update_method_documentation(
+                        metadata, semaphore, context
+                    )
             else:
-                docstring = await self.generate_method_documentation(metadata, semaphore, context)
+                docstring = await self.generate_method_documentation(
+                    metadata, semaphore, context
+                )
 
-            return (node_id, node_type, file_path, docstring, metadata) if docstring else None
+            return (
+                (node_id, node_type, file_path, docstring, metadata)
+                if docstring
+                else None
+            )
 
         except Exception as e:
             logger.error(f"Error generating docstring for {node_id}: {e}")
@@ -925,7 +1008,9 @@ class DocGen(object):
         Returns:
             dict[str, dict]: {file: {"methods": [...], "functions": [...], "classes": [...]}}
         """
-        logger.info("Using topological sorting with context propagation for dependency-first generation")
+        logger.info(
+            "Using topological sorting with context propagation for dependency-first generation"
+        )
         logger.info("Building dependency graph for topological sort...")
 
         # Build dependency graph
@@ -938,17 +1023,24 @@ class DocGen(object):
         generated_docstrings = {}
 
         # Storage for results in original format: {file: {"methods": [...], "functions": [...], "classes": [...]}}
-        results = {file: {"methods": [], "functions": [], "classes": []} for file in parsed_structure.keys()}
+        results = {
+            file: {"methods": [], "functions": [], "classes": []}
+            for file in parsed_structure.keys()
+        }
         total_nodes = len(dep_graph.nodes)
         progress = {"count": 0, "total": total_nodes}
 
-        in_degree = {node: len(dep_graph.get_dependencies(node)) for node in dep_graph.nodes}
+        in_degree = {
+            node: len(dep_graph.get_dependencies(node)) for node in dep_graph.nodes
+        }
         queue = [node for node, degree in in_degree.items() if degree == 0]
 
         in_progress = {}
         completed = set()
 
-        logger.info(f"Starting eager topological processing: {len(queue)} nodes ready, {total_nodes} total")
+        logger.info(
+            f"Starting eager topological processing: {len(queue)} nodes ready, {total_nodes} total"
+        )
 
         while queue or in_progress:
             while queue and len(in_progress) < rate_limit:
@@ -970,7 +1062,9 @@ class DocGen(object):
             if not in_progress:
                 break
 
-            done, _ = await asyncio.wait(in_progress.values(), return_when=asyncio.FIRST_COMPLETED)
+            done, _ = await asyncio.wait(
+                in_progress.values(), return_when=asyncio.FIRST_COMPLETED
+            )
 
             for task in done:
                 completed_node_id = None
@@ -996,12 +1090,16 @@ class DocGen(object):
                         if node_type == "method":
                             results[file_path]["methods"].append((docstring, metadata))
                         elif node_type == "function":
-                            results[file_path]["functions"].append((docstring, metadata))
+                            results[file_path]["functions"].append(
+                                (docstring, metadata)
+                            )
 
                 except Exception as e:
                     logger.error(f"Task failed for {completed_node_id}: {e}")
 
-                for dependent_id in dep_graph.reverse_graph.get(completed_node_id, set()):
+                for dependent_id in dep_graph.reverse_graph.get(
+                    completed_node_id, set()
+                ):
                     deps = dep_graph.get_dependencies(dependent_id)
                     if all(dep in completed for dep in deps):
                         if (
@@ -1015,10 +1113,17 @@ class DocGen(object):
             total_classes = sum(
                 1
                 for file_meta in parsed_structure.values()
-                for item in (file_meta.get("structure") if isinstance(file_meta.get("structure"), list) else [])
-                if item.get("type") == "class" and (not item.get("docstring") or self.main_idea)
+                for item in (
+                    file_meta.get("structure")
+                    if isinstance(file_meta.get("structure"), list)
+                    else []
+                )
+                if item.get("type") == "class"
+                and (not item.get("docstring") or self.main_idea)
             )
-            logger.info(f"Generating class docstrings... Total classes: {total_classes}")
+            logger.info(
+                f"Generating class docstrings... Total classes: {total_classes}"
+            )
             class_progress = {"count": 0, "total": total_classes}
             class_results = {}
 
@@ -1032,7 +1137,9 @@ class DocGen(object):
 
             for file_path in results.keys():
                 if file_path in class_results:
-                    results[file_path]["classes"] = class_results[file_path].get("classes", [])
+                    results[file_path]["classes"] = class_results[file_path].get(
+                        "classes", []
+                    )
 
         return results
 
@@ -1060,23 +1167,22 @@ class DocGen(object):
         _coroutines = []
 
         for item in file_meta["structure"]:
-
             _type = item["type"]
 
             match _type:
                 case "class":
-
                     if not item.get("docstring") or self.main_idea:
-
                         # collecting a class metadata ahead
                         class_name = item["name"]
                         class_metadata = [class_name, item["attributes"]]
 
                         # enrich the class metadata by meta about it's methods
                         for method in item["methods"]:
-
                             class_metadata.append(
-                                {"method_name": method["method_name"], "docstring": method["docstring"]}
+                                {
+                                    "method_name": method["method_name"],
+                                    "docstring": method["docstring"],
+                                }
                             )
 
                         class_metadata.append(item["docstring"])
@@ -1091,7 +1197,9 @@ class DocGen(object):
                         request_coroutine = (
                             self.generate_class_documentation(class_metadata, semaphore)
                             if not self.main_idea
-                            else self.update_class_documentation(class_metadata, semaphore)
+                            else self.update_class_documentation(
+                                class_metadata, semaphore
+                            )
                         )
 
                         # just add new coroutine and class name to a task list
@@ -1100,9 +1208,15 @@ class DocGen(object):
         fetched_docstrings = await asyncio.gather(*[task[1] for task in _coroutines])
         structure_names = [name[0] for name in _coroutines]
 
-        return {"classes": [pair for pair in zip(fetched_docstrings, structure_names) if pair[0]]}
+        return {
+            "classes": [
+                pair for pair in zip(fetched_docstrings, structure_names) if pair[0]
+            ]
+        }
 
-    async def generate_the_main_idea(self, parsed_structure: dict, top_n: int = 5) -> None:
+    async def generate_the_main_idea(
+        self, parsed_structure: dict, top_n: int = 5
+    ) -> None:
 
         prompt = (
             "You are an AI documentation assistant, and your task is to deduce the main idea of the project and formulate for which purpose it was written."
@@ -1128,18 +1242,26 @@ class DocGen(object):
             if all(e not in f for e in _exclusions)
         ]
 
-        importance_top = sorted(accepted_packages, key=lambda pair: pair[1], reverse=True)[:top_n]
+        importance_top = sorted(
+            accepted_packages, key=lambda pair: pair[1], reverse=True
+        )[:top_n]
 
         for file, score in importance_top:
-
             for component in parsed_structure[file]["structure"]:
-
                 _type = component["type"]
 
                 if _type == "class":
-                    docstring = component["docstring"].split("\n\n")[0].strip('"\n ') if component["docstring"] else ""
+                    docstring = (
+                        component["docstring"].split("\n\n")[0].strip('"\n ')
+                        if component["docstring"]
+                        else ""
+                    )
                 else:
-                    docstring = component["details"]["docstring"] if component["details"]["docstring"] else ""
+                    docstring = (
+                        component["details"]["docstring"]
+                        if component["details"]["docstring"]
+                        else ""
+                    )
 
                 prompt_structure.append(
                     f"""
@@ -1154,9 +1276,13 @@ class DocGen(object):
 
         components = "\n\n".join(prompt_structure)
 
-        self.main_idea = await self.model_handler.async_request(prompt.format(components=components))
+        self.main_idea = await self.model_handler.async_request(
+            prompt.format(components=components)
+        )
 
-    async def summarize_submodules(self, project_structure: dict[str, Any], rate_limit: int = 20) -> Dict[str, str]:
+    async def summarize_submodules(
+        self, project_structure: dict[str, Any], rate_limit: int = 20
+    ) -> Dict[str, str]:
         """
         This method performs recursive traversal over given parsed structure of a Python codebase and
         generates short summaries for each directory (submodule).
@@ -1170,7 +1296,9 @@ class DocGen(object):
             Dict[str, str]
         """
 
-        self._rename_invalid_dirs(Path(self.config_manager.get_git_settings().name).resolve())
+        self._rename_invalid_dirs(
+            Path(self.config_manager.get_git_settings().name).resolve()
+        )
 
         semaphore = asyncio.Semaphore(rate_limit)
 
@@ -1193,7 +1321,9 @@ class DocGen(object):
 
         _summaries = {}
 
-        async def summarize_directory(name: str, file_summaries: List[str], submodule_summaries: List[str]) -> str:
+        async def summarize_directory(
+            name: str, file_summaries: List[str], submodule_summaries: List[str]
+        ) -> str:
             """
             This method performs async http request to the LLM server and generates summary for given submodule.
 
@@ -1209,7 +1339,9 @@ class DocGen(object):
                 (
                     f"Module name: {name}",
                     "\n## Files Summary:\n\n- "
-                    + "\n- ".join(file_summaries).replace("#", "##").replace("##", "###")
+                    + "\n- ".join(file_summaries)
+                    .replace("#", "##")
+                    .replace("##", "###")
                     + "\n\n## Submodules Summary:\n"
                     + "\n- ".join(submodule_summaries).replace("#", "##"),
                 )
@@ -1228,7 +1360,11 @@ class DocGen(object):
 
             leaves_summaries = []
 
-            directories = [d for d in os.listdir(path) if os.path.isdir(Path(path, d)) and d not in _exclusions]
+            directories = [
+                d
+                for d in os.listdir(path)
+                if os.path.isdir(Path(path, d)) and d not in _exclusions
+            ]
             files = [f for f in os.listdir(path) if not (os.path.isdir(Path(path, f)))]
 
             for name in directories:
@@ -1241,7 +1377,9 @@ class DocGen(object):
 
                 if str(p) in project:
                     leaves_summaries.append(
-                        self.format_structure_openai_short(filename=p.name, structure=project[str(p)])
+                        self.format_structure_openai_short(
+                            filename=p.name, structure=project[str(p)]
+                        )
                     )
 
             folder_summaries = await asyncio.gather(*_coroutines)
@@ -1251,13 +1389,17 @@ class DocGen(object):
                 summary = (
                     self.main_idea
                     if path == self.config_manager.get_git_settings().name
-                    else await summarize_directory(Path(path).name, leaves_summaries, folder_summaries)
+                    else await summarize_directory(
+                        Path(path).name, leaves_summaries, folder_summaries
+                    )
                 )
                 _summaries[str(path)] = summary
 
                 return summary
 
-        await traverse_and_summarize(self.config_manager.get_git_settings().name, project_structure)
+        await traverse_and_summarize(
+            self.config_manager.get_git_settings().name, project_structure
+        )
         return _summaries
 
     @staticmethod
@@ -1273,7 +1415,9 @@ class DocGen(object):
         dot_path = ".".join(processed_parts)
         return f"::: {dot_path}"
 
-    def generate_documentation_mkdocs(self, path: str, files_info, modules_info) -> None:
+    def generate_documentation_mkdocs(
+        self, path: str, files_info, modules_info
+    ) -> None:
         """
         Generates MkDocs documentation for a Python project based on provided path.
 
@@ -1315,7 +1459,9 @@ class DocGen(object):
             text = modules_info[module]
             Path(new_file, "index.md").write_text(text)
 
-        mkdocs_config = osa_project_root().resolve() / "docs" / "templates" / "mkdocs.yml"
+        mkdocs_config = (
+            osa_project_root().resolve() / "docs" / "templates" / "mkdocs.yml"
+        )
         mkdocs_yml = mkdocs_dir / "osa_mkdocs.yml"
         shutil.copy(mkdocs_config, mkdocs_yml)
 
@@ -1350,7 +1496,9 @@ class DocGen(object):
         Returns:
             None. The method generates workflow for MkDocs documentation of a current project.
         """
-        config_file = osa_project_root().resolve() / "docs" / "templates" / "ci_config.toml"
+        config_file = (
+            osa_project_root().resolve() / "docs" / "templates" / "ci_config.toml"
+        )
         git_host = self.config_manager.get_git_settings().host
 
         with open(config_file, "rb") as f:
@@ -1419,7 +1567,11 @@ class DocGen(object):
             sc_ci_dir.mkdir(parents=True, exist_ok=True)
             sc_ci_file = sc_ci_dir / "ci.yaml"
 
-            sc_data = yaml.safe_load(sc_ci_file.read_text()) or {} if sc_ci_file.exists() else {}
+            sc_data = (
+                yaml.safe_load(sc_ci_file.read_text()) or {}
+                if sc_ci_file.exists()
+                else {}
+            )
 
             build_wf = sc_cfg["build"]["workflow_name"]
             deploy_wf = sc_cfg["deploy"]["workflow_name"]
@@ -1437,7 +1589,12 @@ class DocGen(object):
 
             push_list = on_section.get("push", [])
             if not any(deploy_wf in entry.get("workflows", []) for entry in push_list):
-                push_list.append({"workflows": [deploy_wf], "filter": {"branches": ["main", "master"]}})
+                push_list.append(
+                    {
+                        "workflows": [deploy_wf],
+                        "filter": {"branches": ["main", "master"]},
+                    }
+                )
             on_section["push"] = push_list
             sc_data["on"] = on_section
 
@@ -1460,7 +1617,10 @@ class DocGen(object):
                 }
 
             if deploy_wf not in workflows_section:
-                deploy_script = [s.replace("{full_name}", full_name) for s in sc_cfg["deploy"]["script_template"]]
+                deploy_script = [
+                    s.replace("{full_name}", full_name)
+                    for s in sc_cfg["deploy"]["script_template"]
+                ]
                 workflows_section[deploy_wf] = {
                     "tasks": [
                         {
@@ -1480,13 +1640,20 @@ class DocGen(object):
 
             yaml.Dumper.ignore_aliases = lambda *args: True
             sc_ci_file.write_text(
-                yaml.safe_dump(sc_data, default_flow_style=False, sort_keys=False, allow_unicode=True)
+                yaml.safe_dump(
+                    sc_data,
+                    default_flow_style=False,
+                    sort_keys=False,
+                    allow_unicode=True,
+                )
             )
 
             sites_cfg = sc_cfg.get("sites", {})
             sites_file = sc_ci_dir / "sites.yaml"
             sites_data = {"site": {"ref": sites_cfg.get("ref", "release")}}
-            sites_file.write_text(yaml.safe_dump(sites_data, default_flow_style=False, sort_keys=False))
+            sites_file.write_text(
+                yaml.safe_dump(sites_data, default_flow_style=False, sort_keys=False)
+            )
 
             full_name = self.config_manager.get_git_settings().full_name
             org_slug = full_name.split("/")[0]

@@ -3,20 +3,26 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from osa_tool.tools.repository_analysis.scorecard import ScorecardCheck, ScorecardResult, ScorecardRunner
+from osa_tool.tools.repository_analysis.scorecard import (
+    ScorecardCheck,
+    ScorecardResult,
+    ScorecardRunner,
+)
 
-SAMPLE_JSON = json.dumps({
-    "date": "2026-05-28T00:00:00Z",
-    "repo": {"name": "file:///tmp/repo", "commit": "unknown"},
-    "scorecard": {"version": "v5.5.0", "commit": "abc123"},
-    "score": 5.0,
-    "checks": [
-        {"name": "Binary-Artifacts", "score": 10, "reason": "no binaries found"},
-        {"name": "License", "score": 0, "reason": "license file not detected"},
-        {"name": "Security-Policy", "score": -1, "reason": "no workflows found"},
-    ],
-    "metadata": None,
-})
+SAMPLE_JSON = json.dumps(
+    {
+        "date": "2026-05-28T00:00:00Z",
+        "repo": {"name": "file:///tmp/repo", "commit": "unknown"},
+        "scorecard": {"version": "v5.5.0", "commit": "abc123"},
+        "score": 5.0,
+        "checks": [
+            {"name": "Binary-Artifacts", "score": 10, "reason": "no binaries found"},
+            {"name": "License", "score": 0, "reason": "license file not detected"},
+            {"name": "Security-Policy", "score": -1, "reason": "no workflows found"},
+        ],
+        "metadata": None,
+    }
+)
 
 
 def test_run_returns_none_when_binary_missing():

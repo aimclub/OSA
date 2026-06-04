@@ -16,7 +16,9 @@ class RepositoryStructureTranslator:
         self.config_manager = config_manager
         self.model_settings = self.config_manager.get_model_settings("general")
         self.repo_url = self.config_manager.get_git_settings().repository
-        self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
+        self.model_handler: ModelHandler = ModelHandlerFactory.build(
+            self.model_settings
+        )
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
 
         self.excluded_dirs = {".git", ".venv"}
@@ -144,9 +146,13 @@ class RepositoryStructureTranslator:
                 if old_path != new_path and not os.path.exists(new_path):
                     rename_map[dirname] = translated_name
 
-            logger.info(f"Finished generating new names for {len(rename_map)} directories")
+            logger.info(
+                f"Finished generating new names for {len(rename_map)} directories"
+            )
         except Exception as e:
-            logger.error("Error while generating new names for directories: %s", e, exc_info=True)
+            logger.error(
+                "Error while generating new names for directories: %s", e, exc_info=True
+            )
         return rename_map
 
     def translate_files(self, all_files) -> tuple[dict, dict]:
@@ -171,7 +177,9 @@ class RepositoryStructureTranslator:
 
             logger.info(f"Finished generating new names for {len(rename_map)} files")
         except Exception as e:
-            logger.error("Error while generating new names for files: %s", e, exc_info=True)
+            logger.error(
+                "Error while generating new names for files: %s", e, exc_info=True
+            )
 
         return rename_map, rename_map_code
 
@@ -246,7 +254,9 @@ class RepositoryStructureTranslator:
 
                 all_dirs.extend(os.path.join(root, dirname) for dirname in dirs)
 
-            logger.info(f"Finished collecting all directories of repository ({len(all_dirs)} found)")
+            logger.info(
+                f"Finished collecting all directories of repository ({len(all_dirs)} found)"
+            )
         except Exception as e:
             logger.error("Error: %s", e, exc_info=True)
 
@@ -321,7 +331,9 @@ class RepositoryStructureTranslator:
                 args = re.sub(string_pattern, replace_in_strings, args)
                 return f"{prefix}{args}{suffix}"
 
-            updated_content = re.sub(string_pattern, replace_in_strings, updated_content)
+            updated_content = re.sub(
+                string_pattern, replace_in_strings, updated_content
+            )
             for pattern in path_patterns:
                 updated_content = re.sub(pattern, replace_names, updated_content)
 

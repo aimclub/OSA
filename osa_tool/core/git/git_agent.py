@@ -40,7 +40,13 @@ class GitAgent(abc.ABC):
         pr_report_body: A formatted message for a pull request.
     """
 
-    def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool", author: str = None):
+    def __init__(
+        self,
+        repo_url: str,
+        repo_branch_name: str = None,
+        branch_name: str = "osa_tool",
+        author: str = None,
+    ):
         """Initializes the agent with repository info.
 
         Args:
@@ -107,7 +113,9 @@ class GitAgent(abc.ABC):
         pass
 
     @staticmethod
-    def _handle_git_error(error: GitCommandError, action: str, raise_exception: bool = True) -> None:
+    def _handle_git_error(
+        error: GitCommandError, action: str, raise_exception: bool = True
+    ) -> None:
         """
         Parses Git command errors and logs specific messages for 401, 403, 404, 429.
 
@@ -135,7 +143,9 @@ class GitAgent(abc.ABC):
             logger.error(f"Details: {stderr}")
             logger.error("Possible reasons:")
             logger.error("1. Invalid GIT_TOKEN (expired or wrong).")
-            logger.error("2. Token missing scopes (needs 'repo', 'workflow', 'read:org').")
+            logger.error(
+                "2. Token missing scopes (needs 'repo', 'workflow', 'read:org')."
+            )
             logger.error("3. You don't have write access to this repository.")
 
         # 404: Not found
@@ -147,7 +157,11 @@ class GitAgent(abc.ABC):
             logger.error("2. Repository is Private, and your token lacks access.")
 
         # 429: Rate Limit
-        elif "too many requests" in stderr or "abuse detection mechanism" in stderr or "429" in stderr:
+        elif (
+            "too many requests" in stderr
+            or "abuse detection mechanism" in stderr
+            or "429" in stderr
+        ):
             logger.error(f"Rate Limit Exceeded during {action}.")
             logger.error("GitHub has temporarily blocked requests from your IP/Token.")
             logger.error("Please wait a few minutes before retrying.")
@@ -166,10 +180,14 @@ class GitAgent(abc.ABC):
             # For example: starring a repository (star_repository), checking for updates, or posting non-essential
             # comments. If these fail due to API limits or lack of scopes, the tool should log a warning but continue
             # the README/documentation generation.
-            logger.warning(f"Non-critical error during '{action}'. Continuing execution.")
+            logger.warning(
+                f"Non-critical error during '{action}'. Continuing execution."
+            )
 
     @staticmethod
-    def _handle_api_error(response: requests.Response, action: str, raise_exception: bool = True) -> None:
+    def _handle_api_error(
+        response: requests.Response, action: str, raise_exception: bool = True
+    ) -> None:
         """
         Parses HTTP API errors and logs specific messages for 401, 403, 404, 429.
         Should be called when response.status_code is not 200/201/204.
@@ -193,14 +211,20 @@ class GitAgent(abc.ABC):
         logger.debug(f"Raw API response: {error_msg}")
 
         if code == 401:
-            logger.error(f"Unauthorized (401). Check your GIT_TOKEN. Message: {error_msg}")
+            logger.error(
+                f"Unauthorized (401). Check your GIT_TOKEN. Message: {error_msg}"
+            )
         elif code == 403:
             if "rate limit" in str(error_msg).lower():
                 logger.error("API Rate Limit Exceeded (403).")
             else:
-                logger.error(f"Forbidden (403). Permissions issue. Message: {error_msg}")
+                logger.error(
+                    f"Forbidden (403). Permissions issue. Message: {error_msg}"
+                )
         elif code == 404:
-            logger.error(f"Not Found (404). Check URL/ID or Token permissions. Message: {error_msg}")
+            logger.error(
+                f"Not Found (404). Check URL/ID or Token permissions. Message: {error_msg}"
+            )
         elif code == 429:
             logger.error("Too Many Requests (429). You are being rate-limited.")
             if "Retry-After" in response.headers:
@@ -209,7 +233,9 @@ class GitAgent(abc.ABC):
         if raise_exception:
             raise ValueError(f"API operation '{action}' failed with status {code}.")
         else:
-            logger.warning(f"Non-critical API error during '{action}' (Status {code}). Continuing execution.")
+            logger.warning(
+                f"Non-critical API error during '{action}' (Status {code}). Continuing execution."
+            )
 
     def _check_branch_existence(self, branch: str = "osa_tool") -> bool:
         """
@@ -255,7 +281,9 @@ class GitAgent(abc.ABC):
             branch = self.branch_name
 
         try:
-            logger.info(f"Cloning existing branch '{branch}' from {self.fork_url or self.repo_url}...")
+            logger.info(
+                f"Cloning existing branch '{branch}' from {self.fork_url or self.repo_url}..."
+            )
             self.repo = Repo.clone_from(
                 url=self._get_auth_url(self.fork_url or self.repo_url),
                 to_path=self.clone_dir,
@@ -343,11 +371,15 @@ class GitAgent(abc.ABC):
 
         if os.path.exists(self.clone_dir):
             try:
-                logger.info(f"Repository already exists at {self.clone_dir}. Initializing...")
+                logger.info(
+                    f"Repository already exists at {self.clone_dir}. Initializing..."
+                )
                 self.repo = Repo(self.clone_dir)
                 logger.info("Repository initialized from existing directory")
             except InvalidGitRepositoryError:
-                logger.error(f"Directory {self.clone_dir} exists but is not a valid Git repository")
+                logger.error(
+                    f"Directory {self.clone_dir} exists but is not a valid Git repository"
+                )
                 raise
 
         elif self._check_branch_existence(None):
@@ -355,7 +387,9 @@ class GitAgent(abc.ABC):
         else:
             self._clone_default_branch()
 
-    def get_attachment_branch_files(self, branch: str = "osa_tool_attachments") -> List[str]:
+    def get_attachment_branch_files(
+        self, branch: str = "osa_tool_attachments"
+    ) -> List[str]:
         """Gets list of report files from attachment branch.
 
         Args:
@@ -365,7 +399,9 @@ class GitAgent(abc.ABC):
             List of report filenames found in the branch.
         """
         try:
-            remote_refs = self.repo.git.ls_remote("--heads", self._get_unauth_url(self.fork_url or self.repo_url))
+            remote_refs = self.repo.git.ls_remote(
+                "--heads", self._get_unauth_url(self.fork_url or self.repo_url)
+            )
 
             if f"refs/heads/{branch}" not in remote_refs:
                 return []
@@ -373,7 +409,9 @@ class GitAgent(abc.ABC):
             self.repo.git.fetch("origin", f"{branch}:{branch}_tmp", depth=1)
 
             files_output = self.repo.git.ls_tree("-r", "--name-only", f"{branch}_tmp")
-            report_files = [f for f in files_output.split("\n") if f and f.endswith("report.pdf")]
+            report_files = [
+                f for f in files_output.split("\n") if f and f.endswith("report.pdf")
+            ]
 
             self.repo.git.branch("-D", f"{branch}_tmp")
 
@@ -436,7 +474,9 @@ class GitAgent(abc.ABC):
                     logger.info(self.pr_report_body)
                 return False
             elif "bad tree object" in stderr or "invalid object" in stderr:
-                logger.warning("Git index corruption detected. Attempting to repair and retry...")
+                logger.warning(
+                    "Git index corruption detected. Attempting to repair and retry..."
+                )
                 try:
                     self.repo.git.reset()  # reset to staging area
                     self.repo.git.add(".")  # re-indexing all the files again
@@ -495,7 +535,9 @@ class GitAgent(abc.ABC):
 
         with open(os.path.join(self.clone_dir, report_filename), "wb") as f:
             f.write(report_content)
-        self.commit_and_push_changes(branch=report_branch, commit_message=commit_message, force=True)
+        self.commit_and_push_changes(
+            branch=report_branch, commit_message=commit_message, force=True
+        )
 
         self.create_and_checkout_branch(self.branch_name)
 
@@ -523,7 +565,9 @@ class GitAgent(abc.ABC):
             ValueError: If the Git token is not set or inappropriate platform used.
         """
         if not self.token:
-            raise ValueError("Git-platform token is required to fill repository's 'About' section.")
+            raise ValueError(
+                "Git-platform token is required to fill repository's 'About' section."
+            )
         if not self.fork_url:
             raise ValueError("Fork URL is not set. Please create a fork first.")
 
@@ -602,7 +646,13 @@ class GitAgent(abc.ABC):
 
 
 class LocalGitAgent(GitAgent):
-    def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool", author: str = None):
+    def __init__(
+        self,
+        repo_url: str,
+        repo_branch_name: str = None,
+        branch_name: str = "osa_tool",
+        author: str = None,
+    ):
         if is_path(repo_url):
             if os.path.isdir(repo_url):
                 super().__init__(repo_url, repo_branch_name, branch_name, author)
@@ -681,13 +731,19 @@ class GitHubAgent(GitAgent):
             logger.info(f"GitHub repository '{base_repo}' is already starred.")
             return
         elif response_check.status_code != 404:
-            self._handle_api_error(response_check, "checking star status", raise_exception=False)
+            self._handle_api_error(
+                response_check, "checking star status", raise_exception=False
+            )
 
         response_star = requests.put(url, headers=headers)
         if response_star.status_code == 204:
-            logger.info(f"GitHub repository '{base_repo}' has been starred successfully.")
+            logger.info(
+                f"GitHub repository '{base_repo}' has been starred successfully."
+            )
         else:
-            self._handle_api_error(response_star, "starring repository", raise_exception=False)
+            self._handle_api_error(
+                response_star, "starring repository", raise_exception=False
+            )
 
     def _check_github_branch_exists(self, branch: str) -> bool:
         """Check if branch exists on GitHub using API."""
@@ -712,7 +768,9 @@ class GitHubAgent(GitAgent):
             elif response.status_code == 404:
                 return False
             else:
-                logger.warning(f"GitHub API returned {response.status_code} for branch check")
+                logger.warning(
+                    f"GitHub API returned {response.status_code} for branch check"
+                )
                 return False
         except Exception as e:
             logger.warning(f"Failed to check GitHub branch: {e}")
@@ -730,9 +788,13 @@ class GitHubAgent(GitAgent):
         if response.status_code == 201:
             logger.info(f"Successfully posted a comment to PR #{pr_number}.")
         else:
-            logger.error(f"Failed to post a comment to PR #{pr_number}: {response.status_code} - {response.text}")
+            logger.error(
+                f"Failed to post a comment to PR #{pr_number}: {response.status_code} - {response.text}"
+            )
 
-    def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
+    def create_pull_request(
+        self, title: str = None, body: str = None, changes: bool = False
+    ) -> None:
         """Creates or updates a pull request on GitHub.
 
         This method implements intelligent PR management:
@@ -747,7 +809,9 @@ class GitHubAgent(GitAgent):
             body: Optional body/description for the PR.
         """
         if not self.token:
-            raise ValueError("GIT_TOKEN or GITHUB_TOKEN token is required to create a pull request.")
+            raise ValueError(
+                "GIT_TOKEN or GITHUB_TOKEN token is required to create a pull request."
+            )
 
         base_repo = get_base_repo_url(self.repo_url)
         head_branch = f"{self.fork_url.split('/')[-2]}:{self.branch_name}"
@@ -784,7 +848,11 @@ class GitHubAgent(GitAgent):
                 new_reports = report_pattern.findall(self.pr_report_body)
                 all_reports = sorted(list(set(old_reports + new_reports)))
 
-                clean_body = report_pattern.sub("", old_pr_body).replace(self.agent_signature, "").strip()
+                clean_body = (
+                    report_pattern.sub("", old_pr_body)
+                    .replace(self.agent_signature, "")
+                    .strip()
+                )
 
                 updated_body = clean_body
                 if all_reports:
@@ -794,11 +862,19 @@ class GitHubAgent(GitAgent):
                 update_url = f"{url}/{pr_number}"
                 update_data = {"body": updated_body.strip()}
 
-                update_response = requests.patch(update_url, json=update_data, headers=headers)
+                update_response = requests.patch(
+                    update_url, json=update_data, headers=headers
+                )
                 if update_response.status_code == 200:
-                    logger.info(f"Successfully updated PR #{pr_number} with new reports.")
+                    logger.info(
+                        f"Successfully updated PR #{pr_number} with new reports."
+                    )
                 else:
-                    self._handle_api_error(update_response, f"updating PR #{pr_number}", raise_exception=False)
+                    self._handle_api_error(
+                        update_response,
+                        f"updating PR #{pr_number}",
+                        raise_exception=False,
+                    )
         elif changes:
             report_files = self.get_attachment_branch_files()
             report_branch = "osa_tool_attachments"
@@ -821,9 +897,13 @@ class GitHubAgent(GitAgent):
 
             response = requests.post(url, json=pr_data, headers=headers)
             if response.status_code == 201:
-                logger.info(f"GitHub pull request created successfully: {response.json()['html_url']}")
+                logger.info(
+                    f"GitHub pull request created successfully: {response.json()['html_url']}"
+                )
             else:
-                self._handle_api_error(response, "creating pull request", raise_exception=True)
+                self._handle_api_error(
+                    response, "creating pull request", raise_exception=True
+                )
 
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
         url = f"https://api.github.com/repos/{repo_path}"
@@ -839,17 +919,27 @@ class GitHubAgent(GitAgent):
         }
         response = requests.patch(url, headers=headers, json=about_data)
         if response.status_code in {200, 201}:
-            logger.info(f"Successfully updated GitHub repository description and homepage for '{repo_path}'.")
+            logger.info(
+                f"Successfully updated GitHub repository description and homepage for '{repo_path}'."
+            )
         else:
-            self._handle_api_error(response, f"updating description for '{repo_path}'", raise_exception=False)
+            self._handle_api_error(
+                response,
+                f"updating description for '{repo_path}'",
+                raise_exception=False,
+            )
 
         url = f"https://api.github.com/repos/{repo_path}/topics"
         topics_data = {"names": about_content["topics"]}
         response = requests.put(url, headers=headers, json=topics_data)
         if response.status_code in {200, 201}:
-            logger.info(f"Successfully updated GitHub repository topics for '{repo_path}'")
+            logger.info(
+                f"Successfully updated GitHub repository topics for '{repo_path}'"
+            )
         else:
-            self._handle_api_error(response, f"updating topics for '{repo_path}'", raise_exception=False)
+            self._handle_api_error(
+                response, f"updating topics for '{repo_path}'", raise_exception=False
+            )
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
         return f"{self.fork_url}/blob/{report_branch}/{report_filename}"
@@ -877,12 +967,16 @@ class GitHubAgent(GitAgent):
                     if (total := data.get("total_count", 0)) > 0:
                         if total == 1:
                             valid_topic = data.get("items")[0].get("name")
-                            logger.debug(f"Applied transformation for topic: '{topic} -> {valid_topic}'")
+                            logger.debug(
+                                f"Applied transformation for topic: '{topic} -> {valid_topic}'"
+                            )
                         else:
                             valid_topic = topic
                         validated_topics.append(valid_topic)
                     else:
-                        logger.debug(f"Generated topic '{topic}' is not valid, skipping")
+                        logger.debug(
+                            f"Generated topic '{topic}' is not valid, skipping"
+                        )
                 elif response.status_code == 403:
                     logger.warning("Rate limit exceeded, waiting 60 seconds")
                     time.sleep(60)
@@ -907,7 +1001,9 @@ class GitLabAgent(GitAgent):
     def create_fork(self) -> None:
         if not self.token:
             raise ValueError("GitLab token is required to create a fork.")
-        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
+        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(
+            1
+        )
         base_repo = get_base_repo_url(self.repo_url)
         project_path = base_repo.replace("/", "%2F")
 
@@ -919,7 +1015,9 @@ class GitLabAgent(GitAgent):
         user_url = f"{gitlab_instance}/api/v4/user"
         user_response = requests.get(user_url, headers=headers)
         if user_response.status_code != 200:
-            logger.error(f"Failed to get user info: {user_response.status_code} - {user_response.text}")
+            logger.error(
+                f"Failed to get user info: {user_response.status_code} - {user_response.text}"
+            )
             raise ValueError("Failed to get user information.")
 
         user_data = user_response.json()
@@ -946,7 +1044,9 @@ class GitLabAgent(GitAgent):
         forks_url = f"{gitlab_instance}/api/v4/projects/{project_path}/forks"
         forks_response = requests.get(forks_url, headers=headers)
         if forks_response.status_code != 200:
-            logger.error(f"Failed to get forks: {forks_response.status_code} - {forks_response.text}")
+            logger.error(
+                f"Failed to get forks: {forks_response.status_code} - {forks_response.text}"
+            )
             raise ValueError("Failed to get forks list.")
 
         forks = forks_response.json()
@@ -965,14 +1065,18 @@ class GitLabAgent(GitAgent):
             self.fork_url = fork_data["web_url"]
             logger.info(f"GitLab fork created successfully: {self.fork_url}")
         else:
-            logger.error(f"Failed to create GitLab fork: {fork_response.status_code} - {fork_response.text}")
+            logger.error(
+                f"Failed to create GitLab fork: {fork_response.status_code} - {fork_response.text}"
+            )
             raise ValueError("Failed to create fork.")
 
     def star_repository(self) -> None:
         if not self.token:
             raise ValueError("GitLab token is required to star the repository.")
 
-        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
+        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(
+            1
+        )
         base_repo = get_base_repo_url(self.repo_url)
         project_path = base_repo.replace("/", "%2F")
 
@@ -988,14 +1092,20 @@ class GitLabAgent(GitAgent):
             logger.info(f"GitLab repository '{base_repo}' is already starred.")
             return
         elif response.status_code == 201:
-            logger.info(f"GitLab repository '{base_repo}' has been starred successfully.")
+            logger.info(
+                f"GitLab repository '{base_repo}' has been starred successfully."
+            )
             return
         else:
-            logger.error(f"Failed to star GitLab repository: {response.status_code} - {response.text}")
+            logger.error(
+                f"Failed to star GitLab repository: {response.status_code} - {response.text}"
+            )
 
     def _check_gitlab_branch_exists(self, branch: str) -> bool:
         """Check if branch exists on GitLab using API."""
-        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
+        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(
+            1
+        )
 
         if not self.fork_url:
             repo_to_check = get_base_repo_url(self.repo_url)
@@ -1018,14 +1128,18 @@ class GitLabAgent(GitAgent):
             elif response.status_code == 404:
                 return False
             else:
-                logger.warning(f"GitLab API returned {response.status_code} for branch check")
+                logger.warning(
+                    f"GitLab API returned {response.status_code} for branch check"
+                )
                 return False
         except Exception as e:
             logger.warning(f"Failed to check GitLab branch: {e}")
             return False
 
     def post_note(self, project_id: int, mr_iid: int, note_body: str):
-        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
+        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(
+            1
+        )
         url = f"{gitlab_instance}/api/v4/projects/{project_id}/merge_requests/{mr_iid}/notes"
         headers = {
             "Authorization": f"Bearer {self.token}",
@@ -1036,9 +1150,13 @@ class GitLabAgent(GitAgent):
         if response.status_code == 201:
             logger.info(f"Successfully posted a note to MR !{mr_iid}.")
         else:
-            logger.error(f"Failed to post a note to MR !{mr_iid}: {response.status_code} - {response.text}")
+            logger.error(
+                f"Failed to post a note to MR !{mr_iid}: {response.status_code} - {response.text}"
+            )
 
-    def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
+    def create_pull_request(
+        self, title: str = None, body: str = None, changes: bool = False
+    ) -> None:
         """Creates or updates a merge request on GitLab.
 
         This method implements intelligent MR management:
@@ -1060,7 +1178,9 @@ class GitLabAgent(GitAgent):
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
         }
-        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
+        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(
+            1
+        )
         base_repo = get_base_repo_url(self.repo_url)
         source_project_path = get_base_repo_url(self.fork_url).replace("/", "%2F")
         target_project_path = base_repo.replace("/", "%2F")
@@ -1068,14 +1188,18 @@ class GitLabAgent(GitAgent):
         project_url = f"{gitlab_instance}/api/v4/projects/{target_project_path}"
         proj_response = requests.get(project_url, headers=headers)
         if proj_response.status_code != 200:
-            raise ValueError(f"Failed to get project info: {proj_response.status_code} - {proj_response.text}")
+            raise ValueError(
+                f"Failed to get project info: {proj_response.status_code} - {proj_response.text}"
+            )
         target_project_id = proj_response.json()["id"]
 
         last_commit = self.repo.head.commit
         mr_title = title if title else last_commit.message
         new_body_content = (body if body else "").strip()
 
-        mr_url = f"{gitlab_instance}/api/v4/projects/{source_project_path}/merge_requests"
+        mr_url = (
+            f"{gitlab_instance}/api/v4/projects/{source_project_path}/merge_requests"
+        )
         params = {
             "state": "opened",
             "source_branch": self.branch_name,
@@ -1101,7 +1225,11 @@ class GitLabAgent(GitAgent):
                 new_reports = report_pattern.findall(self.pr_report_body)
                 all_reports = sorted(list(set(old_reports + new_reports)))
 
-                clean_body = report_pattern.sub("", old_mr_body).replace(self.agent_signature, "").strip()
+                clean_body = (
+                    report_pattern.sub("", old_mr_body)
+                    .replace(self.agent_signature, "")
+                    .strip()
+                )
 
                 updated_body = clean_body
                 if all_reports:
@@ -1111,7 +1239,9 @@ class GitLabAgent(GitAgent):
                 update_url = f"{gitlab_instance}/api/v4/projects/{target_project_id}/merge_requests/{mr_iid}"
                 update_data = {"description": updated_body.strip()}
 
-                update_response = requests.put(update_url, json=update_data, headers=headers)
+                update_response = requests.put(
+                    update_url, json=update_data, headers=headers
+                )
                 if update_response.status_code == 200:
                     logger.info(f"Successfully updated MR !{mr_iid} with new reports.")
                 else:
@@ -1141,14 +1271,20 @@ class GitLabAgent(GitAgent):
 
             response = requests.post(mr_url, json=mr_data, headers=headers)
             if response.status_code == 201:
-                logger.info(f"GitLab merge request created successfully: {response.json()['web_url']}")
+                logger.info(
+                    f"GitLab merge request created successfully: {response.json()['web_url']}"
+                )
             else:
-                logger.error(f"Failed to create merge request: {response.status_code} - {response.text}")
+                logger.error(
+                    f"Failed to create merge request: {response.status_code} - {response.text}"
+                )
                 if "merge request already exists" not in response.text:
                     raise ValueError("Failed to create merge request.")
 
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
-        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
+        gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(
+            1
+        )
         project_path = repo_path.replace("/", "%2F")
 
         url = f"{gitlab_instance}/api/v4/projects/{project_path}"
@@ -1162,9 +1298,13 @@ class GitLabAgent(GitAgent):
         }
         response = requests.put(url, headers=headers, json=about_data)
         if response.status_code in {200, 201}:
-            logger.info(f"Successfully updated GitLab repository description and topics.")
+            logger.info(
+                f"Successfully updated GitLab repository description and topics."
+            )
         else:
-            logger.error(f"{response.status_code} - Failed to update GitLab repository metadata.")
+            logger.error(
+                f"{response.status_code} - Failed to update GitLab repository metadata."
+            )
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
         return f"{self.fork_url}/-/blob/{report_branch}/{report_filename}"
@@ -1234,21 +1374,30 @@ class GitverseAgent(GitAgent):
         user_url = "https://api.gitverse.ru/user"
         user_response = requests.get(user_url, headers=headers)
         if user_response.status_code != 200:
-            logger.error(f"Failed to get user info: {user_response.status_code} - {user_response.text}")
+            logger.error(
+                f"Failed to get user info: {user_response.status_code} - {user_response.text}"
+            )
             raise ValueError("Failed to get user information.")
         current_login = user_response.json().get("login", "")
 
         if current_login == self.metadata.owner:
             self.fork_url = self.repo_url
-            logger.info(f"User '{current_login}' already owns the repository. Using original URL: {self.fork_url}")
+            logger.info(
+                f"User '{current_login}' already owns the repository. Using original URL: {self.fork_url}"
+            )
             return
 
-        fork_check_url = f"https://api.gitverse.ru/repos/{current_login}/{self.metadata.name}"
+        fork_check_url = (
+            f"https://api.gitverse.ru/repos/{current_login}/{self.metadata.name}"
+        )
         fork_check_response = requests.get(fork_check_url, headers=headers)
         if fork_check_response.status_code == 200:
             fork_data = fork_check_response.json()
-            if fork_data.get("fork") and fork_data.get("parent", {}).get("full_name") == base_repo:
-                self.fork_url = f'https://gitverse.ru/{fork_data["full_name"]}'
+            if (
+                fork_data.get("fork")
+                and fork_data.get("parent", {}).get("full_name") == base_repo
+            ):
+                self.fork_url = f"https://gitverse.ru/{fork_data['full_name']}"
                 logger.info(f"Fork already exists: {self.fork_url}")
                 return
 
@@ -1258,7 +1407,9 @@ class GitverseAgent(GitAgent):
             self.fork_url = "https://gitverse.ru/" + fork_response.json()["full_name"]
             logger.info(f"Gitverse fork created successfully: {self.fork_url}")
         else:
-            logger.error(f"Failed to create Gitverse fork: {fork_response.status_code} - {fork_response.text}")
+            logger.error(
+                f"Failed to create Gitverse fork: {fork_response.status_code} - {fork_response.text}"
+            )
             raise ValueError("Failed to create fork.")
 
     def star_repository(self) -> None:
@@ -1277,14 +1428,20 @@ class GitverseAgent(GitAgent):
             logger.info(f"Gitverse repository '{base_repo}' is already starred.")
             return
         elif response_check.status_code != 404:
-            logger.error(f"Failed to check star status: {response_check.status_code} - {response_check.text}")
+            logger.error(
+                f"Failed to check star status: {response_check.status_code} - {response_check.text}"
+            )
             raise ValueError("Failed to check star status.")
 
         response_star = requests.put(url, headers=headers)
         if response_star.status_code == 204:
-            logger.info(f"Gitverse repository '{base_repo}' has been starred successfully.")
+            logger.info(
+                f"Gitverse repository '{base_repo}' has been starred successfully."
+            )
         else:
-            logger.error(f"Failed to star Gitverse repository: {response_star.status_code} - {response_star.text}")
+            logger.error(
+                f"Failed to star Gitverse repository: {response_star.status_code} - {response_star.text}"
+            )
 
     def _check_gitverse_branch_exists(self, branch: str) -> bool:
         """Check if branch exists on Gitverse using API."""
@@ -1308,13 +1465,17 @@ class GitverseAgent(GitAgent):
                 branches = response.json()
                 return any(b.get("name") == branch for b in branches)
             else:
-                logger.warning(f"Gitverse API returned {response.status_code} for branch check")
+                logger.warning(
+                    f"Gitverse API returned {response.status_code} for branch check"
+                )
                 return False
         except Exception as e:
             logger.warning(f"Failed to check Gitverse branch: {e}")
             return False
 
-    def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
+    def create_pull_request(
+        self, title: str = None, body: str = None, changes: bool = False
+    ) -> None:
         """Creates or updates a pull request on Gitverse.
 
         This method implements intelligent PR management:
@@ -1381,13 +1542,17 @@ class GitverseAgent(GitAgent):
             existing_pr = prs[0]
             pr_number = existing_pr.get("number")
             pr_url = f"https://gitverse.ru/{base_repo}/pulls/{pr_number}"
-            logger.info(f"Pull request already exists. Updating PR #{pr_number}: {pr_url}")
+            logger.info(
+                f"Pull request already exists. Updating PR #{pr_number}: {pr_url}"
+            )
 
             old_body = existing_pr.get("body", "") or ""
 
             clean_text = remove_reports(strip_signature(old_body))
 
-            all_reports = uniq_keep_order(extract_reports(old_body) + extract_reports(self.pr_report_body))
+            all_reports = uniq_keep_order(
+                extract_reports(old_body) + extract_reports(self.pr_report_body)
+            )
 
             if new_body_content and new_body_content not in clean_text:
                 clean_text = (clean_text + "\n\n" + new_body_content).strip()
@@ -1396,12 +1561,16 @@ class GitverseAgent(GitAgent):
 
             update_url = f"{url}/{pr_number}"
             update_data = {"title": pr_title, "body": updated_body}
-            update_response = requests.patch(update_url, json=update_data, headers=headers)
+            update_response = requests.patch(
+                update_url, json=update_data, headers=headers
+            )
 
             if update_response.status_code == 200:
                 logger.info(f"Pull request #{pr_number} updated successfully.")
             else:
-                logger.error(f"Failed to update pull request: {update_response.status_code} - {update_response.text}")
+                logger.error(
+                    f"Failed to update pull request: {update_response.status_code} - {update_response.text}"
+                )
 
         elif changes:
             report_files = self.get_attachment_branch_files()
@@ -1415,7 +1584,12 @@ class GitverseAgent(GitAgent):
             reports = uniq_keep_order(extract_reports(self.pr_report_body))
             pr_body = build_body(new_body_content, reports)
 
-            pr_data = {"title": pr_title, "head": self.branch_name, "base": self.base_branch, "body": pr_body}
+            pr_data = {
+                "title": pr_title,
+                "head": self.branch_name,
+                "base": self.base_branch,
+                "body": pr_body,
+            }
             response = requests.post(url, json=pr_data, headers=headers)
 
             if response.status_code == 201:
@@ -1423,7 +1597,9 @@ class GitverseAgent(GitAgent):
                 pr_url = f"https://gitverse.ru/{base_repo}/pulls/{pr_number}"
                 logger.info(f"Gitverse pull request created successfully: {pr_url}")
             else:
-                logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
+                logger.error(
+                    f"Failed to create pull request: {response.status_code} - {response.text}"
+                )
                 if "pull request already exists" not in response.text:
                     raise ValueError("Failed to create pull request.")
 
@@ -1442,7 +1618,9 @@ class GitverseAgent(GitAgent):
         raise ValueError(f"Unsupported repository URL format for Gitverse: {repo_url}")
 
     def validate_topics(self, topics: List[str]) -> List[str]:
-        logger.warning("Topic validation is not yet implemented for Gitverse. Returning original topics list.")
+        logger.warning(
+            "Topic validation is not yet implemented for Gitverse. Returning original topics list."
+        )
         return topics
 
 
@@ -1469,12 +1647,16 @@ class SourceCraftAgent(GitAgent):
         response = requests.get(f"{self.API_BASE}/user", headers=self._get_headers())
         if response.status_code == 200:
             return response.json().get("username", "")
-        logger.warning(f"Could not fetch SourceCraft user profile: {response.status_code}")
+        logger.warning(
+            f"Could not fetch SourceCraft user profile: {response.status_code}"
+        )
         return ""
 
     def _extract_slugs(self) -> tuple[str, str]:
         """Extracts org_slug and repo_slug from the repository URL."""
-        clean_url = self.repo_url[:-4] if self.repo_url.endswith(".git") else self.repo_url
+        clean_url = (
+            self.repo_url[:-4] if self.repo_url.endswith(".git") else self.repo_url
+        )
         parts = clean_url.strip("/").split("/")
         return parts[-2], parts[-1]
 
@@ -1490,7 +1672,9 @@ class SourceCraftAgent(GitAgent):
 
         if org_slug == current_username:
             self.fork_url = self.repo_url
-            logger.info(f"User '{current_username}' already owns the repository. Using original URL.")
+            logger.info(
+                f"User '{current_username}' already owns the repository. Using original URL."
+            )
             return
 
         url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/fork"
@@ -1500,26 +1684,40 @@ class SourceCraftAgent(GitAgent):
 
         if response.status_code in {200, 201, 202}:
             repo_data = response.json()
-            self.fork_url = repo_data.get("web_url", f"https://sourcecraft.dev/{current_username}/{repo_slug}")
+            self.fork_url = repo_data.get(
+                "web_url", f"https://sourcecraft.dev/{current_username}/{repo_slug}"
+            )
             self.fork_id = repo_data.get("id")
             logger.info(f"SourceCraft fork created successfully: {self.fork_url}")
         else:
-            self._handle_api_error(response, "creating SourceCraft fork", raise_exception=True)
+            self._handle_api_error(
+                response, "creating SourceCraft fork", raise_exception=True
+            )
 
     def star_repository(self) -> None:
-        logger.warning("Starring repositories is not supported via SourceCraft public API yet.")
+        logger.warning(
+            "Starring repositories is not supported via SourceCraft public API yet."
+        )
 
     def post_comment(self, pr_slug: str, comment_body: str) -> None:
         org_slug, repo_slug = self._extract_slugs()
         url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/pulls/{pr_slug}/comments"
-        response = requests.post(url, headers=self._get_headers(), json={"body": comment_body})
+        response = requests.post(
+            url, headers=self._get_headers(), json={"body": comment_body}
+        )
         if response.status_code == 201:
             logger.info(f"Successfully posted a comment to PR {pr_slug}.")
         else:
-            self._handle_api_error(response, f"posting comment to PR {pr_slug}", raise_exception=False)
+            self._handle_api_error(
+                response, f"posting comment to PR {pr_slug}", raise_exception=False
+            )
 
     def create_pull_request(
-        self, title: str = None, body: str = None, changes: bool = False, target_branch: str = None
+        self,
+        title: str = None,
+        body: str = None,
+        changes: bool = False,
+        target_branch: str = None,
     ) -> None:
         if not self.token:
             raise ValueError("SourceCraft token is required to create a pull request.")
@@ -1538,7 +1736,11 @@ class SourceCraftAgent(GitAgent):
         params = {"filter": ql_filter}
 
         list_response = requests.get(url, headers=headers, params=params)
-        prs = list_response.json().get("pull_requests", []) if list_response.status_code == 200 else []
+        prs = (
+            list_response.json().get("pull_requests", [])
+            if list_response.status_code == 200
+            else []
+        )
 
         if prs:
             existing_pr = prs[0]
@@ -1556,7 +1758,11 @@ class SourceCraftAgent(GitAgent):
                 new_reports = report_pattern.findall(self.pr_report_body)
                 all_reports = sorted(list(set(old_reports + new_reports)))
 
-                clean_body = report_pattern.sub("", old_description).replace(self.agent_signature, "").strip()
+                clean_body = (
+                    report_pattern.sub("", old_description)
+                    .replace(self.agent_signature, "")
+                    .strip()
+                )
 
                 updated_body = clean_body
                 if all_reports:
@@ -1564,12 +1770,18 @@ class SourceCraftAgent(GitAgent):
                 updated_body += self.agent_signature
 
                 update_url = f"{url}/{pr_slug}"
-                update_res = requests.patch(update_url, headers=headers, json={"description": updated_body.strip()})
+                update_res = requests.patch(
+                    update_url,
+                    headers=headers,
+                    json={"description": updated_body.strip()},
+                )
 
                 if update_res.status_code == 200:
                     logger.info(f"Successfully updated PR {pr_slug} with new reports.")
                 else:
-                    self._handle_api_error(update_res, f"updating PR {pr_slug}", raise_exception=False)
+                    self._handle_api_error(
+                        update_res, f"updating PR {pr_slug}", raise_exception=False
+                    )
 
         elif changes:
             report_files = self.get_attachment_branch_files()
@@ -1599,11 +1811,15 @@ class SourceCraftAgent(GitAgent):
                 pr_slug = response.json().get("slug", "unknown")
                 logger.info(f"SourceCraft pull request created successfully: {pr_slug}")
             else:
-                self._handle_api_error(response, "creating pull request", raise_exception=True)
+                self._handle_api_error(
+                    response, "creating pull request", raise_exception=True
+                )
 
     def update_about_section(self, about_content: dict) -> None:
         if not self.token:
-            raise ValueError("Git-platform token is required to fill repository's 'About' section.")
+            raise ValueError(
+                "Git-platform token is required to fill repository's 'About' section."
+            )
         if not self.fork_url:
             raise ValueError("Fork URL is not set. Please create a fork first.")
 
@@ -1611,7 +1827,9 @@ class SourceCraftAgent(GitAgent):
         logger.info(f"Updating 'About' section for base repository - {self.repo_url}")
         self._update_about_section(f"{org_slug}/{repo_slug}", about_content)
 
-        clean_fork = self.fork_url[:-4] if self.fork_url.endswith(".git") else self.fork_url
+        clean_fork = (
+            self.fork_url[:-4] if self.fork_url.endswith(".git") else self.fork_url
+        )
         fork_parts = clean_fork.strip("/").split("/")
         fork_path = f"{fork_parts[-2]}/{fork_parts[-1]}"
         logger.info(f"Updating 'About' section for the fork - {self.fork_url}")
@@ -1626,9 +1844,15 @@ class SourceCraftAgent(GitAgent):
 
         response = requests.patch(url, headers=self._get_headers(), json=about_data)
         if response.status_code in {200, 201}:
-            logger.info(f"Successfully updated SourceCraft repository description for '{repo_path}'.")
+            logger.info(
+                f"Successfully updated SourceCraft repository description for '{repo_path}'."
+            )
         else:
-            self._handle_api_error(response, f"updating description for '{repo_path}'", raise_exception=False)
+            self._handle_api_error(
+                response,
+                f"updating description for '{repo_path}'",
+                raise_exception=False,
+            )
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
         return f"{self.fork_url}/browse/{report_filename}?rev={report_branch}"
@@ -1641,7 +1865,9 @@ class SourceCraftAgent(GitAgent):
         if match:
             path = match.group(1).rstrip("/").removesuffix(".git")
             return f"https://git:{self.token}@git.sourcecraft.dev/{path}.git"
-        raise ValueError(f"Unsupported repository URL format for SourceCraft: {repo_url}")
+        raise ValueError(
+            f"Unsupported repository URL format for SourceCraft: {repo_url}"
+        )
 
     def _check_sourcecraft_branch_exists(self, branch: str) -> bool:
         """Check if branch exists on SourceCraft using API."""
@@ -1653,19 +1879,25 @@ class SourceCraftAgent(GitAgent):
                 branches = response.json().get("branches", [])
                 return any(b.get("name") == branch for b in branches)
             else:
-                logger.warning(f"SourceCraft API returned {response.status_code} for branch check")
+                logger.warning(
+                    f"SourceCraft API returned {response.status_code} for branch check"
+                )
                 return False
         except Exception as e:
             logger.warning(f"Failed to check SourceCraft branch: {e}")
             return False
 
-    def get_attachment_branch_files(self, branch: str = "osa_tool_attachments") -> List[str]:
+    def get_attachment_branch_files(
+        self, branch: str = "osa_tool_attachments"
+    ) -> List[str]:
         try:
             if not self._check_sourcecraft_branch_exists(branch):
                 return []
             self.repo.git.fetch("origin", f"{branch}:{branch}_tmp", depth=1)
             files_output = self.repo.git.ls_tree("-r", "--name-only", f"{branch}_tmp")
-            report_files = [f for f in files_output.split("\n") if f and f.endswith("report.pdf")]
+            report_files = [
+                f for f in files_output.split("\n") if f and f.endswith("report.pdf")
+            ]
             self.repo.git.branch("-D", f"{branch}_tmp")
             logger.debug(f"Found {len(report_files)} report files in branch '{branch}'")
             return report_files
