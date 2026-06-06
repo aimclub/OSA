@@ -5,6 +5,7 @@ from osa_tool.tools.repository_analysis.scorecard import (
     ScorecardCheck,
     ScorecardResult,
     ScorecardRunner,
+    _download_scorecard,
 )
 
 SAMPLE_JSON = json.dumps(
@@ -28,7 +29,7 @@ def test_run_returns_none_when_binary_missing():
     runner = ScorecardRunner("/some/repo")
 
     # Act
-    with patch("shutil.which", return_value=None):
+    with patch("osa_tool.tools.repository_analysis.scorecard._resolve_scorecard_binary", return_value=None):
         result = runner.run()
 
     # Assert
@@ -99,9 +100,24 @@ def test_run_returns_none_on_empty_stdout():
     mock_proc.stderr = "some error"
 
     # Act
-    with patch("shutil.which", return_value="/usr/bin/scorecard"):
+    with patch(
+        "osa_tool.tools.repository_analysis.scorecard._resolve_scorecard_binary", return_value="/usr/bin/scorecard"
+    ):
         with patch("subprocess.run", return_value=mock_proc):
             result = runner.run()
 
     # Assert
     assert result is None
+
+
+def test_download_scorecard_returns_none_on_network_error(tmp_path):
+    # Arrange
+    dest = tmp_path / "scorecard"
+
+    # Act
+    with patch("urllib.request.urlretrieve", side_effect=OSError("network error")):
+        result = _download_scorecard(dest)
+
+    # Assert
+    assert result is None
+    assert not dest.exists()

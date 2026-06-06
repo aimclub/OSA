@@ -8,6 +8,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import (
+    Flowable,
+    Indenter,
     ListFlowable,
     ListItem,
     Paragraph,
@@ -15,7 +17,6 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
-    Flowable,
 )
 
 from osa_tool.config.settings import ConfigManager
@@ -36,13 +37,14 @@ from osa_tool.utils.utils import osa_project_root
 
 
 class AbstractReportGenerator(ABC):
-    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent):
+    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent, run_scorecard: bool = False):
         self.sourcerank = SourceRank(config_manager)
         self.git_agent = git_agent
         self.metadata = self.git_agent.metadata
         self.repo_url = config_manager.get_git_settings().repository
         self.osa_url = "https://github.com/aimclub/OSA"
         self.repo_path: str = git_agent.clone_dir
+        self.run_scorecard = run_scorecard
         self.scorecard_result: ScorecardResult | None = None
 
         self.logo_path = os.path.join(osa_project_root(), "docs", "images", "osa_logo.PNG")
@@ -116,7 +118,7 @@ class AbstractReportGenerator(ABC):
             alignment=1,
         )
 
-        visible = [c for c in self.scorecard_result.checks if c.score != -1]
+        checks = self.scorecard_result.checks
         score_text = f"{self.scorecard_result.aggregate_score:.1f} / 10"
         if self.scorecard_result.date:
             score_text += f"  (as of {self.scorecard_result.date[:10]})"
@@ -125,7 +127,7 @@ class AbstractReportGenerator(ABC):
             Paragraph(f"<b>OpenSSF Scorecard:</b> {score_text}", custom_style),
         ]
 
-        if not visible:
+        if not checks:
             return elements
 
         data = [
@@ -133,7 +135,7 @@ class AbstractReportGenerator(ABC):
                 Paragraph("<b>Check</b>", header_style),
                 Paragraph("<b>Score</b>", header_style),
             ],
-            *[[c.name, str(c.score)] for c in visible],
+            *[[c.name, "N/A" if c.score == -1 else str(c.score)] for c in checks],
         ]
         table = Table(data, colWidths=[160, 76])
         style = [
@@ -146,7 +148,7 @@ class AbstractReportGenerator(ABC):
             ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
             ("GRID", (0, 0), (-1, -1), 1, colors.black),
         ]
-        for row_idx, check in enumerate(visible, start=1):
+        for row_idx, check in enumerate(checks, start=1):
             style.append(
                 (
                     "BACKGROUND",
@@ -156,7 +158,11 @@ class AbstractReportGenerator(ABC):
                 )
             )
         table.setStyle(TableStyle(style))
+        table.hAlign = "LEFT"
+        elements.append(Spacer(0, 8))
+        elements.append(Indenter(-20, 0))
         elements.append(table)
+        elements.append(Indenter(20, 0))
         return elements
 
     def generate_qr_code(self) -> str:
@@ -399,15 +405,20 @@ class AbstractReportGenerator(ABC):
 
 
 class ReportGenerator(AbstractReportGenerator):
-    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent, create_fork: bool):
-        super().__init__(config_manager, git_agent)
+    def __init__(
+        self, config_manager: ConfigManager, git_agent: GitAgent, create_fork: bool, run_scorecard: bool = False
+    ):
+        super().__init__(config_manager, git_agent, run_scorecard)
         self.text_generator = TextGenerator(config_manager, self.metadata)
         self.create_fork = create_fork
         self.events: list[OperationEvent] = []
 
     def run(self) -> dict:
         try:
-            self.scorecard_result = ScorecardRunner(self.repo_path).run()
+            logger.info("run_scorecard=%s for before-report", self.run_scorecard)
+            if self.run_scorecard:
+                self.scorecard_result = ScorecardRunner(self.repo_path).run()
+                logger.info("Scorecard before-result: %s", self.scorecard_result)
             self.build_pdf()
             self.events.append(OperationEvent(kind=EventKind.GENERATED, target=f"{self.filename}"))
             if self.create_fork and os.path.exists(self.output_path):
@@ -504,8 +515,9 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         git_agent: GitAgent,
         create_fork: bool,
         plan: Plan,
+        run_scorecard: bool = False,
     ):
-        super().__init__(config_manager, git_agent)
+        super().__init__(config_manager, git_agent, run_scorecard)
         self.filename = f"{self.metadata.name}_work_summary.pdf"
         self.create_fork = create_fork
         self.output_path = os.path.join(os.getcwd(), self.filename)
@@ -516,7 +528,7 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         self.report_header = "OSA Work Summary"
         self.events: list[OperationEvent] = []
 
-        before_dict = self.task_results.get("report", {}).get("result", {}).get("scorecard")
+        before_dict = self.task_results.get("Report", {}).get("result", {}).get("scorecard")
         self.before_scorecard: ScorecardResult | None = ScorecardResult.from_dict(before_dict) if before_dict else None
 
     def run(self) -> dict:
@@ -528,7 +540,10 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         - each generated report is tracked as an OperationEvent
         """
         try:
-            self.scorecard_result = ScorecardRunner(self.repo_path).run()
+            logger.info("run_scorecard=%s for after-report, repo_path=%s", self.run_scorecard, self.repo_path)
+            if self.run_scorecard:
+                self.scorecard_result = ScorecardRunner(self.repo_path).run()
+                logger.info("Scorecard after-result: %s", self.scorecard_result)
             self.build_pdf()
             self.events.append(OperationEvent(kind=EventKind.GENERATED, target=self.filename))
             if self.create_fork and os.path.exists(self.output_path):
@@ -579,8 +594,6 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         for name in all_names:
             b = before_map[name].score if name in before_map else -1
             a = after_map[name].score if name in after_map else -1
-            if b == -1 and a == -1:
-                continue
             if b != -1 and a != -1:
                 d = a - b
                 d_str = f"+{d}" if d > 0 else str(d)
@@ -629,7 +642,11 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
                 delta_color = colors.lightgreen if d > 0 else (colors.lightcoral if d < 0 else colors.white)
                 style.append(("BACKGROUND", (3, row_idx), (3, row_idx), delta_color))
         table.setStyle(TableStyle(style))
+        table.hAlign = "LEFT"
+        elements.append(Spacer(0, 8))
+        elements.append(Indenter(-20, 0))
         elements.append(table)
+        elements.append(Indenter(20, 0))
         return elements
 
     def body_second_part(self) -> list[Flowable]:

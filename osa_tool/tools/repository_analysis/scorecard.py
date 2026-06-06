@@ -1,10 +1,15 @@
 import json
+import platform
 import shutil
 import subprocess
+import tarfile
+import urllib.request
 from dataclasses import dataclass
+from pathlib import Path
 
 from osa_tool.utils.logger import logger
 
+_SCORECARD_VERSION = "5.5.0"
 SCORECARD_CHECKS = [
     "Binary-Artifacts",
     "Dangerous-Workflow",
@@ -33,13 +38,99 @@ class ScorecardResult:
         return {
             "aggregate_score": self.aggregate_score,
             "date": self.date,
-            "checks": [{"name": c.name, "score": c.score, "reason": c.reason} for c in self.checks],
+            "checks": [
+                {"name": c.name, "score": c.score, "reason": c.reason}
+                for c in self.checks
+            ],
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "ScorecardResult":
-        checks = [ScorecardCheck(name=c["name"], score=c["score"], reason=c["reason"]) for c in data.get("checks", [])]
-        return cls(aggregate_score=data["aggregate_score"], date=data["date"], checks=checks)
+        checks = [
+            ScorecardCheck(name=c["name"], score=c["score"], reason=c["reason"])
+            for c in data.get("checks", [])
+        ]
+        return cls(
+            aggregate_score=data["aggregate_score"], date=data["date"], checks=checks
+        )
+
+
+def _scorecard_cache_dir() -> Path:
+    return Path.home() / ".osa_tool" / "bin"
+
+
+def _local_binary_path() -> Path:
+    # Version is embedded in the filename so that bumping _SCORECARD_VERSION
+    # invalidates an older cached binary instead of silently reusing it.
+    suffix = ".exe" if platform.system() == "Windows" else ""
+    return _scorecard_cache_dir() / f"scorecard-{_SCORECARD_VERSION}{suffix}"
+
+
+def _download_scorecard(dest: Path) -> str | None:
+    """Download the scorecard binary from GitHub Releases and cache it at dest."""
+    system = platform.system().lower()
+    arch_map = {
+        "x86_64": "amd64",
+        "amd64": "amd64",
+        "arm64": "arm64",
+        "aarch64": "arm64",
+    }
+    arch = arch_map.get(platform.machine().lower())
+    if arch is None:
+        logger.warning(
+            "scorecard auto-install: unsupported architecture '%s'. "
+            "Install manually from https://github.com/ossf/scorecard/releases",
+            platform.machine(),
+        )
+        return None
+
+    url = (
+        f"https://github.com/ossf/scorecard/releases/download/"
+        f"v{_SCORECARD_VERSION}/scorecard_{_SCORECARD_VERSION}_{system}_{arch}.tar.gz"
+    )
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.parent / "scorecard_download.tar.gz"
+
+    try:
+        logger.info(
+            "Downloading OpenSSF Scorecard v%s for %s/%s...",
+            _SCORECARD_VERSION,
+            system,
+            arch,
+        )
+        urllib.request.urlretrieve(url, tmp)
+        exe_name = "scorecard.exe" if system == "windows" else "scorecard"
+        with tarfile.open(tmp) as tf:
+            member = tf.extractfile(exe_name)
+            if member is None:
+                raise ValueError(f"{exe_name} not found in archive")
+            dest.write_bytes(member.read())
+        if system != "windows":
+            dest.chmod(0o755)
+        logger.info("Scorecard installed to %s", dest)
+        return str(dest)
+    except Exception as e:
+        logger.warning(
+            "Failed to auto-install scorecard: %s\n"
+            "  Install manually from https://github.com/ossf/scorecard/releases/tag/v%s\n"
+            "  and add to PATH. Scorecard section will be skipped.",
+            e,
+            _SCORECARD_VERSION,
+        )
+        return None
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def _resolve_scorecard_binary() -> str | None:
+    """Return path to scorecard binary: PATH → local cache → auto-download."""
+    binary = shutil.which("scorecard")
+    if binary:
+        return binary
+    local = _local_binary_path()
+    if local.exists():
+        return str(local)
+    return _download_scorecard(local)
 
 
 class ScorecardRunner:
@@ -53,12 +144,8 @@ class ScorecardRunner:
         self.repo_path = repo_path
 
     def run(self) -> ScorecardResult | None:
-        binary = shutil.which("scorecard")
+        binary = _resolve_scorecard_binary()
         if binary is None:
-            logger.warning(
-                "scorecard binary not found on PATH; skipping Scorecard analysis. "
-                "Install from https://github.com/ossf/scorecard/releases"
-            )
             return None
 
         try:
@@ -66,25 +153,30 @@ class ScorecardRunner:
                 [
                     binary,
                     "--local",
-                    self.repo_path,
+                    ".",
                     "--checks",
                     _CHECKS_ARG,
                     "--format",
                     "json",
                 ],
+                cwd=self.repo_path,
                 capture_output=True,
                 text=True,
                 timeout=120,
             )
         except subprocess.TimeoutExpired:
-            logger.warning("scorecard timed out after 120 s; skipping Scorecard analysis")
+            logger.warning(
+                "scorecard timed out after 120 s; skipping Scorecard analysis"
+            )
             return None
         except OSError as e:
             logger.warning("Failed to run scorecard binary: %s", e)
             return None
 
         if not proc.stdout.strip():
-            logger.warning("scorecard produced no output (stderr: %s)", proc.stderr[:200])
+            logger.warning(
+                "scorecard produced no output (stderr: %s)", proc.stderr[:200]
+            )
             return None
 
         return self._parse(proc.stdout)
