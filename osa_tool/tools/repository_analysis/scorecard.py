@@ -38,21 +38,13 @@ class ScorecardResult:
         return {
             "aggregate_score": self.aggregate_score,
             "date": self.date,
-            "checks": [
-                {"name": c.name, "score": c.score, "reason": c.reason}
-                for c in self.checks
-            ],
+            "checks": [{"name": c.name, "score": c.score, "reason": c.reason} for c in self.checks],
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "ScorecardResult":
-        checks = [
-            ScorecardCheck(name=c["name"], score=c["score"], reason=c["reason"])
-            for c in data.get("checks", [])
-        ]
-        return cls(
-            aggregate_score=data["aggregate_score"], date=data["date"], checks=checks
-        )
+        checks = [ScorecardCheck(name=c["name"], score=c["score"], reason=c["reason"]) for c in data.get("checks", [])]
+        return cls(aggregate_score=data["aggregate_score"], date=data["date"], checks=checks)
 
 
 def _scorecard_cache_dir() -> Path:
@@ -165,18 +157,14 @@ class ScorecardRunner:
                 timeout=120,
             )
         except subprocess.TimeoutExpired:
-            logger.warning(
-                "scorecard timed out after 120 s; skipping Scorecard analysis"
-            )
+            logger.warning("scorecard timed out after 120 s; skipping Scorecard analysis")
             return None
         except OSError as e:
             logger.warning("Failed to run scorecard binary: %s", e)
             return None
 
         if not proc.stdout.strip():
-            logger.warning(
-                "scorecard produced no output (stderr: %s)", proc.stderr[:200]
-            )
+            logger.warning("scorecard produced no output (stderr: %s)", proc.stderr[:200])
             return None
 
         return self._parse(proc.stdout)
