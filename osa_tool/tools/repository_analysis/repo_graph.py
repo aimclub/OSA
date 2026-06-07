@@ -82,12 +82,10 @@ class RepositoryGraph:
             return Path(output_path)
 
         node_colors: list[str] = [
-            node_colors_map.get(attrs.get("node_type", ""), default_node_color)
-            for _, attrs in graph.nodes(data=True)
+            node_colors_map.get(attrs.get("node_type", ""), default_node_color) for _, attrs in graph.nodes(data=True)
         ]
         node_labels: dict[str, str] = {
-            node_id: (attrs.get("name") or node_id).split(".")[-1]
-            for node_id, attrs in graph.nodes(data=True)
+            node_id: (attrs.get("name") or node_id).split(".")[-1] for node_id, attrs in graph.nodes(data=True)
         }
 
         edge_colors: list[str] = [
@@ -95,28 +93,23 @@ class RepositoryGraph:
             for _, _, attrs in graph.edges(data=True)
         ]
         edge_labels: dict[tuple[str, str], str] = {
-            (src, dst): attrs.get("edge_type", "")
-            for src, dst, attrs in graph.edges(data=True)
+            (src, dst): attrs.get("edge_type", "") for src, dst, attrs in graph.edges(data=True)
         }
 
         num_nodes = graph.number_of_nodes()
-        fig_size = max(10, min(40, int(num_nodes ** 0.5) * 3))
+        fig_size = max(10, min(40, int(num_nodes**0.5) * 3))
         plt.figure(figsize=(fig_size, fig_size))
 
-        # try:
-        #     pos = nx.spring_layout(graph, k=1.5 / (num_nodes ** 0.5), seed=42, iterations=80)
-        # except Exception:
-        #     pos = nx.kamada_kawai_layout(graph)
         num_nodes = graph.number_of_nodes()
-        fig_size = max(12, min(50, int(num_nodes ** 0.5) * 4))
+        fig_size = max(12, min(50, int(num_nodes**0.5) * 4))
         plt.figure(figsize=(fig_size, fig_size))
 
         node_size = 800
-        scale = max(2.0, num_nodes ** 0.5)
+        scale = max(2.0, num_nodes**0.5)
         try:
             pos = nx.spring_layout(
                 graph,
-                k=2.5 / (num_nodes ** 0.5),
+                k=2.5 / (num_nodes**0.5),
                 seed=42,
                 iterations=200,
                 scale=scale,
@@ -128,7 +121,8 @@ class RepositoryGraph:
         pos = self._resolve_overlaps(pos, min_dist)
 
         nx.draw_networkx_nodes(
-            graph, pos,
+            graph,
+            pos,
             node_color=node_colors,
             node_size=800,
             edgecolors="black",
@@ -136,7 +130,8 @@ class RepositoryGraph:
             alpha=0.95,
         )
         nx.draw_networkx_edges(
-            graph, pos,
+            graph,
+            pos,
             edge_color=edge_colors,
             arrows=True,
             arrowsize=12,
@@ -145,13 +140,15 @@ class RepositoryGraph:
             connectionstyle="arc3,rad=0.08",
         )
         nx.draw_networkx_labels(
-            graph, pos,
+            graph,
+            pos,
             labels=node_labels,
             font_size=8,
             font_weight="bold",
         )
         nx.draw_networkx_edge_labels(
-            graph, pos,
+            graph,
+            pos,
             edge_labels=edge_labels,
             font_size=6,
             font_color="#333333",
@@ -159,14 +156,10 @@ class RepositoryGraph:
         )
 
         node_legend = [
-            plt.Line2D([0], [0], marker="o", color="w", label=nt,
-                       markerfacecolor=c, markersize=10)
+            plt.Line2D([0], [0], marker="o", color="w", label=nt, markerfacecolor=c, markersize=10)
             for nt, c in node_colors_map.items()
         ]
-        edge_legend = [
-            plt.Line2D([0], [0], color=c, lw=2, label=et)
-            for et, c in edge_colors_map.items()
-        ]
+        edge_legend = [plt.Line2D([0], [0], color=c, lw=2, label=et) for et, c in edge_colors_map.items()]
         plt.legend(handles=node_legend + edge_legend, loc="best", fontsize=9)
 
         plt.title(f"Repository Graph ({num_nodes} nodes, {graph.number_of_edges()} edges)")
@@ -330,17 +323,19 @@ class _RepoVisitor(cst.CSTVisitor):
         """Registers a class node and pushes it onto the scope stack."""
         parent = self._current_scope()
         class_id = f"{parent}.{node.name.value}"
-        self.nodes.append((
-            class_id,
-            {
-                "node_type": "class",
-                "name": node.name.value,
-                "qualified_name": class_id,
-                "file": str(self.filepath),
-                "source": self.__extract_source(node),
-                "is_stub": False,
-            },
-        ))
+        self.nodes.append(
+            (
+                class_id,
+                {
+                    "node_type": "class",
+                    "name": node.name.value,
+                    "qualified_name": class_id,
+                    "file": str(self.filepath),
+                    "source": self.__extract_source(node),
+                    "is_stub": False,
+                },
+            )
+        )
         self.edges.append((parent, class_id, {"edge_type": "contains"}))
         self._scope_stack.append(class_id)
 
@@ -352,17 +347,19 @@ class _RepoVisitor(cst.CSTVisitor):
         """Registers a function/method node and pushes it onto the scope stack."""
         parent = self._current_scope()
         func_id = f"{parent}.{node.name.value}"
-        self.nodes.append((
-            func_id,
-            {
-                "node_type": "function",
-                "name": node.name.value,
-                "qualified_name": func_id,
-                "file": str(self.filepath),
-                "source": self.__extract_source(node),
-                "is_stub": False,
-            },
-        ))
+        self.nodes.append(
+            (
+                func_id,
+                {
+                    "node_type": "function",
+                    "name": node.name.value,
+                    "qualified_name": func_id,
+                    "file": str(self.filepath),
+                    "source": self.__extract_source(node),
+                    "is_stub": False,
+                },
+            )
+        )
         self.edges.append((parent, func_id, {"edge_type": "contains"}))
         self._scope_stack.append(func_id)
 

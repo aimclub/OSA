@@ -122,9 +122,7 @@ class CodeAnalyzer:
                     input_tokens = tiktoken.get_encoding("o200k_base").encode(prompt)
                     logger.info(f"Tokens used: {len(input_tokens)}")
                     logger.info(prompt)
-                    response = await self.model_handler.async_request(
-                        prompt
-                    )
+                    response = await self.model_handler.async_request(prompt)
                     logger.debug(f"Finished {file_path} analysis")
                     return response
                 except Exception as e:

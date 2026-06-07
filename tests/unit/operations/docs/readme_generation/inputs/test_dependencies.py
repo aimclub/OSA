@@ -6,12 +6,10 @@ from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 def test_extract_from_requirements(tmp_path):
     # Arrange
-    require = textwrap.dedent(
-        """
+    require = textwrap.dedent("""
         numpy>=1.21
         pandas==1.5.0
-        """
-    )
+        """)
     (tmp_path / "requirements.txt").write_text(require)
     extractor = DependencyExtractor(get_mock_repo_tree("WITH_REQUIREMENTS_ONLY"), str(tmp_path))
 
@@ -32,6 +30,7 @@ def test_extract_from_pyproject_pep621(tmp_path):
         ]
         requires-python = ">=3.9"
         """)
+
     (tmp_path / "pyproject.toml").write_text(pyproj)
 
     extractor = DependencyExtractor(get_mock_repo_tree("WITH_PYPROJECT"), str(tmp_path))
