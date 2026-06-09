@@ -594,11 +594,10 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         for name in all_names:
             b = before_map[name].score if name in before_map else -1
             a = after_map[name].score if name in after_map else -1
-            if b != -1 and a != -1:
-                d = a - b
-                d_str = f"+{d}" if d > 0 else str(d)
-            else:
-                d_str = ""
+            # Treat N/A (-1) as 0 for the delta: a check that was not applicable
+            # before and now scores reflects a real improvement (e.g. N/A -> 10).
+            d = (a if a != -1 else 0) - (b if b != -1 else 0)
+            d_str = f"+{d}" if d > 0 else str(d)
             rows.append(
                 (
                     name,
@@ -637,10 +636,9 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
             _, _, _, _, b_score, a_score = row_data
             style.append(("BACKGROUND", (1, row_idx), (1, row_idx), self._score_color(b_score)))
             style.append(("BACKGROUND", (2, row_idx), (2, row_idx), self._score_color(a_score)))
-            if b_score != -1 and a_score != -1:
-                d = a_score - b_score
-                delta_color = colors.lightgreen if d > 0 else (colors.lightcoral if d < 0 else colors.white)
-                style.append(("BACKGROUND", (3, row_idx), (3, row_idx), delta_color))
+            d = (a_score if a_score != -1 else 0) - (b_score if b_score != -1 else 0)
+            delta_color = colors.lightgreen if d > 0 else (colors.lightcoral if d < 0 else colors.white)
+            style.append(("BACKGROUND", (3, row_idx), (3, row_idx), delta_color))
         table.setStyle(TableStyle(style))
         table.hAlign = "LEFT"
         elements.append(Spacer(0, 8))
