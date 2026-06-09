@@ -8,6 +8,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import (
+    Flowable,
+    Indenter,
     ListFlowable,
     ListItem,
     Paragraph,
@@ -15,26 +17,35 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
-    Flowable,
 )
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.models.event import OperationEvent, EventKind
-from osa_tool.operations.analysis.repository_report.report_generator import TextGenerator, AfterReportTextGenerator
+from osa_tool.operations.analysis.repository_report.report_generator import (
+    TextGenerator,
+    AfterReportTextGenerator,
+)
 from osa_tool.scheduler.plan import Plan
+from osa_tool.tools.repository_analysis.scorecard import (
+    ScorecardResult,
+    ScorecardRunner,
+)
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 
 
 class AbstractReportGenerator(ABC):
-    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent):
+    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent, run_scorecard: bool = False):
         self.sourcerank = SourceRank(config_manager)
         self.git_agent = git_agent
         self.metadata = self.git_agent.metadata
         self.repo_url = config_manager.get_git_settings().repository
         self.osa_url = "https://github.com/aimclub/OSA"
+        self.repo_path: str = git_agent.clone_dir
+        self.run_scorecard = run_scorecard
+        self.scorecard_result: ScorecardResult | None = None
 
         self.logo_path = os.path.join(osa_project_root(), "docs", "images", "osa_logo.PNG")
 
@@ -82,6 +93,77 @@ class AbstractReportGenerator(ABC):
 
         table.setStyle(TableStyle(style))
         return table
+
+    @staticmethod
+    def _score_color(score: int) -> object:
+        if score < 0:
+            return colors.white
+        if score <= 4:
+            return colors.lightcoral
+        if score <= 7:
+            return colors.lightyellow
+        return colors.lightgreen
+
+    def _build_scorecard_section(self) -> list[Flowable]:
+        """Return flowables for the OpenSSF Scorecard section (before report: single score table)."""
+        if self.scorecard_result is None:
+            return []
+
+        _, custom_style = self.get_styles()
+        styles = getSampleStyleSheet()
+        header_style = ParagraphStyle(
+            name="ScorecardHeader",
+            parent=styles["Normal"],
+            fontSize=12,
+            alignment=1,
+        )
+
+        checks = self.scorecard_result.checks
+        score_text = f"{self.scorecard_result.aggregate_score:.1f} / 10"
+        if self.scorecard_result.date:
+            score_text += f"  (as of {self.scorecard_result.date[:10]})"
+
+        elements: list[Flowable] = [
+            Paragraph(f"<b>OpenSSF Scorecard:</b> {score_text}", custom_style),
+        ]
+
+        if not checks:
+            return elements
+
+        data = [
+            [
+                Paragraph("<b>Check</b>", header_style),
+                Paragraph("<b>Score</b>", header_style),
+            ],
+            *[[c.name, "N/A" if c.score == -1 else str(c.score)] for c in checks],
+        ]
+        table = Table(data, colWidths=[160, 76])
+        style = [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+            ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#FFCCFF")),
+            ("ALIGN", (0, 0), (0, -1), "LEFT"),
+            ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+            ("FONTSIZE", (0, 0), (-1, -1), 11),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+            ("GRID", (0, 0), (-1, -1), 1, colors.black),
+        ]
+        for row_idx, check in enumerate(checks, start=1):
+            style.append(
+                (
+                    "BACKGROUND",
+                    (1, row_idx),
+                    (1, row_idx),
+                    self._score_color(check.score),
+                )
+            )
+        table.setStyle(TableStyle(style))
+        table.hAlign = "LEFT"
+        elements.append(Spacer(0, 8))
+        elements.append(Indenter(-20, 0))
+        elements.append(table)
+        elements.append(Indenter(20, 0))
+        return elements
 
     def generate_qr_code(self) -> str:
         """
@@ -195,7 +277,10 @@ class AbstractReportGenerator(ABC):
             ["License Presence", "✓" if self.sourcerank.license_presence() else "✗"],
             ["Documentation Presence", "✓" if self.sourcerank.docs_presence() else "✗"],
             ["Examples Presence", "✓" if self.sourcerank.examples_presence() else "✗"],
-            ["Requirements Presence", "✓" if self.sourcerank.requirements_presence() else "✗"],
+            [
+                "Requirements Presence",
+                "✓" if self.sourcerank.requirements_presence() else "✗",
+            ],
             ["Tests Presence", "✓" if self.sourcerank.tests_presence() else "✗"],
             ["Description Presence", "✓" if self.metadata.description else "✗"],
         ]
@@ -301,12 +386,15 @@ class AbstractReportGenerator(ABC):
                 topMargin=50,
                 bottomMargin=40,
             )
+            scorecard_elements = self._build_scorecard_section()
             doc.build(
                 [
                     *self.header(),
                     Spacer(0, 40),
                     self.body_first_part(),
                     Spacer(0, 110),
+                    *scorecard_elements,
+                    *([] if not scorecard_elements else [Spacer(0, 10)]),
                     *self.body_second_part(),
                 ],
                 onFirstPage=self.draw_images_and_tables,
@@ -317,24 +405,37 @@ class AbstractReportGenerator(ABC):
 
 
 class ReportGenerator(AbstractReportGenerator):
-
-    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent, create_fork: bool):
-        super().__init__(config_manager, git_agent)
+    def __init__(
+        self, config_manager: ConfigManager, git_agent: GitAgent, create_fork: bool, run_scorecard: bool = False
+    ):
+        super().__init__(config_manager, git_agent, run_scorecard)
         self.text_generator = TextGenerator(config_manager, self.metadata)
         self.create_fork = create_fork
         self.events: list[OperationEvent] = []
 
     def run(self) -> dict:
         try:
+            logger.info("run_scorecard=%s for before-report", self.run_scorecard)
+            if self.run_scorecard:
+                self.scorecard_result = ScorecardRunner(self.repo_path).run()
+                logger.info("Scorecard before-result: %s", self.scorecard_result)
             self.build_pdf()
             self.events.append(OperationEvent(kind=EventKind.GENERATED, target=f"{self.filename}"))
             if self.create_fork and os.path.exists(self.output_path):
                 self.git_agent.upload_report(self.filename, self.output_path)
                 self.events.append(OperationEvent(kind=EventKind.UPLOADED, target=f"{self.filename}"))
-            return {"result": {"report": self.filename}, "events": self.events}
+            scorecard_dict = self.scorecard_result.to_dict() if self.scorecard_result else None
+            return {
+                "result": {"report": self.filename, "scorecard": scorecard_dict},
+                "events": self.events,
+            }
         except ValueError as e:
             self.events.append(
-                OperationEvent(kind=EventKind.FAILED, target="Report generation", data={"error": str(e)})
+                OperationEvent(
+                    kind=EventKind.FAILED,
+                    target="Report generation",
+                    data={"error": str(e)},
+                )
             )
             return {"result": {"error": str(e)}, "events": self.events}
 
@@ -408,15 +509,15 @@ class ReportGenerator(AbstractReportGenerator):
 
 
 class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
-
     def __init__(
         self,
         config_manager: ConfigManager,
         git_agent: GitAgent,
         create_fork: bool,
         plan: Plan,
+        run_scorecard: bool = False,
     ):
-        super().__init__(config_manager, git_agent)
+        super().__init__(config_manager, git_agent, run_scorecard)
         self.filename = f"{self.metadata.name}_work_summary.pdf"
         self.create_fork = create_fork
         self.output_path = os.path.join(os.getcwd(), self.filename)
@@ -427,6 +528,9 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         self.report_header = "OSA Work Summary"
         self.events: list[OperationEvent] = []
 
+        before_dict = self.task_results.get("Report", {}).get("result", {}).get("scorecard")
+        self.before_scorecard: ScorecardResult | None = ScorecardResult.from_dict(before_dict) if before_dict else None
+
     def run(self) -> dict:
         """
         Build the OSA work summary PDF and return a structured result with events.
@@ -436,6 +540,10 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         - each generated report is tracked as an OperationEvent
         """
         try:
+            logger.info("run_scorecard=%s for after-report, repo_path=%s", self.run_scorecard, self.repo_path)
+            if self.run_scorecard:
+                self.scorecard_result = ScorecardRunner(self.repo_path).run()
+                logger.info("Scorecard after-result: %s", self.scorecard_result)
             self.build_pdf()
             self.events.append(OperationEvent(kind=EventKind.GENERATED, target=self.filename))
             if self.create_fork and os.path.exists(self.output_path):
@@ -443,8 +551,101 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
                 self.events.append(OperationEvent(kind=EventKind.UPLOADED, target=f"{self.filename}"))
             return {"result": {"report": self.filename}, "events": self.events}
         except ValueError as e:
-            self.events.append(OperationEvent(kind=EventKind.FAILED, target="OSA work summary", data={"error": str(e)}))
+            self.events.append(
+                OperationEvent(
+                    kind=EventKind.FAILED,
+                    target="OSA work summary",
+                    data={"error": str(e)},
+                )
+            )
             return {"result": {"error": str(e)}, "events": self.events}
+
+    def _build_scorecard_section(self) -> list[Flowable]:
+        """Override: show before→after comparison table when both scores are available."""
+        if self.scorecard_result is None or self.before_scorecard is None:
+            return super()._build_scorecard_section()
+
+        _, custom_style = self.get_styles()
+        styles = getSampleStyleSheet()
+        header_style = ParagraphStyle(
+            name="ScorecardHeader",
+            parent=styles["Normal"],
+            fontSize=11,
+            alignment=1,
+        )
+
+        before_score = self.before_scorecard.aggregate_score
+        after_score = self.scorecard_result.aggregate_score
+        delta = after_score - before_score
+        delta_str = f"+{delta:.1f}" if delta >= 0 else f"{delta:.1f}"
+
+        elements: list[Flowable] = [
+            Paragraph(
+                f"<b>OpenSSF Scorecard:</b> {before_score:.1f} → {after_score:.1f} ({delta_str})",
+                custom_style,
+            )
+        ]
+
+        before_map = {c.name: c for c in self.before_scorecard.checks}
+        after_map = {c.name: c for c in self.scorecard_result.checks}
+        all_names = sorted(before_map.keys() | after_map.keys())
+
+        rows = []
+        for name in all_names:
+            b = before_map[name].score if name in before_map else -1
+            a = after_map[name].score if name in after_map else -1
+            # Treat N/A (-1) as 0 for the delta: a check that was not applicable
+            # before and now scores reflects a real improvement (e.g. N/A -> 10).
+            d = (a if a != -1 else 0) - (b if b != -1 else 0)
+            d_str = f"+{d}" if d > 0 else str(d)
+            rows.append(
+                (
+                    name,
+                    str(b) if b != -1 else "N/A",
+                    str(a) if a != -1 else "N/A",
+                    d_str,
+                    b,
+                    a,
+                )
+            )
+
+        if not rows:
+            return elements
+
+        data = [
+            [
+                Paragraph("<b>Check</b>", header_style),
+                Paragraph("<b>Before</b>", header_style),
+                Paragraph("<b>After</b>", header_style),
+                Paragraph("<b>Δ</b>", header_style),
+            ],
+            *[[r[0], r[1], r[2], r[3]] for r in rows],
+        ]
+        table = Table(data, colWidths=[130, 60, 60, 46])
+        style = [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+            ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#FFCCFF")),
+            ("ALIGN", (0, 0), (0, -1), "LEFT"),
+            ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+            ("GRID", (0, 0), (-1, -1), 1, colors.black),
+        ]
+        for row_idx, row_data in enumerate(rows, start=1):
+            _, _, _, _, b_score, a_score = row_data
+            style.append(("BACKGROUND", (1, row_idx), (1, row_idx), self._score_color(b_score)))
+            style.append(("BACKGROUND", (2, row_idx), (2, row_idx), self._score_color(a_score)))
+            d = (a_score if a_score != -1 else 0) - (b_score if b_score != -1 else 0)
+            delta_color = colors.lightgreen if d > 0 else (colors.lightcoral if d < 0 else colors.white)
+            style.append(("BACKGROUND", (3, row_idx), (3, row_idx), delta_color))
+        table.setStyle(TableStyle(style))
+        table.hAlign = "LEFT"
+        elements.append(Spacer(0, 8))
+        elements.append(Indenter(-20, 0))
+        elements.append(table)
+        elements.append(Indenter(20, 0))
+        return elements
 
     def body_second_part(self) -> list[Flowable]:
         """

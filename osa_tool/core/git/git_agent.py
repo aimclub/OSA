@@ -40,7 +40,13 @@ class GitAgent(abc.ABC):
         pr_report_body: A formatted message for a pull request.
     """
 
-    def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool", author: str = None):
+    def __init__(
+        self,
+        repo_url: str,
+        repo_branch_name: str = None,
+        branch_name: str = "osa_tool",
+        author: str = None,
+    ):
         """Initializes the agent with repository info.
 
         Args:
@@ -462,14 +468,12 @@ class GitAgent(abc.ABC):
             return True
         except GitCommandError as e:
             self._handle_git_error(e, f"pushing to {branch}")
-            logger.error(
-                f"""Push failed: Branch '{branch}' already exists in the fork.
+            logger.error(f"""Push failed: Branch '{branch}' already exists in the fork.
                  To resolve this, please either:
-                   1. Choose a different branch name that doesn't exist in the fork 
+                   1. Choose a different branch name that doesn't exist in the fork
                       by modifying the `branch_name` parameter.
                    2. Delete the existing branch from forked repository.
-                   3. Delete the fork entirely."""
-            )
+                   3. Delete the fork entirely.""")
             return False
 
     def upload_report(
@@ -602,7 +606,13 @@ class GitAgent(abc.ABC):
 
 
 class LocalGitAgent(GitAgent):
-    def __init__(self, repo_url: str, repo_branch_name: str = None, branch_name: str = "osa_tool", author: str = None):
+    def __init__(
+        self,
+        repo_url: str,
+        repo_branch_name: str = None,
+        branch_name: str = "osa_tool",
+        author: str = None,
+    ):
         if is_path(repo_url):
             if os.path.isdir(repo_url):
                 super().__init__(repo_url, repo_branch_name, branch_name, author)
@@ -798,7 +808,11 @@ class GitHubAgent(GitAgent):
                 if update_response.status_code == 200:
                     logger.info(f"Successfully updated PR #{pr_number} with new reports.")
                 else:
-                    self._handle_api_error(update_response, f"updating PR #{pr_number}", raise_exception=False)
+                    self._handle_api_error(
+                        update_response,
+                        f"updating PR #{pr_number}",
+                        raise_exception=False,
+                    )
         elif changes:
             report_files = self.get_attachment_branch_files()
             report_branch = "osa_tool_attachments"
@@ -841,7 +855,11 @@ class GitHubAgent(GitAgent):
         if response.status_code in {200, 201}:
             logger.info(f"Successfully updated GitHub repository description and homepage for '{repo_path}'.")
         else:
-            self._handle_api_error(response, f"updating description for '{repo_path}'", raise_exception=False)
+            self._handle_api_error(
+                response,
+                f"updating description for '{repo_path}'",
+                raise_exception=False,
+            )
 
         url = f"https://api.github.com/repos/{repo_path}/topics"
         topics_data = {"names": about_content["topics"]}
@@ -1248,7 +1266,7 @@ class GitverseAgent(GitAgent):
         if fork_check_response.status_code == 200:
             fork_data = fork_check_response.json()
             if fork_data.get("fork") and fork_data.get("parent", {}).get("full_name") == base_repo:
-                self.fork_url = f'https://gitverse.ru/{fork_data["full_name"]}'
+                self.fork_url = f"https://gitverse.ru/{fork_data['full_name']}"
                 logger.info(f"Fork already exists: {self.fork_url}")
                 return
 
@@ -1415,7 +1433,12 @@ class GitverseAgent(GitAgent):
             reports = uniq_keep_order(extract_reports(self.pr_report_body))
             pr_body = build_body(new_body_content, reports)
 
-            pr_data = {"title": pr_title, "head": self.branch_name, "base": self.base_branch, "body": pr_body}
+            pr_data = {
+                "title": pr_title,
+                "head": self.branch_name,
+                "base": self.base_branch,
+                "body": pr_body,
+            }
             response = requests.post(url, json=pr_data, headers=headers)
 
             if response.status_code == 201:
@@ -1519,7 +1542,11 @@ class SourceCraftAgent(GitAgent):
             self._handle_api_error(response, f"posting comment to PR {pr_slug}", raise_exception=False)
 
     def create_pull_request(
-        self, title: str = None, body: str = None, changes: bool = False, target_branch: str = None
+        self,
+        title: str = None,
+        body: str = None,
+        changes: bool = False,
+        target_branch: str = None,
     ) -> None:
         if not self.token:
             raise ValueError("SourceCraft token is required to create a pull request.")
@@ -1564,7 +1591,11 @@ class SourceCraftAgent(GitAgent):
                 updated_body += self.agent_signature
 
                 update_url = f"{url}/{pr_slug}"
-                update_res = requests.patch(update_url, headers=headers, json={"description": updated_body.strip()})
+                update_res = requests.patch(
+                    update_url,
+                    headers=headers,
+                    json={"description": updated_body.strip()},
+                )
 
                 if update_res.status_code == 200:
                     logger.info(f"Successfully updated PR {pr_slug} with new reports.")
@@ -1628,7 +1659,11 @@ class SourceCraftAgent(GitAgent):
         if response.status_code in {200, 201}:
             logger.info(f"Successfully updated SourceCraft repository description for '{repo_path}'.")
         else:
-            self._handle_api_error(response, f"updating description for '{repo_path}'", raise_exception=False)
+            self._handle_api_error(
+                response,
+                f"updating description for '{repo_path}'",
+                raise_exception=False,
+            )
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
         return f"{self.fork_url}/browse/{report_filename}?rev={report_branch}"
