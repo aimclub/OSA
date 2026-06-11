@@ -45,6 +45,7 @@ tree-sitter-python = ">=0.23.0"
 pipreqs = { version = ">=0.5.0", python = "<3.13" }
 
 [tool.poetry.group.dev.dependencies]
+pre-commit = ">=4.0.0"
 pytest = ">=8.3.0"
 pytest-asyncio = ">=1.0.0"
 pytest-mock = ">=3.12.0"
