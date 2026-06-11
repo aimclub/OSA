@@ -19,6 +19,7 @@ protollm>=0.1.6
 prompt_toolkit>=3.0.50
 Pygments>=2.18.0
 pydantic>=2.9.0,<3.0.0
+pre-commit>=4.0.0
 pytest>=8.3.0
 pytest-asyncio>=1.0.0
 pytest-mock>=3.12.0
