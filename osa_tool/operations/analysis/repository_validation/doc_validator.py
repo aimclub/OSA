@@ -10,7 +10,7 @@ from osa_tool.core.models.event import EventKind, OperationEvent
 from osa_tool.operations.analysis.repository_validation.analyze.paper_analyzer import (
     PaperAnalyzer,
 )
-from osa_tool.operations.analysis.repository_validation.code_analyzer import (
+from osa_tool.operations.analysis.repository_validation.analyze.code_analyzer import (
     CodeAnalyzer,
 )
 from osa_tool.operations.analysis.repository_validation.models import Experiment, ExperimentValidationResult

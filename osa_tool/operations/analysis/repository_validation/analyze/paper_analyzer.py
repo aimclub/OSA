@@ -1,7 +1,7 @@
 import asyncio
 
 import docx2txt
-
+import tiktoken
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.operations.analysis.repository_validation.models import ExtractedExperimentsResult
@@ -19,9 +19,9 @@ class PaperAnalyzer:
         model_settings = self.__config.get_model_settings("validation")
         self.__model_handler: ModelHandler = ModelHandlerFactory.build(model_settings)
 
-    async def process_paper(self, document_path: str) -> list[str]:
+    async def extract_experiments(self, document_path: str) -> list[str]:
         """
-        Asynchronously extract and process content from a scientific paper (PDF).
+        Asynchronously extract and process content from a scientific paper.
 
         Args:
             document_path (str): Path to the paper PDF file.
@@ -30,7 +30,7 @@ class PaperAnalyzer:
             list[str]: Processed paper content.
 
         Raises:
-            ValueError: If the PDF source is invalid.
+            ValueError: If the document source is invalid.
         """
         if document_path.endswith(".docx"):
             logger.info("Processing DOCX...")
