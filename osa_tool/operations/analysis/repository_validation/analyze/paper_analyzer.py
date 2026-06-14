@@ -4,12 +4,11 @@ import docx2txt
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
+from osa_tool.operations.analysis.repository_validation.models import ExtractedExperimentsResult
 from osa_tool.operations.docs.readme_generation.inputs.article_content import PdfParser
 from osa_tool.operations.docs.readme_generation.inputs.article_path import get_pdf_path
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder, PromptLoader
-from osa_tool.utils.response_cleaner import JsonProcessor
-from osa_tool.operations.analysis.repository_validation.models import ExtractedExperimentsResult
 
 
 class PaperAnalyzer:
@@ -51,7 +50,7 @@ class PaperAnalyzer:
                 self.__prompts.get("validation.extract_paper_experiments_list"),
                 paper_content=raw_content,
             ),
-            parser=lambda raw: JsonProcessor.parse(raw),
+            parser=None,
         )
         experiments_list = ExtractedExperimentsResult.model_validate(raw_experiments).experiment_list
         if not experiments_list:

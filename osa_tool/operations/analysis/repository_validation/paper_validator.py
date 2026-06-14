@@ -7,7 +7,6 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.core.models.event import EventKind, OperationEvent
-from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.operations.analysis.repository_validation.analyze.paper_analyzer import (
     PaperAnalyzer,
 )
@@ -132,7 +131,7 @@ class PaperValidator:
                     experiment_description=experiment.description_from_paper,
                     code_files_info=code_files_info,
                 ),
-                parser=lambda raw: JsonProcessor.parse(raw),
+                parser=None,
             )
             experiment_assessment = ExperimentValidationResult.model_validate(raw_assessment)
             experiment.impl_src_path = experiment_assessment.implemented_in
