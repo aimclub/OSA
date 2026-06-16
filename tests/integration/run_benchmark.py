@@ -25,8 +25,6 @@ def generate_readme(config_manager: ConfigManager, metadata: RepositoryMetadata,
     readme_agent = ReadmeAgent(
         config_manager=config_manager,
         metadata=metadata,
-        attachment_path=None,
-        user_request="Evaluate the existing README for quality: if it's missing, generate one; if it's poor, rewrite it completely; if it's good, identify and apply targeted improvements."
     )
 
     dest_path = os.path.join(readmes_dir, f"{metadata.name}_README.md")
@@ -125,9 +123,11 @@ def main():
     parser = build_parser_from_yaml(extra_sections=["settings", "arguments", "multi-run"])
     args, _ = parser.parse_known_args()
 
+    args.table_path = os.path.abspath(args.table_path)
+
     df = load_table(args.table_path)
     repos = df["repository"].dropna().tolist()
-    
+
     unprocessed = [r for r in repos if df.loc[df["repository"] == r, "status"].values[0] != "Success"]
 
     if unprocessed:
