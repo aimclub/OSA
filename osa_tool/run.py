@@ -4,7 +4,14 @@ import time
 from typing import Any, Callable
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.core.git.git_agent import GitHubAgent, GitLabAgent, GitverseAgent, GitAgent, LocalGitAgent
+from osa_tool.core.git.git_agent import (
+    GitHubAgent,
+    GitLabAgent,
+    GitverseAgent,
+    SourceCraftAgent,
+    GitAgent,
+    LocalGitAgent,
+)
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.analysis.repository_validation.doc_validator import DocValidator
 from osa_tool.operations.analysis.repository_validation.paper_validator import PaperValidator
@@ -28,6 +35,7 @@ from osa_tool.scheduler.workflow_manager import (
     GitHubWorkflowManager,
     GitLabWorkflowManager,
     GitverseWorkflowManager,
+    SourceCraftWorkflowManager,
     WorkflowManager,
 )
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
@@ -284,6 +292,9 @@ def initialize_git_platform(args, config_manager: ConfigManager) -> tuple[GitAge
             args.repository, repo_branch_name=args.branch, branch_name=target_branch, author=args.author
         )
         workflow_manager = GitverseWorkflowManager(args.repository, git_agent.metadata, args)
+    elif "sourcecraft.dev" in args.repository:
+        git_agent = SourceCraftAgent(args.repository, args.branch, author=args.author)
+        workflow_manager = SourceCraftWorkflowManager(args.repository, git_agent.metadata, args)
     else:
         raise ValueError(f"Cannot initialize Git Agent and Workflow Manager for this platform: {args.repository}")
 

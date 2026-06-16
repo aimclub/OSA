@@ -55,6 +55,14 @@ class CommunityTemplateBuilder:
             self.docs_issue_to_save = os.path.join(self.repo_path, "DOCUMENTATION_ISSUE.md")
             self.feature_issue_to_save = os.path.join(self.issue_templates_path, "FEATURE_ISSUE.md")
             self.bug_issue_to_save = os.path.join(self.issue_templates_path, "BUG_ISSUE.md")
+        elif "sourcecraft" in self.config_manager.get_git_settings().host:
+            repo_root = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+            self.code_of_conduct_to_save = os.path.join(repo_root, "CODE_OF_CONDUCT.md")
+            self.security_to_save = os.path.join(repo_root, "SECURITY.md")
+            self.pr_to_save = os.path.join(repo_root, "PULL_REQUEST_TEMPLATE.md")
+            self.docs_issue_to_save = os.path.join(repo_root, "DOCUMENTATION_ISSUE.md")
+            self.feature_issue_to_save = os.path.join(repo_root, "FEATURE_ISSUE.md")
+            self.bug_issue_to_save = os.path.join(repo_root, "BUG_ISSUE.md")
 
     def load_template(self) -> dict:
         """

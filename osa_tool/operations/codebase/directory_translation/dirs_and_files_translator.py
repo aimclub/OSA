@@ -7,6 +7,8 @@ from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
+_ASCII_ONLY = re.compile(r"^[a-zA-Z0-9_.#\-]+$")
+
 
 class RepositoryStructureTranslator:
     def __init__(self, config_manager: ConfigManager) -> None:
@@ -19,7 +21,9 @@ class RepositoryStructureTranslator:
         self.excluded_dirs = {".git", ".venv"}
         self.extensions_code_files = {".py"}
         self.excluded_names = {
-            ".gitignore" "main",
+            ".gitignore",
+            "main",
+            "__init__",
             "license",
             "readme",
             "requirements",
@@ -193,15 +197,16 @@ class RepositoryStructureTranslator:
             "- If the name is a default file name or a special system/hidden file (like __init__, .gitignore, README), return it unchanged.\n"
             "- Only translate meaningful names.\n"
             "- Output only the translated name.\n"
-            "- Replace spaces with underscores.\n"
-            "- Lowercase the result.\n"
             "- Do not add explanations or extra text.\n\n"
             f"Input name: {text}\n"
             "Output:"
         )
-        response = self.model_handler.send_request(prompt)
 
-        return response.replace(" ", "_") if response else text
+        if self._needs_translation(text.replace(" ", "_")):
+            response = self.model_handler.send_request(prompt)
+        else:
+            response = text
+        return response.replace(" ", "_").lower() if response else text
 
     def _get_all_files(self) -> list[str]:
         """
@@ -245,6 +250,9 @@ class RepositoryStructureTranslator:
             logger.error("Error: %s", e, exc_info=True)
 
         return all_dirs
+
+    def _needs_translation(self, text: str) -> bool:
+        return not _ASCII_ONLY.match(text)
 
     @staticmethod
     def update_code(file_path: str, rename_map: dict) -> None:
