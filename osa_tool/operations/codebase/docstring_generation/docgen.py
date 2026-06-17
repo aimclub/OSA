@@ -717,7 +717,12 @@ class DocGen(object):
         if not docstrings:
             return {file: source_code}
 
-        module = cst.parse_module(source_code)
+        try:
+            module = cst.parse_module(source_code)
+        except cst.ParserSyntaxError:
+            logger.warning(f"Syntax error in file {file}, skipping docstring augmentation.")
+            return {file: source_code}
+
         wrapper = cst.MetadataWrapper(module)
         transformer = DocstringTransformer(docstrings, source_code.splitlines(True), module.default_indent)
         new_module = wrapper.visit(transformer)
