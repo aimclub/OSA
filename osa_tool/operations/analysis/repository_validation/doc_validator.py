@@ -11,7 +11,7 @@ from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.operations.analysis.repository_validation.analyze.paper_analyzer import (
     PaperAnalyzer,
 )
-from osa_tool.operations.analysis.repository_validation.code_analyzer import (
+from osa_tool.operations.analysis.repository_validation.analyze.code_analyzer import (
     CodeAnalyzer,
 )
 from osa_tool.operations.analysis.repository_validation.models import Experiment, ExperimentValidationResult
