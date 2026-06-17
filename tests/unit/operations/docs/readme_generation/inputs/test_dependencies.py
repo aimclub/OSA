@@ -29,7 +29,13 @@ def test_extract_from_pyproject_pep621(tmp_path):
             "requests"
         ]
         requires-python = ">=3.9"
+<<<<<<< HEAD
         """)
+=======
+        """
+    )
+
+>>>>>>> 79f9c1cef20fc4980851faf85b29fcdce89122a4
     (tmp_path / "pyproject.toml").write_text(pyproj)
 
     extractor = DependencyExtractor(get_mock_repo_tree("WITH_PYPROJECT"), str(tmp_path))
@@ -75,7 +81,13 @@ def test_extract_from_setup_install_requires(tmp_path):
             ],
             python_requires=">=3.7",
         )
+<<<<<<< HEAD
         """)
+=======
+        """
+    )
+
+>>>>>>> 79f9c1cef20fc4980851faf85b29fcdce89122a4
     (tmp_path / "setup.py").write_text(setup_code, encoding="utf-8")
 
     extractor = DependencyExtractor(get_mock_repo_tree("WITH_SETUP"), str(tmp_path))
