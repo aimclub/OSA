@@ -15,6 +15,7 @@ class Experiment(BaseModel):
     impl_src_path: list[str] = Field(default_factory=list)
     missing: list[str] = Field(default_factory=list)
     correspondence_percent: float | None = None
+    reasoning: str = ""
 
 
 class ExperimentValidationResult(BaseModel):

@@ -52,6 +52,26 @@ class WorkflowManager(ABC):
         self.existing_jobs = self._find_existing_jobs()
         self.plan: Optional[Plan] = None
 
+    def refresh_after_clone(self) -> None:
+        """Re-read CI/CD state from disk after clone_repository() completes.
+
+        WorkflowManager.__init__ reads workflow_path and existing_jobs from
+        the local directory before the repository is cloned. If that directory
+        already exists from a previous run (e.g. workflows were generated locally
+        but never pushed), the cached data is stale and will suppress regeneration
+        of jobs that are not actually in the remote repository.
+
+        Call this method immediately after clone_repository() to ensure
+        workflow decisions are based on the freshly cloned repository content.
+        """
+        self.workflow_path = self._locate_workflow_path()
+        self.existing_jobs = self._find_existing_jobs()
+        logger.debug(
+            "WorkflowManager refreshed after clone: workflow_path=%s, existing_jobs=%s",
+            self.workflow_path,
+            self.existing_jobs,
+        )
+
     @abstractmethod
     def _locate_workflow_path(self) -> str | None:
         """

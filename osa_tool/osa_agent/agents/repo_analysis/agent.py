@@ -77,6 +77,8 @@ class RepoAnalysisAgent(BaseAgent):
             self.context.git_agent.create_fork()
 
         self.context.git_agent.clone_repository()
+        # Refresh CI/CD state from the freshly cloned repo (same reason as in run.py).
+        self.context.workflow_manager.refresh_after_clone()
 
         if self.context.create_fork:
             self.context.git_agent.create_and_checkout_branch()
