@@ -6,10 +6,12 @@ from tests.utils.mocks.repo_trees import get_mock_repo_tree
 
 def test_extract_from_requirements(tmp_path):
     # Arrange
-    require = textwrap.dedent("""
+    require = textwrap.dedent(
+        """
         numpy>=1.21
         pandas==1.5.0
-        """)
+        """
+    )
     (tmp_path / "requirements.txt").write_text(require)
     extractor = DependencyExtractor(get_mock_repo_tree("WITH_REQUIREMENTS_ONLY"), str(tmp_path))
 
@@ -22,7 +24,8 @@ def test_extract_from_requirements(tmp_path):
 
 def test_extract_from_pyproject_pep621(tmp_path):
     # Arrange
-    pyproj = textwrap.dedent("""
+    pyproj = textwrap.dedent(
+        """
         [project]
         dependencies = [
             "flask>=2.0",
@@ -45,12 +48,14 @@ def test_extract_from_pyproject_pep621(tmp_path):
 
 def test_extract_from_pyproject_poetry(tmp_path):
     # Arrange
-    pyproj = textwrap.dedent("""
+    pyproj = textwrap.dedent(
+        """
         [tool.poetry.dependencies]
         python = ">=3.8"
         torch = "^1.12"
         transformers = "^4.21"
-        """)
+        """
+    )
     (tmp_path / "pyproject.toml").write_text(pyproj)
 
     extractor = DependencyExtractor(get_mock_repo_tree("WITH_PYPROJECT"), str(tmp_path))
@@ -66,7 +71,8 @@ def test_extract_from_pyproject_poetry(tmp_path):
 
 def test_extract_from_setup_install_requires(tmp_path):
     # Arrange
-    setup_code = textwrap.dedent("""
+    setup_code = textwrap.dedent(
+        """
         from setuptools import setup
 
         setup(
