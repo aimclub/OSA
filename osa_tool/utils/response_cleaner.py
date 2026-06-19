@@ -8,7 +8,45 @@ class JsonProcessor:
     """Utility class for robust extraction and parsing of JSON-like content from LLM responses."""
 
     @staticmethod
-    def process_text(text: str) -> str:
+    def _extract_from_fence(text: str) -> str | None:
+        match = re.search(r"```(?:json)?\s*(.*?)\s*```", text, flags=re.IGNORECASE | re.DOTALL)
+        if match:
+            return match.group(1).strip()
+        return None
+
+    @staticmethod
+    def _find_balanced_span(text: str, open_char: str) -> tuple[int, int] | None:
+        close_char = "}" if open_char == "{" else "]"
+        start = text.find(open_char)
+        if start == -1:
+            return None
+
+        depth = 0
+        in_string = False
+        escaped = False
+        for i in range(start, len(text)):
+            ch = text[i]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif ch == "\\":
+                    escaped = True
+                elif ch == '"':
+                    in_string = False
+                continue
+
+            if ch == '"':
+                in_string = True
+            elif ch == open_char:
+                depth += 1
+            elif ch == close_char:
+                depth -= 1
+                if depth == 0:
+                    return (start, i)
+        return None
+
+    @staticmethod
+    def process_text(text: str, expected_type: type | None = None) -> str:
         """
         Extracts JSON content from text by locating the first JSON bracket ('{' or '[')
         and the last corresponding closing bracket ('}' or ']').
@@ -23,6 +61,9 @@ class JsonProcessor:
         # Strip raw control characters that are invalid in JSON string values.
         # Preserves \t (0x09), \n (0x0A), \r (0x0D) which JSON parsers accept unescaped.
         text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", text)
+        fenced = JsonProcessor._extract_from_fence(text)
+        if fenced:
+            text = fenced
 
         replacements = {"None": "null", "True": "true", "False": "false"}
         for key, value in replacements.items():
@@ -30,27 +71,38 @@ class JsonProcessor:
 
         # remove trailing commas before closing braces/brackets
         text = re.sub(r",\s*([}\]])", r"\1", text)
+        text = text.strip()
 
-        start_obj = text.find("{")
-        start_arr = text.find("[")
-        candidates = [pos for pos in [start_obj, start_arr] if pos != -1]
+        preferred: list[str]
+        if expected_type is list:
+            preferred = ["["]
+        elif expected_type is dict:
+            preferred = ["{"]
+        else:
+            preferred = ["[", "{"]
 
-        if not candidates:
-            logger.error("No JSON start bracket found, adding '{' at the beginning")
+        for open_char in preferred + [c for c in ["[", "{"] if c not in preferred]:
+            span = JsonProcessor._find_balanced_span(text, open_char)
+            if span:
+                start, end = span
+                return text[start : end + 1]
+
+        if expected_type is list:
+            logger.error("No JSON start bracket found, adding '[' at the beginning")
+            if not text.startswith("["):
+                text = "[" + text
+            if not text.endswith("]"):
+                logger.error("No valid JSON end bracket found, adding ']' at the end")
+                text = text + "]"
+            return text
+
+        logger.error("No JSON start bracket found, adding '{' at the beginning")
+        if not text.startswith("{"):
             text = "{" + text
-            candidates = [0]
-
-        start = min(candidates)
-        open_char = text[start]
-        close_char = "}" if open_char == "{" else "]"
-
-        end = text.rfind(close_char)
-        if end == -1 or end < start:
-            logger.error(f"No valid JSON end bracket found, adding '{close_char}' at the end")
-            text = text + close_char
-            end = len(text) - 1
-
-        return text[start : end + 1]
+        if not text.endswith("}"):
+            logger.error("No valid JSON end bracket found, adding '}' at the end")
+            text = text + "}"
+        return text
 
     @classmethod
     def parse(
@@ -71,7 +123,7 @@ class JsonProcessor:
             Parsed content (dict | list | str) depending on context.
         """
         try:
-            cleaned = cls.process_text(text)
+            cleaned = cls.process_text(text, expected_type=expected_type)
             parsed = json.loads(cleaned)
 
             if expected_key:

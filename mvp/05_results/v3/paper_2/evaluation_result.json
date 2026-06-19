@@ -1,0 +1,19 @@
+{
+  "semantic_matching": {
+    "precision": 0.2619,
+    "recall": 0.6875,
+    "f1": 0.3793,
+    "num_llm_claims": 42,
+    "num_human_claims": 13,
+    "num_matched": 11,
+    "matching": "many_to_one"
+  },
+  "meta": {
+    "model": "paraphrase-multilingual-MiniLM-L12-v2",
+    "threshold": 0.75,
+    "llm_field": "original_text",
+    "matching": "many_to_one",
+    "llm_file": "/home/ilya/OSA/mvp/05_results/v3/paper_2/final_result_2.json",
+    "human_file": "/home/ilya/OSA/mvp/03_annotation/paper_2_claims.json"
+  }
+}

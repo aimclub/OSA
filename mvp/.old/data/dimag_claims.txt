@@ -1,0 +1,94 @@
+For that, a unique database with more than 980 magnetic nanoparticles collected
+
++ several tree-based ensemble models are trained to predict SAR, r1 and r2 relaxivity
+
++ models reach performances of R2 = 0.86, R2 = 0.78, and R2 = 0.75
+
+we propose an ML approach to predict the pa-
+rameters determining eﬃcacy of nanoparticles in MRI (r1 and r2
+relaxivities) or hyperthermia treatment (SAR).
+
+! we create a unique database
+
+We perform feature engineering,
+train and optimize ML models
+
++ R2 = 0.86 for prediction of SAR, R2 = 0.78 and R2 = 0.75 for
+prediction of r1 and r2 relaxivities
+
+We analyze feature importances
+
+- we validate the ML models
+
+- we present DiMag, a web service
+
+- we manually collected 1282 raw samples from 126 unique scientiﬁc articles
+
+we substantially expanded the set of characteristics of magnetic
+nanoparticles by feature engineering
+
+! we calculated and analyzed the Pearson correlation matrix
+
+After minimal data cleansing, we obtained the dataset of more
+than 980 nanosized metals, bimetals, and metal oxides (ferrites
+with various compositions) materials with more than 120 core
+and 50 shell compositions of diﬀerent kinds
+
+We started by implementing additional prepro-
+cessing steps
+
+zeta potential and hydrodynamic radius are impor-
+tant parameters describing the interaction between a nanoparti-
+cle and a media. Even so, we had to exclude them
+
+! we chose kNN imputation technique
+
+In the initial dataset, we had features with high percentages of missing
+values, e.g., 34% for r1 relaxation, 28% for remanent magnetiza-
+tion, and 21% for coercivity. To cope with that, we ﬁrst removed
+the total of 211 samples such that each sample in the remaining
+dataset had no more than 15% of missing values
+
+we transformed highly correlated ge-
+ometrical features into area to volume and max to min length
+ratios reﬂecting size and shape anisotropy of nanoparticles
+
+We also discarded nonin-
+formative features of low variance, i.e., coercivity and remanent
+magnetization values
+
++ After the ﬁnal dataset has been prepared, we divided it into
+three, one for each regression problem: prediction of SAR value,
+r1 or r2 relaxivity containing 460, 355, and 465 samples,
+
++ For prediction of SAR value, 11 descriptors were used, whereas relaxivity values
+were predicted using 8 descriptors only
+
++ We normalized and log-scaled the data for each problem before splitting
+to train and test sets in the 80/20 ratio
+
++ LGBMRegressor and XGBRegressor algorithms build
+
++ hyperparameter tuning was done using the model-agnostic Optuna framework
+
+we optimized and compared performance of four models
+
++ The best model was selected using the following
+metrics: mean Q2 and RMSE for tenfold cross-validation and R2
+and RMSE for test samples
+
++ For SAR prediction, RMSE of 0.28 on tenfold cross-validation dropped to
+0.26 on test samples; for r1 and r2 relaxivities, RMSE dropped
+from 0.30 to 0.27 and from 0.25 to 0.22 on test samples, respec-
+tively.
+
+For this purpose, we
+plotted SHAP (SHapley Additive exPlanations) values for each
+selected ML model
+
++ we computed per-
+cent of predictions that diﬀered from the true values by less
+than 50%. For SAR, r1 and r2 relaxivities, the percentages were 47%, 57%, and 68%
+
+we developed an open access web service
+

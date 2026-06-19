@@ -1,0 +1,146 @@
+{
+  "result": [
+    {
+      "claim": "The system uses a BM25 algorithm for initial search.",
+      "original_text": "На первом этапе выполняется поиск по алгоритму BM25",
+      "category": "model_architecture",
+      "value": "BM25",
+      "verifiability": "high",
+      "contradiction": false
+    },
+    {
+      "claim": "The system uses a semantic bi-encoder E5 for candidate refinement.",
+      "original_text": "полученные кандидаты уточняются с помощью семантического биэнкодера E5",
+      "category": "model_architecture",
+      "value": "E5",
+      "verifiability": "high",
+      "contradiction": false
+    },
+    {
+      "claim": "The system uses a cross-encoder E5 for final reranking of top documents.",
+      "original_text": "Для окончательного ранжирования топ-документов используется реранкинг на основе кроссэнкодера E5",
+      "category": "model_architecture",
+      "value": "E5",
+      "verifiability": "high",
+      "contradiction": false
+    },
+    {
+      "claim": "The generated context is passed to the YandexGPT 5 language model for final answer generation.",
+      "original_text": "Сформированный контекст передается в языковую модель YandexGPT 5 для генерации итогового ответа",
+      "category": "model_architecture",
+      "value": "YandexGPT 5",
+      "verifiability": "high",
+      "contradiction": false
+    },
+    {
+      "claim": "System quality is evaluated using Precision@k metrics.",
+      "original_text": "Качество работы системы на всех этапах оценивается с помощью метрик Precision@k",
+      "category": "evaluation_metric",
+      "value": "Precision@k",
+      "verifiability": "medium",
+      "contradiction": false
+    },
+    {
+      "claim": "System quality is evaluated using Recall@k metrics.",
+      "original_text": "Качество работы системы на всех этапах оценивается с помощью метрик Recall@k",
+      "category": "evaluation_metric",
+      "value": "Recall@k",
+      "verifiability": "medium",
+      "contradiction": false
+    },
+    {
+      "claim": "System quality is evaluated using MRR metrics.",
+      "original_text": "Качество работы системы на всех этапах оценивается с помощью метрик MRR",
+      "category": "evaluation_metric",
+      "value": "MRR",
+      "verifiability": "medium",
+      "contradiction": false
+    },
+    {
+      "claim": "A working system with a web interface and API for testing was created.",
+      "original_text": "В результате реализации создана рабочая система с веб-интерфейсом и API для тестирования",
+      "category": "infrastructure",
+      "value": null,
+      "verifiability": "high",
+      "contradiction": false
+    },
+    {
+      "claim": "The first stage uses the SQuAD v2.0 dataset.",
+      "original_text": "система тестируется на стандартном текстовом датасете SQuAD v2.0",
+      "category": "dataset",
+      "value": "SQuAD v2.0",
+      "verifiability": "high",
+      "contradiction": false
+    },
+    {
+      "claim": "The pipeline includes a cascade search with BM25 and E5.",
+      "original_text": "каскадный поиск (BM25 - E5)",
+      "category": "model_architecture",
+      "value": "BM25, E5",
+      "verifiability": "high",
+      "contradiction": false
+    },
+    {
+      "claim": "The pipeline includes text reranking using an E5 cross-encoder.",
+      "original_text": "текстовый реранкинг с использованием кроссэнкодера E5",
+      "category": "model_architecture",
+      "value": "E5 cross-encoder",
+      "verifiability": "high",
+      "contradiction": false
+    },
+    {
+      "claim": "The second stage uses a specialized dataset containing PDF pages with text and images.",
+      "original_text": "будет использован специализированный датасет, содержащий PDF-страницы с текстом и изображениями",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "high",
+      "contradiction": false
+    },
+    {
+      "claim": "The main metrics for ranking quality are Recall@k, nDCG@k, and MRR.",
+      "original_text": "Основными метриками для оценки качества ранжирования станут Recall@k, nDCG@k и MRR.",
+      "category": "evaluation_metric",
+      "value": "Recall@k, nDCG@k, MRR",
+      "verifiability": "high",
+      "contradiction": false
+    },
+    {
+      "claim": "Inference time will be measured.",
+      "original_text": "время инференса",
+      "category": "evaluation_metric",
+      "value": null,
+      "verifiability": "medium",
+      "contradiction": false
+    },
+    {
+      "claim": "VRAM consumption will be measured.",
+      "original_text": "потребление видеопамяти (VRAM) будут измеряться",
+      "category": "evaluation_metric",
+      "value": null,
+      "verifiability": "medium",
+      "contradiction": false
+    },
+    {
+      "claim": "Performance will be measured on the p50 and p95 percentiles.",
+      "original_text": "будут измеряться на перцентилях p50 и p95",
+      "category": "evaluation_metric",
+      "value": "p50, p95",
+      "verifiability": "high",
+      "contradiction": false
+    },
+    {
+      "claim": "The target memory constraint is up to 8 GB VRAM.",
+      "original_text": "объём памяти до 8 ГБ VRAM",
+      "category": "infrastructure",
+      "value": "8 GB",
+      "verifiability": "high",
+      "contradiction": false
+    }
+  ],
+  "meta": {
+    "source": "/home/ilya/OSA/marker_output/paper_8/paper_8_sections.json",
+    "steps": 3,
+    "history_messages": 3,
+    "model": "deepseek/deepseek-v3.2"
+  }
+}

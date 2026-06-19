@@ -1,0 +1,687 @@
+{
+  "result": [
+    {
+      "claim": "System analysis was used to classify RCPSP constraints.",
+      "original_text": "Системный анализ: классификация ограничений RCPSP;",
+      "category": "training_procedure",
+      "value": "RCPSP constraints classification",
+      "verifiability": "high",
+      "section_name": "Глава 2. Методология и научная новизна",
+      "section_heading_raw": "**Глава 2. Методология и научная новизна**",
+      "claim_id": "c0001",
+      "contradiction": false
+    },
+    {
+      "claim": "Formal language theory was used to design a DSL grammar.",
+      "original_text": "Теория формальных языков: проектирование грамматики DSL;",
+      "category": "model_architecture",
+      "value": "DSL grammar",
+      "verifiability": "high",
+      "section_name": "Глава 2. Методология и научная новизна",
+      "section_heading_raw": "**Глава 2. Методология и научная новизна**",
+      "claim_id": "c0002",
+      "contradiction": false
+    },
+    {
+      "claim": "Iterative scenario modeling was employed.",
+      "original_text": "Итерационное моделирование сценариев: формирование синтетических датасетов на основе разработанных формальных спецификаций для верификации полноты грамматики и покрытия всех краевых условий RCPSP.",
+      "category": "training_procedure",
+      "value": null,
+      "verifiability": "high",
+      "section_name": "Глава 2. Методология и научная новизна",
+      "section_heading_raw": "**Глава 2. Методология и научная новизна**",
+      "claim_id": "c0003",
+      "contradiction": false
+    },
+    {
+      "claim": "Synthetic datasets were generated based on the developed formal specifications.",
+      "original_text": "Итерационное моделирование сценариев: формирование синтетических датасетов на основе разработанных формальных спецификаций для верификации полноты грамматики и покрытия всех краевых условий RCPSP.",
+      "category": "dataset",
+      "value": "synthetic datasets based on formal specifications",
+      "verifiability": "high",
+      "section_name": "Глава 2. Методология и научная новизна",
+      "section_heading_raw": "**Глава 2. Методология и научная новизна**",
+      "claim_id": "c0004",
+      "contradiction": false
+    },
+    {
+      "claim": "The synthetic datasets were used to verify the completeness of the grammar.",
+      "original_text": "Итерационное моделирование сценариев: формирование синтетических датасетов на основе разработанных формальных спецификаций для верификации полноты грамматики и покрытия всех краевых условий RCPSP.",
+      "category": "training_procedure",
+      "value": null,
+      "verifiability": "high",
+      "section_name": "Глава 2. Методология и научная новизна",
+      "section_heading_raw": "**Глава 2. Методология и научная новизна**",
+      "claim_id": "c0005",
+      "contradiction": false
+    },
+    {
+      "claim": "The synthetic datasets were used to cover all edge conditions of RCPSP.",
+      "original_text": "Итерационное моделирование сценариев: формирование синтетических датасетов на основе разработанных формальных спецификаций для верификации полноты грамматики и покрытия всех краевых условий RCPSP.",
+      "category": "training_procedure",
+      "value": null,
+      "verifiability": "high",
+      "section_name": "Глава 2. Методология и научная новизна",
+      "section_heading_raw": "**Глава 2. Методология и научная новизна**",
+      "claim_id": "c0006",
+      "contradiction": false
+    },
+    {
+      "claim": "Примитивы категории \"Ресурсы\" включают: Возобновляемые, частично возобновляемые, невозобновляемые, Навыки и уровни квалификации, Стоимость использования и простоя.",
+      "original_text": "Возобновляемые, частично возобновляемые, невозобновляемые, Навыки и уровни квалификации, Стоимость использования и простоя",
+      "category": "data_preprocessing",
+      "value": "Возобновляемые, частично возобновляемые, невозобновляемые, Навыки и уровни квалификации, Стоимость использования и простоя",
+      "verifiability": "high",
+      "section_name": "Анализ примитивов",
+      "section_heading_raw": "3.1. Анализ примитивов",
+      "claim_id": "c0007",
+      "contradiction": false
+    },
+    {
+      "claim": "Примитивы категории \"Работы\" включают: Мультирежимность, Прерываемость, Вероятностные распределения.",
+      "original_text": "Мультирежимность, Прерываемость, Вероятностные распределения",
+      "category": "data_preprocessing",
+      "value": "Мультирежимность, Прерываемость, Вероятностные распределения",
+      "verifiability": "high",
+      "section_name": "Анализ примитивов",
+      "section_heading_raw": "3.1. Анализ примитивов",
+      "claim_id": "c0008",
+      "contradiction": false
+    },
+    {
+      "claim": "Примитив категории \"Связи\" — Обобщенные лаги (min/max).",
+      "original_text": "Обобщенные лаги (min/max)",
+      "category": "data_preprocessing",
+      "value": "Обобщенные лаги (min/max)",
+      "verifiability": "high",
+      "section_name": "Анализ примитивов",
+      "section_heading_raw": "3.1. Анализ примитивов",
+      "claim_id": "c0009",
+      "contradiction": false
+    },
+    {
+      "claim": "Примитивы категории \"Финансы\" включают: Денежные потоки, Ставка дисконтирования.",
+      "original_text": "Денежные потоки, Ставка дисконтирования",
+      "category": "data_preprocessing",
+      "value": "Денежные потоки, Ставка дисконтирования",
+      "verifiability": "high",
+      "section_name": "Анализ примитивов",
+      "section_heading_raw": "3.1. Анализ примитивов",
+      "claim_id": "c0010",
+      "contradiction": false
+    },
+    {
+      "claim": "Примитивы категории \"Метрики\" включают: Makespan, Cost, NPV, Робастность.",
+      "original_text": "Makespan, Cost, NPV, Робастность",
+      "category": "data_preprocessing",
+      "value": "Makespan, Cost, NPV, Робастность",
+      "verifiability": "high",
+      "section_name": "Анализ примитивов",
+      "section_heading_raw": "3.1. Анализ примитивов",
+      "claim_id": "c0011",
+      "contradiction": false
+    },
+    {
+      "claim": "Структура описания задачи реализована в формате JSON, что обеспечивает легкую интеграцию с веб-сервисами и ML-агентами.",
+      "original_text": "Структура описания задачи реализована в формате JSON, что обеспечивает легкую интеграцию с веб-сервисами и ML-агентами.",
+      "category": "data_preprocessing",
+      "value": "JSON",
+      "verifiability": "high",
+      "section_name": "Архитектура и формальная спецификация DSL",
+      "section_heading_raw": "**3.2. Архитектура и формальная спецификация DSL**",
+      "claim_id": "c0012",
+      "contradiction": false
+    },
+    {
+      "claim": "Архитектура DSL построена по иерархическому принципу и включает три ключевых блока: метаданные, ресурсы и задачи.",
+      "original_text": "Архитектура DSL построена по иерархическому принципу и включает три ключевых блока: метаданные, ресурсы и задачи.",
+      "category": "model_architecture",
+      "value": "метаданные, ресурсы, задачи",
+      "verifiability": "high",
+      "section_name": "Архитектура и формальная спецификация DSL",
+      "section_heading_raw": "**3.2. Архитектура и формальная спецификация DSL**",
+      "claim_id": "c0013",
+      "contradiction": false
+    },
+    {
+      "claim": "Поле «objective» поддерживает полиморфизм.",
+      "original_text": "Поле *«objective»* поддерживает полиморфизм: оно может быть строкой для простых задач (например, *«minimize_makespan»*) или массивом объектов для мультикритериальной оптимизации, где каждому критерию присваивается весовой коэффициент.",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "high",
+      "section_name": "Блок метаданных",
+      "section_heading_raw": "1. Блок метаданных",
+      "claim_id": "c0014",
+      "contradiction": false
+    },
+    {
+      "claim": "Поле «objective» может быть строкой для простых задач (например, «minimize_makespan»).",
+      "original_text": "Поле *«objective»* поддерживает полиморфизм: оно может быть строкой для простых задач (например, *«minimize_makespan»*) или массивом объектов для мультикритериальной оптимизации, где каждому критерию присваивается весовой коэффициент.",
+      "category": "model_architecture",
+      "value": "minimize_makespan",
+      "verifiability": "high",
+      "section_name": "Блок метаданных",
+      "section_heading_raw": "1. Блок метаданных",
+      "claim_id": "c0015",
+      "contradiction": false
+    },
+    {
+      "claim": "Поле «objective» может быть массивом объектов для мультикритериальной оптимизации.",
+      "original_text": "Поле *«objective»* поддерживает полиморфизм: оно может быть строкой для простых задач (например, *«minimize_makespan»*) или массивом объектов для мультикритериальной оптимизации, где каждому критерию присваивается весовой коэффициент.",
+      "category": "model_architecture",
+      "value": "массив объектов",
+      "verifiability": "high",
+      "section_name": "Блок метаданных",
+      "section_heading_raw": "1. Блок метаданных",
+      "claim_id": "c0016",
+      "contradiction": false
+    },
+    {
+      "claim": "Для мультикритериальной оптимизации каждому критерию присваивается весовой коэффициент.",
+      "original_text": "Поле *«objective»* поддерживает полиморфизм: оно может быть строкой для простых задач (например, *«minimize_makespan»*) или массивом объектов для мультикритериальной оптимизации, где каждому критерию присваивается весовой коэффициент.",
+      "category": "model_architecture",
+      "value": "весовой коэффициент",
+      "verifiability": "high",
+      "section_name": "Блок метаданных",
+      "section_heading_raw": "1. Блок метаданных",
+      "claim_id": "c0017",
+      "contradiction": false
+    },
+    {
+      "claim": "Пространственные ограничения описываются через интерфейс возобновляемого ресурса с параметром «capacity».",
+      "original_text": "Пространственные ограничения описываются через интерфейс возобновляемого ресурса с параметром *«capacity»*.",
+      "category": "model_architecture",
+      "value": "capacity",
+      "verifiability": "high",
+      "section_name": "Блок ресурсов",
+      "section_heading_raw": "2. Блок ресурсов",
+      "claim_id": "c0019",
+      "contradiction": false
+    },
+    {
+      "claim": "Эксклюзивный доступ моделируется при capacity = 1.",
+      "original_text": "Это позволяет моделировать эксклюзивный доступ (capacity = 1) или ограничение плотности работ (capacity > 1) без введения специальных сущностей;",
+      "category": "model_architecture",
+      "value": "capacity = 1",
+      "verifiability": "high",
+      "section_name": "Блок ресурсов",
+      "section_heading_raw": "2. Блок ресурсов",
+      "claim_id": "c0020",
+      "contradiction": false
+    },
+    {
+      "claim": "Ограничение плотности работ моделируется при capacity > 1.",
+      "original_text": "Это позволяет моделировать эксклюзивный доступ (capacity = 1) или ограничение плотности работ (capacity > 1) без введения специальных сущностей;",
+      "category": "model_architecture",
+      "value": "capacity > 1",
+      "verifiability": "high",
+      "section_name": "Блок ресурсов",
+      "section_heading_raw": "2. Блок ресурсов",
+      "claim_id": "c0021",
+      "contradiction": false
+    },
+    {
+      "claim": "Для ресурсов, зависящих от местоположения, предусмотрена матрица перемещений, которая определяет временные задержки при смене локаций.",
+      "original_text": "Для ресурсов, зависящих от местоположения, предусмотрена матрица перемещений, которая определяет временные задержки при смене локаций.",
+      "category": "model_architecture",
+      "value": "матрица перемещений",
+      "verifiability": "high",
+      "section_name": "Блок ресурсов",
+      "section_heading_raw": "2. Блок ресурсов",
+      "claim_id": "c0022",
+      "contradiction": false
+    },
+    {
+      "claim": "Задача содержит массив режимов, каждый из которых описывает альтернативный вариант выполнения задачи, задавая уникальную комбинацию длительности и потребляемых ресурсов.",
+      "original_text": "Вместо фиксированной длительности, задача содержит массив режимов, каждый из которых описывает альтернативный вариант выполнения задачи, задавая уникальную комбинацию длительности и потребляемых ресурсов (например, медленно и дешево, либо быстро и дорого);",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "high",
+      "section_name": "Блок задач и зависимостей",
+      "section_heading_raw": "3. Блок задач и зависимостей",
+      "claim_id": "c0023",
+      "contradiction": false
+    },
+    {
+      "claim": "Блок зависимостей описывает граф работ, поддерживая различные типы связей и минимальные временные лаги между событиями.",
+      "original_text": "Блок зависимостей описывает граф работ, поддерживая различные типы связей и минимальные временные лаги между событиями.",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "high",
+      "section_name": "Блок задач и зависимостей",
+      "section_heading_raw": "3. Блок задач и зависимостей",
+      "claim_id": "c0024",
+      "contradiction": false
+    },
+    {
+      "claim": "Валидация выразительной способности языка была проведена на наборе из шести разноплановых сценариев.",
+      "original_text": "В ходе разработки DSL была проведена валидация выразительной способности языка на наборе из шести разноплановых сценариев.",
+      "category": "dataset",
+      "value": "6",
+      "verifiability": "high",
+      "section_name": "Реализация специфичных ограничений",
+      "section_heading_raw": "**3.3. Реализация специфичных ограничений**",
+      "claim_id": "c0026",
+      "contradiction": false
+    },
+    {
+      "claim": "The classical model implements support for two fundamental types of resources: renewable and non-renewable.",
+      "original_text": "В классической модели реализована поддержка двух фундаментальных типов ресурсов: возобновляемых, которые возвращаются в пул после завершения задачи, и невозобновляемых, которые расходуются безвозвратно, что позволяет отслеживать бюджеты материалов и прерывать расписание при их дефиците;",
+      "category": "model_architecture",
+      "value": "renewable, non-renewable",
+      "verifiability": "high",
+      "section_name": "Моделирование производительности и ресурсов",
+      "section_heading_raw": "**3.3.1 Моделирование производительности и ресурсов**",
+      "claim_id": "c0027",
+      "contradiction": false
+    },
+    {
+      "claim": "Renewable resources are returned to the pool after task completion.",
+      "original_text": "В классической модели реализована поддержка двух фундаментальных типов ресурсов: возобновляемых, которые возвращаются в пул после завершения задачи, и невозобновляемых, которые расходуются безвозвратно, что позволяет отслеживать бюджеты материалов и прерывать расписание при их дефиците;",
+      "category": "model_architecture",
+      "value": "returned to pool after task completion",
+      "verifiability": "high",
+      "section_name": "Моделирование производительности и ресурсов",
+      "section_heading_raw": "**3.3.1 Моделирование производительности и ресурсов**",
+      "claim_id": "c0028",
+      "contradiction": false
+    },
+    {
+      "claim": "Non-renewable resources are consumed irreversibly.",
+      "original_text": "В классической модели реализована поддержка двух фундаментальных типов ресурсов: возобновляемых, которые возвращаются в пул после завершения задачи, и невозобновляемых, которые расходуются безвозвратно, что позволяет отслеживать бюджеты материалов и прерывать расписание при их дефиците;",
+      "category": "model_architecture",
+      "value": "consumed irreversibly",
+      "verifiability": "high",
+      "section_name": "Моделирование производительности и ресурсов",
+      "section_heading_raw": "**3.3.1 Моделирование производительности и ресурсов**",
+      "claim_id": "c0029",
+      "contradiction": false
+    },
+    {
+      "claim": "The mode \"CROWDED_CREW\" indicates that N1 workers complete the task in M1 hours.",
+      "original_text": "Например, режим *«CROWDED_CREW»* явно указывает, что N1 рабочих выполняет задачу за M1 часов (вместо ожидаемых M2 часов при линейном масштабировании от N2 рабочих).",
+      "category": "model_architecture",
+      "value": "N1 workers, M1 hours",
+      "verifiability": "medium",
+      "section_name": "Моделирование производительности и ресурсов",
+      "section_heading_raw": "**3.3.1 Моделирование производительности и ресурсов**",
+      "claim_id": "c0030",
+      "contradiction": false
+    },
+    {
+      "claim": "Under linear scaling from N2 workers, the expected duration would be M2 hours.",
+      "original_text": "Например, режим *«CROWDED_CREW»* явно указывает, что N1 рабочих выполняет задачу за M1 часов (вместо ожидаемых M2 часов при линейном масштабировании от N2 рабочих).",
+      "category": "model_architecture",
+      "value": "M2 hours for N2 workers",
+      "verifiability": "medium",
+      "section_name": "Моделирование производительности и ресурсов",
+      "section_heading_raw": "**3.3.1 Моделирование производительности и ресурсов**",
+      "claim_id": "c0031",
+      "contradiction": false
+    },
+    {
+      "claim": "DSL can model space as a resource.",
+      "original_text": "Одной из ключевых особенностей DSL является способность моделировать пространство как ресурс, что критично для строительных и ремонтных задач:",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "high",
+      "section_name": "Пространственные и логистические ограничения",
+      "section_heading_raw": "**3.3.2 Пространственные и логистические ограничения**",
+      "claim_id": "c0032",
+      "contradiction": false
+    },
+    {
+      "claim": "Mutex logic is implemented for exclusive zones.",
+      "original_text": "Для задачи с эксклюзивными зонами реализована логика мьютексов.",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "high",
+      "section_name": "Пространственные и логистические ограничения",
+      "section_heading_raw": "**3.3.2 Пространственные и логистические ограничения**",
+      "claim_id": "c0033",
+      "contradiction": false
+    },
+    {
+      "claim": "Space is described as a renewable resource with a \"capacity\" parameter.",
+      "original_text": "Пространство описывается как возобновляемый ресурс с параметром «capacity» (например, пространство «кабина пилота» имеет capacity = 1).",
+      "category": "model_architecture",
+      "value": "capacity",
+      "verifiability": "high",
+      "section_name": "Пространственные и логистические ограничения",
+      "section_heading_raw": "**3.3.2 Пространственные и логистические ограничения**",
+      "claim_id": "c0034",
+      "contradiction": false
+    },
+    {
+      "claim": "The \"pilot cabin\" space has capacity = 1.",
+      "original_text": "Пространство описывается как возобновляемый ресурс с параметром «capacity» (например, пространство «кабина пилота» имеет capacity = 1).",
+      "category": "model_architecture",
+      "value": "1",
+      "verifiability": "high",
+      "section_name": "Пространственные и логистические ограничения",
+      "section_heading_raw": "**3.3.2 Пространственные и логистические ограничения**",
+      "claim_id": "c0035",
+      "contradiction": false
+    },
+    {
+      "claim": "The system guarantees that two tasks will not be scheduled simultaneously in the same point, preventing physical collisions.",
+      "original_text": "Это гарантирует, что две задачи не будут запланированы одновременно в одной точке, предотвращая физические коллизии;",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Пространственные и логистические ограничения",
+      "section_heading_raw": "**3.3.2 Пространственные и логистические ограничения**",
+      "claim_id": "c0036",
+      "contradiction": false
+    },
+    {
+      "claim": "Resource \"R_ZONE_CAPACITY\" can have capacity >1.",
+      "original_text": "Реализовано ограничение плотности работ: например, ресурс «R_ZONE_CAPACITY» может иметь емкость >1.",
+      "category": "model_architecture",
+      "value": ">1",
+      "verifiability": "medium",
+      "section_name": "Пространственные и логистические ограничения",
+      "section_heading_raw": "**3.3.2 Пространственные и логистические ограничения**",
+      "claim_id": "c0038",
+      "contradiction": false
+    },
+    {
+      "claim": "Each unit of equipment or worker entering the zone uses 1 unit of capacity.",
+      "original_text": "Каждая единица техники или рабочего, входящая в зону, использует 1 единицу емкости;",
+      "category": "model_architecture",
+      "value": "1",
+      "verifiability": "high",
+      "section_name": "Пространственные и логистические ограничения",
+      "section_heading_raw": "**3.3.2 Пространственные и логистические ограничения**",
+      "claim_id": "c0039",
+      "contradiction": false
+    },
+    {
+      "claim": "Support for location-dependent resources is introduced.",
+      "original_text": "Введена поддержка ресурсов, зависящих от местоположения.",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "high",
+      "section_name": "Пространственные и логистические ограничения",
+      "section_heading_raw": "**3.3.2 Пространственные и логистические ограничения**",
+      "claim_id": "c0040",
+      "contradiction": false
+    },
+    {
+      "claim": "The matrix \"transfer_times\" describes time costs for moving a resource between sites.",
+      "original_text": "Матрица «transfer_times» описывает временные затраты на перемещение ресурса между площадками.",
+      "category": "model_architecture",
+      "value": "transfer_times",
+      "verifiability": "high",
+      "section_name": "Пространственные и логистические ограничения",
+      "section_heading_raw": "**3.3.2 Пространственные и логистические ограничения**",
+      "claim_id": "c0041",
+      "contradiction": false
+    },
+    {
+      "claim": "This adds dynamic lags to the schedule that depend on the resource state.",
+      "original_text": "Это добавляет динамические лаги в расписание, которые зависят от состояния ресурса.",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Пространственные и логистические ограничения",
+      "section_heading_raw": "**3.3.2 Пространственные и логистические ограничения**",
+      "claim_id": "c0042",
+      "contradiction": false
+    },
+    {
+      "claim": "В сценарии мультикритериальности поле «objective» может содержать массив целей с весовыми коэффициентами.",
+      "original_text": "В сценарии мультикритериальности продемонстрирован отказ от единственной целевой функции, поле *«objective»* может содержать массив целей с весовыми коэффициентами: чем больше коэффициент, тем важнее цель.",
+      "category": "data_preprocessing",
+      "value": "objective",
+      "verifiability": "high",
+      "section_name": "Управления целями",
+      "section_heading_raw": "**3.3.3 Управления целями**",
+      "claim_id": "c0043",
+      "contradiction": false
+    },
+    {
+      "claim": "Чем больше весовой коэффициент, тем важнее соответствующая цель.",
+      "original_text": "В сценарии мультикритериальности продемонстрирован отказ от единственной целевой функции, поле *«objective»* может содержать массив целей с весовыми коэффициентами: чем больше коэффициент, тем важнее цель.",
+      "category": "data_preprocessing",
+      "value": "weight coefficient",
+      "verifiability": "high",
+      "section_name": "Управления целями",
+      "section_heading_raw": "**3.3.3 Управления целями**",
+      "claim_id": "c0044",
+      "contradiction": false
+    },
+    {
+      "claim": "Алгоритмы оптимизации могут находить Парето-оптимальные решения, сохраняя баланс между сроками сдачи проекта и бюджетом.",
+      "original_text": "В сочетании с мультирежимностью задач алгоритмы оптимизации могут находить Парето-оптимальные решения, сохраняя баланс между сроками сдачи проекта и бюджетом.",
+      "category": "training_procedure",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Управления целями",
+      "section_heading_raw": "**3.3.3 Управления целями**",
+      "claim_id": "c0045",
+      "contradiction": false
+    }
+  ],
+  "step3_selection": [
+    {
+      "claim_id": "c0001",
+      "claim": "System analysis was used to classify RCPSP constraints.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0002",
+      "claim": "Formal language theory was used to design a DSL grammar.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0003",
+      "claim": "Iterative scenario modeling was employed.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0004",
+      "claim": "Synthetic datasets were generated based on the developed formal specifications.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0005",
+      "claim": "The synthetic datasets were used to verify the completeness of the grammar.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0006",
+      "claim": "The synthetic datasets were used to cover all edge conditions of RCPSP.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0007",
+      "claim": "Примитивы категории \"Ресурсы\" включают: Возобновляемые, частично возобновляемые, невозобновляемые, Навыки и уровни квалификации, Стоимость использования и простоя.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0008",
+      "claim": "Примитивы категории \"Работы\" включают: Мультирежимность, Прерываемость, Вероятностные распределения.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0009",
+      "claim": "Примитив категории \"Связи\" — Обобщенные лаги (min/max).",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0010",
+      "claim": "Примитивы категории \"Финансы\" включают: Денежные потоки, Ставка дисконтирования.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0011",
+      "claim": "Примитивы категории \"Метрики\" включают: Makespan, Cost, NPV, Робастность.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0012",
+      "claim": "Структура описания задачи реализована в формате JSON, что обеспечивает легкую интеграцию с веб-сервисами и ML-агентами.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0013",
+      "claim": "Архитектура DSL построена по иерархическому принципу и включает три ключевых блока: метаданные, ресурсы и задачи.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0014",
+      "claim": "Поле «objective» поддерживает полиморфизм.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0015",
+      "claim": "Поле «objective» может быть строкой для простых задач (например, «minimize_makespan»).",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0016",
+      "claim": "Поле «objective» может быть массивом объектов для мультикритериальной оптимизации.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0017",
+      "claim": "Для мультикритериальной оптимизации каждому критерию присваивается весовой коэффициент.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0019",
+      "claim": "Пространственные ограничения описываются через интерфейс возобновляемого ресурса с параметром «capacity».",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0020",
+      "claim": "Эксклюзивный доступ моделируется при capacity = 1.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0021",
+      "claim": "Ограничение плотности работ моделируется при capacity > 1.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0022",
+      "claim": "Для ресурсов, зависящих от местоположения, предусмотрена матрица перемещений, которая определяет временные задержки при смене локаций.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0023",
+      "claim": "Задача содержит массив режимов, каждый из которых описывает альтернативный вариант выполнения задачи, задавая уникальную комбинацию длительности и потребляемых ресурсов.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0024",
+      "claim": "Блок зависимостей описывает граф работ, поддерживая различные типы связей и минимальные временные лаги между событиями.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0026",
+      "claim": "Валидация выразительной способности языка была проведена на наборе из шести разноплановых сценариев.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0027",
+      "claim": "The classical model implements support for two fundamental types of resources: renewable and non-renewable.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0028",
+      "claim": "Renewable resources are returned to the pool after task completion.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0029",
+      "claim": "Non-renewable resources are consumed irreversibly.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0030",
+      "claim": "The mode \"CROWDED_CREW\" indicates that N1 workers complete the task in M1 hours.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0031",
+      "claim": "Under linear scaling from N2 workers, the expected duration would be M2 hours.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0032",
+      "claim": "DSL can model space as a resource.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0033",
+      "claim": "Mutex logic is implemented for exclusive zones.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0034",
+      "claim": "Space is described as a renewable resource with a \"capacity\" parameter.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0035",
+      "claim": "The \"pilot cabin\" space has capacity = 1.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0036",
+      "claim": "The system guarantees that two tasks will not be scheduled simultaneously in the same point, preventing physical collisions.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0038",
+      "claim": "Resource \"R_ZONE_CAPACITY\" can have capacity >1.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0039",
+      "claim": "Each unit of equipment or worker entering the zone uses 1 unit of capacity.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0040",
+      "claim": "Support for location-dependent resources is introduced.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0041",
+      "claim": "The matrix \"transfer_times\" describes time costs for moving a resource between sites.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0042",
+      "claim": "This adds dynamic lags to the schedule that depend on the resource state.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0043",
+      "claim": "В сценарии мультикритериальности поле «objective» может содержать массив целей с весовыми коэффициентами.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0044",
+      "claim": "Чем больше весовой коэффициент, тем важнее соответствующая цель.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0045",
+      "claim": "Алгоритмы оптимизации могут находить Парето-оптимальные решения, сохраняя баланс между сроками сдачи проекта и бюджетом.",
+      "contradiction": false
+    }
+  ],
+  "meta": {
+    "source": "/home/ilya/OSA/mvp/02_parsed_data/paper_2/paper_2_sections_v3.json",
+    "steps": 3,
+    "history_messages": 3,
+    "model": "openai/gpt-oss-120b",
+    "filtered_claims": 42,
+    "step3_input_count": 45,
+    "step3_output_count": 42
+  }
+}

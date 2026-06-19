@@ -1,0 +1,295 @@
+{
+  "result": [
+    {
+      "claim": "В статье предлагается агентный подход, основанный на предварительном анализе уязвимостей базовой генерации и последующем использовании полученной статистики для формирования целевых security-промптов.",
+      "original_text": "В статье предлагается агентный подход, основанный на предварительном анализе уязвимостей базовой генерации и последующем использовании полученной статистики для формирования целевых security-промптов.",
+      "category": "training_procedure",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0001",
+      "contradiction": false
+    },
+    {
+      "claim": "Дополнительно исследуется влияние мультиагентной архитектуры «генератор-критик» на снижение доли уязвимого кода.",
+      "original_text": "Дополнительно исследуется влияние мультиагентной архитектуры «генератор-критик» на снижение доли уязвимого кода.",
+      "category": "model_architecture",
+      "value": "generator-critic",
+      "verifiability": "medium",
+      "claim_id": "c0002",
+      "contradiction": false
+    },
+    {
+      "claim": "Экспериментальные результаты показывают, что предложенный метод позволяет существенно повысить безопасность генерации без дообучения модели.",
+      "original_text": "Экспериментальные результаты показывают, что предложенный метод позволяет существенно повысить безопасность генерации без дообучения модели и с контролируемым снижением функциональной корректности.",
+      "category": "training_procedure",
+      "value": "without fine-tuning",
+      "verifiability": "high",
+      "claim_id": "c0003",
+      "contradiction": false
+    },
+    {
+      "claim": "The study considers generation using targeted security prompts.",
+      "original_text": "- генерация с использованием целевых securityпромптов;",
+      "category": "training_procedure",
+      "value": "targeted security prompts",
+      "verifiability": "medium",
+      "claim_id": "c0005",
+      "contradiction": false
+    },
+    {
+      "claim": "The study proposes a multi-agent architecture called “generator-critic”.",
+      "original_text": "- мультиагентная архитектура «генератор-критик»;",
+      "category": "model_architecture",
+      "value": "generator-critic",
+      "verifiability": "high",
+      "claim_id": "c0006",
+      "contradiction": false
+    },
+    {
+      "claim": "The study considers a combination of the multi-agent approach and adaptive prompting.",
+      "original_text": "- комбинация мультиагентного подхода и адаптивного промптирования.",
+      "category": "training_procedure",
+      "value": "adaptive prompting",
+      "verifiability": "medium",
+      "claim_id": "c0007",
+      "contradiction": false
+    },
+    {
+      "claim": "The generation quality is evaluated using the pass@1 metric.",
+      "original_text": "Оценка качества генерации проводится с использованием метрик pass@1, характеризующей вероятность получения функционально корректного решения, и  $\\sec_p ass$ @1, , .",
+      "category": "evaluation_metric",
+      "value": "pass@1",
+      "verifiability": "high",
+      "claim_id": "c0008",
+      "contradiction": true
+    },
+    {
+      "claim": "The generation quality is evaluated using the $\\sec_p ass$ @1 metric.",
+      "original_text": "Оценка качества генерации проводится с использованием метрик pass@1, характеризующей вероятность получения функционально корректного решения, и  $\\sec_p ass$ @1, , .",
+      "category": "evaluation_metric",
+      "value": "$\\sec_p ass$ @1",
+      "verifiability": "high",
+      "claim_id": "c0009",
+      "contradiction": true
+    },
+    {
+      "claim": "Code generation is performed using a basic prompt without additional constraints.",
+      "original_text": "На первом этапе выполняется генерация кода с использованием базового промпта без дополнительных ограничений.",
+      "category": "training_procedure",
+      "value": "базовый промпт без дополнительных ограничений",
+      "verifiability": "high",
+      "claim_id": "c0010",
+      "contradiction": false
+    },
+    {
+      "claim": "The generated examples are analyzed using automated vulnerability detection tools to determine the distribution of CWE classes characteristic for the model.",
+      "original_text": "Полученные примеры анализируются с применением автоматических средств выявления уязвимостей, что позволяет определить распределение CWE-классов, характерных для рассматриваемой модели.",
+      "category": "training_procedure",
+      "value": "автоматические средства выявления уязвимостей",
+      "verifiability": "medium",
+      "claim_id": "c0011",
+      "contradiction": false
+    },
+    {
+      "claim": "Targeted security prompts are created based on the identified distribution, explicitly focusing the model on preventing common errors such as lack of input validation and use of unsafe functions.",
+      "original_text": "На основе выявленного распределения формируются целевые security-промпты, которые явно акцентируют внимание модели на предотвращении наиболее распространённых ошибок, таких как отсутствие проверки входных данных и использование небезопасных функций.",
+      "category": "training_procedure",
+      "value": "отсутствие проверки входных данных, использование небезопасных функций",
+      "verifiability": "medium",
+      "claim_id": "c0012",
+      "contradiction": false
+    },
+    {
+      "claim": "The first agent is responsible for primary code generation.",
+      "original_text": "В рамках данного подхода первый агент отвечает за первичную генерацию кода, в то время как второй агент выполняет анализ результата с точки зрения безопасности и формирует рекомендации по исправлению потенциальных уязвимостей.",
+      "category": "model_architecture",
+      "value": "первый агент отвечает за первичную генерацию кода",
+      "verifiability": "high",
+      "claim_id": "c0014",
+      "contradiction": false
+    },
+    {
+      "claim": "The second agent performs security analysis of the result and generates recommendations for fixing potential vulnerabilities.",
+      "original_text": "В рамках данного подхода первый агент отвечает за первичную генерацию кода, в то время как второй агент выполняет анализ результата с точки зрения безопасности и формирует рекомендации по исправлению потенциальных уязвимостей.",
+      "category": "model_architecture",
+      "value": "второй агент выполняет анализ результата с точки зрения безопасности и формирует рекомендации по исправлению потенциальных уязвимостей",
+      "verifiability": "high",
+      "claim_id": "c0015",
+      "contradiction": false
+    },
+    {
+      "claim": "Iterative interaction of the agents reduces the likelihood of typical errors without changing model parameters.",
+      "original_text": "Итеративное взаимодействие агентов позволяет снизить вероятность появления типовых ошибок без изменения параметров модели.",
+      "category": "training_procedure",
+      "value": "без изменения параметров модели",
+      "verifiability": "low",
+      "claim_id": "c0016",
+      "contradiction": false
+    },
+    {
+      "claim": "Экспериментальное исследование проводилось на наборе задач, ориентированных на генерацию серверных АРІ и обработку пользовательского ввода.",
+      "original_text": "Экспериментальное исследование проводилось на наборе задач, ориентированных на генерацию серверных АРІ и обработку пользовательского ввода.",
+      "category": "dataset",
+      "value": "генерация серверных АРІ и обработка пользовательского ввода",
+      "verifiability": "high",
+      "claim_id": "c0017",
+      "contradiction": false
+    },
+    {
+      "claim": "Для базовой генерации представлено распределение наиболее распространённых СWE-уязвимостей.",
+      "original_text": "На рисунке 1 представлено распределение наиболее распространённых СWE-уязвимостей для базовой генерации и архитектуры «генератор-критик».",
+      "category": "model_architecture",
+      "value": "базовая генерация",
+      "verifiability": "high",
+      "claim_id": "c0018",
+      "contradiction": false
+    },
+    {
+      "claim": "Для архитектуры «генератор‑критик» представлено распределение наиболее распространённых СWE-уязвимостей.",
+      "original_text": "На рисунке 1 представлено распределение наиболее распространённых СWE-уязвимостей для базовой генерации и архитектуры «генератор-критик».",
+      "category": "model_architecture",
+      "value": "генератор‑критик",
+      "verifiability": "high",
+      "claim_id": "c0019",
+      "contradiction": false
+    },
+    {
+      "claim": "При изменении домена задач или языка программирования распределение CWE может отличаться.",
+      "original_text": "При изменении домена задач или языка программирования распределение CWE может отличаться, что потребует пересмотра используемых security-промптов.",
+      "category": "dataset",
+      "value": "CWE",
+      "verifiability": "medium",
+      "claim_id": "c0020",
+      "contradiction": false
+    },
+    {
+      "claim": "Мультиагентная архитектура увеличивает количество обращений к модели.",
+      "original_text": "мультиагентная архитектура увеличивает количество обращений к модели, что приводит к росту вычислительных затрат.",
+      "category": "model_architecture",
+      "value": "мультиагентная архитектура",
+      "verifiability": "medium",
+      "claim_id": "c0021",
+      "contradiction": false
+    },
+    {
+      "claim": "Это приводит к росту вычислительных затрат.",
+      "original_text": "мультиагентная архитектура увеличивает количество обращений к модели, что приводит к росту вычислительных затрат.",
+      "category": "infrastructure",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0022",
+      "contradiction": false
+    }
+  ],
+  "step3_selection": [
+    {
+      "claim_id": "c0001",
+      "claim": "В статье предлагается агентный подход, основанный на предварительном анализе уязвимостей базовой генерации и последующем использовании полученной статистики для формирования целевых security-промптов.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0002",
+      "claim": "Дополнительно исследуется влияние мультиагентной архитектуры «генератор-критик» на снижение доли уязвимого кода.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0003",
+      "claim": "Экспериментальные результаты показывают, что предложенный метод позволяет существенно повысить безопасность генерации без дообучения модели.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0005",
+      "claim": "The study considers generation using targeted security prompts.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0006",
+      "claim": "The study proposes a multi-agent architecture called “generator-critic”.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0007",
+      "claim": "The study considers a combination of the multi-agent approach and adaptive prompting.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0008",
+      "claim": "The generation quality is evaluated using the pass@1 metric.",
+      "contradiction": true
+    },
+    {
+      "claim_id": "c0009",
+      "claim": "The generation quality is evaluated using the $\\sec_p ass$ @1 metric.",
+      "contradiction": true
+    },
+    {
+      "claim_id": "c0010",
+      "claim": "Code generation is performed using a basic prompt without additional constraints.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0011",
+      "claim": "The generated examples are analyzed using automated vulnerability detection tools to determine the distribution of CWE classes characteristic for the model.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0012",
+      "claim": "Targeted security prompts are created based on the identified distribution, explicitly focusing the model on preventing common errors such as lack of input validation and use of unsafe functions.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0014",
+      "claim": "The first agent is responsible for primary code generation.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0015",
+      "claim": "The second agent performs security analysis of the result and generates recommendations for fixing potential vulnerabilities.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0016",
+      "claim": "Iterative interaction of the agents reduces the likelihood of typical errors without changing model parameters.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0017",
+      "claim": "Экспериментальное исследование проводилось на наборе задач, ориентированных на генерацию серверных АРІ и обработку пользовательского ввода.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0018",
+      "claim": "Для базовой генерации представлено распределение наиболее распространённых СWE-уязвимостей.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0019",
+      "claim": "Для архитектуры «генератор‑критик» представлено распределение наиболее распространённых СWE-уязвимостей.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0020",
+      "claim": "При изменении домена задач или языка программирования распределение CWE может отличаться.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0021",
+      "claim": "Мультиагентная архитектура увеличивает количество обращений к модели.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0022",
+      "claim": "Это приводит к росту вычислительных затрат.",
+      "contradiction": false
+    }
+  ],
+  "meta": {
+    "source": "/home/ilya/OSA/mvp/current/data/paper_9/paper_9_sections.json",
+    "steps": 3,
+    "history_messages": 3,
+    "model": "openai/gpt-oss-120b",
+    "filtered_claims": 20,
+    "step3_input_count": 22,
+    "step3_output_count": 20
+  }
+}

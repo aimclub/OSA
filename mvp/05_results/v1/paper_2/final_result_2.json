@@ -1,0 +1,122 @@
+{
+  "result": [
+    {
+      "claim": "Synthetic datasets were generated based on the formal specifications to verify grammar completeness and coverage of all edge cases of RCPSP.",
+      "original_text": "формирование синтетических датасетов на основе разработанных формальных спецификаций для верификации полноты грамматики и покрытия всех краевых условий RCPSP",
+      "category": "dataset",
+      "value": "synthetic datasets",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "A unified grammar was created that combines different extensions of RCPSP within a single syntax.",
+      "original_text": "единая грамматика, объединяющая в рамках одного синтаксиса разные расширения RCPSP",
+      "category": "data_preprocessing",
+      "value": "unified grammar",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "System analysis was used to classify constraints of RCPSP.",
+      "original_text": "классификация ограничений RCPSP",
+      "category": "dataset",
+      "value": "classification of RCPSP constraints",
+      "verifiability": "low"
+    },
+    {
+      "claim": "The evaluation metrics include Makespan, Cost, and NPV.",
+      "original_text": "Metrics: Makespan, Cost, NPV",
+      "category": "evaluation_metric",
+      "value": "Makespan, Cost, NPV",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Robustness is used as a metric to minimize deviations from the baseline plan.",
+      "original_text": "Robustness ... Минимизация отклонений от базового плана",
+      "category": "evaluation_metric",
+      "value": "Robustness",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The task description structure is implemented in JSON format.",
+      "original_text": "Структура описания задачи реализована в формате JSON, что обеспечивает легкую интеграцию с веб-сервисами и ML-агентами.",
+      "category": "data_preprocessing",
+      "value": "JSON",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The DSL architecture is hierarchical and includes three key blocks: metadata, resources, and tasks.",
+      "original_text": "Архитектура DSL построена по иерархическому принципу и включает три ключевых блока: метаданные, ресурсы и задачи.",
+      "category": "data_preprocessing",
+      "value": "metadata, resources, tasks",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The \"objective\" field can be either a string for simple tasks (e.g., \"minimize_makespan\") or an array of objects for multi‑criteria optimization, where each criterion is assigned a weight coefficient.",
+      "original_text": "Поле «objective» поддерживает полиморфизм: оно может быть строкой для простых задач (например, «minimize_makespan») или массивом объектов для мультикритериальной оптимизации, где каждому критерию присваивается весовой коэффициент.",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "high"
+    },
+    {
+      "claim": "The classic model supports two resource types: renewable resources that return to the pool after task completion and nonrenewable resources that are consumed irreversibly, enabling budget tracking and schedule interruption on deficit.",
+      "original_text": "В классической модели реализована поддержка двух фундаментальных типов ресурсов: возобновляемых, которые возвращаются в пул после завершения задачи, и невозобновляемых, которые расходуются безвозвратно, что позволяет отслеживать бюджеты материалов и прерывать расписание при их дефиците;",
+      "category": "model_architecture",
+      "value": "renewable, nonrenewable",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The DSL allows discrete performance modes, e.g., the \"CROWDED_CREW\" mode specifies that N1 workers complete the task in M1 hours instead of the expected M2 hours under linear scaling from N2 workers.",
+      "original_text": "В задаче с нелинейной производительностью вместо использования сложных математических формул зависимости DSL предлагает дискретное описание через режимы. Например, режим «CROWDED_CREW» явно указывает, что N1 рабочих выполняет задачу за M1 часов (вместо ожидаемых M2 часов при линейном масштабировании от N2 рабочих).",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "high"
+    },
+    {
+      "claim": "Spatial constraints are modeled via a renewable resource interface with a \"capacity\" parameter.",
+      "original_text": "Пространственные ограничения описываются через интерфейс возобновляемого ресурса с параметром «capacity».",
+      "category": "model_architecture",
+      "value": "capacity parameter",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The task is defined by an array of modes, each specifying a unique combination of duration and resource consumption.",
+      "original_text": "Вместо фиксированной длительности, задача содержит массив режимов, каждый из которых описывает альтернативный вариант выполнения задачи, задавая уникальную комбинацию длительности и потребляемых ресурсов",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "high"
+    },
+    {
+      "claim": "The dependency block defines a work graph that supports multiple link types and minimal time lags between events.",
+      "original_text": "Блок зависимостей описывает граф работ, поддерживая различные типы связей и минимальные временные лаги между событиями.",
+      "category": "infrastructure",
+      "value": null,
+      "verifiability": "high"
+    },
+    {
+      "claim": "The validation was performed on a set of six diverse scenarios.",
+      "original_text": "валидация выразительной способности языка на наборе из шести разноплановых сценариев",
+      "category": "dataset",
+      "value": "6 scenarios",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Mutex logic is implemented for exclusive zones to guarantee that two tasks are not scheduled simultaneously in the same point.",
+      "original_text": "Для задачи с эксклюзивными зонами реализована логика мьютексов. ... гарантирует, что две задачи не будут запланированы одновременно в одной точке.",
+      "category": "infrastructure",
+      "value": null,
+      "verifiability": "high"
+    },
+    {
+      "claim": "Each unit of equipment or worker entering the zone consumes 1 unit of capacity.",
+      "original_text": "Каждая единица техники или рабочего, входящая в зону, использует 1 единицу емкости;",
+      "category": "infrastructure",
+      "value": "1 unit per entity",
+      "verifiability": "high"
+    }
+  ],
+  "meta": {
+    "source": "/home/ilya/OSA/marker_output/paper_2/paper_2_sections.json",
+    "steps": 3,
+    "history_messages": 5,
+    "model": "openai/gpt-oss-120b"
+  }
+}

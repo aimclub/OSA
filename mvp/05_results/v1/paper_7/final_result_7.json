@@ -1,0 +1,166 @@
+{
+  "result": [
+    {
+      "claim": "The CoQA dataset was used in this study.",
+      "original_text": "Using the CoQA dataset",
+      "category": "dataset",
+      "value": "CoQA",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The CoQA dataset contains 7199 dialogues.",
+      "original_text": "The dataset contains 7199 dialogues",
+      "category": "dataset",
+      "value": "7199",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The dataset contains dialogues with different numbers of questions each.",
+      "original_text": "with different number of questions each",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "high"
+    },
+    {
+      "claim": "Questions in the dataset are interconnected and often rely on context from previous dialogue turns.",
+      "original_text": "Questions are interconnected, often relying on context from previous turns in the dialogue",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The study analyzes a subset of dialogues containing exactly 20 questions.",
+      "original_text": "this study specifically analyzes the subset of dialogues containing exactly 20 questions",
+      "category": "dataset",
+      "value": "20",
+      "verifiability": "high"
+    },
+    {
+      "claim": "1000 dialogues were considered in the simulation.",
+      "original_text": "1000 dialogues were considered.",
+      "category": "dataset",
+      "value": "1000",
+      "verifiability": "high",
+      "contradiction": true
+    },
+    {
+      "claim": "For approaches 1 and 3, 100 identical dialogues with 20 questions were considered.",
+      "original_text": "For approaches 1 and 3, 100 identical dialogues with 20 questions were considered.",
+      "category": "dataset",
+      "value": "100 dialogues, 20 questions per dialogue",
+      "verifiability": "medium",
+      "contradiction": true
+    },
+    {
+      "claim": "For the second approach, a total of 85 dialogues were used.",
+      "original_text": "For the second approach, a total of 85 dialogues were used.",
+      "category": "dataset",
+      "value": "85 dialogues",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The Qwen3-4B-Instruct-2507 language model was used in this study.",
+      "original_text": "the Qwen3-4B-Instruct-2507 language model",
+      "category": "model_architecture",
+      "value": "Qwen3-4B-Instruct-2507",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The first 60% of questions (12 questions) are used as prompt questions.",
+      "original_text": "the first 60% of questions (in this case, 12) will be used to feed the model",
+      "category": "data_preprocessing",
+      "value": "12",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The remaining 40% of questions (8 questions) are used as test/evaluate questions.",
+      "original_text": "the remaining 40% (8) will be used later as test questions",
+      "category": "data_preprocessing",
+      "value": "8",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The total number of EQs per dialogue (M) is 8.",
+      "original_text": "M is a total EQ per dialogue (8 in our case).",
+      "category": "dataset",
+      "value": "8",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The topic of the dialogue was extracted using an LLM.",
+      "original_text": "the topic of the dialogue was extracted using LLM.",
+      "category": "data_preprocessing",
+      "value": "LLM",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "DBSCAN was used to group dialogue topics into clusters.",
+      "original_text": "using DBSCAN (Density-Based Spatial Clustering of Applications with Noise), the topics of the dialogues were grouped into clusters.",
+      "category": "data_preprocessing",
+      "value": "DBSCAN",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the second approach, dialogues were grouped into 20 clusters.",
+      "original_text": "grouped into 20 clusters.",
+      "category": "data_preprocessing",
+      "value": "20 clusters",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The LLM-as-a-judge comparison uses a scale from 0 to 1.",
+      "original_text": "The comparison uses a scale from 0 to 1",
+      "category": "evaluation_metric",
+      "value": "0-1",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "A score of 0.5 is defined as 'Possibly equivalent (similar intent but different phrasing)'.",
+      "original_text": "where 0.5 is \"Possibly equivalent (similar intent but different phrasing)\"",
+      "category": "evaluation_metric",
+      "value": "0.5",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Question pairs with a similarity score no less than 0.5 are considered similar.",
+      "original_text": "pairs of questions that yield a result no less than this threshold are considered similar",
+      "category": "evaluation_metric",
+      "value": "0.5",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The Expected Value (EV) metric is calculated as the average percentage of test questions per dialogue that can be predicted.",
+      "original_text": "This metric represents the average percentage of test questions per dialogue that can be predicted.",
+      "category": "evaluation_metric",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The topic-and-aspect-driven first approach achieved an expected value of 3.1% for the percentage of successfully predicted test questions.",
+      "original_text": "the topic-andaspect-driven first approach (EV=3,1%)",
+      "category": "numerical_result",
+      "value": "3.1%",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The multi-dialogue cluster-based approach achieved an expected value of 2.4% for the percentage of successfully predicted test questions.",
+      "original_text": "the multi-dialogue cluster-based approach (EV=2,4%)",
+      "category": "numerical_result",
+      "value": "2.4%",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The direct context-based approach achieved an expected value of 2.4% for the percentage of successfully predicted test questions.",
+      "original_text": "the direct context-based approach (EV=2,4%)",
+      "category": "numerical_result",
+      "value": "2.4%",
+      "verifiability": "medium"
+    }
+  ],
+  "meta": {
+    "source": "/home/ilya/OSA/marker_output/Article draft/Article draft_sections.json",
+    "steps": 3,
+    "history_messages": 3,
+    "model": "deepseek/deepseek-v3.2"
+  }
+}

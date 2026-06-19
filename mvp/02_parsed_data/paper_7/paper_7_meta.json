@@ -1,0 +1,379 @@
+{
+  "table_of_contents": [
+    {
+      "title": "An Approach for RAG Performance Improvement\nBased on User Requests Predicting and Interests\nModelling",
+      "heading_level": null,
+      "page_id": 0,
+      "polygon": [
+        [
+          61.5,
+          46.5
+        ],
+        [
+          551.25,
+          50.25
+        ],
+        [
+          551.25,
+          118.5
+        ],
+        [
+          60.75,
+          114.85546875
+        ]
+      ]
+    },
+    {
+      "title": "I. INTRODUCTION",
+      "heading_level": null,
+      "page_id": 0,
+      "polygon": [
+        [
+          129.75,
+          440.859375
+        ],
+        [
+          207.0,
+          440.859375
+        ],
+        [
+          207.0,
+          450.75
+        ],
+        [
+          129.75,
+          450.75
+        ]
+      ]
+    },
+    {
+      "title": "II. LITERATURE OVERVIEW",
+      "heading_level": null,
+      "page_id": 0,
+      "polygon": [
+        [
+          387.0,
+          343.40625
+        ],
+        [
+          495.0,
+          341.859375
+        ],
+        [
+          495.0,
+          351.75
+        ],
+        [
+          387.0,
+          351.75
+        ]
+      ]
+    },
+    {
+      "title": "III. METHODOLOGY",
+      "heading_level": null,
+      "page_id": 1,
+      "polygon": [
+        [
+          135.369140625,
+          190.0489501953125
+        ],
+        [
+          215.92483520507812,
+          188.71875
+        ],
+        [
+          215.92483520507812,
+          200.0489501953125
+        ],
+        [
+          135.369140625,
+          200.0489501953125
+        ]
+      ]
+    },
+    {
+      "title": "A. First approach",
+      "heading_level": null,
+      "page_id": 1,
+      "polygon": [
+        [
+          43.927734375,
+          304.0386047363281
+        ],
+        [
+          115.84786987304688,
+          302.80078125
+        ],
+        [
+          115.84786987304688,
+          314.0386047363281
+        ],
+        [
+          42.732421875,
+          314.40234375
+        ]
+      ]
+    },
+    {
+      "title": "B. Second approach",
+      "heading_level": null,
+      "page_id": 1,
+      "polygon": [
+        [
+          313.470703125,
+          70.7564697265625
+        ],
+        [
+          396.544921875,
+          69.609375
+        ],
+        [
+          395.7044982910156,
+          80.7564697265625
+        ],
+        [
+          312.275390625,
+          80.7564697265625
+        ]
+      ]
+    },
+    {
+      "title": "C. Third approach",
+      "heading_level": null,
+      "page_id": 1,
+      "polygon": [
+        [
+          314.068359375,
+          390.5859375
+        ],
+        [
+          389.62451171875,
+          389.0390625
+        ],
+        [
+          389.62451171875,
+          401.2320556640625
+        ],
+        [
+          314.068359375,
+          401.4140625
+        ]
+      ]
+    },
+    {
+      "title": "IV. CONCLUSION",
+      "heading_level": null,
+      "page_id": 1,
+      "polygon": [
+        [
+          411.1875,
+          708.08203125
+        ],
+        [
+          480.8370666503906,
+          708.08203125
+        ],
+        [
+          480.8370666503906,
+          718.3230285644531
+        ],
+        [
+          409.9921875,
+          718.3230285644531
+        ]
+      ]
+    },
+    {
+      "title": "A. Equations",
+      "heading_level": null,
+      "page_id": 1,
+      "polygon": [
+        [
+          311.9765625,
+          725.8195114135742
+        ],
+        [
+          366.9609375,
+          725.8195114135742
+        ],
+        [
+          366.9609375,
+          735.8195114135742
+        ],
+        [
+          311.9765625,
+          735.8195114135742
+        ]
+      ]
+    },
+    {
+      "title": "REFERENCES",
+      "heading_level": null,
+      "page_id": 2,
+      "polygon": [
+        [
+          414.474609375,
+          55.5596923828125
+        ],
+        [
+          466.9485168457031,
+          54.52734375
+        ],
+        [
+          466.9485168457031,
+          65.5596923828125
+        ],
+        [
+          414.474609375,
+          65.5596923828125
+        ]
+      ]
+    }
+  ],
+  "page_stats": [
+    {
+      "page_id": 0,
+      "text_extraction_method": "surya",
+      "block_counts": [
+        [
+          "Line",
+          109
+        ],
+        [
+          "Span",
+          57
+        ],
+        [
+          "Text",
+          7
+        ],
+        [
+          "ListItem",
+          4
+        ],
+        [
+          "SectionHeader",
+          3
+        ],
+        [
+          "ListGroup",
+          2
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 1,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          163
+        ],
+        [
+          "Line",
+          81
+        ],
+        [
+          "Text",
+          15
+        ],
+        [
+          "SectionHeader",
+          6
+        ],
+        [
+          "Caption",
+          3
+        ],
+        [
+          "Code",
+          1
+        ],
+        [
+          "Figure",
+          1
+        ],
+        [
+          "FigureGroup",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 2,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          212
+        ],
+        [
+          "Line",
+          104
+        ],
+        [
+          "ListItem",
+          16
+        ],
+        [
+          "TableCell",
+          12
+        ],
+        [
+          "Text",
+          5
+        ],
+        [
+          "Equation",
+          1
+        ],
+        [
+          "Caption",
+          1
+        ],
+        [
+          "Table",
+          1
+        ],
+        [
+          "SectionHeader",
+          1
+        ],
+        [
+          "TableGroup",
+          1
+        ],
+        [
+          "ListGroup",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    }
+  ],
+  "debug_data_path": "debug_data/Article draft"
+}

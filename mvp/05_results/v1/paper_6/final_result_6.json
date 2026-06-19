@@ -1,0 +1,332 @@
+{
+  "result": [
+    {
+      "claim": "A unique database with more than 980 magnetic nanoparticles was assembled.",
+      "original_text": "a unique database with more than 980 magnetic nanoparticles collected from scientific articles is assembled",
+      "category": "dataset",
+      "value": "980",
+      "verifiability": "high"
+    },
+    {
+      "claim": "Several tree-based ensemble models were trained to predict SAR, r1 and r2 relaxivity.",
+      "original_text": "several tree-based ensemble models are trained to predict SAR, r1 and r2 relaxivity",
+      "category": "model_architecture",
+      "value": "tree-based ensemble",
+      "verifiability": "high"
+    },
+    {
+      "claim": "After hyperparameter optimization, models reach performances of R2 = 0.86, R2 = 0.78, and R2 = 0.75, respectively.",
+      "original_text": "After hyperparameter optimization, models reach performances of R2 = 0.86, R2 = 0.78, and R2 = 0.75, respectively",
+      "category": "numerical_result",
+      "value": "0.86, 0.78, 0.75",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Testing the models on samples unseen during the training shows no performance drops.",
+      "original_text": "Testing the models on samples unseen during the training shows no performance drops",
+      "category": "evaluation_metric",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The initial database was manually collected from 126 unique scientific articles.",
+      "original_text": "we manually collected 1282 raw samples from 126 unique scientific articles",
+      "category": "dataset",
+      "value": "126",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The initial database contained 1282 raw samples.",
+      "original_text": "we manually collected 1282 raw samples from 126 unique scientific articles",
+      "category": "dataset",
+      "value": "1282",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The dataset includes parameters such as chemical composition, shape, length, width, depth, zeta potential, and hydrodynamic radius.",
+      "original_text": "Those include chemical composition of core, shape, length, width, depth, zeta potential, hydrodynamic radius",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The dataset includes magnetic parameters measured by SQUID under 300 K.",
+      "original_text": "magnetic parameters of nanoparticles measured by SQUID under 300 K",
+      "category": "dataset",
+      "value": "300 K",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The dataset includes parameters of magnetic field during experiments.",
+      "original_text": "parameters of magnetic field during experiments",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The dataset includes concentration of nanoparticles.",
+      "original_text": "concentration of nanoparticles",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The dataset includes efficacy metrics SAR value for hyperthermia and r1 and r2 relaxivities for MRI.",
+      "original_text": "efficacy of nanomagnets in hyperthermia treatment (SAR value) and MRI (r1 and r2 relaxivities)",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Engineered features include average magnetic moment of metals in the core.",
+      "original_text": "Average magnetic moment of metals in the core was calculated",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Engineered features include average spin of metal elements on the surface.",
+      "original_text": "Average spin of metal elements on the surface was obtained",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Engineered features include partition coefficient LogP and number of H acceptors for organic coating.",
+      "original_text": "we employed a partition coefficient LogP and number of H acceptors",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Engineered features include volume and surface area calculated from shape and size.",
+      "original_text": "Volume and surface area were calculated using the shape and size of the nanoparticle",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "A Pearson correlation matrix was calculated and analyzed to investigate feature redundancy.",
+      "original_text": "we calculated and analyzed the Pearson correlation matrix",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Geometrical features with high cross-correlations were reduced to a single area-volume feature.",
+      "original_text": "a group of geometrical features with high cross-correlations and reduced them to a single area-volume feature",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The number of outliers and missing values was investigated to keep only the most informative features.",
+      "original_text": "we investigated the number of outliers and missing values to keep only the most informative features",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "After minimal data cleansing, the dataset contained more than 980 materials.",
+      "original_text": "we obtained the dataset of more than 980 nanosized metals, bimetals, and metal oxides",
+      "category": "dataset",
+      "value": "980",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The final dataset includes more than 120 core compositions.",
+      "original_text": "more than 120 core and 50 shell compositions",
+      "category": "dataset",
+      "value": "120",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The final dataset includes more than 50 shell compositions.",
+      "original_text": "more than 120 core and 50 shell compositions",
+      "category": "dataset",
+      "value": "50",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The dataset for SAR prediction contains 460 samples.",
+      "original_text": "prediction of SAR value, r1 or r2 relaxivity containing 460, 355, and 465 samples, respectively",
+      "category": "dataset",
+      "value": "460",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The dataset for r1 relaxivity prediction contains 355 samples.",
+      "original_text": "prediction of SAR value, r1 or r2 relaxivity containing 460, 355, and 465 samples, respectively",
+      "category": "dataset",
+      "value": "355",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The dataset for r2 relaxivity prediction contains 465 samples.",
+      "original_text": "prediction of SAR value, r1 or r2 relaxivity containing 460, 355, and 465 samples, respectively",
+      "category": "dataset",
+      "value": "465",
+      "verifiability": "high"
+    },
+    {
+      "claim": "For SAR prediction, 11 descriptors were used.",
+      "original_text": "For prediction of SAR value, 11 descriptors were used",
+      "category": "dataset",
+      "value": "11",
+      "verifiability": "high"
+    },
+    {
+      "claim": "For relaxivity prediction, 8 descriptors were used.",
+      "original_text": "relaxivity values were predicted using 8 descriptors only",
+      "category": "dataset",
+      "value": "8",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The data was split into train and test sets with a 80/20 ratio.",
+      "original_text": "splitting to train and test sets in the 80/20 ratio",
+      "category": "data_preprocessing",
+      "value": "80/20",
+      "verifiability": "high"
+    },
+    {
+      "claim": "211 samples were removed to ensure each remaining sample had no more than 15% missing values.",
+      "original_text": "we first removed the total of 211 samples such that each sample in the remaining dataset had no more than 15% of missing values",
+      "category": "data_preprocessing",
+      "value": "211",
+      "verifiability": "high"
+    },
+    {
+      "claim": "kNN imputation technique was used for parameters with less data sparsity.",
+      "original_text": "we chose kNN imputation technique",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "high"
+    },
+    {
+      "claim": "Random Forest and Gradient Boosting algorithms were used.",
+      "original_text": "we opted for tree-based algorithms such as Random Forest and Gradient Boosting",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "high"
+    },
+    {
+      "claim": "Hyperparameter tuning was done using the Optuna framework.",
+      "original_text": "hyperparameter tuning was done using the model-agnostic Optuna framework",
+      "category": "training_procedure",
+      "value": null,
+      "verifiability": "high"
+    },
+    {
+      "claim": "For each regression problem, four models were optimized and compared.",
+      "original_text": "For each regression problem, we optimized and compared performance of four models",
+      "category": "training_procedure",
+      "value": null,
+      "verifiability": "high"
+    },
+    {
+      "claim": "The best model was selected using mean Q2 and RMSE for tenfold cross-validation and R2 and RMSE for test samples.",
+      "original_text": "The best model was selected using the following metrics: mean Q<sup>2</sup> and RMSE for tenfold cross-validation and R2 and RMSE for test samples",
+      "category": "evaluation_metric",
+      "value": null,
+      "verifiability": "high"
+    },
+    {
+      "claim": "For SAR prediction, RMSE on tenfold cross-validation was 0.28.",
+      "original_text": "For SAR prediction, RMSE of 0.28 on tenfold cross-validation",
+      "category": "numerical_result",
+      "value": "0.28",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For SAR prediction, RMSE on test samples was 0.26.",
+      "original_text": "dropped to 0.26 on test samples",
+      "category": "numerical_result",
+      "value": "0.26",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For r1 relaxivity prediction, RMSE on tenfold cross-validation was 0.30.",
+      "original_text": "for r1 and r2 relaxivities, RMSE dropped from 0.30",
+      "category": "numerical_result",
+      "value": "0.30",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For r1 relaxivity prediction, RMSE on test samples was 0.27.",
+      "original_text": "to 0.27",
+      "category": "numerical_result",
+      "value": "0.27",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For r2 relaxivity prediction, RMSE on tenfold cross-validation was 0.25.",
+      "original_text": "and from 0.25",
+      "category": "numerical_result",
+      "value": "0.25",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For r2 relaxivity prediction, RMSE on test samples was 0.22.",
+      "original_text": "to 0.22 on test samples",
+      "category": "numerical_result",
+      "value": "0.22",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "After filtering, R2 on test samples for r1 relaxivity increased from 0.75 to 0.78.",
+      "original_text": "R2 on test samples increased from 0.75 to 0.78",
+      "category": "numerical_result",
+      "value": "0.78",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "After filtering, Q2 on cross-validation for r2 relaxivity increased from 0.63 to 0.71.",
+      "original_text": "Q2 on cross-validation increased from 0.63 to 0.71",
+      "category": "numerical_result",
+      "value": "0.71",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For SAR validation samples, 47% of predictions differed from true values by less than 50%.",
+      "original_text": "For SAR, r1 and r2 relaxivities, the percentages were 47%, 57%, and 68%, respectively",
+      "category": "numerical_result",
+      "value": "47%",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For r1 relaxivity validation samples, 57% of predictions differed from true values by less than 50%.",
+      "original_text": "For SAR, r1 and r2 relaxivities, the percentages were 47%, 57%, and 68%, respectively",
+      "category": "numerical_result",
+      "value": "57%",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For r2 relaxivity validation samples, 68% of predictions differed from true values by less than 50%.",
+      "original_text": "For SAR, r1 and r2 relaxivities, the percentages were 47%, 57%, and 68%, respectively",
+      "category": "numerical_result",
+      "value": "68%",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "SHAP diagrams were plotted for each selected ML model.",
+      "original_text": "we plotted SHAP (SHapley Additive exPlanations) values for each selected ML model",
+      "category": "evaluation_metric",
+      "value": null,
+      "verifiability": "high"
+    },
+    {
+      "claim": "A validation set of samples not used for training or hyperparameter optimization was formed.",
+      "original_text": "we formed another testing set of samples that have not been used for training and optimizing hyperparameters of the ML models",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "high"
+    }
+  ],
+  "meta": {
+    "source": "/home/ilya/OSA/marker_output/DiMag/DiMag_sections.json",
+    "steps": 3,
+    "history_messages": 3,
+    "model": "deepseek/deepseek-v3.2"
+  }
+}

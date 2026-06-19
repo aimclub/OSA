@@ -1,0 +1,24 @@
+{
+  "claims": [
+    "The core of our methodology is a hybrid inference system that dynamically routes queries between a compact student model and a powerful teacher model",
+    "The system's operation is governed by the Request Routing Module, as depicted in Figure 1.",
+    "At the first stage, models are trained: the teacher (𝑓𝑇) learns 𝑁 𝑡𝑟𝑎𝑖𝑛 from the full data set 𝐷𝑡𝑟𝑎𝑖𝑛 = {(𝑥𝑖 , 𝑦𝑖) } 𝑖=1 and the student (𝑓𝑆) learns from a limitedsubset 𝐷'𝑡𝑟𝑎𝑖𝑛 ⊂ 𝐷𝑡𝑟𝑎𝑖𝑛 which is 10% of the initial volume using distillation methods.",
+    "The experiments focused on three key aspects: the quality of knowledge distillation, the characterization of student weaknesses, and the performance of routing strategies.",
+    "The experiments were conducted on two different tasks: anomaly detection (binary classification) and RFC document categorization (multiclass classification).",
+    "To ensure representativeness and prevent data leakage, each set was divided into three disjoint subsets:",
+    "The HDFS dataset1 for the anomaly detection task consisted of log sequences labeled normal and abnormal. We used 60% for training, 20% for validation, and 20% for testing.",
+    "The dataset of RFC documents2 for multiclass classification contained technical texts with standards and specifications assigned to one of 53 categories. The separation was 70% for training, 15% for validation, and 15% for testing.",
+    "For experiments with distillation and routing: the teacher was trained on 100% of the training data, while the student model was trained on 10% of randomly selected examples from the training set. The validation set was used exclusively for analyzing student errors and choosing a routing strategy, and the final assessment was carried out on a test set that did not participate in any of the previous stages.",
+    "The CountVectorTeacher model based on a bag of words with subsequent K-Means clustering (n_clusters=10) and logistic regression was chosen as the teacher model for binary classification. For multiclass classification, the teacher model was RFCTeacher, a random forest with 100 trees trained on TF-IDF representations of texts. The student models were lightweight N-gram models with an n-gram size of n=3.",
+    "We evaluated the quality of F1-score (binary) and macro-F1 (multiclass) distillation on a test set;",
+    "For the binary anomaly detection task, the sequence teacher was a cluster-based counter model, while the event teacher was a statistical model analyzing the frequency and weight of individual log events.",
+    "For the multiclass task, the sequence teacher was a logistic regression model for document vectors, and the event teacher operated on word-level distributions across classes.",
+    "The student, who was again trained on the minimum data set (10%), was first 'enriched' by pre-training with statistical data at the event level using methods such as weighting or combined weighting of features.",
+    "The best model (enriched with the class_weighted method and selected from RFC teacher) received a macro-F1 equal to 0,7659 and an accuracy of 0,9010, compared with the macro-F1 obtained from RFC teacher equal to 0,3974.",
+    "Specifically, for binary classification, Soft KD achieved an F1-score of 0,8805, representing a 1,67% improvement over the best SFT method. ",
+    "In the multiclass setting, it attained a macro-F1 of 0,6987, not only outperforming SFT but also matching the teacher model's accuracy of 79,5%",
+    "For binary anomaly detection, the distilled student's primary weakness was a high false-negative rate (78,3%).",
+    "For the binary task, a target_fp_correction strategy was implemented, selectively invoking the teacher only to rectify false positives, which yielded a 0,80% accuracy gain with minimal computational overhead (0,8% teacher usage).",
+    "For the multiclass task, an error_pattern_targeting strategy was designed to route queries exhibiting the specific confusion pattern to the teacher, resulting in a potential 6,56% accuracy improvement. Furthermore, a confidence_threshold strategy, applicable to scenarios with broader uncertainty, demonstrated a potential 15,74% accuracy gain."
+  ]
+}
