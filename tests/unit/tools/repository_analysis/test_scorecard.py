@@ -6,6 +6,7 @@ from osa_tool.tools.repository_analysis.scorecard import (
     ScorecardResult,
     ScorecardRunner,
     _download_scorecard,
+    _resolve_scorecard_binary,
 )
 
 SAMPLE_JSON = json.dumps(
@@ -54,7 +55,7 @@ def test_parse_valid_json():
     assert result.checks[2].score == -1
 
 
-def test_parse_skips_na_checks():
+def test_parse_preserves_na_checks():
     # Arrange
     runner = ScorecardRunner("/some/repo")
 
@@ -92,6 +93,26 @@ def test_result_roundtrip():
     assert restored.checks[1].score == original.checks[1].score
 
 
+def test_run_parses_valid_subprocess_output():
+    # Arrange
+    runner = ScorecardRunner("/some/repo")
+    mock_proc = MagicMock()
+    mock_proc.stdout = SAMPLE_JSON
+    mock_proc.stderr = ""
+
+    # Act
+    with patch(
+        "osa_tool.tools.repository_analysis.scorecard._resolve_scorecard_binary", return_value="/usr/bin/scorecard"
+    ):
+        with patch("subprocess.run", return_value=mock_proc):
+            result = runner.run()
+
+    # Assert
+    assert result is not None
+    assert result.aggregate_score == 5.0
+    assert len(result.checks) == 3
+
+
 def test_run_returns_none_on_empty_stdout():
     # Arrange
     runner = ScorecardRunner("/some/repo")
@@ -115,9 +136,18 @@ def test_download_scorecard_returns_none_on_network_error(tmp_path):
     dest = tmp_path / "scorecard"
 
     # Act
-    with patch("urllib.request.urlretrieve", side_effect=OSError("network error")):
+    with patch("urllib.request.urlopen", side_effect=OSError("network error")):
         result = _download_scorecard(dest)
 
     # Assert
     assert result is None
     assert not dest.exists()
+
+
+def test_resolve_binary_skips_on_windows():
+    # Act
+    with patch("osa_tool.tools.repository_analysis.scorecard.platform.system", return_value="Windows"):
+        result = _resolve_scorecard_binary()
+
+    # Assert
+    assert result is None

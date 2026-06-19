@@ -10,6 +10,7 @@ from pathlib import Path
 from osa_tool.utils.logger import logger
 
 _SCORECARD_VERSION = "5.5.0"
+_DOWNLOAD_TIMEOUT = 30  # seconds
 SCORECARD_CHECKS = [
     "Binary-Artifacts",
     "Dangerous-Workflow",
@@ -90,7 +91,8 @@ def _download_scorecard(dest: Path) -> str | None:
             system,
             arch,
         )
-        urllib.request.urlretrieve(url, tmp)
+        with urllib.request.urlopen(url, timeout=_DOWNLOAD_TIMEOUT) as resp, open(tmp, "wb") as fh:
+            shutil.copyfileobj(resp, fh)
         exe_name = "scorecard.exe" if system == "windows" else "scorecard"
         with tarfile.open(tmp) as tf:
             member = tf.extractfile(exe_name)
@@ -116,6 +118,16 @@ def _download_scorecard(dest: Path) -> str | None:
 
 def _resolve_scorecard_binary() -> str | None:
     """Return path to scorecard binary: PATH → local cache → auto-download."""
+    if platform.system() == "Windows":
+        # Scorecard's --local mode is unreliable on Windows: most checks return
+        # N/A regardless of repo state (path-separator handling in scorecard),
+        # which would produce misleading report sections. Skip gracefully until
+        # the upstream fix lands. See https://github.com/ossf/scorecard/pull/5089
+        logger.warning(
+            "OpenSSF Scorecard --local mode is unreliable on Windows; "
+            "skipping Scorecard analysis. Run on Linux/macOS for full results."
+        )
+        return None
     binary = shutil.which("scorecard")
     if binary:
         return binary

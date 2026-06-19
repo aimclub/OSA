@@ -28,6 +28,7 @@ EXCLUDED_TASK = {
     "branches",
     "codecov_token",
     "max_retries",
+    "scorecard",
 }
 
 

@@ -108,7 +108,9 @@ def main():
             _run_plan_operation(
                 plan,
                 "report",
-                lambda: ReportGenerator(config_manager, git_agent, create_fork, run_scorecard=args.scorecard).run(),
+                lambda: ReportGenerator(
+                    config_manager, git_agent, create_fork, run_scorecard=plan.get("scorecard")
+                ).run(),
             )
 
         # NOTE: Must run first - switches GitHub branches
@@ -258,7 +260,7 @@ def main():
 
         if plan.get("report"):
             WhatHasBeenDoneReportGenerator(
-                config_manager, git_agent, create_fork, plan, run_scorecard=args.scorecard
+                config_manager, git_agent, create_fork, plan, run_scorecard=plan.get("scorecard")
             ).run()
 
         elapsed_time = time.time() - start_time
