@@ -1,0 +1,1065 @@
+{
+  "result": [
+    {
+      "claim": "Введение находится на странице 3.",
+      "original_text": "| Введение                                           | . 3 |",
+      "category": "infrastructure",
+      "value": "3",
+      "verifiability": "high",
+      "claim_id": "c0001",
+      "contradiction": false
+    },
+    {
+      "claim": "Глава 1. Аналитический обзор предметной области находится на странице 5.",
+      "original_text": "| Глава 1. Аналитический обзор предметной области    | . 5 |",
+      "category": "infrastructure",
+      "value": "5",
+      "verifiability": "high",
+      "claim_id": "c0002",
+      "contradiction": false
+    },
+    {
+      "claim": "Раздел 1.1. Постановки задач RCPSP и их решения находится на странице 5.",
+      "original_text": "| 1.1. Постановки задач RCPSP и их решения           | . 5 |",
+      "category": "infrastructure",
+      "value": "5",
+      "verifiability": "high",
+      "claim_id": "c0003",
+      "contradiction": false
+    },
+    {
+      "claim": "Раздел 1.2. Использование LLM для генерации эвристик кода находится на странице 7.",
+      "original_text": "| 1.2. Использование LLM для генерации эвристик кода | . 7 |",
+      "category": "infrastructure",
+      "value": "7",
+      "verifiability": "high",
+      "claim_id": "c0004",
+      "contradiction": false
+    },
+    {
+      "claim": "Раздел 1.3. Выводы по главе находится на странице 9.",
+      "original_text": "| 1.3. Выводы по главе                               | .9  |",
+      "category": "infrastructure",
+      "value": "9",
+      "verifiability": "high",
+      "claim_id": "c0005",
+      "contradiction": false
+    },
+    {
+      "claim": "Глава 2. Разработка темы находится на странице 12.",
+      "original_text": "| Глава 2. Разработка темы                           | 12  |",
+      "category": "infrastructure",
+      "value": "12",
+      "verifiability": "high",
+      "claim_id": "c0006",
+      "contradiction": false
+    },
+    {
+      "claim": "Раздел 2.1. Постановка задания находится на странице 12.",
+      "original_text": "| 2.1. Постановка задания                            | 12  |",
+      "category": "infrastructure",
+      "value": "12",
+      "verifiability": "high",
+      "claim_id": "c0007",
+      "contradiction": false
+    },
+    {
+      "claim": "Раздел 2.2 Алгоритм получения расписания при помощи LLM1 находится на странице 13.",
+      "original_text": "| 2.2 Алгоритм получения расписания при помощи LLM1  | 13  |",
+      "category": "infrastructure",
+      "value": "13",
+      "verifiability": "high",
+      "claim_id": "c0008",
+      "contradiction": false
+    },
+    {
+      "claim": "Раздел 2.3. Набор данных задач планирования находится на странице 14.",
+      "original_text": "| 2.3. Набор данных задач планирования               | 14  |",
+      "category": "infrastructure",
+      "value": "14",
+      "verifiability": "high",
+      "claim_id": "c0009",
+      "contradiction": false
+    },
+    {
+      "claim": "Раздел 2.4. Текстовое описание задач планирования находится на странице 16.",
+      "original_text": "| 2.4. Текстовое описание задач планирования         | 16  |",
+      "category": "infrastructure",
+      "value": "16",
+      "verifiability": "high",
+      "claim_id": "c0010",
+      "contradiction": false
+    },
+    {
+      "claim": "Раздел 2.5. DSL описание задач планирования находится на странице 17.",
+      "original_text": "| 2.5. DSL описание задач планирования               | 17  |",
+      "category": "infrastructure",
+      "value": "17",
+      "verifiability": "high",
+      "claim_id": "c0011",
+      "contradiction": false
+    },
+    {
+      "claim": "Раздел 2.6. Выводы по главе находится на странице 20.",
+      "original_text": "| 2.6. Выводы по главе                               | 20  |",
+      "category": "infrastructure",
+      "value": "20",
+      "verifiability": "high",
+      "claim_id": "c0012",
+      "contradiction": false
+    },
+    {
+      "claim": "Глава 3. Эксперименты находится на странице 21.",
+      "original_text": "| Глава 3. Эксперименты                              | 21  |",
+      "category": "infrastructure",
+      "value": "21",
+      "verifiability": "high",
+      "claim_id": "c0013",
+      "contradiction": false
+    },
+    {
+      "claim": "Раздел 3.1. Основные результаты находится на странице 21.",
+      "original_text": "| 3.1. Основные результаты                           | 21  |",
+      "category": "infrastructure",
+      "value": "21",
+      "verifiability": "high",
+      "claim_id": "c0014",
+      "contradiction": false
+    },
+    {
+      "claim": "Раздел 3.2. План дальнейшего исследования находится на странице 22.",
+      "original_text": "| 3.2. План дальнейшего исследования                 | 22  |",
+      "category": "infrastructure",
+      "value": "22",
+      "verifiability": "high",
+      "claim_id": "c0015",
+      "contradiction": false
+    },
+    {
+      "claim": "Раздел 3.3. Выводы по главе находится на странице 23.",
+      "original_text": "| 3.3. Выводы по главе                               | 23  |",
+      "category": "infrastructure",
+      "value": "23",
+      "verifiability": "high",
+      "claim_id": "c0016",
+      "contradiction": false
+    },
+    {
+      "claim": "Заключение находится на странице 24.",
+      "original_text": "| Заключение                                         | 24  |",
+      "category": "infrastructure",
+      "value": "24",
+      "verifiability": "high",
+      "claim_id": "c0017",
+      "contradiction": false
+    },
+    {
+      "claim": "Список использованных источников находится на странице 25.",
+      "original_text": "| Список использованных источников                   | 25  |",
+      "category": "infrastructure",
+      "value": "25",
+      "verifiability": "high",
+      "claim_id": "c0018",
+      "contradiction": false
+    },
+    {
+      "claim": "В рамках фреймворка NS4S большая языковая модель была адаптирована для управления поиском по окрестностям.",
+      "original_text": "В рамках фреймворка NS4S [9] большая языковая модель была адаптирована для управления поиском по окрестностям.",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0019",
+      "contradiction": false
+    },
+    {
+      "claim": "Для снижения эффекта галлюцинаций модели и эффективной настройки весов операций в процессе локального поиска использовалась эволюция VeEvo.",
+      "original_text": "Использование эволюции VeEvo позволило снизить эффект галлюцинаций модели и эффективно настроить веса операций в процессе локального поиска.",
+      "category": "training_procedure",
+      "value": "VeEvo",
+      "verifiability": "medium",
+      "claim_id": "c0020",
+      "contradiction": false
+    },
+    {
+      "claim": "Алгоритм Hercules использует метод Core Abstraction Prompting (CAP).",
+      "original_text": "Wu et al. [10] представили алгоритм Hercules, использующий метод «Core Abstraction Prompting» (CAP).",
+      "category": "model_architecture",
+      "value": "Hercules, Core Abstraction Prompting (CAP)",
+      "verifiability": "high",
+      "claim_id": "c0021",
+      "contradiction": false
+    },
+    {
+      "claim": "В работе [11] предложен метод генерации специфичных конкретной эвристик.",
+      "original_text": "Еще один пример, метод генерации специфичных конкретной эвристик [11].",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0022",
+      "contradiction": false
+    },
+    {
+      "claim": "Qi et al. представили меметический фреймворк, объединяющий эволюционный дизайн эвристик с механизмами рефлексии.",
+      "original_text": "Qi et al. [12] представили меметический фреймворк, объединяющий эволюционный дизайн эвристик с механизмами рефлексии.",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0023",
+      "contradiction": false
+    },
+    {
+      "claim": "В исследовании [13] проведён сравнительный анализ шести открытых больших языковых моделей в планировании задач в облачных вычислениях.",
+      "original_text": "Еще был проведен сравнительный анализ шести открытых больших языковых моделей в планировании задач в облачных вычислениях [13].",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0024",
+      "contradiction": false
+    },
+    {
+      "claim": "В экспериментах использовался только формат естественного языка.",
+      "original_text": "Использовался только формат естественного языка.",
+      "category": "data_preprocessing",
+      "value": "естественный язык",
+      "verifiability": "high",
+      "claim_id": "c0025",
+      "contradiction": false
+    },
+    {
+      "claim": "Singh et al. представили фреймворк ProgPrompt, использующий программно-ориентированные промпты LLM для генерации планов действий роботов в реальной среде.",
+      "original_text": "В работе Singh et al. [15] представлен фреймворк ProgPrompt, который использует программно-ориентированные промпты LLM для генерации планов действий роботов в условиях реальной среды.",
+      "category": "model_architecture",
+      "value": "ProgPrompt",
+      "verifiability": "high",
+      "claim_id": "c0026",
+      "contradiction": false
+    },
+    {
+      "claim": "ReflecSched решает задачу динамического гибкого планирования производственных операций (DFJSP) через иерархическую рефлексию.",
+      "original_text": "А разработка ReflecSched [16] смогла решить сложную задачу динамического гибкого планирования производственных операций (DFJSP) через иерархическую рефлексию.",
+      "category": "model_architecture",
+      "value": "ReflecSched",
+      "verifiability": "medium",
+      "claim_id": "c0027",
+      "contradiction": false
+    },
+    {
+      "claim": "Teh [7] addresses Stochastic RCPSP using GA + Monte Carlo.",
+      "original_text": "| Teh [7]               | Stochastic<br>RCPSP | GA + Monte<br>Carlo                | Частично                                               | Среднее       | Средняя                                       |",
+      "category": "model_architecture",
+      "value": "GA + Monte Carlo",
+      "verifiability": "high",
+      "claim_id": "c0028",
+      "contradiction": false
+    },
+    {
+      "claim": "Teh's computational cost on heuristic evaluation is частично.",
+      "original_text": "| Teh [7]               | Stochastic<br>RCPSP | GA + Monte<br>Carlo                | Частично                                               | Среднее       | Средняя                                       |",
+      "category": "training_procedure",
+      "value": "частично",
+      "verifiability": "high",
+      "claim_id": "c0029",
+      "contradiction": false
+    },
+    {
+      "claim": "Teh's applicability in real dynamic environments is Средняя.",
+      "original_text": "| Teh [7]               | Stochastic<br>RCPSP | GA + Monte<br>Carlo                | Частично                                               | Среднее       | Средняя                                       |",
+      "category": "evaluation_metric",
+      "value": "Средняя",
+      "verifiability": "high",
+      "claim_id": "c0030",
+      "contradiction": false
+    },
+    {
+      "claim": "Yang et al. [4] addresses MRCMPSP using NSGA-II + Q-learning.",
+      "original_text": "| Yang et al. [4]       | MRCMPSP             | NSGA-II +<br>Q-learning            | -                                                      | Среднее       | Высокая                                       |",
+      "category": "model_architecture",
+      "value": "NSGA-II + Q-learning",
+      "verifiability": "high",
+      "claim_id": "c0031",
+      "contradiction": false
+    },
+    {
+      "claim": "Yang et al.'s computational cost on heuristic evaluation is not reported.",
+      "original_text": "| Yang et al. [4]       | MRCMPSP             | NSGA-II +<br>Q-learning            | -                                                      | Среднее       | Высокая                                       |",
+      "category": "training_procedure",
+      "value": null,
+      "verifiability": "high",
+      "claim_id": "c0032",
+      "contradiction": false
+    },
+    {
+      "claim": "Yang et al.'s applicability in real dynamic environments is Высокая.",
+      "original_text": "| Yang et al. [4]       | MRCMPSP             | NSGA-II +<br>Q-learning            | -                                                      | Среднее       | Высокая                                       |",
+      "category": "evaluation_metric",
+      "value": "Высокая",
+      "verifiability": "high",
+      "claim_id": "c0033",
+      "contradiction": false
+    },
+    {
+      "claim": "Zhang et al. [9] addresses JSP using NS4S.",
+      "original_text": "| Zhang et al. [9]      | JSP                 | NS4S                               | +                                                      | Среднее       | Средняя                                       |",
+      "category": "model_architecture",
+      "value": "NS4S",
+      "verifiability": "high",
+      "claim_id": "c0034",
+      "contradiction": false
+    },
+    {
+      "claim": "Zhang et al.'s computational cost on heuristic evaluation is +.",
+      "original_text": "| Zhang et al. [9]      | JSP                 | NS4S                               | +                                                      | Среднее       | Средняя                                       |",
+      "category": "training_procedure",
+      "value": "+",
+      "verifiability": "high",
+      "claim_id": "c0035",
+      "contradiction": false
+    },
+    {
+      "claim": "Zhang et al.'s applicability in real dynamic environments is Средняя.",
+      "original_text": "| Zhang et al. [9]      | JSP                 | NS4S                               | +                                                      | Среднее       | Средняя                                       |",
+      "category": "evaluation_metric",
+      "value": "Средняя",
+      "verifiability": "high",
+      "claim_id": "c0036",
+      "contradiction": false
+    },
+    {
+      "claim": "Qi et al. [12] addresses Heuristic Design using Reflective.",
+      "original_text": "| Qi et al. [12]        | Heuristic<br>Design | Reflective                         | +                                                      | Очень высокое | Средняя                                       |",
+      "category": "model_architecture",
+      "value": "Reflective",
+      "verifiability": "high",
+      "claim_id": "c0037",
+      "contradiction": false
+    },
+    {
+      "claim": "Qi et al.'s computational cost on heuristic evaluation is +.",
+      "original_text": "| Qi et al. [12]        | Heuristic<br>Design | Reflective                         | +                                                      | Очень высокое | Средняя                                       |",
+      "category": "training_procedure",
+      "value": "+",
+      "verifiability": "high",
+      "claim_id": "c0038",
+      "contradiction": false
+    },
+    {
+      "claim": "Qi et al.'s applicability in real dynamic environments is Средняя.",
+      "original_text": "| Qi et al. [12]        | Heuristic<br>Design | Reflective                         | +                                                      | Очень высокое | Средняя                                       |",
+      "category": "evaluation_metric",
+      "value": "Средняя",
+      "verifiability": "high",
+      "claim_id": "c0039",
+      "contradiction": false
+    },
+    {
+      "claim": "Cao & Yuan [16] addresses DFJSP using ReflecSched.",
+      "original_text": "| Cao &<br>Yuan<br>[16] | DFJSP               | ReflecSched                        | +                                                      | Высокое       | Очень высокая                                 |",
+      "category": "model_architecture",
+      "value": "ReflecSched",
+      "verifiability": "high",
+      "claim_id": "c0040",
+      "contradiction": false
+    },
+    {
+      "claim": "Cao & Yuan's computational cost on heuristic evaluation is +.",
+      "original_text": "| Cao &<br>Yuan<br>[16] | DFJSP               | ReflecSched                        | +                                                      | Высокое       | Очень высокая                                 |",
+      "category": "training_procedure",
+      "value": "+",
+      "verifiability": "high",
+      "claim_id": "c0041",
+      "contradiction": false
+    },
+    {
+      "claim": "Cao & Yuan's applicability in real dynamic environments is Очень высокая.",
+      "original_text": "| Cao &<br>Yuan<br>[16] | DFJSP               | ReflecSched                        | +                                                      | Высокое       | Очень высокая                                 |",
+      "category": "evaluation_metric",
+      "value": "Очень высокая",
+      "verifiability": "high",
+      "claim_id": "c0042",
+      "contradiction": false
+    },
+    {
+      "claim": "A three-stage algorithm using LLM is presented, consisting of input data structuring, heuristic code generation, and planning execution.",
+      "original_text": "Представлен трехэтапных алгоритм получения расписания с использованием LLM, в который входит структурирование входных данных, генерация программного кода эвристики и исполнение алгоритма планирования.",
+      "category": "model_architecture",
+      "value": "structuring input data, generating heuristic code, executing planning",
+      "verifiability": "medium",
+      "claim_id": "c0043",
+      "contradiction": false
+    },
+    {
+      "claim": "A dataset of planning problems with varied constraints was created for comprehensive testing.",
+      "original_text": "Для комплексного тестирования разработанного подхода был сформирован набор задач планирования с разными постановками, включающие различные ограничения проектов.",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0044",
+      "contradiction": false
+    },
+    {
+      "claim": "Two description formats for planning tasks were developed: textual and a JSON-based domain-specific language.",
+      "original_text": "Были разработаны два формата описания задач планирования: текстовый и предметно-ориентированный язык на базе JSON.",
+      "category": "data_preprocessing",
+      "value": "текстовый, JSON-based DSL",
+      "verifiability": "high",
+      "claim_id": "c0045",
+      "contradiction": false
+    },
+    {
+      "claim": "The textual representation is based on a specialized template that enables LLM to generate corresponding Python code.",
+      "original_text": "Текстовое представление, основанное на специализированном шаблоне, позволяет LLM интерпретировать структуру проекта, ограничения и целевые функции, генерируя соответствующий Python-код.",
+      "category": "data_preprocessing",
+      "value": "специализированный шаблон",
+      "verifiability": "medium",
+      "claim_id": "c0046",
+      "contradiction": false
+    },
+    {
+      "claim": "The DSL provides a more compact task description, transmitting aggregated characteristics and instructions for code generation.",
+      "original_text": "DSL в свою очередь обеспечивает более сжатое описание задач, передавая модели агрегированные характеристики и инструкции для генерации кода.",
+      "category": "data_preprocessing",
+      "value": "DSL",
+      "verifiability": "medium",
+      "claim_id": "c0047",
+      "contradiction": false
+    },
+    {
+      "claim": "An experimental study of the heuristic generation algorithm was conducted using Gemini 1.5 Flash.",
+      "original_text": "В рамках третьей главы было проведено экспериментальное исследование разработанного алгоритма генерации эвристик с использованием Gemini 1.5 Flash.",
+      "category": "infrastructure",
+      "value": "Gemini 1.5 Flash",
+      "verifiability": "high",
+      "claim_id": "c0048",
+      "contradiction": false
+    },
+    {
+      "claim": "Процесс формирования расписания с использованием больших языковых моделей (рис. 1) разделен на три ключевых этапа.",
+      "original_text": "Процесс формирования расписания с использованием больших языковых моделей (рис. 1) разделен на три ключевых этапа: формализация входных данных, генерация программного кода эвристики и исполнение алгоритма планирования.",
+      "category": "infrastructure",
+      "value": null,
+      "verifiability": "high",
+      "claim_id": "c0049",
+      "contradiction": false
+    },
+    {
+      "claim": "Первый этап — формализация входных данных.",
+      "original_text": "Процесс формирования расписания с использованием больших языковых моделей (рис. 1) разделен на три ключевых этапа: формализация входных данных, генерация программного кода эвристики и исполнение алгоритма планирования.",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "high",
+      "claim_id": "c0050",
+      "contradiction": false
+    },
+    {
+      "claim": "Второй этап — генерация программного кода эвристики.",
+      "original_text": "Процесс формирования расписания с использованием больших языковых моделей (рис. 1) разделен на три ключевых этапа: формализация входных данных, генерация программного кода эвристики и исполнение алгоритма планирования.",
+      "category": "infrastructure",
+      "value": null,
+      "verifiability": "high",
+      "claim_id": "c0051",
+      "contradiction": false
+    },
+    {
+      "claim": "Третий этап — исполнение алгоритма планирования.",
+      "original_text": "Процесс формирования расписания с использованием больших языковых моделей (рис. 1) разделен на три ключевых этапа: формализация входных данных, генерация программного кода эвристики и исполнение алгоритма планирования.",
+      "category": "infrastructure",
+      "value": null,
+      "verifiability": "high",
+      "claim_id": "c0052",
+      "contradiction": false
+    },
+    {
+      "claim": "На вход системы поступают данные о проекте D.",
+      "original_text": "На вход системы поступают данные о проекте D.",
+      "category": "dataset",
+      "value": "проект D",
+      "verifiability": "high",
+      "claim_id": "c0053",
+      "contradiction": false
+    },
+    {
+      "claim": "Вместо полной спецификации работ выполняется извлечение мета-характеристик.",
+      "original_text": "С целью минимизации диалог-стоимости вместо полной спецификации работ выполняется извлечение мета-характеристик.",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0054",
+      "contradiction": false
+    },
+    {
+      "claim": "На основе извлечённых мета-характеристик формируются компактные описания задачи текстом и DSL.",
+      "original_text": "На их основе формируется компактные описания задачи текстом и DSL.",
+      "category": "data_preprocessing",
+      "value": "текстом и DSL",
+      "verifiability": "high",
+      "claim_id": "c0055",
+      "contradiction": false
+    },
+    {
+      "claim": "LLM выступает в роли генератора программного кода на втором этапе.",
+      "original_text": "На втором этапе LLM выступает в роли генератора программного кода.",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "high",
+      "claim_id": "c0056",
+      "contradiction": false
+    },
+    {
+      "claim": "Модель выдает исполняемый код правила приоритета.",
+      "original_text": "Модель выдает исполняемый код правила приоритета, который проходит проверку на синтаксическую корректность и валидность при работе с объектами исходных данных проекта.",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "high",
+      "claim_id": "c0057",
+      "contradiction": false
+    },
+    {
+      "claim": "Сгенерированный код проходит проверку на синтаксическую корректность и валидность при работе с объектами исходных данных проекта.",
+      "original_text": "Модель выдает исполняемый код правила приоритета, который проходит проверку на синтаксическую корректность и валидность при работе с объектами исходных данных проекта.",
+      "category": "infrastructure",
+      "value": null,
+      "verifiability": "high",
+      "claim_id": "c0058",
+      "contradiction": false
+    },
+    {
+      "claim": "Эвристика рассчитывает метрики, служащие критериями для решения задачи планирования, на последнем шаге построения расписания.",
+      "original_text": "На последнем шаге построения расписания эвристика рассчитывает метрики, которые служат критериями для решения задачи планирования.",
+      "category": "infrastructure",
+      "value": null,
+      "verifiability": "high",
+      "claim_id": "c0059",
+      "contradiction": false
+    },
+    {
+      "claim": "A specialized text description template was developed to test the language model's ability to interpret meta-characteristics and convert them into program code.",
+      "original_text": "Для того чтобы протестировать результативность языковой модели в интерпретировании мета-характеристик и преобразовании их в программный код, был разработан специализированный шаблон текстового описания.",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0060",
+      "contradiction": false
+    },
+    {
+      "claim": "The function parses the input data dynamically according to the provided project structure.",
+      "original_text": "The function should: parse the input data dynamically according to the provided project structure; construct a feasible schedule satisfying all precedence and resource constraints; return the result in the form **Dict(schedule={activity_id: start_time}, metrics={makespan, total_penalty, execution_time})**; and measure the **algorithm's execution time**.",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0061",
+      "contradiction": false
+    },
+    {
+      "claim": "The function constructs a feasible schedule satisfying all precedence and resource constraints.",
+      "original_text": "The function should: parse the input data dynamically according to the provided project structure; construct a feasible schedule satisfying all precedence and resource constraints; return the result in the form **Dict(schedule={activity_id: start_time}, metrics={makespan, total_penalty, execution_time})**; and measure the **algorithm's execution time**.",
+      "category": "infrastructure",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0062",
+      "contradiction": false
+    },
+    {
+      "claim": "The function returns the result in the form Dict(schedule={activity_id: start_time}, metrics={makespan, total_penalty, execution_time}).",
+      "original_text": "The function should: parse the input data dynamically according to the provided project structure; construct a feasible schedule satisfying all precedence and resource constraints; return the result in the form **Dict(schedule={activity_id: start_time}, metrics={makespan, total_penalty, execution_time})**; and measure the **algorithm's execution time**.",
+      "category": "infrastructure",
+      "value": "Dict(schedule={activity_id: start_time}, metrics={makespan, total_penalty, execution_time})",
+      "verifiability": "high",
+      "claim_id": "c0063",
+      "contradiction": false
+    },
+    {
+      "claim": "The function measures the algorithm's execution time.",
+      "original_text": "The function should: parse the input data dynamically according to the provided project structure; construct a feasible schedule satisfying all precedence and resource constraints; return the result in the form **Dict(schedule={activity_id: start_time}, metrics={makespan, total_penalty, execution_time})**; and measure the **algorithm's execution time**.",
+      "category": "infrastructure",
+      "value": "execution time",
+      "verifiability": "medium",
+      "claim_id": "c0064",
+      "contradiction": false
+    },
+    {
+      "claim": "Для минимизации объёма передаваемых данных и устранения лингвистической двусмысленности в работе был разработан предметно-ориентированный язык на базе формата JSON.",
+      "original_text": "Для минимизации объёма передаваемых данных и устранения лингвистической двусмысленности в работе был разработан предметно-ориентированный язык на базе формата JSON.",
+      "category": "data_preprocessing",
+      "value": "JSON",
+      "verifiability": "high",
+      "claim_id": "c0065",
+      "contradiction": false
+    },
+    {
+      "claim": "В блоке meta_problem_definition поле \"problem_class\" может принимать строки: Standard RCPSP, RCMPSP [Multi-Project], Single Machine [JIT], RCPSP with NRR/RR.",
+      "original_text": "\"problem_class\": \"STRING (Standard RCPSP, RCMPSP [Multi-Project], Single Machine [JIT], RCPSP with NRR/RR)\",",
+      "category": "data_preprocessing",
+      "value": "Standard RCPSP, RCMPSP [Multi-Project], Single Machine [JIT], RCPSP with NRR/RR",
+      "verifiability": "high",
+      "claim_id": "c0066",
+      "contradiction": false
+    },
+    {
+      "claim": "В блоке meta_problem_definition поле \"topology.structure\" может принимать строки: Single DAG, Multiple Independent DAGs, Independent Jobs [No Predecessors].",
+      "original_text": "\"structure\": \"STRING (Single DAG, Multiple Independent DAGs, Independent Jobs [No Predecessors])\",",
+      "category": "data_preprocessing",
+      "value": "Single DAG, Multiple Independent DAGs, Independent Jobs [No Predecessors]",
+      "verifiability": "high",
+      "claim_id": "c0067",
+      "contradiction": false
+    },
+    {
+      "claim": "В блоке meta_problem_definition поле \"topology.is_multiproject\" является булевым и принимает значение true, если работы вложены в проекты.",
+      "original_text": "\"is_multiproject\": \"BOOLEAN (true if jobs are nested in projects)\",",
+      "category": "data_preprocessing",
+      "value": "BOOLEAN (true if jobs are nested in projects)",
+      "verifiability": "high",
+      "claim_id": "c0068",
+      "contradiction": false
+    },
+    {
+      "claim": "В блоке meta_problem_definition поле \"topology.constraints_type\" содержит типы ограничений: Finish-Start, Resource Capacity, Deadline/Due-Date.",
+      "original_text": "\"constraints_type\": [\"Finish-Start\", \"Resource Capacity\", \"Deadline/Due-Date\"]",
+      "category": "data_preprocessing",
+      "value": "Finish-Start, Resource Capacity, Deadline/Due-Date",
+      "verifiability": "high",
+      "claim_id": "c0069",
+      "contradiction": false
+    },
+    {
+      "claim": "Целевая направленность планирования описывается в блоке «optimization_criteria».",
+      "original_text": "Целевая направленность планирования описывается в разделе «optimization_criteria» (рис. 3).",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0070",
+      "contradiction": false
+    },
+    {
+      "claim": "Блок «optimization_criteria» задаёт тип целевой функции и передаёт возможные параметры работ проекта.",
+      "original_text": "Выше представленный блок задает тип целевой функции, передает возможные параметры работ проекта.",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0071",
+      "contradiction": false
+    },
+    {
+      "claim": "Блок «resource_logic» определяет категории доступности ресурсов.",
+      "original_text": "Совместно с этим, блок «resource_logic» (рис. 4) определяет категории доступности ресурсов.",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0072",
+      "contradiction": false
+    },
+    {
+      "claim": "Для тестирования была проведена формализация всех наборов данных.",
+      "original_text": "Для этого специально была проведена формализация всех наборов данных для тестирования.",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0073",
+      "contradiction": false
+    },
+    {
+      "claim": "Эксперименты были проведены с применением большой языковой модели Gemini 1.5 Flash.",
+      "original_text": "Эксперименты были проведены с применением большой языковой модели Gemini 1.5 Flash.",
+      "category": "model_architecture",
+      "value": "Gemini 1.5 Flash",
+      "verifiability": "high",
+      "claim_id": "c0074",
+      "contradiction": false
+    },
+    {
+      "claim": "Для сравнения использовались два способа представления мета‑характеристик проектов: неструктурированное текстовое описание и формализованный предметно‑ориентированный язык в формате JSON.",
+      "original_text": "Основной целью экспериментов выступило сравнение качества и стабильности генерируемых расписаний при использовании двух способов представления мета-характеристик проектов: неструктурированное текстовое описание и формализованный предметно-ориентированный язык в формате JSON.",
+      "category": "data_preprocessing",
+      "value": "неструктурированное текстовое описание, формализованный предметно-ориентированный язык в формате JSON",
+      "verifiability": "high",
+      "claim_id": "c0075",
+      "contradiction": false
+    }
+  ],
+  "step3_selection": [
+    {
+      "claim_id": "c0001",
+      "claim": "Введение находится на странице 3.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0002",
+      "claim": "Глава 1. Аналитический обзор предметной области находится на странице 5.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0003",
+      "claim": "Раздел 1.1. Постановки задач RCPSP и их решения находится на странице 5.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0004",
+      "claim": "Раздел 1.2. Использование LLM для генерации эвристик кода находится на странице 7.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0005",
+      "claim": "Раздел 1.3. Выводы по главе находится на странице 9.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0006",
+      "claim": "Глава 2. Разработка темы находится на странице 12.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0007",
+      "claim": "Раздел 2.1. Постановка задания находится на странице 12.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0008",
+      "claim": "Раздел 2.2 Алгоритм получения расписания при помощи LLM1 находится на странице 13.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0009",
+      "claim": "Раздел 2.3. Набор данных задач планирования находится на странице 14.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0010",
+      "claim": "Раздел 2.4. Текстовое описание задач планирования находится на странице 16.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0011",
+      "claim": "Раздел 2.5. DSL описание задач планирования находится на странице 17.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0012",
+      "claim": "Раздел 2.6. Выводы по главе находится на странице 20.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0013",
+      "claim": "Глава 3. Эксперименты находится на странице 21.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0014",
+      "claim": "Раздел 3.1. Основные результаты находится на странице 21.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0015",
+      "claim": "Раздел 3.2. План дальнейшего исследования находится на странице 22.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0016",
+      "claim": "Раздел 3.3. Выводы по главе находится на странице 23.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0017",
+      "claim": "Заключение находится на странице 24.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0018",
+      "claim": "Список использованных источников находится на странице 25.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0019",
+      "claim": "В рамках фреймворка NS4S большая языковая модель была адаптирована для управления поиском по окрестностям.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0020",
+      "claim": "Для снижения эффекта галлюцинаций модели и эффективной настройки весов операций в процессе локального поиска использовалась эволюция VeEvo.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0021",
+      "claim": "Алгоритм Hercules использует метод Core Abstraction Prompting (CAP).",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0022",
+      "claim": "В работе [11] предложен метод генерации специфичных конкретной эвристик.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0023",
+      "claim": "Qi et al. представили меметический фреймворк, объединяющий эволюционный дизайн эвристик с механизмами рефлексии.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0024",
+      "claim": "В исследовании [13] проведён сравнительный анализ шести открытых больших языковых моделей в планировании задач в облачных вычислениях.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0025",
+      "claim": "В экспериментах использовался только формат естественного языка.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0026",
+      "claim": "Singh et al. представили фреймворк ProgPrompt, использующий программно-ориентированные промпты LLM для генерации планов действий роботов в реальной среде.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0027",
+      "claim": "ReflecSched решает задачу динамического гибкого планирования производственных операций (DFJSP) через иерархическую рефлексию.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0028",
+      "claim": "Teh [7] addresses Stochastic RCPSP using GA + Monte Carlo.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0029",
+      "claim": "Teh's computational cost on heuristic evaluation is частично.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0030",
+      "claim": "Teh's applicability in real dynamic environments is Средняя.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0031",
+      "claim": "Yang et al. [4] addresses MRCMPSP using NSGA-II + Q-learning.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0032",
+      "claim": "Yang et al.'s computational cost on heuristic evaluation is not reported.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0033",
+      "claim": "Yang et al.'s applicability in real dynamic environments is Высокая.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0034",
+      "claim": "Zhang et al. [9] addresses JSP using NS4S.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0035",
+      "claim": "Zhang et al.'s computational cost on heuristic evaluation is +.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0036",
+      "claim": "Zhang et al.'s applicability in real dynamic environments is Средняя.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0037",
+      "claim": "Qi et al. [12] addresses Heuristic Design using Reflective.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0038",
+      "claim": "Qi et al.'s computational cost on heuristic evaluation is +.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0039",
+      "claim": "Qi et al.'s applicability in real dynamic environments is Средняя.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0040",
+      "claim": "Cao & Yuan [16] addresses DFJSP using ReflecSched.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0041",
+      "claim": "Cao & Yuan's computational cost on heuristic evaluation is +.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0042",
+      "claim": "Cao & Yuan's applicability in real dynamic environments is Очень высокая.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0043",
+      "claim": "A three-stage algorithm using LLM is presented, consisting of input data structuring, heuristic code generation, and planning execution.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0044",
+      "claim": "A dataset of planning problems with varied constraints was created for comprehensive testing.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0045",
+      "claim": "Two description formats for planning tasks were developed: textual and a JSON-based domain-specific language.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0046",
+      "claim": "The textual representation is based on a specialized template that enables LLM to generate corresponding Python code.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0047",
+      "claim": "The DSL provides a more compact task description, transmitting aggregated characteristics and instructions for code generation.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0048",
+      "claim": "An experimental study of the heuristic generation algorithm was conducted using Gemini 1.5 Flash.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0049",
+      "claim": "Процесс формирования расписания с использованием больших языковых моделей (рис. 1) разделен на три ключевых этапа.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0050",
+      "claim": "Первый этап — формализация входных данных.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0051",
+      "claim": "Второй этап — генерация программного кода эвристики.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0052",
+      "claim": "Третий этап — исполнение алгоритма планирования.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0053",
+      "claim": "На вход системы поступают данные о проекте D.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0054",
+      "claim": "Вместо полной спецификации работ выполняется извлечение мета-характеристик.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0055",
+      "claim": "На основе извлечённых мета-характеристик формируются компактные описания задачи текстом и DSL.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0056",
+      "claim": "LLM выступает в роли генератора программного кода на втором этапе.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0057",
+      "claim": "Модель выдает исполняемый код правила приоритета.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0058",
+      "claim": "Сгенерированный код проходит проверку на синтаксическую корректность и валидность при работе с объектами исходных данных проекта.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0059",
+      "claim": "Эвристика рассчитывает метрики, служащие критериями для решения задачи планирования, на последнем шаге построения расписания.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0060",
+      "claim": "A specialized text description template was developed to test the language model's ability to interpret meta-characteristics and convert them into program code.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0061",
+      "claim": "The function parses the input data dynamically according to the provided project structure.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0062",
+      "claim": "The function constructs a feasible schedule satisfying all precedence and resource constraints.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0063",
+      "claim": "The function returns the result in the form Dict(schedule={activity_id: start_time}, metrics={makespan, total_penalty, execution_time}).",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0064",
+      "claim": "The function measures the algorithm's execution time.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0065",
+      "claim": "Для минимизации объёма передаваемых данных и устранения лингвистической двусмысленности в работе был разработан предметно-ориентированный язык на базе формата JSON.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0066",
+      "claim": "В блоке meta_problem_definition поле \"problem_class\" может принимать строки: Standard RCPSP, RCMPSP [Multi-Project], Single Machine [JIT], RCPSP with NRR/RR.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0067",
+      "claim": "В блоке meta_problem_definition поле \"topology.structure\" может принимать строки: Single DAG, Multiple Independent DAGs, Independent Jobs [No Predecessors].",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0068",
+      "claim": "В блоке meta_problem_definition поле \"topology.is_multiproject\" является булевым и принимает значение true, если работы вложены в проекты.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0069",
+      "claim": "В блоке meta_problem_definition поле \"topology.constraints_type\" содержит типы ограничений: Finish-Start, Resource Capacity, Deadline/Due-Date.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0070",
+      "claim": "Целевая направленность планирования описывается в блоке «optimization_criteria».",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0071",
+      "claim": "Блок «optimization_criteria» задаёт тип целевой функции и передаёт возможные параметры работ проекта.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0072",
+      "claim": "Блок «resource_logic» определяет категории доступности ресурсов.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0073",
+      "claim": "Для тестирования была проведена формализация всех наборов данных.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0074",
+      "claim": "Эксперименты были проведены с применением большой языковой модели Gemini 1.5 Flash.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0075",
+      "claim": "Для сравнения использовались два способа представления мета‑характеристик проектов: неструктурированное текстовое описание и формализованный предметно‑ориентированный язык в формате JSON.",
+      "contradiction": false
+    }
+  ],
+  "meta": {
+    "source": "/home/ilya/OSA/mvp/current/data/paper_3/paper_3_sections.json",
+    "steps": 3,
+    "history_messages": 6,
+    "model": "openai/gpt-oss-120b",
+    "filtered_claims": 75,
+    "step3_input_count": 75,
+    "step3_output_count": 75
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "result": [
+    {
+      "claim": "A multi-agent architecture called generator-critic is used.",
+      "original_text": "мультиагентная архитектура «генератор-критик»",
+      "category": "model_architecture",
+      "value": "generator-critic",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The generation quality is evaluated using the pass@1 metric.",
+      "original_text": "метрик pass@1, характеризующей вероятность получения функционально корректного решения",
+      "category": "evaluation_metric",
+      "value": "pass@1",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The generation quality is evaluated using the sec_pass@1 metric.",
+      "original_text": "и  $\\\\sec_p ass$ @1",
+      "category": "evaluation_metric",
+      "value": "sec_pass@1",
+      "verifiability": "high"
+    },
+    {
+      "claim": "Baseline generation without additional control mechanisms is considered.",
+      "original_text": "базовая генерация без дополнительных механизмов контроля",
+      "category": "baseline_comparison",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Generation using targeted security prompts is considered.",
+      "original_text": "генерация с использованием целевых securityпромптов",
+      "category": "training_procedure",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Combination of the multi-agent approach and adaptive prompting is considered.",
+      "original_text": "комбинация мультиагентного подхода и адаптивного промптирования",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Code generation is performed using a basic prompt without additional constraints.",
+      "original_text": "На первом этапе выполняется генерация кода с использованием базового промпта без дополнительных ограничений.",
+      "category": "training_procedure",
+      "value": "basic prompt without additional constraints",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Generated examples are analyzed with automated vulnerability detection tools to determine the distribution of CWE classes.",
+      "original_text": "Полученные примеры анализируются с применением автоматических средств выявления уязвимостей, что позволяет определить распределение CWE-классов, характерных для рассматриваемой модели.",
+      "category": "evaluation_metric",
+      "value": "distribution of CWE classes",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "In this architecture, the first agent generates code and the second agent analyzes the result for security and provides remediation recommendations.",
+      "original_text": "первый агент отвечает за первичную генерацию кода, в то время как второй агент выполняет анализ результата с точки зрения безопасности и формирует рекомендации по исправлению потенциальных уязвимостей.",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The experimental study was conducted on a set of tasks focused on server API generation and user input handling.",
+      "original_text": "Экспериментальное исследование проводилось на наборе задач, ориентированных на генерацию серверных АРІ и обработку пользовательского ввода.",
+      "category": "dataset",
+      "value": "tasks for server API generation and user input handling",
+      "verifiability": "high"
+    }
+  ],
+  "meta": {
+    "source": "/home/ilya/OSA/marker_output/paper_9/paper_9_sections.json",
+    "steps": 3,
+    "history_messages": 3,
+    "model": "openai/gpt-oss-120b"
+  }
+}

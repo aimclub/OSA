@@ -1,0 +1,157 @@
+{
+  "result": [
+    {
+      "claim": "The dataset was split 80/20 for train and test sets.",
+      "original_text": "before splitting to train and test sets in the 80/20 ratio.",
+      "category": "dataset",
+      "value": "80/20",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The SAR prediction dataset contains 460 samples.",
+      "original_text": "prediction of SAR value, r1 or r2 relaxivity containing 460, 355, and 465 samples, respectively",
+      "category": "dataset",
+      "value": "460",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The r1 relaxivity prediction dataset contains 355 samples.",
+      "original_text": "prediction of SAR value, r1 or r2 relaxivity containing 460, 355, and 465 samples, respectively",
+      "category": "dataset",
+      "value": "355",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The r2 relaxivity prediction dataset contains 465 samples.",
+      "original_text": "prediction of SAR value, r1 or r2 relaxivity containing 460, 355, and 465 samples, respectively",
+      "category": "dataset",
+      "value": "465",
+      "verifiability": "high"
+    },
+    {
+      "claim": "11 descriptors were used for SAR value prediction.",
+      "original_text": "For prediction of SAR value, 11 descriptors were used",
+      "category": "dataset",
+      "value": "11",
+      "verifiability": "high"
+    },
+    {
+      "claim": "8 descriptors were used for relaxivity value prediction.",
+      "original_text": "whereas relaxivity values were predicted using 8 descriptors only",
+      "category": "dataset",
+      "value": "8",
+      "verifiability": "high"
+    },
+    {
+      "claim": "Tree-based algorithms such as Random Forest and Gradient Boosting were used.",
+      "original_text": "In this work, we opted for tree-based algorithms such as Random Forest and Gradient Boosting",
+      "category": "model_architecture",
+      "value": "Random Forest, Gradient Boosting",
+      "verifiability": "high"
+    },
+    {
+      "claim": "LGBMRegressor and XGBRegressor algorithms were used.",
+      "original_text": "LGBMRegressor and XGBRegressor algorithms build sequences of decision trees",
+      "category": "model_architecture",
+      "value": "LGBMRegressor, XGBRegressor",
+      "verifiability": "high"
+    },
+    {
+      "claim": "Hyperparameter tuning was done using the Optuna framework.",
+      "original_text": "hyperparameter tuning was done using the model-agnostic Optuna framework",
+      "category": "training_procedure",
+      "value": "Optuna",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The best model was selected using mean Q2 and RMSE for tenfold cross-validation and R2 and RMSE for test samples.",
+      "original_text": "The best model was selected using the following metrics: mean Q2 and RMSE for tenfold cross-validation and R2 and RMSE for test samples.",
+      "category": "evaluation_metric",
+      "value": "Q2, RMSE, R2",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Tenfold cross-validation R2 for SAR prediction is 0.86.",
+      "original_text": "tenfold cross-validation R2 = 0.86 for prediction of SAR",
+      "category": "numerical_result",
+      "value": "0.86",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Tenfold cross-validation R2 for r1 relaxivity prediction is 0.78.",
+      "original_text": "R2 = 0.78 and R2 = 0.75 for prediction of r1 and r2 relaxivities, respectively.",
+      "category": "numerical_result",
+      "value": "0.78",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Tenfold cross-validation R2 for r2 relaxivity prediction is 0.75.",
+      "original_text": "R2 = 0.78 and R2 = 0.75 for prediction of r1 and r2 relaxivities, respectively.",
+      "category": "numerical_result",
+      "value": "0.75",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "RMSE for SAR prediction on tenfold cross-validation is 0.28 and on test samples is 0.26.",
+      "original_text": "For SAR prediction, RMSE of 0.28 on tenfold cross-validation dropped to 0.26 on test samples",
+      "category": "numerical_result",
+      "value": "0.28, 0.26",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "RMSE for r1 relaxivity prediction on tenfold cross-validation is 0.30 and on test samples is 0.27.",
+      "original_text": "for r1 and r2 relaxivities, RMSE dropped from 0.30 to 0.27",
+      "category": "numerical_result",
+      "value": "0.30, 0.27",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "RMSE for r2 relaxivity prediction on tenfold cross-validation is 0.25 and on test samples is 0.22.",
+      "original_text": "and from 0.25 to 0.22 on test samples, respectively.",
+      "category": "numerical_result",
+      "value": "0.25, 0.22",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "R2 on test samples for r1 relaxivity prediction increased from 0.75 to 0.78.",
+      "original_text": "R2 on test samples increased from 0.75 to 0.78",
+      "category": "numerical_result",
+      "value": "0.75 to 0.78",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Q2 on cross-validation for r2 relaxivity prediction increased from 0.63 to 0.71.",
+      "original_text": "Q2 on cross-validation increased from 0.63 to 0.71",
+      "category": "numerical_result",
+      "value": "0.63 to 0.71",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "47% of SAR validation predictions differed from true values by less than 50%.",
+      "original_text": "For SAR, r1 and r2 relaxivities, the percentages were 47%, 57%, and 68%, respectively",
+      "category": "numerical_result",
+      "value": "47%",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "57% of r1 relaxivity validation predictions differed from true values by less than 50%.",
+      "original_text": "For SAR, r1 and r2 relaxivities, the percentages were 47%, 57%, and 68%, respectively",
+      "category": "numerical_result",
+      "value": "57%",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "68% of r2 relaxivity validation predictions differed from true values by less than 50%.",
+      "original_text": "For SAR, r1 and r2 relaxivities, the percentages were 47%, 57%, and 68%, respectively",
+      "category": "numerical_result",
+      "value": "68%",
+      "verifiability": "medium"
+    }
+  ],
+  "meta": {
+    "source": "/home/ilya/OSA/DiMag.pdf",
+    "steps": 3,
+    "history_messages": 8,
+    "model": "deepseek/deepseek-v3.2"
+  }
+}

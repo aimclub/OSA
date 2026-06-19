@@ -1,0 +1,719 @@
+{
+  "result": [
+    {
+      "claim": "The methodology uses a hybrid inference system that dynamically routes queries between a compact student model and a powerful teacher model.",
+      "original_text": "The core of our methodology is a hybrid inference system that dynamically routes queries between a compact student model and a powerful teacher model.",
+      "category": "model_architecture",
+      "value": "compact student model, powerful teacher model",
+      "verifiability": "medium",
+      "section_name": "Proposed Request Routing Method",
+      "section_heading_raw": "**Proposed Request Routing Method**",
+      "claim_id": "c0001",
+      "contradiction": false
+    },
+    {
+      "claim": "The system's operation is governed by the Request Routing Module.",
+      "original_text": "The system's operation is governed by the Request Routing Module, as depicted in Figure 1.",
+      "category": "model_architecture",
+      "value": "Request Routing Module",
+      "verifiability": "high",
+      "section_name": "Proposed Request Routing Method",
+      "section_heading_raw": "**Proposed Request Routing Method**",
+      "claim_id": "c0002",
+      "contradiction": false
+    },
+    {
+      "claim": "The teacher model $f_{\\tau}$ is trained on the full training dataset $D_{train}$.",
+      "original_text": "At the first stage, models are trained: the teacher $(f_{\\tau})$ learns from the full data set $D_{train} = \\{(x_i, y_i)\\}$ $\\sum_{i=1}^{N_{train}}$ and the student $(f_S)$ learns from a limited subset $D'_{train} \\subset D_{train}$ which is 10% of the initial volume using distillation methods.",
+      "category": "training_procedure",
+      "value": "D_{train}",
+      "verifiability": "high",
+      "section_name": "Proposed Request Routing Method",
+      "section_heading_raw": "**Proposed Request Routing Method**",
+      "claim_id": "c0003",
+      "contradiction": false
+    },
+    {
+      "claim": "The student model $f_{S}$ is trained on a limited subset $D'_{train}$ that is 10% of the initial volume using distillation methods.",
+      "original_text": "At the first stage, models are trained: the teacher $(f_{\\tau})$ learns from the full data set $D_{train} = \\{(x_i, y_i)\\}$ $\\sum_{i=1}^{N_{train}}$ and the student $(f_S)$ learns from a limited subset $D'_{train} \\subset D_{train}$ which is 10% of the initial volume using distillation methods.",
+      "category": "training_procedure",
+      "value": "10% of D_{train}, distillation",
+      "verifiability": "high",
+      "section_name": "Proposed Request Routing Method",
+      "section_heading_raw": "**Proposed Request Routing Method**",
+      "claim_id": "c0004",
+      "contradiction": false
+    },
+    {
+      "claim": "For binary problems, the key metrics are false Positive Rate (FPR) and false Negative Rate (FNR) of student responses, calculated on a window of the last W examples.",
+      "original_text": "For a binary problem, where $y \\in \\{0, 1\\}$ , the key metrics are the false Positive Rate (FPR) and false Negative Rate (FNR) of student responses, calculated on a window of the last W examples.",
+      "category": "evaluation_metric",
+      "value": "FPR, FNR, window size W",
+      "verifiability": "medium",
+      "section_name": "Proposed Request Routing Method",
+      "section_heading_raw": "**Proposed Request Routing Method**",
+      "claim_id": "c0007",
+      "contradiction": false
+    },
+    {
+      "claim": "Absolute certainty for binary probability $p_s$ is defined as $conf_{S} = 2 \\cdot |p_{S}(x) - 0.5|$.",
+      "original_text": "For binary probability $p_s \\in [0, 1]$, absolute certainty is determined: $$conf_{S} = 2 \\cdot |p_{S}(x) - 0.5|.$$",
+      "category": "evaluation_metric",
+      "value": "conf_{S} = 2 \\cdot |p_{S}(x) - 0.5|",
+      "verifiability": "high",
+      "section_name": "Proposed Request Routing Method",
+      "section_heading_raw": "**Proposed Request Routing Method**",
+      "claim_id": "c0008",
+      "contradiction": false
+    },
+    {
+      "claim": "For multi-class problems, a validation error matrix $M \\in \\mathbb{N}^{C \\times C}$ is constructed and analyzed.",
+      "original_text": "For a multi-class problem with C > 2 classes, a matrix of validation data errors $M \\in \\mathbb{N}^{(C \\times C)}$ is constructed and analyzed.",
+      "category": "data_preprocessing",
+      "value": "M \\in \\mathbb{N}^{C \\times C}",
+      "verifiability": "high",
+      "section_name": "Proposed Request Routing Method",
+      "section_heading_raw": "**Proposed Request Routing Method**",
+      "claim_id": "c0009",
+      "contradiction": false
+    },
+    {
+      "claim": "Pairs of classes are considered confusing if the normalized error rate $\\frac{M_{ij}}{C}$ exceeds a threshold $\\alpha$ (with $i \\neq j$).",
+      "original_text": "Systematic patterns of confusion are revealed — pairs of classes for which the normalized error rate exceeds the threshold: $$\\frac{M_{ij}}{C} > \\alpha, i \\neq j.$$",
+      "category": "evaluation_metric",
+      "value": "α",
+      "verifiability": "medium",
+      "section_name": "Proposed Request Routing Method",
+      "section_heading_raw": "**Proposed Request Routing Method**",
+      "claim_id": "c0010",
+      "contradiction": false
+    },
+    {
+      "claim": "A class $c$ is considered problematic if $ErrorRate_{c}^{S} > ErrorRate_{c}^{T} + \\beta$, where $\\beta$ is a specified gap.",
+      "original_text": "Class c is considered problematic if the student's error on it significantly exceeds the teacher's error: $$ErrorRate_{c}^{S} > ErrorRate_{c}^{T} + \\beta$$, where  $\\beta$  is the specified gap.",
+      "category": "evaluation_metric",
+      "value": "β",
+      "verifiability": "medium",
+      "section_name": "Proposed Request Routing Method",
+      "section_heading_raw": "**Proposed Request Routing Method**",
+      "claim_id": "c0011",
+      "contradiction": false
+    },
+    {
+      "claim": "Confidence for the student is defined as $conf_s = \\max_c(p_s^c(x))$, the maximum probability assigned to the predicted class.",
+      "original_text": "For the confidence analysis, the maximum probability assigned by the student to the predicted class is used: $conf_s = max_c(p_s^c(x))$ .",
+      "category": "evaluation_metric",
+      "value": "conf_s = max_c(p_s^c(x))",
+      "verifiability": "high",
+      "section_name": "Proposed Request Routing Method",
+      "section_heading_raw": "**Proposed Request Routing Method**",
+      "claim_id": "c0012",
+      "contradiction": false
+    },
+    {
+      "claim": "The Confidence Threshold strategy routes the request to the teacher if the student's confidence is below the specified threshold (conf_s(x) < τ_conf).",
+      "original_text": "The Confidence Threshold strategy: the request is routed to the teacher if the student's confidence is below the specified threshold  $(conf_s(x) < \tau_{conf})$ .",
+      "category": "model_architecture",
+      "value": "conf_s(x) < τ_conf",
+      "verifiability": "high",
+      "section_name": "Binary classification strategies:",
+      "section_heading_raw": "Binary classification strategies:",
+      "claim_id": "c0013",
+      "contradiction": false
+    },
+    {
+      "claim": "The false Positive Prevention Strategy is applied when a student predicts a positive grade with insufficient confidence.",
+      "original_text": "false Positive Prevention Strategy: When a student predicts a positive grade with insufficient confidence.",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Binary classification strategies:",
+      "section_heading_raw": "Binary classification strategies:",
+      "claim_id": "c0014",
+      "contradiction": false
+    },
+    {
+      "claim": "The targeted correction of false positives routes requests whose characteristics are similar to historical false‑positive student responses identified on D_{val}.",
+      "original_text": "The strategy for the targeted correction of false positives: routing occurs for requests that, by their characteristics are similar to the historical false-positive student responses identified on  $D_{val}$",
+      "category": "model_architecture",
+      "value": "D_{val}",
+      "verifiability": "medium",
+      "section_name": "Binary classification strategies:",
+      "section_heading_raw": "Binary classification strategies:",
+      "claim_id": "c0015",
+      "contradiction": false
+    },
+    {
+      "claim": "Routing is applied if the student's prediction falls into the identified frequent pattern of confusion.",
+      "original_text": "The strategy for targeted correction of error patterns: routing is applied if the student's prediction falls into the identified frequent pattern of confusion.",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Multiclass classification strategies:",
+      "section_heading_raw": "Multiclass classification strategies:",
+      "claim_id": "c0016",
+      "contradiction": false
+    },
+    {
+      "claim": "The request is transmitted to the teacher when the student predicts class j and input x is semantically close to examples of class i from the pattern (i,j).",
+      "original_text": "In practice, the true class is unknown during the inference, so the strategy adapts if the student predicts the class j, and input x is semantically close to the examples of class i from the pattern (i,j), the request is transmitted to the teacher.",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Multiclass classification strategies:",
+      "section_heading_raw": "Multiclass classification strategies:",
+      "claim_id": "c0017",
+      "contradiction": false
+    },
+    {
+      "claim": "The confidence threshold is set based on the percentile of the student's confidence distribution on his own mistakes in D_val.",
+      "original_text": "The confidence threshold is set based on the percentile of the student's confidence distribution based on his own mistakes in  $D_{val}$ .",
+      "category": "training_procedure",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Multiclass classification strategies:",
+      "section_heading_raw": "Multiclass classification strategies:",
+      "claim_id": "c0018",
+      "contradiction": false
+    },
+    {
+      "claim": "All queries for which the student predicts a class from a set of problematic ones are automatically sent to the teacher.",
+      "original_text": "A routing strategy for problem classes: all queries for which the student predicts a class from a set of problematic ones are automatically sent to the teacher.",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Multiclass classification strategies:",
+      "section_heading_raw": "Multiclass classification strategies:",
+      "claim_id": "c0020",
+      "contradiction": false
+    },
+    {
+      "claim": "Expected accuracy Acc(s) is the proportion of correct answers in a hybrid system where the teacher processes the request according to the strategy condition, otherwise the student.",
+      "original_text": "The expected accuracy Acc(s) is the proportion of correct answers in a hybrid system where the teacher according to the strategy condition processes the request, otherwise the student.",
+      "category": "evaluation_metric",
+      "value": "Acc(s)",
+      "verifiability": "high",
+      "section_name": "Multiclass classification strategies:",
+      "section_heading_raw": "Multiclass classification strategies:",
+      "claim_id": "c0021",
+      "contradiction": false
+    },
+    {
+      "claim": "Teacher usage rate r(s) is the percentage of requests redirected to the teacher.",
+      "original_text": "Teacher usage rate r(s) is the percentage of requests redirected to the teacher.",
+      "category": "evaluation_metric",
+      "value": "r(s)",
+      "verifiability": "high",
+      "section_name": "Multiclass classification strategies:",
+      "section_heading_raw": "Multiclass classification strategies:",
+      "claim_id": "c0022",
+      "contradiction": false
+    },
+    {
+      "claim": "The average inference time \\overline{t}(s) is calculated as (1 - r(s)) \\cdot t_S + r(s) \\cdot (t_S + t_T), where t_S and t_T are the inference times of the student and teacher for one example.",
+      "original_text": "The average inference time  $\\overline{t}(s) = (1 r(s)) \\cdot t_S + r(s) \\cdot (t_S + t_T)$ , where  $t_S$ ,  $t_T$  is the inference time of the student and teacher in one example.",
+      "category": "evaluation_metric",
+      "value": "(1 - r(s)) * t_S + r(s) * (t_S + t_T)",
+      "verifiability": "high",
+      "section_name": "Multiclass classification strategies:",
+      "section_heading_raw": "Multiclass classification strategies:",
+      "claim_id": "c0023",
+      "contradiction": false
+    },
+    {
+      "claim": "Increased accuracy \\Delta Acc(s) is calculated as Acc(s) Acc_{S}, where Acc_{S} is the accuracy of the student alone.",
+      "original_text": "Increased accuracy  $\\Delta Acc(s) = Acc(s) Acc_{S}$ , where  $Acc_{S}$  is the accuracy of the student alone.",
+      "category": "evaluation_metric",
+      "value": "Acc(s) Acc_{S}",
+      "verifiability": "high",
+      "section_name": "Multiclass classification strategies:",
+      "section_heading_raw": "Multiclass classification strategies:",
+      "claim_id": "c0024",
+      "contradiction": false
+    },
+    {
+      "claim": "The teacher's usage restriction is r(s) \\le r_{max}, with r_{max} = 0.3 by default.",
+      "original_text": "The optimal strategy is selected from a variety of strategies that satisfy the teacher's usage restriction  $r(s) \\le r_{max}$ ,  $(r_{max} = 0.3 \\ by \\ default)$  by maximizing the composite efficiency criterion:",
+      "category": "training_procedure",
+      "value": "0.3",
+      "verifiability": "high",
+      "section_name": "Multiclass classification strategies:",
+      "section_heading_raw": "Multiclass classification strategies:",
+      "claim_id": "c0025",
+      "contradiction": false
+    },
+    {
+      "claim": "The optimal strategy s* is selected by maximizing \\Delta Acc(s) + \\lambda \\cdot t_T / \\overline{t}(s).",
+      "original_text": "s^* = arg max[\\Delta Acc(s) + \\lambda \\cdot \\frac{t_T}{\\bar{t}(s)}],",
+      "category": "training_procedure",
+      "value": "ΔAcc(s) + λ * t_T / \\overline{t}(s)",
+      "verifiability": "high",
+      "section_name": "Multiclass classification strategies:",
+      "section_heading_raw": "Multiclass classification strategies:",
+      "claim_id": "c0026",
+      "contradiction": false
+    },
+    {
+      "claim": "λ is a coefficient that regulates the balance between an increase in accuracy and a gain in speed relative to using only the teacher.",
+      "original_text": "where the coefficient  $\\lambda$  regulates the balance between an increase in accuracy and a gain in speed relative to using only the teacher.",
+      "category": "training_procedure",
+      "value": "λ",
+      "verifiability": "medium",
+      "section_name": "Multiclass classification strategies:",
+      "section_heading_raw": "Multiclass classification strategies:",
+      "claim_id": "c0027",
+      "contradiction": false
+    },
+    {
+      "claim": "f_T and f_S are trained teacher and student models.",
+      "original_text": "$f_{T}$ ,  $f_{S}$  — trained teacher and student",
+      "category": "model_architecture",
+      "value": "f_T, f_S",
+      "verifiability": "high",
+      "section_name": "Multiclass classification strategies:",
+      "section_heading_raw": "Multiclass classification strategies:",
+      "claim_id": "c0028",
+      "contradiction": false
+    },
+    {
+      "claim": "D_val is a validation sample consisting of {(x_i, y_i)}.",
+      "original_text": "$D_{val}$  — validation sample  $\\{(x_i, y_i)\\};$",
+      "category": "dataset",
+      "value": "D_val",
+      "verifiability": "high",
+      "section_name": "Multiclass classification strategies:",
+      "section_heading_raw": "Multiclass classification strategies:",
+      "claim_id": "c0029",
+      "contradiction": false
+    },
+    {
+      "claim": "W is the size of the window for analysis.",
+      "original_text": "W — the size of the window for analysis;",
+      "category": "data_preprocessing",
+      "value": "W",
+      "verifiability": "medium",
+      "section_name": "Multiclass classification strategies:",
+      "section_heading_raw": "Multiclass classification strategies:",
+      "claim_id": "c0030",
+      "contradiction": false
+    },
+    {
+      "claim": "C is the number of classes.",
+      "original_text": "C — number of classes:",
+      "category": "dataset",
+      "value": "C",
+      "verifiability": "medium",
+      "section_name": "Multiclass classification strategies:",
+      "section_heading_raw": "Multiclass classification strategies:",
+      "claim_id": "c0031",
+      "contradiction": false
+    },
+    {
+      "claim": "α is the threshold for detecting patterns of confusion.",
+      "original_text": "$\\alpha$  — the threshold for detecting patterns of confusion;",
+      "category": "training_procedure",
+      "value": "α",
+      "verifiability": "medium",
+      "section_name": "Multiclass classification strategies:",
+      "section_heading_raw": "Multiclass classification strategies:",
+      "claim_id": "c0032",
+      "contradiction": false
+    },
+    {
+      "claim": "The experiments were conducted on two different tasks: anomaly detection (binary classification) and RFC document categorization (multiclass classification).",
+      "original_text": "The experiments were conducted on two different tasks: anomaly detection (binary classification) and RFC document categorization (multiclass classification).",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "high",
+      "section_name": "Experimental design and analysis",
+      "section_heading_raw": "**Experimental design and analysis**",
+      "claim_id": "c0033",
+      "contradiction": false
+    },
+    {
+      "claim": "The HDFS dataset for the anomaly detection task consisted of log sequences labeled normal and abnormal.",
+      "original_text": "The HDFS dataset<sup>1</sup> for the anomaly detection task consisted of log sequences labeled normal and abnormal.",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "high",
+      "section_name": "Experimental design and analysis",
+      "section_heading_raw": "**Experimental design and analysis**",
+      "claim_id": "c0034",
+      "contradiction": false
+    },
+    {
+      "claim": "The HDFS dataset split used 60% for training, 20% for validation, and 20% for testing.",
+      "original_text": "We used 60% for training, 20% for validation, and 20% for testing.",
+      "category": "dataset",
+      "value": "60% training, 20% validation, 20% testing",
+      "verifiability": "high",
+      "section_name": "Experimental design and analysis",
+      "section_heading_raw": "**Experimental design and analysis**",
+      "claim_id": "c0035",
+      "contradiction": false
+    },
+    {
+      "claim": "The RFC document dataset contained technical texts assigned to one of 53 categories.",
+      "original_text": "The dataset of RFC documents<sup>2</sup> for multiclass classification contained technical texts with standards and specifications assigned to one of 53 categories.",
+      "category": "dataset",
+      "value": "53",
+      "verifiability": "high",
+      "section_name": "Experimental design and analysis",
+      "section_heading_raw": "**Experimental design and analysis**",
+      "claim_id": "c0036",
+      "contradiction": false
+    },
+    {
+      "claim": "The RFC dataset split used 70% for training, 15% for validation, and 15% for testing.",
+      "original_text": "The separation was 70% for training, 15% for validation, and 15% for testing.",
+      "category": "dataset",
+      "value": "70% training, 15% validation, 15% testing",
+      "verifiability": "high",
+      "section_name": "Experimental design and analysis",
+      "section_heading_raw": "**Experimental design and analysis**",
+      "claim_id": "c0037",
+      "contradiction": false
+    },
+    {
+      "claim": "Each set was divided into three disjoint subsets.",
+      "original_text": "To ensure representativeness and prevent data leakage, each set was divided into three disjoint subsets:",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "high",
+      "section_name": "Experimental design and analysis",
+      "section_heading_raw": "**Experimental design and analysis**",
+      "claim_id": "c0038",
+      "contradiction": false
+    },
+    {
+      "claim": "The student model was trained on 10% of randomly selected examples from the training set.",
+      "original_text": "For experiments with distillation and routing: the teacher was trained on 100% of the training data, while the student model was trained on 10% of randomly selected examples from the training set.",
+      "category": "training_procedure",
+      "value": "10%",
+      "verifiability": "high",
+      "section_name": "Experimental design and analysis",
+      "section_heading_raw": "**Experimental design and analysis**",
+      "claim_id": "c0040",
+      "contradiction": false
+    },
+    {
+      "claim": "The validation set was used exclusively for analyzing student errors and choosing a routing strategy.",
+      "original_text": "The validation set was used exclusively for analyzing student errors and choosing a routing strategy, and the final assessment was carried out on a test set that did not participate in any of the previous stages.",
+      "category": "training_procedure",
+      "value": null,
+      "verifiability": "high",
+      "section_name": "Experimental design and analysis",
+      "section_heading_raw": "**Experimental design and analysis**",
+      "claim_id": "c0041",
+      "contradiction": false
+    },
+    {
+      "claim": "The final assessment was carried out on a test set that did not participate in any of the previous stages.",
+      "original_text": "The validation set was used exclusively for analyzing student errors and choosing a routing strategy, and the final assessment was carried out on a test set that did not participate in any of the previous stages.",
+      "category": "training_procedure",
+      "value": null,
+      "verifiability": "high",
+      "section_name": "Experimental design and analysis",
+      "section_heading_raw": "**Experimental design and analysis**",
+      "claim_id": "c0042",
+      "contradiction": false
+    },
+    {
+      "claim": "The CountVectorTeacher model for binary classification was based on a bag of words with subsequent K-Means clustering (n_clusters=10) and logistic regression.",
+      "original_text": "The CountVectorTeacher model based on a bag of words with subsequent K-Means clustering (n\\_clusters=10) and logistic regression was chosen as the teacher model for binary classification.",
+      "category": "model_architecture",
+      "value": "K-Means n_clusters=10, logistic regression",
+      "verifiability": "high",
+      "section_name": "Experimental design and analysis",
+      "section_heading_raw": "**Experimental design and analysis**",
+      "claim_id": "c0043",
+      "contradiction": false
+    },
+    {
+      "claim": "For multiclass classification, the teacher model was RFCTeacher, a random forest with 100 trees trained on TF-IDF representations of texts.",
+      "original_text": "For multiclass classification, the teacher model was RFCTeacher, a random forest with 100 trees trained on TF-IDF representations of texts.",
+      "category": "model_architecture",
+      "value": "random forest with 100 trees, TF-IDF",
+      "verifiability": "high",
+      "section_name": "Experimental design and analysis",
+      "section_heading_raw": "**Experimental design and analysis**",
+      "claim_id": "c0044",
+      "contradiction": false
+    },
+    {
+      "claim": "The student models were lightweight N-gram models with an n-gram size of n=3.",
+      "original_text": "The student models were lightweight N-gram models with an n-gram size of n=3.",
+      "category": "model_architecture",
+      "value": "n=3",
+      "verifiability": "high",
+      "section_name": "Experimental design and analysis",
+      "section_heading_raw": "**Experimental design and analysis**",
+      "claim_id": "c0045",
+      "contradiction": false
+    },
+    {
+      "claim": "A target_fp_correction strategy was implemented that selectively invokes the teacher only to rectify false positives.",
+      "original_text": "For the binary task, a target_fp_correction strategy was implemented, selectively invoking the teacher only to rectify false positives, which yielded a 0,80% accuracy gain with minimal computational overhead (0,8% teacher usage).",
+      "category": "training_procedure",
+      "value": "target_fp_correction",
+      "verifiability": "high",
+      "section_name": "Results",
+      "section_heading_raw": "**Results**",
+      "claim_id": "c0046",
+      "contradiction": false
+    },
+    {
+      "claim": "An error_pattern_targeting strategy was designed to route queries exhibiting the specific confusion pattern to the teacher.",
+      "original_text": "For the multiclass task, an error_pattern_targeting strategy was designed to route queries exhibiting the specific confusion pattern to the teacher, resulting in a potential 6,56% accuracy improvement.",
+      "category": "training_procedure",
+      "value": "error_pattern_targeting",
+      "verifiability": "high",
+      "section_name": "Results",
+      "section_heading_raw": "**Results**",
+      "claim_id": "c0047",
+      "contradiction": false
+    },
+    {
+      "claim": "A confidence_threshold strategy was implemented for scenarios with broader uncertainty.",
+      "original_text": "Furthermore, a confidence_threshold strategy, applicable to scenarios with broader uncertainty, demonstrated a potential 15,74% accuracy gain.",
+      "category": "training_procedure",
+      "value": "confidence_threshold",
+      "verifiability": "high",
+      "section_name": "Results",
+      "section_heading_raw": "**Results**",
+      "claim_id": "c0048",
+      "contradiction": false
+    }
+  ],
+  "step3_selection": [
+    {
+      "claim_id": "c0001",
+      "claim": "The methodology uses a hybrid inference system that dynamically routes queries between a compact student model and a powerful teacher model.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0002",
+      "claim": "The system's operation is governed by the Request Routing Module.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0003",
+      "claim": "The teacher model $f_{\\tau}$ is trained on the full training dataset $D_{train}$.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0004",
+      "claim": "The student model $f_{S}$ is trained on a limited subset $D'_{train}$ that is 10% of the initial volume using distillation methods.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0007",
+      "claim": "For binary problems, the key metrics are false Positive Rate (FPR) and false Negative Rate (FNR) of student responses, calculated on a window of the last W examples.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0008",
+      "claim": "Absolute certainty for binary probability $p_s$ is defined as $conf_{S} = 2 \\cdot |p_{S}(x) - 0.5|$.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0009",
+      "claim": "For multi-class problems, a validation error matrix $M \\in \\mathbb{N}^{C \\times C}$ is constructed and analyzed.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0010",
+      "claim": "Pairs of classes are considered confusing if the normalized error rate $\\frac{M_{ij}}{C}$ exceeds a threshold $\\alpha$ (with $i \\neq j$).",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0011",
+      "claim": "A class $c$ is considered problematic if $ErrorRate_{c}^{S} > ErrorRate_{c}^{T} + \\beta$, where $\\beta$ is a specified gap.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0012",
+      "claim": "Confidence for the student is defined as $conf_s = \\max_c(p_s^c(x))$, the maximum probability assigned to the predicted class.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0013",
+      "claim": "The Confidence Threshold strategy routes the request to the teacher if the student's confidence is below the specified threshold (conf_s(x) < τ_conf).",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0014",
+      "claim": "The false Positive Prevention Strategy is applied when a student predicts a positive grade with insufficient confidence.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0015",
+      "claim": "The targeted correction of false positives routes requests whose characteristics are similar to historical false‑positive student responses identified on D_{val}.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0016",
+      "claim": "Routing is applied if the student's prediction falls into the identified frequent pattern of confusion.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0017",
+      "claim": "The request is transmitted to the teacher when the student predicts class j and input x is semantically close to examples of class i from the pattern (i,j).",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0018",
+      "claim": "The confidence threshold is set based on the percentile of the student's confidence distribution on his own mistakes in D_val.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0020",
+      "claim": "All queries for which the student predicts a class from a set of problematic ones are automatically sent to the teacher.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0021",
+      "claim": "Expected accuracy Acc(s) is the proportion of correct answers in a hybrid system where the teacher processes the request according to the strategy condition, otherwise the student.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0022",
+      "claim": "Teacher usage rate r(s) is the percentage of requests redirected to the teacher.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0023",
+      "claim": "The average inference time \\overline{t}(s) is calculated as (1 - r(s)) \\cdot t_S + r(s) \\cdot (t_S + t_T), where t_S and t_T are the inference times of the student and teacher for one example.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0024",
+      "claim": "Increased accuracy \\Delta Acc(s) is calculated as Acc(s) Acc_{S}, where Acc_{S} is the accuracy of the student alone.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0025",
+      "claim": "The teacher's usage restriction is r(s) \\le r_{max}, with r_{max} = 0.3 by default.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0026",
+      "claim": "The optimal strategy s* is selected by maximizing \\Delta Acc(s) + \\lambda \\cdot t_T / \\overline{t}(s).",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0027",
+      "claim": "λ is a coefficient that regulates the balance between an increase in accuracy and a gain in speed relative to using only the teacher.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0028",
+      "claim": "f_T and f_S are trained teacher and student models.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0029",
+      "claim": "D_val is a validation sample consisting of {(x_i, y_i)}.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0030",
+      "claim": "W is the size of the window for analysis.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0031",
+      "claim": "C is the number of classes.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0032",
+      "claim": "α is the threshold for detecting patterns of confusion.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0033",
+      "claim": "The experiments were conducted on two different tasks: anomaly detection (binary classification) and RFC document categorization (multiclass classification).",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0034",
+      "claim": "The HDFS dataset for the anomaly detection task consisted of log sequences labeled normal and abnormal.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0035",
+      "claim": "The HDFS dataset split used 60% for training, 20% for validation, and 20% for testing.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0036",
+      "claim": "The RFC document dataset contained technical texts assigned to one of 53 categories.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0037",
+      "claim": "The RFC dataset split used 70% for training, 15% for validation, and 15% for testing.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0038",
+      "claim": "Each set was divided into three disjoint subsets.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0040",
+      "claim": "The student model was trained on 10% of randomly selected examples from the training set.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0041",
+      "claim": "The validation set was used exclusively for analyzing student errors and choosing a routing strategy.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0042",
+      "claim": "The final assessment was carried out on a test set that did not participate in any of the previous stages.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0043",
+      "claim": "The CountVectorTeacher model for binary classification was based on a bag of words with subsequent K-Means clustering (n_clusters=10) and logistic regression.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0044",
+      "claim": "For multiclass classification, the teacher model was RFCTeacher, a random forest with 100 trees trained on TF-IDF representations of texts.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0045",
+      "claim": "The student models were lightweight N-gram models with an n-gram size of n=3.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0046",
+      "claim": "A target_fp_correction strategy was implemented that selectively invokes the teacher only to rectify false positives.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0047",
+      "claim": "An error_pattern_targeting strategy was designed to route queries exhibiting the specific confusion pattern to the teacher.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0048",
+      "claim": "A confidence_threshold strategy was implemented for scenarios with broader uncertainty.",
+      "contradiction": false
+    }
+  ],
+  "meta": {
+    "source": "/home/ilya/OSA/mvp/02_parsed_data/paper_1/paper_1_sections_v3.json",
+    "steps": 3,
+    "history_messages": 3,
+    "model": "openai/gpt-oss-120b",
+    "filtered_claims": 44,
+    "step3_input_count": 48,
+    "step3_output_count": 44
+  }
+}

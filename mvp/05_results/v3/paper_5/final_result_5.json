@@ -1,0 +1,111 @@
+{
+  "result": [
+    {
+      "claim": "Классический RAG опирается исключительно на плотный векторный поиск.",
+      "original_text": "В этих условиях классический RAG, опирающийся исключительно на плотный векторный поиск, часто извлекает релевантные, но недостаточные фрагменты, что приводит к неполным или галлюцинированным ответам [5, 14, 17].",
+      "category": "model_architecture",
+      "value": "плотный векторный поиск",
+      "verifiability": "high",
+      "section_name": "Постановка проблемы",
+      "section_heading_raw": "**1. Постановка проблемы**",
+      "claim_id": "c0001",
+      "contradiction": false
+    },
+    {
+      "claim": "GraphRAG‑системы используют параметры графа знаний, включая тип связей, плотность, глубину обхода и стратегию ранжирования.",
+      "original_text": "Как параметры графа знаний в GraphRAG-системах (тип связей, плотность, глубина обхода, стратегия ранжирования) влияют на качество ответов (precision, faithfulness) и вычислительную эффективность по сравнению с базовым RAG, особенно в контексте multi-hop рассуждений.",
+      "category": "model_architecture",
+      "value": "тип связей, плотность, глубина обхода, стратегия ранжирования",
+      "verifiability": "high",
+      "section_name": "Постановка проблемы",
+      "section_heading_raw": "**1. Постановка проблемы**",
+      "claim_id": "c0002",
+      "contradiction": false
+    },
+    {
+      "claim": "Построение и обход графа имеет высокую стоимость.",
+      "original_text": "Высокая стоимость построения и обхода графа [2, 17],",
+      "category": "infrastructure",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Однако остаются важные вызовы:",
+      "section_heading_raw": "Однако остаются важные вызовы:",
+      "claim_id": "c0003",
+      "contradiction": false
+    },
+    {
+      "claim": "При извлечении триплетов происходит потеря информации.",
+      "original_text": "Потери информации при извлечении триплетов [30],",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Однако остаются важные вызовы:",
+      "section_heading_raw": "Однако остаются важные вызовы:",
+      "claim_id": "c0004",
+      "contradiction": false
+    },
+    {
+      "claim": "Отсутствуют унифицированные бенчмарки, хотя недавно предложены GraphRAG-Bench и PolyBench.",
+      "original_text": "· Отсутствие унифицированных бенчмарков (хотя недавно предложены GraphRAG-Bench [12] и PolyBench [31]),",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Однако остаются важные вызовы:",
+      "section_heading_raw": "Однако остаются важные вызовы:",
+      "claim_id": "c0005",
+      "contradiction": false
+    },
+    {
+      "claim": "Система проявляет нестабильность на простых запросах, где GraphRAG может быть избыточен.",
+      "original_text": "· Нестабильность на простых запросах, где GraphRAG может быть избыточен [10, 12].",
+      "category": "evaluation_metric",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Однако остаются важные вызовы:",
+      "section_heading_raw": "Однако остаются важные вызовы:",
+      "claim_id": "c0006",
+      "contradiction": false
+    }
+  ],
+  "step3_selection": [
+    {
+      "claim_id": "c0001",
+      "claim": "Классический RAG опирается исключительно на плотный векторный поиск.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0002",
+      "claim": "GraphRAG‑системы используют параметры графа знаний, включая тип связей, плотность, глубину обхода и стратегию ранжирования.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0003",
+      "claim": "Построение и обход графа имеет высокую стоимость.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0004",
+      "claim": "При извлечении триплетов происходит потеря информации.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0005",
+      "claim": "Отсутствуют унифицированные бенчмарки, хотя недавно предложены GraphRAG-Bench и PolyBench.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0006",
+      "claim": "Система проявляет нестабильность на простых запросах, где GraphRAG может быть избыточен.",
+      "contradiction": false
+    }
+  ],
+  "meta": {
+    "source": "/home/ilya/OSA/mvp/02_parsed_data/paper_5/paper_5_sections_v3.json",
+    "steps": 3,
+    "history_messages": 3,
+    "model": "openai/gpt-oss-120b",
+    "filtered_claims": 6,
+    "step3_input_count": 6,
+    "step3_output_count": 6
+  }
+}

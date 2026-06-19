@@ -1,0 +1,783 @@
+{
+  "result": [
+    {
+      "claim": "An ML-based approach is developed for the prediction of specific absorption rate (SAR) for hyperthermia.",
+      "original_text": "In this work, for the first time, an ML-based approach is developed for the prediction of main parameters of material efficacy, i.e., specific absorption rate (SAR) for hyperthermia and r1/r2 relaxivities in MRI, with parameters of nanoparticles as well as experimental conditions as descriptors.",
+      "category": "model_architecture",
+      "value": "specific absorption rate (SAR)",
+      "verifiability": "medium",
+      "section_name": "Quantifying the Efficacy of Magnetic Nanoparticles for MRI and Hyperthermia Applications via Machine Learning Methods",
+      "section_heading_raw": "**Quantifying the Efficacy of Magnetic Nanoparticles for MRI and Hyperthermia Applications via Machine Learning Methods**",
+      "claim_id": "c0002",
+      "contradiction": false
+    },
+    {
+      "claim": "An ML-based approach is developed for the prediction of r1 relaxivity in MRI.",
+      "original_text": "In this work, for the first time, an ML-based approach is developed for the prediction of main parameters of material efficacy, i.e., specific absorption rate (SAR) for hyperthermia and r1/r2 relaxivities in MRI, with parameters of nanoparticles as well as experimental conditions as descriptors.",
+      "category": "model_architecture",
+      "value": "r1 relaxivity",
+      "verifiability": "medium",
+      "section_name": "Quantifying the Efficacy of Magnetic Nanoparticles for MRI and Hyperthermia Applications via Machine Learning Methods",
+      "section_heading_raw": "**Quantifying the Efficacy of Magnetic Nanoparticles for MRI and Hyperthermia Applications via Machine Learning Methods**",
+      "claim_id": "c0003",
+      "contradiction": false
+    },
+    {
+      "claim": "An ML-based approach is developed for the prediction of r2 relaxivity in MRI.",
+      "original_text": "In this work, for the first time, an ML-based approach is developed for the prediction of main parameters of material efficacy, i.e., specific absorption rate (SAR) for hyperthermia and r1/r2 relaxivities in MRI, with parameters of nanoparticles as well as experimental conditions as descriptors.",
+      "category": "model_architecture",
+      "value": "r2 relaxivity",
+      "verifiability": "medium",
+      "section_name": "Quantifying the Efficacy of Magnetic Nanoparticles for MRI and Hyperthermia Applications via Machine Learning Methods",
+      "section_heading_raw": "**Quantifying the Efficacy of Magnetic Nanoparticles for MRI and Hyperthermia Applications via Machine Learning Methods**",
+      "claim_id": "c0004",
+      "contradiction": false
+    },
+    {
+      "claim": "Several tree-based ensemble models are trained to predict SAR, r1 and r2 relaxivity.",
+      "original_text": "Using this data, several tree-based ensemble models are trained to predict SAR, r1 and r2 relaxivity.",
+      "category": "training_procedure",
+      "value": "tree-based ensemble models",
+      "verifiability": "high",
+      "section_name": "Quantifying the Efficacy of Magnetic Nanoparticles for MRI and Hyperthermia Applications via Machine Learning Methods",
+      "section_heading_raw": "**Quantifying the Efficacy of Magnetic Nanoparticles for MRI and Hyperthermia Applications via Machine Learning Methods**",
+      "claim_id": "c0005",
+      "contradiction": false
+    },
+    {
+      "claim": "DiMag, an open access resource created to guide synthesis of novel nanosized magnets for MRI and hyperthermia treatment with machine learning, is developed.",
+      "original_text": "Finally, DiMag, an open access resource created to guide synthesis of novel nanosized magnets for MRI and hyperthermia treatment with machine learning and boost development of new biomedical agents, is developed.",
+      "category": "infrastructure",
+      "value": "DiMag",
+      "verifiability": "high",
+      "section_name": "Quantifying the Efficacy of Magnetic Nanoparticles for MRI and Hyperthermia Applications via Machine Learning Methods",
+      "section_heading_raw": "**Quantifying the Efficacy of Magnetic Nanoparticles for MRI and Hyperthermia Applications via Machine Learning Methods**",
+      "claim_id": "c0006",
+      "contradiction": false
+    },
+    {
+      "claim": "We manually collected 1282 raw samples from 126 unique scientific articles.",
+      "original_text": "For this purpose, first, we manually collected 1282 raw samples from 126 unique scientific articles (Table S1, Supporting Information) with descriptions of synthesis, materials characterizations, and measurements of magnetic hyperthermia and MRI performances in vitro.",
+      "category": "dataset",
+      "value": "1282 raw samples, 126 articles",
+      "verifiability": "high",
+      "section_name": "Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis",
+      "section_heading_raw": "**2.1. Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis**",
+      "claim_id": "c0007",
+      "contradiction": false
+    },
+    {
+      "claim": "Magnetic parameters of nanoparticles were measured by SQUID under 300 K.",
+      "original_text": "Those include chemical composition of core, shape, length, width, depth, zeta potential, hydrodynamic radius, magnetic parameters of nanoparticles measured by SQUID under 300 K, parameters of magnetic field during experiments, concentration of nanoparticles and efficacy of nanomagnets in hyperthermia treatment (SAR value) and MRI (r1 and r2 relaxivities) obtained via in vitro experiments.",
+      "category": "data_preprocessing",
+      "value": "SQUID under 300 K",
+      "verifiability": "medium",
+      "section_name": "Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis",
+      "section_heading_raw": "**2.1. Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis**",
+      "claim_id": "c0008",
+      "contradiction": false
+    },
+    {
+      "claim": "Parameters of the magnetic field used during experiments were recorded.",
+      "original_text": "Those include chemical composition of core, shape, length, width, depth, zeta potential, hydrodynamic radius, magnetic parameters of nanoparticles measured by SQUID under 300 K, parameters of magnetic field during experiments, concentration of nanoparticles and efficacy of nanomagnets in hyperthermia treatment (SAR value) and MRI (r1 and r2 relaxivities) obtained via in vitro experiments.",
+      "category": "data_preprocessing",
+      "value": "magnetic field parameters",
+      "verifiability": "medium",
+      "section_name": "Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis",
+      "section_heading_raw": "**2.1. Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis**",
+      "claim_id": "c0009",
+      "contradiction": false
+    },
+    {
+      "claim": "Inorganic shell and organic coating compositions were used to describe the surface of nanoparticles.",
+      "original_text": "Since it is known that surface composition defines the properties of magnetic nanoparticles to a large extent, we used inorganic shell and organic coating compositions to describe the surface of nanoparticles (**Figure 1**A).[17,20]",
+      "category": "dataset",
+      "value": "inorganic shell, organic coating compositions",
+      "verifiability": "medium",
+      "section_name": "Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis",
+      "section_heading_raw": "**2.1. Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis**",
+      "claim_id": "c0010",
+      "contradiction": false
+    },
+    {
+      "claim": "The average magnetic moment of metals in the core was calculated using magnetic moments of each element and stoichiometry.",
+      "original_text": "Average magnetic moment of metals in the core was calculated using magnetic moments of each element with help of stoichiometry to better describe composition of nanoparticles (Equation (S1), Supporting Information).",
+      "category": "data_preprocessing",
+      "value": "average magnetic moment",
+      "verifiability": "medium",
+      "section_name": "Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis",
+      "section_heading_raw": "**2.1. Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis**",
+      "claim_id": "c0011",
+      "contradiction": false
+    },
+    {
+      "claim": "The average spin of metal elements on the surface was obtained to describe surface–proton spin interactions.",
+      "original_text": "Average spin of metal elements on the surface was obtained to describe interactions between the surface elements and proton spins responsible for relaxation properties of the nanoparticle (Equation (S2), Supporting Information).",
+      "category": "data_preprocessing",
+      "value": "average spin",
+      "verifiability": "medium",
+      "section_name": "Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis",
+      "section_heading_raw": "**2.1. Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis**",
+      "claim_id": "c0012",
+      "contradiction": false
+    },
+    {
+      "claim": "A partition coefficient LogP and the number of hydrogen bond acceptors were calculated from SMILES representations of organic molecules to describe the organic coating.",
+      "original_text": "To describe the role of organic coating, we employed a partition coefficient LogP and number of H acceptors, which were calculated using SMILES representations of organic molecules.",
+      "category": "data_preprocessing",
+      "value": "LogP, number of H acceptors",
+      "verifiability": "medium",
+      "section_name": "Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis",
+      "section_heading_raw": "**2.1. Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis**",
+      "claim_id": "c0013",
+      "contradiction": false
+    },
+    {
+      "claim": "Volume and surface area of each nanoparticle were calculated using its shape and size.",
+      "original_text": "Volume and surface area were calculated using the shape and size of the nanoparticle to describe morphological characteristics of nanomagnets.",
+      "category": "data_preprocessing",
+      "value": "volume, surface area",
+      "verifiability": "medium",
+      "section_name": "Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis",
+      "section_heading_raw": "**2.1. Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis**",
+      "claim_id": "c0014",
+      "contradiction": false
+    },
+    {
+      "claim": "Geometrical features with high cross-correlations were reduced to a single area‑volume feature.",
+      "original_text": "We observed, for instance, a group of geometrical features with high cross-correlations and reduced them to a single area-volume feature.",
+      "category": "data_preprocessing",
+      "value": "area‑volume feature",
+      "verifiability": "medium",
+      "section_name": "Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis",
+      "section_heading_raw": "**2.1. Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis**",
+      "claim_id": "c0015",
+      "contradiction": false
+    },
+    {
+      "claim": "The final dataset contains more than 980 nanosized metals, bimetals, and metal oxides, with over 120 core compositions and over 50 shell compositions.",
+      "original_text": "After minimal data cleansing, we obtained the dataset of more than 980 nanosized metals, bimetals, and metal oxides (ferrites with various compositions) materials with more than 120 core and 50 shell compositions of different kinds.",
+      "category": "dataset",
+      "value": "980+ materials, 120+ core compositions, 50+ shell compositions",
+      "verifiability": "high",
+      "section_name": "Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis",
+      "section_heading_raw": "**2.1. Database of Magnetic Nanoparticles for Hyperthermia Treatment and MRI Diagnosis**",
+      "claim_id": "c0016",
+      "contradiction": false
+    },
+    {
+      "claim": "We removed a total of 211 samples so that each remaining sample had no more than 15% missing values.",
+      "original_text": "To cope with that, we first removed the total of 211 samples such that each sample in the remaining dataset had no more than 15% of missing values.",
+      "category": "data_preprocessing",
+      "value": "211, 15%",
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0018",
+      "contradiction": false
+    },
+    {
+      "claim": "We applied the kNN imputation algorithm to fill the gaps and obtain a complete dataset.",
+      "original_text": "After that, we applied the kNN imputation algorithm to fill the gaps and obtain the complete dataset.",
+      "category": "data_preprocessing",
+      "value": "kNN imputation",
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0019",
+      "contradiction": false
+    },
+    {
+      "claim": "We transformed highly correlated geometrical features into area‑to‑volume and max‑to‑min length ratios.",
+      "original_text": "Further, to alleviate redundancy in data and retain only the most informative features, we transformed highly correlated geometrical features into area to volume and max to min length ratios reflecting size and shape anisotropy of nanoparticles.",
+      "category": "data_preprocessing",
+      "value": "area to volume ratio, max to min length ratio",
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0020",
+      "contradiction": false
+    },
+    {
+      "claim": "We discarded low‑variance noninformative features, specifically coercivity and remanent magnetization values, for MRI relaxivity prediction.",
+      "original_text": "We also discarded noninformative features of low variance, i.e., coercivity and remanent magnetization values for prediction of MRI relaxivities.",
+      "category": "data_preprocessing",
+      "value": "coercivity, remanent magnetization",
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0021",
+      "contradiction": false
+    },
+    {
+      "claim": "We removed samples with outliers by setting empirical thresholds on feature values.",
+      "original_text": "Finally, we removed samples with outliers by setting empirical thresholds on feature values while analyzing their distributions.",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0022",
+      "contradiction": false
+    },
+    {
+      "claim": "The final dataset was split into three regression problems containing 460, 355, and 465 samples for SAR, r1, and r2 predictions respectively.",
+      "original_text": "After the final dataset has been prepared, we divided it into three, one for each regression problem: prediction of SAR value, r1 or r2 relaxivity containing 460, 355, and 465 samples, respectively (Figures S1–S3, Supporting Information).",
+      "category": "dataset",
+      "value": "460, 355, 465",
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0023",
+      "contradiction": false
+    },
+    {
+      "claim": "For SAR prediction we used 11 descriptors, and for relaxivity predictions we used 8 descriptors.",
+      "original_text": "For prediction of SAR value, 11 descriptors were used, whereas relaxivity values were predicted using 8 descriptors only (see Database collection and processing section in the Supporting Information).",
+      "category": "dataset",
+      "value": "11 descriptors, 8 descriptors",
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0024",
+      "contradiction": false
+    },
+    {
+      "claim": "We normalized and log‑scaled the data for each problem before splitting into training and test sets with an 80/20 ratio.",
+      "original_text": "We normalized and log-scaled the data for each problem before splitting to train and test sets in the 80/20 ratio.",
+      "category": "data_preprocessing",
+      "value": "80/20",
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0025",
+      "contradiction": false
+    },
+    {
+      "claim": "We opted for tree‑based algorithms such as Random Forest and Gradient Boosting.",
+      "original_text": "In this work, we opted for tree-based algorithms such as Random Forest and Gradient Boosting, as they remain state-of-the-art for midsize inhomogeneous tabular data, on par with or even outperforming modern deep learning models.[43]",
+      "category": "model_architecture",
+      "value": "Random Forest, Gradient Boosting",
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0026",
+      "contradiction": false
+    },
+    {
+      "claim": "Random Forest and Extra Trees regression models are based on averaging predictions of decision trees built on a random subset of features.",
+      "original_text": "While Random Forest and Extra Trees regression models are based on averaging predictions of decision trees built on a random subset of features, LGBMRegressor and XGBRegressor algorithms build sequences of decision trees such that each next tree minimizes the error of the previous one.[44,45]",
+      "category": "model_architecture",
+      "value": "Random Forest, Extra Trees",
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0027",
+      "contradiction": false
+    },
+    {
+      "claim": "LGBMRegressor and XGBRegressor algorithms build sequences of decision trees where each subsequent tree minimizes the error of the previous one.",
+      "original_text": "While Random Forest and Extra Trees regression models are based on averaging predictions of decision trees built on a random subset of features, LGBMRegressor and XGBRegressor algorithms build sequences of decision trees such that each next tree minimizes the error of the previous one.[44,45]",
+      "category": "model_architecture",
+      "value": "LGBMRegressor, XGBRegressor",
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0028",
+      "contradiction": false
+    },
+    {
+      "claim": "Hyperparameter tuning was performed using the model‑agnostic Optuna framework.",
+      "original_text": "To achieve the highest model performance for each regression task, hyperparameter tuning was done using the model-agnostic Optuna framework[46] (Table S5, Supporting Information).",
+      "category": "training_procedure",
+      "value": "Optuna",
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0029",
+      "contradiction": false
+    },
+    {
+      "claim": "For each regression problem we optimized and compared the performance of four models.",
+      "original_text": "For each regression problem, we optimized and compared performance of four models (Figure S4, Supporting Information).",
+      "category": "training_procedure",
+      "value": "four models",
+      "verifiability": "medium",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0030",
+      "contradiction": false
+    },
+    {
+      "claim": "The best model was selected using mean Q² and RMSE for tenfold cross‑validation and R² and RMSE for test samples.",
+      "original_text": "The best model was selected using the following metrics: mean Q2 and RMSE for tenfold cross-validation and R2 and RMSE for test samples.",
+      "category": "evaluation_metric",
+      "value": "mean Q2, RMSE, R2",
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0031",
+      "contradiction": false
+    },
+    {
+      "claim": "We formed an additional testing set of samples that were not used for training or hyperparameter optimization.",
+      "original_text": "As an additional validation effort, we formed another testing set of samples (Tables S6 and S7, Supporting Information) that have not been used for training and optimizing hyperparameters of the ML models.",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0032",
+      "contradiction": false
+    },
+    {
+      "claim": "Validation samples for relaxivity prediction included nanoparticles with varied morphological parameters, element compositions, and organic coatings.",
+      "original_text": "For prediction of relaxivity values, validation samples included nanoparticles with different morphological parameters, element compositions, and organic coatings.",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0033",
+      "contradiction": false
+    },
+    {
+      "claim": "Validation samples for SAR prediction had different concentrations, morphologies, core‑shell compositions, and experimental conditions.",
+      "original_text": "For prediction of SAR, validation samples with different concentrations, morphology, and composition of core and shell as well as at different experimental conditions were used.",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0034",
+      "contradiction": false
+    },
+    {
+      "claim": "All training data were collected from in vitro studies, making the models unsuitable for in vivo predictions.",
+      "original_text": "All the data used for training the models was collected from in vitro studies, so the models are not suited to predict behavior of magnetic nanoparticles in vivo and are not generally applicable in clinics.",
+      "category": "dataset",
+      "value": "in vitro",
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0035",
+      "contradiction": false
+    },
+    {
+      "claim": "The lack of available data for hydrodynamic radius and zeta potential prevented their inclusion in the training set.",
+      "original_text": "The lack of available data for hydrodynamic radius and zeta potential prevented us from including this information in the training set.",
+      "category": "data_preprocessing",
+      "value": "hydrodynamic radius, zeta potential",
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0036",
+      "contradiction": false
+    },
+    {
+      "claim": "Shell thickness is missing from the training set because very few articles report its quantification.",
+      "original_text": "Shell thickness is another important parameter of magnetic nanoparticles that is missing in the training set due to very few articles reporting its quantification.",
+      "category": "data_preprocessing",
+      "value": "shell thickness",
+      "verifiability": "high",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0037",
+      "contradiction": false
+    },
+    {
+      "claim": "These missing features cannot be used for predictions of SAR, r1, and r2 relaxivities even if the data become available.",
+      "original_text": "In practice, it means that these features cannot be used for predictions of SAR, r1 and r2 relaxivities for new nanomaterials with our models even if this data becomes available.",
+      "category": "model_architecture",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles",
+      "section_heading_raw": "**2.2. Prediction of SAR and Relaxivity Values of Magnetic Nanoparticles**",
+      "claim_id": "c0038",
+      "contradiction": false
+    },
+    {
+      "claim": "We developed an open access web service called DiMag, available at http://dimag.acidlab.space.",
+      "original_text": "To facilitate user access to the trained models and the database, we developed an open access web service, called DiMag (**Figure 5**), available at http://dimag.acidlab.space.",
+      "category": "infrastructure",
+      "value": "http://dimag.acidlab.space",
+      "verifiability": "high",
+      "section_name": "Web Service",
+      "section_heading_raw": "**2.3. Web Service**",
+      "claim_id": "c0039",
+      "contradiction": false
+    },
+    {
+      "claim": "DiMag provides the scientific community the opportunity to explore biomedical performance of existing magnetic nanoparticles for MRI and hyperthermia applications in one place.",
+      "original_text": "DiMag provides the scientific community with an opportunity to 1) explore biomedical performance of existing magnetic nanoparticles for MRI and hyperthermia applications in one place, 2) quantify properties of novel nanoparticles, and 3) explore the dataset using visualization of dependencies between different parameters.",
+      "category": "infrastructure",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Web Service",
+      "section_heading_raw": "**2.3. Web Service**",
+      "claim_id": "c0040",
+      "contradiction": false
+    },
+    {
+      "claim": "DiMag provides the scientific community the opportunity to quantify properties of novel nanoparticles.",
+      "original_text": "DiMag provides the scientific community with an opportunity to 1) explore biomedical performance of existing magnetic nanoparticles for MRI and hyperthermia applications in one place, 2) quantify properties of novel nanoparticles, and 3) explore the dataset using visualization of dependencies between different parameters.",
+      "category": "infrastructure",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Web Service",
+      "section_heading_raw": "**2.3. Web Service**",
+      "claim_id": "c0041",
+      "contradiction": false
+    },
+    {
+      "claim": "DiMag provides the scientific community the opportunity to explore the dataset using visualization of dependencies between different parameters.",
+      "original_text": "DiMag provides the scientific community with an opportunity to 1) explore biomedical performance of existing magnetic nanoparticles for MRI and hyperthermia applications in one place, 2) quantify properties of novel nanoparticles, and 3) explore the dataset using visualization of dependencies between different parameters.",
+      "category": "infrastructure",
+      "value": null,
+      "verifiability": "medium",
+      "section_name": "Web Service",
+      "section_heading_raw": "**2.3. Web Service**",
+      "claim_id": "c0042",
+      "contradiction": false
+    },
+    {
+      "claim": "The platform supports three modes of prediction depending on the number of descriptors provided by the user.",
+      "original_text": "To allow predictions with limited data available, the platform supports three modes of prediction depending on the number of descriptors provided by the user.",
+      "category": "infrastructure",
+      "value": "three modes",
+      "verifiability": "high",
+      "section_name": "Web Service",
+      "section_heading_raw": "**2.3. Web Service**",
+      "claim_id": "c0043",
+      "contradiction": false
+    },
+    {
+      "claim": "Advanced mode is recommended for the most accurate prediction.",
+      "original_text": "We recommend using advanced mode for the most accurate prediction.",
+      "category": "infrastructure",
+      "value": "advanced mode",
+      "verifiability": "medium",
+      "section_name": "Web Service",
+      "section_heading_raw": "**2.3. Web Service**",
+      "claim_id": "c0044",
+      "contradiction": false
+    },
+    {
+      "claim": "The service can predict SAR values for magnetic nanoparticles.",
+      "original_text": "Providing the service with parameters of magnetic nanoparticles, a user can expect the predicted SAR or r1/r2 relaxivity values along with a chart of the corresponding experimental dependency (predicted SAR over the field amplitude and frequency or predicted relaxivity over the field strength).",
+      "category": "infrastructure",
+      "value": "SAR",
+      "verifiability": "medium",
+      "section_name": "Web Service",
+      "section_heading_raw": "**2.3. Web Service**",
+      "claim_id": "c0045",
+      "contradiction": false
+    },
+    {
+      "claim": "The service can predict r1/r2 relaxivity values for magnetic nanoparticles.",
+      "original_text": "Providing the service with parameters of magnetic nanoparticles, a user can expect the predicted SAR or r1/r2 relaxivity values along with a chart of the corresponding experimental dependency (predicted SAR over the field amplitude and frequency or predicted relaxivity over the field strength).",
+      "category": "infrastructure",
+      "value": "r1/r2 relaxivity",
+      "verifiability": "medium",
+      "section_name": "Web Service",
+      "section_heading_raw": "**2.3. Web Service**",
+      "claim_id": "c0046",
+      "contradiction": false
+    },
+    {
+      "claim": "The service provides a chart of predicted SAR over the field amplitude and frequency.",
+      "original_text": "Providing the service with parameters of magnetic nanoparticles, a user can expect the predicted SAR or r1/r2 relaxivity values along with a chart of the corresponding experimental dependency (predicted SAR over the field amplitude and frequency or predicted relaxivity over the field strength).",
+      "category": "infrastructure",
+      "value": "predicted SAR over field amplitude and frequency",
+      "verifiability": "medium",
+      "section_name": "Web Service",
+      "section_heading_raw": "**2.3. Web Service**",
+      "claim_id": "c0047",
+      "contradiction": false
+    },
+    {
+      "claim": "The service provides a chart of predicted relaxivity over the field strength.",
+      "original_text": "Providing the service with parameters of magnetic nanoparticles, a user can expect the predicted SAR or r1/r2 relaxivity values along with a chart of the corresponding experimental dependency (predicted SAR over the field amplitude and frequency or predicted relaxivity over the field strength).",
+      "category": "infrastructure",
+      "value": "predicted relaxivity over field strength",
+      "verifiability": "medium",
+      "section_name": "Web Service",
+      "section_heading_raw": "**2.3. Web Service**",
+      "claim_id": "c0048",
+      "contradiction": false
+    },
+    {
+      "claim": "DiMag implements an interface to expand the underlying database by creating new records of magnetic nanoparticles with links to the corresponding articles.",
+      "original_text": "Furthermore, the DiMag implements an interface to expand the underlying database by creating new records of magnetic nanoparticles with links to the corresponding articles.",
+      "category": "dataset",
+      "value": "new records with article links",
+      "verifiability": "high",
+      "section_name": "Web Service",
+      "section_heading_raw": "**2.3. Web Service**",
+      "claim_id": "c0049",
+      "contradiction": false
+    },
+    {
+      "claim": "The data that support the findings of this study are openly available in a GitHub repository at https://github.com/acid-design-lab/DiMag.",
+      "original_text": "The data that support the findings of this study are openly available in a GitHub repository at https://github.com/acid-design-lab/DiMag.",
+      "category": "dataset",
+      "value": "https://github.com/acid-design-lab/DiMag",
+      "verifiability": "high",
+      "section_name": "Data Availability Statement",
+      "section_heading_raw": "**Data Availability Statement**",
+      "claim_id": "c0050",
+      "contradiction": false
+    }
+  ],
+  "step3_selection": [
+    {
+      "claim_id": "c0002",
+      "claim": "An ML-based approach is developed for the prediction of specific absorption rate (SAR) for hyperthermia.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0003",
+      "claim": "An ML-based approach is developed for the prediction of r1 relaxivity in MRI.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0004",
+      "claim": "An ML-based approach is developed for the prediction of r2 relaxivity in MRI.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0005",
+      "claim": "Several tree-based ensemble models are trained to predict SAR, r1 and r2 relaxivity.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0006",
+      "claim": "DiMag, an open access resource created to guide synthesis of novel nanosized magnets for MRI and hyperthermia treatment with machine learning, is developed.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0007",
+      "claim": "We manually collected 1282 raw samples from 126 unique scientific articles.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0008",
+      "claim": "Magnetic parameters of nanoparticles were measured by SQUID under 300 K.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0009",
+      "claim": "Parameters of the magnetic field used during experiments were recorded.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0010",
+      "claim": "Inorganic shell and organic coating compositions were used to describe the surface of nanoparticles.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0011",
+      "claim": "The average magnetic moment of metals in the core was calculated using magnetic moments of each element and stoichiometry.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0012",
+      "claim": "The average spin of metal elements on the surface was obtained to describe surface–proton spin interactions.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0013",
+      "claim": "A partition coefficient LogP and the number of hydrogen bond acceptors were calculated from SMILES representations of organic molecules to describe the organic coating.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0014",
+      "claim": "Volume and surface area of each nanoparticle were calculated using its shape and size.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0015",
+      "claim": "Geometrical features with high cross-correlations were reduced to a single area‑volume feature.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0016",
+      "claim": "The final dataset contains more than 980 nanosized metals, bimetals, and metal oxides, with over 120 core compositions and over 50 shell compositions.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0018",
+      "claim": "We removed a total of 211 samples so that each remaining sample had no more than 15% missing values.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0019",
+      "claim": "We applied the kNN imputation algorithm to fill the gaps and obtain a complete dataset.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0020",
+      "claim": "We transformed highly correlated geometrical features into area‑to‑volume and max‑to‑min length ratios.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0021",
+      "claim": "We discarded low‑variance noninformative features, specifically coercivity and remanent magnetization values, for MRI relaxivity prediction.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0022",
+      "claim": "We removed samples with outliers by setting empirical thresholds on feature values.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0023",
+      "claim": "The final dataset was split into three regression problems containing 460, 355, and 465 samples for SAR, r1, and r2 predictions respectively.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0024",
+      "claim": "For SAR prediction we used 11 descriptors, and for relaxivity predictions we used 8 descriptors.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0025",
+      "claim": "We normalized and log‑scaled the data for each problem before splitting into training and test sets with an 80/20 ratio.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0026",
+      "claim": "We opted for tree‑based algorithms such as Random Forest and Gradient Boosting.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0027",
+      "claim": "Random Forest and Extra Trees regression models are based on averaging predictions of decision trees built on a random subset of features.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0028",
+      "claim": "LGBMRegressor and XGBRegressor algorithms build sequences of decision trees where each subsequent tree minimizes the error of the previous one.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0029",
+      "claim": "Hyperparameter tuning was performed using the model‑agnostic Optuna framework.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0030",
+      "claim": "For each regression problem we optimized and compared the performance of four models.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0031",
+      "claim": "The best model was selected using mean Q² and RMSE for tenfold cross‑validation and R² and RMSE for test samples.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0032",
+      "claim": "We formed an additional testing set of samples that were not used for training or hyperparameter optimization.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0033",
+      "claim": "Validation samples for relaxivity prediction included nanoparticles with varied morphological parameters, element compositions, and organic coatings.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0034",
+      "claim": "Validation samples for SAR prediction had different concentrations, morphologies, core‑shell compositions, and experimental conditions.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0035",
+      "claim": "All training data were collected from in vitro studies, making the models unsuitable for in vivo predictions.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0036",
+      "claim": "The lack of available data for hydrodynamic radius and zeta potential prevented their inclusion in the training set.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0037",
+      "claim": "Shell thickness is missing from the training set because very few articles report its quantification.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0038",
+      "claim": "These missing features cannot be used for predictions of SAR, r1, and r2 relaxivities even if the data become available.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0039",
+      "claim": "We developed an open access web service called DiMag, available at http://dimag.acidlab.space.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0040",
+      "claim": "DiMag provides the scientific community the opportunity to explore biomedical performance of existing magnetic nanoparticles for MRI and hyperthermia applications in one place.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0041",
+      "claim": "DiMag provides the scientific community the opportunity to quantify properties of novel nanoparticles.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0042",
+      "claim": "DiMag provides the scientific community the opportunity to explore the dataset using visualization of dependencies between different parameters.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0043",
+      "claim": "The platform supports three modes of prediction depending on the number of descriptors provided by the user.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0044",
+      "claim": "Advanced mode is recommended for the most accurate prediction.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0045",
+      "claim": "The service can predict SAR values for magnetic nanoparticles.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0046",
+      "claim": "The service can predict r1/r2 relaxivity values for magnetic nanoparticles.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0047",
+      "claim": "The service provides a chart of predicted SAR over the field amplitude and frequency.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0048",
+      "claim": "The service provides a chart of predicted relaxivity over the field strength.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0049",
+      "claim": "DiMag implements an interface to expand the underlying database by creating new records of magnetic nanoparticles with links to the corresponding articles.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0050",
+      "claim": "The data that support the findings of this study are openly available in a GitHub repository at https://github.com/acid-design-lab/DiMag.",
+      "contradiction": false
+    }
+  ],
+  "meta": {
+    "source": "/home/ilya/OSA/mvp/02_parsed_data/paper_6/paper_6_sections_v3.json",
+    "steps": 3,
+    "history_messages": 3,
+    "model": "openai/gpt-oss-120b",
+    "filtered_claims": 48,
+    "step3_input_count": 50,
+    "step3_output_count": 48
+  }
+}

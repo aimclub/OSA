@@ -1,0 +1,12 @@
+{
+  "experiment_list": [
+    "For cubic Fe3O4 nanoparticles of SAR validation samples, we plotted predicted and experimental values over the field amplitude at different frequencies (Figure 4B). With increasing field amplitude, predicted values remained close to the measured ones within tenfold cross-validation RMSE for the vast majority of frequencies.",
+    "Figure 4C shows predictions of r2 relaxivities for Fe3O4 nanoparticles at different sizes that almost exactly match the experimental values."
+  ],
+  "meta": {
+    "source": "/home/ilya/OSA/DiMag.pdf",
+    "steps": 3,
+    "history_messages": 7,
+    "model": "openai/gpt-oss-120b"
+  }
+}

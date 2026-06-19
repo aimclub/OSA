@@ -1,0 +1,19 @@
+{
+  "semantic_matching": {
+    "precision": 0.7656,
+    "recall": 0.8167,
+    "f1": 0.7903,
+    "num_llm_claims": 64,
+    "num_human_claims": 41,
+    "num_matched": 49,
+    "matching": "many_to_one"
+  },
+  "meta": {
+    "model": "paraphrase-multilingual-MiniLM-L12-v2",
+    "threshold": 0.75,
+    "llm_field": "original_text",
+    "matching": "many_to_one",
+    "llm_file": "/home/ilya/OSA/mvp/new/data/DiMag/final_result_dimag.json",
+    "human_file": "/home/ilya/OSA/mvp/current/data/DiMag/claims.json"
+  }
+}

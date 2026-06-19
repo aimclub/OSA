@@ -1,0 +1,687 @@
+{
+  "result": [
+    {
+      "claim": "The pipeline integrates large language models (LLMs) with an interpretable tag-clustering procedure to generate dataset-level domains.",
+      "original_text": "This pipeline integrates large language models (LLMs) with an interpretable tag-clustering procedure, thereby generating dataset-level domains.",
+      "category": "model_architecture",
+      "value": "large language models (LLMs) and interpretable tag-clustering procedure",
+      "verifiability": "high",
+      "claim_id": "c0001",
+      "contradiction": false
+    },
+    {
+      "claim": "The methodology converts noisy dataset tags into a compact, human‑readable domain palette using embedding and clustering techniques.",
+      "original_text": "The proposed methodology involves the conversion of noisy dataset tags into a compact, human-readable domain palette via the utilisation of embedding and clustering techniques.",
+      "category": "data_preprocessing",
+      "value": "embedding and clustering techniques",
+      "verifiability": "medium",
+      "claim_id": "c0002",
+      "contradiction": false
+    },
+    {
+      "claim": "The approach leverages structured dataset samples (column names with optional rows) under zero‑shot, one‑shot, and few‑shot prompting strategies to assign domains.",
+      "original_text": "The approach leverages structured dataset samples (column names with optional rows) under zero-, one-, and few-shot prompting strategies to assign domains.",
+      "category": "training_procedure",
+      "value": "zero-shot, one-shot, few-shot prompting",
+      "verifiability": "high",
+      "claim_id": "c0003",
+      "contradiction": false
+    },
+    {
+      "claim": "Classical baselines used for evaluation include term/tag overlap, column‑name embedding classifiers, and meta‑feature models.",
+      "original_text": "Empirical evaluations against classical baselines – term/tag overlap, column-name embedding classifiers, and meta-feature models – indicate that modern LLMs demonstrate competitiveness in few-shot settings, though sensitivity to input format and demonstration selection is observed.",
+      "category": "baseline_comparison",
+      "value": "term/tag overlap, column-name embedding classifiers, meta-feature models",
+      "verifiability": "high",
+      "claim_id": "c0004",
+      "contradiction": false
+    },
+    {
+      "claim": "The contribution includes an interpretable domain palette.",
+      "original_text": "It is asserted that the present contribution consists of an interpretable domain palette, a constructed benchmark of diverse tabular datasets, and reproducible code and data.",
+      "category": "model_architecture",
+      "value": "interpretable domain palette",
+      "verifiability": "high",
+      "claim_id": "c0005",
+      "contradiction": false
+    },
+    {
+      "claim": "The contribution includes a constructed benchmark of diverse tabular datasets.",
+      "original_text": "It is asserted that the present contribution consists of an interpretable domain palette, a constructed benchmark of diverse tabular datasets, and reproducible code and data.",
+      "category": "dataset",
+      "value": "benchmark of diverse tabular datasets",
+      "verifiability": "high",
+      "claim_id": "c0006",
+      "contradiction": false
+    },
+    {
+      "claim": "The contribution includes reproducible code and data.",
+      "original_text": "It is asserted that the present contribution consists of an interpretable domain palette, a constructed benchmark of diverse tabular datasets, and reproducible code and data.",
+      "category": "infrastructure",
+      "value": "reproducible code and data",
+      "verifiability": "high",
+      "claim_id": "c0007",
+      "contradiction": false
+    },
+    {
+      "claim": "Early methodologies for table understanding used handcrafted rules, dictionaries, and regular expressions to characterize column semantics, such as detecting ZIP codes and dates.",
+      "original_text": "Early methodologies for table understanding approached via handcrafted rules, dictionaries, and regular expressions to characterize column semantics (e.g., detecting ZIP codes, dates).",
+      "category": "model_architecture",
+      "value": "handcrafted rules, dictionaries, regular expressions",
+      "verifiability": "high",
+      "claim_id": "c0008",
+      "contradiction": false
+    },
+    {
+      "claim": "These methods did not handle data noise.",
+      "original_text": "These methods documented in earlier work [1] on data integration and schema matching, were straightforward and interpretable, though they lacked robustness: they did not handle data noise or heterogeneity, and they did not allow the integration at a higher level of abstraction - beyond a single table.",
+      "category": "model_architecture",
+      "value": "data noise",
+      "verifiability": "high",
+      "claim_id": "c0009",
+      "contradiction": false
+    },
+    {
+      "claim": "These methods did not handle heterogeneity.",
+      "original_text": "These methods documented in earlier work [1] on data integration and schema matching, were straightforward and interpretable, though they lacked robustness: they did not handle data noise or heterogeneity, and they did not allow the integration at a higher level of abstraction - beyond a single table.",
+      "category": "model_architecture",
+      "value": "heterogeneity",
+      "verifiability": "high",
+      "claim_id": "c0010",
+      "contradiction": false
+    },
+    {
+      "claim": "These methods did not allow integration beyond a single table.",
+      "original_text": "These methods documented in earlier work [1] on data integration and schema matching, were straightforward and interpretable, though they lacked robustness: they did not handle data noise or heterogeneity, and they did not allow the integration at a higher level of abstraction - beyond a single table.",
+      "category": "model_architecture",
+      "value": "integration beyond a single table",
+      "verifiability": "high",
+      "claim_id": "c0011",
+      "contradiction": false
+    },
+    {
+      "claim": "Machine learning was later included to classify individual columns.",
+      "original_text": "Machine learning was later included to classify individual columns in the next phase.",
+      "category": "training_procedure",
+      "value": "supervised column classification",
+      "verifiability": "high",
+      "claim_id": "c0012",
+      "contradiction": false
+    },
+    {
+      "claim": "Sherlock integrated embeddings of cell values, column headers, and character-level features into a deep semantic type model.",
+      "original_text": "A key benchmark in this direction is Sherlock [2] that integrated embeddings of cell values, headers of columns, and character-level features into a deep semantic type model.",
+      "category": "model_architecture",
+      "value": "embeddings of cell values, column headers, character-level features",
+      "verifiability": "high",
+      "claim_id": "c0013",
+      "contradiction": false
+    },
+    {
+      "claim": "These models were limited by hierarchical taxonomies of semantic types.",
+      "original_text": "Although these models outperformed rule-based baselines, they were limited by hierarchical taxonomies of semantic types, and still worked at the level of columns rather than dataset-level domains.",
+      "category": "model_architecture",
+      "value": "hierarchical taxonomies of semantic types",
+      "verifiability": "high",
+      "claim_id": "c0014",
+      "contradiction": false
+    },
+    {
+      "claim": "These models still worked at the level of columns rather than dataset-level domains.",
+      "original_text": "Although these models outperformed rule-based baselines, they were limited by hierarchical taxonomies of semantic types, and still worked at the level of columns rather than dataset-level domains.",
+      "category": "model_architecture",
+      "value": "column-level operation",
+      "verifiability": "high",
+      "claim_id": "c0015",
+      "contradiction": false
+    },
+    {
+      "claim": "The D4 framework discovers latent domains by learning contextual embeddings of column values and clustering them across large corpora.",
+      "original_text": "The framework D4 for discovering latent domains by learning contextual embeddings of column values and clustering them across large corpora was introduced in [3].",
+      "category": "model_architecture",
+      "value": "contextual embeddings of column values, clustering across large corpora",
+      "verifiability": "high",
+      "claim_id": "c0016",
+      "contradiction": false
+    },
+    {
+      "claim": "Embedding-based methods depend on co-occurrence statistics and stable lexical anchors such as column names and frequent terms.",
+      "original_text": "nulltheless, methods based on embeddings depend on co-occurrence statistics and stable lexical anchors (such as column names and frequent terms).",
+      "category": "training_procedure",
+      "value": "co-occurrence statistics, stable lexical anchors",
+      "verifiability": "high",
+      "claim_id": "c0017",
+      "contradiction": false
+    },
+    {
+      "claim": "Sato combined neural models with table context features.",
+      "original_text": "Sato[4] combined neural models with table context features, resulting in robustness on messy enterprise data.",
+      "category": "model_architecture",
+      "value": "neural models, table context features",
+      "verifiability": "high",
+      "claim_id": "c0018",
+      "contradiction": false
+    },
+    {
+      "claim": "Pythagoras focuses on the difficulty of numerical columns.",
+      "original_text": "Pythagoras[5] turned its attention to the overlooked difficulty of numerical columns, demonstrating that numerous classifiers based on textual attributes do not perform well when numbers take precedence.",
+      "category": "model_architecture",
+      "value": "numerical columns",
+      "verifiability": "high",
+      "claim_id": "c0019",
+      "contradiction": false
+    },
+    {
+      "claim": "Kepler-aSI combined machine learning, knowledge-graph lookups, and human-in-the-loop annotation to create semantic descriptions of datasets.",
+      "original_text": "Practical annotation tool Kepler-aSI[6] combined machine learning, knowledge-graph lookups, and human-in-the-loop annotation to create semantic descriptions of datasets.",
+      "category": "model_architecture",
+      "value": "machine learning, knowledge-graph lookups, human-in-the-loop annotation",
+      "verifiability": "high",
+      "claim_id": "c0020",
+      "contradiction": false
+    },
+    {
+      "claim": "These systems often require user interaction or external knowledge bases.",
+      "original_text": "Although these systems are useful in practice, they often necessitate user interaction or external knowledge bases, hindering fully automatic, fine-grained domain discovery on a large scale.",
+      "category": "infrastructure",
+      "value": "user interaction, external knowledge bases",
+      "verifiability": "high",
+      "claim_id": "c0021",
+      "contradiction": false
+    },
+    {
+      "claim": "TaBERT learned representations of tables and natural language together.",
+      "original_text": "TaBERT[7] learned representations of tables and natural language together, facilitating question answering and semantic parsing on relational data.",
+      "category": "model_architecture",
+      "value": "TaBERT",
+      "verifiability": "high",
+      "claim_id": "c0022",
+      "contradiction": false
+    },
+    {
+      "claim": "TAPAS built upon BERT by linearizing tables.",
+      "original_text": "TAPAS[8] built upon BERT by linearizing tables and using weak supervision from question-answer pairs during pretraining, showing impressive results on table QA benchmarks.",
+      "category": "model_architecture",
+      "value": "BERT",
+      "verifiability": "high",
+      "claim_id": "c0023",
+      "contradiction": false
+    },
+    {
+      "claim": "TAPAS used weak supervision from question-answer pairs during pretraining.",
+      "original_text": "TAPAS[8] built upon BERT by linearizing tables and using weak supervision from question-answer pairs during pretraining, showing impressive results on table QA benchmarks.",
+      "category": "training_procedure",
+      "value": "weak supervision from question-answer pairs",
+      "verifiability": "high",
+      "claim_id": "c0024",
+      "contradiction": false
+    },
+    {
+      "claim": "TAPEX generates SQL queries.",
+      "original_text": "TAPEX[9] advanced this concept further by generating SQL queries and training models to estimate their execution, which resulted in considerable improvements in reasoning tasks.",
+      "category": "model_architecture",
+      "value": "SQL queries",
+      "verifiability": "high",
+      "claim_id": "c0025",
+      "contradiction": false
+    },
+    {
+      "claim": "TAPEX trains models to estimate execution of generated SQL queries.",
+      "original_text": "TAPEX[9] advanced this concept further by generating SQL queries and training models to estimate their execution, which resulted in considerable improvements in reasoning tasks.",
+      "category": "training_procedure",
+      "value": "estimate execution of generated SQL queries",
+      "verifiability": "high",
+      "claim_id": "c0026",
+      "contradiction": false
+    },
+    {
+      "claim": "Chain-of-Table broke down table reasoning into intermediate steps.",
+      "original_text": "Chain-of-Table[11] broke down table reasoning into intermediate steps, whereas Automatic Demonstration Selection[12] focused on optimizing in-context examples for table tasks.",
+      "category": "training_procedure",
+      "value": "intermediate steps",
+      "verifiability": "medium",
+      "claim_id": "c0027",
+      "contradiction": false
+    },
+    {
+      "claim": "Automatic Demonstration Selection focused on optimizing in-context examples for table tasks.",
+      "original_text": "Chain-of-Table[11] broke down table reasoning into intermediate steps, whereas Automatic Demonstration Selection[12] focused on optimizing in-context examples for table tasks.",
+      "category": "training_procedure",
+      "value": "optimizing in-context examples",
+      "verifiability": "medium",
+      "claim_id": "c0028",
+      "contradiction": false
+    },
+    {
+      "claim": "The benchmark consists of tabular datasets D_i with associated domain labels from a finite set Y.",
+      "original_text": "We consider a benchmark of tabular datasets  $\\mathcal{D} = \\{D_1, \\dots, D_N\\}$  with associated domain labels from a finite set  $\\mathcal{Y} = \\{c_1, \\dots, c_K\\}$ , obtained as described in the previous section.",
+      "category": "dataset",
+      "value": null,
+      "verifiability": "high",
+      "claim_id": "c0029",
+      "contradiction": false
+    },
+    {
+      "claim": "The benchmark is partitioned into a training index set I_train and a test index set I_test, and the training portion is used only to provide in-context examples, not to update model parameters.",
+      "original_text": "The benchmark is partitioned into a training index set  $\\mathcal{I}_{\\text{train}}$  and a test index set  $\\mathcal{I}_{\\text{test}}$ , but the training portion is used only to provide in-context examples rather than to update model parameters.",
+      "category": "training_procedure",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0030",
+      "contradiction": false
+    },
+    {
+      "claim": "Each dataset D_i is represented to the LLM via a subsampling operator r that selects a finite collection of rows X_i = r(D_i).",
+      "original_text": "Each dataset  $D_i$  is represented to the LLM via a subsampling operator r that selects a finite collection of rows  $X_i = r(D_i)$  (e.g., a few dozen rows of the table).",
+      "category": "data_preprocessing",
+      "value": null,
+      "verifiability": "medium",
+      "claim_id": "c0031",
+      "contradiction": false
+    },
+    {
+      "claim": "The LLM with parameters θ is treated as a black-box conditional model F_θ over textual outputs given a textual prompt.",
+      "original_text": "For a given LLM with parameters  $\\theta$ , we treat it as a black-box conditional model  $F_\\theta$  over textual outputs given a textual prompt P, inducing a distribution  $F_\\theta(\\cdot \\mid P)$  over completions.",
+      "category": "model_architecture",
+      "value": "black-box conditional model",
+      "verifiability": "high",
+      "claim_id": "c0032",
+      "contradiction": false
+    },
+    {
+      "claim": "The LLM is instructed to return a structured textual object (JSON) encoding an ordered tuple of domain predictions.",
+      "original_text": "The LLM is instructed to return a structured textual object (JSON) encoding an ordered tuple of domain predictions",
+      "category": "model_architecture",
+      "value": "JSON",
+      "verifiability": "high",
+      "claim_id": "c0033",
+      "contradiction": false
+    },
+    {
+      "claim": "For each LLM (DeepSeek and gpt-4o) and each regime m ∈ {0,1,5}, five independent stratified splits of the dataset indices are performed, with test set size equal to 20% of N and stratification preserving the empirical domain distribution.",
+      "original_text": "For each LLM (DeepSeek and gpt-4o), and for each in-context regime  $m \\in \\{0, 1, 5\\}$  (zero-shot, one-shot, few-shot), we perform 5 independent stratified splits of the dataset indices into training and test sets  $(\\mathcal{F}_{\\text{train}}^{(s)}, \\mathcal{F}_{\\text{test}}^{(s)})$ ,  $s = 1, \\ldots, 5$ , with  $|\\mathcal{F}_{\\text{test}}^{(s)}|/N = 0.2$  and stratification preserving the empirical domain distribution.",
+      "category": "training_procedure",
+      "value": "5 stratified splits, test proportion 0.2",
+      "verifiability": "high",
+      "claim_id": "c0034",
+      "contradiction": false
+    },
+    {
+      "claim": "The subsampling operator r selects all column headers and the first five data rows, formatted as a structured table (e.g., Markdown-like).",
+      "original_text": "Each dataset  $D_i$  is mapped to a compact tabular representation  $X_i = r(D_i)$  by a deterministic subsampling operator r that selects all column headers and the first 5 data rows, formatted as a structured table (e.g., Markdown-like).",
+      "category": "data_preprocessing",
+      "value": "all column headers and first 5 rows",
+      "verifiability": "high",
+      "claim_id": "c0035",
+      "contradiction": false
+    },
+    {
+      "claim": "For each split and regime, the set of labeled training examples S has size 0 for zero-shot, 1 for one-shot, and 5 for few-shot, with elements chosen uniformly at random.",
+      "original_text": "For each split s and regime m, we sample a set of labeled training examples $$S^{(s,m)} \\subseteq \\{(X_j, y_j) : j \\in \\mathcal{J}_{\\text{train}}^{(s)}\\},$$ with  $|S^{(s,0)}| = 0$  (zero-shot),  $|S^{(s,1)}| = 1$  (one-shot), and  $|S^{(s,5)}| = 5$  (few-shot), choosing the elements of  $S^{(s,m)}$  uniformly at random.",
+      "category": "training_procedure",
+      "value": "0, 1, 5 examples",
+      "verifiability": "high",
+      "claim_id": "c0036",
+      "contradiction": false
+    },
+    {
+      "claim": "All experimental runs use shared decoding settings: temperature = 0.3 and maximum tokens = 500, fixed across models and modes.",
+      "original_text": "All experimental runs use shared decoding settings (e.g., temperature = 0.3, maximum tokens = 500) fixed across models and modes; prompts, random splits, and example selections are held constant across LLMs to enable fair comparison.",
+      "category": "infrastructure",
+      "value": "temperature=0.3, max tokens=500",
+      "verifiability": "high",
+      "claim_id": "c0037",
+      "contradiction": false
+    },
+    {
+      "claim": "The data-driven domain discovery baseline discretizes numeric columns via pd.qcut.",
+      "original_text": "Data-driven domain discovery [26]: an unsupervised method that extracts domain-specific terms from column values (discretizing numeric columns via pd.qcut), groups terms into equivalence classes, constructs local and strong domains using Jaccard similarity and graph connectivity, and classifies test datasets by maximum overlap with domain-specific terms after filtering terms that appear in more than 80% of domains.",
+      "category": "model_architecture",
+      "value": "pd.qcut",
+      "verifiability": "medium",
+      "claim_id": "c0038",
+      "contradiction": false
+    },
+    {
+      "claim": "The data-driven domain discovery baseline filters out terms that appear in more than 80% of domains.",
+      "original_text": "Data-driven domain discovery [26]: an unsupervised method that extracts domain-specific terms from column values (discretizing numeric columns via pd.qcut), groups terms into equivalence classes, constructs local and strong domains using Jaccard similarity and graph connectivity, and classifies test datasets by maximum overlap with domain-specific terms after filtering terms that appear in more than 80% of domains.",
+      "category": "model_architecture",
+      "value": ">80% of domains",
+      "verifiability": "medium",
+      "claim_id": "c0039",
+      "contradiction": false
+    },
+    {
+      "claim": "The embeddings of columns baseline embeds column names using the all-MiniLM-L6-v2 sentence transformer.",
+      "original_text": "Embeddings of columns + supervised classification: column names are embedded using the all-MiniLM-L6-v2 sentence transformer, and domains are predicted either by a per-column nearest-neighbor voting scheme (using FAISS for similarity search) or by averaging embeddings per dataset and training four supervised classifiers (Random Forest, Logistic Regression, SVM, KNN) with stratified 5-fold cross-validation and class-balanced weights.",
+      "category": "model_architecture",
+      "value": "all-MiniLM-L6-v2",
+      "verifiability": "high",
+      "claim_id": "c0040",
+      "contradiction": false
+    },
+    {
+      "claim": "The embeddings baseline uses FAISS for similarity search in a per-column nearest-neighbor voting scheme.",
+      "original_text": "Embeddings of columns + supervised classification: column names are embedded using the all-MiniLM-L6-v2 sentence transformer, and domains are predicted either by a per-column nearest-neighbor voting scheme (using FAISS for similarity search) or by averaging embeddings per dataset and training four supervised classifiers (Random Forest, Logistic Regression, SVM, KNN) with stratified 5-fold cross-validation and class-balanced weights.",
+      "category": "infrastructure",
+      "value": "FAISS",
+      "verifiability": "high",
+      "claim_id": "c0041",
+      "contradiction": false
+    },
+    {
+      "claim": "The embeddings baseline trains four supervised classifiers: Random Forest, Logistic Regression, SVM, and KNN, with stratified 5-fold cross-validation and class-balanced weights.",
+      "original_text": "Embeddings of columns + supervised classification: column names are embedded using the all-MiniLM-L6-v2 sentence transformer, and domains are predicted either by a per-column nearest-neighbor voting scheme (using FAISS for similarity search) or by averaging embeddings per dataset and training four supervised classifiers (Random Forest, Logistic Regression, SVM, KNN) with stratified 5-fold cross-validation and class-balanced weights.",
+      "category": "training_procedure",
+      "value": "Random Forest, Logistic Regression, SVM, KNN",
+      "verifiability": "high",
+      "claim_id": "c0042",
+      "contradiction": false
+    },
+    {
+      "claim": "The meta-feature-based classification baseline extracts statistical and information-theoretic meta-features via the pymfe library.",
+      "original_text": "Meta-feature-based classification: statistical and information-theoretic meta-features are extracted via the pymfe library [27]; features with more than 50% missing values, constant features, and duplicates are removed; multicollinearity is controlled via a variance inflation factor (VIF) threshold < 10; and feature selection is performed using a PyTorch Lasso model.",
+      "category": "model_architecture",
+      "value": "pymfe",
+      "verifiability": "high",
+      "claim_id": "c0043",
+      "contradiction": false
+    },
+    {
+      "claim": "The meta-feature baseline removes features with more than 50% missing values, constant features, and duplicate features.",
+      "original_text": "Meta-feature-based classification: statistical and information-theoretic meta-features are extracted via the pymfe library [27]; features with more than 50% missing values, constant features, and duplicates are removed; multicollinearity is controlled via a variance inflation factor (VIF) threshold < 10; and feature selection is performed using a PyTorch Lasso model.",
+      "category": "data_preprocessing",
+      "value": ">50% missing, constant, duplicates",
+      "verifiability": "medium",
+      "claim_id": "c0044",
+      "contradiction": false
+    },
+    {
+      "claim": "The meta-feature baseline controls multicollinearity using a variance inflation factor (VIF) threshold less than 10.",
+      "original_text": "Meta-feature-based classification: statistical and information-theoretic meta-features are extracted via the pymfe library [27]; features with more than 50% missing values, constant features, and duplicates are removed; multicollinearity is controlled via a variance inflation factor (VIF) threshold < 10; and feature selection is performed using a PyTorch Lasso model.",
+      "category": "data_preprocessing",
+      "value": "VIF < 10",
+      "verifiability": "high",
+      "claim_id": "c0045",
+      "contradiction": false
+    },
+    {
+      "claim": "The meta-feature baseline performs feature selection using a PyTorch Lasso model.",
+      "original_text": "Meta-feature-based classification: statistical and information-theoretic meta-features are extracted via the pymfe library [27]; features with more than 50% missing values, constant features, and duplicates are removed; multicollinearity is controlled via a variance inflation factor (VIF) threshold < 10; and feature selection is performed using a PyTorch Lasso model.",
+      "category": "model_architecture",
+      "value": "PyTorch Lasso",
+      "verifiability": "high",
+      "claim_id": "c0046",
+      "contradiction": false
+    },
+    {
+      "claim": "The meta-feature baseline trains the same four classifiers (Random Forest, Logistic Regression, SVM, KNN) with stratified 5-fold cross-validation.",
+      "original_text": "The same four classifiers as above are then trained with stratified 5-fold cross-validation, and the best-performing model per configuration is retrained on the full training data for final evaluation on the held-out test sets.",
+      "category": "training_procedure",
+      "value": "Random Forest, Logistic Regression, SVM, KNN; stratified 5-fold CV",
+      "verifiability": "high",
+      "claim_id": "c0047",
+      "contradiction": false
+    },
+    {
+      "claim": "The meta-feature baseline retrains the best-performing model on the full training data for final evaluation on held-out test sets.",
+      "original_text": "The same four classifiers as above are then trained with stratified 5-fold cross-validation, and the best-performing model per configuration is retrained on the full training data for final evaluation on the held-out test sets.",
+      "category": "training_procedure",
+      "value": "retrain best model on full training data",
+      "verifiability": "medium",
+      "claim_id": "c0048",
+      "contradiction": false
+    }
+  ],
+  "step3_selection": [
+    {
+      "claim_id": "c0001",
+      "claim": "The pipeline integrates large language models (LLMs) with an interpretable tag-clustering procedure to generate dataset-level domains.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0002",
+      "claim": "The methodology converts noisy dataset tags into a compact, human‑readable domain palette using embedding and clustering techniques.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0003",
+      "claim": "The approach leverages structured dataset samples (column names with optional rows) under zero‑shot, one‑shot, and few‑shot prompting strategies to assign domains.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0004",
+      "claim": "Classical baselines used for evaluation include term/tag overlap, column‑name embedding classifiers, and meta‑feature models.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0005",
+      "claim": "The contribution includes an interpretable domain palette.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0006",
+      "claim": "The contribution includes a constructed benchmark of diverse tabular datasets.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0007",
+      "claim": "The contribution includes reproducible code and data.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0008",
+      "claim": "Early methodologies for table understanding used handcrafted rules, dictionaries, and regular expressions to characterize column semantics, such as detecting ZIP codes and dates.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0009",
+      "claim": "These methods did not handle data noise.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0010",
+      "claim": "These methods did not handle heterogeneity.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0011",
+      "claim": "These methods did not allow integration beyond a single table.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0012",
+      "claim": "Machine learning was later included to classify individual columns.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0013",
+      "claim": "Sherlock integrated embeddings of cell values, column headers, and character-level features into a deep semantic type model.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0014",
+      "claim": "These models were limited by hierarchical taxonomies of semantic types.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0015",
+      "claim": "These models still worked at the level of columns rather than dataset-level domains.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0016",
+      "claim": "The D4 framework discovers latent domains by learning contextual embeddings of column values and clustering them across large corpora.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0017",
+      "claim": "Embedding-based methods depend on co-occurrence statistics and stable lexical anchors such as column names and frequent terms.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0018",
+      "claim": "Sato combined neural models with table context features.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0019",
+      "claim": "Pythagoras focuses on the difficulty of numerical columns.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0020",
+      "claim": "Kepler-aSI combined machine learning, knowledge-graph lookups, and human-in-the-loop annotation to create semantic descriptions of datasets.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0021",
+      "claim": "These systems often require user interaction or external knowledge bases.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0022",
+      "claim": "TaBERT learned representations of tables and natural language together.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0023",
+      "claim": "TAPAS built upon BERT by linearizing tables.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0024",
+      "claim": "TAPAS used weak supervision from question-answer pairs during pretraining.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0025",
+      "claim": "TAPEX generates SQL queries.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0026",
+      "claim": "TAPEX trains models to estimate execution of generated SQL queries.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0027",
+      "claim": "Chain-of-Table broke down table reasoning into intermediate steps.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0028",
+      "claim": "Automatic Demonstration Selection focused on optimizing in-context examples for table tasks.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0029",
+      "claim": "The benchmark consists of tabular datasets D_i with associated domain labels from a finite set Y.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0030",
+      "claim": "The benchmark is partitioned into a training index set I_train and a test index set I_test, and the training portion is used only to provide in-context examples, not to update model parameters.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0031",
+      "claim": "Each dataset D_i is represented to the LLM via a subsampling operator r that selects a finite collection of rows X_i = r(D_i).",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0032",
+      "claim": "The LLM with parameters θ is treated as a black-box conditional model F_θ over textual outputs given a textual prompt.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0033",
+      "claim": "The LLM is instructed to return a structured textual object (JSON) encoding an ordered tuple of domain predictions.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0034",
+      "claim": "For each LLM (DeepSeek and gpt-4o) and each regime m ∈ {0,1,5}, five independent stratified splits of the dataset indices are performed, with test set size equal to 20% of N and stratification preserving the empirical domain distribution.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0035",
+      "claim": "The subsampling operator r selects all column headers and the first five data rows, formatted as a structured table (e.g., Markdown-like).",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0036",
+      "claim": "For each split and regime, the set of labeled training examples S has size 0 for zero-shot, 1 for one-shot, and 5 for few-shot, with elements chosen uniformly at random.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0037",
+      "claim": "All experimental runs use shared decoding settings: temperature = 0.3 and maximum tokens = 500, fixed across models and modes.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0038",
+      "claim": "The data-driven domain discovery baseline discretizes numeric columns via pd.qcut.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0039",
+      "claim": "The data-driven domain discovery baseline filters out terms that appear in more than 80% of domains.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0040",
+      "claim": "The embeddings of columns baseline embeds column names using the all-MiniLM-L6-v2 sentence transformer.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0041",
+      "claim": "The embeddings baseline uses FAISS for similarity search in a per-column nearest-neighbor voting scheme.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0042",
+      "claim": "The embeddings baseline trains four supervised classifiers: Random Forest, Logistic Regression, SVM, and KNN, with stratified 5-fold cross-validation and class-balanced weights.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0043",
+      "claim": "The meta-feature-based classification baseline extracts statistical and information-theoretic meta-features via the pymfe library.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0044",
+      "claim": "The meta-feature baseline removes features with more than 50% missing values, constant features, and duplicate features.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0045",
+      "claim": "The meta-feature baseline controls multicollinearity using a variance inflation factor (VIF) threshold less than 10.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0046",
+      "claim": "The meta-feature baseline performs feature selection using a PyTorch Lasso model.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0047",
+      "claim": "The meta-feature baseline trains the same four classifiers (Random Forest, Logistic Regression, SVM, KNN) with stratified 5-fold cross-validation.",
+      "contradiction": false
+    },
+    {
+      "claim_id": "c0048",
+      "claim": "The meta-feature baseline retrains the best-performing model on the full training data for final evaluation on held-out test sets.",
+      "contradiction": false
+    }
+  ],
+  "meta": {
+    "source": "/home/ilya/OSA/mvp/current/data/paper_4/paper_4_sections.json",
+    "steps": 3,
+    "history_messages": 3,
+    "model": "openai/gpt-oss-120b",
+    "filtered_claims": 48,
+    "step3_input_count": 48,
+    "step3_output_count": 48
+  }
+}

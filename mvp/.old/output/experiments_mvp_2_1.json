@@ -1,0 +1,108 @@
+{
+  "result": [
+    {
+      "claim": "The raw dataset contains 1,282 samples collected from 126 unique scientific articles.",
+      "original_text": "We manually collected 1282 raw samples from 126 unique scientific articles (Table S1, Supporting Information).",
+      "category": "dataset",
+      "value": "1282 samples, 126 articles",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "After cleaning, the final dataset includes more than 980 nanoparticle entries.",
+      "original_text": "After minimal data cleansing, we obtained the dataset of more than 980 nanosized metals, bimetals, and metal oxides ...",
+      "category": "dataset",
+      "value": ">980 samples",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The data were split into training and test sets using an 80/20 ratio.",
+      "original_text": "We normalized and log\u2011scaled the data for each problem before splitting to train and test sets in the 80/20 ratio.",
+      "category": "dataset",
+      "value": "80/20 split",
+      "verifiability": "high"
+    },
+    {
+      "claim": "Four specific tree\u2011based models were evaluated: Random Forest, Extra Trees, LGBMRegressor, and XGBRegressor.",
+      "original_text": "Random Forest and Extra Trees regression models ... LGBMRegressor and XGBRegressor algorithms build sequences of decision trees.",
+      "category": "model_architecture",
+      "value": "Random Forest, Extra Trees, LGBMRegressor, XGBRegressor",
+      "verifiability": "high"
+    },
+    {
+      "claim": "Hyperparameter optimization was performed with the Optuna framework.",
+      "original_text": "hyperparameter tuning was done using the model\u2011agnostic Optuna framework (Table S5, Supporting Information).",
+      "category": "training_procedure",
+      "value": "Optuna",
+      "verifiability": "high"
+    },
+    {
+      "claim": "Ten\u2011fold cross\u2011validation was used for model evaluation.",
+      "original_text": "tenfold cross\u2011validation",
+      "category": "evaluation_metric",
+      "value": "10\u2011fold CV",
+      "verifiability": "high"
+    },
+    {
+      "claim": "The SAR prediction model achieved an R\u00b2 of 0.86 on test data.",
+      "original_text": "Model\u2011agnostic hyperparameter optimization yielded state\u2011of\u2011the\u2011art performance of R\u00b2 = 0.86 ... for prediction of SAR.",
+      "category": "numerical_result",
+      "value": "R\u00b2 = 0.86",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The r1 relaxivity model achieved an R\u00b2 of 0.78 on test data.",
+      "original_text": "R\u00b2 = 0.78 ... for prediction of r1 relaxivity.",
+      "category": "numerical_result",
+      "value": "R\u00b2 = 0.78",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The r2 relaxivity model achieved an R\u00b2 of 0.75 on test data.",
+      "original_text": "R\u00b2 = 0.75 ... for prediction of r2 relaxivity.",
+      "category": "numerical_result",
+      "value": "R\u00b2 = 0.75",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "RMSE for SAR prediction decreased from 0.28 (cross\u2011validation) to 0.26 (test set).",
+      "original_text": "For SAR prediction, RMSE of 0.28 on tenfold cross\u2011validation dropped to 0.26 on test samples.",
+      "category": "numerical_result",
+      "value": "RMSE CV = 0.28, RMSE test = 0.26",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "The SAR, r1, and r2 regression tasks used 460, 355, and 465 samples respectively.",
+      "original_text": "prediction of SAR value, r1 or r2 relaxivity containing 460, 355, and 465 samples, respectively.",
+      "category": "dataset",
+      "value": "SAR: 460, r1: 355, r2: 465",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "k\u2011Nearest Neighbors imputation was applied to fill missing feature values.",
+      "original_text": "For other parameters ... we chose kNN imputation technique, because it considers the relationships between the different features.",
+      "category": "data_preprocessing",
+      "value": "kNN imputation",
+      "verifiability": "high"
+    },
+    {
+      "claim": "Features with >50% missing values (zeta potential, hydrodynamic radius) were excluded from modeling.",
+      "original_text": "zeta potential and hydrodynamic radius ... had to be excluded due to the large percent of missing values (>50%).",
+      "category": "data_preprocessing",
+      "value": "Excluded zeta potential, hydrodynamic radius",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Highly correlated geometrical features were reduced to area\u2011to\u2011volume and max\u2011to\u2011min length ratios.",
+      "original_text": "We transformed highly correlated geometrical features into area to volume and max to min length ratios reflecting size and shape anisotropy.",
+      "category": "data_preprocessing",
+      "value": "area\u2011to\u2011volume, max\u2011to\u2011min length ratios",
+      "verifiability": "medium"
+    }
+  ],
+  "meta": {
+    "source": "/home/ilya/OSA/DiMag.pdf",
+    "steps": 3,
+    "history_messages": 8,
+    "model": "openai/gpt-oss-120b"
+  }
+}

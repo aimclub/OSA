@@ -1,0 +1,311 @@
+{
+  "result": [
+    {
+      "claim": "The experiments were conducted using the large language model Gemini 1.5 Flash.",
+      "original_text": "Эксперименты были проведены с применением большой языковой модели Gemini 1.5 Flash.",
+      "category": "model_architecture",
+      "value": "Gemini 1.5 Flash",
+      "verifiability": "high"
+    },
+    {
+      "claim": "For the text description representation on the RCPSP problem, the Makespan/Total Penalty is 43.67.",
+      "original_text": "Текстовое описание | Makespan/Total Penalty | 43,67",
+      "category": "numerical_result",
+      "value": "43.67",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the RCPSP problem, the execution time is 0.5612 ms.",
+      "original_text": "Текстовое описание | Время выполнения, мс | 0,5612",
+      "category": "numerical_result",
+      "value": "0.5612",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the RCPSP problem, the number of LLM interaction iterations is 5.3.",
+      "original_text": "Текстовое описание | Количество итераций взаимодействия с LLM | 5,3",
+      "category": "numerical_result",
+      "value": "5.3",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the RCPSP problem, the average number of tokens per LLM request is 294.3.",
+      "original_text": "Текстовое описание | Среднее количество токенов на запрос в LLM | 294,3",
+      "category": "numerical_result",
+      "value": "294.3",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the Single Machine problem, the Makespan/Total Penalty is 27392.",
+      "original_text": "Текстовое описание | Makespan/Total Penalty | 27392",
+      "category": "numerical_result",
+      "value": "27392",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the Single Machine problem, the execution time is 2.2186 ms.",
+      "original_text": "Текстовое описание | Время выполнения, мс | 2,2186",
+      "category": "numerical_result",
+      "value": "2.2186",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the Single Machine problem, the number of LLM interaction iterations is 4.3.",
+      "original_text": "Текстовое описание | Количество итераций взаимодействия с LLM | 4,3",
+      "category": "numerical_result",
+      "value": "4.3",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the Single Machine problem, the average number of tokens per LLM request is 210.91.",
+      "original_text": "Текстовое описание | Среднее количество токенов на запрос в LLM | 210,91",
+      "category": "numerical_result",
+      "value": "210.91",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the RCPSP with NRR problem, the Makespan/Total Penalty is 112.6.",
+      "original_text": "Текстовое описание | Makespan/Total Penalty | 112,6",
+      "category": "numerical_result",
+      "value": "112.6",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the RCPSP with NRR problem, the execution time is 1316.48 ms.",
+      "original_text": "Текстовое описание | Время выполнения, мс | 1316,48",
+      "category": "numerical_result",
+      "value": "1316.48",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the RCPSP with NRR problem, the number of LLM interaction iterations is 4.3.",
+      "original_text": "Текстовое описание | Количество итераций взаимодействия с LLM | 4,3",
+      "category": "numerical_result",
+      "value": "4.3",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the RCPSP with NRR problem, the average number of tokens per LLM request is 319.67.",
+      "original_text": "Текстовое описание | Среднее количество токенов на запрос в LLM | 319,67",
+      "category": "numerical_result",
+      "value": "319.67",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the RCPSP with RR problem, the Makespan/Total Penalty is 46.67.",
+      "original_text": "Текстовое описание | Makespan/Total Penalty | 46,67",
+      "category": "numerical_result",
+      "value": "46.67",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the RCPSP with RR problem, the execution time is 7.8884 ms.",
+      "original_text": "Текстовое описание | Время выполнения, мс | 7,8884",
+      "category": "numerical_result",
+      "value": "7.8884",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the RCPSP with RR problem, the number of LLM interaction iterations is 3.67.",
+      "original_text": "Текстовое описание | Количество итераций взаимодействия с LLM | 3,67",
+      "category": "numerical_result",
+      "value": "3.67",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the RCPSP with RR problem, the average number of tokens per LLM request is 290.7.",
+      "original_text": "Текстовое описание | Среднее количество токенов на запрос в LLM | 290,7",
+      "category": "numerical_result",
+      "value": "290.7",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the RCMPSP problem, the Makespan/Total Penalty is 88.",
+      "original_text": "Текстовое описание | Makespan/Total Penalty | 88",
+      "category": "numerical_result",
+      "value": "88",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the RCMPSP problem, the execution time is 17.6508 ms.",
+      "original_text": "Текстовое описание | Время выполнения, мс | 17,6508",
+      "category": "numerical_result",
+      "value": "17.6508",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the RCMPSP problem, the number of LLM interaction iterations is 2.3.",
+      "original_text": "Текстовое описание | Количество итераций взаимодействия с LLM | 2,3",
+      "category": "numerical_result",
+      "value": "2.3",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the text description representation on the RCMPSP problem, the average number of tokens per LLM request is 338.6.",
+      "original_text": "Текстовое описание | Среднее количество токенов на запрос в LLM | 338,6",
+      "category": "numerical_result",
+      "value": "338.6",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the RCPSP problem, the Makespan/Total Penalty is 46.",
+      "original_text": "DSL описание проекта | Makespan/Total Penalty | 46",
+      "category": "numerical_result",
+      "value": "46",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the RCPSP problem, the execution time is 0.2575 ms.",
+      "original_text": "DSL описание проекта | Время выполнения, мс | 0,2575",
+      "category": "numerical_result",
+      "value": "0.2575",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the RCPSP problem, the number of LLM interaction iterations is 3.",
+      "original_text": "DSL описание проекта | Количество итераций взаимодействия с LLM | 3",
+      "category": "numerical_result",
+      "value": "3",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the RCPSP problem, the average number of tokens per LLM request is 243.5.",
+      "original_text": "DSL описание проекта | Среднее количество токенов на запрос в LLM | 243,5",
+      "category": "numerical_result",
+      "value": "243.5",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the Single Machine problem, the Makespan/Total Penalty is 27392.",
+      "original_text": "DSL описание проекта | Makespan/Total Penalty | 27392",
+      "category": "numerical_result",
+      "value": "27392",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the Single Machine problem, the execution time is 1.0023 ms.",
+      "original_text": "DSL описание проекта | Время выполнения, мс | 1,0023",
+      "category": "numerical_result",
+      "value": "1.0023",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the Single Machine problem, the number of LLM interaction iterations is 2.",
+      "original_text": "DSL описание проекта | Количество итераций взаимодействия с LLM | 2",
+      "category": "numerical_result",
+      "value": "2",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the Single Machine problem, the average number of tokens per LLM request is 156.4.",
+      "original_text": "DSL описание проекта | Среднее количество токенов на запрос в LLM | 156,4",
+      "category": "numerical_result",
+      "value": "156.4",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the RCPSP with NRR problem, the Makespan/Total Penalty is 77.",
+      "original_text": "DSL описание проекта | Makespan/Total Penalty | 77",
+      "category": "numerical_result",
+      "value": "77",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the RCPSP with NRR problem, the execution time is 0.9195 ms.",
+      "original_text": "DSL описание проекта | Время выполнения, мс | 0,9195",
+      "category": "numerical_result",
+      "value": "0.9195",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the RCPSP with NRR problem, the number of LLM interaction iterations is 2.7.",
+      "original_text": "DSL описание проекта | Количество итераций взаимодействия с LLM | 2,7",
+      "category": "numerical_result",
+      "value": "2.7",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the RCPSP with NRR problem, the average number of tokens per LLM request is 294.43.",
+      "original_text": "DSL описание проекта | Среднее количество токенов на запрос в LLM | 294,43",
+      "category": "numerical_result",
+      "value": "294.43",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the RCPSP with RR problem, the Makespan/Total Penalty is 115.67.",
+      "original_text": "DSL описание проекта | Makespan/Total Penalty | 115,67",
+      "category": "numerical_result",
+      "value": "115.67",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the RCPSP with RR problem, the execution time is 1.2340 ms.",
+      "original_text": "DSL описание проекта | Время выполнения, мс | 1,2340",
+      "category": "numerical_result",
+      "value": "1.2340",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the RCPSP with RR problem, the number of LLM interaction iterations is 2.3.",
+      "original_text": "DSL описание проекта | Количество итераций взаимодействия с LLM | 2,3",
+      "category": "numerical_result",
+      "value": "2.3",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the RCPSP with RR problem, the average number of tokens per LLM request is 310.4.",
+      "original_text": "DSL описание проекта | Среднее количество токенов на запрос в LLM | 310,4",
+      "category": "numerical_result",
+      "value": "310.4",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the RCMPSP problem, the Makespan/Total Penalty is 88.",
+      "original_text": "DSL описание проекта | Makespan/Total Penalty | 88",
+      "category": "numerical_result",
+      "value": "88",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the RCMPSP problem, the execution time is 0.6669 ms.",
+      "original_text": "DSL описание проекта | Время выполнения, мс | 0,6669",
+      "category": "numerical_result",
+      "value": "0.6669",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the RCMPSP problem, the number of LLM interaction iterations is 2.",
+      "original_text": "DSL описание проекта | Количество итераций взаимодействия с LLM | 2",
+      "category": "numerical_result",
+      "value": "2",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For the DSL description representation on the RCMPSP problem, the average number of tokens per LLM request is 260.57.",
+      "original_text": "DSL описание проекта | Среднее количество токенов на запрос в LLM | 260,57",
+      "category": "numerical_result",
+      "value": "260.57",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "Using DSL description reduced the number of LLM interaction iterations by up to 2 times compared to text description.",
+      "original_text": "Использование DSL‑описания сократило количество итераций взаимодействия с моделью до 2 раз",
+      "category": "baseline_comparison",
+      "value": "up to 2 times",
+      "verifiability": "medium"
+    },
+    {
+      "claim": "For some tasks, using DSL description reduced the number of LLM interaction iterations by up to 6 times compared to text description.",
+      "original_text": "Для некоторых задач сокращение достигало до 6 раз",
+      "category": "baseline_comparison",
+      "value": "up to 6 times",
+      "verifiability": "medium"
+    }
+  ],
+  "meta": {
+    "source": "/home/ilya/OSA/marker_output/paper_3/paper_3_sections.json",
+    "steps": 3,
+    "history_messages": 5,
+    "model": "openai/gpt-oss-120b"
+  }
+}
