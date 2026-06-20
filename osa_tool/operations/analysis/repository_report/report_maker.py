@@ -133,23 +133,19 @@ class AbstractReportGenerator(ABC):
         # Lines
         canvas_obj.setStrokeColor(colors.black)
         canvas_obj.setLineWidth(1.5)
-        canvas_obj.line(30, 705, 570, 705)  # Верхняя линия
-        canvas_obj.line(30, 520, 570, 520)  # Нижняя линия
+        canvas_obj.line(30, 705, 570, 705)
+        canvas_obj.line(30, 520, 570, 520)
 
-        # Tables
         table1, table2 = self.table_generator()
 
-        # Динамически рассчитываем точную высоту каждой таблицы
         _, h1 = table1.wrap(120, 200)
         _, h2 = table2.wrap(160, 200)
 
-        # Целевые координаты верхнего края для каждой таблицы
-        target_top_left = 620  # Слева: сразу под списком характеристик
-        target_top_right = 690  # Справа: у верхней границы блока
+        target_top_left = 620
+        target_top_right = 690
 
-        # Отрисовываем таблицы с учетом их высоты
         table1.drawOn(canvas_obj, 58, target_top_left - h1)
-        table2.drawOn(canvas_obj, 292, target_top_right - h2)# Сдвинули начало отрисовки таблиц ниже (с 555 на 530)
+        table2.drawOn(canvas_obj, 292, target_top_right - h2)
 
     def header(self) -> list:
         """
