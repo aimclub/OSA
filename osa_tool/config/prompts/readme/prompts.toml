@@ -93,6 +93,7 @@ RULES:
 - Distinguish strong evidence from weak hints (use cautious wording when uncertain).
 - Prefer concrete observations over generic statements.
 - Keep the output compact and scannable.
+- When mentioning how to clone the repository, always use the provided CLONE URL, not any URL inferred from the repository tree or README.
 
 INPUT DATA:
 
@@ -107,6 +108,10 @@ INPUT DATA:
 3. EXISTING README:
 
 {existing_readme}
+
+4. CLONE URL:
+
+{clone_url_http}
 """
 
 readme_analysis = """

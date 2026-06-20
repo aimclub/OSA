@@ -85,6 +85,9 @@ def main():
             git_agent.star_repository()
             git_agent.create_fork()
         git_agent.clone_repository()
+        # Refresh CI/CD state from the freshly cloned repo.
+        # WorkflowManager.__init__ already ran before clone, so it may have read
+        # stale workflow files left over from a previous local run.
         workflow_manager.refresh_after_clone()
 
         # Initialize ModeScheduler
@@ -287,9 +290,7 @@ def initialize_git_platform(args, config_manager: ConfigManager) -> tuple[GitAge
         )
         workflow_manager = GitverseWorkflowManager(args.repository, git_agent.metadata, args)
     elif "sourcecraft.dev" in args.repository:
-        git_agent = SourceCraftAgent(
-            args.repository, repo_branch_name=args.branch, branch_name=target_branch, author=args.author
-        )
+        git_agent = SourceCraftAgent(args.repository, args.branch, author=args.author)
         workflow_manager = SourceCraftWorkflowManager(args.repository, git_agent.metadata, args)
     else:
         raise ValueError(f"Cannot initialize Git Agent and Workflow Manager for this platform: {args.repository}")

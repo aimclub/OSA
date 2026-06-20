@@ -152,9 +152,12 @@ class DataFactory:
             updated_at = format_date(random_date(100))
             pushed_at = format_date(random_date(10))
 
-        base_domain = {"github": "github.com", "gitlab": "gitlab.com", "gitverse": "gitverse.ru"}.get(
-            platform, "github.com"
-        )
+        base_domain = {
+            "github": "github.com",
+            "gitlab": "gitlab.com",
+            "gitverse": "gitverse.ru",
+            "sourcecraft": "sourcecraft.dev",
+        }.get(platform, "github.com")
 
         metadata = {
             "name": repo_name,
@@ -211,7 +214,6 @@ class DataFactory:
             lang_info = raw.get("language", {}) or {}
             counters = raw.get("counters", {})
             clone_url = raw.get("clone_url", {})
-
             return RepositoryMetadata(
                 name=raw["name"],
                 full_name=f"{org_info.get('slug', '')}/{raw.get('slug', '')}",

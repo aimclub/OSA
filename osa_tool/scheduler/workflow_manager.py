@@ -34,12 +34,12 @@ class WorkflowManager(ABC):
 
     job_name_for_key = {
         "include_black": ["black", "lint", "Lint", "format"],
-        "include_tests": ["test", "unit_tests"],
+        "include_tests": ["test", "unit_tests", "tests"],
         "include_pep8": ["lint", "Lint", "pep8_check"],
         "include_autopep8": ["autopep8"],
         "include_fix_pep8": ["fix_pep8_command", "fix-pep8"],
         "slash-command-dispatch": ["slash_command_dispatch", "slashCommandDispatch"],
-        "pypi-publish": ["pypi_publish", "pypi-publish"],
+        "pypi-publish": ["pypi_publish", "pypi-publish", "publish"],
     }
 
     def __init__(self, repo_url: str, metadata: RepositoryMetadata, args: Any):
@@ -53,6 +53,17 @@ class WorkflowManager(ABC):
         self.plan: Optional[Plan] = None
 
     def refresh_after_clone(self) -> None:
+        """Re-read CI/CD state from disk after clone_repository() completes.
+
+        WorkflowManager.__init__ reads workflow_path and existing_jobs from
+        the local directory before the repository is cloned. If that directory
+        already exists from a previous run (e.g. workflows were generated locally
+        but never pushed), the cached data is stale and will suppress regeneration
+        of jobs that are not actually in the remote repository.
+
+        Call this method immediately after clone_repository() to ensure
+        workflow decisions are based on the freshly cloned repository content.
+        """
         self.workflow_path = self._locate_workflow_path()
         self.existing_jobs = self._find_existing_jobs()
         logger.debug(
@@ -399,6 +410,7 @@ class SourceCraftWorkflowManager(WorkflowManager):
         workflows = content.get("workflows")
         if isinstance(workflows, dict):
             return set(workflows.keys())
+
         return set()
 
     def _get_output_dir(self) -> str:

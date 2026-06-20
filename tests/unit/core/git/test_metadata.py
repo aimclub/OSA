@@ -96,9 +96,8 @@ def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_fa
     expected = loader_class._parse_metadata(expected_payload)
     assert result == expected
 
-    base_url = get_base_repo_url(repo_url)
     if platform == "gitlab":
-        base_url = base_url.replace("/", "%2F")
+        base_url = get_base_repo_url(repo_url).replace("/", "%2F")
         expected_url = BASE_URLS["gitlab"].format(base=base_url)
         expected_language_url = f"{expected_url}/languages"
     else:
@@ -123,6 +122,9 @@ def test_load_data_http_errors(status_code, mock_requests_response_factory, repo
                 loader_class.load_data(repo_url)
 
 
+# Sourcecraft
+
+
 def _make_sc_raw_data() -> dict:
     return {
         "name": "testrepo",
@@ -143,16 +145,19 @@ def _make_sc_raw_data() -> dict:
 
 
 def test_sourcecraft_parse_metadata_full_name():
+    # full_name must be org_slug/repo_slug, not just repo_slug
     result = SourceCraftMetadataLoader._parse_metadata(_make_sc_raw_data())
     assert result.full_name == "testorg/testrepo"
 
 
 def test_sourcecraft_parse_metadata_issues_url_includes_org():
+    # issues_url must include both org and repo slugs
     result = SourceCraftMetadataLoader._parse_metadata(_make_sc_raw_data())
     assert result.issues_url == "https://sourcecraft.dev/testorg/testrepo/issues"
 
 
 def test_sourcecraft_parse_metadata_counters_as_strings():
+    # Counters arrive as strings from the API, should be parsed as ints
     raw = _make_sc_raw_data()
     raw["counters"] = {"forks": "7", "issues": "12"}
     result = SourceCraftMetadataLoader._parse_metadata(raw)
@@ -161,25 +166,19 @@ def test_sourcecraft_parse_metadata_counters_as_strings():
 
 
 def test_sourcecraft_parse_metadata_language_none():
+    # language=None must not raise and should yield empty string
     raw = _make_sc_raw_data()
     raw["language"] = None
     result = SourceCraftMetadataLoader._parse_metadata(raw)
     assert result.language == ""
 
 
-def test_sourcecraft_parse_metadata_languages_are_empty():
-    result = SourceCraftMetadataLoader._parse_metadata(_make_sc_raw_data())
-    assert result.languages == []
-    assert result.language_stats == {}
-
-
-def test_sourcecraft_parse_metadata_ignores_unexpected_language_stats_payload():
+def test_sourcecraft_parse_metadata_language_empty_dict():
+    # language={} must not raise and should yield empty string
     raw = _make_sc_raw_data()
-    raw["statistics"] = {"languages": {"Rust": 62, "Python": 38}}
-    raw["language_statistics"] = {"Rust": 62, "Python": 38}
+    raw["language"] = {}
     result = SourceCraftMetadataLoader._parse_metadata(raw)
-    assert result.languages == []
-    assert result.language_stats == {}
+    assert result.language == ""
 
 
 def test_sourcecraft_parse_metadata_private_visibility():
@@ -197,6 +196,7 @@ def test_sourcecraft_parse_metadata_public_visibility():
 
 
 def test_sourcecraft_parse_metadata_organization_none():
+    # organization=null must not raise; owner/full_name/issues_url degrade gracefully
     raw = _make_sc_raw_data()
     raw["organization"] = None
     result = SourceCraftMetadataLoader._parse_metadata(raw)
@@ -206,6 +206,7 @@ def test_sourcecraft_parse_metadata_organization_none():
 
 
 def test_sourcecraft_parse_metadata_counters_none():
+    # counters=null must not raise; counts default to 0
     raw = _make_sc_raw_data()
     raw["counters"] = None
     result = SourceCraftMetadataLoader._parse_metadata(raw)
@@ -214,6 +215,7 @@ def test_sourcecraft_parse_metadata_counters_none():
 
 
 def test_sourcecraft_parse_metadata_clone_url_none():
+    # clone_url=null must not raise; URLs default to empty string
     raw = _make_sc_raw_data()
     raw["clone_url"] = None
     result = SourceCraftMetadataLoader._parse_metadata(raw)

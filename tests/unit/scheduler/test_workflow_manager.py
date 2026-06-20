@@ -8,6 +8,7 @@ from osa_tool.scheduler.workflow_manager import (
     GitHubWorkflowManager,
     GitLabWorkflowManager,
     GitverseWorkflowManager,
+    SourceCraftWorkflowManager,
 )
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 
@@ -250,3 +251,145 @@ def test_gitverse_locate_workflow_path_fallback_to_github(mock_config_manager, m
         # Assert
         assert manager.workflow_path is not None
         assert ".github/workflows" in manager.workflow_path.replace("\\", "/")
+
+
+def test_refresh_after_clone_clears_stale_state(tmp_path, monkeypatch, mock_repository_metadata, mock_args):
+    """Stale local workflow files must be invisible after refresh_after_clone()
+    when the freshly cloned repo has no CI directory."""
+    import shutil
+
+    # Arrange: stale local state - .github/workflows with a lint job exists before clone
+    repo_name = "test-repo"
+    repo_url = f"https://github.com/owner/{repo_name}"
+    wf_dir = tmp_path / repo_name / ".github" / "workflows"
+    wf_dir.mkdir(parents=True)
+    (wf_dir / "lint.yml").write_text(yaml.dump({"jobs": {"lint": {}}}))
+    monkeypatch.chdir(tmp_path)
+    manager = GitHubWorkflowManager(
+        repo_url=repo_url,
+        metadata=mock_repository_metadata,
+        args=mock_args,
+    )
+    assert manager.workflow_path is not None
+    assert "lint" in manager.existing_jobs
+    # Simulate clone: remote repo has no .github/workflows → directory is gone
+    shutil.rmtree(wf_dir)
+
+    # Act
+    manager.refresh_after_clone()
+
+    # Assert
+    assert manager.workflow_path is None
+    assert manager.existing_jobs == set()
+
+
+def test_refresh_after_clone_picks_up_new_workflows(tmp_path, monkeypatch, mock_repository_metadata, mock_args):
+    """CI files introduced by clone must be visible after refresh_after_clone()
+    even though they did not exist when WorkflowManager was initialised."""
+    # Arrange: repo directory exists but has no CI files before clone
+    repo_name = "test-repo"
+    repo_url = f"https://github.com/owner/{repo_name}"
+    (tmp_path / repo_name).mkdir()
+    monkeypatch.chdir(tmp_path)
+    manager = GitHubWorkflowManager(
+        repo_url=repo_url,
+        metadata=mock_repository_metadata,
+        args=mock_args,
+    )
+    assert manager.workflow_path is None
+    assert manager.existing_jobs == set()
+    # Simulate clone: remote repo has .github/workflows with a tests job
+    wf_dir = tmp_path / repo_name / ".github" / "workflows"
+    wf_dir.mkdir(parents=True)
+    (wf_dir / "tests.yml").write_text(yaml.dump({"jobs": {"tests": {}}}))
+
+    # Act
+    manager.refresh_after_clone()
+
+    # Assert
+    assert manager.workflow_path is not None
+    assert "tests" in manager.existing_jobs
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_locate_workflow_path_exists(mock_config_manager, mock_repository_metadata, mock_args):
+    # Arrange
+    with (
+        patch("osa_tool.scheduler.workflow_manager.os.path.isfile", return_value=True),
+        patch("osa_tool.scheduler.workflow_manager.open", mock_open()),
+        patch("osa_tool.scheduler.workflow_manager.yaml.safe_load", return_value={}),
+    ):
+        manager = SourceCraftWorkflowManager(
+            repo_url=mock_config_manager.config.git.repository,
+            metadata=mock_repository_metadata,
+            args=mock_args,
+        )
+
+        # Assert
+        assert manager.workflow_path is not None
+        assert manager.workflow_path.endswith("ci.yaml")
+        assert ".sourcecraft" in manager.workflow_path.replace("\\", "/")
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_locate_workflow_path_missing(mock_config_manager, mock_repository_metadata, mock_args):
+    # Arrange
+    with patch("osa_tool.scheduler.workflow_manager.os.path.isfile", return_value=False):
+        manager = SourceCraftWorkflowManager(
+            repo_url=mock_config_manager.config.git.repository,
+            metadata=mock_repository_metadata,
+            args=mock_args,
+        )
+
+        # Assert
+        assert manager.workflow_path is None
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_find_existing_jobs_native_format(mock_config_manager, mock_repository_metadata, mock_args):
+    # Arrange — actual SourceCraft ci.yaml format produced by SourceCraftWorkflowGenerator
+    yaml_content = {
+        "on": {"push": [{"workflows": ["lint", "tests"]}]},
+        "workflows": {
+            "lint": {"tasks": [{"name": "lint", "cubes": []}]},
+            "tests": {"tasks": [{"name": "tests", "cubes": []}]},
+        },
+    }
+    with (
+        patch("osa_tool.scheduler.workflow_manager.os.path.isfile", return_value=True),
+        patch("osa_tool.scheduler.workflow_manager.open", mock_open(read_data=yaml.dump(yaml_content))),
+        patch("osa_tool.scheduler.workflow_manager.yaml.safe_load", return_value=yaml_content),
+    ):
+        manager = SourceCraftWorkflowManager(
+            repo_url=mock_config_manager.config.git.repository,
+            metadata=mock_repository_metadata,
+            args=mock_args,
+        )
+
+        # Act
+        jobs = manager._find_existing_jobs()
+
+        # Assert
+        assert jobs == {"lint", "tests"}
+
+
+@pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
+def test_sourcecraft_find_existing_jobs_unknown_format(mock_config_manager, mock_repository_metadata, mock_args):
+    # Arrange — unrecognized ci.yaml structure (no workflows: key)
+    yaml_content = {"some_key": {"value": 1}}
+    with (
+        patch("osa_tool.scheduler.workflow_manager.os.path.isfile", return_value=True),
+        patch("osa_tool.scheduler.workflow_manager.open", mock_open(read_data=yaml.dump(yaml_content))),
+        patch("osa_tool.scheduler.workflow_manager.yaml.safe_load", return_value=yaml_content),
+    ):
+        manager = SourceCraftWorkflowManager(
+            repo_url=mock_config_manager.config.git.repository,
+            metadata=mock_repository_metadata,
+            args=mock_args,
+        )
+
+        # Act
+        jobs = manager._find_existing_jobs()
+
+        # Assert
+        assert jobs == set()

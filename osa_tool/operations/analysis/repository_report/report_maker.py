@@ -233,10 +233,16 @@ class AbstractReportGenerator(ABC):
             f"Owner: <a href='{self.metadata.owner_url}' color='#00008B'>{self.metadata.owner}</a>",
             normal_style,
         )
-        created_at = Paragraph(
-            f"Created at: {datetime.strptime(self.metadata.created_at, '%Y-%m-%dT%H:%M:%SZ').strftime('%d.%m.%Y %H:%M')}",
-            normal_style,
-        )
+        if self.metadata.created_at:
+            try:
+                created_at_text = datetime.strptime(self.metadata.created_at, "%Y-%m-%dT%H:%M:%SZ").strftime(
+                    "%d.%m.%Y %H:%M"
+                )
+            except ValueError:
+                created_at_text = self.metadata.created_at
+        else:
+            created_at_text = "N/A"
+        created_at = Paragraph(f"Created at: {created_at_text}", normal_style)
 
         bullet_list = ListFlowable(
             [

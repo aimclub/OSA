@@ -462,12 +462,14 @@ class GitAgent(abc.ABC):
             return True
         except GitCommandError as e:
             self._handle_git_error(e, f"pushing to {branch}")
-            logger.error(f"""Push failed: Branch '{branch}' already exists in the fork.
+            logger.error(
+                f"""Push failed: Branch '{branch}' already exists in the fork.
                  To resolve this, please either:
                    1. Choose a different branch name that doesn't exist in the fork 
                       by modifying the `branch_name` parameter.
                    2. Delete the existing branch from forked repository.
-                   3. Delete the fork entirely.""")
+                   3. Delete the fork entirely."""
+            )
             return False
 
     def upload_report(
@@ -790,7 +792,7 @@ class GitHubAgent(GitAgent):
                 updated_body += self.agent_signature
 
                 update_url = f"{url}/{pr_number}"
-                update_data = {"body": updated_body.strip()}
+                update_data = {"body": updated_body}
 
                 update_response = requests.patch(update_url, json=update_data, headers=headers)
                 if update_response.status_code == 200:
@@ -1107,7 +1109,7 @@ class GitLabAgent(GitAgent):
                 updated_body += self.agent_signature
 
                 update_url = f"{gitlab_instance}/api/v4/projects/{target_project_id}/merge_requests/{mr_iid}"
-                update_data = {"description": updated_body.strip()}
+                update_data = {"description": updated_body}
 
                 update_response = requests.put(update_url, json=update_data, headers=headers)
                 if update_response.status_code == 200:
@@ -1461,6 +1463,7 @@ class SourceCraftAgent(GitAgent):
         }
 
     def _get_current_username(self) -> str:
+        """Returns the authenticated user's username, or empty string on failure."""
         response = requests.get(f"{self.API_BASE}/user", headers=self._get_headers())
         if response.status_code == 200:
             return response.json().get("username", "")
@@ -1468,6 +1471,7 @@ class SourceCraftAgent(GitAgent):
         return ""
 
     def _extract_slugs(self) -> tuple[str, str]:
+        """Extracts org_slug and repo_slug from the repository URL."""
         clean_url = self.repo_url[:-4] if self.repo_url.endswith(".git") else self.repo_url
         parts = clean_url.strip("/").split("/")
         return parts[-2], parts[-1]
@@ -1477,6 +1481,7 @@ class SourceCraftAgent(GitAgent):
             raise ValueError("SourceCraft token is required to create a fork.")
 
         org_slug, repo_slug = self._extract_slugs()
+
         current_username = self._get_current_username()
         if not current_username:
             raise ValueError("Failed to get SourceCraft user profile.")
@@ -1488,6 +1493,7 @@ class SourceCraftAgent(GitAgent):
 
         url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/fork"
         body = {"org_slug": current_username, "default_branch_only": True}
+
         response = requests.post(url, headers=self._get_headers(), json=body)
 
         if response.status_code in {200, 201, 202}:
@@ -1542,10 +1548,12 @@ class SourceCraftAgent(GitAgent):
 
             if self.pr_report_body.strip():
                 old_description = existing_pr.get("description", "") or ""
+
                 report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
                 old_reports = report_pattern.findall(old_description)
                 new_reports = report_pattern.findall(self.pr_report_body)
                 all_reports = sorted(list(set(old_reports + new_reports)))
+
                 clean_body = report_pattern.sub("", old_description).replace(self.agent_signature, "").strip()
 
                 updated_body = clean_body
@@ -1555,6 +1563,7 @@ class SourceCraftAgent(GitAgent):
 
                 update_url = f"{url}/{pr_slug}"
                 update_res = requests.patch(update_url, headers=headers, json={"description": updated_body.strip()})
+
                 if update_res.status_code == 200:
                     logger.info(f"Successfully updated PR {pr_slug} with new reports.")
                 else:
@@ -1571,12 +1580,13 @@ class SourceCraftAgent(GitAgent):
 
             content = (body if body else "") + self.pr_report_body
             pr_body = content + self.agent_signature
+
             pr_data = {
                 "title": pr_title,
                 "description": pr_body,
                 "source_branch": self.branch_name,
                 "target_branch": base_branch,
-                "publish": True,
+                "publish": True,  # prevents draft PR creation
             }
 
             if hasattr(self, "fork_id") and self.fork_id:
@@ -1589,9 +1599,26 @@ class SourceCraftAgent(GitAgent):
             else:
                 self._handle_api_error(response, "creating pull request", raise_exception=True)
 
+    def update_about_section(self, about_content: dict) -> None:
+        if not self.token:
+            raise ValueError("Git-platform token is required to fill repository's 'About' section.")
+        if not self.fork_url:
+            raise ValueError("Fork URL is not set. Please create a fork first.")
+
+        org_slug, repo_slug = self._extract_slugs()
+        logger.info(f"Updating 'About' section for base repository - {self.repo_url}")
+        self._update_about_section(f"{org_slug}/{repo_slug}", about_content)
+
+        clean_fork = self.fork_url[:-4] if self.fork_url.endswith(".git") else self.fork_url
+        fork_parts = clean_fork.strip("/").split("/")
+        fork_path = f"{fork_parts[-2]}/{fork_parts[-1]}"
+        logger.info(f"Updating 'About' section for the fork - {self.fork_url}")
+        self._update_about_section(fork_path, about_content)
+
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
         parts = repo_path.strip("/").split("/")
         org_slug, repo_slug = parts[-2], parts[-1]
+
         url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}"
         about_data = {"description": about_content.get("description", "")}
 
@@ -1605,6 +1632,9 @@ class SourceCraftAgent(GitAgent):
         return f"{self.fork_url}/browse/{report_filename}?rev={report_branch}"
 
     def _build_auth_url(self, repo_url: str) -> str:
+        # SourceCraft git operations go through git.sourcecraft.dev.
+        # API returns clone URLs as https://git@git.sourcecraft.dev/org/repo.git,
+        # so we use 'git' as username and the PAT as password.
         match = re.match(r"https?://(?:git\.)?sourcecraft\.dev/(.+)", repo_url)
         if match:
             path = match.group(1).rstrip("/").removesuffix(".git")
@@ -1612,6 +1642,7 @@ class SourceCraftAgent(GitAgent):
         raise ValueError(f"Unsupported repository URL format for SourceCraft: {repo_url}")
 
     def _check_sourcecraft_branch_exists(self, branch: str) -> bool:
+        """Check if branch exists on SourceCraft using API."""
         org_slug, repo_slug = self._extract_slugs()
         url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/branches"
         try:

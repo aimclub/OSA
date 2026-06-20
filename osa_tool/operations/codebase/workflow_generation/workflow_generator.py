@@ -562,11 +562,19 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
 
 class SourceCraftWorkflowGenerator(WorkflowGenerator):
     """
-    Generates `.sourcecraft/ci.yaml` using SourceCraft native CI format.
+    Generates .sourcecraft/ci.yaml using SourceCraft's native CI format.
+
+    SourceCraft CI structure: on → workflows → tasks → cubes.
+    All workflows run concurrently; all cubes within a task run on the same VM.
+    Reference: https://sourcecraft.dev/portal/docs/en/sourcecraft/ci-cd-ref/
     """
 
     def load_template(self, template_name: str) -> str:
-        raise NotImplementedError("SourceCraft workflow generation does not use file templates.")
+        template_path = os.path.join(
+            osa_project_root(), "config", "templates", "workflow", "sourcecraft", template_name
+        )
+        with open(template_path, "r", encoding="utf-8") as f:
+            return f.read()
 
     def _cube(self, name: str, python_version: str, script: List[str]) -> dict:
         return {
@@ -575,31 +583,33 @@ class SourceCraftWorkflowGenerator(WorkflowGenerator):
             "script": script,
         }
 
-    def generate_black_formatter(self, python_version: str = "3.11", src: str = ".", options: str = "--check --diff"):
-        return self._cube("black", python_version, ["pip install black", f"black {options} {src}"])
+    def generate_black_formatter(
+        self, python_version: str = "3.11", src: str = ".", options: str = "--check --diff"
+    ) -> dict:
+        return self._cube("black", python_version, [f"pip install black", f"black {options} {src}"])
 
-    def generate_unit_test(self, python_version: str = "3.11", test_command: str = "pytest"):
+    def generate_unit_test(self, python_version: str = "3.11", test_command: str = "pytest") -> dict:
         return self._cube(
             f"pytest-{python_version.replace('.', '-')}",
             python_version,
             ["pip install -r requirements.txt pytest pytest-cov", f"{test_command} || test $? -eq 5"],
         )
 
-    def generate_pep8(self, tool: str = "flake8", python_version: str = "3.11", src: str = "."):
+    def generate_pep8(self, tool: str = "flake8", python_version: str = "3.11", src: str = ".") -> dict:
         return self._cube(tool, python_version, [f"pip install {tool}", f"{tool} {src}"])
 
-    def generate_autopep8(self, python_version: str = "3.11", src: str = "."):
+    def generate_autopep8(self, python_version: str = "3.11", src: str = ".") -> dict:
         return self._cube("autopep8", python_version, ["pip install autopep8", f"autopep8 --check --recursive {src}"])
 
-    def generate_fix_pep8_command(self, python_version: str = "3.11", src: str = "."):
+    def generate_fix_pep8_command(self, python_version: str = "3.11", src: str = ".") -> dict:
         return self._cube(
             "fix-pep8", python_version, ["pip install autopep8", f"autopep8 --in-place --recursive {src}"]
         )
 
     def generate_slash_command_dispatch(self) -> None:
-        return None
+        pass
 
-    def generate_pypi_publish(self, python_version: str = "3.11", use_poetry: bool = False):
+    def generate_pypi_publish(self, python_version: str = "3.11", use_poetry: bool = False) -> dict:
         if use_poetry:
             script = [
                 "pip install poetry",
@@ -686,22 +696,28 @@ class SourceCraftWorkflowGenerator(WorkflowGenerator):
             workflows_section["publish"] = {"tasks": [{"name": "publish", "cubes": publish_cubes}]}
 
         file_path = os.path.join(self.output_dir, "ci.yaml")
-        existing = {}
+
+        # Merge with existing ci.yaml to avoid overwriting e.g. build_docs/deploy_docs
         if os.path.isfile(file_path):
             try:
                 with open(file_path, encoding="utf-8") as f:
                     existing = yaml.safe_load(f) or {}
             except (yaml.YAMLError, IOError, OSError):
                 existing = {}
+        else:
+            existing = {}
 
+        # Merge on_section into existing
         existing_on = existing.get("on", {})
         for trigger, new_entries in on_section.items():
             existing_entries = existing_on.get(trigger, [])
             for new_entry in new_entries:
                 new_wfs = set(new_entry.get("workflows", []))
+                # Append workflows to first matching entry or add a new entry
                 merged = False
                 for ex_entry in existing_entries:
                     ex_wfs = set(ex_entry.get("workflows", []))
+                    # Same filter context → merge workflow lists
                     if ex_entry.get("filter") == new_entry.get("filter"):
                         ex_entry["workflows"] = list(ex_wfs | new_wfs)
                         merged = True
@@ -711,6 +727,7 @@ class SourceCraftWorkflowGenerator(WorkflowGenerator):
             existing_on[trigger] = existing_entries
         existing["on"] = existing_on
 
+        # Merge workflows_section into existing (don't overwrite existing keys)
         existing_workflows = existing.get("workflows", {})
         for name, definition in workflows_section.items():
             if name not in existing_workflows:

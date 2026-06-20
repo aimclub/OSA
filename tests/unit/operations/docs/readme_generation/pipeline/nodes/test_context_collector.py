@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.pipeline.llm_schemas import KeyFilesLLMOutput
@@ -258,3 +258,55 @@ def test_context_collector_node_returns_all_expected_keys(
     assert ctx.readme_analysis == "readme analysis result"
     assert ctx.pdf_content is None
     assert ctx.article_analysis is None
+
+
+@patch("osa_tool.operations.docs.readme_generation.pipeline.nodes.context_collector.SourceRank")
+@patch("osa_tool.operations.docs.readme_generation.pipeline.nodes.context_collector.extract_readme_content")
+@patch("osa_tool.operations.docs.readme_generation.pipeline.nodes.context_collector.extract_example_paths")
+@patch("osa_tool.operations.docs.readme_generation.pipeline.nodes.context_collector.read_file")
+@patch("osa_tool.operations.docs.readme_generation.pipeline.nodes.context_collector._run_parallel_analyses")
+@patch("osa_tool.operations.docs.readme_generation.pipeline.nodes.context_collector.PromptBuilder")
+def test_repo_analysis_prompt_receives_clone_url_http(
+    mock_prompt_builder,
+    mock_parallel,
+    mock_read_file,
+    mock_examples,
+    mock_extract_readme,
+    mock_sourcerank_cls,
+    mock_config_manager,
+    mock_repository_metadata,
+):
+    # Arrange
+    mock_repository_metadata.clone_url_http = "https://git.sourcecraft.dev/org/repo.git"
+    mock_sourcerank_cls.return_value.tree = "README.md\nsrc\nsrc/main.py"
+    mock_extract_readme.return_value = "# Test Project"
+    mock_examples.return_value = []
+    mock_read_file.return_value = "print('hello')"
+    mock_parallel.return_value = ("readme analysis result", None)
+    mock_prompt_builder.render.return_value = "rendered prompt"
+
+    mock_model_handler = MagicMock()
+    mock_model_handler.send_and_parse.side_effect = [
+        KeyFilesLLMOutput(key_files=["src/main.py"]),
+        LlmTextOutput(text="repo analysis result"),
+    ]
+
+    mock_context = MagicMock()
+    mock_context.config_manager = mock_config_manager
+    mock_context.model_handler = mock_model_handler
+    mock_context.prompts = mock_config_manager.get_prompts()
+    mock_context.metadata = mock_repository_metadata
+
+    state = ReadmeState(repo_url="https://sourcecraft.dev/org/repo")
+
+    # Act
+    context_collector_node(state, mock_context)
+
+    # Assert: repo_analysis render call must include clone_url_http
+    render_calls = mock_prompt_builder.render.call_args_list
+    repo_analysis_call = next(
+        (c for c in render_calls if "clone_url_http" in c.kwargs),
+        None,
+    )
+    assert repo_analysis_call is not None, "PromptBuilder.render was not called with clone_url_http"
+    assert repo_analysis_call.kwargs["clone_url_http"] == "https://git.sourcecraft.dev/org/repo.git"

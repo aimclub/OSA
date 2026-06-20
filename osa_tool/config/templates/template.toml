@@ -140,9 +140,9 @@ If you use this software, please cite it as below.
 
         journal = {{{publisher} repository}},
 
-        howpublished = {{\\url{{{repository_url}.git}}}},
+        howpublished = {{\\url{{{repository_url}}}}},
 
-        url = {{{repository_url}.git}}
+        url = {{{repository_url}}}
 
     }}
 

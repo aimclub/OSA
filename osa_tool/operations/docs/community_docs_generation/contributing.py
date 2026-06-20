@@ -37,6 +37,10 @@ class ContributingBuilder:
         )
         self.file_to_save = os.path.join(self.repo_path, "CONTRIBUTING.md")
 
+        if "sourcecraft" in self.config_manager.get_git_settings().host:
+            repo_root = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+            self.file_to_save = os.path.join(repo_root, "CONTRIBUTING.md")
+
     def load_template(self) -> dict:
         """
         Loads a TOML template file and returns its sections as a dictionary.
@@ -55,7 +59,11 @@ class ContributingBuilder:
     @property
     def guide(self) -> str:
         """Generates the guide section with basic project contribution instructions."""
-        return self._template["guide"].format(url=self.url_path, project_name=self.metadata.name)
+        return self._template["guide"].format(
+            url=self.url_path,
+            project_name=self.metadata.name,
+            clone_url=self.metadata.clone_url_http or self.url_path,
+        )
 
     @property
     def before_pr(self) -> str:
