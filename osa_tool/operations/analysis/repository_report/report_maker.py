@@ -1,4 +1,5 @@
 import os
+import sys
 from abc import ABC, abstractmethod
 from datetime import datetime
 
@@ -6,6 +7,8 @@ import qrcode
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import (
     ListFlowable,
@@ -22,6 +25,7 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.operations.analysis.repository_report.report_generator import TextGenerator, AfterReportTextGenerator
+from osa_tool.operations.analysis.repository_report.report_localization import ReportTranslationManager
 from osa_tool.scheduler.plan import Plan
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
@@ -29,7 +33,30 @@ from osa_tool.utils.utils import osa_project_root
 
 
 class AbstractReportGenerator(ABC):
-    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent):
+    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent, target_language: str):
+        main_module = sys.modules.get('__main__')
+        assets_dir = os.path.join(os.path.dirname(os.path.abspath(main_module.__file__)), "assets")
+        pdfmetrics.registerFont(TTFont('notosanssc', os.path.join(assets_dir, "notosans-sc.ttf")))
+        pdfmetrics.registerFont(TTFont('notosanssc-Bold', os.path.join(assets_dir, "notosans-sc-bold.ttf")))
+        pdfmetrics.registerFont(TTFont('notosanssc-Black', os.path.join(assets_dir, "notosans-sc-black.ttf")))
+
+        # 2. Регистрируем для него отдельное семейство (чтобы ReportLab не выдавал ошибок при попытке применить теги)
+        pdfmetrics.registerFontFamily(
+            'notosanssc-black',
+            normal='notosanssc-Black',
+            bold='notosanssc-Black',
+            italic='notosanssc-Black',
+            boldItalic='notosanssc-Black',
+        )
+
+        pdfmetrics.registerFontFamily(
+            'notosanssc',
+            normal='notosanssc',
+            bold='notosanssc-Bold',
+            italic='notosanssc',
+            boldItalic='notosanssc-Bold',
+        )
+
         self.sourcerank = SourceRank(config_manager)
         self.git_agent = git_agent
         self.metadata = self.git_agent.metadata
@@ -41,27 +68,19 @@ class AbstractReportGenerator(ABC):
         self.filename = f"{self.metadata.name}_report.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
         self.start_log = f"Starting analysis for repository {self.metadata.full_name}"
-        self.report_header = "Repository Analysis Report"
+        self.translator = ReportTranslationManager(target_language)
+        self.target_language = target_language
+        self.report_header = self.translator.get("report_header")
 
     @staticmethod
     def table_builder(
-        data: list,
-        w_first_col: int,
-        w_second_col: int,
-        coloring: bool = False,
+            data: list,
+            w_first_col: int,
+            w_second_col: int,
+            coloring: bool = False,
     ) -> Table:
         """
         Builds a styled table with customizable column widths and optional row coloring.
-
-        Args:
-            data (List): The table data, where the first row is treated as a header.
-            w_first_col (int): The width of the first column.
-            w_second_col (int): The width of the second column.
-            coloring (bool, optional): If True, applies conditional row coloring based on
-                                   the values in the second column. Defaults to False.
-
-        Returns:
-            Table: A formatted table with applied styles.
         """
         table = Table(data, colWidths=[w_first_col, w_second_col])
         style = [
@@ -70,13 +89,18 @@ class AbstractReportGenerator(ABC):
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
             ("ALIGN", (0, 0), (0, -1), "LEFT"),
             ("ALIGN", (1, 0), (-1, -1), "CENTER"),
-            ("FONTSIZE", (0, 0), (-1, -1), 12),
-            ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),  # Выравнивание по центру вертикали
+            ("FONTSIZE", (0, 0), (-1, -1), 10),  # Шрифт 10pt для компактности
+            ("TOPPADDING", (0, 0), (-1, -1), 3),  # Компактные вертикальные отступы
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
             ("GRID", (0, 0), (-1, -1), 1, colors.black),
+            ("FONTNAME", (0, 0), (-1, -1), "notosanssc"),
+            ("FONTNAME", (0, 0), (-1, 0), "notosanssc-Bold"),
         ]
         if coloring:
             for row_idx, row in enumerate(data[1:], start=1):
-                value = row[1]
+                cell_val = row[1]
+                value = cell_val.text if isinstance(cell_val, Paragraph) else cell_val
                 bg_color = colors.lightgreen if value == "✓" else colors.lightcoral
                 style.append(("BACKGROUND", (1, row_idx), (1, row_idx), bg_color))
 
@@ -86,9 +110,6 @@ class AbstractReportGenerator(ABC):
     def generate_qr_code(self) -> str:
         """
         Generates a QR code for the given URL and saves it as an image file.
-
-        Returns:
-            str: The file path of the generated QR code image.
         """
         qr = qrcode.make(self.osa_url)
         qr_path = os.path.join(os.getcwd(), "temp_qr.png")
@@ -98,14 +119,6 @@ class AbstractReportGenerator(ABC):
     def draw_images_and_tables(self, canvas_obj: Canvas, doc: SimpleDocTemplate) -> None:
         """
         Draws images, a QR code, lines, and tables on the given PDF canvas.
-
-        Args:
-            canvas_obj (Canvas): The PDF canvas object to draw on
-            doc (SimpleDocTemplate): The PDF document that is being generated. This parameter is not used directly
-                                     but is required by the ReportLab framework for page rendering.
-
-        Returns:
-            None
         """
         # Logo OSA
         canvas_obj.drawImage(self.logo_path, 335, 700, width=130, height=120)
@@ -120,27 +133,31 @@ class AbstractReportGenerator(ABC):
         # Lines
         canvas_obj.setStrokeColor(colors.black)
         canvas_obj.setLineWidth(1.5)
-        canvas_obj.line(30, 705, 570, 705)
-        canvas_obj.line(30, 540, 570, 540)
+        canvas_obj.line(30, 705, 570, 705)  # Верхняя линия
+        canvas_obj.line(30, 520, 570, 520)  # Нижняя линия
 
         # Tables
         table1, table2 = self.table_generator()
 
-        table1.wrapOn(canvas_obj, 0, 0)
-        table1.drawOn(canvas_obj, 58, 555)
+        # Динамически рассчитываем точную высоту каждой таблицы
+        _, h1 = table1.wrap(120, 200)
+        _, h2 = table2.wrap(160, 200)
 
-        table2.wrapOn(canvas_obj, 0, 0)
-        table2.drawOn(canvas_obj, 292, 555)
+        # Целевые координаты верхнего края для каждой таблицы
+        target_top_left = 620  # Слева: сразу под списком характеристик
+        target_top_right = 690  # Справа: у верхней границы блока
+
+        # Отрисовываем таблицы с учетом их высоты
+        table1.drawOn(canvas_obj, 58, target_top_left - h1)
+        table2.drawOn(canvas_obj, 292, target_top_right - h2)# Сдвинули начало отрисовки таблиц ниже (с 555 на 530)
 
     def header(self) -> list:
         """
         Generates the header section for the repository analysis report.
-
-        Returns:
-            list: A list of Paragraph elements representing the header content.
         """
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
+            fontName='notosanssc-black',
             name="LeftAligned",
             parent=styles["Title"],
             alignment=0,
@@ -163,42 +180,90 @@ class AbstractReportGenerator(ABC):
     def table_generator(self) -> tuple[Table, Table]:
         """
         Generates two tables containing repository statistics and presence of key elements.
-
-        The first table includes basic repository statistics, and the second table shows
-        the presence of important elements such as README, License, Documentation, etc.
-
-        Returns:
-            tuple[Table, Table]: A tuple containing two Table objects.
         """
         styles = getSampleStyleSheet()
-        normal_style = ParagraphStyle(
-            name="LeftAlignedNormal",
+
+        header_style = ParagraphStyle(
+            name="TblHeaderStyle",
             parent=styles["Normal"],
-            fontSize=12,
+            fontName="notosanssc-Bold",
+            fontSize=10,
+            leading=12,
             alignment=1,
         )
+
+        cell_left_style = ParagraphStyle(
+            name="TblCellLeftStyle",
+            parent=styles["Normal"],
+            fontName="notosanssc",
+            fontSize=10,
+            leading=12,
+            alignment=0,
+        )
+
+        cell_center_style = ParagraphStyle(
+            name="TblCellCenterStyle",
+            parent=styles["Normal"],
+            fontName="notosanssc",
+            fontSize=10,
+            leading=12,
+            alignment=1,
+        )
+
         data1 = [
             [
-                Paragraph("<b>Statistics</b>", normal_style),
-                Paragraph("<b>Values</b>", normal_style),
+                Paragraph(f"<b>{self.translator.get('statistics')}</b>", header_style),
+                Paragraph(f"<b>{self.translator.get('values')}</b>", header_style),
             ],
-            ["Stars Count", str(self.metadata.stars_count)],
-            ["Forks Count", str(self.metadata.forks_count)],
-            ["Issues Count", str(self.metadata.open_issues_count)],
+            [
+                Paragraph(self.translator.get("stars_count"), cell_left_style),
+                Paragraph(str(self.metadata.stars_count), cell_center_style)
+            ],
+            [
+                Paragraph(self.translator.get("forks_count"), cell_left_style),
+                Paragraph(str(self.metadata.forks_count), cell_center_style)
+            ],
+            [
+                Paragraph(self.translator.get("issues_count"), cell_left_style),
+                Paragraph(str(self.metadata.open_issues_count), cell_center_style)
+            ],
         ]
+
         data2 = [
             [
-                Paragraph("<b>Metric</b>", normal_style),
-                Paragraph("<b>Values</b>", normal_style),
+                Paragraph(f"<b>{self.translator.get('metric')}</b>", header_style),
+                Paragraph(f"<b>{self.translator.get('values')}</b>", header_style),
             ],
-            ["README Presence", "✓" if self.sourcerank.readme_presence() else "✗"],
-            ["License Presence", "✓" if self.sourcerank.license_presence() else "✗"],
-            ["Documentation Presence", "✓" if self.sourcerank.docs_presence() else "✗"],
-            ["Examples Presence", "✓" if self.sourcerank.examples_presence() else "✗"],
-            ["Requirements Presence", "✓" if self.sourcerank.requirements_presence() else "✗"],
-            ["Tests Presence", "✓" if self.sourcerank.tests_presence() else "✗"],
-            ["Description Presence", "✓" if self.metadata.description else "✗"],
+            [
+                Paragraph(self.translator.get("readme_presence"), cell_left_style),
+                Paragraph("✓" if self.sourcerank.readme_presence() else "✗", cell_center_style)
+            ],
+            [
+                Paragraph(self.translator.get("license_presence"), cell_left_style),
+                Paragraph("✓" if self.sourcerank.license_presence() else "✗", cell_center_style)
+            ],
+            [
+                Paragraph(self.translator.get("documentation_presence"), cell_left_style),
+                Paragraph("✓" if self.sourcerank.docs_presence() else "✗", cell_center_style)
+            ],
+            [
+                Paragraph(self.translator.get("examples_presence"), cell_left_style),
+                Paragraph("✓" if self.sourcerank.examples_presence() else "✗", cell_center_style)
+            ],
+            [
+                Paragraph(self.translator.get("requirements_presence"), cell_left_style),
+                Paragraph("✓" if self.sourcerank.requirements_presence() else "✗", cell_center_style)
+            ],
+            [
+                Paragraph(self.translator.get("tests_presence"), cell_left_style),
+                Paragraph("✓" if self.sourcerank.tests_presence() else "✗", cell_center_style)
+            ],
+            [
+                Paragraph(self.translator.get("description_presence"), cell_left_style),
+                Paragraph("✓" if self.metadata.description else "✗", cell_center_style)
+            ],
         ]
+
         table1 = self.table_builder(data1, 120, 76)
         table2 = self.table_builder(data2, 160, 76, True)
         return table1, table2
@@ -206,15 +271,10 @@ class AbstractReportGenerator(ABC):
     def body_first_part(self) -> ListFlowable:
         """
         Generates the first part of the body content for the repository report.
-
-        This includes the repository name with a hyperlink, owner information with a hyperlink,
-        and the repository creation date. The data is presented as a bulleted list.
-
-        Returns:
-            ListFlowable: A ListFlowable object containing a bulleted list of repository details.
         """
         styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(
+            fontName='notosanssc',
             name="LeftAlignedNormal",
             parent=styles["Normal"],
             fontSize=12,
@@ -226,11 +286,11 @@ class AbstractReportGenerator(ABC):
             name = self.metadata.name[:16] + "..."
 
         repo_link = Paragraph(
-            f"Repository Name: <a href='{self.repo_url}' color='#00008B'>{name}</a>",
+            f"{self.translator.get('repository_name')}: <a href='{self.repo_url}' color='#00008B'>{name}</a>",
             normal_style,
         )
         owner_link = Paragraph(
-            f"Owner: <a href='{self.metadata.owner_url}' color='#00008B'>{self.metadata.owner}</a>",
+            f"{self.translator.get('owner')}: <a href='{self.metadata.owner_url}' color='#00008B'>{self.metadata.owner}</a>",
             normal_style,
         )
         if self.metadata.created_at:
@@ -242,7 +302,7 @@ class AbstractReportGenerator(ABC):
                 created_at_text = self.metadata.created_at
         else:
             created_at_text = "N/A"
-        created_at = Paragraph(f"Created at: {created_at_text}", normal_style)
+        created_at = Paragraph(f"{self.translator.get('created_at')}: {created_at_text}", normal_style)
 
         bullet_list = ListFlowable(
             [
@@ -258,6 +318,7 @@ class AbstractReportGenerator(ABC):
     def get_styles() -> tuple[ParagraphStyle, ParagraphStyle]:
         styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(
+            fontName='notosanssc',
             name="LeftAlignedNormal",
             parent=styles["Normal"],
             fontSize=12,
@@ -269,6 +330,7 @@ class AbstractReportGenerator(ABC):
         custom_style = ParagraphStyle(
             name="CustomStyle",
             parent=normal_style,
+            fontName='notosanssc',
             spaceBefore=6,
             spaceAfter=2,
         )
@@ -281,16 +343,6 @@ class AbstractReportGenerator(ABC):
     def build_pdf(self) -> None:
         """
         Generates and builds the PDF report for the repository analysis.
-
-        This method initializes the PDF document, adds the header, body content (first and second parts),
-        and then generates the PDF file. The `draw_images_and_tables` method is used to draw images and tables
-        on the first page of the document.
-
-        Returns:
-            None
-
-        Raises:
-            Exception: If there is an error during the PDF creation process.
         """
         logger.info(self.start_log)
 
@@ -306,7 +358,7 @@ class AbstractReportGenerator(ABC):
                     *self.header(),
                     Spacer(0, 40),
                     self.body_first_part(),
-                    Spacer(0, 110),
+                    Spacer(0, 130),
                     *self.body_second_part(),
                 ],
                 onFirstPage=self.draw_images_and_tables,
@@ -318,9 +370,9 @@ class AbstractReportGenerator(ABC):
 
 class ReportGenerator(AbstractReportGenerator):
 
-    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent, create_fork: bool):
-        super().__init__(config_manager, git_agent)
-        self.text_generator = TextGenerator(config_manager, self.metadata)
+    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent, create_fork: bool, target_language: str):
+        super().__init__(config_manager, git_agent, target_language)
+        self.text_generator = TextGenerator(config_manager, self.metadata, target_language)
         self.create_fork = create_fork
         self.events: list[OperationEvent] = []
 
@@ -341,26 +393,25 @@ class ReportGenerator(AbstractReportGenerator):
     def body_second_part(self) -> list[Flowable]:
         """
         Generates the second part of the report, which contains the analysis of the repository.
-
-        Returns:
-            list: A list of Paragraph objects for the PDF report.
         """
-
         parsed_report = self.text_generator.make_request()
         normal_style, custom_style = self.get_styles()
         story = []
 
         # Repository Structure
-        story.append(Paragraph("<b>Repository Structure:</b>", custom_style))
-        story.append(Paragraph(f"• Compliance: {parsed_report.structure.compliance}", normal_style))
+        story.append(Paragraph(f"<b>{self.translator.get('repository_structure')}</b>", custom_style))
+        story.append(
+            Paragraph(f"• {self.translator.get('compliance')}: {parsed_report.structure.compliance}", normal_style))
         if parsed_report.structure.missing_files:
             missing_files = ", ".join(parsed_report.structure.missing_files)
-            story.append(Paragraph(f"• Missing files: {missing_files}", normal_style))
-        story.append(Paragraph(f"• Organization: {parsed_report.structure.organization}", normal_style))
+            story.append(Paragraph(f"• {self.translator.get('missing_files')}: {missing_files}", normal_style))
+        story.append(
+            Paragraph(f"• {self.translator.get('organization')}: {parsed_report.structure.organization}", normal_style))
 
         # README Analysis
-        story.append(Paragraph("<b>README Analysis:</b>", custom_style))
-        story.append(Paragraph(f"• Quality: {parsed_report.readme.readme_quality}", normal_style))
+        story.append(Paragraph(f"<b>{self.translator.get('readme_analysis')}:</b>", custom_style))
+        story.append(
+            Paragraph(f"• {self.translator.get('quality')}: {parsed_report.readme.readme_quality}", normal_style))
 
         for field_name, value in parsed_report.readme.model_dump().items():
             if field_name == "readme_quality":
@@ -368,39 +419,39 @@ class ReportGenerator(AbstractReportGenerator):
 
             story.append(
                 Paragraph(
-                    f"• {field_name.replace('_', ' ').capitalize()}: {value.value}",
+                    f"• {self.translator.get(field_name)}: {self.translator.yes_no_partial(value)}",
                     normal_style,
                 )
             )
 
         # Documentation
-        story.append(Paragraph("<b>Documentation:</b>", custom_style))
+        story.append(Paragraph(f"<b>{self.translator.get('documentation')}:</b>", custom_style))
         story.append(
             Paragraph(
-                f"• Tests present: {parsed_report.documentation.tests_present.value}",
+                f"• {self.translator.get('test_present')}: {self.translator.yes_no_partial(parsed_report.documentation.tests_present)}",
                 normal_style,
             )
         )
         story.append(
             Paragraph(
-                f"• Documentation quality: {parsed_report.documentation.docs_quality}",
+                f"• {self.translator.get('documentation_quality')}: {parsed_report.documentation.docs_quality}",
                 normal_style,
             )
         )
         story.append(
             Paragraph(
-                f"• Outdated content: {'Yes' if parsed_report.documentation.outdated_content else 'No'}",
+                f"• {self.translator.get('outdated_content')}: {self.translator.get('yes') if parsed_report.documentation.outdated_content else self.translator.get('no')}",
                 normal_style,
             )
         )
 
         if parsed_report.assessment.key_shortcomings:
-            story.append(Paragraph("<b>Key Shortcomings:</b>", custom_style))
+            story.append(Paragraph(f"<b>{self.translator.get('key_shortcomings')}:</b>", custom_style))
             for shortcoming in parsed_report.assessment.key_shortcomings:
                 story.append(Paragraph(f"  - {shortcoming}", normal_style))
 
         # Recommendations
-        story.append(Paragraph("<b>Recommendations:</b>", custom_style))
+        story.append(Paragraph(f"<b>{self.translator.get('recommendations')}:</b>", custom_style))
         for rec in parsed_report.assessment.recommendations:
             story.append(Paragraph(f"  - {rec}", normal_style))
 
@@ -410,31 +461,26 @@ class ReportGenerator(AbstractReportGenerator):
 class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
 
     def __init__(
-        self,
-        config_manager: ConfigManager,
-        git_agent: GitAgent,
-        create_fork: bool,
-        plan: Plan,
+            self,
+            config_manager: ConfigManager,
+            git_agent: GitAgent,
+            create_fork: bool,
+            plan: Plan,
+            target_language: str,
     ):
-        super().__init__(config_manager, git_agent)
+        super().__init__(config_manager, git_agent, target_language)
         self.filename = f"{self.metadata.name}_work_summary.pdf"
         self.create_fork = create_fork
         self.output_path = os.path.join(os.getcwd(), self.filename)
         self.completed_tasks = plan.list_for_report
         self.task_results = plan.results or {}
-        self.text_generator = AfterReportTextGenerator(config_manager, self.completed_tasks, self.task_results)
+        self.text_generator = AfterReportTextGenerator(config_manager, self.completed_tasks, self.task_results,
+                                                       target_language)
         self.start_log = f"Starting creating summary for OSA work"
-        self.report_header = "OSA Work Summary"
+        self.report_header = self.translator.get("summary_header")
         self.events: list[OperationEvent] = []
 
     def run(self) -> dict:
-        """
-        Build the OSA work summary PDF and return a structured result with events.
-
-        This mirrors the contract used by other operations so that:
-        - callers receive a dict with "result" and "events"
-        - each generated report is tracked as an OperationEvent
-        """
         try:
             self.build_pdf()
             self.events.append(OperationEvent(kind=EventKind.GENERATED, target=self.filename))
@@ -449,24 +495,21 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
     def body_second_part(self) -> list[Flowable]:
         """
         Generates the second part of the report, which contains the steps for improving repository taken by the OSA.
-
-        Returns:
-            list: A list of Paragraph objects for the PDF report.
         """
         response = self.text_generator.make_request()
         normal_style, custom_style = self.get_styles()
         story = []
-        story.append(Paragraph("<b>What has been done:</b>", custom_style))
+        story.append(Paragraph(f"<b>{self.translator.get('what_have_been_done')}:</b>", custom_style))
         story.append(Paragraph(response.summary, normal_style))
-        story.append(Paragraph("<b>Report by tasks:</b>", custom_style))
+        story.append(Paragraph(f"<b>{self.translator.get('report_by_tasks')}:</b>", custom_style))
         for block in response.blocks:
             story.append(Paragraph(f"<b>{block.name}</b>", custom_style))
             story.append(Paragraph(block.description, normal_style))
             for task, was_do in block.tasks:
-                task_result = "Yes" if was_do else "No"
+                task_result = self.translator.get('yes') if was_do else self.translator.get('no')
                 story.append(
                     Paragraph(
-                        f"• {task}: {task_result}",
+                        f"• {self.translator.get(task)}: {task_result}",
                         normal_style,
                     )
                 )

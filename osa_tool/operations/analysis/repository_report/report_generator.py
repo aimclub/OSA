@@ -26,7 +26,7 @@ from osa_tool.utils.utils import extract_readme_content, parse_folder_name
 
 
 class TextGenerator:
-    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata):
+    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata, target_language: str ="English") -> None:
         self.config_manager = config_manager
         self.model_settings = self.config_manager.get_model_settings("general")
         self.sourcerank = SourceRank(self.config_manager)
@@ -35,6 +35,7 @@ class TextGenerator:
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
         self.repo_url = self.config_manager.get_git_settings().repository
         self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.target_language = target_language
 
     def make_request(self) -> RepositoryReport:
         """
@@ -50,6 +51,7 @@ class TextGenerator:
             repository_tree=self.sourcerank.tree,
             presence_files=self._extract_presence_files(),
             readme_content=extract_readme_content(self.base_path),
+            target_language=self.target_language,
         )
 
         try:
@@ -98,6 +100,7 @@ class AfterReportTextGenerator:
         config_manger: ConfigManager,
         completed_tasks: list[tuple[str, bool]],
         task_results: dict[str, dict] | None = None,
+        target_language: str = "English",
     ) -> None:
         self.config_manager = config_manger
         self.model_settings = self.config_manager.get_model_settings("general")
@@ -105,6 +108,7 @@ class AfterReportTextGenerator:
         self.completed_tasks = completed_tasks
         self.task_results = task_results or {}
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
+        self.target_language = target_language
 
     def make_request(self) -> AfterReport:
         """
@@ -123,6 +127,7 @@ class AfterReportTextGenerator:
             summary_prompt = PromptBuilder.render(
                 self.prompts.get("analysis.after_report_summary_from_events_prompt"),
                 operations=operations_text,
+                target_language=self.target_language,
             )
             summary_obj: AfterReportSummary = self.model_handler.run_chain(
                 prompt=summary_prompt,
@@ -136,6 +141,7 @@ class AfterReportTextGenerator:
             blocks_prompt = PromptBuilder.render(
                 self.prompts.get("analysis.after_report_blocks_from_events_prompt"),
                 operations=operations_text,
+                target_language=self.target_language,
             )
             blocks_plan: AfterReportBlocksPlan = self.model_handler.run_chain(
                 prompt=blocks_prompt,
