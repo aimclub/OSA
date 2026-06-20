@@ -34,27 +34,26 @@ from osa_tool.utils.utils import osa_project_root
 
 class AbstractReportGenerator(ABC):
     def __init__(self, config_manager: ConfigManager, git_agent: GitAgent, target_language: str):
-        main_module = sys.modules.get('__main__')
-        assets_dir = os.path.join(os.path.dirname(os.path.abspath(main_module.__file__)), "assets")
-        pdfmetrics.registerFont(TTFont('notosanssc', os.path.join(assets_dir, "notosans-sc.ttf")))
-        pdfmetrics.registerFont(TTFont('notosanssc-Bold', os.path.join(assets_dir, "notosans-sc-bold.ttf")))
-        pdfmetrics.registerFont(TTFont('notosanssc-Black', os.path.join(assets_dir, "notosans-sc-black.ttf")))
+        assets_dir = os.path.join(osa_project_root(), "assets")
+        pdfmetrics.registerFont(TTFont("notosanssc", os.path.join(assets_dir, "notosans-sc.ttf")))
+        pdfmetrics.registerFont(TTFont("notosanssc-Bold", os.path.join(assets_dir, "notosans-sc-bold.ttf")))
+        pdfmetrics.registerFont(TTFont("notosanssc-Black", os.path.join(assets_dir, "notosans-sc-black.ttf")))
 
         # 2. Регистрируем для него отдельное семейство (чтобы ReportLab не выдавал ошибок при попытке применить теги)
         pdfmetrics.registerFontFamily(
-            'notosanssc-black',
-            normal='notosanssc-Black',
-            bold='notosanssc-Black',
-            italic='notosanssc-Black',
-            boldItalic='notosanssc-Black',
+            "notosanssc-black",
+            normal="notosanssc-Black",
+            bold="notosanssc-Black",
+            italic="notosanssc-Black",
+            boldItalic="notosanssc-Black",
         )
 
         pdfmetrics.registerFontFamily(
-            'notosanssc',
-            normal='notosanssc',
-            bold='notosanssc-Bold',
-            italic='notosanssc',
-            boldItalic='notosanssc-Bold',
+            "notosanssc",
+            normal="notosanssc",
+            bold="notosanssc-Bold",
+            italic="notosanssc",
+            boldItalic="notosanssc-Bold",
         )
 
         self.sourcerank = SourceRank(config_manager)
@@ -74,10 +73,10 @@ class AbstractReportGenerator(ABC):
 
     @staticmethod
     def table_builder(
-            data: list,
-            w_first_col: int,
-            w_second_col: int,
-            coloring: bool = False,
+        data: list,
+        w_first_col: int,
+        w_second_col: int,
+        coloring: bool = False,
     ) -> Table:
         """
         Builds a styled table with customizable column widths and optional row coloring.
@@ -153,7 +152,7 @@ class AbstractReportGenerator(ABC):
         """
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
-            fontName='notosanssc-black',
+            fontName="notosanssc-black",
             name="LeftAligned",
             parent=styles["Title"],
             alignment=0,
@@ -213,15 +212,15 @@ class AbstractReportGenerator(ABC):
             ],
             [
                 Paragraph(self.translator.get("stars_count"), cell_left_style),
-                Paragraph(str(self.metadata.stars_count), cell_center_style)
+                Paragraph(str(self.metadata.stars_count), cell_center_style),
             ],
             [
                 Paragraph(self.translator.get("forks_count"), cell_left_style),
-                Paragraph(str(self.metadata.forks_count), cell_center_style)
+                Paragraph(str(self.metadata.forks_count), cell_center_style),
             ],
             [
                 Paragraph(self.translator.get("issues_count"), cell_left_style),
-                Paragraph(str(self.metadata.open_issues_count), cell_center_style)
+                Paragraph(str(self.metadata.open_issues_count), cell_center_style),
             ],
         ]
 
@@ -232,31 +231,31 @@ class AbstractReportGenerator(ABC):
             ],
             [
                 Paragraph(self.translator.get("readme_presence"), cell_left_style),
-                Paragraph("✓" if self.sourcerank.readme_presence() else "✗", cell_center_style)
+                Paragraph("✓" if self.sourcerank.readme_presence() else "✗", cell_center_style),
             ],
             [
                 Paragraph(self.translator.get("license_presence"), cell_left_style),
-                Paragraph("✓" if self.sourcerank.license_presence() else "✗", cell_center_style)
+                Paragraph("✓" if self.sourcerank.license_presence() else "✗", cell_center_style),
             ],
             [
                 Paragraph(self.translator.get("documentation_presence"), cell_left_style),
-                Paragraph("✓" if self.sourcerank.docs_presence() else "✗", cell_center_style)
+                Paragraph("✓" if self.sourcerank.docs_presence() else "✗", cell_center_style),
             ],
             [
                 Paragraph(self.translator.get("examples_presence"), cell_left_style),
-                Paragraph("✓" if self.sourcerank.examples_presence() else "✗", cell_center_style)
+                Paragraph("✓" if self.sourcerank.examples_presence() else "✗", cell_center_style),
             ],
             [
                 Paragraph(self.translator.get("requirements_presence"), cell_left_style),
-                Paragraph("✓" if self.sourcerank.requirements_presence() else "✗", cell_center_style)
+                Paragraph("✓" if self.sourcerank.requirements_presence() else "✗", cell_center_style),
             ],
             [
                 Paragraph(self.translator.get("tests_presence"), cell_left_style),
-                Paragraph("✓" if self.sourcerank.tests_presence() else "✗", cell_center_style)
+                Paragraph("✓" if self.sourcerank.tests_presence() else "✗", cell_center_style),
             ],
             [
                 Paragraph(self.translator.get("description_presence"), cell_left_style),
-                Paragraph("✓" if self.metadata.description else "✗", cell_center_style)
+                Paragraph("✓" if self.metadata.description else "✗", cell_center_style),
             ],
         ]
 
@@ -270,7 +269,7 @@ class AbstractReportGenerator(ABC):
         """
         styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(
-            fontName='notosanssc',
+            fontName="notosanssc",
             name="LeftAlignedNormal",
             parent=styles["Normal"],
             fontSize=12,
@@ -314,7 +313,7 @@ class AbstractReportGenerator(ABC):
     def get_styles() -> tuple[ParagraphStyle, ParagraphStyle]:
         styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(
-            fontName='notosanssc',
+            fontName="notosanssc",
             name="LeftAlignedNormal",
             parent=styles["Normal"],
             fontSize=12,
@@ -326,7 +325,7 @@ class AbstractReportGenerator(ABC):
         custom_style = ParagraphStyle(
             name="CustomStyle",
             parent=normal_style,
-            fontName='notosanssc',
+            fontName="notosanssc",
             spaceBefore=6,
             spaceAfter=2,
         )
@@ -366,7 +365,9 @@ class AbstractReportGenerator(ABC):
 
 class ReportGenerator(AbstractReportGenerator):
 
-    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent, create_fork: bool, target_language: str):
+    def __init__(
+        self, config_manager: ConfigManager, git_agent: GitAgent, create_fork: bool, target_language: str = "English"
+    ):
         super().__init__(config_manager, git_agent, target_language)
         self.text_generator = TextGenerator(config_manager, self.metadata, target_language)
         self.create_fork = create_fork
@@ -397,17 +398,20 @@ class ReportGenerator(AbstractReportGenerator):
         # Repository Structure
         story.append(Paragraph(f"<b>{self.translator.get('repository_structure')}</b>", custom_style))
         story.append(
-            Paragraph(f"• {self.translator.get('compliance')}: {parsed_report.structure.compliance}", normal_style))
+            Paragraph(f"• {self.translator.get('compliance')}: {parsed_report.structure.compliance}", normal_style)
+        )
         if parsed_report.structure.missing_files:
             missing_files = ", ".join(parsed_report.structure.missing_files)
             story.append(Paragraph(f"• {self.translator.get('missing_files')}: {missing_files}", normal_style))
         story.append(
-            Paragraph(f"• {self.translator.get('organization')}: {parsed_report.structure.organization}", normal_style))
+            Paragraph(f"• {self.translator.get('organization')}: {parsed_report.structure.organization}", normal_style)
+        )
 
         # README Analysis
         story.append(Paragraph(f"<b>{self.translator.get('readme_analysis')}:</b>", custom_style))
         story.append(
-            Paragraph(f"• {self.translator.get('quality')}: {parsed_report.readme.readme_quality}", normal_style))
+            Paragraph(f"• {self.translator.get('quality')}: {parsed_report.readme.readme_quality}", normal_style)
+        )
 
         for field_name, value in parsed_report.readme.model_dump().items():
             if field_name == "readme_quality":
@@ -457,12 +461,12 @@ class ReportGenerator(AbstractReportGenerator):
 class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
 
     def __init__(
-            self,
-            config_manager: ConfigManager,
-            git_agent: GitAgent,
-            create_fork: bool,
-            plan: Plan,
-            target_language: str,
+        self,
+        config_manager: ConfigManager,
+        git_agent: GitAgent,
+        create_fork: bool,
+        plan: Plan,
+        target_language: str = "English",
     ):
         super().__init__(config_manager, git_agent, target_language)
         self.filename = f"{self.metadata.name}_work_summary.pdf"
@@ -470,8 +474,9 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         self.output_path = os.path.join(os.getcwd(), self.filename)
         self.completed_tasks = plan.list_for_report
         self.task_results = plan.results or {}
-        self.text_generator = AfterReportTextGenerator(config_manager, self.completed_tasks, self.task_results,
-                                                       target_language)
+        self.text_generator = AfterReportTextGenerator(
+            config_manager, self.completed_tasks, self.task_results, target_language
+        )
         self.start_log = f"Starting creating summary for OSA work"
         self.report_header = self.translator.get("summary_header")
         self.events: list[OperationEvent] = []
@@ -502,7 +507,7 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
             story.append(Paragraph(f"<b>{block.name}</b>", custom_style))
             story.append(Paragraph(block.description, normal_style))
             for task, was_do in block.tasks:
-                task_result = self.translator.get('yes') if was_do else self.translator.get('no')
+                task_result = self.translator.get("yes") if was_do else self.translator.get("no")
                 story.append(
                     Paragraph(
                         f"• {self.translator.get(task)}: {task_result}",

@@ -28,7 +28,7 @@ EXCLUDED_TASK = {
     "branches",
     "codecov_token",
     "max_retries",
-    "artefacts_language"
+    "artefacts_language",
 }
 
 

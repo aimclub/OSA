@@ -26,7 +26,9 @@ from osa_tool.utils.utils import extract_readme_content, parse_folder_name
 
 
 class TextGenerator:
-    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata, target_language: str ="English") -> None:
+    def __init__(
+        self, config_manager: ConfigManager, metadata: RepositoryMetadata, target_language: str = "English"
+    ) -> None:
         self.config_manager = config_manager
         self.model_settings = self.config_manager.get_model_settings("general")
         self.sourcerank = SourceRank(self.config_manager)

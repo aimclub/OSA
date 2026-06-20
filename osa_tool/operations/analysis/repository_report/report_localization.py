@@ -38,7 +38,7 @@ TRANSLATIONS = {
         "contribution_guidelines": "Contribution guidelines",
         "license_specified": "License specified",
         "badges_present": "Badges present",
-        "summary_header":  "OSA Work Summary",
+        "summary_header": "OSA Work Summary",
         "what_have_been_done": "What have been done",
         "report_by_tasks": "Report by tasks",
         "yes": "Yes",
@@ -145,9 +145,10 @@ TRANSLATIONS = {
         "python_versions": "Версии Python",
         "pep8_tool": "Инструмент проверки PEP8",
         "use_poetry": "Использовать Poetry",
-        "include_codecov": "Интеграция с Codecov"
-    }
+        "include_codecov": "Интеграция с Codecov",
+    },
 }
+
 
 class ReportTranslationManager:
     def __init__(self, target_language):
@@ -158,9 +159,9 @@ class ReportTranslationManager:
 
     def yes_no_partial(self, key: YesNoPartial) -> str | None:
         if key == YesNoPartial.YES:
-            return self.get('yes')
+            return self.get("yes")
         elif key == YesNoPartial.NO:
-            return self.get('no')
+            return self.get("no")
         elif key == YesNoPartial.PARTIAL:
-            return self.get('partial')
+            return self.get("partial")
         return None
