@@ -1453,8 +1453,6 @@ class SourceCraftAgent(GitAgent):
         return os.getenv("SOURCECRAFT_TOKEN", os.getenv("GIT_TOKEN", ""))
 
     def _load_metadata(self, repo_url: str) -> RepositoryMetadata:
-        from osa_tool.core.git.metadata import SourceCraftMetadataLoader
-
         return SourceCraftMetadataLoader.load_data(repo_url)
 
     def _get_headers(self) -> dict:
@@ -1652,9 +1650,8 @@ class SourceCraftAgent(GitAgent):
             if response.status_code == 200:
                 branches = response.json().get("branches", [])
                 return any(b.get("name") == branch for b in branches)
-            else:
-                logger.warning(f"SourceCraft API returned {response.status_code} for branch check")
-                return False
+            logger.warning(f"SourceCraft API returned {response.status_code} for branch check")
+            return False
         except Exception as e:
             logger.warning(f"Failed to check SourceCraft branch: {e}")
             return False

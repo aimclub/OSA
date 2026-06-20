@@ -10,7 +10,7 @@ from osa_tool.operations.analysis.repository_validation.paper_validator import P
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
 from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
-from osa_tool.operations.codebase.organization.repo_organizer import RepoOrganizer
+from osa_tool.operations.codebase.organization.organize import RepoOrganizer
 from osa_tool.operations.codebase.requirements_generation.requirements_generation import RequirementsGenerator
 from osa_tool.operations.codebase.workflow_generation.workflow_executor import WorkflowsExecutor
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
@@ -92,7 +92,7 @@ class ConvertNotebooksOperation(Operation):
 
     executor = NotebookConverter
     executor_method = "convert_notebooks"
-    executor_dependencies = ["config_manager"]
+    executor_dependencies = ["config_manager", "metadata"]
 
 
 class TranslateRepositoryStructureOperation(Operation):
