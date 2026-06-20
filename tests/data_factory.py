@@ -24,7 +24,8 @@ class DataFactory:
         """Generating data for GitSettings (GitHub only)"""
         repo_name = random_word()
         user_name = random_word()
-        platform_domain = f"{platform}.com" if platform != "gitverse" else f"{platform}.ru"
+        domains = {"gitverse": "gitverse.ru", "sourcecraft": "sourcecraft.dev"}
+        platform_domain = domains.get(platform, f"{platform}.com")
 
         return {
             "repository": f"https://{platform_domain}/{user_name}/{repo_name}",
@@ -117,6 +118,28 @@ class DataFactory:
     def generate_repository_metadata_raw(platform: str, owner: str, repo_name: str, repo_url: str) -> dict:
         now = datetime.now(timezone.utc)
         random_date = lambda offset=0: (now - timedelta(days=random.randint(offset, offset + 1000)))
+        format_date_z = lambda dt: dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        if platform == "sourcecraft":
+            return {
+                "name": repo_name,
+                "slug": repo_name,
+                "description": " ".join([random_word() for _ in range(random.randint(5, 15))]),
+                "default_branch": random.choice(["main", "master"]),
+                "last_updated": format_date_z(random_date(10)),
+                "visibility": random.choice(["public", "private"]),
+                "web_url": f"https://sourcecraft.dev/{owner}/{repo_name}",
+                "counters": {
+                    "forks": str(random.randint(0, 100)),
+                    "issues": str(random.randint(0, 50)),
+                },
+                "clone_url": {
+                    "https": f"https://git@git.sourcecraft.dev/{owner}/{repo_name}.git",
+                    "ssh": f"git@git.sourcecraft.dev:{owner}/{repo_name}.git",
+                },
+                "organization": {"slug": owner},
+                "language": random.choice([None, {}, {"name": "Python", "color": "#3572A5"}]),
+            }
 
         if platform == "gitlab":
             format_date = lambda dt: dt.strftime("%Y-%m-%dT%H:%M:%S")
@@ -182,6 +205,49 @@ class DataFactory:
         self, platform: str, owner: str, repo_name: str, repo_url: str
     ) -> RepositoryMetadata:
         raw = self.generate_repository_metadata_raw(platform, owner, repo_name, repo_url)
+
+        if platform == "sourcecraft":
+            org_info = raw.get("organization", {})
+            lang_info = raw.get("language", {}) or {}
+            counters = raw.get("counters", {})
+            clone_url = raw.get("clone_url", {})
+
+            return RepositoryMetadata(
+                name=raw["name"],
+                full_name=f"{org_info.get('slug', '')}/{raw.get('slug', '')}",
+                owner=org_info.get("slug", ""),
+                owner_url=f"https://sourcecraft.dev/{org_info.get('slug')}" if org_info.get("slug") else None,
+                description=raw.get("description", ""),
+                stars_count=0,
+                forks_count=int(counters.get("forks", 0)),
+                watchers_count=0,
+                open_issues_count=int(counters.get("issues", 0)),
+                default_branch=raw.get("default_branch", "master"),
+                created_at="",
+                updated_at=raw.get("last_updated", ""),
+                pushed_at=raw.get("last_updated", ""),
+                size_kb=0,
+                clone_url_http=clone_url.get("https", ""),
+                clone_url_ssh=clone_url.get("ssh", ""),
+                contributors_url=None,
+                languages_url="",
+                issues_url=(
+                    f"https://sourcecraft.dev/{org_info.get('slug')}/{raw.get('slug')}/issues"
+                    if org_info.get("slug") and raw.get("slug")
+                    else ""
+                ),
+                language=lang_info.get("name", ""),
+                languages=[],
+                language_stats={},
+                topics=[],
+                has_wiki=False,
+                has_issues=int(counters.get("issues", 0)) > 0,
+                has_projects=False,
+                is_private=raw.get("visibility") == "private",
+                homepage_url=raw.get("web_url", ""),
+                license_name=None,
+                license_url=None,
+            )
 
         return RepositoryMetadata(
             name=raw["name"],

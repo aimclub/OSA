@@ -33,7 +33,12 @@ def parse_folder_name(repo_url: str) -> str:
     Returns:
         The name of the folder where the repository will be cloned.
     """
-    patterns = [r"github\.com/[^/]+/([^/]+)", r"gitlab[^/]+/[^/]+/([^/]+)", r"gitverse\.ru/[^/]+/([^/]+)"]
+    patterns = [
+        r"github\.com/[^/]+/([^/]+)",
+        r"gitlab[^/]+/[^/]+/([^/]+)",
+        r"gitverse\.ru/[^/]+/([^/]+)",
+        r"sourcecraft\.dev/[^/]+/([^/]+)",
+    ]
     for pattern in patterns:
         match = re.search(pattern, repo_url)
         if match:
@@ -99,6 +104,7 @@ def get_base_repo_url(repo_url: str) -> str:
         r"https?://github\.com/([^/]+/[^/]+)",
         r"https?://[^/]*gitlab[^/]*/(.+)",
         r"https?://gitverse\.ru/([^/]+/[^/]+)",
+        r"https?://sourcecraft\.dev/([^/]+/[^/]+)",
     ]
     for pattern in patterns:
         match = re.match(pattern, repo_url)
