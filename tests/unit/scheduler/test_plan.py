@@ -22,9 +22,9 @@ def test_record_result_normalizes_dict():
     plan.record_result("readme", {"result": {"file": "x"}, "events": [{"k": 1}]})
 
     # Assert
-    assert "Readme" in plan.results
-    assert plan.results["Readme"]["result"] == {"file": "x"}
-    assert plan.results["Readme"]["events"] == [{"k": 1}]
+    assert "readme" in plan.results
+    assert plan.results["readme"]["result"] == {"file": "x"}
+    assert plan.results["readme"]["events"] == [{"k": 1}]
 
 
 def test_mark_done_updates_status():
@@ -50,5 +50,5 @@ def test_list_for_report_skips_excluded_keys():
     # Assert
     assert "attachment" in EXCLUDED_TASK
     names = [r[0] for r in rows]
-    assert "Readme" in names
-    assert not any("Attachment" == n for n in names)
+    assert "readme" in names
+    assert not any("attachment" == n for n in names)

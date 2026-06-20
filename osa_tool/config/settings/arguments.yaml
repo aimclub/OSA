@@ -107,12 +107,16 @@ arguments:
     aliases: [ "--validate-doc" ]
     type: flag
     description: "Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository."
+  artefacts_language:
+    aliases: [ "--artefacts-language" ]
+    type: str
+    description: "Generate reports on selected language"
 
 settings:
   use_single_model:
-      aliases: [ "--use-single-model" ]
-      type: flag
-      description: "Use the same model for all tasks (from default configuration)."
+    aliases: [ "--use-single-model" ]
+    type: flag
+    description: "Use the same model for all tasks (from default configuration)."
 
   config_file:
     aliases: [ "--config-file" ]
