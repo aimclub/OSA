@@ -96,9 +96,9 @@ def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_fa
     expected = loader_class._parse_metadata(expected_payload)
     assert result == expected
 
+    base_url = get_base_repo_url(repo_url)
     if platform == "gitlab":
-        base_url = get_base_repo_url(repo_url).replace("/", "%2F")
-        expected_url = BASE_URLS["gitlab"].format(base=base_url)
+        expected_url = BASE_URLS["gitlab"].format(base=base_url.replace("/", "%2F"))
         expected_language_url = f"{expected_url}/languages"
     else:
         expected_url = BASE_URLS[platform].format(base=base_url)
