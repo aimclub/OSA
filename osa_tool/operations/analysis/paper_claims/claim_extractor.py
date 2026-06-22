@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Callable, Protocol
 
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
@@ -19,6 +20,37 @@ from osa_tool.operations.analysis.paper_claims.models import (
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder, PromptLoader
 from osa_tool.utils.response_cleaner import JsonParseError, JsonProcessor
+
+_INVISIBLE_CHARACTERS = "\u00ad\u200b\u200c\u200d\u2060\ufeff"
+_INVISIBLE_GAP_PATTERN = f"[{_INVISIBLE_CHARACTERS}]*"
+_WORD_GAP_PATTERN = f"(?:\\s|[{_INVISIBLE_CHARACTERS}])+"
+
+
+def _find_original_source_text(section_text: str, original_text: str) -> str | None:
+    """Return the exact source span while tolerating layout-only character differences."""
+    if original_text in section_text:
+        return original_text
+
+    candidate = original_text.strip().translate({ord(character): None for character in _INVISIBLE_CHARACTERS})
+    if not candidate:
+        return None
+
+    tokens = re.split(r"\s+", candidate)
+    token_patterns = [
+        _INVISIBLE_GAP_PATTERN.join(re.escape(character) for character in token) for token in tokens if token
+    ]
+    if not token_patterns:
+        return None
+
+    match = re.search(_WORD_GAP_PATTERN.join(token_patterns), section_text)
+    return match.group(0) if match else None
+
+
+def _section_text_preview(text: str, limit: int = 2_000) -> str:
+    if len(text) <= limit:
+        return text
+    half = limit // 2
+    return f"{text[:half]}\n... <{len(text) - limit} characters omitted> ...\n{text[-half:]}"
 
 
 class AsyncModelHandler(Protocol):
@@ -146,10 +178,21 @@ class ClaimExtractor:
 
             def validate_source_text(items: list[_ClaimCandidate]) -> None:
                 for item in items:
-                    if item.original_text not in section.text:
-                        raise ValueError(
-                            f"original_text is not present in section {section.section_id}: {item.original_text!r}"
+                    source_text = _find_original_source_text(section.text, item.original_text)
+                    if source_text is None:
+                        logger.debug(
+                            "Source-text validation failed for section %s. Candidate=%r; section_text=%r",
+                            section.section_id,
+                            item.original_text,
+                            section.text,
                         )
+                        raise ValueError(
+                            f"original_text is not present in section {section.section_id}. "
+                            f"original_text={item.original_text!r}; "
+                            f"section_text_preview={_section_text_preview(section.text)!r}; "
+                            f"section_text_length={len(section.text)}"
+                        )
+                    item.original_text = source_text
 
             candidates = await self._request_validated(
                 "Analyze the following paper section and extract all verifiable factual claims:\n"

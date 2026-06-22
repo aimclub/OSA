@@ -3,6 +3,7 @@ import json
 import pytest
 
 from osa_tool.operations.analysis.paper_claims.claim_extractor import ClaimExtractor
+from osa_tool.operations.analysis.paper_claims.exceptions import ClaimExtractionError
 from osa_tool.operations.analysis.paper_claims.models import HeadingMeta, PaperSection
 from osa_tool.utils.prompts_builder import PromptLoader
 
@@ -57,6 +58,45 @@ async def test_extract_repairs_invalid_source_text_and_deduplicates():
     assert result.claims[0].section_name == "Method"
     assert result.meta.filtered_claims == 1
     assert "Validation error" in handler.prompts[2]
+
+
+@pytest.mark.asyncio
+async def test_extract_accepts_layout_only_source_text_differences():
+    source_text = "The model uses BERT-\u200bbase\nwithout fine-tuning."
+    paper_section = section().model_copy(update={"text": source_text})
+    candidate = {
+        "claim": "The model uses BERT-base without fine-tuning.",
+        "original_text": "The model uses BERT-base without fine-tuning.",
+        "category": "model_architecture",
+        "value": "BERT-base",
+        "verifiability": "high",
+    }
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            json.dumps([candidate]),
+            '[{"claim_id":"c0001","claim":"The model uses BERT-base without fine-tuning.",' '"contradiction":false}]',
+        ]
+    )
+
+    result = await ClaimExtractor(handler).extract([paper_section])
+
+    assert result.claims[0].original_text == source_text
+    assert len(handler.prompts) == 3
+
+
+@pytest.mark.asyncio
+async def test_source_text_error_includes_section_preview():
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            '[{"claim":"Invented","original_text":"Invented sentence.",'
+            '"category":"model_architecture","value":null,"verifiability":"low"}]',
+        ]
+    )
+
+    with pytest.raises(ClaimExtractionError, match="section_text_preview=.*The model uses BERT-base"):
+        await ClaimExtractor(handler, max_retries=1).extract([section()])
 
 
 @pytest.mark.asyncio
