@@ -63,22 +63,22 @@ class ClaimExtractor:
         validator: Callable[[Any], None] | None = None,
         request_name: str = "LLM request",
     ) -> Any:
-        logger.info(f"System Prompt: ```{system}```")
-        logger.info(f"User Prompt: ```{prompt}```")
+        logger.debug("System prompt:\n%s", system)
+        logger.debug("User prompt:\n%s", prompt)
         current_prompt = prompt
         original_prompt = prompt
         last_error: Exception | None = None
         for attempt in range(1, self.max_retries + 1):
             logger.info("%s: sending request (attempt %s/%s)", request_name, attempt, self.max_retries)
             raw = await self.handler.async_request(current_prompt, system)
-            logger.info(f"Raw Response: {raw}")
+            logger.debug("Raw response:\n%s", raw)
             try:
                 data = JsonProcessor.parse(str(raw), expected_type=list)
                 parsed = adapter.validate_python(data)
                 if validator:
                     validator(parsed)
                 logger.info("%s: response validated", request_name)
-                logger.info(f"Parsed Response: {parsed}")
+                logger.debug("Parsed response:\n%s", parsed)
                 return parsed
             except (JsonParseError, ValueError, TypeError, ValidationError) as exc:
                 last_error = exc

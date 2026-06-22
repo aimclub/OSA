@@ -61,6 +61,19 @@ async def test_async_request_calls_llm(mock_config_manager, patch_llm_connector,
     assert result == "async response"
     assert "async hello" in caplog.text
     assert "async response" in caplog.text
+    assert "user_tokens=" in caplog.text
+    assert "max_output_tokens=" in caplog.text
+    assert "Asynchronous LLM response: tokens=" in caplog.text
+
+
+def test_prepare_messages_rejects_invalid_token_budget(mock_config_manager):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.context_window = 100
+    model_settings.max_tokens = 100
+    handler = ProtollmHandler(model_settings)
+
+    with pytest.raises(ValueError, match="Invalid LLM token budget"):
+        handler._prepare_messages("must not disappear", "system")
 
 
 @pytest.mark.asyncio
