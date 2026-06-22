@@ -5,11 +5,8 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from rich.progress import track
-
 from osa_tool.operations.analysis.paper_claims.exceptions import PdfConversionError, PdfInputError
 from osa_tool.operations.analysis.paper_claims.models import PdfChunk
-from osa_tool.utils.logger import logger
 
 
 def hash_file(path: Path, block_size: int = 1024 * 1024) -> str:
@@ -48,9 +45,7 @@ class PdfChunker:
         try:
             from pypdf import PdfReader, PdfWriter
         except ImportError as exc:
-            raise PdfConversionError(
-                'PDF splitting requires the paper-claims extra. Install it with: pip install "osa_tool[paper-claims]".'
-            ) from exc
+            raise PdfConversionError("PDF splitting requires `pypdf`. Install the paper-claims dependencies.") from exc
 
         try:
             reader = PdfReader(str(path))
@@ -60,17 +55,10 @@ class PdfChunker:
         if page_count == 0:
             raise PdfInputError(f"PDF contains no pages: {path}")
 
-        logger.info(
-            "Splitting PDF '%s': %s pages, %s pages per chunk",
-            path.name,
-            page_count,
-            pages_per_chunk,
-        )
         self.work_dir.mkdir(parents=True, exist_ok=True)
         source_hash = hash_file(path)
         chunks: list[PdfChunk] = []
-        chunk_starts = range(0, page_count, pages_per_chunk)
-        for index, start in enumerate(track(chunk_starts, description="Splitting PDF"), start=1):
+        for index, start in enumerate(range(0, page_count, pages_per_chunk), start=1):
             end = min(start + pages_per_chunk, page_count)
             chunk_path = self.work_dir / f"{path.stem}__p{start + 1:04d}-{end:04d}.pdf"
             writer = PdfWriter()
@@ -91,8 +79,6 @@ class PdfChunker:
                     source_hash=source_hash,
                 )
             )
-            logger.info("Created PDF chunk %s: pages %s-%s", index, start + 1, end)
-        logger.info("PDF splitting completed: %s chunks created", len(chunks))
         return chunks
 
     def cleanup(self) -> None:

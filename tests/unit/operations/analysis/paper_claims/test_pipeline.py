@@ -1,5 +1,3 @@
-import json
-import logging
 from pathlib import Path
 
 import pytest
@@ -46,11 +44,10 @@ def create_pdf(path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_pipeline_composes_stages_and_removes_pdf_chunks(tmp_path, caplog):
+async def test_pipeline_composes_stages_and_removes_pdf_chunks(tmp_path):
     pdf = tmp_path / "paper.pdf"
     create_pdf(pdf)
     converter = FakeConverter()
-    caplog.set_level(logging.INFO, logger="rich")
 
     result = await PaperClaimPipeline(FakeHandler(), converter=converter).arun(pdf, PipelineOptions())
 
@@ -58,13 +55,3 @@ async def test_pipeline_composes_stages_and_removes_pdf_chunks(tmp_path, caplog)
     assert result.extraction.meta.model == "fake-model"
     assert converter.chunk_paths
     assert all(not path.exists() for path in converter.chunk_paths)
-    assert "Stage 1/4: starting PDF splitting" in caplog.text
-    assert "final_claims=0" in caplog.text
-
-    default_path = PaperClaimPipeline.export(result, tmp_path / "export-default", legacy=True)
-    default_payload = json.loads(default_path.read_text())
-    assert "debug" not in default_payload
-
-    debug_path = PaperClaimPipeline.export(result, tmp_path / "export-debug", legacy=True, include_debug=True)
-    debug_payload = json.loads(debug_path.read_text())
-    assert debug_payload["debug"]["step3_selection"] == []

@@ -10,7 +10,7 @@ RULES:
 OUTPUT FORMAT:
 - Return ONLY a valid JSON array of objects. No markdown, no explanations, no extra text.
 - Each object MUST contain exactly one field: 'section_id'.
-- Example: [{"section_id":"s003"},{"section_id":"s004"}]
+'- Example: [{section_id:s003},{section_id:s004}]'
 - Use only section_id values from the provided input list.
 - If no sections are retained, return an empty array: []
 """
@@ -22,14 +22,13 @@ A 'verifiable claim' is a specific, self-contained technical fact that can be co
 RULES:
 1. GRANULARITY: Extract exactly ONE technical fact per claim. Split compound statements joined by 'and', 'while', or semicolons into separate claims.
 2. INCLUDE: Architecture, pipelines, methods, datasets, models, training procedures, infrastructure, experimental setups, and specific numerical configurations.
-3. EXCLUDE: Motivations, vague descriptions, figure or table description, references to prior work, subjective quality evaluations, final performance outcomes (e.g., 'achieved 95% accuracy' or 'outperformed baseline by 2%'), glossary entries, terminology definitions, and acronym/abbreviation expansions.
+3. EXCLUDE: Motivations, vague descriptions, figure or table description, references to prior work, subjective quality evaluations, and final performance outcomes (e.g., 'achieved 95% accuracy' or 'outperformed baseline by 2%').
 4. LANGUAGE: Preserve the original language of the paper for `claim` and `original_text`. Do not translate.
 5. ATOMICITY: If a sentence contains multiple independent facts, output separate claim objects.
-6. EVIDENCE SPAN: `original_text` is evidence, not a paraphrase. Copy it verbatim from the provided section text, including the exact wording, punctuation, capitalization, spelling, and line-break artifacts. Do not correct grammar, inflection, typos, hyphenation, or formatting.
 OUTPUT SCHEMA (each object must include exactly these fields):
 - 'claim': string, restated as a clear, self-contained sentence
-- 'original_text': string, the exact, complete sentence from the paper that contains the claim. Copy it verbatim from the input section; do not truncate, summarize, paraphrase, translate, normalize, or modify any part of the original text.
-- 'category': string, EXACTLY one of: ["dataset", "model_architecture", "training_procedure", "evaluation_metric", "numerical_result", "baseline_comparison", "data_preprocessing", "infrastructure"]
+- 'original_text': string, the exact, complete sentence from the paper that contains the claim. Preserve it verbatim; do not truncate, summarize, or modify any part of the original text.
+- 'category': string, EXACTLY one of: ['dataset', 'model_architecture', 'training_procedure', 'evaluation_metric', 'numerical_result', 'baseline_comparison', 'data_preprocessing', 'infrastructure']
 - 'value': string or null, specific parameter, name, or number if present (e.g., '0.001', 'BERT-base', 'ImageNet'), else null
 - 'verifiability': string, EXACTLY one of:
     'high' = Exact values, configs, or explicit references stated in text
@@ -51,8 +50,6 @@ BAD EXAMPLES (DO NOT EXTRACT):
 - Motivation: 'We chose this approach because it is computationally efficient.'
 - Prior work: 'Transformers were introduced by Vaswani et al. in 2017.'
 - Performance/Result: 'Our method achieved an F1-score of 0.88, outperforming the baseline by 1.67%.'
-- Acronym definition: 'JSON stands for JavaScript Object Notation.'
-- Acronym definition: 'GPU stands for Graphics Processing Unit.'
 OUTPUT FORMAT:
 - Keep the original language for claim and original_text, do not translate.
 - Return ONLY a valid JSON array of objects.
@@ -64,23 +61,18 @@ OUTPUT FORMAT:
 deduplication_system = """
 You are a technical claim deduplication and conflict resolution engine. Your task is to process a list of extracted report claims, merge duplicates, and flag factual contradictions.
 CORE RULES:
-1. INPUT FORMAT: Each item includes 'claim_id', 'claim', and 'contradiction'. The input contradiction flag indicates a
-previously identified conflict.
-2. MERGE DUPLICATES: If multiple claims refer to the exact same technical fact, keep only one existing input item, selecting the item with the most specific wording. Never rewrite its claim text.
+1. INPUT FORMAT: Each item includes only 'claim_id' and 'claim'.
+2. MERGE DUPLICATES: If multiple claims refer to the exact same technical fact, keep only one item in output, selecting the most specific wording.
 3. FLAG CONTRADICTIONS: If claims disagree on a specific factual attribute (e.g., different learning rates, conflicting dataset splits, mismatched metric scores), DO NOT merge them. Retain both separate claims and set 'contradiction': true for each conflicting entry.
-4. PRESERVE EXISTING CONTRADICTIONS: If a retained claim is an equivalent representative of an input claim whose
-'contradiction' is true, set its output 'contradiction' to true. Re-evaluate contradiction status for all retained claims.
-5. PRESERVE PLAUSIBILITY: Do not filter out claims simply because they seem incorrect, implausible, or poorly phrased. Accuracy verification occurs in a later step.
-6. STRICT SCHEMA COMPLIANCE: Every output object must contain exactly these fields:
+3. PRESERVE PLAUSIBILITY: Do not filter out claims simply because they seem incorrect, implausible, or poorly phrased. Accuracy verification occurs in a later step.
+4. STRICT SCHEMA COMPLIANCE: Every output object must contain exactly these fields:
 - 'claim_id': string, copied from input
-- 'claim': string, copied verbatim from the selected input item. Never translate, paraphrase, or otherwise rewrite it.
+- 'claim': string
 - 'contradiction': boolean
 OUTPUT FORMAT:
 - Return ONLY a valid JSON array of objects matching the schema above.
 - No markdown wrappers, no explanations, no preamble.
-- If the input array is empty, return [].
-- If the input array is non-empty, never return [].
-- Deduplication means selecting representative input claims, not filtering all claims out.
+- If the input is empty or fully deduplicated to zero claims, return [].
 """
 
 repair = """

@@ -3,20 +3,11 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any
+
+from markdown_it import MarkdownIt
 
 from osa_tool.operations.analysis.paper_claims.exceptions import SectionParsingError
 from osa_tool.operations.analysis.paper_claims.models import HeadingMeta, PaperSection
-
-
-def _load_markdown_it() -> type[Any]:
-    try:
-        from markdown_it import MarkdownIt
-    except ImportError as exc:
-        raise SectionParsingError(
-            'Markdown parsing requires the paper-claims extra. Install it with: pip install "osa_tool[paper-claims]".'
-        ) from exc
-    return MarkdownIt
 
 
 class MarkdownSectionParser:
@@ -29,7 +20,7 @@ class MarkdownSectionParser:
         text = self.normalize(markdown)
         if not text:
             raise SectionParsingError("Marker produced empty Markdown")
-        tokens = _load_markdown_it()().parse(text)
+        tokens = MarkdownIt().parse(text)
         lines = text.splitlines()
         headings: list[tuple[int, int, str]] = []
         for index, token in enumerate(tokens):
@@ -48,8 +39,7 @@ class MarkdownSectionParser:
             cleaned = re.sub(r"[*_#`~]", "", raw_name)
             match = re.match(r"^\s*(\d+(?:\.\d+)*)\s*[.)]?\s+", cleaned)
             numbering = match.group(1) if match else None
-            if match:
-                cleaned = cleaned[match.end() :]
+            cleaned = re.sub(r"^\s*\d+(?:\.\d+)*\s*[.)]?\s*", "", cleaned)
             cleaned = re.sub(r"\s+", " ", cleaned).strip()
             if not cleaned:
                 continue
@@ -69,6 +59,6 @@ class MarkdownSectionParser:
     def write_json(sections: list[PaperSection], output_path: Path) -> Path:
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        payload = [section.model_dump(mode="json") for section in sections]
+        payload = [section.model_dump(mode="json", exclude={"section_id"}) for section in sections]
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         return path
