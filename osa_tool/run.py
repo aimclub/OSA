@@ -88,6 +88,10 @@ def main():
             git_agent.star_repository()
             git_agent.create_fork()
         git_agent.clone_repository()
+        # Refresh CI/CD state from the freshly cloned repo.
+        # WorkflowManager.__init__ already ran before clone, so it may have read
+        # stale workflow files left over from a previous local run.
+        workflow_manager.refresh_after_clone()
 
         # Initialize ModeScheduler
         sourcerank = SourceRank(config_manager)

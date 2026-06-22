@@ -717,7 +717,12 @@ class DocGen(object):
         if not docstrings:
             return {file: source_code}
 
-        module = cst.parse_module(source_code)
+        try:
+            module = cst.parse_module(source_code)
+        except cst.ParserSyntaxError:
+            logger.warning(f"Syntax error in file {file}, skipping docstring augmentation.")
+            return {file: source_code}
+
         wrapper = cst.MetadataWrapper(module)
         transformer = DocstringTransformer(docstrings, source_code.splitlines(True), module.default_indent)
         new_module = wrapper.visit(transformer)
@@ -1141,12 +1146,14 @@ class DocGen(object):
                 else:
                     docstring = component["details"]["docstring"] if component["details"]["docstring"] else ""
 
-                prompt_structure.append(f"""
+                prompt_structure.append(
+                    f"""
                     {_type.capitalize()} name: {component["name"] if _type == "class" else component["details"]["method_name"]}
                     Component description: {docstring}
                     Component place in hierarchy: {file}
                     Component importance score: {score}
-                    """)
+                    """
+                )
 
         logger.info(f"Generating the main idea of the project...")
 

@@ -462,12 +462,14 @@ class GitAgent(abc.ABC):
             return True
         except GitCommandError as e:
             self._handle_git_error(e, f"pushing to {branch}")
-            logger.error(f"""Push failed: Branch '{branch}' already exists in the fork.
+            logger.error(
+                f"""Push failed: Branch '{branch}' already exists in the fork.
                  To resolve this, please either:
                    1. Choose a different branch name that doesn't exist in the fork 
                       by modifying the `branch_name` parameter.
                    2. Delete the existing branch from forked repository.
-                   3. Delete the fork entirely.""")
+                   3. Delete the fork entirely."""
+            )
             return False
 
     def upload_report(
@@ -790,7 +792,7 @@ class GitHubAgent(GitAgent):
                 updated_body += self.agent_signature
 
                 update_url = f"{url}/{pr_number}"
-                update_data = {"body": updated_body.strip()}
+                update_data = {"body": updated_body}
 
                 update_response = requests.patch(update_url, json=update_data, headers=headers)
                 if update_response.status_code == 200:
@@ -1107,7 +1109,7 @@ class GitLabAgent(GitAgent):
                 updated_body += self.agent_signature
 
                 update_url = f"{gitlab_instance}/api/v4/projects/{target_project_id}/merge_requests/{mr_iid}"
-                update_data = {"description": updated_body.strip()}
+                update_data = {"description": updated_body}
 
                 update_response = requests.put(update_url, json=update_data, headers=headers)
                 if update_response.status_code == 200:
