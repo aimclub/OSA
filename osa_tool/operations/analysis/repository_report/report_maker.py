@@ -96,7 +96,7 @@ class AbstractReportGenerator(ABC):
 
     @staticmethod
     def _score_color(score: int) -> object:
-        if score < 0:
+        if not isinstance(score, int) or score < 0:
             return colors.white
         if score <= 4:
             return colors.lightcoral
@@ -415,10 +415,8 @@ class ReportGenerator(AbstractReportGenerator):
 
     def run(self) -> dict:
         try:
-            logger.info("run_scorecard=%s for before-report", self.run_scorecard)
             if self.run_scorecard:
                 self.scorecard_result = ScorecardRunner(self.repo_path).run()
-                logger.info("Scorecard before-result: %s", self.scorecard_result)
             self.build_pdf()
             self.events.append(OperationEvent(kind=EventKind.GENERATED, target=f"{self.filename}"))
             if self.create_fork and os.path.exists(self.output_path):
@@ -524,11 +522,12 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         self.completed_tasks = plan.list_for_report
         self.task_results = plan.results or {}
         self.text_generator = AfterReportTextGenerator(config_manager, self.completed_tasks, self.task_results)
-        self.start_log = f"Starting creating summary for OSA work"
+        self.start_log = "Starting creating summary for OSA work"
         self.report_header = "OSA Work Summary"
         self.events: list[OperationEvent] = []
 
-        before_dict = self.task_results.get("Report", {}).get("result", {}).get("scorecard")
+        report_result = (self.task_results.get("Report") or {}).get("result") or {}
+        before_dict = report_result.get("scorecard")
         self.before_scorecard: ScorecardResult | None = ScorecardResult.from_dict(before_dict) if before_dict else None
 
     def run(self) -> dict:
@@ -540,10 +539,8 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         - each generated report is tracked as an OperationEvent
         """
         try:
-            logger.info("run_scorecard=%s for after-report, repo_path=%s", self.run_scorecard, self.repo_path)
             if self.run_scorecard:
                 self.scorecard_result = ScorecardRunner(self.repo_path).run()
-                logger.info("Scorecard after-result: %s", self.scorecard_result)
             self.build_pdf()
             self.events.append(OperationEvent(kind=EventKind.GENERATED, target=self.filename))
             if self.create_fork and os.path.exists(self.output_path):

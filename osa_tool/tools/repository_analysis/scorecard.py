@@ -44,8 +44,20 @@ class ScorecardResult:
 
     @classmethod
     def from_dict(cls, data: dict) -> "ScorecardResult":
-        checks = [ScorecardCheck(name=c["name"], score=c["score"], reason=c["reason"]) for c in data.get("checks", [])]
-        return cls(aggregate_score=data["aggregate_score"], date=data["date"], checks=checks)
+        checks = [
+            ScorecardCheck(
+                name=c.get("name", ""),
+                score=c.get("score") if isinstance(c.get("score"), int) else -1,
+                reason=c.get("reason", ""),
+            )
+            for c in data.get("checks", [])
+        ]
+        agg = data.get("aggregate_score")
+        return cls(
+            aggregate_score=float(agg) if isinstance(agg, (int, float)) else 0.0,
+            date=data.get("date", ""),
+            checks=checks,
+        )
 
 
 def _scorecard_cache_dir() -> Path:
@@ -81,10 +93,10 @@ def _download_scorecard(dest: Path) -> str | None:
         f"https://github.com/ossf/scorecard/releases/download/"
         f"v{_SCORECARD_VERSION}/scorecard_{_SCORECARD_VERSION}_{system}_{arch}.tar.gz"
     )
-    dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.parent / "scorecard_download.tar.gz"
 
     try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
         logger.info(
             "Downloading OpenSSF Scorecard v%s for %s/%s...",
             _SCORECARD_VERSION,
@@ -148,38 +160,44 @@ class ScorecardRunner:
         self.repo_path = repo_path
 
     def run(self) -> ScorecardResult | None:
-        binary = _resolve_scorecard_binary()
-        if binary is None:
-            return None
-
+        # Scorecard analysis must never abort the OSA run; swallow any failure
+        # (binary resolution, download, subprocess, parsing) and skip gracefully.
         try:
-            proc = subprocess.run(
-                [
-                    binary,
-                    "--local",
-                    ".",
-                    "--checks",
-                    _CHECKS_ARG,
-                    "--format",
-                    "json",
-                ],
-                cwd=self.repo_path,
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
-        except subprocess.TimeoutExpired:
-            logger.warning("scorecard timed out after 120 s; skipping Scorecard analysis")
-            return None
-        except OSError as e:
-            logger.warning("Failed to run scorecard binary: %s", e)
-            return None
+            binary = _resolve_scorecard_binary()
+            if binary is None:
+                return None
 
-        if not proc.stdout.strip():
-            logger.warning("scorecard produced no output (stderr: %s)", proc.stderr[:200])
-            return None
+            try:
+                proc = subprocess.run(
+                    [
+                        binary,
+                        "--local",
+                        ".",
+                        "--checks",
+                        _CHECKS_ARG,
+                        "--format",
+                        "json",
+                    ],
+                    cwd=self.repo_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
+            except subprocess.TimeoutExpired:
+                logger.warning("scorecard timed out after 120 s; skipping Scorecard analysis")
+                return None
+            except OSError as e:
+                logger.warning("Failed to run scorecard binary: %s", e)
+                return None
 
-        return self._parse(proc.stdout)
+            if not proc.stdout.strip():
+                logger.warning("scorecard produced no output (stderr: %s)", proc.stderr[:200])
+                return None
+
+            return self._parse(proc.stdout)
+        except Exception as e:
+            logger.warning("Scorecard analysis failed unexpectedly: %s; skipping.", e)
+            return None
 
     def _parse(self, json_str: str) -> ScorecardResult | None:
         try:
@@ -191,13 +209,14 @@ class ScorecardRunner:
         checks = [
             ScorecardCheck(
                 name=c["name"],
-                score=c.get("score", -1),
+                score=c.get("score") if isinstance(c.get("score"), int) else -1,
                 reason=c.get("reason", ""),
             )
             for c in data.get("checks", [])
         ]
+        agg = data.get("score")
         return ScorecardResult(
-            aggregate_score=float(data.get("score", 0.0)),
+            aggregate_score=float(agg) if isinstance(agg, (int, float)) else 0.0,
             date=data.get("date", ""),
             checks=checks,
         )

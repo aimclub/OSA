@@ -70,6 +70,37 @@ def test_parse_preserves_na_checks():
     assert len(visible_checks) == 2
 
 
+def test_parse_normalizes_null_scores():
+    # Arrange
+    runner = ScorecardRunner("/some/repo")
+    payload = json.dumps(
+        {
+            "date": "2026-05-28T00:00:00Z",
+            "score": None,
+            "checks": [{"name": "License", "score": None, "reason": "x"}],
+        }
+    )
+
+    # Act
+    result = runner._parse(payload)
+
+    # Assert
+    assert result is not None
+    assert result.aggregate_score == 0.0
+    assert result.checks[0].score == -1
+
+
+def test_from_dict_normalizes_bad_scores():
+    # Arrange / Act
+    result = ScorecardResult.from_dict(
+        {"aggregate_score": None, "date": "", "checks": [{"name": "X", "score": None, "reason": ""}]}
+    )
+
+    # Assert
+    assert result.aggregate_score == 0.0
+    assert result.checks[0].score == -1
+
+
 def test_result_roundtrip():
     # Arrange
     original = ScorecardResult(
@@ -113,6 +144,21 @@ def test_run_parses_valid_subprocess_output():
     assert len(result.checks) == 3
 
 
+def test_run_returns_none_when_resolver_raises():
+    # Arrange
+    runner = ScorecardRunner("/some/repo")
+
+    # Act
+    with patch(
+        "osa_tool.tools.repository_analysis.scorecard._resolve_scorecard_binary",
+        side_effect=RuntimeError("Could not determine home directory"),
+    ):
+        result = runner.run()
+
+    # Assert
+    assert result is None
+
+
 def test_run_returns_none_on_empty_stdout():
     # Arrange
     runner = ScorecardRunner("/some/repo")
@@ -142,6 +188,18 @@ def test_download_scorecard_returns_none_on_network_error(tmp_path):
     # Assert
     assert result is None
     assert not dest.exists()
+
+
+def test_download_scorecard_skips_on_cache_mkdir_error(tmp_path):
+    # Arrange
+    dest = tmp_path / "bin" / "scorecard"
+
+    # Act
+    with patch("pathlib.Path.mkdir", side_effect=PermissionError("read-only home")):
+        result = _download_scorecard(dest)
+
+    # Assert
+    assert result is None
 
 
 def test_resolve_binary_skips_on_windows():
