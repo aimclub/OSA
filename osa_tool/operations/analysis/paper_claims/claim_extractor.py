@@ -60,6 +60,8 @@ class ClaimExtractor:
         adapter: TypeAdapter[Any],
         validator: Callable[[Any], None] | None = None,
     ) -> Any:
+        logger.debug("System prompt:\n%s", system)
+        logger.debug("User prompt:\n%s", prompt)
         current_prompt = prompt
         original_prompt = prompt
         last_error: Exception | None = None
