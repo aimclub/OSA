@@ -73,6 +73,14 @@ arguments:
     type: flag
     description: "Analyze the repository and generate a PDF report with project insights."
 
+  notebook_report:
+    aliases: [ "--notebook-report" ]
+    type: list
+    description: |
+      Analyze Jupyter notebooks and generate a notebook PDF report.
+      Provide one or multiple paths, or leave empty for repo directory.
+    example: notebooks/eda.ipynb research notebooks/experiments
+
   readme:
     aliases: [ "--readme" ]
     type: flag

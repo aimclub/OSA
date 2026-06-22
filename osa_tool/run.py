@@ -4,6 +4,7 @@ import time
 from typing import Any, Callable
 
 from osa_tool.config.settings import ConfigManager
+from osa_tool.operations.analysis.notebook_report.report_maker import NotebookReportGenerator
 from osa_tool.core.git.git_agent import (
     GitHubAgent,
     GitLabAgent,
@@ -23,8 +24,6 @@ from osa_tool.operations.codebase.requirements_generation.requirements_generatio
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 
-from osa_tool.config.settings import ConfigManager
-from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
 from osa_tool.operations.docs.community_docs_generation.license_generation import LicenseCompiler
 from osa_tool.operations.docs.readme_generation.readme_agent import ReadmeAgent
@@ -111,6 +110,20 @@ def main():
                 lambda: ReportGenerator(config_manager, git_agent, create_fork).run(),
             )
 
+        notebook_report = plan.get("notebook_report")
+        if notebook_report is not None:
+            rich_section("Notebook report generation")
+            _run_plan_operation(
+                plan,
+                "notebook_report",
+                lambda: NotebookReportGenerator(
+                    config_manager,
+                    git_agent,
+                    create_fork,
+                    notebook_report,
+                ).run(),
+            )
+
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_doc"):
             rich_section("Document validation")
@@ -130,7 +143,8 @@ def main():
             )
 
         # .ipynb to .py conversion
-        if notebook := plan.get("convert_notebooks"):
+        notebook = plan.get("convert_notebooks")
+        if notebook is not None:
             rich_section("Jupyter notebooks conversion")
             _run_plan_operation(
                 plan,

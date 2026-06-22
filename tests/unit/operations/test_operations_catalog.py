@@ -17,4 +17,5 @@ def test_register_all_operations_registers_known_operation():
 
     # Assert
     assert "generate_report" in names
+    assert "generate_notebook_report" in names
     assert "convert_notebooks" in names
