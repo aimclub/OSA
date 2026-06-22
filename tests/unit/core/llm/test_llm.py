@@ -76,6 +76,31 @@ def test_prepare_messages_rejects_invalid_token_budget(mock_config_manager):
         handler._prepare_messages("must not disappear", "system")
 
 
+def test_limit_tokens_returns_short_prompt_without_truncating(mock_config_manager, mocker):
+    model_settings = mock_config_manager.get_model_settings("general")
+    handler = ProtollmHandler(model_settings)
+    truncator = mocker.patch("osa_tool.core.llm.llm.truncate_to_tokens")
+
+    result = handler._limit_tokens("short prompt")
+
+    assert result == "short prompt"
+    truncator.assert_not_called()
+
+
+def test_limit_tokens_warns_when_prompt_is_truncated(mock_config_manager, caplog):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.context_window = 110
+    model_settings.max_tokens = 5
+    handler = ProtollmHandler(model_settings)
+
+    with caplog.at_level(logging.WARNING, logger="rich"):
+        result = handler._limit_tokens("This prompt contains considerably more than five tokens.")
+
+    assert result != "This prompt contains considerably more than five tokens."
+    assert "will be truncated" in caplog.text
+    assert "strategy=middle-out" in caplog.text
+
+
 @pytest.mark.asyncio
 async def test_generate_concurrently_orders_results(mock_config_manager, patch_llm_connector):
     # Arrange

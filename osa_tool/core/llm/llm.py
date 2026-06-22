@@ -614,6 +614,19 @@ class ProtollmHandler(ModelHandler):
                 f"({self.model_settings.max_tokens}) + system tokens ({reserved_tokens}) "
                 f"+ safety buffer ({safety_buffer}). Reduce max_tokens or increase context_window."
             )
+
+        input_tokens = count_tokens(text, self.model_settings.encoder)
+        if input_tokens <= max_input_tokens:
+            return text
+
+        logger.warning(
+            "LLM user prompt exceeds the input budget and will be truncated: "
+            "input_tokens=%s, available_input_tokens=%s, strategy=%s, model=%s",
+            input_tokens,
+            max_input_tokens,
+            mode,
+            self.model_settings.model,
+        )
         return truncate_to_tokens(
             text,
             max_input_tokens,
