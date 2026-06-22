@@ -8,8 +8,11 @@ import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
+from rich.progress import track
+
 from osa_tool.operations.analysis.paper_claims.exceptions import PdfConversionError
 from osa_tool.operations.analysis.paper_claims.models import ConvertedChunk, ConvertedDocument, MarkerOptions, PdfChunk
+from osa_tool.utils.logger import logger
 
 DEFAULT_MARKER_CACHE = Path(tempfile.gettempdir()) / "osa_tool" / "paper_claims" / "marker"
 
@@ -137,8 +140,10 @@ class MarkerDocumentConverter:
         if not options.force_refresh:
             cached = self._load_cache(cache_dir, chunks)
             if cached is not None:
+                logger.info("Using cached Marker output for %s chunks from %s", len(chunks), cache_dir)
                 return cached
 
+        logger.info("Initializing Marker converter for %s chunks", len(chunks))
         converter, render_text, marker_version = self.converter_factory(options)
 
         if options.force_refresh:
@@ -148,7 +153,15 @@ class MarkerDocumentConverter:
 
         converted_chunks: list[ConvertedChunk] = []
         try:
-            for chunk in sorted(chunks, key=lambda item: item.index):
+            ordered_chunks = sorted(chunks, key=lambda item: item.index)
+            for chunk in track(ordered_chunks, description="Converting PDF chunks"):
+                logger.info(
+                    "Converting chunk %s/%s with Marker: pages %s-%s",
+                    chunk.index,
+                    len(ordered_chunks),
+                    chunk.start_page,
+                    chunk.end_page,
+                )
                 markdown = render_text(converter(str(chunk.path))).strip()
                 if not markdown:
                     raise PdfConversionError(
@@ -165,6 +178,13 @@ class MarkerDocumentConverter:
                         markdown=markdown,
                         cache_path=cache_path,
                     )
+                )
+                logger.info(
+                    "Marker chunk %s/%s completed: pages %s-%s",
+                    chunk.index,
+                    len(ordered_chunks),
+                    chunk.start_page,
+                    chunk.end_page,
                 )
         except PdfConversionError:
             raise
@@ -188,6 +208,7 @@ class MarkerDocumentConverter:
             json.dumps(metadata, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
         )
         (cache_dir / "COMPLETE").write_text("ok\n", encoding="utf-8")
+        logger.info("Marker conversion completed: %s chunks cached in %s", len(converted_chunks), cache_dir)
         return ConvertedDocument(
             source_path=chunks[0].source_path,
             source_hash=chunks[0].source_hash,

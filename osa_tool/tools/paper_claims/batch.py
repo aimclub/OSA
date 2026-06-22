@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from rich.progress import track
+
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandlerFactory
 from osa_tool.operations.analysis.paper_claims.models import (
@@ -10,6 +12,7 @@ from osa_tool.operations.analysis.paper_claims.models import (
     PipelineOptions,
 )
 from osa_tool.operations.analysis.paper_claims.pipeline import PaperClaimPipeline
+from osa_tool.utils.logger import logger, setup_logging
 
 
 def collect_pdf_inputs(paths: list[Path]) -> tuple[list[Path], list[str]]:
@@ -33,8 +36,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run claim extraction for multiple PDF documents.")
     parser.add_argument("pdfs", nargs="+", type=Path)
     parser.add_argument("--output-dir", type=Path, default=Path("paper_claim_results"))
-    # parser.add_argument("--repository", default="https://github.com/ai-chem/DiMag")
-    parser.add_argument("--model", default=None)
+    parser.add_argument("--repository", default="https://github.com/ai-chem/DiMag")
+    parser.add_argument("--model", default="openai/gpt-5.4-mini")
     parser.add_argument("--config-file", default=None)
     parser.add_argument("--chunk-pages", type=int, default=10)
     parser.add_argument("--max-retries", type=int, default=5)
@@ -44,11 +47,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
+    setup_logging("paper_claims_batch", str(Path.cwd() / "logs"))
+    logger.info("Paper claims batch started")
     pdfs, failures = collect_pdf_inputs(args.pdfs)
     if not pdfs:
         for failure in failures:
-            print(f"ERROR: {failure}")
+            logger.info("Input rejected: %s", failure)
         return 1
+    logger.info("Collected %s PDF documents for processing", len(pdfs))
     config = ConfigManager(args)
     handler = ModelHandlerFactory.build(config.get_model_settings("validation"))
     pipeline = PaperClaimPipeline(handler)
@@ -57,19 +63,28 @@ def main() -> int:
         max_retries=args.max_retries,
         marker=MarkerOptions(force_refresh=args.force_marker_refresh),
     )
-    for pdf in pdfs:
+    for pdf in track(pdfs, description="Processing PDF documents"):
+        logger.info("Starting document %s", pdf)
         try:
             result = pipeline.run(pdf, options)
-            pipeline.export(result, args.output_dir / pdf.stem, legacy=True)
-            print(f"OK: {pdf}")
+            output_path = pipeline.export(result, args.output_dir / pdf.stem, legacy=True)
+            logger.info(
+                "Document completed: %s; parsed_sections=%s; selected_sections=%s; final_claims=%s; output=%s",
+                pdf,
+                len(result.sections),
+                len(result.extraction.selected_section_ids),
+                len(result.extraction.claims),
+                output_path,
+            )
         except Exception as exc:
             failures.append(f"{pdf}: {exc}")
-            print(f"ERROR: {pdf}: {exc}")
+            logger.info("Document failed: %s; reason=%s", pdf, exc)
     if failures:
-        print("Failures:")
+        logger.info("Paper claims batch completed with %s failures", len(failures))
         for failure in failures:
-            print(f"- {failure}")
+            logger.info("Failure: %s", failure)
         return 1
+    logger.info("Paper claims batch completed successfully: %s documents", len(pdfs))
     return 0
 
 

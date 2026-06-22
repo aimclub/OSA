@@ -4,6 +4,7 @@ import json
 from typing import Any, Callable, Protocol
 
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
+from rich.progress import track
 
 from osa_tool.operations.analysis.paper_claims.exceptions import ClaimExtractionError
 from osa_tool.operations.analysis.paper_claims.models import (
@@ -17,6 +18,7 @@ from osa_tool.operations.analysis.paper_claims.models import (
 )
 from osa_tool.utils.prompts_builder import PromptBuilder, PromptLoader
 from osa_tool.utils.response_cleaner import JsonParseError, JsonProcessor
+from osa_tool.utils.logger import logger
 
 
 class AsyncModelHandler(Protocol):
@@ -59,20 +61,24 @@ class ClaimExtractor:
         system: str,
         adapter: TypeAdapter[Any],
         validator: Callable[[Any], None] | None = None,
+        request_name: str = "LLM request",
     ) -> Any:
         current_prompt = prompt
         original_prompt = prompt
         last_error: Exception | None = None
-        for _ in range(self.max_retries):
+        for attempt in range(1, self.max_retries + 1):
+            logger.info("%s: sending request (attempt %s/%s)", request_name, attempt, self.max_retries)
             raw = await self.handler.async_request(current_prompt, system)
             try:
                 data = JsonProcessor.parse(str(raw), expected_type=list)
                 parsed = adapter.validate_python(data)
                 if validator:
                     validator(parsed)
+                logger.info("%s: response validated", request_name)
                 return parsed
             except (JsonParseError, ValueError, TypeError, ValidationError) as exc:
                 last_error = exc
+                logger.info("%s: response validation failed, preparing repair request", request_name)
                 current_prompt = PromptBuilder.render(
                     self.prompts.get("paper_claims.repair"),
                     error=str(exc),
@@ -83,6 +89,7 @@ class ClaimExtractor:
 
     async def _step_1_select_sections(self, sections: list[PaperSection]) -> list[str]:
         """Select claim-bearing sections while preserving their source order."""
+        logger.info("Claim extraction step 1/3: selecting relevant sections from %s sections", len(sections))
         section_by_id = {section.section_id: section for section in sections}
         section_options = [
             {
@@ -105,10 +112,13 @@ class ClaimExtractor:
             self.prompts.get("paper_claims.section_filter_system"),
             TypeAdapter(list[_SelectedSection]),
             validate_sections,
+            request_name="Section selection",
         )
         selected_ids = [item.section_id for item in selected]
         selected_set = set(selected_ids)
-        return [section.section_id for section in sections if section.section_id in selected_set]
+        ordered_ids = [section.section_id for section in sections if section.section_id in selected_set]
+        logger.info("Claim extraction step 1/3 completed: selected %s sections", len(ordered_ids))
+        return ordered_ids
 
     async def _step_2_extract_claims(
         self,
@@ -116,13 +126,19 @@ class ClaimExtractor:
         selected_section_ids: list[str],
     ) -> list[ExtractedClaim]:
         """Extract and validate atomic claims from each selected section."""
+        logger.info(
+            "Claim extraction step 2/3: extracting claims from %s selected sections",
+            len(selected_section_ids),
+        )
         section_by_id = {section.section_id: section for section in sections}
         claims: list[ExtractedClaim] = []
         claim_adapter = TypeAdapter(list[_ClaimCandidate])
-        for section_id in selected_section_ids:
+        for section_id in track(selected_section_ids, description="Extracting section claims"):
             section = section_by_id[section_id]
             if not section.text.strip():
+                logger.info("Skipping empty selected section %s (%s)", section.section_id, section.name)
                 continue
+            logger.info("Extracting claims from section %s (%s)", section.section_id, section.name)
 
             def validate_source_text(items: list[_ClaimCandidate]) -> None:
                 for item in items:
@@ -138,6 +154,7 @@ class ClaimExtractor:
                 self.prompts.get("paper_claims.claim_extraction_system"),
                 claim_adapter,
                 validate_source_text,
+                request_name=f"Claim extraction for section {section.section_id}",
             )
             for candidate in candidates:
                 claims.append(
@@ -149,6 +166,12 @@ class ClaimExtractor:
                         section_heading_raw=section.heading_meta.raw,
                     )
                 )
+            logger.info(
+                "Section %s completed: extracted %s claims",
+                section.section_id,
+                len(candidates),
+            )
+        logger.info("Claim extraction step 2/3 completed: extracted %s claims", len(claims))
         return claims
 
     async def _step_3_deduplicate_claims(
@@ -157,8 +180,10 @@ class ClaimExtractor:
     ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
         """Deduplicate claims, retain contradictions, and enrich kept claims."""
         if not claims:
+            logger.info("Claim extraction step 3/3 skipped: no claims to deduplicate")
             return [], []
 
+        logger.info("Claim extraction step 3/3: deduplicating %s claims", len(claims))
         dedup_input = [{"claim_id": claim.claim_id, "claim": claim.claim} for claim in claims]
         known_ids = {claim.claim_id for claim in claims}
 
@@ -174,6 +199,7 @@ class ClaimExtractor:
             self.prompts.get("paper_claims.deduplication_system"),
             TypeAdapter(list[DedupSelection]),
             validate_dedup,
+            request_name="Claim deduplication",
         )
 
         selection_by_id = {item.claim_id: item for item in selections}
@@ -182,6 +208,7 @@ class ClaimExtractor:
             for claim in claims
             if claim.claim_id in selection_by_id
         ]
+        logger.info("Claim extraction step 3/3 completed: retained %s claims", len(filtered))
         return filtered, selections
 
     async def extract(
@@ -195,9 +222,11 @@ class ClaimExtractor:
         if not sections:
             raise ClaimExtractionError("At least one paper section is required")
 
+        logger.info("Starting three-step claim extraction")
         selected_ids = await self._step_1_select_sections(sections)
         extracted_claims = await self._step_2_extract_claims(sections, selected_ids)
         filtered_claims, selections = await self._step_3_deduplicate_claims(extracted_claims)
+        logger.info("Three-step claim extraction completed: final_claims=%s", len(filtered_claims))
 
         return ClaimExtractionResult(
             claims=filtered_claims,
