@@ -34,7 +34,7 @@ def main():
     # Initialize infrastructure
     args.repository = user_input.repo_url
     config_manager = ConfigManager(args)
-    git_agent, workflow_manager = initialize_git_platform(args)
+    git_agent, workflow_manager = initialize_git_platform(args, config_manager)
 
     agent_config = OSAConfig(
         config_manager=config_manager,

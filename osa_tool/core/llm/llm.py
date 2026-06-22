@@ -11,10 +11,36 @@ from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from protollm.connectors import create_llm_connector
+from pydantic import BaseModel, ValidationError
 
 from osa_tool.config.settings import ModelSettings
 from osa_tool.utils.logger import logger
+from osa_tool.utils.response_cleaner import JsonParseError
 from osa_tool.utils.token_counter import truncate_to_tokens
+
+
+def _is_pydantic_model(parser: Any) -> bool:
+    return isinstance(parser, type) and issubclass(parser, BaseModel)
+
+
+def _parse_llm_response(raw: str, parser: Any) -> Any:
+    """Repair LLM JSON and normalize to the type expected by ``parser``."""
+    if parser is None:
+        return repair_json(json_str=raw, ensure_ascii=False, return_objects=True)
+
+    if _is_pydantic_model(parser):
+        repaired = repair_json(
+            json_str=raw,
+            ensure_ascii=False,
+            return_objects=True,
+            schema=parser,
+        )
+        return parser.model_validate(repaired)
+
+    if callable(parser):
+        return parser(raw)
+
+    raise TypeError(f"Unsupported parser type: {type(parser)!r}")
 
 
 class ModelHandler(ABC):
@@ -281,13 +307,11 @@ class ProtollmHandler(ModelHandler):
             last_raw = self.send_request(prompt, system_message)
 
             try:
-                result = repair_json(
-                    json_str=last_raw, ensure_ascii=False, strict=True, return_objects=True, schema=parser
-                )
+                result = _parse_llm_response(last_raw, parser)
 
                 logger.info(f"Send and parse request success on attempt {attempt}/{self.max_retries}.")
                 return result
-            except ValueError as e:
+            except (ValueError, ValidationError, JsonParseError, TypeError) as e:
                 last_error = e
                 logger.warning(f"Parse failed (attempt {attempt}/{self.max_retries}): {e}")
 
@@ -371,14 +395,12 @@ class ProtollmHandler(ModelHandler):
             last_raw = await self.async_request(prompt, system_message)
 
             try:
-                result = repair_json(
-                    json_str=last_raw, ensure_ascii=False, strict=True, return_objects=True, schema=parser
-                )
+                result = _parse_llm_response(last_raw, parser)
 
                 logger.info(f"Async send and parse request success on attempt {attempt}/{self.max_retries}.")
                 return result
 
-            except ValueError as e:
+            except (ValueError, ValidationError, JsonParseError, TypeError) as e:
                 last_error = e
                 logger.warning(f"Async parse failed (attempt {attempt}/{self.max_retries}): {e}")
                 self.reset_to_primary_model()
