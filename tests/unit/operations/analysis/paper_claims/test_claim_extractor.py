@@ -86,6 +86,59 @@ async def test_extract_accepts_layout_only_source_text_differences():
 
 
 @pytest.mark.asyncio
+async def test_extract_repairs_claim_written_in_a_different_script():
+    valid_claim = {
+        "claim": "The model uses BERT-base without fine-tuning.",
+        "original_text": "The model uses BERT-base without fine-tuning.",
+        "category": "model_architecture",
+        "value": "BERT-base",
+        "verifiability": "high",
+    }
+    chinese_claim = {**valid_claim, "claim": "该模型使用BERT基础版，无需微调。"}
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            json.dumps([chinese_claim], ensure_ascii=False),
+            json.dumps([valid_claim]),
+            '[{"claim_id":"c0001","claim":"The model uses BERT-base without fine-tuning.",' '"contradiction":false}]',
+        ]
+    )
+
+    result = await ClaimExtractor(handler, max_retries=2).extract([section()])
+
+    assert result.claims[0].claim == valid_claim["claim"]
+    assert "same language script" in handler.prompts[2]
+
+
+@pytest.mark.asyncio
+async def test_deduplication_repairs_rewritten_claim_text():
+    valid_claim = {
+        "claim": "The model uses BERT-base without fine-tuning.",
+        "original_text": "The model uses BERT-base without fine-tuning.",
+        "category": "model_architecture",
+        "value": "BERT-base",
+        "verifiability": "high",
+    }
+    correct_dedup = (
+        '[{"claim_id":"c0001","claim":"The model uses BERT-base without fine-tuning.",' '"contradiction":false}]'
+    )
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            json.dumps([valid_claim]),
+            '[{"claim_id":"c0001","claim":"Das Modell verwendet BERT-base ohne Feinabstimmung.",'
+            '"contradiction":false}]',
+            correct_dedup,
+        ]
+    )
+
+    result = await ClaimExtractor(handler, max_retries=2).extract([section()])
+
+    assert result.deduplication[0].claim == valid_claim["claim"]
+    assert "copy claim text verbatim" in handler.prompts[3]
+
+
+@pytest.mark.asyncio
 async def test_source_text_error_includes_section_preview():
     handler = FakeHandler(
         [
@@ -101,8 +154,11 @@ async def test_source_text_error_includes_section_preview():
 
 @pytest.mark.asyncio
 async def test_empty_section_selection_is_a_valid_empty_result():
-    result = await ClaimExtractor(FakeHandler(["[]"])).extract([section()])
+    handler = FakeHandler(["[]"])
+    handler.last_successful_model = "actual-model"
+    result = await ClaimExtractor(handler).extract([section()], model="configured-model")
 
     assert result.claims == []
     assert result.deduplication == []
     assert result.selected_section_ids == []
+    assert result.meta.model == "actual-model"

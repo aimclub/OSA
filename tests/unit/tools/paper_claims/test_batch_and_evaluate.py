@@ -1,6 +1,6 @@
 import json
 
-from osa_tool.tools.paper_claims.batch import collect_pdf_inputs
+from osa_tool.tools.paper_claims.batch import build_parser, collect_pdf_inputs
 from osa_tool.tools.paper_claims.evaluate import compute_semantic_matching, load_claims
 
 
@@ -14,6 +14,12 @@ def test_collect_pdf_inputs_deduplicates_and_reports_invalid(tmp_path):
 
     assert paths == [pdf.resolve()]
     assert len(failures) == 1
+
+
+def test_batch_keeps_gpt_5_4_mini_as_default_model():
+    args = build_parser().parse_args(["paper.pdf"])
+
+    assert args.model == "openai/gpt-5.4-mini"
 
 
 def test_load_claims_accepts_clean_schema(tmp_path):

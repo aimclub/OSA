@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from functools import partial
 from typing import Any, Callable, Protocol
 
@@ -54,6 +55,29 @@ def _section_text_preview(text: str, limit: int = 2_000) -> str:
     return f"{text[:half]}\n... <{len(text) - limit} characters omitted> ...\n{text[-half:]}"
 
 
+def _dominant_script(text: str) -> str | None:
+    """Return the dominant Unicode script for letters in text."""
+    scripts: dict[str, int] = {}
+    script_markers = {
+        "LATIN": ("LATIN",),
+        "CYRILLIC": ("CYRILLIC",),
+        "EAST_ASIAN": ("CJK", "HIRAGANA", "KATAKANA", "HANGUL"),
+        "ARABIC": ("ARABIC",),
+        "HEBREW": ("HEBREW",),
+    }
+    for character in text:
+        if not character.isalpha():
+            continue
+        unicode_name = unicodedata.name(character, "")
+        script = next(
+            (script for script, markers in script_markers.items() if any(marker in unicode_name for marker in markers)),
+            None,
+        )
+        if script:
+            scripts[script] = scripts.get(script, 0) + 1
+    return max(scripts, key=scripts.get) if scripts else None
+
+
 class AsyncModelHandler(Protocol):
     async def async_request(self, prompt: str, system_message: str | None = None, retry_delay: float = 1) -> str: ...
 
@@ -92,6 +116,14 @@ def _validate_source_text(items: list[_ClaimCandidate], *, section: PaperSection
                 f"section_text_length={len(section.text)}"
             )
         item.original_text = source_text
+        source_script = _dominant_script(source_text)
+        claim_script = _dominant_script(item.claim)
+        if source_script and claim_script and source_script != claim_script:
+            raise ValueError(
+                "claim must use the same language script as original_text. "
+                f"claim_script={claim_script}; original_text_script={source_script}; "
+                f"claim={item.claim!r}; original_text={source_text!r}"
+            )
 
 
 class ClaimExtractor:
@@ -235,12 +267,17 @@ class ClaimExtractor:
 
         logger.info("Claim extraction step 3/3: deduplicating %s claims", len(claims))
         dedup_input = [{"claim_id": claim.claim_id, "claim": claim.claim} for claim in claims]
-        known_ids = {claim.claim_id for claim in claims}
+        claims_by_id = {claim.claim_id: claim for claim in claims}
 
         def validate_dedup(items: list[DedupSelection]) -> None:
             ids = [item.claim_id for item in items]
-            if len(ids) != len(set(ids)) or any(item not in known_ids for item in ids):
+            if len(ids) != len(set(ids)) or any(item not in claims_by_id for item in ids):
                 raise ValueError("Deduplication contains duplicate or unknown claim IDs")
+            rewritten = [item.claim_id for item in items if item.claim != claims_by_id[item.claim_id].claim]
+            if rewritten:
+                raise ValueError(
+                    "Deduplication must copy claim text verbatim; rewritten claim IDs: " + ", ".join(rewritten)
+                )
 
         selections = await self._request_validated(
             "Below is the JSON array of claims extracted from the report sections. Apply the deduplication and contradiction rules.\n"
@@ -277,6 +314,7 @@ class ClaimExtractor:
         extracted_claims = await self._step_2_extract_claims(sections, selected_ids)
         filtered_claims, selections = await self._step_3_deduplicate_claims(extracted_claims)
         logger.info("Three-step claim extraction completed: final_claims=%s", len(filtered_claims))
+        actual_model = getattr(self.handler, "last_successful_model", None) or model
 
         return ClaimExtractionResult(
             claims=filtered_claims,
@@ -284,7 +322,7 @@ class ClaimExtractor:
             selected_section_ids=selected_ids,
             meta=ExtractionMetadata(
                 source=source,
-                model=model,
+                model=actual_model,
                 filtered_claims=len(filtered_claims),
                 step3_input_count=len(extracted_claims),
                 step3_output_count=len(selections),

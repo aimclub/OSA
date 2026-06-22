@@ -200,6 +200,7 @@ class ProtollmHandler(ModelHandler):
         self.model_settings = model_settings
         self._original_primary_model = model_settings.model
         self.max_retries = model_settings.max_retries
+        self.last_successful_model: str | None = None
         self._configure_api(model_name=model_settings.model)
 
     def reset_to_primary_model(self) -> None:
@@ -284,11 +285,14 @@ class ProtollmHandler(ModelHandler):
         """
         last_error = None
 
-        for _ in self._iter_configured_models():
+        for model in self._iter_configured_models():
             try:
+                logger.debug("Sending synchronous LLM request with model %s", model)
                 messages = self._prepare_messages(prompt, system_message)
                 response = self.client.invoke(messages)
                 content = response.content
+                self.last_successful_model = model
+                logger.info("Synchronous LLM request completed with model %s", model)
                 self._log_response_debug(content, "Synchronous")
                 return content
             except Exception as e:
@@ -370,12 +374,15 @@ class ProtollmHandler(ModelHandler):
         """
         last_error = None
 
-        for _ in self._iter_configured_models():
+        for model in self._iter_configured_models():
             try:
+                logger.debug("Sending asynchronous LLM request with model %s", model)
                 messages = self._prepare_messages(prompt, system_message)
                 logger.debug("Async LLM request messages:\n%s", messages)
                 response = await self.client.ainvoke(messages)
                 content = response.content
+                self.last_successful_model = model
+                logger.info("Asynchronous LLM request completed with model %s", model)
                 self._log_response_debug(content, "Asynchronous")
                 return content
             except Exception as e:

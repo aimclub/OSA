@@ -64,6 +64,8 @@ async def test_async_request_calls_llm(mock_config_manager, patch_llm_connector,
     assert "user_tokens=" in caplog.text
     assert "max_output_tokens=" in caplog.text
     assert "Asynchronous LLM response: tokens=" in caplog.text
+    assert handler.last_successful_model == model_settings.model
+    assert f"completed with model {model_settings.model}" in caplog.text
 
 
 def test_prepare_messages_rejects_invalid_token_budget(mock_config_manager):
