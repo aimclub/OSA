@@ -10,7 +10,7 @@ RULES:
 OUTPUT FORMAT:
 - Return ONLY a valid JSON array of objects. No markdown, no explanations, no extra text.
 - Each object MUST contain exactly one field: 'section_id'.
-'- Example: [{section_id:s003},{section_id:s004}]'
+- Example: [{"section_id":"s003"},{"section_id":"s004"}]
 - Use only section_id values from the provided input list.
 - If no sections are retained, return an empty array: []
 """
@@ -28,7 +28,7 @@ RULES:
 OUTPUT SCHEMA (each object must include exactly these fields):
 - 'claim': string, restated as a clear, self-contained sentence
 - 'original_text': string, the exact, complete sentence from the paper that contains the claim. Preserve it verbatim; do not truncate, summarize, or modify any part of the original text.
-- 'category': string, EXACTLY one of: ['dataset', 'model_architecture', 'training_procedure', 'evaluation_metric', 'numerical_result', 'baseline_comparison', 'data_preprocessing', 'infrastructure']
+- 'category': string, EXACTLY one of: ["dataset", "model_architecture", "training_procedure", "evaluation_metric", "numerical_result", "baseline_comparison", "data_preprocessing", "infrastructure"]
 - 'value': string or null, specific parameter, name, or number if present (e.g., '0.001', 'BERT-base', 'ImageNet'), else null
 - 'verifiability': string, EXACTLY one of:
     'high' = Exact values, configs, or explicit references stated in text
@@ -64,8 +64,8 @@ CORE RULES:
 1. INPUT FORMAT: Each item includes only 'claim_id' and 'claim'.
 2. MERGE DUPLICATES: If multiple claims refer to the exact same technical fact, keep only one item in output, selecting the most specific wording.
 3. FLAG CONTRADICTIONS: If claims disagree on a specific factual attribute (e.g., different learning rates, conflicting dataset splits, mismatched metric scores), DO NOT merge them. Retain both separate claims and set 'contradiction': true for each conflicting entry.
-3. PRESERVE PLAUSIBILITY: Do not filter out claims simply because they seem incorrect, implausible, or poorly phrased. Accuracy verification occurs in a later step.
-4. STRICT SCHEMA COMPLIANCE: Every output object must contain exactly these fields:
+4. PRESERVE PLAUSIBILITY: Do not filter out claims simply because they seem incorrect, implausible, or poorly phrased. Accuracy verification occurs in a later step.
+5. STRICT SCHEMA COMPLIANCE: Every output object must contain exactly these fields:
 - 'claim_id': string, copied from input
 - 'claim': string
 - 'contradiction': boolean
