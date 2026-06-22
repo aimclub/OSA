@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from functools import partial
 from typing import Any, Callable, Protocol
 
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
@@ -71,6 +72,26 @@ class _ClaimCandidate(_StrictResponse):
     category: ClaimCategory
     value: str | None = None
     verifiability: Verifiability
+
+
+def _validate_source_text(items: list[_ClaimCandidate], *, section: PaperSection) -> None:
+    """Validate candidate quotations and restore their exact source representation."""
+    for item in items:
+        source_text = _find_original_source_text(section.text, item.original_text)
+        if source_text is None:
+            logger.debug(
+                "Source-text validation failed for section %s. Candidate=%r; section_text=%r",
+                section.section_id,
+                item.original_text,
+                section.text,
+            )
+            raise ValueError(
+                f"original_text is not present in section {section.section_id}. "
+                f"original_text={item.original_text!r}; "
+                f"section_text_preview={_section_text_preview(section.text)!r}; "
+                f"section_text_length={len(section.text)}"
+            )
+        item.original_text = source_text
 
 
 class ClaimExtractor:
@@ -176,31 +197,13 @@ class ClaimExtractor:
                 continue
             logger.info("Extracting claims from section %s (%s)", section.section_id, section.name)
 
-            def validate_source_text(items: list[_ClaimCandidate]) -> None:
-                for item in items:
-                    source_text = _find_original_source_text(section.text, item.original_text)
-                    if source_text is None:
-                        logger.debug(
-                            "Source-text validation failed for section %s. Candidate=%r; section_text=%r",
-                            section.section_id,
-                            item.original_text,
-                            section.text,
-                        )
-                        raise ValueError(
-                            f"original_text is not present in section {section.section_id}. "
-                            f"original_text={item.original_text!r}; "
-                            f"section_text_preview={_section_text_preview(section.text)!r}; "
-                            f"section_text_length={len(section.text)}"
-                        )
-                    item.original_text = source_text
-
             candidates = await self._request_validated(
                 "Analyze the following paper section and extract all verifiable factual claims:\n"
                 + section.text
                 + "\nReturn ONLY the JSON array as specified in the system instructions.",
                 self.prompts.get("paper_claims.claim_extraction_system"),
                 claim_adapter,
-                validate_source_text,
+                partial(_validate_source_text, section=section),
                 request_name=f"Claim extraction for section {section.section_id}",
             )
             for candidate in candidates:
