@@ -6,7 +6,6 @@ import ast
 import json
 import os
 import re
-import subprocess
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
@@ -25,6 +24,7 @@ README_MIN_CHARS = 200
 APP_TYPES = {"app"}
 DATA_TYPES = {"algorithm_experiments", "model_training_experiments"}
 EXPERIMENT_TYPES = {"algorithm_experiments", "model_training_experiments"}
+_VALID_REPO_TYPES = APP_TYPES | EXPERIMENT_TYPES
 
 _PROMPTS = PromptLoader()
 
@@ -101,7 +101,7 @@ class VkrChecker:
 
     def check_readme(self, flat_paths: list) -> dict:
         for path in flat_paths:
-            if _README_RE.match(os.path.basename(path)):
+            if "/" not in path and _README_RE.match(path):
                 try:
                     content = read_file(os.path.join(self._config.clone_dir, path))
                     char_count = len(content)
@@ -117,13 +117,13 @@ class VkrChecker:
 
     def check_license(self, flat_paths: list) -> dict:
         for path in flat_paths:
-            if _LICENSE_RE.match(os.path.basename(path)):
+            if "/" not in path and _LICENSE_RE.match(path):
                 return {"present": True, "matched_file": path}
         return {"present": False, "matched_file": None}
 
     def check_requirements(self, flat_paths: list) -> dict:
         for path in flat_paths:
-            if _REQUIRE_RE.match(os.path.basename(path)):
+            if "/" not in path and _REQUIRE_RE.match(path):
                 return {"applicable": True, "present": True, "matched_file": path}
         return {"applicable": True, "present": False, "matched_file": None}
 
@@ -159,8 +159,10 @@ class VkrChecker:
             return {"value": "algorithm_experiments", "confidence": "low", "reasoning": "", "error": "llm_failed"}
         if not isinstance(result, dict):
             return {"value": "algorithm_experiments", "confidence": "low", "reasoning": "", "error": "unexpected_type"}
+        raw_type = result.get("repo_type", "algorithm_experiments")
+        value = raw_type if raw_type in _VALID_REPO_TYPES else "algorithm_experiments"
         return {
-            "value": result.get("repo_type", "algorithm_experiments"),
+            "value": value,
             "confidence": result.get("confidence", "low"),
             "reasoning": result.get("reasoning", ""),
         }
@@ -224,25 +226,23 @@ class VkrChecker:
 
     def check_commits(self) -> dict:
         count = self._commit_count(threshold=5)
-        return {"present": count > 5, "count": count}
+        return {"present": count >= 5, "count": count}
 
     def check_syntax(self, flat_paths: list) -> dict:
         py_files = [p for p in flat_paths if p.endswith(".py")]
         if not py_files:
             return {"ok": True, "errors": [], "summary": "no Python files"}
-        result = subprocess.run(
-            [sys.executable, "-m", "compileall", "-q", "."],
-            cwd=self._config.clone_dir,
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        error_lines = [
-            line.strip()
-            for line in (result.stdout + result.stderr).splitlines()
-            if line.strip() and ("SyntaxError" in line or "***" in line or "Error" in line)
-        ]
-        ok = result.returncode == 0
+        error_lines = []
+        for rel_path in py_files:
+            try:
+                with open(os.path.join(self._config.clone_dir, rel_path), encoding="utf-8", errors="replace") as f:
+                    source = f.read()
+                compile(source, rel_path, "exec")
+            except SyntaxError as e:
+                error_lines.append(f"{rel_path}:{e.lineno}: {e.msg}")
+            except Exception as e:
+                error_lines.append(f"{rel_path}: {e}")
+        ok = len(error_lines) == 0
         summary = f"all {len(py_files)} files ok" if ok else f"{len(error_lines)} error(s) in {len(py_files)} files"
         return {"ok": ok, "errors": error_lines[:10], "summary": summary}
 

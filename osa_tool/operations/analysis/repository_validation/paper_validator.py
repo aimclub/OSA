@@ -114,7 +114,10 @@ class PaperValidator:
         )
         return {"result": None, "events": self.__events}
 
-    async def validate(self) -> list[Experiment, ...]:
+    async def __run_vkr_checks(self) -> dict:
+        return await asyncio.to_thread(self.__vkr_scorer.get_quality_report)
+
+    async def validate(self) -> list[Experiment]:
         """
         Asynchronously validate a scientific paper against the code repository.
 
@@ -158,23 +161,42 @@ class PaperValidator:
                 experiment_description=context.experiment,
                 code_snippets=code_chunks,
             )
-            experiment_assessment = (
-                await self.__model_handler.async_send_and_parse(
-                    prompt=prompt,
-                    parser=LlmJsonObject,
-                )
-            ).root
+            try:
+                experiment_assessment = (
+                    await self.__model_handler.async_send_and_parse(
+                        prompt=prompt,
+                        parser=LlmJsonObject,
+                    )
+                ).root
+            except Exception as e:
+                logger.warning(f"Failed to assess experiment (skipping): {e}")
+                experiment_assessment = {
+                    "implemented_in": [],
+                    "missing_critical_components": ["Assessment unavailable due to LLM error"],
+                    "correlation_percent": 0.0,
+                    "reasoning": "LLM did not return a valid assessment.",
+                }
 
             input_tokens = tiktoken.get_encoding("cl100k_base").encode(prompt)
             logger.info(f"Tokens used: {len(input_tokens)}")
 
+            raw_pct = experiment_assessment.get("correlation_percent", 0.0)
+            try:
+                pct = float(raw_pct)
+                # LLMs sometimes return 0-100 instead of 0-1; normalise
+                if pct > 1.0:
+                    pct = pct / 100.0
+                pct = max(0.0, min(1.0, pct))
+            except (TypeError, ValueError):
+                pct = 0.0
+
             self.__experiments.append(
                 Experiment(
                     description_from_paper=context.experiment,
-                    impl_src_path=experiment_assessment["implemented_in"],
-                    missing=experiment_assessment["missing_critical_components"],
-                    correspondence_percent=experiment_assessment["correlation_percent"],
-                    reasoning=experiment_assessment["reasoning"],
+                    impl_src_path=experiment_assessment.get("implemented_in", []),
+                    missing=experiment_assessment.get("missing_critical_components", []),
+                    correspondence_percent=pct,
+                    reasoning=experiment_assessment.get("reasoning", ""),
                 )
             )
 
@@ -212,6 +234,8 @@ class _PromptContextBuilder:
         Embed a single experiment description, score all graph nodes,
         retrieves top-k and constructs the LLM prompt.
         """
+        if not self.__node_ids:
+            return _LLMPromptContext(experiment, [])
         scores = self.__score_nodes(self.__embed_text(experiment))
         top_k_indices = scores.topk(min(self.TOP_K, len(self.__node_ids))).indices.tolist()
         retrieved_nodes = []
@@ -265,7 +289,10 @@ class _PromptContextBuilder:
             embeddings.append(emb)
             attrs_list.append(attrs)
 
-        matrix = torch.tensor(embeddings, dtype=torch.float, device=self.__device)
+        if embeddings:
+            matrix = torch.tensor(embeddings, dtype=torch.float, device=self.__device)
+        else:
+            matrix = torch.zeros(0, 768, dtype=torch.float, device=self.__device)
         return node_ids, matrix, attrs_list
 
     def __embed_text(self, text: str) -> torch.Tensor:

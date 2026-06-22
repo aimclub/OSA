@@ -136,15 +136,19 @@ class ClaimsPipeline:
     def _filter_sections(self, paper_sections: list[dict]) -> list[str]:
         """Ask the LLM to retain only methodology/results sections."""
         section_names = [s["name"] for s in paper_sections]
-        return self._config.model_handler.send_and_parse(
-            (
-                "Below is the list of section headings extracted from the target paper:\n"
-                f"{json.dumps(section_names, ensure_ascii=False)}\n"
-                "Filter the list and return ONLY a JSON array of the retained section names."
-            ),
-            self._parse_json_list,
-            _PROMPTS.get("vkr_scoring.filter_system"),
-        )
+        try:
+            return self._config.model_handler.send_and_parse(
+                (
+                    "Below is the list of section headings extracted from the target paper:\n"
+                    f"{json.dumps(section_names, ensure_ascii=False)}\n"
+                    "Filter the list and return ONLY a JSON array of the retained section names."
+                ),
+                self._parse_json_list,
+                _PROMPTS.get("vkr_scoring.filter_system"),
+            )
+        except Exception:
+            print("Warning: section filter LLM failed; using all sections.", file=sys.stderr)
+            return section_names
 
     def _extract_per_section(
         self,
@@ -164,29 +168,42 @@ class ClaimsPipeline:
                 f"Extracting claims from '{name}'...",
                 0.15 + 0.50 * (i / max(len(retained_names), 1)),
             )
-            claims_list: list = self._config.model_handler.send_and_parse(
-                (
-                    f"Analyze the following report section and extract all verifiable factual claims:\n\n"
-                    f"{text}\n\nReturn ONLY the JSON array."
-                ),
-                self._parse_json_list,
-                _PROMPTS.get("vkr_scoring.extract_system"),
-            )
-            all_raw_claims.append(json.dumps(claims_list, ensure_ascii=False))
+            try:
+                claims_list: list = self._config.model_handler.send_and_parse(
+                    (
+                        f"Analyze the following report section and extract all verifiable factual claims:\n\n"
+                        f"{text}\n\nReturn ONLY the JSON array."
+                    ),
+                    self._parse_json_list,
+                    _PROMPTS.get("vkr_scoring.extract_system"),
+                )
+                all_raw_claims.append(json.dumps(claims_list, ensure_ascii=False))
+            except Exception:
+                print(f"Warning: failed to extract claims from section '{name}', skipping.", file=sys.stderr)
 
         return all_raw_claims
 
     def _deduplicate_claims(self, all_raw_claims: list[str]) -> list[dict]:
         """Merge and deduplicate raw claims from all sections."""
-        return self._config.model_handler.send_and_parse(
-            (
-                "Below are claims extracted from all sections. Deduplicate and flag contradictions:\n"
-                f"{json.dumps(all_raw_claims, ensure_ascii=False)}\n"
-                "Return ONLY the final processed JSON array."
-            ),
-            self._parse_json_list,
-            _PROMPTS.get("vkr_scoring.dedup_system"),
-        )
+        try:
+            return self._config.model_handler.send_and_parse(
+                (
+                    "Below are claims extracted from all sections. Deduplicate and flag contradictions:\n"
+                    f"{json.dumps(all_raw_claims, ensure_ascii=False)}\n"
+                    "Return ONLY the final processed JSON array."
+                ),
+                self._parse_json_list,
+                _PROMPTS.get("vkr_scoring.dedup_system"),
+            )
+        except Exception:
+            print("Warning: deduplication LLM failed; merging raw claims without dedup.", file=sys.stderr)
+            combined: list[dict] = []
+            for raw in all_raw_claims:
+                try:
+                    combined.extend(json.loads(raw))
+                except Exception:
+                    pass
+            return combined
 
     # ── Private: verify helpers ───────────────────────────────────────────────
 
@@ -267,7 +284,10 @@ class ClaimsPipeline:
 
     def _annotate_claims(self, claims: list[dict], verifications: list) -> list[dict]:
         """Merge LLM verification results back onto the original claim objects."""
-        ver_by_index = {v.get("index", i): v for i, v in enumerate(verifications)}
+        ver_by_index = {}
+        for i, v in enumerate(verifications):
+            idx = v.get("index")
+            ver_by_index[i if idx is None else idx] = v
         annotated: list[dict] = []
         for i, claim in enumerate(claims):
             ver = ver_by_index.get(i, {})
