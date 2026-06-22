@@ -51,7 +51,7 @@ def build_parser_from_yaml(extra_sections: list[str] | None = None) -> argparse.
                 kwargs["type"] = float
                 kwargs["default"] = default
             elif arg_type == "list":
-                kwargs["nargs"] = "+"
+                kwargs["nargs"] = "*"
                 kwargs["type"] = str
                 kwargs["default"] = default
             else:

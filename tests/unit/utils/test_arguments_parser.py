@@ -148,6 +148,18 @@ def test_parser_with_empty_list_default(mock_yaml_file, mock_toml_file):
     assert args.tags == []
 
 
+def test_parser_list_flag_without_values_returns_empty_list(mock_yaml_file, mock_toml_file):
+    # Arrange
+    parser = build_parser_from_yaml()
+
+    # Act
+    args = parser.parse_args(["--tags"])
+
+    # Assert
+    assert isinstance(args.tags, list)
+    assert args.tags == []
+
+
 def test_get_default_from_config_returns_value(mock_toml_file):
     # Arrange
     config = mock_toml_file

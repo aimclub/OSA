@@ -77,6 +77,13 @@ arguments:
     aliases: [ "--scorecard" ]
     type: flag
     description: "Run OpenSSF Scorecard analysis and include the results in the PDF reports."
+  notebook_report:
+    aliases: [ "--notebook-report" ]
+    type: list
+    description: |
+      Analyze Jupyter notebooks and generate a notebook PDF report.
+      Provide one or multiple paths, or leave empty for repo directory.
+    example: notebooks/eda.ipynb research notebooks/experiments
 
   readme:
     aliases: [ "--readme" ]
