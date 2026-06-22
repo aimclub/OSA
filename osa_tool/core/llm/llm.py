@@ -345,8 +345,11 @@ class ProtollmHandler(ModelHandler):
         for _ in self._iter_configured_models():
             try:
                 messages = self._prepare_messages(prompt, system_message)
+                logger.debug("Async LLM request messages:\n%s", messages)
                 response = await self.client.ainvoke(messages)
-                return response.content
+                content = response.content
+                logger.debug("Async LLM response content:\n%s", content)
+                return content
             except Exception as e:
                 last_error = e
                 logger.debug(repr(e))

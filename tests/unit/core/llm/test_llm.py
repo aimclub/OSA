@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 
 from osa_tool.core.llm.llm import ModelHandlerFactory, PayloadFactory, ProtollmHandler
@@ -46,16 +48,19 @@ def test_send_request_calls_llm(monkeypatch, mock_config_manager, patch_llm_conn
 
 
 @pytest.mark.asyncio
-async def test_async_request_calls_llm(mock_config_manager, patch_llm_connector):
+async def test_async_request_calls_llm(mock_config_manager, patch_llm_connector, caplog):
     # Arrange
     model_settings = mock_config_manager.get_model_settings("general")
     handler = ProtollmHandler(model_settings)
 
     # Act
-    result = await handler.async_request("async hello")
+    with caplog.at_level(logging.DEBUG, logger="rich"):
+        result = await handler.async_request("async hello")
 
     # Assert
     assert result == "async response"
+    assert "async hello" in caplog.text
+    assert "async response" in caplog.text
 
 
 @pytest.mark.asyncio

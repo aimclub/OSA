@@ -4,6 +4,7 @@ import pytest
 
 from osa_tool.operations.analysis.paper_claims.claim_extractor import ClaimExtractor
 from osa_tool.operations.analysis.paper_claims.models import HeadingMeta, PaperSection
+from osa_tool.utils.prompts_builder import PromptLoader
 
 
 class FakeHandler:
@@ -23,6 +24,13 @@ def section() -> PaperSection:
         text="The model uses BERT-base without fine-tuning.",
         heading_meta=HeadingMeta(raw="2. Method", level=1, numbering="2"),
     )
+
+
+def test_section_filter_prompt_contains_valid_json_example():
+    prompt = PromptLoader().get("paper_claims.section_filter_system")
+
+    assert '- Example: [{"section_id":"s003"},{"section_id":"s004"}]' in prompt
+    assert "[{section_id:s003}" not in prompt
 
 
 @pytest.mark.asyncio
