@@ -67,6 +67,32 @@ def test_notebook_report_analyzer_filters_specific_paths(tmp_path, monkeypatch, 
     assert bundle.notebooks[0].relative_path == "good.ipynb"
 
 
+def test_notebook_report_analyzer_uses_single_issue_for_fully_non_executed_notebook(
+    tmp_path, monkeypatch, mock_config_manager
+):
+    repo_dir = tmp_path / parse_folder_name(str(mock_config_manager.config.git.repository))
+    repo_dir.mkdir()
+    _write_notebook(
+        repo_dir / "stale.ipynb",
+        [
+            nbformat.v4.new_markdown_cell("# Stale notebook"),
+            nbformat.v4.new_code_cell("x = 1", execution_count=None),
+            nbformat.v4.new_code_cell("y = x + 1", execution_count=None),
+        ],
+    )
+
+    monkeypatch.chdir(tmp_path)
+    analyzer = NotebookReportAnalyzer(mock_config_manager)
+
+    bundle = analyzer.analyze()
+
+    result = next(result for result in bundle.notebooks if result.relative_path == "stale.ipynb")
+    issue_slugs = {issue.slug for issue in result.issues}
+
+    assert "non-executed-notebook" in issue_slugs
+    assert "non-executed-cells" not in issue_slugs
+
+
 def test_notebook_report_generator_builds_pdf(tmp_path, monkeypatch, mock_config_manager, mock_repository_metadata):
     repo_dir = tmp_path / parse_folder_name(str(mock_config_manager.config.git.repository))
     repo_dir.mkdir()

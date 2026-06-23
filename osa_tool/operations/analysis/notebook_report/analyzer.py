@@ -211,7 +211,8 @@ class NotebookReportAnalyzer:
                     recommendation="Fix syntax errors so the notebook can be executed and converted safely.",
                 )
             )
-        if self._is_non_executed_notebook(code_cells):
+        is_fully_non_executed = self._is_non_executed_notebook(code_cells)
+        if is_fully_non_executed:
             issues.append(
                 NotebookIssue(
                     slug="non-executed-notebook",
@@ -219,7 +220,7 @@ class NotebookReportAnalyzer:
                     recommendation="Execute the notebook before committing it.",
                 )
             )
-        if stats.number_of_non_executed_code_cells:
+        if stats.number_of_non_executed_code_cells and not is_fully_non_executed:
             issues.append(
                 NotebookIssue(
                     slug="non-executed-cells",
