@@ -147,7 +147,7 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="non-linear-execution",
                     description="Notebook cells were executed in a non-linear order.",
-                    recommendation="Re-run the notebook from top to bottom to keep execution reproducible.",
+                    recommendation="Re-run your notebook top to bottom to ensure it is reproducible.",
                 )
             )
         if stats.number_of_cells > _MAX_CELLS_IN_NOTEBOOK:
@@ -155,7 +155,7 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="notebook-too-long",
                     description=f"Notebook contains more than {_MAX_CELLS_IN_NOTEBOOK} cells.",
-                    recommendation="Split the notebook into smaller focused notebooks.",
+                    recommendation="Split this notebook into two or more notebooks.",
                     details=f"Detected {stats.number_of_cells} cells.",
                 )
             )
@@ -164,7 +164,8 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="imports-beyond-first-cell",
                     description="Import statements were found beyond the first code cell.",
-                    recommendation="Move imports to the first code cell to make dependencies explicit.",
+                    recommendation="Move import statements to the first code cell to make "
+                    "your notebook dependencies more explicit.",
                 )
             )
         if self._missing_h1_heading(cells):
@@ -172,7 +173,8 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="missing-h1-heading",
                     description="Initial cells do not contain an H1 markdown heading.",
-                    recommendation="Add an H1 heading near the top of the notebook to explain its purpose.",
+                    recommendation="Clarify the notebook subject by writing an H1 Markdown heading "
+                    "in one of the initial cells of your notebook.",
                 )
             )
         if self._missing_opening_markdown(cells):
@@ -180,7 +182,8 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="missing-opening-markdown",
                     description="Initial notebook cells do not contain descriptive markdown text.",
-                    recommendation="Add introductory markdown explaining the goal and context of the notebook.",
+                    recommendation="Begin your notebook by describing what you intend to do "
+                    "in one or more introductory Markdown cells.",
                 )
             )
         if self._missing_closing_markdown(cells):
@@ -188,7 +191,8 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="missing-closing-markdown",
                     description="Final notebook cells do not contain descriptive markdown text.",
-                    recommendation="Add concluding markdown summarizing results or next steps.",
+                    recommendation="Conclude your notebook by describing what you have accomplished"
+                    " in one or more concluding Markdown cells.",
                 )
             )
         if self._too_few_markdown_cells(stats):
@@ -199,7 +203,8 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="too-few-markdown-cells",
                     description="Notebook contains too few markdown cells relative to code cells.",
-                    recommendation="Add more markdown to document the workflow and findings.",
+                    recommendation="Describe the steps of your computation by adding "
+                    "a few more Markdown cells.",
                     details=f"Markdown/code ratio is {ratio:.2f}.",
                 )
             )
@@ -208,7 +213,7 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="invalid-python-syntax",
                     description="Notebook contains invalid Python syntax in exported code.",
-                    recommendation="Fix syntax errors so the notebook can be executed and converted safely.",
+                    recommendation="Fix syntax errors in the notebook code cells.",
                 )
             )
         is_fully_non_executed = self._is_non_executed_notebook(code_cells)
@@ -217,7 +222,8 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="non-executed-notebook",
                     description="All code cells appear to be non-executed.",
-                    recommendation="Execute the notebook before committing it.",
+                    recommendation="Before committing, run your notebook top to bottom to ensure "
+                    "that all cells are executed.",
                 )
             )
         if stats.number_of_non_executed_code_cells and not is_fully_non_executed:
@@ -225,7 +231,8 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="non-executed-cells",
                     description="Notebook contains non-executed code cells.",
-                    recommendation="Execute remaining code cells or remove stale cells.",
+                    recommendation="Re-run your notebook top to bottom to ensure that all cells "
+                    "are executed.",
                     details=f"{stats.number_of_non_executed_code_cells} code cell(s) are non-executed.",
                 )
             )
@@ -234,7 +241,7 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="empty-cells",
                     description="Notebook contains empty code cells.",
-                    recommendation="Delete unused empty code cells to keep the notebook tidy.",
+                    recommendation="Keep your notebook clean by deleting unused cells.",
                     details=f"{stats.number_of_empty_code_cells} empty code cell(s) detected.",
                 )
             )
@@ -245,7 +252,8 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="long-multiline-python-comment",
                     description="Notebook contains long multiline Python comments inside code cells.",
-                    recommendation="Prefer markdown cells over long inline comments in code cells.",
+                    recommendation="For improved notebook readability, prefer using Markdown "
+                    "formatted text to long multiline Python comments.",
                     details=f"{long_comment_cells} code cell(s) contain long comment blocks.",
                 )
             )
@@ -256,7 +264,9 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="cell-too-long",
                     description="Notebook contains long code cells.",
-                    recommendation="Move larger code blocks into modules and keep notebooks focused on experiments.",
+                    recommendation="Consider consolidating your code outside the notebook "
+                    "by moving utility functions to a structured and tested codebase.\n"
+                    "Use notebooks to display results, not to compute them.",
                     details=f"{long_code_cells} code cell(s) exceed {_MAX_LINES_IN_CODE_CELL} lines.",
                 )
             )
@@ -407,7 +417,7 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="untitled-notebook",
                     description="Notebook still uses a default Untitled name.",
-                    recommendation="Rename the notebook to a meaningful file name.",
+                    recommendation="Give it a meaningful title to make it easy to recognize.",
                 )
             )
         if not re.search(r"^[A-Za-z0-9_.-]+$", filename):
@@ -415,7 +425,8 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="non-portable-chars-in-name",
                     description="Notebook filename contains non-portable characters.",
-                    recommendation="Use only letters, digits, dots, underscores, and hyphens in notebook names.",
+                    recommendation="Rename your notebook by using characters contained "
+                    "in the following portable charset: [A-Za-z0-9_.-].",
                 )
             )
         if re.match(r".*-Copy\d+\.ipynb$", filename):
@@ -423,7 +434,7 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="duplicate-notebook-not-renamed",
                     description="Notebook looks like a duplicate copy that was not renamed.",
-                    recommendation="Rename duplicated notebooks to a meaningful name.",
+                    recommendation="Give it a meaningful title to make it easy to recognize.",
                 )
             )
         return issues
