@@ -97,17 +97,25 @@ def main():
         scheduler = ModeScheduler(config_manager, sourcerank, args, workflow_manager, git_agent.metadata)
         plan = scheduler.plan
 
+        # Scorecard results are rendered inside the analysis report, so --scorecard
+        # has no effect on its own; enable report generation when only it is set.
+        run_report = bool(plan.get("report") or plan.get("scorecard"))
+        if plan.get("scorecard") and not plan.get("report"):
+            logger.info("Scorecard requested without --report; enabling report generation to render it.")
+
         if create_fork:
             git_agent.create_and_checkout_branch()
 
         # Repository Analysis Report generation
         # NOTE: Must run first - switches GitHub branches
-        if plan.get("report"):
+        if run_report:
             rich_section("Report generation")
             _run_plan_operation(
                 plan,
                 "report",
-                lambda: ReportGenerator(config_manager, git_agent, create_fork).run(),
+                lambda: ReportGenerator(
+                    config_manager, git_agent, create_fork, run_scorecard=plan.get("scorecard")
+                ).run(),
             )
 
         notebook_report = plan.get("notebook_report")
@@ -270,8 +278,10 @@ def main():
                 lambda: delete_repository(args.repository),
             )
 
-        if plan.get("report"):
-            WhatHasBeenDoneReportGenerator(config_manager, git_agent, create_fork, plan).run()
+        if run_report:
+            WhatHasBeenDoneReportGenerator(
+                config_manager, git_agent, create_fork, plan, run_scorecard=plan.get("scorecard")
+            ).run()
 
         elapsed_time = time.time() - start_time
         rich_section(f"All operations completed successfully in total time: {format_time(elapsed_time)}")
