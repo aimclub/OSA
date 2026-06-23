@@ -20,6 +20,32 @@ from osa_tool.operations.analysis.notebook_report.models import (
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import parse_folder_name
 
+# Some notebook validation rules and recommendations in this module were
+# adapted from collab-uniba/pynblint:
+# https://github.com/collab-uniba/pynblint
+#
+# MIT License
+#
+# Copyright (c) 2021 Collaborative Development Group
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 _MAX_CELLS_IN_NOTEBOOK = 50
 _MAX_LINES_IN_CODE_CELL = 30
 _INITIAL_CELLS = 3
@@ -203,8 +229,7 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="too-few-markdown-cells",
                     description="Notebook contains too few markdown cells relative to code cells.",
-                    recommendation="Describe the steps of your computation by adding "
-                    "a few more Markdown cells.",
+                    recommendation="Describe the steps of your computation by adding " "a few more Markdown cells.",
                     details=f"Markdown/code ratio is {ratio:.2f}.",
                 )
             )
@@ -231,8 +256,7 @@ class NotebookReportAnalyzer:
                 NotebookIssue(
                     slug="non-executed-cells",
                     description="Notebook contains non-executed code cells.",
-                    recommendation="Re-run your notebook top to bottom to ensure that all cells "
-                    "are executed.",
+                    recommendation="Re-run your notebook top to bottom to ensure that all cells " "are executed.",
                     details=f"{stats.number_of_non_executed_code_cells} code cell(s) are non-executed.",
                 )
             )
