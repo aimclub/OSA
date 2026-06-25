@@ -122,13 +122,13 @@ class GitAgent(abc.ABC):
 
         # 401/403: Auth/Permission error
         if (
-            "authentication failed" in stderr
-            or "could not read username" in stderr
-            or "access denied" in stderr
-            or "permission denied" in stderr
-            or "unable to access" in stderr
-            or "403" in stderr
-            or "401" in stderr
+                "authentication failed" in stderr
+                or "could not read username" in stderr
+                or "access denied" in stderr
+                or "permission denied" in stderr
+                or "unable to access" in stderr
+                or "403" in stderr
+                or "401" in stderr
         ):
             logger.error(f"Auth/Permission Error during {action}.")
             logger.error(f"Details: {stderr}")
@@ -403,10 +403,10 @@ class GitAgent(abc.ABC):
             logger.info(f"Switched to branch {branch}.")
 
     def commit_and_push_changes(
-        self,
-        branch: str = None,
-        commit_message: str = "osa_tool recommendations",
-        force: bool = False,
+            self,
+            branch: str = None,
+            commit_message: str = "osa_tool recommendations",
+            force: bool = False,
     ) -> bool:
         """Commits and pushes changes to the forked repository.
 
@@ -461,20 +461,22 @@ class GitAgent(abc.ABC):
             return True
         except GitCommandError as e:
             self._handle_git_error(e, f"pushing to {branch}")
-            logger.error(f"""Push failed: Branch '{branch}' already exists in the fork.
+            logger.error(
+                f"""Push failed: Branch '{branch}' already exists in the fork.
                  To resolve this, please either:
                    1. Choose a different branch name that doesn't exist in the fork 
                       by modifying the `branch_name` parameter.
                    2. Delete the existing branch from forked repository.
-                   3. Delete the fork entirely.""")
+                   3. Delete the fork entirely."""
+            )
             return False
 
     def upload_report(
-        self,
-        report_filename: str,
-        report_filepath: str,
-        report_branch: str = "osa_tool_attachments",
-        commit_message: str = "docs: upload pdf report",
+            self,
+            report_filename: str,
+            report_filepath: str,
+            report_branch: str = "osa_tool_attachments",
+            commit_message: str = "docs: upload pdf report",
     ) -> None:
         """Uploads the generated PDF report to a separate branch.
 
@@ -853,7 +855,7 @@ class GitHubAgent(GitAgent):
 
     def _build_auth_url(self, repo_url: str) -> str:
         if repo_url.startswith("https://github.com/"):
-            repo_path = repo_url[len("https://github.com/") :]
+            repo_path = repo_url[len("https://github.com/"):]
             return f"https://{self.token}@github.com/{repo_path}.git"
         raise ValueError(f"Unsupported repository URL format for GitHub: {repo_url}")
 
@@ -1434,7 +1436,7 @@ class GitverseAgent(GitAgent):
 
     def _build_auth_url(self, repo_url: str) -> str:
         if repo_url.startswith("https://gitverse.ru/"):
-            repo_path = repo_url[len("https://gitverse.ru/") :]
+            repo_path = repo_url[len("https://gitverse.ru/"):]
             return f"https://{self.token}@gitverse.ru/{repo_path}.git"
         raise ValueError(f"Unsupported repository URL format for Gitverse: {repo_url}")
 
@@ -1516,7 +1518,7 @@ class SourceCraftAgent(GitAgent):
             self._handle_api_error(response, f"posting comment to PR {pr_slug}", raise_exception=False)
 
     def create_pull_request(
-        self, title: str = None, body: str = None, changes: bool = False, target_branch: str = None
+            self, title: str = None, body: str = None, changes: bool = False, target_branch: str = None
     ) -> None:
         if not self.token:
             raise ValueError("SourceCraft token is required to create a pull request.")
