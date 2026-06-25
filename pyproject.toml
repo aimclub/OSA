@@ -22,6 +22,7 @@ black = ">=25.0.0"
 colorama = ">=0.4.6"
 docx2txt = ">=0.9"
 GitPython = ">=3.1.40"
+json-repair = { extras = ["schema"], version = "~=0.60.0" }
 libcst = ">=1.8.6"
 matplotlib = ">=3.10.9"
 mkdocs = ">=1.6.0"

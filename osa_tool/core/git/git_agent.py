@@ -12,7 +12,6 @@ from osa_tool.core.git.metadata import (
     GitHubMetadataLoader,
     GitLabMetadataLoader,
     GitverseMetadataLoader,
-    SourceCraftMetadataLoader,
     RepositoryMetadata,
     LocalMetadataLoader,
 )

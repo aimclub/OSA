@@ -294,7 +294,7 @@ def register_all_operations(generate_docs: bool = True):
         if inspect.isclass(obj) and issubclass(obj, Operation) and obj is not Operation:
             OperationRegistry.register(obj())
 
-    docs_path = os.path.join(os.path.dirname(osa_project_root()), "docs", "core", "operations", "OPERATIONS.md")
+    docs_path = os.path.join(os.path.dirname(osa_project_root()), "docs", "api", "operations", "OPERATIONS.md")
     if generate_docs:
         generate_operations_markdown(docs_path)
 
