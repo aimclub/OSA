@@ -40,11 +40,11 @@ class GitAgent(abc.ABC):
     """
 
     def __init__(
-            self,
-            repo_url: str,
-            repo_branch_name: str = None,
-            branch_name: str = "osa_tool",
-            author: str = None,
+        self,
+        repo_url: str,
+        repo_branch_name: str = None,
+        branch_name: str = "osa_tool",
+        author: str = None,
     ):
         """Initializes the agent with repository info.
 
@@ -128,13 +128,13 @@ class GitAgent(abc.ABC):
 
         # 401/403: Auth/Permission error
         if (
-                "authentication failed" in stderr
-                or "could not read username" in stderr
-                or "access denied" in stderr
-                or "permission denied" in stderr
-                or "unable to access" in stderr
-                or "403" in stderr
-                or "401" in stderr
+            "authentication failed" in stderr
+            or "could not read username" in stderr
+            or "access denied" in stderr
+            or "permission denied" in stderr
+            or "unable to access" in stderr
+            or "403" in stderr
+            or "401" in stderr
         ):
             logger.error(f"Auth/Permission Error during {action}.")
             logger.error(f"Details: {stderr}")
@@ -409,10 +409,10 @@ class GitAgent(abc.ABC):
             logger.info(f"Switched to branch {branch}.")
 
     def commit_and_push_changes(
-            self,
-            branch: str = None,
-            commit_message: str = "osa_tool recommendations",
-            force: bool = False,
+        self,
+        branch: str = None,
+        commit_message: str = "osa_tool recommendations",
+        force: bool = False,
     ) -> bool:
         """Commits and pushes changes to the forked repository.
 
@@ -478,11 +478,11 @@ class GitAgent(abc.ABC):
             return False
 
     def upload_report(
-            self,
-            report_filename: str,
-            report_filepath: str,
-            report_branch: str = "osa_tool_attachments",
-            commit_message: str = "docs: upload pdf report",
+        self,
+        report_filename: str,
+        report_filepath: str,
+        report_branch: str = "osa_tool_attachments",
+        commit_message: str = "docs: upload pdf report",
     ) -> None:
         """Uploads the generated PDF report to a separate branch.
 
@@ -608,11 +608,11 @@ class GitAgent(abc.ABC):
 
 class LocalGitAgent(GitAgent):
     def __init__(
-            self,
-            repo_url: str,
-            repo_branch_name: str = None,
-            branch_name: str = "osa_tool",
-            author: str = None,
+        self,
+        repo_url: str,
+        repo_branch_name: str = None,
+        branch_name: str = "osa_tool",
+        author: str = None,
     ):
         if is_path(repo_url):
             if os.path.isdir(repo_url):
@@ -875,7 +875,7 @@ class GitHubAgent(GitAgent):
 
     def _build_auth_url(self, repo_url: str) -> str:
         if repo_url.startswith("https://github.com/"):
-            repo_path = repo_url[len("https://github.com/"):]
+            repo_path = repo_url[len("https://github.com/") :]
             return f"https://{self.token}@github.com/{repo_path}.git"
         raise ValueError(f"Unsupported repository URL format for GitHub: {repo_url}")
 
@@ -1461,7 +1461,7 @@ class GitverseAgent(GitAgent):
 
     def _build_auth_url(self, repo_url: str) -> str:
         if repo_url.startswith("https://gitverse.ru/"):
-            repo_path = repo_url[len("https://gitverse.ru/"):]
+            repo_path = repo_url[len("https://gitverse.ru/") :]
             return f"https://{self.token}@gitverse.ru/{repo_path}.git"
         raise ValueError(f"Unsupported repository URL format for Gitverse: {repo_url}")
 
@@ -1543,11 +1543,11 @@ class SourceCraftAgent(GitAgent):
             self._handle_api_error(response, f"posting comment to PR {pr_slug}", raise_exception=False)
 
     def create_pull_request(
-            self,
-            title: str = None,
-            body: str = None,
-            changes: bool = False,
-            target_branch: str = None,
+        self,
+        title: str = None,
+        body: str = None,
+        changes: bool = False,
+        target_branch: str = None,
     ) -> None:
         if not self.token:
             raise ValueError("SourceCraft token is required to create a pull request.")
