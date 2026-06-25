@@ -1,9 +1,53 @@
 import logging
 
 import pytest
+from pydantic import BaseModel
 
-from osa_tool.core.llm.llm import ModelHandlerFactory, PayloadFactory, ProtollmHandler
+from osa_tool.core.llm.llm import ModelHandlerFactory, PayloadFactory, ProtollmHandler, _parse_llm_response
 from tests.utils.fixtures.models import DummyLLMClient
+
+
+class SampleOutput(BaseModel):
+    items: list[str] = []
+
+
+def test_parse_llm_response_returns_pydantic_model() -> None:
+    # Act
+    result = _parse_llm_response('{"items": ["a.py"]}', SampleOutput)
+
+    # Assert
+    assert isinstance(result, SampleOutput)
+    assert result.items == ["a.py"]
+
+
+def test_parse_llm_response_returns_dict_when_parser_is_none() -> None:
+    # Act
+    result = _parse_llm_response('{"items": ["a.py"]}', None)
+
+    # Assert
+    assert result == {"items": ["a.py"]}
+
+
+def test_parse_llm_response_calls_callable_parser() -> None:
+    # Act
+    result = _parse_llm_response('{"items": ["a.py"]}', lambda raw: {"len": len(raw)})
+
+    # Assert
+    assert result == {"len": len('{"items": ["a.py"]}')}
+
+
+def test_send_and_parse_returns_pydantic_model(monkeypatch, mock_config_manager, patch_llm_connector):
+    # Arrange
+    model_settings = mock_config_manager.get_model_settings("general")
+    handler = ProtollmHandler(model_settings)
+    monkeypatch.setattr(handler, "send_request", lambda *args, **kwargs: '{"items": ["README.md"]}')
+
+    # Act
+    result = handler.send_and_parse("prompt", parser=SampleOutput)
+
+    # Assert
+    assert isinstance(result, SampleOutput)
+    assert result.items == ["README.md"]
 
 
 def test_payload_factory_generates_expected_structure(mock_config_manager):

@@ -2,38 +2,45 @@ import asyncio
 import os
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from typing import Any
 from uuid import uuid4
 
 import dotenv
+from json_repair import repair_json
 from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from protollm.connectors import create_llm_connector
 from pydantic import BaseModel, ValidationError
 
-from osa_tool.utils.token_counter import count_tokens, truncate_to_tokens
-
 from osa_tool.config.settings import ModelSettings
 from osa_tool.utils.logger import logger
-from osa_tool.utils.response_cleaner import JsonParseError, JsonProcessor
+from osa_tool.utils.response_cleaner import JsonParseError
+from osa_tool.utils.token_counter import count_tokens, truncate_to_tokens
 
 
-def _normalize_send_and_parse_parser(parser: Any) -> Callable[[str], Any]:
-    """If ``parser`` is a ``BaseModel`` subclass, build ``JsonProcessor.process_text`` + ``model_validate_json``.
+def _is_pydantic_model(parser: Any) -> bool:
+    return isinstance(parser, type) and issubclass(parser, BaseModel)
 
-    Otherwise ``parser`` must be a ``Callable[[str], Any]`` (e.g. scheduler ``PromptConfig.safe_validate``,
-    or ``JsonProcessor.parse`` for non-standard JSON handling). Both paths stay supported.
-    """
-    if isinstance(parser, type) and issubclass(parser, BaseModel):
-        model_cls = parser
 
-        def _parse(raw: str) -> BaseModel:
-            cleaned = JsonProcessor.process_text(raw)
-            return model_cls.model_validate_json(cleaned)
+def _parse_llm_response(raw: str, parser: Any) -> Any:
+    """Repair LLM JSON and normalize to the type expected by ``parser``."""
+    if parser is None:
+        return repair_json(json_str=raw, ensure_ascii=False, return_objects=True)
 
-        return _parse
-    return parser
+    if _is_pydantic_model(parser):
+        repaired = repair_json(
+            json_str=raw,
+            ensure_ascii=False,
+            return_objects=True,
+            schema=parser,
+        )
+        return parser.model_validate(repaired)
+
+    if callable(parser):
+        return parser(raw)
+
+    raise TypeError(f"Unsupported parser type: {type(parser)!r}")
 
 
 class ModelHandler(ABC):
@@ -314,9 +321,7 @@ class ProtollmHandler(ModelHandler):
 
         Args:
             prompt (str): The prompt to send to the LLM.
-            parser: Either a ``Callable[[str], Any]`` on the raw model text, or a
-                Pydantic ``BaseModel`` subclass. The latter is parsed as JSON via
-                ``JsonProcessor.process_text`` then ``model_validate_json``.
+            parser: Either a ``Callable[[str], Any]`` on the raw model text, or a Pydantic ``BaseModel`` subclass.
             system_message (str, optional): The system message to initialize the payload with.
             retry_delay (float, optional): Delay in seconds between retry attempts. Defaults to 0.5.
 
@@ -329,17 +334,16 @@ class ProtollmHandler(ModelHandler):
         """
         last_error = None
         last_raw = None
-        parser_fn = _normalize_send_and_parse_parser(parser)
 
         for attempt in range(1, self.max_retries + 1):
             last_raw = self.send_request(prompt, system_message)
 
             try:
-                result = parser_fn(last_raw)
+                result = _parse_llm_response(last_raw, parser)
 
                 logger.info(f"Send and parse request success on attempt {attempt}/{self.max_retries}.")
                 return result
-            except (JsonParseError, ValidationError) as e:
+            except (ValueError, ValidationError, JsonParseError, TypeError) as e:
                 last_error = e
                 logger.warning(f"Parse failed (attempt {attempt}/{self.max_retries}): {e}")
 
@@ -424,18 +428,17 @@ class ProtollmHandler(ModelHandler):
         """
         last_error = None
         last_raw = None
-        parser_fn = _normalize_send_and_parse_parser(parser)
 
         for attempt in range(1, self.max_retries + 1):
             last_raw = await self.async_request(prompt, system_message)
 
             try:
-                result = parser_fn(last_raw)
+                result = _parse_llm_response(last_raw, parser)
 
                 logger.info(f"Async send and parse request success on attempt {attempt}/{self.max_retries}.")
                 return result
 
-            except (JsonParseError, ValidationError) as e:
+            except (ValueError, ValidationError, JsonParseError, TypeError) as e:
                 last_error = e
                 logger.warning(f"Async parse failed (attempt {attempt}/{self.max_retries}): {e}")
                 self.reset_to_primary_model()

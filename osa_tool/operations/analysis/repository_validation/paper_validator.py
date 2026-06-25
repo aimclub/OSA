@@ -15,8 +15,6 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.core.models.event import EventKind, OperationEvent
-from osa_tool.core.models.llm_output_models import LlmJsonObject
-from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.operations.analysis.repository_validation.analyze.paper_analyzer import (
     PaperAnalyzer,
 )
@@ -156,7 +154,7 @@ class PaperValidator:
             experiment_assessment = (
                 await self.__model_handler.async_send_and_parse(
                     prompt=prompt,
-                    parser=LlmJsonObject,
+                    parser=None,
                 )
             ).root
 
