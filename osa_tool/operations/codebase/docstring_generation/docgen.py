@@ -237,10 +237,10 @@ class DocGen(object):
         return "\n\n".join([new_desc, other])
 
     async def generate_method_documentation(
-            self,
-            method_details: dict,
-            semaphore: asyncio.Semaphore,
-            context_code: str = None,
+        self,
+        method_details: dict,
+        semaphore: asyncio.Semaphore,
+        context_code: str = None,
     ) -> str:
         """
         Generate documentation for a single method.
@@ -294,11 +294,11 @@ class DocGen(object):
             return docstring.strip('"""')
 
     async def update_method_documentation(
-            self,
-            method_details: dict,
-            semaphore: asyncio.Semaphore,
-            context_code: str = None,
-            class_name: str = None,
+        self,
+        method_details: dict,
+        semaphore: asyncio.Semaphore,
+        context_code: str = None,
+        class_name: str = None,
     ) -> str:
         """
         Update documentation for a single method.
@@ -426,7 +426,10 @@ class DocGen(object):
 
     @staticmethod
     def insert_docstring_in_code(
-            source_code: str, method_details: dict, generated_docstring: str, class_method: bool = False
+        source_code: str,
+        method_details: dict,
+        generated_docstring: str,
+        class_method: bool = False,
     ) -> str:
         """
         Inserts or replaces a method-level docstring in the provided source code,
@@ -485,10 +488,10 @@ class DocGen(object):
                 end_doc_idx = next_line_index
 
                 if len(method_lines[next_line_index].strip()) > 3 and method_lines[next_line_index].strip().endswith(
-                        closing
+                    closing
                 ):
                     method_lines = (
-                            method_lines[:next_line_index] + [docstring_inserted] + method_lines[end_doc_idx + 1:]
+                        method_lines[:next_line_index] + [docstring_inserted] + method_lines[end_doc_idx + 1 :]
                     )
                     updated_block = "".join(method_lines)
                     result = source_code[:start] + updated_block + source_code[end:]
@@ -569,11 +572,11 @@ class DocGen(object):
         return self._function_index_cache
 
     def context_extractor(
-            self,
-            method_details: dict,
-            structure: dict,
-            function_index: dict = None,
-            generated_docstrings: dict = None,
+        self,
+        method_details: dict,
+        structure: dict,
+        function_index: dict = None,
+        generated_docstrings: dict = None,
     ) -> str:
         """
         Extracts the context of function calls from given method_details using method_calls field.
@@ -632,7 +635,7 @@ class DocGen(object):
 
                 separator = "=" * 10
                 instance_prompt = (
-                        separator + "\n" f"Helper function name: {display_name}\n" f"Documentation:\n{docstring}\n"
+                    separator + "\n" f"Helper function name: {display_name}\n" f"Documentation:\n{docstring}\n"
                 )
 
                 context.append(instance_prompt)
@@ -641,9 +644,9 @@ class DocGen(object):
             return ""
 
         return (
-                "Referenced helper functions (for context understanding only):\n"
-                + "\n".join(context)
-                + "\nEnd of referenced helper functions\n"
+            "Referenced helper functions (for context understanding only):\n"
+            + "\n".join(context)
+            + "\nEnd of referenced helper functions\n"
         )
 
     @staticmethod
@@ -668,7 +671,10 @@ class DocGen(object):
 
     @staticmethod
     def _run_in_executor(
-            parsed_structure: dict, project_source_code: dict, generated_docstrings: dict, n_workers: int = 8
+        parsed_structure: dict,
+        project_source_code: dict,
+        generated_docstrings: dict,
+        n_workers: int = 8,
     ) -> list[dict]:
         """
         Runs docstrings insertion tasks in multiprocessing mode.
@@ -731,7 +737,7 @@ class DocGen(object):
         return {file: new_module.code}
 
     async def _generate_docstrings_for_items(
-            self, parsed_structure: dict, docstring_type: tuple | str, rate_limit: int = 10
+        self, parsed_structure: dict, docstring_type: tuple | str, rate_limit: int = 10
     ) -> dict[str, dict]:
         """
         Generates a docstrings for all structures in given project by interacting with LLM.
@@ -779,7 +785,10 @@ class DocGen(object):
                 )
                 class_progress = {"count": 0, "total": total_classes}
                 generating_results = await _iterate_and_collect(
-                    parsed_structure, self._fetch_docstrings_for_class, semaphore, class_progress
+                    parsed_structure,
+                    self._fetch_docstrings_for_class,
+                    semaphore,
+                    class_progress,
                 )
 
             case _:
@@ -843,15 +852,15 @@ class DocGen(object):
         await asyncio.gather(*[_write_code(f, augmented_code[i][f]) for i, f in enumerate(structure)])
 
     async def _generate_node(
-            self,
-            node_id: str,
-            dep_graph,
-            parsed_structure: dict,
-            function_index: dict,
-            generated_docstrings: dict,
-            semaphore: asyncio.Semaphore,
-            docstring_type: tuple | str,
-            progress: dict,
+        self,
+        node_id: str,
+        dep_graph,
+        parsed_structure: dict,
+        function_index: dict,
+        generated_docstrings: dict,
+        semaphore: asyncio.Semaphore,
+        docstring_type: tuple | str,
+        progress: dict,
     ):
         """Generate docstring for a single node with context from completed dependencies."""
         node_info = dep_graph.get_node_metadata(node_id)
@@ -908,11 +917,11 @@ class DocGen(object):
             return None
 
     async def _fetch_docstrings(
-            self,
-            parsed_structure: dict,
-            docstring_type: tuple | str,
-            semaphore: asyncio.Semaphore,
-            rate_limit: int,
+        self,
+        parsed_structure: dict,
+        docstring_type: tuple | str,
+        semaphore: asyncio.Semaphore,
+        rate_limit: int,
     ) -> dict[str, dict]:
         """
         Generates docstrings for functions and methods using dependency-first processing.
@@ -1010,9 +1019,9 @@ class DocGen(object):
                     deps = dep_graph.get_dependencies(dependent_id)
                     if all(dep in completed for dep in deps):
                         if (
-                                dependent_id not in queue
-                                and dependent_id not in in_progress
-                                and dependent_id not in completed
+                            dependent_id not in queue
+                            and dependent_id not in in_progress
+                            and dependent_id not in completed
                         ):
                             queue.append(dependent_id)
 
@@ -1042,11 +1051,11 @@ class DocGen(object):
         return results
 
     async def _fetch_docstrings_for_class(
-            self,
-            file: str,
-            file_meta: dict,
-            semaphore: asyncio.Semaphore,
-            progress: dict,
+        self,
+        file: str,
+        file_meta: dict,
+        semaphore: asyncio.Semaphore,
+        progress: dict,
     ) -> dict[str, list]:
         """
         Collects a batch of requests for each class in given file by its metadata.
@@ -1065,14 +1074,11 @@ class DocGen(object):
         _coroutines = []
 
         for item in file_meta["structure"]:
-
             _type = item["type"]
 
             match _type:
                 case "class":
-
                     if not item.get("docstring") or self.main_idea:
-
                         # collecting a class metadata ahead
                         class_name = item["name"]
                         class_metadata = [class_name, item["attributes"]]
@@ -1080,7 +1086,10 @@ class DocGen(object):
                         # enrich the class metadata by meta about it's methods
                         for method in item["methods"]:
                             class_metadata.append(
-                                {"method_name": method["method_name"], "docstring": method["docstring"]}
+                                {
+                                    "method_name": method["method_name"],
+                                    "docstring": method["docstring"],
+                                }
                             )
 
                         class_metadata.append(item["docstring"])
@@ -1135,9 +1144,7 @@ class DocGen(object):
         importance_top = sorted(accepted_packages, key=lambda pair: pair[1], reverse=True)[:top_n]
 
         for file, score in importance_top:
-
             for component in parsed_structure[file]["structure"]:
-
                 _type = component["type"]
 
                 if _type == "class":
@@ -1306,9 +1313,9 @@ class DocGen(object):
             new_path = Path(init_doc_path, Path(*Path(parent_dir).parts[1::]))
             new_path.mkdir(parents=True, exist_ok=True)
             text = (
-                    f"# {file_name.strip('.py').replace('_', ' ').title()}\n\n"
-                    + "\n\n"
-                    + f"{self.convert_path_to_dot_notation(relative_path)}"
+                f"# {file_name.strip('.py').replace('_', ' ').title()}\n\n"
+                + "\n\n"
+                + f"{self.convert_path_to_dot_notation(relative_path)}"
             )
             new_file = Path(new_path, file_name.replace(".py", ".md"))
             new_file.write_text(text)
@@ -1441,7 +1448,12 @@ class DocGen(object):
 
             push_list = on_section.get("push", [])
             if not any(deploy_wf in entry.get("workflows", []) for entry in push_list):
-                push_list.append({"workflows": [deploy_wf], "filter": {"branches": ["main", "master"]}})
+                push_list.append(
+                    {
+                        "workflows": [deploy_wf],
+                        "filter": {"branches": ["main", "master"]},
+                    }
+                )
             on_section["push"] = push_list
             sc_data["on"] = on_section
 
@@ -1484,7 +1496,12 @@ class DocGen(object):
 
             yaml.Dumper.ignore_aliases = lambda *args: True
             sc_ci_file.write_text(
-                yaml.safe_dump(sc_data, default_flow_style=False, sort_keys=False, allow_unicode=True)
+                yaml.safe_dump(
+                    sc_data,
+                    default_flow_style=False,
+                    sort_keys=False,
+                    allow_unicode=True,
+                )
             )
 
             sites_cfg = sc_cfg.get("sites", {})
