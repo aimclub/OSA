@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
-import re
 import unicodedata
+from dataclasses import dataclass
 from functools import partial
 from typing import Any, Callable, Protocol
 
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
+from rapidfuzz import fuzz, process
 from rich.progress import track
 
 from osa_tool.operations.analysis.paper_claims.exceptions import ClaimExtractionError
@@ -23,77 +24,104 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder, PromptLoader
 from osa_tool.utils.response_cleaner import JsonParseError, JsonProcessor
 
-_INVISIBLE_CHARACTERS = "\u00ad\u200b\u200c\u200d\u2060\ufeff"
-_INVISIBLE_GAP_PATTERN = f"[{_INVISIBLE_CHARACTERS}]*"
-_WORD_GAP_PATTERN = f"(?:\\s|[{_INVISIBLE_CHARACTERS}])+"
+_SENTENCE_END_CHARACTERS = ".!?…。！？"
+_FUZZY_SOURCE_MIN_CHARS = 40
+_FUZZY_SOURCE_MIN_SCORE = 94.0
+_FUZZY_SOURCE_AMBIGUITY_MARGIN = 2.0
 
 
-def _normalize_for_source_match(text: str) -> tuple[str, list[int]]:
-    """Return text reduced to comparable letters/digits plus source positions."""
-    normalized: list[str] = []
-    positions: list[int] = []
+@dataclass(frozen=True)
+class _SourceTextMatch:
+    text: str
+    method: str
+    similarity: float | None = None
+
+
+def _iter_sentence_spans(text: str) -> list[tuple[int, int]]:
+    spans: list[tuple[int, int]] = []
+    start = 0
     for index, character in enumerate(text):
-        if not character.isalnum():
+        if character not in _SENTENCE_END_CHARACTERS:
             continue
-        normalized.append(character.casefold())
-        positions.append(index)
-    return "".join(normalized), positions
+        end = index + 1
+        while end < len(text) and text[end] in "\"'”’»)]}":
+            end += 1
+        stripped_start = start
+        stripped_end = end
+        while stripped_start < stripped_end and text[stripped_start].isspace():
+            stripped_start += 1
+        while stripped_end > stripped_start and text[stripped_end - 1].isspace():
+            stripped_end -= 1
+        if stripped_start < stripped_end:
+            spans.append((stripped_start, stripped_end))
+        start = end
+        while start < len(text) and text[start].isspace():
+            start += 1
+    if start < len(text):
+        stripped_start = start
+        stripped_end = len(text)
+        while stripped_start < stripped_end and text[stripped_start].isspace():
+            stripped_start += 1
+        while stripped_end > stripped_start and text[stripped_end - 1].isspace():
+            stripped_end -= 1
+        if stripped_start < stripped_end:
+            spans.append((stripped_start, stripped_end))
+    return spans or [(0, len(text))]
 
 
-def _find_symbol_insensitive_source_text(section_text: str, original_text: str) -> str | None:
-    """
-    Find source text while ignoring spaces, punctuation, separators, and PDF layout symbols:
-        - first tries exact match;
-        - then whitespace/invisible-character tolerant match;
-        - then falls back to a symbol-insensitive match that compares only letters/digits, ignoring spaces, punctuation, dashes, underscores, dots, etc.;
-        - still returns the exact span from section.text, so ре-\n\nальном is preserved.
-    """
-    normalized_original, _original_positions = _normalize_for_source_match(original_text)
-    if not normalized_original:
+def _candidate_source_spans(section_text: str) -> list[str]:
+    sentence_spans = _iter_sentence_spans(section_text)
+    candidates: list[str] = []
+    for start_index, (start, _end) in enumerate(sentence_spans):
+        for window_size in (1, 2):
+            end_index = start_index + window_size - 1
+            if end_index >= len(sentence_spans):
+                continue
+            source_text = section_text[start : sentence_spans[end_index][1]]
+            if source_text and source_text not in candidates:
+                candidates.append(source_text)
+    return candidates
+
+
+def _find_fuzzy_source_match(section_text: str, original_text: str) -> _SourceTextMatch | None:
+    if len(original_text.strip()) < _FUZZY_SOURCE_MIN_CHARS:
         return None
-    normalized_section, section_positions = _normalize_for_source_match(section_text)
-    start = normalized_section.find(normalized_original)
-    if start < 0:
+    candidates = _candidate_source_spans(section_text)
+    if not candidates:
         return None
-    end = start + len(normalized_original) - 1
-    source_start = section_positions[start]
-    source_end = section_positions[end] + 1
-    while (
-        source_start > 0
-        and not section_text[source_start - 1].isalnum()
-        and not section_text[source_start - 1].isspace()
-    ):
-        source_start -= 1
-    while (
-        source_end < len(section_text)
-        and not section_text[source_end].isalnum()
-        and not section_text[source_end].isspace()
-    ):
-        source_end += 1
-    return section_text[source_start:source_end]
+
+    matches = process.extract(
+        original_text,
+        candidates,
+        scorer=fuzz.ratio,
+        limit=2,
+        score_cutoff=_FUZZY_SOURCE_MIN_SCORE,
+    )
+    if not matches:
+        return None
+
+    best_text, best_score, _best_index = matches[0]
+    if len(matches) > 1:
+        second_text, second_score, _second_index = matches[1]
+        if second_text != best_text and best_score - second_score <= _FUZZY_SOURCE_AMBIGUITY_MARGIN:
+            logger.debug(
+                "Fuzzy original_text repair is ambiguous. best_score=%.1f; second_score=%.1f; "
+                "best_text=%r; second_text=%r",
+                best_score,
+                second_score,
+                best_text,
+                second_text,
+            )
+            return None
+    return _SourceTextMatch(best_text, method="fuzzy", similarity=best_score / 100)
 
 
-def _find_original_source_text(section_text: str, original_text: str) -> str | None:
-    """Return the exact source span while tolerating layout-only character differences."""
+def _find_original_source_match(section_text: str, original_text: str) -> _SourceTextMatch | None:
+    """Return an exact source span, or a conservative RapidFuzz-backed repair."""
     if original_text in section_text:
-        return original_text
+        return _SourceTextMatch(original_text, method="exact")
 
-    candidate = original_text.strip().translate({ord(character): None for character in _INVISIBLE_CHARACTERS})
-    if not candidate:
-        return None
-
-    tokens = re.split(r"\s+", candidate)
-    token_patterns = [
-        _INVISIBLE_GAP_PATTERN.join(re.escape(character) for character in token) for token in tokens if token
-    ]
-    if not token_patterns:
-        return None
-
-    match = re.search(_WORD_GAP_PATTERN.join(token_patterns), section_text)
-    if match:
-        return match.group(0)
-
-    return _find_symbol_insensitive_source_text(section_text, original_text)
+    return _find_fuzzy_source_match(section_text, original_text)
 
 
 def _section_text_preview(text: str, limit: int = 2_000) -> str:
@@ -149,8 +177,8 @@ class _ClaimCandidate(_StrictResponse):
 def _validate_source_text(items: list[_ClaimCandidate], *, section: PaperSection) -> None:
     """Validate candidate quotations and restore their exact source representation."""
     for item in items:
-        source_text = _find_original_source_text(section.text, item.original_text)
-        if source_text is None:
+        source_match = _find_original_source_match(section.text, item.original_text)
+        if source_match is None:
             logger.debug(
                 "Source-text validation failed for section %s. Candidate=%r; section_text=%r",
                 section.section_id,
@@ -163,7 +191,20 @@ def _validate_source_text(items: list[_ClaimCandidate], *, section: PaperSection
                 f"section_text_preview={_section_text_preview(section.text)!r}; "
                 f"section_text_length={len(section.text)}"
             )
-        item.original_text = source_text
+        if source_match.method == "fuzzy":
+            logger.info(
+                "Repaired original_text in section %s using fuzzy source match (similarity=%.3f)",
+                section.section_id,
+                source_match.similarity or 0.0,
+            )
+            logger.debug(
+                "Fuzzy original_text repair in section %s: candidate=%r; repaired=%r",
+                section.section_id,
+                item.original_text,
+                source_match.text,
+            )
+        item.original_text = source_match.text
+        source_text = source_match.text
         source_script = _dominant_script(source_text)
         claim_script = _dominant_script(item.claim)
         if source_script and claim_script and source_script != claim_script:

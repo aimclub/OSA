@@ -34,6 +34,13 @@ def test_section_filter_prompt_contains_valid_json_example():
     assert "[{section_id:s003}" not in prompt
 
 
+def test_claim_extraction_prompt_requires_verbatim_original_text():
+    prompt = PromptLoader().get("paper_claims.claim_extraction_system")
+
+    assert "`original_text` is evidence, not a paraphrase" in prompt
+    assert "Copy it verbatim from the input section" in prompt
+
+
 @pytest.mark.asyncio
 async def test_extract_repairs_invalid_source_text_and_deduplicates():
     valid_claim = {
@@ -126,6 +133,60 @@ async def test_extract_accepts_pdf_hyphenated_line_break_source_text():
     assert result.claims[0].original_text == source_text
     assert "ре-\n\nальном" in result.claims[0].original_text
     assert len(handler.prompts) == 3
+
+
+@pytest.mark.asyncio
+async def test_extract_repairs_minor_original_text_word_drift_with_fuzzy_source_match():
+    source_text = (
+        "Границу сегмента в нём задаёт не разметка, а само содержание: фрагмент обрывается там, "
+        "где векторное представление текста резко меняется."
+    )
+    paper_section = section().model_copy(update={"text": source_text})
+    candidate = {
+        "claim": "Границу сегмента задаёт само содержание.",
+        "original_text": (
+            "Граница сегмента в нём задаёт не разметка, а само содержание: фрагмент обрывается там, "
+            "где векторное представление текста резко меняется."
+        ),
+        "category": "data_preprocessing",
+        "value": None,
+        "verifiability": "medium",
+    }
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            json.dumps([candidate], ensure_ascii=False),
+            json.dumps(
+                [{"claim_id": "c0001", "claim": candidate["claim"], "contradiction": False}],
+                ensure_ascii=False,
+            ),
+        ]
+    )
+
+    result = await ClaimExtractor(handler).extract([paper_section])
+
+    assert result.claims[0].original_text == source_text
+    assert len(handler.prompts) == 3
+
+
+@pytest.mark.asyncio
+async def test_extract_rejects_ambiguous_fuzzy_original_text_repair():
+    source_text = (
+        "The system uses version Y1 for retrieval embeddings and reranking in production. "
+        "The system uses version Z1 for retrieval embeddings and reranking in production."
+    )
+    paper_section = section().model_copy(update={"text": source_text})
+    candidate = {
+        "claim": "The system uses version X1 for retrieval embeddings and reranking in production.",
+        "original_text": "The system uses version X1 for retrieval embeddings and reranking in production.",
+        "category": "infrastructure",
+        "value": "X1",
+        "verifiability": "high",
+    }
+    handler = FakeHandler(['[{"section_id":"s001"}]', json.dumps([candidate])])
+
+    with pytest.raises(ClaimExtractionError, match="original_text is not present"):
+        await ClaimExtractor(handler, max_retries=1).extract([paper_section])
 
 
 @pytest.mark.asyncio
