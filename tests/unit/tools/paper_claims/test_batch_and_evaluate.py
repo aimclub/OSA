@@ -22,6 +22,20 @@ def test_batch_keeps_gpt_5_4_mini_as_default_model():
     assert args.model == "openai/gpt-5.4-mini"
 
 
+def test_batch_uses_marker_process_isolation_by_default():
+    args = build_parser().parse_args(["paper.pdf"])
+
+    assert args.marker_process_isolation is True
+    assert args.marker_low_vram is False
+    assert args.marker_log_cuda_memory is True
+
+
+def test_batch_can_disable_marker_process_isolation():
+    args = build_parser().parse_args(["paper.pdf", "--no-marker-process-isolation"])
+
+    assert args.marker_process_isolation is False
+
+
 def test_load_claims_accepts_clean_schema(tmp_path):
     llm = tmp_path / "llm.json"
     human = tmp_path / "human.json"

@@ -42,6 +42,23 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--chunk-pages", type=int, default=10)
     parser.add_argument("--max-retries", type=int, default=5)
     parser.add_argument("--force-marker-refresh", action="store_true")
+    parser.add_argument(
+        "--marker-process-isolation",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Convert each PDF chunk in a separate Python process to release CUDA memory between chunks.",
+    )
+    parser.add_argument(
+        "--marker-low-vram",
+        action="store_true",
+        help="Use conservative Marker batch sizes for low-VRAM GPUs.",
+    )
+    parser.add_argument(
+        "--marker-log-cuda-memory",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Log CUDA memory before and after each Marker chunk when CUDA is available.",
+    )
     return parser
 
 
@@ -55,13 +72,19 @@ def main() -> int:
             logger.info("Input rejected: %s", failure)
         return 1
     logger.info("Collected %s PDF documents for processing", len(pdfs))
+
     config = ConfigManager(args)
     handler = ModelHandlerFactory.build(config.get_model_settings("validation"))
     pipeline = PaperClaimPipeline(handler)
     options = PipelineOptions(
         pages_per_chunk=args.chunk_pages,
         max_retries=args.max_retries,
-        marker=MarkerOptions(force_refresh=args.force_marker_refresh),
+        marker=MarkerOptions(
+            force_refresh=args.force_marker_refresh,
+            low_vram=args.marker_low_vram,
+            process_isolation=args.marker_process_isolation,
+            log_cuda_memory=args.marker_log_cuda_memory,
+        ),
     )
     for pdf in track(pdfs, description="Processing PDF documents"):
         logger.info("Starting document %s", pdf)
