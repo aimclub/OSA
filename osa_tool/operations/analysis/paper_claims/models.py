@@ -24,6 +24,9 @@ class MarkerOptions(StrictModel):
     extract_images: bool = False
     cache_root: Path | None = None
     force_refresh: bool = False
+    low_vram: bool = False
+    process_isolation: bool = False
+    log_cuda_memory: bool = True
     marker_config: dict[str, Any] = Field(default_factory=dict)
 
 
