@@ -25,9 +25,10 @@ RULES:
 3. EXCLUDE: Motivations, vague descriptions, figure or table description, references to prior work, subjective quality evaluations, and final performance outcomes (e.g., 'achieved 95% accuracy' or 'outperformed baseline by 2%').
 4. LANGUAGE: Preserve the original language of the paper for `claim` and `original_text`. Do not translate.
 5. ATOMICITY: If a sentence contains multiple independent facts, output separate claim objects.
+6. EVIDENCE SPAN: `original_text` is evidence, not a paraphrase. Copy it verbatim from the provided section text, including the exact wording, punctuation, capitalization, spelling, and line-break artifacts. Do not correct grammar, inflection, typos, hyphenation, or formatting.
 OUTPUT SCHEMA (each object must include exactly these fields):
 - 'claim': string, restated as a clear, self-contained sentence
-- 'original_text': string, the exact, complete sentence from the paper that contains the claim. Preserve it verbatim; do not truncate, summarize, or modify any part of the original text.
+- 'original_text': string, the exact, complete sentence from the paper that contains the claim. Copy it verbatim from the input section; do not truncate, summarize, paraphrase, translate, normalize, or modify any part of the original text.
 - 'category': string, EXACTLY one of: ["dataset", "model_architecture", "training_procedure", "evaluation_metric", "numerical_result", "baseline_comparison", "data_preprocessing", "infrastructure"]
 - 'value': string or null, specific parameter, name, or number if present (e.g., '0.001', 'BERT-base', 'ImageNet'), else null
 - 'verifiability': string, EXACTLY one of:
