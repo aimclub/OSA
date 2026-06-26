@@ -86,6 +86,49 @@ async def test_extract_accepts_layout_only_source_text_differences():
 
 
 @pytest.mark.asyncio
+async def test_extract_accepts_pdf_hyphenated_line_break_source_text():
+    source_text = (
+        "В отличие от полностью закрытой LLM, RAG-система может обращаться к внешним источникам "
+        "информации в ре-\n\nальном времени, и зависимость от статической параметрической памяти "
+        "заметно снижается."
+    )
+    paper_section = section().model_copy(update={"text": source_text})
+    candidate = {
+        "claim": "RAG-система может обращаться к внешним источникам информации в реальном времени.",
+        "original_text": (
+            "В отличие от полностью закрытой LLM, RAG-система может обращаться к внешним источникам "
+            "информации в ре-альном времени, и зависимость от статической параметрической памяти "
+            "заметно снижается."
+        ),
+        "category": "model_architecture",
+        "value": "RAG",
+        "verifiability": "high",
+    }
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            json.dumps([candidate], ensure_ascii=False),
+            json.dumps(
+                [
+                    {
+                        "claim_id": "c0001",
+                        "claim": candidate["claim"],
+                        "contradiction": False,
+                    }
+                ],
+                ensure_ascii=False,
+            ),
+        ]
+    )
+
+    result = await ClaimExtractor(handler).extract([paper_section])
+
+    assert result.claims[0].original_text == source_text
+    assert "ре-\n\nальном" in result.claims[0].original_text
+    assert len(handler.prompts) == 3
+
+
+@pytest.mark.asyncio
 async def test_extract_repairs_claim_written_in_a_different_script():
     valid_claim = {
         "claim": "The model uses BERT-base without fine-tuning.",

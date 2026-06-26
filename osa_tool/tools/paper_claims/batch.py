@@ -5,8 +5,6 @@ from pathlib import Path
 
 from rich.progress import track
 
-from osa_tool.config.settings import ConfigManager
-from osa_tool.core.llm.llm import ModelHandlerFactory
 from osa_tool.operations.analysis.paper_claims.models import (
     MarkerOptions,
     PipelineOptions,
@@ -41,7 +39,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--config-file", default=None)
     parser.add_argument("--chunk-pages", type=int, default=10)
     parser.add_argument("--max-retries", type=int, default=5)
-    parser.add_argument("--force-marker-refresh", action="store_true")
+    parser.add_argument(
+        "--force-marker-refresh",
+        action="store_true",
+        help=(
+            "Ignore existing cached Marker Markdown for this run and reconvert PDFs. "
+            "Only Marker output is refreshed; LLM extraction still runs normally and is not cached."
+        ),
+    )
     parser.add_argument(
         "--marker-process-isolation",
         action=argparse.BooleanOptionalAction,
@@ -72,6 +77,9 @@ def main() -> int:
             logger.info("Input rejected: %s", failure)
         return 1
     logger.info("Collected %s PDF documents for processing", len(pdfs))
+    # NOTE: heavy LLM imports inside main() so parser/help can load without importing the full LLM stack
+    from osa_tool.config.settings import ConfigManager
+    from osa_tool.core.llm.llm import ModelHandlerFactory
 
     config = ConfigManager(args)
     handler = ModelHandlerFactory.build(config.get_model_settings("validation"))

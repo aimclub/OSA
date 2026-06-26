@@ -28,6 +28,51 @@ _INVISIBLE_GAP_PATTERN = f"[{_INVISIBLE_CHARACTERS}]*"
 _WORD_GAP_PATTERN = f"(?:\\s|[{_INVISIBLE_CHARACTERS}])+"
 
 
+def _normalize_for_source_match(text: str) -> tuple[str, list[int]]:
+    """Return text reduced to comparable letters/digits plus source positions."""
+    normalized: list[str] = []
+    positions: list[int] = []
+    for index, character in enumerate(text):
+        if not character.isalnum():
+            continue
+        normalized.append(character.casefold())
+        positions.append(index)
+    return "".join(normalized), positions
+
+
+def _find_symbol_insensitive_source_text(section_text: str, original_text: str) -> str | None:
+    """
+    Find source text while ignoring spaces, punctuation, separators, and PDF layout symbols:
+        - first tries exact match;
+        - then whitespace/invisible-character tolerant match;
+        - then falls back to a symbol-insensitive match that compares only letters/digits, ignoring spaces, punctuation, dashes, underscores, dots, etc.;
+        - still returns the exact span from section.text, so ре-\n\nальном is preserved.
+    """
+    normalized_original, _original_positions = _normalize_for_source_match(original_text)
+    if not normalized_original:
+        return None
+    normalized_section, section_positions = _normalize_for_source_match(section_text)
+    start = normalized_section.find(normalized_original)
+    if start < 0:
+        return None
+    end = start + len(normalized_original) - 1
+    source_start = section_positions[start]
+    source_end = section_positions[end] + 1
+    while (
+        source_start > 0
+        and not section_text[source_start - 1].isalnum()
+        and not section_text[source_start - 1].isspace()
+    ):
+        source_start -= 1
+    while (
+        source_end < len(section_text)
+        and not section_text[source_end].isalnum()
+        and not section_text[source_end].isspace()
+    ):
+        source_end += 1
+    return section_text[source_start:source_end]
+
+
 def _find_original_source_text(section_text: str, original_text: str) -> str | None:
     """Return the exact source span while tolerating layout-only character differences."""
     if original_text in section_text:
@@ -45,7 +90,10 @@ def _find_original_source_text(section_text: str, original_text: str) -> str | N
         return None
 
     match = re.search(_WORD_GAP_PATTERN.join(token_patterns), section_text)
-    return match.group(0) if match else None
+    if match:
+        return match.group(0)
+
+    return _find_symbol_insensitive_source_text(section_text, original_text)
 
 
 def _section_text_preview(text: str, limit: int = 2_000) -> str:

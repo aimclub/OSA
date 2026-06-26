@@ -36,6 +36,13 @@ def test_batch_can_disable_marker_process_isolation():
     assert args.marker_process_isolation is False
 
 
+def test_force_marker_refresh_has_help_text():
+    help_text = build_parser().format_help()
+
+    assert "--force-marker-refresh" in help_text
+    assert "Ignore existing cached Marker Markdown" in help_text
+
+
 def test_load_claims_accepts_clean_schema(tmp_path):
     llm = tmp_path / "llm.json"
     human = tmp_path / "human.json"
