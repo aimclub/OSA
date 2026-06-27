@@ -3,7 +3,6 @@ import json
 import pytest
 
 from osa_tool.operations.analysis.paper_claims.claim_extractor import ClaimExtractor
-from osa_tool.operations.analysis.paper_claims.exceptions import ClaimExtractionError
 from osa_tool.operations.analysis.paper_claims.models import HeadingMeta, PaperSection
 from osa_tool.utils.prompts_builder import PromptLoader
 
@@ -170,7 +169,7 @@ async def test_extract_repairs_minor_original_text_word_drift_with_fuzzy_source_
 
 
 @pytest.mark.asyncio
-async def test_extract_rejects_ambiguous_fuzzy_original_text_repair():
+async def test_extract_drops_ambiguous_fuzzy_original_text_after_final_attempt():
     source_text = (
         "The system uses version Y1 for retrieval embeddings and reranking in production. "
         "The system uses version Z1 for retrieval embeddings and reranking in production."
@@ -185,8 +184,81 @@ async def test_extract_rejects_ambiguous_fuzzy_original_text_repair():
     }
     handler = FakeHandler(['[{"section_id":"s001"}]', json.dumps([candidate])])
 
-    with pytest.raises(ClaimExtractionError, match="original_text is not present"):
-        await ClaimExtractor(handler, max_retries=1).extract([paper_section])
+    result = await ClaimExtractor(handler, max_retries=1).extract([paper_section])
+
+    assert result.claims == []
+    assert result.meta.step3_input_count == 0
+
+
+@pytest.mark.asyncio
+async def test_extract_accepts_russian_claim_for_short_latin_technical_evidence():
+    source_text = (
+        "Для генерации использовались следующие параметры модели. "
+        "- Top-k: 50; "
+        "Остальные параметры фиксировались на уровне эксперимента."
+    )
+    paper_section = section().model_copy(update={"text": source_text})
+    candidate = {
+        "claim": "Top-k генерации был зафиксирован на значении 50.",
+        "original_text": "- Top-k: 50;",
+        "category": "training_procedure",
+        "value": "50",
+        "verifiability": "high",
+    }
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            json.dumps([candidate], ensure_ascii=False),
+            json.dumps(
+                [{"claim_id": "c0001", "claim": candidate["claim"], "contradiction": False}],
+                ensure_ascii=False,
+            ),
+        ]
+    )
+
+    result = await ClaimExtractor(handler).extract([paper_section])
+
+    assert result.claims[0].claim == candidate["claim"]
+    assert result.claims[0].original_text == candidate["original_text"]
+
+
+@pytest.mark.asyncio
+async def test_extract_drops_bad_claim_after_retries_and_keeps_valid_claim():
+    source_text = (
+        "The model uses BERT-base without fine-tuning. " "The retrieval pipeline uses BM25 for candidate selection."
+    )
+    paper_section = section().model_copy(update={"text": source_text})
+    valid_claim = {
+        "claim": "The retrieval pipeline uses BM25 for candidate selection.",
+        "original_text": "The retrieval pipeline uses BM25 for candidate selection.",
+        "category": "model_architecture",
+        "value": "BM25",
+        "verifiability": "high",
+    }
+    bad_claim = {
+        "claim": "该模型使用BERT基础版，无需微调。",
+        "original_text": "The model uses BERT-base without fine-tuning.",
+        "category": "model_architecture",
+        "value": "BERT-base",
+        "verifiability": "high",
+    }
+    repeated_bad_response = json.dumps([bad_claim, valid_claim], ensure_ascii=False)
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            repeated_bad_response,
+            repeated_bad_response,
+            json.dumps(
+                [{"claim_id": "c0001", "claim": valid_claim["claim"], "contradiction": False}],
+                ensure_ascii=False,
+            ),
+        ]
+    )
+
+    result = await ClaimExtractor(handler, max_retries=2).extract([paper_section])
+
+    assert [claim.claim for claim in result.claims] == [valid_claim["claim"]]
+    assert "plausible language script" in handler.prompts[2]
 
 
 @pytest.mark.asyncio
@@ -211,7 +283,7 @@ async def test_extract_repairs_claim_written_in_a_different_script():
     result = await ClaimExtractor(handler, max_retries=2).extract([section()])
 
     assert result.claims[0].claim == valid_claim["claim"]
-    assert "same language script" in handler.prompts[2]
+    assert "plausible language script" in handler.prompts[2]
 
 
 @pytest.mark.asyncio
@@ -243,7 +315,7 @@ async def test_deduplication_repairs_rewritten_claim_text():
 
 
 @pytest.mark.asyncio
-async def test_source_text_error_includes_section_preview():
+async def test_extract_drops_claim_with_unmatched_source_text_after_final_attempt():
     handler = FakeHandler(
         [
             '[{"section_id":"s001"}]',
@@ -252,8 +324,9 @@ async def test_source_text_error_includes_section_preview():
         ]
     )
 
-    with pytest.raises(ClaimExtractionError, match="section_text_preview=.*The model uses BERT-base"):
-        await ClaimExtractor(handler, max_retries=1).extract([section()])
+    result = await ClaimExtractor(handler, max_retries=1).extract([section()])
+
+    assert result.claims == []
 
 
 @pytest.mark.asyncio
