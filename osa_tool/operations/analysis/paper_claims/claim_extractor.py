@@ -1,127 +1,27 @@
 from __future__ import annotations
 
 import json
-import re
-import unicodedata
-from functools import partial
 from typing import Any, Callable, Protocol
 
-from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
+from pydantic import TypeAdapter, ValidationError
+from rich.progress import track
 
+from osa_tool.operations.analysis.paper_claims.claim_schemas import ClaimCandidateResponse, SelectedSectionResponse
+from osa_tool.operations.analysis.paper_claims.claim_validation import partition_valid_claim_candidates
 from osa_tool.operations.analysis.paper_claims.exceptions import ClaimExtractionError
 from osa_tool.operations.analysis.paper_claims.models import (
-    ClaimCategory,
     ClaimExtractionResult,
     DedupSelection,
     ExtractedClaim,
     ExtractionMetadata,
     PaperSection,
-    Verifiability,
 )
 from osa_tool.utils.prompts_builder import PromptBuilder, PromptLoader
 from osa_tool.utils.response_cleaner import JsonParseError, JsonProcessor
 
-_INVISIBLE_CHARACTERS = "\u00ad\u200b\u200c\u200d\u2060\ufeff"
-_INVISIBLE_GAP_PATTERN = f"[{_INVISIBLE_CHARACTERS}]*"
-_WORD_GAP_PATTERN = f"(?:\\s|[{_INVISIBLE_CHARACTERS}])+"
-
-
-def _find_original_source_text(section_text: str, original_text: str) -> str | None:
-    """Return the exact source span while tolerating layout-only character differences."""
-    if original_text in section_text:
-        return original_text
-
-    candidate = original_text.strip().translate({ord(character): None for character in _INVISIBLE_CHARACTERS})
-    if not candidate:
-        return None
-
-    tokens = re.split(r"\s+", candidate)
-    token_patterns = [
-        _INVISIBLE_GAP_PATTERN.join(re.escape(character) for character in token) for token in tokens if token
-    ]
-    if not token_patterns:
-        return None
-
-    match = re.search(_WORD_GAP_PATTERN.join(token_patterns), section_text)
-    return match.group(0) if match else None
-
-
-def _section_text_preview(text: str, limit: int = 2_000) -> str:
-    if len(text) <= limit:
-        return text
-    half = limit // 2
-    return f"{text[:half]}\n... <{len(text) - limit} characters omitted> ...\n{text[-half:]}"
-
-
-def _dominant_script(text: str) -> str | None:
-    """Return the dominant Unicode script for letters in text."""
-    scripts: dict[str, int] = {}
-    script_markers = {
-        "LATIN": ("LATIN",),
-        "CYRILLIC": ("CYRILLIC",),
-        "EAST_ASIAN": ("CJK", "HIRAGANA", "KATAKANA", "HANGUL"),
-        "ARABIC": ("ARABIC",),
-        "HEBREW": ("HEBREW",),
-    }
-    for character in text:
-        if not character.isalpha():
-            continue
-        unicode_name = unicodedata.name(character, "")
-        script = next(
-            (script for script, markers in script_markers.items() if any(marker in unicode_name for marker in markers)),
-            None,
-        )
-        if script:
-            scripts[script] = scripts.get(script, 0) + 1
-    return max(scripts, key=scripts.get) if scripts else None
-
 
 class AsyncModelHandler(Protocol):
     async def async_request(self, prompt: str, system_message: str | None = None, retry_delay: float = 1) -> str: ...
-
-
-class _StrictResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-
-class _SelectedSection(_StrictResponse):
-    section_id: str
-
-
-class _ClaimCandidate(_StrictResponse):
-    claim: str
-    original_text: str
-    category: ClaimCategory
-    value: str | None = None
-    verifiability: Verifiability
-
-
-def _validate_source_text(items: list[_ClaimCandidate], *, section: PaperSection) -> None:
-    """Validate candidate quotations and restore their exact source representation."""
-    for item in items:
-        source_text = _find_original_source_text(section.text, item.original_text)
-        if source_text is None:
-            logger.debug(
-                "Source-text validation failed for section %s. Candidate=%r; section_text=%r",
-                section.section_id,
-                item.original_text,
-                section.text,
-            )
-            raise ValueError(
-                f"original_text is not present in section {section.section_id}. "
-                f"original_text={item.original_text!r}; "
-                f"section_text_preview={_section_text_preview(section.text)!r}; "
-                f"section_text_length={len(section.text)}"
-            )
-        item.original_text = source_text
-        source_script = _dominant_script(source_text)
-        claim_script = _dominant_script(item.claim)
-        if source_script and claim_script and source_script != claim_script:
-            raise ValueError(
-                "claim must use the same language script as original_text. "
-                f"claim_script={claim_script}; original_text_script={source_script}; "
-                f"claim={item.claim!r}; original_text={source_text!r}"
-            )
 
 
 class ClaimExtractor:
@@ -168,6 +68,68 @@ class ClaimExtractor:
                 )
         raise ClaimExtractionError(f"LLM response remained invalid after {self.max_retries} attempts: {last_error}")
 
+    async def _request_claim_candidates(
+        self,
+        prompt: str,
+        system: str,
+        adapter: TypeAdapter[list[ClaimCandidateResponse]],
+        *,
+        section: PaperSection,
+        request_name: str,
+    ) -> list[ClaimCandidateResponse]:
+        logger.debug("System prompt:\n%s", system)
+        logger.debug("User prompt:\n%s", prompt)
+        current_prompt = prompt
+        original_prompt = prompt
+        last_error: Exception | None = None
+        for attempt in range(1, self.max_retries + 1):
+            logger.info("%s: sending request (attempt %s/%s)", request_name, attempt, self.max_retries)
+            raw = await self.handler.async_request(current_prompt, system)
+            logger.debug("Raw response:\n%s", raw)
+            try:
+                data = JsonProcessor.parse(str(raw), expected_type=list)
+                parsed = adapter.validate_python(data)
+            except (JsonParseError, TypeError, ValidationError) as exc:
+                last_error = exc
+                logger.info("%s: response validation failed, preparing repair request", request_name)
+                current_prompt = PromptBuilder.render(
+                    self.prompts.get("paper_claims.repair"),
+                    error=str(exc),
+                    response=str(raw),
+                    original_prompt=original_prompt,
+                )
+                continue
+
+            valid, invalid = partition_valid_claim_candidates(parsed, section=section)
+            if not invalid:
+                logger.info("%s: response validated", request_name)
+                logger.debug("Parsed response:\n%s", valid)
+                return valid
+
+            last_error = ValueError("; ".join(invalid))
+            if attempt < self.max_retries:
+                logger.info("%s: response validation failed, preparing repair request", request_name)
+                current_prompt = PromptBuilder.render(
+                    self.prompts.get("paper_claims.repair"),
+                    error=str(last_error),
+                    response=str(raw),
+                    original_prompt=original_prompt,
+                )
+                continue
+
+            for error in invalid:
+                logger.info("%s: dropping invalid claim after final attempt: %s", request_name, error)
+            logger.info(
+                "%s: kept %s/%s claims after dropping invalid claims",
+                request_name,
+                len(valid),
+                len(parsed),
+            )
+            logger.debug("Parsed response after dropping invalid claims:\n%s", valid)
+            return valid
+
+        raise ClaimExtractionError(f"LLM response remained invalid after {self.max_retries} attempts: {last_error}")
+
     async def _step_1_select_sections(self, sections: list[PaperSection]) -> list[str]:
         """Select claim-bearing sections while preserving their source order."""
         section_by_id = {section.section_id: section for section in sections}
@@ -180,7 +142,7 @@ class ClaimExtractor:
             for section in sections
         ]
 
-        def validate_sections(items: list[_SelectedSection]) -> None:
+        def validate_sections(items: list[SelectedSectionResponse]) -> None:
             ids = [item.section_id for item in items]
             if len(ids) != len(set(ids)) or any(item not in section_by_id for item in ids):
                 raise ValueError("Selection contains duplicate or unknown section IDs")
@@ -190,7 +152,7 @@ class ClaimExtractor:
             + json.dumps(section_options, ensure_ascii=False)
             + "\nFilter the list according to the rules and return ONLY a JSON array of objects with section_id in original order.",
             self.prompts.get("paper_claims.section_filter_system"),
-            TypeAdapter(list[_SelectedSection]),
+            TypeAdapter(list[SelectedSectionResponse]),
             validate_sections,
         )
         selected_ids = [item.section_id for item in selected]
@@ -205,8 +167,8 @@ class ClaimExtractor:
         """Extract and validate atomic claims from each selected section."""
         section_by_id = {section.section_id: section for section in sections}
         claims: list[ExtractedClaim] = []
-        claim_adapter = TypeAdapter(list[_ClaimCandidate])
-        for section_id in selected_section_ids:
+        claim_adapter = TypeAdapter(list[ClaimCandidateResponse])
+        for section_id in track(selected_section_ids, description="Extracting section claims"):
             section = section_by_id[section_id]
             if not section.text.strip():
                 continue
