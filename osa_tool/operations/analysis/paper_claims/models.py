@@ -111,16 +111,20 @@ class ClaimExtractionResult(StrictModel):
     selected_section_ids: list[str]
     meta: ExtractionMetadata
 
-    def to_legacy_dict(self) -> dict[str, Any]:
+    def to_legacy_dict(self, *, include_debug: bool = False) -> dict[str, Any]:
         claims = []
         for claim in self.claims:
             item = claim.model_dump(mode="json", exclude={"section_id"})
             claims.append(item)
-        return {
+        payload: dict[str, Any] = {
             "result": claims,
-            "step3_selection": [item.model_dump(mode="json") for item in self.deduplication],
             "meta": self.meta.model_dump(mode="json"),
         }
+        if include_debug:
+            payload["debug"] = {
+                "step3_selection": [item.model_dump(mode="json") for item in self.deduplication],
+            }
+        return payload
 
 
 class PipelineOptions(StrictModel):
@@ -134,5 +138,5 @@ class PipelineResult(StrictModel):
     sections: list[PaperSection]
     extraction: ClaimExtractionResult
 
-    def to_legacy_dict(self) -> dict[str, Any]:
-        return self.extraction.to_legacy_dict()
+    def to_legacy_dict(self, *, include_debug: bool = False) -> dict[str, Any]:
+        return self.extraction.to_legacy_dict(include_debug=include_debug)

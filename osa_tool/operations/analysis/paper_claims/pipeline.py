@@ -65,7 +65,13 @@ class PaperClaimPipeline:
         raise RuntimeError("PaperClaimPipeline.run() cannot be used inside an active event loop; await arun() instead")
 
     @staticmethod
-    def export(result: PipelineResult, output_dir: Path, *, legacy: bool = False) -> Path:
+    def export(
+        result: PipelineResult,
+        output_dir: Path,
+        *,
+        legacy: bool = False,
+        include_debug: bool = False,
+    ) -> Path:
         destination = Path(output_dir)
         logger.info("Exporting paper claims artifacts to %s", destination)
         destination.mkdir(parents=True, exist_ok=True)
@@ -74,7 +80,9 @@ class PaperClaimPipeline:
             json.dumps([item.model_dump(mode="json") for item in result.sections], ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
-        payload = result.to_legacy_dict() if legacy else result.extraction.model_dump(mode="json")
+        payload = (
+            result.to_legacy_dict(include_debug=include_debug) if legacy else result.extraction.model_dump(mode="json")
+        )
         output_path = destination / ("claims_legacy.json" if legacy else "claims.json")
         output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         logger.info("Paper claims export completed: %s", output_path)

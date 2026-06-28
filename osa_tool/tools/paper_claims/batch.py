@@ -40,6 +40,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--chunk-pages", type=int, default=10)
     parser.add_argument("--max-retries", type=int, default=5)
     parser.add_argument(
+        "--include-debug",
+        action="store_true",
+        help="Include debug-only intermediate data, such as legacy debug.step3_selection, in exported JSON.",
+    )
+    parser.add_argument(
         "--force-marker-refresh",
         action="store_true",
         help=(
@@ -98,7 +103,12 @@ def main() -> int:
         logger.info("Starting document %s", pdf)
         try:
             result = pipeline.run(pdf, options)
-            output_path = pipeline.export(result, args.output_dir / pdf.stem, legacy=True)
+            output_path = pipeline.export(
+                result,
+                args.output_dir / pdf.stem,
+                legacy=True,
+                include_debug=args.include_debug,
+            )
             logger.info(
                 "Document completed: %s; parsed_sections=%s; selected_sections=%s; final_claims=%s; output=%s",
                 pdf,
