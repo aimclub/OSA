@@ -16,7 +16,7 @@ from pydantic import BaseModel, ValidationError
 from osa_tool.config.settings import ModelSettings
 from osa_tool.utils.logger import logger
 from osa_tool.utils.response_cleaner import JsonParseError
-from osa_tool.utils.token_counter import truncate_to_tokens
+from osa_tool.utils.token_counter import count_tokens, truncate_to_tokens
 
 
 def _is_pydantic_model(parser: Any) -> bool:
@@ -207,6 +207,7 @@ class ProtollmHandler(ModelHandler):
         self.model_settings = model_settings
         self._original_primary_model = model_settings.model
         self.max_retries = model_settings.max_retries
+        self.last_successful_model: str | None = None
         self._configure_api(model_name=model_settings.model)
 
     def reset_to_primary_model(self) -> None:
@@ -238,9 +239,35 @@ class ProtollmHandler(ModelHandler):
         """
         Shared logic to prepare the payload and extract messages.
         """
-        safe_prompt = self._limit_tokens(prompt)
+        effective_system_message = system_message or self.model_settings.system_prompt
+        system_tokens = count_tokens(effective_system_message, self.model_settings.encoder)
+        original_user_tokens = count_tokens(prompt, self.model_settings.encoder)
+        safe_prompt = self._limit_tokens(prompt, reserved_tokens=system_tokens)
+        sent_user_tokens = count_tokens(safe_prompt, self.model_settings.encoder)
+        logger.debug(
+            "LLM token budget: model=%s, context_window=%s, max_output_tokens=%s, "
+            "system_tokens=%s, user_tokens=%s, sent_user_tokens=%s, truncated=%s",
+            self.model_settings.model,
+            self.model_settings.context_window,
+            self.model_settings.max_tokens,
+            system_tokens,
+            original_user_tokens,
+            sent_user_tokens,
+            sent_user_tokens < original_user_tokens,
+        )
         self.initialize_payload(self.model_settings, safe_prompt, system_message)
         return self.payload["messages"]
+
+    def _log_response_debug(self, content: Any, request_kind: str) -> None:
+        content_text = content if isinstance(content, str) else str(content)
+        logger.debug(
+            "%s LLM response: tokens=%s, max_output_tokens=%s, characters=%s\n%s",
+            request_kind,
+            count_tokens(content_text, self.model_settings.encoder),
+            self.model_settings.max_tokens,
+            len(content_text),
+            content_text,
+        )
 
     def send_request(self, prompt: str, system_message: str = None, retry_delay: float = 1) -> str:
         """
@@ -265,11 +292,16 @@ class ProtollmHandler(ModelHandler):
         """
         last_error = None
 
-        for _ in self._iter_configured_models():
+        for model in self._iter_configured_models():
             try:
+                logger.debug("Sending synchronous LLM request with model %s", model)
                 messages = self._prepare_messages(prompt, system_message)
                 response = self.client.invoke(messages)
-                return response.content
+                content = response.content
+                self.last_successful_model = model
+                logger.info("Synchronous LLM request completed with model %s", model)
+                self._log_response_debug(content, "Synchronous")
+                return content
             except Exception as e:
                 last_error = e
                 logger.debug(repr(e))
@@ -346,11 +378,17 @@ class ProtollmHandler(ModelHandler):
         """
         last_error = None
 
-        for _ in self._iter_configured_models():
+        for model in self._iter_configured_models():
             try:
+                logger.debug("Sending asynchronous LLM request with model %s", model)
                 messages = self._prepare_messages(prompt, system_message)
+                logger.debug("Async LLM request messages:\n%s", messages)
                 response = await self.client.ainvoke(messages)
-                return response.content
+                content = response.content
+                self.last_successful_model = model
+                logger.info("Asynchronous LLM request completed with model %s", model)
+                self._log_response_debug(content, "Asynchronous")
+                return content
             except Exception as e:
                 last_error = e
                 logger.debug(repr(e))
@@ -564,13 +602,41 @@ class ProtollmHandler(ModelHandler):
             **self._get_llm_params(),
         )
 
-    def _limit_tokens(self, text: str, safety_buffer: int = 100, mode: str = "middle-out") -> str:
+    def _limit_tokens(
+        self,
+        text: str,
+        safety_buffer: int = 100,
+        mode: str = "middle-out",
+        reserved_tokens: int = 0,
+    ) -> str:
         """
         Limits text to fit within the model's context window.
 
         Calculates: Available Input = Total Context - Max Output - Safety Buffer
         """
-        max_input_tokens = self.model_settings.context_window - self.model_settings.max_tokens - safety_buffer
+        max_input_tokens = (
+            self.model_settings.context_window - self.model_settings.max_tokens - safety_buffer - reserved_tokens
+        )
+        if max_input_tokens <= 0:
+            raise ValueError(
+                "Invalid LLM token budget: context_window "
+                f"({self.model_settings.context_window}) must exceed max_tokens "
+                f"({self.model_settings.max_tokens}) + system tokens ({reserved_tokens}) "
+                f"+ safety buffer ({safety_buffer}). Reduce max_tokens or increase context_window."
+            )
+
+        input_tokens = count_tokens(text, self.model_settings.encoder)
+        if input_tokens <= max_input_tokens:
+            return text
+
+        logger.warning(
+            "LLM user prompt exceeds the input budget and will be truncated: "
+            "input_tokens=%s, available_input_tokens=%s, strategy=%s, model=%s",
+            input_tokens,
+            max_input_tokens,
+            mode,
+            self.model_settings.model,
+        )
         return truncate_to_tokens(
             text,
             max_input_tokens,

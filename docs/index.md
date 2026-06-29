@@ -48,6 +48,10 @@ Here is a short video:
 4. **Various LLMs**: Use OSA with an LLM accessible via API (e.g., OpenAI, VseGPT, Ollama), a local server, or try
    an [osa_bot](https://github.com/osa-bot) hosted on ITMO servers.
 
+5. **Standalone paper claims pipeline**: Extract technical claims from PDF papers through the reusable
+   [`paper_claims`](paper-claims/index.md) operation and batch utilities. This pipeline is available as a separate
+   module and is not registered in the scheduler yet.
+
 ---
 
 ## Installation

@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from pydantic import BaseModel
 
@@ -90,16 +92,59 @@ def test_send_request_calls_llm(monkeypatch, mock_config_manager, patch_llm_conn
 
 
 @pytest.mark.asyncio
-async def test_async_request_calls_llm(mock_config_manager, patch_llm_connector):
+async def test_async_request_calls_llm(mock_config_manager, patch_llm_connector, caplog):
     # Arrange
     model_settings = mock_config_manager.get_model_settings("general")
     handler = ProtollmHandler(model_settings)
 
     # Act
-    result = await handler.async_request("async hello")
+    with caplog.at_level(logging.DEBUG, logger="rich"):
+        result = await handler.async_request("async hello")
 
     # Assert
     assert result == "async response"
+    assert "async hello" in caplog.text
+    assert "async response" in caplog.text
+    assert "user_tokens=" in caplog.text
+    assert "max_output_tokens=" in caplog.text
+    assert "Asynchronous LLM response: tokens=" in caplog.text
+    assert handler.last_successful_model == model_settings.model
+    assert f"completed with model {model_settings.model}" in caplog.text
+
+
+def test_prepare_messages_rejects_invalid_token_budget(mock_config_manager):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.context_window = 100
+    model_settings.max_tokens = 100
+    handler = ProtollmHandler(model_settings)
+
+    with pytest.raises(ValueError, match="Invalid LLM token budget"):
+        handler._prepare_messages("must not disappear", "system")
+
+
+def test_limit_tokens_returns_short_prompt_without_truncating(mock_config_manager, mocker):
+    model_settings = mock_config_manager.get_model_settings("general")
+    handler = ProtollmHandler(model_settings)
+    truncator = mocker.patch("osa_tool.core.llm.llm.truncate_to_tokens")
+
+    result = handler._limit_tokens("short prompt")
+
+    assert result == "short prompt"
+    truncator.assert_not_called()
+
+
+def test_limit_tokens_warns_when_prompt_is_truncated(mock_config_manager, caplog):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.context_window = 110
+    model_settings.max_tokens = 5
+    handler = ProtollmHandler(model_settings)
+
+    with caplog.at_level(logging.WARNING, logger="rich"):
+        result = handler._limit_tokens("This prompt contains considerably more than five tokens.")
+
+    assert result != "This prompt contains considerably more than five tokens."
+    assert "will be truncated" in caplog.text
+    assert "strategy=middle-out" in caplog.text
 
 
 @pytest.mark.asyncio
