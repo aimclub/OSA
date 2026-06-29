@@ -111,9 +111,8 @@ def _default_converter_factory(options: MarkerOptions) -> tuple[Any, Callable[[A
         from marker.output import text_from_rendered
     except ImportError as exc:
         raise PdfConversionError(
-            "Marker conversion requires `marker-pdf` in the active environment. The current Marker release "
-            "conflicts with ProtoLLM's OpenAI dependency, so OSA cannot declare it as an install extra; "
-            "provision Marker separately with compatible dependencies."
+            "Marker conversion requires `marker-pdf` in the active environment. Install the project dependencies "
+            "from pyproject.toml or requirements.txt."
         ) from exc
 
     config_values = {

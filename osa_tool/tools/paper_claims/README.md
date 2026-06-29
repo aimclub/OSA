@@ -47,17 +47,14 @@ contains `debug.step3_selection`.
 
 ## Evaluation
 
-Evaluation dependencies are isolated from the runtime requirements:
+Evaluation dependencies are included in the main project dependency files:
 
 ```bash
-pip install -r requirements-paper-claims-eval.txt
 python -m osa_tool.tools.paper_claims.evaluate --help
 python -m osa_tool.tools.paper_claims.aggregate --help
 ```
 
 ## Marker dependency note
 
-`marker-pdf` is loaded lazily and is not declared in OSA's dependency graph. Marker 1.10.2 requires `openai<2`, while
-OSA's ProtoLLM dependency requires `openai>=2.6`; declaring both makes the project unsolvable. A runtime that uses this
-pipeline must provision Marker separately and verify its non-LLM conversion path with the installed OpenAI package. OSA
-does not enable Marker's LLM processors.
+`marker-pdf` is declared in the project dependency files and loaded lazily at conversion time. OSA does not enable
+Marker's LLM processors.

@@ -145,11 +145,7 @@ clear_marker_cache()
 
 ## Evaluation utilities
 
-Evaluation dependencies are intentionally separated from the runtime path:
-
-```bash
-pip install -r requirements-paper-claims-eval.txt
-```
+Evaluation dependencies are included in the main project dependency files.
 
 Run semantic matching:
 
@@ -168,13 +164,10 @@ python -m osa_tool.tools.paper_claims.aggregate ./evaluations --output aggregate
 
 ## Dependencies
 
-The core project includes the lightweight runtime dependencies used by the pipeline, including `pypdf`,
-`markdown-it-py`, and `rapidfuzz`.
+The project dependency files include the paper-claims runtime and evaluation dependencies, including `pypdf`,
+`markdown-it-py`, `rapidfuzz`, `marker-pdf`, `pandas`, `numpy`, `scipy`, and `sentence-transformers`.
 
-`marker-pdf` is loaded lazily and is not declared in OSA's dependency graph. Marker 1.10.2 requires `openai<2`, while
-OSA's ProtoLLM dependency requires `openai>=2.6`; declaring both makes the project unsolvable. A runtime that uses this
-pipeline must provision Marker separately and verify its non-LLM conversion path with the installed OpenAI package. OSA
-does not enable Marker's LLM processors.
+Marker is loaded lazily at conversion time. OSA does not enable Marker's LLM processors.
 
 ## Module layout
 

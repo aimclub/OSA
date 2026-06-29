@@ -30,7 +30,10 @@ def main() -> int:
     try:
         import pandas as pd
     except ImportError as exc:
-        raise RuntimeError("Aggregation dependencies are missing; install requirements-paper-claims-eval.txt.") from exc
+        raise RuntimeError(
+            "Aggregation dependencies are missing; install the project dependencies from pyproject.toml "
+            "or requirements.txt."
+        ) from exc
     frame = pd.DataFrame(rows).sort_values("paper").reset_index(drop=True)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(args.output, index=False)
