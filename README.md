@@ -77,6 +77,10 @@ Here is a short video:
 5. **Workflow Generator**: Automatically generates customizable CI/CD workflows for Python repositories,
    including unit tests, code formatting, PEP 8 compliance checks, and PyPI publication.
 
+6. **Thesis (VKR) check**: Evaluates a repository against a set of formal criteria (
+   non-empty README, license file, etc.).  It also extracts claims (unique entities such as preprocessing type, model
+   architecture, etc.) from the thesis (VKR) text and matches them against the repository's code.
+
 ---
 
 ## Installation
