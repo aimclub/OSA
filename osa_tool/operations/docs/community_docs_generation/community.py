@@ -218,9 +218,7 @@ class CommunityTemplateBuilder:
             Has the task been completed successfully
         """
         try:
-            content = self._template[f"security_{self.host}"].format(
-                repo_url=self._build_security_repo_reference()
-            )
+            content = self._template[f"security_{self.host}"].format(repo_url=self._build_security_repo_reference())
             save_sections(content, self.security_to_save)
             logger.info(f"SECURITY.md successfully generated in folder {self.repo_path}")
         except Exception as e:

@@ -101,9 +101,7 @@ def test_local_citation_fallback_uses_placeholder_instead_of_absolute_path(
     assert str(repo_dir) not in content
 
 
-def test_local_contributing_section_points_to_issue_template(
-    mock_config_manager, mock_repository_metadata, tmp_path
-):
+def test_local_contributing_section_points_to_issue_template(mock_config_manager, mock_repository_metadata, tmp_path):
     repo_dir = tmp_path / "local_test_repo"
     repo_dir.mkdir()
     mock_config_manager.config.git.repository = repo_dir

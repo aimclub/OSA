@@ -43,9 +43,7 @@ class ContributingBuilder:
             clone_url_http=self.metadata.clone_url_http,
         )
         self.issues_url = self.metadata.issues_url or (
-            f"{self.url_path}{'tasktracker' if 'gitverse' in self.host else 'issues'}"
-            if self.url_path != "."
-            else "."
+            f"{self.url_path}{'tasktracker' if 'gitverse' in self.host else 'issues'}" if self.url_path != "." else "."
         )
         self._template = self.load_template()
         repo_root = resolve_repo_path(self.repo_url)
