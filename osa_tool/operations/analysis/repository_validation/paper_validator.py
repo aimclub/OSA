@@ -15,8 +15,6 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.core.models.event import EventKind, OperationEvent
-from osa_tool.core.models.llm_output_models import LlmJsonObject
-from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.operations.analysis.repository_validation.analyze.paper_analyzer import (
     PaperAnalyzer,
 )
@@ -161,21 +159,12 @@ class PaperValidator:
                 experiment_description=context.experiment,
                 code_snippets=code_chunks,
             )
-            try:
-                experiment_assessment = (
-                    await self.__model_handler.async_send_and_parse(
-                        prompt=prompt,
-                        parser=LlmJsonObject,
-                    )
-                ).root
-            except Exception as e:
-                logger.warning(f"Failed to assess experiment (skipping): {e}")
-                experiment_assessment = {
-                    "implemented_in": [],
-                    "missing_critical_components": ["Assessment unavailable due to LLM error"],
-                    "correlation_percent": 0.0,
-                    "reasoning": "LLM did not return a valid assessment.",
-                }
+            experiment_assessment = (
+                await self.__model_handler.async_send_and_parse(
+                    prompt=prompt,
+                    parser=None,
+                )
+            ).root
 
             input_tokens = tiktoken.get_encoding("cl100k_base").encode(prompt)
             logger.info(f"Tokens used: {len(input_tokens)}")
