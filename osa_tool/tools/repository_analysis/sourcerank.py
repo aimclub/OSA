@@ -2,7 +2,7 @@ import os
 import re
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.utils.utils import get_repo_tree, parse_folder_name
+from osa_tool.utils.utils import get_repo_tree, resolve_repo_path
 
 
 class SourceRank:
@@ -17,7 +17,7 @@ class SourceRank:
 
     def __init__(self, config_manager: ConfigManager):
         self.repo_url = config_manager.get_git_settings().repository
-        self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.repo_path = str(resolve_repo_path(self.repo_url))
         self.tree = get_repo_tree(self.repo_path)
 
     def readme_presence(self) -> bool:

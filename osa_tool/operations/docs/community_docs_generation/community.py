@@ -7,7 +7,7 @@ from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.docs.readme_generation.readme_utils import find_in_repo_tree, save_sections
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import osa_project_root, parse_folder_name
+from osa_tool.utils.utils import build_repo_browse_url, osa_project_root, resolve_repo_path, resolve_repo_web_identity
 
 
 class CommunityTemplateBuilder:
@@ -21,13 +21,26 @@ class CommunityTemplateBuilder:
         self.sourcerank = SourceRank(self.config_manager)
         self.metadata = metadata
         self.template_path = os.path.join(osa_project_root(), "docs", "templates", "community.toml")
-        self.url_path = f"https://{self.config_manager.get_git_settings().host_domain}/{self.config_manager.get_git_settings().full_name}/"
-        self.branch_path = f"tree/{self.metadata.default_branch}/"
-        self._template = self.load_template()
-
-        self.repo_path = os.path.join(
-            os.getcwd(), parse_folder_name(self.repo_url), "." + self.config_manager.get_git_settings().host
+        git = self.config_manager.get_git_settings()
+        self.host, self.host_domain, self.full_name = resolve_repo_web_identity(
+            repo_url=self.repo_url,
+            clone_url_http=self.metadata.clone_url_http,
+            host=git.host,
+            host_domain=git.host_domain,
+            full_name=git.full_name,
         )
+        self.host = self.host or "github"
+        self.url_path = build_repo_browse_url(
+            repo_url=self.repo_url,
+            default_branch=self.metadata.default_branch,
+            host=self.host,
+            host_domain=self.host_domain,
+            full_name=self.full_name,
+            clone_url_http=self.metadata.clone_url_http,
+        )
+        self._template = self.load_template()
+        repo_root = resolve_repo_path(self.repo_url)
+        self.repo_path = str(repo_root / f".{self.host}")
         self.code_of_conduct_to_save = os.path.join(self.repo_path, "CODE_OF_CONDUCT.md")
         self.security_to_save = os.path.join(self.repo_path, "SECURITY.md")
         self._setup_paths_depends_on_platform()
@@ -35,7 +48,7 @@ class CommunityTemplateBuilder:
     def _setup_paths_depends_on_platform(self) -> None:
         """Configures file save paths depending on the platform."""
 
-        if "gitlab" in self.config_manager.get_git_settings().host:
+        if "gitlab" in self.host:
             self.issue_templates_path = os.path.join(self.repo_path, "issue_templates")
             self.merge_request_templates_path = os.path.join(self.repo_path, "merge_request_templates")
             os.makedirs(self.issue_templates_path, exist_ok=True)
@@ -48,21 +61,22 @@ class CommunityTemplateBuilder:
             self.vulnerability_disclosure_to_save = os.path.join(
                 self.issue_templates_path, "Vulnerability_Disclosure.md"
             )
-        elif "github" in self.config_manager.get_git_settings().host:
+        elif "github" in self.host:
             self.issue_templates_path = os.path.join(self.repo_path, "ISSUE_TEMPLATE")
             os.makedirs(self.issue_templates_path, exist_ok=True)
             self.pr_to_save = os.path.join(self.repo_path, "PULL_REQUEST_TEMPLATE.md")
-            self.docs_issue_to_save = os.path.join(self.repo_path, "DOCUMENTATION_ISSUE.md")
+            self.docs_issue_to_save = os.path.join(self.issue_templates_path, "DOCUMENTATION_ISSUE.md")
             self.feature_issue_to_save = os.path.join(self.issue_templates_path, "FEATURE_ISSUE.md")
             self.bug_issue_to_save = os.path.join(self.issue_templates_path, "BUG_ISSUE.md")
-        elif "sourcecraft" in self.config_manager.get_git_settings().host:
-            repo_root = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
-            self.code_of_conduct_to_save = os.path.join(repo_root, "CODE_OF_CONDUCT.md")
-            self.security_to_save = os.path.join(repo_root, "SECURITY.md")
-            self.pr_to_save = os.path.join(repo_root, "PULL_REQUEST_TEMPLATE.md")
-            self.docs_issue_to_save = os.path.join(repo_root, "DOCUMENTATION_ISSUE.md")
-            self.feature_issue_to_save = os.path.join(repo_root, "FEATURE_ISSUE.md")
-            self.bug_issue_to_save = os.path.join(repo_root, "BUG_ISSUE.md")
+        elif "sourcecraft" in self.host:
+            repo_root = resolve_repo_path(self.repo_url)
+            self.repo_path = str(repo_root)
+            self.code_of_conduct_to_save = os.path.join(self.repo_path, "CODE_OF_CONDUCT.md")
+            self.security_to_save = os.path.join(self.repo_path, "SECURITY.md")
+            self.pr_to_save = os.path.join(self.repo_path, "PULL_REQUEST_TEMPLATE.md")
+            self.docs_issue_to_save = os.path.join(self.repo_path, "DOCUMENTATION_ISSUE.md")
+            self.feature_issue_to_save = os.path.join(self.repo_path, "FEATURE_ISSUE.md")
+            self.bug_issue_to_save = os.path.join(self.repo_path, "BUG_ISSUE.md")
 
     def load_template(self) -> dict:
         """
@@ -70,6 +84,17 @@ class CommunityTemplateBuilder:
         """
         with open(self.template_path, "rb") as file:
             return tomli.load(file)
+
+    def _build_security_repo_reference(self) -> str:
+        """
+        Return a repository reference suitable for SECURITY.md links.
+
+        For local repositories without a web identity we prefer a short editable
+        placeholder over an absolute filesystem path.
+        """
+        if self.url_path != ".":
+            return self.url_path.rstrip("/")
+        return f"...{resolve_repo_path(self.repo_url).name}"
 
     def build_code_of_conduct(self) -> bool:
         """
@@ -91,7 +116,15 @@ class CommunityTemplateBuilder:
         try:
             if self.sourcerank.contributing_presence():
                 pattern = r"\b\w*contribut\w*\.(md|rst|txt)$"
-                contributing_url = self.url_path + self.branch_path + find_in_repo_tree(self.sourcerank.tree, pattern)
+                contributing_url = build_repo_browse_url(
+                    repo_url=self.repo_url,
+                    default_branch=self.metadata.default_branch,
+                    relative_path=find_in_repo_tree(self.sourcerank.tree, pattern),
+                    host=self.host,
+                    host_domain=self.host_domain,
+                    full_name=self.full_name,
+                    clone_url_http=self.metadata.clone_url_http,
+                )
             else:
                 contributing_url = "Provide the link"
 
@@ -185,8 +218,8 @@ class CommunityTemplateBuilder:
             Has the task been completed successfully
         """
         try:
-            content = self._template[f"security_{self.config_manager.get_git_settings().host}"].format(
-                repo_url=self.repo_url
+            content = self._template[f"security_{self.host}"].format(
+                repo_url=self._build_security_repo_reference()
             )
             save_sections(content, self.security_to_save)
             logger.info(f"SECURITY.md successfully generated in folder {self.repo_path}")

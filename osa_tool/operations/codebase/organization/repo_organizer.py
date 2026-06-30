@@ -6,7 +6,7 @@ from typing import List
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import parse_folder_name
+from osa_tool.utils.utils import resolve_repo_path
 
 
 class RepoOrganizer:
@@ -29,7 +29,7 @@ class RepoOrganizer:
             config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
         """
         self.repo_url = config_manager.get_git_settings().repository
-        self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.repo_path = str(resolve_repo_path(self.repo_url))
         self.tests_dir = os.path.join(self.repo_path, "tests")
         self.examples_dir = os.path.join(self.repo_path, "examples")
 

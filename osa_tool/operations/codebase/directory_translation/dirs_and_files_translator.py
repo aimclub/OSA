@@ -5,7 +5,7 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import parse_folder_name
+from osa_tool.utils.utils import resolve_repo_path
 
 _ASCII_ONLY = re.compile(r"^[a-zA-Z0-9_.#\-]+$")
 
@@ -16,7 +16,7 @@ class RepositoryStructureTranslator:
         self.model_settings = self.config_manager.get_model_settings("general")
         self.repo_url = self.config_manager.get_git_settings().repository
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
-        self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.base_path = str(resolve_repo_path(self.repo_url))
 
         self.excluded_dirs = {".git", ".venv"}
         self.extensions_code_files = {".py"}

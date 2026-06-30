@@ -1,6 +1,7 @@
 """Build the README installation section."""
 
 import os
+from pathlib import Path
 from typing import Any
 
 import tomli
@@ -12,7 +13,7 @@ from osa_tool.operations.docs.readme_generation.readme_utils import find_in_repo
 from osa_tool.tools.repository_analysis.dependencies import DependencyExtractor
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import osa_project_root, parse_folder_name
+from osa_tool.utils.utils import osa_project_root, parse_folder_name, resolve_repo_path
 
 
 class InstallationSectionBuilder:
@@ -22,7 +23,7 @@ class InstallationSectionBuilder:
         self.config_manager = config_manager
         self.metadata = metadata
         self.repo_url = config_manager.get_git_settings().repository
-        self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.repo_path = str(resolve_repo_path(self.repo_url))
 
         self.sourcerank = SourceRank(config_manager)
         self.tree = self.sourcerank.tree
@@ -64,11 +65,23 @@ class InstallationSectionBuilder:
 
         name = self.config_manager.get_git_settings().name
         folder = parse_folder_name(self.repo_url)
+        if Path(self.repo_url).expanduser().is_dir() and not self.metadata.clone_url_http:
+            logger.info("[InstallationBuilder] Using local checkout installation path for repo=%s", self.repo_url)
+            steps = (
+                f"**Using the current local checkout:**\n\n"
+                f"1. Open the repository root:\n"
+                f"```sh\ncd path/to/{folder}\n```\n\n"
+            )
+            if find_in_repo_tree(self.tree, r"pyproject\.toml|setup\.py|setup\.cfg"):
+                steps += "2. Install the project in editable mode:\n\n```sh\npip install -e .\n```"
+            elif find_in_repo_tree(self.tree, r"requirements\.txt"):
+                steps += "2. Install the project dependencies:\n\n```sh\npip install -r requirements.txt\n```"
+            return steps
         logger.info("[InstallationBuilder] Using source installation path for repo=%s", self.repo_url)
         steps = (
             f"**Build from source:**\n\n"
             f"1. Clone the {name} repository:\n"
-            f"```sh\ngit clone {self.repo_url}\n```\n\n"
+            f"```sh\ngit clone {self.metadata.clone_url_http or self.repo_url}\n```\n\n"
             f"2. Navigate to the project directory:\n"
             f"```sh\ncd {folder}\n```\n\n"
         )

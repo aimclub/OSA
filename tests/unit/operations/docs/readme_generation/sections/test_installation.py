@@ -140,3 +140,22 @@ def test_installation_builder_with_minimal_repo_tree(
 
     installation = builder.build_installation()
     assert isinstance(installation, str)
+
+
+def test_generate_install_command_for_local_checkout(mock_installation_builder, tmp_path):
+    builder = mock_installation_builder
+    repo_dir = tmp_path / "local_test_repo"
+    repo_dir.mkdir()
+    builder.repo_url = str(repo_dir)
+    builder.metadata.clone_url_http = ""
+    builder.info = None
+
+    with patch(
+        "osa_tool.operations.docs.readme_generation.sections.installation.find_in_repo_tree",
+        side_effect=["pyproject.toml"],
+    ):
+        command = builder._generate_install_command()
+
+    assert "current local checkout" in command.lower()
+    assert "cd path/to/local_test_repo" in command
+    assert "pip install -e ." in command
