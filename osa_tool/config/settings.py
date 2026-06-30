@@ -14,6 +14,7 @@ from pydantic import (
     ConfigDict,
     Field,
     NonNegativeFloat,
+    PositiveFloat,
     PositiveInt,
     model_validator,
 )
@@ -27,6 +28,18 @@ from osa_tool.utils.utils import (
 )
 
 
+class RetrySettings(BaseModel):
+    """HTTP retry and backoff settings for git-host API calls."""
+
+    max_attempts: PositiveInt = 4
+    backoff_base: PositiveFloat = 1.0
+    backoff_factor: PositiveFloat = 2.0
+    backoff_max_delay: PositiveFloat = 30.0
+    backoff_total_cap: PositiveFloat = 120.0
+    retry_after_max: PositiveFloat = 120.0
+    request_timeout: PositiveFloat = 30.0
+
+
 class GitSettings(BaseModel):
     """
     User repository settings for a remote codebase.
@@ -38,6 +51,7 @@ class GitSettings(BaseModel):
     host: str | None = None
     name: str = ""
     osa_branch_name: str = "osa_tool"
+    retry: RetrySettings = Field(default_factory=RetrySettings)
 
     @model_validator(mode="after")
     def set_git_attributes(self):
@@ -168,6 +182,10 @@ class ConfigManager:
         processed_data = self._process_config_data(config_data)
 
         self.config = Settings.model_validate(processed_data)
+
+        from osa_tool.core.git import request_utils
+
+        request_utils.DEFAULT_RETRY_CONFIG = request_utils.RetryConfig(**self.config.git.retry.model_dump())
 
     def _get_config_path(self) -> str:
         """
