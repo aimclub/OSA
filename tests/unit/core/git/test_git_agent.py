@@ -821,5 +821,9 @@ def test_local_git_agent_with_empty_directory(tmp_path):
 
 
 def test_local_git_agent_with_directory_without_git(tmp_path):
+    directory = tmp_path / "not_a_repo"
+    directory.mkdir()
+    (directory / "some_file.txt").write_text("content")
+
     with pytest.raises(InvalidGitRepositoryError):
-        LocalGitAgent("tests")
+        LocalGitAgent(str(directory))
