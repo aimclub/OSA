@@ -8,7 +8,7 @@ from nbconvert import PythonExporter
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import parse_folder_name
+from osa_tool.utils.utils import resolve_repo_path
 
 
 class NotebookConverter:
@@ -24,7 +24,7 @@ class NotebookConverter:
 
     def __init__(self, config_manager: ConfigManager, notebook_paths: list[str] | None = None) -> None:
         self.repo_url = config_manager.get_git_settings().repository
-        self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.repo_path = str(resolve_repo_path(self.repo_url))
         self.notebook_paths = notebook_paths or []
         self.exporter = PythonExporter()
 

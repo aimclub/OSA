@@ -13,7 +13,7 @@ from osa_tool.operations.docs.readme_generation.inputs.pypi_status_checker impor
 from osa_tool.tools.repository_analysis.dependencies import DependencyExtractor
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import osa_project_root, parse_folder_name
+from osa_tool.utils.utils import osa_project_root, resolve_repo_path, resolve_repo_web_identity
 
 
 class HeaderBuilder:
@@ -23,7 +23,7 @@ class HeaderBuilder:
         self.config_manager = config_manager
         self.metadata = metadata
         self.repo_url = config_manager.get_git_settings().repository
-        self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.repo_path = str(resolve_repo_path(self.repo_url))
         self.max_tech_badges = 7
 
         self.tree = SourceRank(config_manager).tree
@@ -103,8 +103,18 @@ class HeaderBuilder:
             logger.debug("[HeaderBuilder] No license metadata; license badge skipped")
             return ""
         git = self.config_manager.get_git_settings()
+        host, _, full_name = resolve_repo_web_identity(
+            repo_url=git.repository,
+            clone_url_http=self.metadata.clone_url_http,
+            host=git.host,
+            host_domain=git.host_domain,
+            full_name=git.full_name,
+        )
+        if not host or not full_name:
+            logger.debug("[HeaderBuilder] No repository web identity; license badge skipped")
+            return ""
         url = (
-            f"https://img.shields.io/{git.host}/license/{git.full_name}"
+            f"https://img.shields.io/{host}/license/{full_name}"
             f"?style=flat&logo=opensourceinitiative&logoColor=white&color=blue"
         )
         logger.debug("[HeaderBuilder] License badge generated")

@@ -27,7 +27,7 @@ from osa_tool.operations.codebase.docstring_generation.topology import (
     build_dependency_graph,
 )
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import osa_project_root
+from osa_tool.utils.utils import osa_project_root, resolve_repo_path
 
 dotenv.load_dotenv()
 
@@ -53,6 +53,10 @@ class DocGen(object):
         self.model_handler: ProtollmHandler = ModelHandlerFactory.build(self.model_settings)
         self.main_idea = None
         self._function_index_cache = None
+
+    def _get_repo_root(self) -> Path:
+        """Return the resolved root path of the repository being processed."""
+        return resolve_repo_path(self.config_manager.get_git_settings().repository)
 
     @staticmethod
     def format_structure_openai(structure: dict) -> str:
@@ -1181,7 +1185,8 @@ class DocGen(object):
             Dict[str, str]
         """
 
-        self._rename_invalid_dirs(Path(self.config_manager.get_git_settings().name).resolve())
+        repo_root = self._get_repo_root()
+        self._rename_invalid_dirs(repo_root)
 
         semaphore = asyncio.Semaphore(rate_limit)
 
@@ -1261,14 +1266,14 @@ class DocGen(object):
             if leaves_summaries or folder_summaries:
                 summary = (
                     self.main_idea
-                    if path == self.config_manager.get_git_settings().name
+                    if Path(path).resolve() == repo_root
                     else await summarize_directory(Path(path).name, leaves_summaries, folder_summaries)
                 )
                 _summaries[str(path)] = summary
 
                 return summary
 
-        await traverse_and_summarize(self.config_manager.get_git_settings().name, project_structure)
+        await traverse_and_summarize(repo_root, project_structure)
         return _summaries
 
     @staticmethod

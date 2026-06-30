@@ -1,7 +1,5 @@
 """Write the final README to disk and emit operation events."""
 
-import os
-
 from osa_tool.core.models.event import EventKind, OperationEvent
 from osa_tool.operations.docs.readme_generation.pipeline.state import ReadmeState
 from osa_tool.operations.docs.readme_generation.readme_utils import (
@@ -10,21 +8,21 @@ from osa_tool.operations.docs.readme_generation.readme_utils import (
     save_sections,
 )
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import parse_folder_name
+from osa_tool.utils.utils import resolve_repo_path
 
 
 def writer_node(state: ReadmeState) -> dict:
     """Write final README to disk, emit events."""
     logger.info("[Writer] Writing README.md to disk...")
 
-    repo_path = os.path.join(os.getcwd(), parse_folder_name(state.repo_url))
-    file_to_save = os.path.join(repo_path, "README.md")
+    repo_path = resolve_repo_path(state.repo_url)
+    file_to_save = repo_path / "README.md"
 
     readme_content = state.readme_draft or ""
     readme_content = clean_code_block_indents(readme_content)
 
-    save_sections(readme_content, file_to_save)
-    remove_extra_blank_lines(file_to_save)
+    save_sections(readme_content, str(file_to_save))
+    remove_extra_blank_lines(str(file_to_save))
 
     events = list(state.events)
     events.append(OperationEvent(kind=EventKind.GENERATED, target="README.md"))
