@@ -73,6 +73,11 @@ arguments:
     type: flag
     description: "Analyze the repository and generate a PDF report with project insights."
 
+  scorecard:
+    aliases: [ "--scorecard" ]
+    type: flag
+    description: "Run OpenSSF Scorecard analysis and include the results in the PDF reports."
+
   readme:
     aliases: [ "--readme" ]
     type: flag

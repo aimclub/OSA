@@ -426,7 +426,10 @@ class DocGen(object):
 
     @staticmethod
     def insert_docstring_in_code(
-        source_code: str, method_details: dict, generated_docstring: str, class_method: bool = False
+        source_code: str,
+        method_details: dict,
+        generated_docstring: str,
+        class_method: bool = False,
     ) -> str:
         """
         Inserts or replaces a method-level docstring in the provided source code,
@@ -668,7 +671,10 @@ class DocGen(object):
 
     @staticmethod
     def _run_in_executor(
-        parsed_structure: dict, project_source_code: dict, generated_docstrings: dict, n_workers: int = 8
+        parsed_structure: dict,
+        project_source_code: dict,
+        generated_docstrings: dict,
+        n_workers: int = 8,
     ) -> list[dict]:
         """
         Runs docstrings insertion tasks in multiprocessing mode.
@@ -717,7 +723,12 @@ class DocGen(object):
         if not docstrings:
             return {file: source_code}
 
-        module = cst.parse_module(source_code)
+        try:
+            module = cst.parse_module(source_code)
+        except cst.ParserSyntaxError:
+            logger.warning(f"Syntax error in file {file}, skipping docstring augmentation.")
+            return {file: source_code}
+
         wrapper = cst.MetadataWrapper(module)
         transformer = DocstringTransformer(docstrings, source_code.splitlines(True), module.default_indent)
         new_module = wrapper.visit(transformer)
@@ -774,7 +785,10 @@ class DocGen(object):
                 )
                 class_progress = {"count": 0, "total": total_classes}
                 generating_results = await _iterate_and_collect(
-                    parsed_structure, self._fetch_docstrings_for_class, semaphore, class_progress
+                    parsed_structure,
+                    self._fetch_docstrings_for_class,
+                    semaphore,
+                    class_progress,
                 )
 
             case _:
@@ -1060,23 +1074,22 @@ class DocGen(object):
         _coroutines = []
 
         for item in file_meta["structure"]:
-
             _type = item["type"]
 
             match _type:
                 case "class":
-
                     if not item.get("docstring") or self.main_idea:
-
                         # collecting a class metadata ahead
                         class_name = item["name"]
                         class_metadata = [class_name, item["attributes"]]
 
                         # enrich the class metadata by meta about it's methods
                         for method in item["methods"]:
-
                             class_metadata.append(
-                                {"method_name": method["method_name"], "docstring": method["docstring"]}
+                                {
+                                    "method_name": method["method_name"],
+                                    "docstring": method["docstring"],
+                                }
                             )
 
                         class_metadata.append(item["docstring"])
@@ -1131,9 +1144,7 @@ class DocGen(object):
         importance_top = sorted(accepted_packages, key=lambda pair: pair[1], reverse=True)[:top_n]
 
         for file, score in importance_top:
-
             for component in parsed_structure[file]["structure"]:
-
                 _type = component["type"]
 
                 if _type == "class":
@@ -1141,12 +1152,14 @@ class DocGen(object):
                 else:
                     docstring = component["details"]["docstring"] if component["details"]["docstring"] else ""
 
-                prompt_structure.append(f"""
+                prompt_structure.append(
+                    f"""
                     {_type.capitalize()} name: {component["name"] if _type == "class" else component["details"]["method_name"]}
                     Component description: {docstring}
                     Component place in hierarchy: {file}
                     Component importance score: {score}
-                    """)
+                    """
+                )
 
         logger.info(f"Generating the main idea of the project...")
 
@@ -1435,7 +1448,12 @@ class DocGen(object):
 
             push_list = on_section.get("push", [])
             if not any(deploy_wf in entry.get("workflows", []) for entry in push_list):
-                push_list.append({"workflows": [deploy_wf], "filter": {"branches": ["main", "master"]}})
+                push_list.append(
+                    {
+                        "workflows": [deploy_wf],
+                        "filter": {"branches": ["main", "master"]},
+                    }
+                )
             on_section["push"] = push_list
             sc_data["on"] = on_section
 
@@ -1478,7 +1496,12 @@ class DocGen(object):
 
             yaml.Dumper.ignore_aliases = lambda *args: True
             sc_ci_file.write_text(
-                yaml.safe_dump(sc_data, default_flow_style=False, sort_keys=False, allow_unicode=True)
+                yaml.safe_dump(
+                    sc_data,
+                    default_flow_style=False,
+                    sort_keys=False,
+                    allow_unicode=True,
+                )
             )
 
             sites_cfg = sc_cfg.get("sites", {})

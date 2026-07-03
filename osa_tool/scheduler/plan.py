@@ -29,6 +29,7 @@ EXCLUDED_TASK = {
     "codecov_token",
     "max_retries",
     "artefacts_language",
+    "scorecard",
 }
 
 

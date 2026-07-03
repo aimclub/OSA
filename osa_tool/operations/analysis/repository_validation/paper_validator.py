@@ -15,8 +15,6 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.core.models.event import EventKind, OperationEvent
-from osa_tool.core.models.llm_output_models import LlmJsonObject
-from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.operations.analysis.repository_validation.analyze.paper_analyzer import (
     PaperAnalyzer,
 )
@@ -27,6 +25,7 @@ from osa_tool.operations.analysis.repository_validation.models import Experiment
 from osa_tool.operations.analysis.repository_validation.report_generator import (
     ReportGenerator as ValidationReportGenerator,
 )
+from osa_tool.operations.analysis.vkr_scoring.vkr_scorer import VkrScorer
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 
@@ -75,6 +74,8 @@ class PaperValidator:
         self.__paper_analyzer = PaperAnalyzer(config_manager, self.__prompts)
         self.__experiments = []
 
+        self.__vkr_scorer = VkrScorer(config_manager, git_agent)
+
     def run(self) -> dict:
         try:
             return asyncio.run(self._run_async())
@@ -87,9 +88,11 @@ class PaperValidator:
     async def _run_async(self) -> dict:
         content = await self.validate()
 
+        vkr_report = await self.__run_vkr_checks()
+
         if content:
             va_re_gen = ValidationReportGenerator(self.__config_manager, self.__git_agent.metadata)
-            va_re_gen.build_pdf("Paper", content)
+            va_re_gen.build_pdf("Paper", content, vkr_report=vkr_report)
 
             self.__events.append(OperationEvent(kind=EventKind.GENERATED, target=va_re_gen.filename))
 
@@ -109,7 +112,10 @@ class PaperValidator:
         )
         return {"result": None, "events": self.__events}
 
-    async def validate(self) -> list[Experiment, ...]:
+    async def __run_vkr_checks(self) -> dict:
+        return await asyncio.to_thread(self.__vkr_scorer.get_quality_report)
+
+    async def validate(self) -> list[Experiment]:
         """
         Asynchronously validate a scientific paper against the code repository.
 
@@ -156,20 +162,30 @@ class PaperValidator:
             experiment_assessment = (
                 await self.__model_handler.async_send_and_parse(
                     prompt=prompt,
-                    parser=LlmJsonObject,
+                    parser=None,
                 )
             ).root
 
             input_tokens = tiktoken.get_encoding("cl100k_base").encode(prompt)
             logger.info(f"Tokens used: {len(input_tokens)}")
 
+            raw_pct = experiment_assessment.get("correlation_percent", 0.0)
+            try:
+                pct = float(raw_pct)
+                # LLMs sometimes return 0-100 instead of 0-1; normalise
+                if pct > 1.0:
+                    pct = pct / 100.0
+                pct = max(0.0, min(1.0, pct))
+            except (TypeError, ValueError):
+                pct = 0.0
+
             self.__experiments.append(
                 Experiment(
                     description_from_paper=context.experiment,
-                    impl_src_path=experiment_assessment["implemented_in"],
-                    missing=experiment_assessment["missing_critical_components"],
-                    correspondence_percent=experiment_assessment["correlation_percent"],
-                    reasoning=experiment_assessment["reasoning"],
+                    impl_src_path=experiment_assessment.get("implemented_in", []),
+                    missing=experiment_assessment.get("missing_critical_components", []),
+                    correspondence_percent=pct,
+                    reasoning=experiment_assessment.get("reasoning", ""),
                 )
             )
 
@@ -207,6 +223,8 @@ class _PromptContextBuilder:
         Embed a single experiment description, score all graph nodes,
         retrieves top-k and constructs the LLM prompt.
         """
+        if not self.__node_ids:
+            return _LLMPromptContext(experiment, [])
         scores = self.__score_nodes(self.__embed_text(experiment))
         top_k_indices = scores.topk(min(self.TOP_K, len(self.__node_ids))).indices.tolist()
         retrieved_nodes = []
@@ -260,7 +278,10 @@ class _PromptContextBuilder:
             embeddings.append(emb)
             attrs_list.append(attrs)
 
-        matrix = torch.tensor(embeddings, dtype=torch.float, device=self.__device)
+        if embeddings:
+            matrix = torch.tensor(embeddings, dtype=torch.float, device=self.__device)
+        else:
+            matrix = torch.zeros(0, 768, dtype=torch.float, device=self.__device)
         return node_ids, matrix, attrs_list
 
     def __embed_text(self, text: str) -> torch.Tensor:

@@ -23,8 +23,6 @@ from osa_tool.operations.codebase.requirements_generation.requirements_generatio
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 
-from osa_tool.config.settings import ConfigManager
-from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
 from osa_tool.operations.docs.community_docs_generation.license_generation import LicenseCompiler
 from osa_tool.operations.docs.readme_generation.readme_agent import ReadmeAgent
@@ -88,6 +86,10 @@ def main():
             git_agent.star_repository()
             git_agent.create_fork()
         git_agent.clone_repository()
+        # Refresh CI/CD state from the freshly cloned repo.
+        # WorkflowManager.__init__ already ran before clone, so it may have read
+        # stale workflow files left over from a previous local run.
+        workflow_manager.refresh_after_clone()
 
         # Initialize ModeScheduler
         sourcerank = SourceRank(config_manager)
@@ -95,17 +97,25 @@ def main():
         plan = scheduler.plan
         artefacts_language = plan.get("artefacts_language")
 
+        # Scorecard results are rendered inside the analysis report, so --scorecard
+        # has no effect on its own; enable report generation when only it is set.
+        run_report = bool(plan.get("report") or plan.get("scorecard"))
+        if plan.get("scorecard") and not plan.get("report"):
+            logger.info("Scorecard requested without --report; enabling report generation to render it.")
+
         if create_fork:
             git_agent.create_and_checkout_branch()
 
         # Repository Analysis Report generation
         # NOTE: Must run first - switches GitHub branches
-        if plan.get("report"):
+        if run_report:
             rich_section("Report generation")
             _run_plan_operation(
                 plan,
                 "report",
-                lambda: ReportGenerator(config_manager, git_agent, create_fork, artefacts_language).run(),
+                lambda: ReportGenerator(
+                    config_manager, git_agent, create_fork, artefacts_language, run_scorecard=plan.get("scorecard")
+                ).run(),
             )
 
         # NOTE: Must run first - switches GitHub branches
@@ -253,8 +263,10 @@ def main():
                 lambda: delete_repository(args.repository),
             )
 
-        if plan.get("report"):
-            WhatHasBeenDoneReportGenerator(config_manager, git_agent, create_fork, plan, artefacts_language).run()
+        if run_report:
+            WhatHasBeenDoneReportGenerator(
+                config_manager, git_agent, create_fork, plan, artefacts_language,run_scorecard=plan.get("scorecard")
+            ).run()
 
         elapsed_time = time.time() - start_time
         rich_section(f"All operations completed successfully in total time: {format_time(elapsed_time)}")
