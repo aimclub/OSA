@@ -46,7 +46,7 @@ RULES:
 - Be strictly factual about file presence
 - Check for the presence of the directory with tests
 - Prioritize 3 most critical recommendations
-- Write text in values on {target_language}
+- Write text in values on {target_language}, except names of files, directories and packages and operation identifiers
 """
 
 after_report_summary_from_events_prompt = """

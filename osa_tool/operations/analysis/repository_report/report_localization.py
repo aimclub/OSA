@@ -73,6 +73,8 @@ TRANSLATIONS = {
         "pep8_tool": "Pep8 tool",
         "use_poetry": "Use poetry",
         "include_codecov": "Include codecov",
+        "unknown": "Unknown",
+        "for": "for",
     },
     "Russian": {
         "report_header": "Отчет об анализе репозитория",
@@ -146,6 +148,8 @@ TRANSLATIONS = {
         "pep8_tool": "Инструмент проверки PEP8",
         "use_poetry": "Использовать Poetry",
         "include_codecov": "Интеграция с Codecov",
+        "unknown": "Неизвестно",
+        "for": "для",
     },
 }
 
@@ -164,4 +168,4 @@ class ReportTranslationManager:
             return self.get("no")
         elif key == YesNoPartial.PARTIAL:
             return self.get("partial")
-        return None
+        return self.get("unknown")

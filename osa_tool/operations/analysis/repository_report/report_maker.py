@@ -165,7 +165,7 @@ class AbstractReportGenerator(ABC):
             name = self.metadata.name[:20] + "..."
 
         title_line2 = Paragraph(
-            f"for <a href='{self.repo_url}' color='#00008B'>{name}</a>",
+            f"{self.translator.get('for')} <a href='{self.repo_url}' color='#00008B'>{name}</a>",
             title_style,
         )
 
