@@ -286,9 +286,10 @@ def test_prepare_local_output_repository_refresh_uses_safe_delete(tmp_path):
     target_repo = output_dir / source_repo.name
     target_repo.mkdir()
 
-    with patch("osa_tool.utils.utils._remove_tree") as mock_remove_tree, patch(
-        "osa_tool.utils.utils.shutil.copytree"
-    ) as mock_copytree:
+    with (
+        patch("osa_tool.utils.utils._remove_tree") as mock_remove_tree, 
+        patch("osa_tool.utils.utils.shutil.copytree") as mock_copytree,
+    ):
         # Act
         result = prepare_local_output_repository(source_repo, output_dir)
 

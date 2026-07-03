@@ -285,10 +285,14 @@ def test_local_metadata_loader_falls_back_when_git_user_config_missing(tmp_path)
     mock_repo.config_reader.return_value = mock_reader
 
     with patch("osa_tool.core.git.metadata.Repo", return_value=mock_repo):
-        with patch.object(LocalMetadataLoader, "_load_dates", return_value={"created_at": "", "updated_at": "", "pushed_at": ""}):
+        with patch.object(
+            LocalMetadataLoader, "_load_dates", return_value={"created_at": "", "updated_at": "", "pushed_at": ""}
+        ):
             with patch.object(LocalMetadataLoader, "_get_repository_size", return_value=0):
                 with patch.object(LocalMetadataLoader, "_get_languages", return_value=[]):
-                    with patch.object(LocalMetadataLoader, "_get_remotes", return_value={"clone_url_http": "", "clone_url_ssh": ""}):
+                    with patch.object(
+                        LocalMetadataLoader, "_get_remotes", return_value={"clone_url_http": "", "clone_url_ssh": ""}
+                    ):
                         with patch.object(LocalMetadataLoader, "_get_default_branch", return_value="main"):
                             with patch.object(LocalMetadataLoader, "_find_license", return_value=None):
                                 result = LocalMetadataLoader._load_platform_data(str(repo_path), use_token=False)
