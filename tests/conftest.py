@@ -123,7 +123,9 @@ def mock_sourcerank(mock_config_manager, data_factory):
         overrides = method_overrides or {}
         random_methods = data_factory.random_source_rank_methods(force_overrides=overrides)
 
-        patches = [patch("osa_tool.tools.repository_analysis.sourcerank.resolve_repo_path", return_value=Path("/tmp/repo"))]
+        patches = [
+            patch("osa_tool.tools.repository_analysis.sourcerank.resolve_repo_path", return_value=Path("/tmp/repo"))
+        ]
 
         if repo_tree is not None:
             patches.append(patch("osa_tool.tools.repository_analysis.sourcerank.get_repo_tree", return_value=repo_tree))
