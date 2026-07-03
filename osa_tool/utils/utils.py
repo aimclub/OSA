@@ -11,6 +11,19 @@ from osa_tool.utils.logger import logger
 
 console = Console()
 
+KNOWN_FILE_NAMES = {
+    "readme",
+    "license",
+    "copying",
+    "citation",
+    "contributing",
+    "security",
+    "code_of_conduct",
+    "makefile",
+    "dockerfile",
+    "jenkinsfile",
+}
+
 
 def rich_section(title: str):
     """
@@ -21,6 +34,84 @@ def rich_section(title: str):
     """
     console.print("")
     console.rule(f"[bold cyan]{title}[/bold cyan]", style="cyan")
+
+
+def _remove_tree(path: str | Path) -> None:
+    """Remove a directory tree, retrying read-only files on Windows."""
+    target = Path(path)
+
+    def on_rm_error(func, failed_path, exc_info):
+        try:
+            os.chmod(failed_path, stat.S_IWRITE)
+            func(failed_path)
+        except Exception as e:
+            logger.error(f"Failed to forcibly remove {failed_path}: {e}")
+
+    shutil.rmtree(target, onerror=on_rm_error)
+
+
+def _looks_like_file_path(relative_path: str) -> bool:
+    """
+    Best-effort distinction between repository files and directories for browse URLs.
+    """
+    path = Path(relative_path.replace("\\", "/"))
+    name = path.name
+    lowered = name.lower()
+
+    if lowered in KNOWN_FILE_NAMES:
+        return True
+
+    suffix = path.suffix.lower()
+    if not suffix:
+        return False
+
+    if lowered.startswith(".") and lowered.count(".") == 1:
+        return False
+
+    file_suffixes = {
+        ".md",
+        ".rst",
+        ".txt",
+        ".py",
+        ".ipynb",
+        ".toml",
+        ".yaml",
+        ".yml",
+        ".json",
+        ".ini",
+        ".cfg",
+        ".conf",
+        ".xml",
+        ".csv",
+        ".tsv",
+        ".js",
+        ".ts",
+        ".jsx",
+        ".tsx",
+        ".java",
+        ".kt",
+        ".go",
+        ".rs",
+        ".c",
+        ".cc",
+        ".cpp",
+        ".h",
+        ".hpp",
+        ".sh",
+        ".bash",
+        ".zsh",
+        ".ps1",
+        ".bat",
+        ".cmd",
+        ".sql",
+        ".html",
+        ".css",
+        ".scss",
+        ".lock",
+        ".gitignore",
+        ".gitattributes",
+    }
+    return suffix in file_suffixes
 
 
 def parse_folder_name(repo_url: str) -> str:
@@ -113,7 +204,7 @@ def prepare_local_output_repository(source_repo: str | Path, output_dir: str | P
 
     if target_path.exists():
         logger.info("Refreshing local output repository at %s", target_path)
-        shutil.rmtree(target_path)
+        _remove_tree(target_path)
     else:
         logger.info("Creating local output repository at %s", target_path)
 
@@ -181,7 +272,7 @@ def build_repo_browse_url(
 
     branch = default_branch or "main"
     browse_mode = "tree"
-    if resolved_host in {"github", "gitlab"} and "." in Path(relative_path).name:
+    if resolved_host in {"github", "gitlab"} and _looks_like_file_path(relative_path):
         browse_mode = "blob"
 
     return f"{base_url}{browse_mode}/{branch}/{relative_path}"
@@ -262,17 +353,9 @@ def delete_repository(repo_url: str) -> None:
     """
     repo_path = resolve_repo_path(repo_url)
 
-    def on_rm_error(func, path, exc_info):
-        """Force-remove read-only files and log the issue."""
-        try:
-            os.chmod(path, stat.S_IWRITE)
-            func(path)
-        except Exception as e:
-            logger.error(f"Failed to forcibly remove {path}: {e}")
-
     try:
         if os.path.exists(repo_path):
-            shutil.rmtree(repo_path, onerror=on_rm_error)
+            _remove_tree(repo_path)
             logger.info(f"Directory {repo_path} has been deleted.")
         else:
             logger.info(f"Directory {repo_path} does not exist.")
@@ -301,8 +384,14 @@ def parse_git_url(repo_url: str) -> tuple[str, str, str, str]:
     host_domain = parsed_url.netloc
     host = host_domain.split(".")[0].lower()
 
-    path_parts = parsed_url.path.strip("/").split("/")
-    full_name = "/".join(path_parts[:2])
+    path_parts = [part for part in parsed_url.path.strip("/").split("/") if part]
+    if len(path_parts) < 2:
+        raise ValueError(f"Invalid Git repository URL path: {parsed_url.path}")
+
+    if path_parts[-1].endswith(".git"):
+        path_parts[-1] = path_parts[-1][:-4]
+
+    full_name = "/".join(path_parts)
     name = path_parts[-1]
 
     return host_domain, host, name, full_name

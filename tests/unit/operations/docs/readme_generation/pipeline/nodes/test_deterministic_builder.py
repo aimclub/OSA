@@ -117,3 +117,15 @@ def test_local_contributing_section_points_to_issue_template(mock_config_manager
 
     assert ".github/ISSUE_TEMPLATE/BUG_ISSUE.md" in content
     assert ".github/CONTRIBUTING.md" in content
+
+
+def test_contributing_strips_issue_url_template_suffix(mock_config_manager, mock_repository_metadata):
+    mock_repository_metadata.issues_url = "https://api.github.com/repos/owner/repo/issues{/number}"
+
+    builder, _ = _make_builder(mock_config_manager, mock_repository_metadata)
+    builder._sr.contributing_presence.return_value = False
+
+    content = builder.contributing()
+
+    assert "issues{/number}" not in content
+    assert "https://api.github.com/repos/owner/repo/issues" in content

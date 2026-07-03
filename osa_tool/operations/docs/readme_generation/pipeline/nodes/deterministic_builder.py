@@ -69,7 +69,7 @@ class _DeterministicSections:
 
     def _issues_link(self) -> str:
         if self._meta.issues_url:
-            return self._meta.issues_url
+            return self._meta.issues_url.split("{", 1)[0]
         if self._repo_root_url != ".":
             return f"{self._repo_root_url}issues"
         return ".github/ISSUE_TEMPLATE/BUG_ISSUE.md"
@@ -205,7 +205,7 @@ class _DeterministicSections:
         repository_reference = self._citation_repository_reference()
         if self._is_local_repo and not self._meta.clone_url_http:
             content = self._tpl["citation"] + self._tpl["citation_v3"].format(
-                owner=self._meta.owner,
+                owner=self._meta.owner or "",
                 year=year,
                 repo_name=git.name,
                 repository_hint=repository_reference,
@@ -213,7 +213,7 @@ class _DeterministicSections:
             logger.info("[DeterministicBuilder] Section 'citation' built from local fallback template")
             return content
         content = self._tpl["citation"] + self._tpl["citation_v2"].format(
-            owner=self._meta.owner,
+            owner=self._meta.owner or "",
             year=year,
             repo_name=git.name,
             publisher=git.host_domain or "Repository host",

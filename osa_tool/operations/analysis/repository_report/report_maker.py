@@ -314,10 +314,14 @@ class AbstractReportGenerator(ABC):
             f"Repository Name: <a href='{self.repo_url}' color='#00008B'>{name}</a>",
             normal_style,
         )
-        owner_link = Paragraph(
-            f"Owner: <a href='{self.metadata.owner_url}' color='#00008B'>{self.metadata.owner}</a>",
-            normal_style,
-        )
+        owner_value = self.metadata.owner or "N/A"
+        if self.metadata.owner_url and self.metadata.owner:
+            owner_link = Paragraph(
+                f"Owner: <a href='{self.metadata.owner_url}' color='#00008B'>{self.metadata.owner}</a>",
+                normal_style,
+            )
+        else:
+            owner_link = Paragraph(f"Owner: {owner_value}", normal_style)
         if self.metadata.created_at:
             try:
                 created_at_text = datetime.strptime(self.metadata.created_at, "%Y-%m-%dT%H:%M:%SZ").strftime(

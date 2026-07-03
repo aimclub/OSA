@@ -16,6 +16,13 @@ from osa_tool.utils.utils import get_base_repo_url
 load_dotenv()
 
 
+def _normalize_issues_url(url: str | None) -> str | None:
+    """Strip GitHub/Gitverse URI-template suffixes like `{/number}` from issues URLs."""
+    if not url:
+        return url
+    return re.sub(r"\{.*\}$", "", url)
+
+
 @dataclass
 class RepositoryMetadata:
     """
@@ -24,7 +31,7 @@ class RepositoryMetadata:
 
     name: str
     full_name: str
-    owner: str
+    owner: str | None
     owner_url: str | None
     description: str | None
 
@@ -197,7 +204,7 @@ class GitHubMetadataLoader(MetadataLoader):
             clone_url_ssh=repo_data.get("ssh_url", ""),
             contributors_url=repo_data.get("contributors_url"),
             languages_url=repo_data.get("languages_url", ""),
-            issues_url=repo_data.get("issues_url"),
+            issues_url=_normalize_issues_url(repo_data.get("issues_url")),
             language=repo_data.get("language", ""),
             languages=list(languages.keys()) if languages else [],
             topics=repo_data.get("topics", []),
@@ -246,8 +253,8 @@ class LocalMetadataLoader(MetadataLoader):
         cls.repo_path = repo_url
 
         basename = os.path.basename(repo_url)
-        owner = cls.repo.config_reader().get("user", "name")
-        owner_email = cls.repo.config_reader().get("user", "email")
+        owner = cls._safe_git_config_value("user", "name", fallback=None)
+        owner_email = cls._safe_git_config_value("user", "email", fallback="")
         dates = cls._load_dates()
         size = cls._get_repository_size()
         languages = cls._get_languages()
@@ -259,7 +266,7 @@ class LocalMetadataLoader(MetadataLoader):
             name=basename,
             full_name=basename,
             owner=owner,
-            owner_url=f"mailto:{owner_email}",
+            owner_url=f"mailto:{owner_email}" if owner_email else None,
             description=None,
             stars_count=0,
             forks_count=0,
@@ -286,6 +293,13 @@ class LocalMetadataLoader(MetadataLoader):
             license_name=license_name,
             license_url=None,
         )
+
+    @classmethod
+    def _safe_git_config_value(cls, section: str, option: str, fallback: str | None) -> str | None:
+        try:
+            return cls.repo.config_reader().get(section, option)
+        except Exception:
+            return fallback
 
     @classmethod
     def _find_license(cls) -> str | None:
@@ -546,7 +560,7 @@ class GitverseMetadataLoader(MetadataLoader):
             clone_url_ssh=repo_data.get("ssh_url", ""),
             contributors_url=repo_data.get("contributors_url"),
             languages_url=repo_data.get("languages_url", ""),
-            issues_url=repo_data.get("issues_url"),
+            issues_url=_normalize_issues_url(repo_data.get("issues_url")),
             language=repo_data.get("language", ""),
             languages=repo_data.get("languages", []) or [],
             topics=repo_data.get("topics", []) or [],
