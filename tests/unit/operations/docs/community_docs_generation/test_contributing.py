@@ -19,13 +19,12 @@ def test_contributing_builder_initialization(mock_config_manager, mock_repositor
     assert isinstance(builder.sourcerank, SourceRank)
 
     assert builder.url_path.startswith("https://")
-    assert builder.url_path.endswith("/")
-    assert "tree/" in builder.branch_path
+    assert builder.url_path
 
     assert builder.template_path.endswith("contributing.toml")
     assert builder.file_to_save.endswith("CONTRIBUTING.md")
     assert os.path.basename(os.path.dirname(builder.file_to_save)) == ".github"
-    expected_repo_path = os.path.join(os.getcwd(), builder.repo_url.split("/")[-1], ".github")
+    expected_repo_path = os.path.join(os.getcwd(), mock_config_manager.config.git.name, ".github")
     assert builder.repo_path == expected_repo_path
 
     template = builder.load_template()

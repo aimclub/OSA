@@ -625,7 +625,8 @@ async def test_generate_the_main_idea_filters_and_sorts(mock_config_manager, moc
 async def test_summarize_submodules_creates_summaries(mock_config_manager, mocker, tmp_path):
     # Arrange
     docgen = DocGen(mock_config_manager)
-    docgen.config_manager.config.git.name = str(tmp_path)
+    docgen.config_manager.config.git.repository = str(tmp_path)
+    docgen.config_manager.config.git.name = tmp_path.name
 
     pkg_dir = tmp_path / "mypkg"
     pkg_dir.mkdir()

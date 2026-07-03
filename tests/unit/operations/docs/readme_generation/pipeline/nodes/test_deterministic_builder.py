@@ -16,7 +16,7 @@ def _make_builder(mock_config_manager, mock_repository_metadata):
         builder = _DeterministicSections(context)
     builder._sr = MagicMock()
     builder._sr.citation_presence.return_value = False
-    builder._sr.tree = []
+    builder._sr.tree = ""
     return builder, context
 
 
@@ -108,6 +108,7 @@ def test_local_contributing_section_points_to_issue_template(mock_config_manager
     mock_config_manager.config.git.host = None
     mock_config_manager.config.git.host_domain = None
     mock_repository_metadata.clone_url_http = ""
+    mock_repository_metadata.issues_url = ""
 
     builder, _ = _make_builder(mock_config_manager, mock_repository_metadata)
     builder._sr.contributing_presence.return_value = True
@@ -115,3 +116,4 @@ def test_local_contributing_section_points_to_issue_template(mock_config_manager
     content = builder.contributing()
 
     assert ".github/ISSUE_TEMPLATE/BUG_ISSUE.md" in content
+    assert ".github/CONTRIBUTING.md" in content
