@@ -265,7 +265,7 @@ def main():
 
         if run_report:
             WhatHasBeenDoneReportGenerator(
-                config_manager, git_agent, create_fork, plan, artefacts_language,run_scorecard=plan.get("scorecard")
+                config_manager, git_agent, create_fork, plan, artefacts_language, run_scorecard=plan.get("scorecard")
             ).run()
 
         elapsed_time = time.time() - start_time

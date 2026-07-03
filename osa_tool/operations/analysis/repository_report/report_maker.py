@@ -42,7 +42,9 @@ from osa_tool.utils.utils import osa_project_root
 
 
 class AbstractReportGenerator(ABC):
-    def __init__(self, config_manager: ConfigManager, git_agent: GitAgent, target_language: str, run_scorecard: bool = False):
+    def __init__(
+        self, config_manager: ConfigManager, git_agent: GitAgent, target_language: str, run_scorecard: bool = False
+    ):
         assets_dir = os.path.join(osa_project_root(), "assets")
         pdfmetrics.registerFont(TTFont("notosanssc", os.path.join(assets_dir, "notosans-sc.ttf")))
         pdfmetrics.registerFont(TTFont("notosanssc-Bold", os.path.join(assets_dir, "notosans-sc-bold.ttf")))
@@ -452,7 +454,12 @@ class AbstractReportGenerator(ABC):
 class ReportGenerator(AbstractReportGenerator):
 
     def __init__(
-        self, config_manager: ConfigManager, git_agent: GitAgent, create_fork: bool, target_language: str = "English", run_scorecard: bool = False
+        self,
+        config_manager: ConfigManager,
+        git_agent: GitAgent,
+        create_fork: bool,
+        target_language: str = "English",
+        run_scorecard: bool = False,
     ):
         super().__init__(config_manager, git_agent, target_language, run_scorecard)
         self.text_generator = TextGenerator(config_manager, self.metadata, target_language)
