@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import random
 import time
-from dataclasses import dataclass
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 
 import requests
+from pydantic import BaseModel, ConfigDict, PositiveFloat, PositiveInt
 
 from osa_tool.utils.logger import logger
 
@@ -18,17 +18,18 @@ RETRYABLE_EXCEPTIONS = (requests.ConnectionError, requests.Timeout)
 IDEMPOTENT_METHODS = {"get", "head", "options", "put", "delete"}
 
 
-@dataclass(frozen=True)
-class RetryConfig:
+class RetryConfig(BaseModel):
     """Tunables for HTTP retry backoff."""
 
-    max_attempts: int = 4
-    backoff_base: float = 1.0
-    backoff_factor: float = 2.0
-    backoff_max_delay: float = 30.0
-    backoff_total_cap: float = 120.0
-    retry_after_max: float = 120.0
-    request_timeout: float = 30.0
+    model_config = ConfigDict(frozen=True)
+
+    max_attempts: PositiveInt = 4
+    backoff_base: PositiveFloat = 1.0
+    backoff_factor: PositiveFloat = 2.0
+    backoff_max_delay: PositiveFloat = 30.0
+    backoff_total_cap: PositiveFloat = 120.0
+    retry_after_max: PositiveFloat = 120.0
+    request_timeout: PositiveFloat = 30.0
 
 
 DEFAULT_RETRY_CONFIG = RetryConfig()
