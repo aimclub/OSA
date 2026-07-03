@@ -2,6 +2,7 @@
 
 import ast
 import re
+from pathlib import Path
 from typing import Set, Optional
 
 from .base import BaseAnalyzer
@@ -45,10 +46,28 @@ class PythonImportAnalyzer(BaseAnalyzer):
                     for alias in node.names:
                         imports.add(alias.name)
                 elif isinstance(node, ast.ImportFrom):
-                    if node.module:
-                        imports.add(node.module)
+                    imports.update(self._resolve_import_from_node(file_path, node))
         except Exception:
             pass
+        return imports
+
+    def _resolve_import_from_node(self, file_path: str, node: ast.ImportFrom) -> Set[str]:
+        imports = set()
+        if node.level == 0:
+            if node.module:
+                imports.add(node.module)
+            return imports
+
+        package_parts = Path(file_path.replace("\\", "/")).with_suffix("").parts[:-1]
+        parent_levels = max(node.level - 1, 0)
+        base_parts = list(package_parts[: max(len(package_parts) - parent_levels, 0)])
+        if node.module:
+            imports.add(".".join(base_parts + node.module.split(".")))
+            return imports
+
+        for alias in node.names:
+            if alias.name != "*":
+                imports.add(".".join(base_parts + [alias.name]))
         return imports
 
     def get_import_key(self, file_path: str) -> str:
@@ -78,11 +97,51 @@ class PythonImportAnalyzer(BaseAnalyzer):
         Update import statements in in-memory Python content.
         """
         updated = content
-        from_pattern = rf"from\s+{re.escape(old_import)}\s+import"
-        updated = re.sub(from_pattern, f"from {new_import} import", updated)
+
+        def replace_from_import(match: re.Match[str]) -> str:
+            imported_module = match.group("module")
+            resolved = self._resolve_import_from_string(file_path, imported_module)
+            if resolved != old_import:
+                return match.group(0)
+            replacement = self._format_import_for_file(file_path, imported_module, new_import)
+            return f"from {replacement} import"
+
+        from_pattern = r"from\s+(?P<module>[.\w]+)\s+import"
+        updated = re.sub(from_pattern, replace_from_import, updated)
         import_pattern = rf"import\s+{re.escape(old_import)}(\s|$|,)"
         updated = re.sub(import_pattern, f"import {new_import}\\1", updated)
         return updated if updated != content else None
+
+    def _resolve_import_from_string(self, file_path: str, import_value: str) -> str:
+        if not import_value.startswith("."):
+            return import_value
+
+        dots = len(import_value) - len(import_value.lstrip("."))
+        module = import_value[dots:]
+        package_parts = Path(file_path.replace("\\", "/")).with_suffix("").parts[:-1]
+        parent_levels = max(dots - 1, 0)
+        base_parts = list(package_parts[: max(len(package_parts) - parent_levels, 0)])
+        parts = base_parts + (module.split(".") if module else [])
+        return ".".join(part for part in parts if part)
+
+    def _format_import_for_file(self, file_path: str, existing_import: str, new_import: str) -> str:
+        if not existing_import.startswith("."):
+            return new_import
+
+        package_parts = list(Path(file_path.replace("\\", "/")).with_suffix("").parts[:-1])
+        target_parts = new_import.split(".")
+        common = 0
+        for current_part, target_part in zip(package_parts, target_parts):
+            if current_part != target_part:
+                break
+            common += 1
+
+        up_levels = len(package_parts) - common
+        relative_prefix = "." * (up_levels + 1)
+        suffix_parts = target_parts[common:]
+        if suffix_parts:
+            return f"{relative_prefix}{'.'.join(suffix_parts)}"
+        return relative_prefix
 
     def update_imports_in_file(self, file_path: str, old_import: str, new_import: str) -> Optional[str]:
         """

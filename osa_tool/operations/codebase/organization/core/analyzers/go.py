@@ -44,24 +44,29 @@ class GoPackagesAnalyzer(BaseAnalyzer):
             result = subprocess.run(
                 ["go", "list", "-json", "./..."], cwd=self.base_path, capture_output=True, text=True, check=True
             )
-            for line in result.stdout.splitlines():
-                line = line.strip()
-                if not line:
-                    continue
+            decoder = json.JSONDecoder()
+            output = result.stdout
+            index = 0
+            while index < len(output):
+                while index < len(output) and output[index].isspace():
+                    index += 1
+                if index >= len(output):
+                    break
                 try:
-                    pkg = json.loads(line)
+                    pkg, consumed = decoder.raw_decode(output, index)
                 except json.JSONDecodeError:
-                    continue
+                    break
+                index = consumed
                 import_path = pkg.get("ImportPath", "")
                 imports = set(pkg.get("Imports", []))
                 for go_file in pkg.get("GoFiles", []):
                     full_path = os.path.join(pkg["Dir"], go_file)
-                    rel = os.path.relpath(full_path, self.base_path)
+                    rel = os.path.relpath(full_path, self.base_path).replace("\\", "/")
                     self._package_cache[rel] = (import_path, imports)
                 for extra in ("CgoFiles", "TestGoFiles", "XTestGoFiles"):
                     for go_file in pkg.get(extra, []):
                         full_path = os.path.join(pkg["Dir"], go_file)
-                        rel = os.path.relpath(full_path, self.base_path)
+                        rel = os.path.relpath(full_path, self.base_path).replace("\\", "/")
                         self._package_cache[rel] = (import_path, imports)
         except Exception as e:
             logger.error(f"Go list failed: {e}")

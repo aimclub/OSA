@@ -37,6 +37,19 @@ class ActionExecutor:
         self.moves: List[Tuple[str, str]] = []
         self.failures: List[str] = []
 
+    def _resolve_repo_path(self, path: str) -> Path:
+        candidate = Path(path)
+        resolved = (self.base_path / candidate).resolve(strict=False)
+        base_resolved = self.base_path.resolve(strict=False)
+        if not resolved.is_relative_to(base_resolved):
+            self._fail(f"Path escapes repository: {path}")
+        return resolved
+
+    def _validate_repo_glob(self, pattern: str) -> None:
+        pattern_path = Path(pattern)
+        if pattern_path.is_absolute() or ".." in pattern_path.parts:
+            self._fail(f"Glob pattern escapes repository: {pattern}")
+
     def execute_all(self, actions: List[dict]):
         """
         Execute all actions in the provided list.
@@ -102,7 +115,7 @@ class ActionExecutor:
         Args:
             path: Directory path relative to base_path
         """
-        full = self.base_path / path
+        full = self._resolve_repo_path(path)
         if not full.exists():
             full.mkdir(parents=True, exist_ok=True)
 
@@ -114,7 +127,7 @@ class ActionExecutor:
             path: File path relative to base_path
             content: File content to write
         """
-        full = self.base_path / path
+        full = self._resolve_repo_path(path)
         if full.exists():
             self._fail(f"File already exists: {path}")
         full.parent.mkdir(parents=True, exist_ok=True)
@@ -128,8 +141,8 @@ class ActionExecutor:
             source: Source file path relative to base_path
             destination: Destination file path relative to base_path
         """
-        src = self.base_path / source
-        dst = self.base_path / destination
+        src = self._resolve_repo_path(source)
+        dst = self._resolve_repo_path(destination)
 
         if not src.exists():
             self._fail(f"Source file does not exist: {source}")
@@ -151,8 +164,8 @@ class ActionExecutor:
             source: Source directory path relative to base_path
             destination: Destination directory path relative to base_path
         """
-        src = self.base_path / source
-        dst = self.base_path / destination
+        src = self._resolve_repo_path(source)
+        dst = self._resolve_repo_path(destination)
 
         if not src.exists() or not src.is_dir():
             self._fail(f"Source directory does not exist or is not a directory: {source}")
@@ -180,7 +193,8 @@ class ActionExecutor:
             destination_dir: Destination directory path relative to base_path
             reason: Optional reason for the move
         """
-        full_dest = self.base_path / destination_dir
+        self._validate_repo_glob(source_pattern)
+        full_dest = self._resolve_repo_path(destination_dir)
         matched = list(self.base_path.glob(source_pattern))
         if not matched:
             self._fail(f"No files match pattern '{source_pattern}'")
@@ -200,7 +214,7 @@ class ActionExecutor:
         Args:
             path: File path relative to base_path
         """
-        full = self.base_path / path
+        full = self._resolve_repo_path(path)
         if not full.exists():
             self._fail(f"File does not exist: {path}")
         if not full.is_file():
@@ -214,7 +228,7 @@ class ActionExecutor:
         Args:
             path: Directory path relative to base_path
         """
-        full = self.base_path / path
+        full = self._resolve_repo_path(path)
         if not full.exists():
             self._fail(f"Directory does not exist: {path}")
 

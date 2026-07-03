@@ -54,11 +54,12 @@ class BatchImportUpdater:
         file_key_mapping = defaultdict(dict)
         for old_path, new_path in self.moves:
             for lang, analyzer in self.analyzers.items():
-                if analyzer.file_extensions and any(old_path.endswith(ext) for ext in analyzer.file_extensions):
+                if lang == "generic" or (
+                    analyzer.file_extensions and any(old_path.endswith(ext) for ext in analyzer.file_extensions)
+                ):
                     old_key = analyzer.get_import_key(old_path)
                     new_key = analyzer.get_import_key(new_path)
                     file_key_mapping[old_path][lang] = (old_key, new_key)
-                    break
 
         updates_needed = defaultdict(list)
 

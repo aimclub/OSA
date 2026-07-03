@@ -27,6 +27,7 @@ class SnapshotManager:
         self.original_branch = None
         self.temp_branch = f"osa-temp-{datetime.now().strftime('%Y%m%d%H%M%S')}"
         self.temp_branch_head = None
+        self.original_stash_ref = None
 
     def create_snapshot(self) -> bool:
         """
@@ -44,14 +45,39 @@ class SnapshotManager:
             )
             self.original_branch = result.stdout.strip()
 
+            status = subprocess.run(
+                ["git", "status", "--porcelain"], cwd=self.base_path, capture_output=True, text=True, check=True
+            )
+            has_local_changes = bool(status.stdout.strip())
+            if has_local_changes:
+                subprocess.run(
+                    ["git", "stash", "push", "--include-untracked", "-m", "OSA Tool: preserved local changes"],
+                    cwd=self.base_path,
+                    check=True,
+                    capture_output=True,
+                )
+                stash_ref = subprocess.run(
+                    ["git", "stash", "list", "--format=%gd", "-n", "1"],
+                    cwd=self.base_path,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                self.original_stash_ref = stash_ref.stdout.strip() or None
+
             subprocess.run(
                 ["git", "checkout", "-b", self.temp_branch], cwd=self.base_path, check=True, capture_output=True
             )
 
-            status = subprocess.run(
-                ["git", "status", "--porcelain"], cwd=self.base_path, capture_output=True, text=True, check=True
-            )
-            if status.stdout.strip():
+            if self.original_stash_ref:
+                subprocess.run(
+                    ["git", "stash", "apply", self.original_stash_ref],
+                    cwd=self.base_path,
+                    check=True,
+                    capture_output=True,
+                )
+
+            if has_local_changes:
                 subprocess.run(["git", "add", "-A"], cwd=self.base_path, check=True, capture_output=True)
                 subprocess.run(
                     ["git", "commit", "-m", "OSA Tool: pre-reorganization snapshot"],
@@ -73,6 +99,17 @@ class SnapshotManager:
             return True
 
         except subprocess.CalledProcessError as e:
+            if self.original_stash_ref:
+                try:
+                    subprocess.run(
+                        ["git", "stash", "pop", self.original_stash_ref],
+                        cwd=self.base_path,
+                        check=True,
+                        capture_output=True,
+                    )
+                    self.original_stash_ref = None
+                except subprocess.CalledProcessError as restore_error:
+                    logger.error("Failed to restore stashed local changes after snapshot failure: %s", restore_error.stderr)
             logger.error("Git snapshot creation failed: %s", e.stderr)
             return False
 
@@ -117,6 +154,15 @@ class SnapshotManager:
                 ["git", "branch", "-D", self.temp_branch], cwd=self.base_path, check=True, capture_output=True
             )
 
+            if self.original_stash_ref:
+                subprocess.run(
+                    ["git", "stash", "drop", self.original_stash_ref],
+                    cwd=self.base_path,
+                    check=True,
+                    capture_output=True,
+                )
+                self.original_stash_ref = None
+
             logger.info("Changes staged in %s.", self.original_branch)
             return True
 
@@ -146,6 +192,15 @@ class SnapshotManager:
             subprocess.run(
                 ["git", "branch", "-D", self.temp_branch], cwd=self.base_path, check=True, capture_output=True
             )
+
+            if self.original_stash_ref:
+                subprocess.run(
+                    ["git", "stash", "pop", self.original_stash_ref],
+                    cwd=self.base_path,
+                    check=True,
+                    capture_output=True,
+                )
+                self.original_stash_ref = None
 
             logger.info("Rollback successful - returned to branch %s", self.original_branch)
             return True

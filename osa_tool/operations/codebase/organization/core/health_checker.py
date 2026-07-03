@@ -159,7 +159,7 @@ class HealthChecker:
         error_count = 0
         logger.debug("Running syntax check fallback for %s", self.project_type)
 
-        if self.project_type == "python":
+        if self.project_type in {"python", "mixed"}:
             python_files = list(self.base_path.rglob("*.py"))
             logger.debug("Checking %d Python files...", len(python_files))
             for py_file in python_files:
@@ -170,15 +170,29 @@ class HealthChecker:
                     error_msg = f"Syntax error in {rel_path}: {stderr.strip()}"
                     errors.append(error_msg)
                     logger.debug(error_msg)
-        elif self.project_type == "javascript":
-            js_files = list(self.base_path.rglob("*.js"))
-            logger.debug("Checking %d JavaScript files...", len(js_files))
-            for js_file in js_files:
+        if self.project_type in {"javascript", "mixed"}:
+            js_like_files = []
+            for pattern in ("*.js", "*.jsx", "*.mjs", "*.cjs"):
+                js_like_files.extend(self.base_path.rglob(pattern))
+            logger.debug("Checking %d JavaScript files...", len(js_like_files))
+            for js_file in js_like_files:
                 rel_path = js_file.relative_to(self.base_path)
                 ret, _, stderr = self._run_command(["node", "--check", str(rel_path)])
                 if ret != 0:
                     error_count += 1
                     error_msg = f"Syntax error in {rel_path}: {stderr.strip()}"
+                    errors.append(error_msg)
+                    logger.debug(error_msg)
+
+            ts_files = []
+            for pattern in ("*.ts", "*.tsx"):
+                ts_files.extend(self.base_path.rglob(pattern))
+            if ts_files:
+                logger.debug("Checking %d TypeScript files...", len(ts_files))
+                ret, _, stderr = self._run_command(["npx", "tsc", "--noEmit", "--pretty", "false"])
+                if ret != 0:
+                    error_count += 1
+                    error_msg = stderr.strip() or "TypeScript compilation failed"
                     errors.append(error_msg)
                     logger.debug(error_msg)
 

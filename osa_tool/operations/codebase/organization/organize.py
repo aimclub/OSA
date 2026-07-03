@@ -322,43 +322,48 @@ class RepoOrganizer:
             bool: True if cleanup succeeded or partially succeeded
         """
         try:
-            if sys.platform == "win32":
-                for root, dirs, files in os.walk(self.base_path):
-                    for cache_dir in list(dirs):
-                        if cache_dir in self.BUILD_ARTIFACT_DIRS:
-                            cache_path = Path(root) / cache_dir
-                            shutil.rmtree(cache_path, ignore_errors=True)
-                            logger.debug("Removed %s", cache_path)
-                    for file_name in files:
-                        if Path(file_name).suffix.lower() in self.BUILD_ARTIFACT_SUFFIXES:
-                            artifact_path = Path(root) / file_name
-                            artifact_path.unlink()
-                            logger.debug("Removed %s", artifact_path)
-            else:
-                subprocess.run(
-                    ["find", ".", "-type", "d", "-name", "__pycache__", "-exec", "rm", "-rf", "{}", "+"],
-                    cwd=self.base_path,
-                    check=True,
-                    capture_output=True,
-                )
-                for cache_dir in (".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", "build", "dist"):
-                    subprocess.run(
-                        ["find", ".", "-type", "d", "-name", cache_dir, "-exec", "rm", "-rf", "{}", "+"],
-                        cwd=self.base_path,
-                        check=True,
-                        capture_output=True,
-                    )
-                subprocess.run(
-                    ["find", ".", "-name", "*.pyc", "-delete"], cwd=self.base_path, check=True, capture_output=True
-                )
-                for suffix in ("*.pyo", "*.pyd", "*.class", "*.o", "*.obj"):
-                    subprocess.run(
-                        ["find", ".", "-name", suffix, "-delete"], cwd=self.base_path, check=True, capture_output=True
-                    )
+            for root, dirs, files in os.walk(self.base_path):
+                for cache_dir in list(dirs):
+                    if cache_dir not in self.BUILD_ARTIFACT_DIRS:
+                        continue
+                    cache_path = Path(root) / cache_dir
+                    if self._should_delete_artifact(cache_path):
+                        shutil.rmtree(cache_path, ignore_errors=True)
+                        dirs.remove(cache_dir)
+                        logger.debug("Removed %s", cache_path)
+                for file_name in files:
+                    artifact_path = Path(root) / file_name
+                    if artifact_path.suffix.lower() in self.BUILD_ARTIFACT_SUFFIXES and self._should_delete_artifact(
+                        artifact_path
+                    ):
+                        artifact_path.unlink()
+                        logger.debug("Removed %s", artifact_path)
             logger.debug("Cleaned cache and build artifacts")
             return True
         except Exception as exc:
             logger.warning("Failed to clean build artifacts: %s", exc)
+            return False
+
+    def _should_delete_artifact(self, path: Path) -> bool:
+        rel_path = str(path.relative_to(self.base_path)).replace("\\", "/")
+        if path.name in {"build", "dist"} and self._is_git_tracked(rel_path):
+            logger.debug("Skipping tracked artifact directory: %s", rel_path)
+            return False
+        if path.is_file() and self._is_git_tracked(rel_path):
+            logger.debug("Skipping tracked artifact file: %s", rel_path)
+            return False
+        return True
+
+    def _is_git_tracked(self, rel_path: str) -> bool:
+        try:
+            result = subprocess.run(
+                ["git", "ls-files", "--", rel_path],
+                cwd=self.base_path,
+                capture_output=True,
+                text=True,
+            )
+            return bool(result.stdout.strip())
+        except Exception:
             return False
 
     def _run_health_phase(self, phase_label: str) -> bool:
@@ -463,24 +468,7 @@ class RepoOrganizer:
 
             logger.info("Committing reorganization changes to temporary branch...")
             self._clean_pycache()
-
-            try:
-                subprocess.run(["git", "add", "-A"], cwd=self.base_path, check=True, capture_output=True)
-                status = subprocess.run(
-                    ["git", "status", "--porcelain"], cwd=self.base_path, capture_output=True, text=True, check=True
-                )
-                if status.stdout.strip():
-                    subprocess.run(
-                        ["git", "commit", "-m", "OSA Tool: reorganization changes"],
-                        cwd=self.base_path,
-                        check=True,
-                        capture_output=True,
-                    )
-                    logger.info("Changes committed to %s", self.snapshot.temp_branch)
-                else:
-                    logger.info("No changes to commit in temporary branch.")
-            except subprocess.CalledProcessError as exc:
-                logger.error("Failed to commit reorganization changes: %s", exc.stderr)
+            if not self._commit_temp_branch_changes("OSA Tool: reorganization changes"):
                 self.snapshot.rollback()
                 return
 
@@ -494,6 +482,10 @@ class RepoOrganizer:
                 return
             if not self.skip_health_check:
                 logger.info("Project is healthy after reorganization.")
+
+            if not self._commit_temp_branch_changes("OSA Tool: post-health fixes"):
+                self.snapshot.rollback()
+                return
 
             if not self.snapshot.transfer_changes():
                 logger.error("Failed to transfer changes back to original branch.")
@@ -513,3 +505,25 @@ class RepoOrganizer:
             logger.warning("Rolling back...")
             self.snapshot.rollback()
             raise
+
+    def _commit_temp_branch_changes(self, message: str) -> bool:
+        try:
+            subprocess.run(["git", "add", "-A"], cwd=self.base_path, check=True, capture_output=True)
+            status = subprocess.run(
+                ["git", "status", "--porcelain"], cwd=self.base_path, capture_output=True, text=True, check=True
+            )
+            if not status.stdout.strip():
+                logger.info("No changes to commit in temporary branch.")
+                return True
+
+            subprocess.run(
+                ["git", "commit", "-m", message],
+                cwd=self.base_path,
+                check=True,
+                capture_output=True,
+            )
+            logger.info("Changes committed to %s", self.snapshot.temp_branch)
+            return True
+        except subprocess.CalledProcessError as exc:
+            logger.error("Failed to commit temporary branch changes: %s", exc.stderr)
+            return False

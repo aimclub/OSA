@@ -1,6 +1,7 @@
 """Java-specific import analyzer using regex."""
 
 import re
+from pathlib import Path
 from typing import Set, Optional
 
 from .base import BaseAnalyzer
@@ -56,7 +57,23 @@ class JavaImportAnalyzer(BaseAnalyzer):
         Returns:
             str: Dotted package path
         """
-        return file_path.replace(".java", "").replace("/", ".").replace("\\", ".")
+        full_path = self.base_path / file_path
+        class_name = Path(file_path).stem
+        try:
+            with open(full_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            package_match = re.search(r"^\s*package\s+([^;]+);", content, re.MULTILINE)
+            if package_match:
+                return f"{package_match.group(1).strip()}.{class_name}"
+        except Exception:
+            pass
+
+        normalized = file_path.replace("\\", "/")
+        for prefix in ("src/main/java/", "src/test/java/", "src/java/"):
+            if normalized.startswith(prefix):
+                normalized = normalized[len(prefix) :]
+                break
+        return normalized.replace(".java", "").replace("/", ".")
 
     def update_imports_in_file(self, file_path: str, old_import: str, new_import: str) -> Optional[str]:
         """

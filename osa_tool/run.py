@@ -235,7 +235,7 @@ def main():
             _run_plan_operation(
                 plan,
                 "organize",
-                lambda: RepoOrganizer(config_manager).organize(),
+                lambda: RepoOrganizer(config_manager, git_agent.metadata).organize(),
             )
 
         if create_fork and create_pull_request:

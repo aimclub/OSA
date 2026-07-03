@@ -92,7 +92,7 @@ class ConvertNotebooksOperation(Operation):
 
     executor = NotebookConverter
     executor_method = "convert_notebooks"
-    executor_dependencies = ["config_manager", "metadata"]
+    executor_dependencies = ["config_manager"]
 
 
 class TranslateRepositoryStructureOperation(Operation):
@@ -279,7 +279,7 @@ class OrganizeRepositoryOperation(Operation):
 
     executor = RepoOrganizer
     executor_method = "organize"
-    executor_dependencies = ["config_manager"]
+    executor_dependencies = ["config_manager", "metadata"]
 
 
 def register_all_operations(generate_docs: bool = True):

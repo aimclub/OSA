@@ -1,5 +1,6 @@
 from pathlib import Path
 from types import SimpleNamespace
+import subprocess
 
 import pytest
 
@@ -7,6 +8,7 @@ from osa_tool.operations.codebase.organization.core.health_checker import Health
 from osa_tool.operations.codebase.organization.core.snapshot_manager import SnapshotManager
 from osa_tool.operations.codebase.organization.organize import RepoOrganizer
 from osa_tool.operations.codebase.organization.core.analyzers.generic import GenericReferenceAnalyzer
+from osa_tool.operations.codebase.organization.core.analyzers.javascript import JavaScriptImportAnalyzer
 from osa_tool.operations.codebase.organization.core.analyzers.python import PythonImportAnalyzer
 from osa_tool.operations.codebase.organization.core.executor.action_executor import (
     ActionExecutionError,
@@ -57,6 +59,24 @@ def test_generic_reference_analyzer_updates_quoted_and_unquoted_paths(tmp_path: 
     assert updated == 'See "docs/new.md" and docs/new.md for details.\n'
 
 
+def test_batch_updater_updates_generic_references_for_moved_python_file(tmp_path: Path):
+    consumer = tmp_path / "README.md"
+    consumer.write_text("Use pkg/old.py in docs.\n", encoding="utf-8")
+    moved_file = tmp_path / "pkg" / "old.py"
+    moved_file.parent.mkdir()
+    moved_file.write_text("VALUE = 1\n", encoding="utf-8")
+
+    python_analyzer = PythonImportAnalyzer(str(tmp_path))
+    generic_analyzer = GenericReferenceAnalyzer(str(tmp_path), excluded_extensions={".py"})
+    generic_analyzer.import_map = {"pkg/old.py": {"README.md"}}
+
+    updater = BatchImportUpdater(tmp_path, {"python": python_analyzer, "generic": generic_analyzer})
+    updater.add_move("pkg/old.py", "pkg/new.py")
+    updater.apply_all()
+
+    assert consumer.read_text(encoding="utf-8") == "Use pkg/new.py in docs.\n"
+
+
 def test_action_executor_raises_on_missing_source_and_stops_following_actions(tmp_path: Path):
     executor = ActionExecutor(tmp_path, {})
 
@@ -69,6 +89,13 @@ def test_action_executor_raises_on_missing_source_and_stops_following_actions(tm
         )
 
     assert not (tmp_path / "should_not_exist.txt").exists()
+
+
+def test_action_executor_rejects_paths_outside_repository(tmp_path: Path):
+    executor = ActionExecutor(tmp_path, {})
+
+    with pytest.raises(ActionExecutionError, match="Path escapes repository"):
+        executor.execute_all([{"type": "create_file", "path": "../outside.txt", "content": "blocked"}])
 
 
 def test_validate_actions_rejects_existing_create_file_and_directory(tmp_path: Path):
@@ -183,11 +210,68 @@ def test_repo_organizer_platform_stats_override_local_files(tmp_path: Path):
     assert organizer._detect_project_type() == "cpp"
 
 
+def test_python_analyzer_updates_relative_imports_after_move(tmp_path: Path):
+    package = tmp_path / "pkg"
+    package.mkdir()
+    consumer = package / "consumer.py"
+    consumer.write_text("from .foo import Bar\n", encoding="utf-8")
+
+    analyzer = PythonImportAnalyzer(str(tmp_path))
+    analyzer.import_map = {"pkg.foo": {"pkg/consumer.py"}}
+
+    updater = BatchImportUpdater(tmp_path, {"python": analyzer})
+    updater.add_move("pkg/foo.py", "pkg/sub/foo.py")
+    updater.apply_all()
+
+    assert consumer.read_text(encoding="utf-8") == "from .sub.foo import Bar\n"
+
+
 def test_health_checker_skips_missing_toolchain(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     checker = HealthChecker(tmp_path, "go", None, {})
     monkeypatch.setattr(checker, "_command_is_available", lambda command: False)
 
     assert checker.check_health() == (True, "")
+
+
+def test_health_checker_runs_python_and_js_fallbacks_for_mixed_projects(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    (tmp_path / "broken.py").write_text("if True print('oops')\n", encoding="utf-8")
+    (tmp_path / "broken.js").write_text("function () {\n", encoding="utf-8")
+
+    checker = HealthChecker(tmp_path, "mixed", None, {})
+
+    def fake_run(command, cwd=None):
+        joined = " ".join(command)
+        if "py_compile" in joined:
+            return 1, "", "python syntax error"
+        if command[:2] == ["node", "--check"]:
+            return 1, "", "js syntax error"
+        return 0, "", ""
+
+    monkeypatch.setattr(checker, "_run_command", fake_run)
+
+    healthy, errors = checker.check_health()
+
+    assert healthy is False
+    assert "broken.py" in errors
+    assert "broken.js" in errors
+
+
+def test_health_checker_runs_typescript_fallback_for_mixed_projects(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    (tmp_path / "broken.ts").write_text("const x: string = 1;\n", encoding="utf-8")
+
+    checker = HealthChecker(tmp_path, "mixed", None, {})
+
+    def fake_run(command, cwd=None):
+        if command[:2] == ["npx", "tsc"]:
+            return 1, "", "broken.ts: Type 'number' is not assignable to type 'string'"
+        return 0, "", ""
+
+    monkeypatch.setattr(checker, "_run_command", fake_run)
+
+    healthy, errors = checker.check_health()
+
+    assert healthy is False
+    assert "broken.ts" in errors
 
 
 def test_repo_organizer_detects_mixed_project_from_platform_language_stats(tmp_path: Path):
@@ -240,3 +324,79 @@ def test_snapshot_manager_merges_using_resolved_temp_branch_head(tmp_path: Path,
 
     assert manager.transfer_changes() is True
     assert ["git", "merge", "--squash", "deadbeef"] in calls
+
+
+def test_snapshot_manager_restores_preserved_local_changes_on_rollback(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    calls = []
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        if command == ["git", "branch", "--show-current"]:
+            return SimpleNamespace(stdout="main\n", stderr="")
+        if command == ["git", "status", "--porcelain"]:
+            return SimpleNamespace(stdout=" M file.py\n", stderr="")
+        if command == ["git", "stash", "list", "--format=%gd", "-n", "1"]:
+            return SimpleNamespace(stdout="stash@{0}\n", stderr="")
+        if command[:3] == ["git", "rev-parse", "--verify"]:
+            return SimpleNamespace(stdout="deadbeef\n", stderr="")
+        return SimpleNamespace(stdout="", stderr="")
+
+    monkeypatch.setattr("osa_tool.operations.codebase.organization.core.snapshot_manager.subprocess.run", fake_run)
+
+    manager = SnapshotManager(tmp_path)
+
+    assert manager.create_snapshot() is True
+    assert manager.rollback() is True
+    assert ["git", "stash", "push", "--include-untracked", "-m", "OSA Tool: preserved local changes"] in calls
+    assert ["git", "stash", "apply", "stash@{0}"] in calls
+    assert ["git", "stash", "pop", "stash@{0}"] in calls
+
+
+def test_snapshot_manager_restores_stash_when_snapshot_creation_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    calls = []
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        if command == ["git", "branch", "--show-current"]:
+            return SimpleNamespace(stdout="main\n", stderr="")
+        if command == ["git", "status", "--porcelain"]:
+            return SimpleNamespace(stdout=" M file.py\n", stderr="")
+        if command == ["git", "stash", "list", "--format=%gd", "-n", "1"]:
+            return SimpleNamespace(stdout="stash@{0}\n", stderr="")
+        if command == ["git", "checkout", "-b", "osa-temp-" + SnapshotManager(tmp_path).temp_branch.split("osa-temp-")[1]]:
+            raise subprocess.CalledProcessError(returncode=1, cmd=command, stderr="checkout failed")
+        if command[:3] == ["git", "checkout", "-b"]:
+            raise subprocess.CalledProcessError(returncode=1, cmd=command, stderr="checkout failed")
+        return SimpleNamespace(stdout="", stderr="")
+
+    monkeypatch.setattr("osa_tool.operations.codebase.organization.core.snapshot_manager.subprocess.run", fake_run)
+
+    manager = SnapshotManager(tmp_path)
+
+    assert manager.create_snapshot() is False
+    assert ["git", "stash", "push", "--include-untracked", "-m", "OSA Tool: preserved local changes"] in calls
+    assert ["git", "stash", "pop", "stash@{0}"] in calls
+
+
+def test_javascript_analyzer_preserves_relative_extension_when_updating_import(tmp_path: Path):
+    consumer = tmp_path / "src" / "main.js"
+    consumer.parent.mkdir(parents=True)
+    consumer.write_text('import value from "./utils/foo.js";\n', encoding="utf-8")
+
+    analyzer = JavaScriptImportAnalyzer(str(tmp_path))
+    updated = analyzer.update_imports_in_file("src/main.js", "src/utils/foo", "src/lib/bar")
+
+    assert updated == 'import value from "./lib/bar.js";\n'
+
+
+def test_repo_organizer_does_not_delete_tracked_dist_directory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    organizer = RepoOrganizer.__new__(RepoOrganizer)
+    organizer.base_path = tmp_path
+    tracked_dist = tmp_path / "dist"
+    tracked_dist.mkdir()
+    (tracked_dist / "bundle.js").write_text("console.log('tracked');\n", encoding="utf-8")
+
+    monkeypatch.setattr(organizer, "_is_git_tracked", lambda rel_path: rel_path.startswith("dist"))
+
+    assert organizer._clean_pycache() is True
+    assert tracked_dist.exists()
