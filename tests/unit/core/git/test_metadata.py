@@ -1,5 +1,5 @@
 import os
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import pytest
 
@@ -64,7 +64,7 @@ def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_fa
     loader_class = LOADER_CLASSES[platform]
 
     # Act
-    with patch("osa_tool.core.git.metadata.requests.get", return_value=mock_response) as mock_get:
+    with patch("osa_tool.core.git.request_utils.requests.get", return_value=mock_response) as mock_get:
         with patch.dict(os.environ, TOKEN_ENVS[platform]):
             result = loader_class._load_platform_data(repo_url, use_token=True)
 
@@ -81,8 +81,9 @@ def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_fa
         expected_url = BASE_URLS[platform].format(base=get_base_repo_url(repo_url))
 
     mock_get.assert_called_once_with(
-        url=expected_url,
+        expected_url,
         headers=HEADERS[platform],
+        timeout=ANY,
     )
 
 
@@ -95,7 +96,7 @@ def test_load_data_http_errors(status_code, mock_requests_response_factory, repo
     loader_class = LOADER_CLASSES[platform]
 
     # Act & Assert
-    with patch("osa_tool.core.git.metadata.requests.get", return_value=mock_response):
+    with patch("osa_tool.core.git.request_utils.requests.get", return_value=mock_response):
         with patch.dict(os.environ, TOKEN_ENVS[platform]):
             with pytest.raises(Exception):
                 loader_class.load_data(repo_url)

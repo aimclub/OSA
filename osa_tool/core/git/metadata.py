@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Counter
 
-import requests
 from dotenv import load_dotenv
 from git import Repo
 from requests import HTTPError
 
+from osa_tool.core.git.request_utils import request_with_retry
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import get_base_repo_url
 
@@ -157,7 +157,7 @@ class GitHubMetadataLoader(MetadataLoader):
             headers["Authorization"] = f"token {os.getenv('GIT_TOKEN', os.getenv('GITHUB_TOKEN', ''))}"
 
         url = f"https://api.github.com/repos/{base_url}"
-        response = requests.get(url=url, headers=headers)
+        response = request_with_retry("get", url=url, headers=headers)
         response.raise_for_status()
         data = response.json()
         logger.info(f"Successfully fetched GitHub metadata for repository: '{base_url}'")
@@ -425,7 +425,7 @@ class GitLabMetadataLoader(MetadataLoader):
         project_path = base_url.replace("/", "%2F")
         url = f"{gitlab_instance}/api/v4/projects/{project_path}"
 
-        response = requests.get(url=url, headers=headers)
+        response = request_with_retry("get", url=url, headers=headers)
         response.raise_for_status()
         data = response.json()
         logger.info(f"Successfully fetched GitLab metadata for repository: '{base_url}'")
@@ -507,7 +507,7 @@ class GitverseMetadataLoader(MetadataLoader):
         }
         url = f"https://api.gitverse.ru/repos/{base_url}"
 
-        response = requests.get(url=url, headers=headers)
+        response = request_with_retry("get", url=url, headers=headers)
         response.raise_for_status()
         data = response.json()
         logger.info(f"Successfully fetched Gitverse metadata for repository: '{base_url}'")
@@ -584,7 +584,7 @@ class SourceCraftMetadataLoader(MetadataLoader):
 
         url = f"{cls.API_BASE}/repos/{org_slug}/{repo_slug}"
 
-        response = requests.get(url=url, headers=headers)
+        response = request_with_retry("get", url=url, headers=headers)
         response.raise_for_status()
         data = response.json()
 
