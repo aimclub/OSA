@@ -4,6 +4,15 @@ repository = "https://github.com/aimclub/OSA"
 no_fork = false
 no_pull_request = false
 
+[git.retry]
+max_attempts = 4
+backoff_base = 1.0
+backoff_factor = 2.0
+backoff_max_delay = 30.0
+backoff_total_cap = 120.0
+retry_after_max = 120.0
+request_timeout = 30.0
+
 # Language Model API Settings
 [llm]
 # api = "openai"
