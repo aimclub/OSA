@@ -136,7 +136,7 @@ def test_readme_with_readme_presence_true(mock_config_manager, mock_repository_m
 
     # Assert
     assert "README" in readme_section
-    assert ("../" in readme_section or "](./" in readme_section)
+    assert "../" in readme_section or "](./" in readme_section
     assert "tree/" not in readme_section
 
 
