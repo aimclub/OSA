@@ -226,7 +226,7 @@ the [CLI usage guide](./docs/scheduler/index.md).
 
 ## Examples
 
-Examples of generated README files are available in [examples](https://github.com/aimclub/OSA/tree/main/examples).
+Examples of generated README files are available in [examples](./examples).
 
 URL of the GitHub/GitLab/Gitverse repository, LLM API service provider (*optional*) and Specific LLM model to use
 (*optional*) are required to use the generator.
@@ -296,7 +296,7 @@ In Russian:
 
 ## Contributing
 
-- **[Report Issues](https://github.com/aimclub/OSA/issues )**: Submit bugs found or log feature requests for the
+- **[Report Issues](https://github.com/aimclub/OSA/issues)**: Submit bugs found or log feature requests for the
   Open-Source-Advisor project.
 
 ---
@@ -304,7 +304,7 @@ In Russian:
 ## License
 
 This project is protected under the BSD 3-Clause "New" or "Revised" License. For more details, refer to
-the [LICENSE](https://github.com/aimclub/OSA/blob/main/LICENSE) file.
+the [LICENSE](./LICENSE) file.
 
 ---
 

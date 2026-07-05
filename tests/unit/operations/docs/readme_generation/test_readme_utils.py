@@ -9,6 +9,8 @@ from osa_tool.operations.docs.readme_generation.readme_utils import (
     save_sections,
     extract_relative_paths,
     find_in_repo_tree,
+    to_readme_relative_link,
+    to_repo_relative_link,
     clean_code_block_indents,
     remove_extra_blank_lines,
     extract_example_paths,
@@ -136,6 +138,34 @@ def test_find_in_repo_tree_no_match():
 
     # Assert
     assert result == ""
+
+
+def test_to_readme_relative_link():
+    assert to_readme_relative_link("examples") == "./examples"
+    assert to_readme_relative_link("LICENSE") == "./LICENSE"
+    assert to_readme_relative_link("./docs/index.md") == "./docs/index.md"
+    assert to_readme_relative_link("") == ""
+
+
+def test_to_repo_relative_link_from_subdirectory():
+    assert to_repo_relative_link("docs/index.rst", from_dir=".github") == "../docs/index.rst"
+    assert to_repo_relative_link("README.md", from_dir=".github") == "../README.md"
+    assert to_repo_relative_link("CONTRIBUTING.md", from_dir=".github") == "../CONTRIBUTING.md"
+
+
+def test_find_in_repo_tree_prefers_directory():
+    tree = """
+examples
+examples/example1.py
+docs
+docs/index.rst
+""".strip()
+
+    examples = find_in_repo_tree(tree, r"\b(tutorials?|examples|notebooks?)\b", prefer_directory=True)
+    docs = find_in_repo_tree(tree, r"\b(docs?|documentation|wiki|manuals?)\b", prefer_directory=True)
+
+    assert examples == "examples"
+    assert docs == "docs"
 
 
 def test_extract_example_paths():

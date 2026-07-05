@@ -20,7 +20,6 @@ def test_contributing_builder_initialization(mock_config_manager, mock_repositor
 
     assert builder.url_path.startswith("https://")
     assert builder.url_path.endswith("/")
-    assert "tree/" in builder.branch_path
 
     assert builder.template_path.endswith("contributing.toml")
     assert builder.file_to_save.endswith("CONTRIBUTING.md")
@@ -102,7 +101,8 @@ def test_documentation_with_docs_presence_true(
     doc_section = builder.documentation
 
     # Assert
-    assert "docs/" in doc_section or builder.metadata.homepage_url in doc_section
+    assert "../" in doc_section or "](./" in doc_section or builder.metadata.homepage_url in doc_section
+    assert "tree/" not in doc_section
 
 
 def test_documentation_with_docs_presence_false_and_no_homepage(
@@ -136,6 +136,8 @@ def test_readme_with_readme_presence_true(mock_config_manager, mock_repository_m
 
     # Assert
     assert "README" in readme_section
+    assert ("../" in readme_section or "](./" in readme_section)
+    assert "tree/" not in readme_section
 
 
 def test_readme_with_readme_presence_false(mock_config_manager, mock_repository_metadata, sourcerank_with_repo_tree):
@@ -165,8 +167,9 @@ def test_tests_property_with_tests_presence(mock_config_manager, mock_repository
     tests_section = builder.tests
 
     # Assert
-    assert "tests/" in tests_section or "test" in tests_section.lower()
+    assert "../" in tests_section or "](./" in tests_section
     assert tests_section != ""
+    assert "tree/" not in tests_section
 
 
 def test_tests_property_without_tests_presence(
@@ -196,6 +199,21 @@ def test_acknowledgements_property(mock_config_manager, mock_repository_metadata
     # Assert
     assert isinstance(acknowledgements, str)
     assert len(acknowledgements) > 0
+
+
+def test_contributing_documentation_uses_path_from_github_subdirectory(
+    mock_config_manager, mock_repository_metadata, sourcerank_with_repo_tree
+):
+    repo_tree_data = "docs\ndocs/index.rst\nREADME.md"
+    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
+    builder.sourcerank = sourcerank
+    builder.metadata.homepage_url = ""
+
+    doc_section = builder.documentation
+
+    assert "](../docs)" in doc_section
 
 
 def test_build_creates_dir_and_saves_file(mock_config_manager, mock_repository_metadata, tmp_path, caplog):

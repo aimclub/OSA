@@ -15,8 +15,31 @@ def _make_builder(mock_config_manager, mock_repository_metadata):
         builder = _DeterministicSections(context)
     builder._sr = MagicMock()
     builder._sr.citation_presence.return_value = False
-    builder._sr.tree = []
+    builder._sr.tree = ""
     return builder, context
+
+
+def test_examples_section_uses_local_repo_link(mock_config_manager, mock_repository_metadata):
+    builder, _ = _make_builder(mock_config_manager, mock_repository_metadata)
+    builder._sr.examples_presence.return_value = True
+    builder._sr.tree = "examples\nexamples/demo.py"
+
+    content = builder.examples()
+
+    assert "](./examples)" in content
+    assert "https://" not in content
+    assert "tree/" not in content
+
+
+def test_license_section_uses_local_repo_link(mock_config_manager, mock_repository_metadata):
+    builder, _ = _make_builder(mock_config_manager, mock_repository_metadata)
+    mock_repository_metadata.license_name = "MIT"
+    builder._sr.tree = "LICENSE\nsrc/main.py"
+
+    content = builder.license()
+
+    assert "](./LICENSE)" in content
+    assert "https://" not in content
 
 
 def test_citation_fallback_uses_created_at_year(mock_config_manager, mock_repository_metadata):
