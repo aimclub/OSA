@@ -1,4 +1,5 @@
 import asyncio
+import os
 from pathlib import Path
 from typing import Iterable, Iterator
 
@@ -56,7 +57,8 @@ class CodeAnalyzer:
         self.__repo_path = Path(parse_folder_name(str(self.config_manager.get_git_settings().repository))).resolve()
         source_files = self.get_code_files()
         self.repo_graph = RepositoryGraph(self.__repo_path)
-        self.repo_graph.build(source_files)
+        enrich_graph = os.getenv("OSA_SKIP_GNN_ENRICHMENT", "").strip().lower() not in ("1", "true", "yes")
+        self.repo_graph.build(source_files, enrich=enrich_graph)
 
     def get_code_files(self) -> Iterator[str]:
         """

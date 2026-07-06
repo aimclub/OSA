@@ -34,25 +34,39 @@ class RepositoryGraph:
         self.graph = nx.DiGraph()
         self.__function_name_to_node: dict[str, list[str]] = {}
         self.__graph_embedder = _GraphEmbedder()
-        self.__graph_enrich = _GraphEmbeddingTrainer()
+        self.__graph_enrich: Optional["_GraphEmbeddingTrainer"] = None
 
     @property
     def nodes(self):
         return self.graph.nodes()
 
-    def build(self, source_files: Iterable[str]) -> nx.DiGraph:
+    def build(self, source_files: Iterable[str], enrich: bool = True) -> nx.DiGraph:
         """
         Main entry point. Accepts a list of absolute file paths
         and returns a populated directed graph.
+
+        Args:
+            source_files: Absolute paths to source files to include in the graph.
+            enrich: Whether to additionally train the RGAT encoder on the graph
+                (writes to the node "embedding" attribute). Currently unused by
+                downstream retrieval, which reads "text_embedding" instead, so
+                disabling it skips otherwise-wasted computation.
         """
         for filepath in source_files:
             self._process_file(Path(filepath))
 
         self.__resolve_calls()
         self.graph = self.__graph_embedder.embed(self.graph)
-        self.graph = self.__graph_enrich.train(self.graph)
 
-        self.visualize()
+        if enrich:
+            if self.__graph_enrich is None:
+                self.__graph_enrich = _GraphEmbeddingTrainer()
+            self.graph = self.__graph_enrich.train(self.graph)
+
+        try:
+            self.visualize()
+        except Exception as e:
+            logger.warning(f"Failed to render repository graph visualization, skipping: {e}")
 
         return self.graph
 

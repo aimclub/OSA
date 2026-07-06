@@ -1,4 +1,5 @@
 import os
+import xml.sax.saxutils as saxutils
 
 import qrcode
 from reportlab.lib import colors
@@ -17,23 +18,36 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-# Register Unicode-aware fonts for Cyrillic support
+# Register Unicode-aware fonts for Cyrillic support (claim/experiment text may be Russian).
 _unicode_font_name = "Helvetica"
 try:
-    # Try to register DejaVuSans which supports Cyrillic on most systems
-    for font_path in [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux
-        "/System/Library/Fonts/Arial Unicode.ttf",  # macOS legacy
-        "/Library/Fonts/Arial Unicode.ttf",  # macOS
+    _regular_candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Debian/Ubuntu
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",  # Arch/Manjaro
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",  # Fedora/RHEL
+        "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",  # macOS
+        "/Library/Fonts/Arial Unicode.ttf",  # macOS (older)
         "C:\\Windows\\Fonts\\arial.ttf",  # Windows fallback
-    ]:
-        if os.path.exists(font_path):
-            try:
-                pdfmetrics.registerFont(TTFont("CyrillicFont", font_path))
-                _unicode_font_name = "CyrillicFont"
-                break
-            except Exception:
-                pass
+    ]
+    _bold_candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+    ]
+    _regular_path = next((p for p in _regular_candidates if os.path.exists(p)), None)
+    if _regular_path:
+        pdfmetrics.registerFont(TTFont("CyrillicFont", _regular_path))
+        _bold_path = next((p for p in _bold_candidates if os.path.exists(p)), None)
+        if _bold_path:
+            pdfmetrics.registerFont(TTFont("CyrillicFont-Bold", _bold_path))
+            pdfmetrics.registerFontFamily(
+                "CyrillicFont",
+                normal="CyrillicFont",
+                bold="CyrillicFont-Bold",
+                italic="CyrillicFont",
+                boldItalic="CyrillicFont-Bold",
+            )
+        _unicode_font_name = "CyrillicFont"
 except Exception:
     pass
 
@@ -42,6 +56,31 @@ from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.analysis.repository_validation.models import Experiment
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
+
+# Labels for weighted repository checks (mirrors vkr_scoring.scoring_engine weights).
+_CHECK_LABELS: dict[str, str] = {
+    "readme": "README",
+    "license": "License",
+    "commits": "Commits (>5)",
+    "execution_files": "Entry-point files",
+    "requirements": "Requirements file",
+    "tests": "Tests",
+    "data_files": "Data files",
+    "experiment_scripts": "Experiment scripts",
+}
+
+
+def _esc(text: object) -> str:
+    """Escape text for safe embedding into a reportlab Paragraph's markup."""
+    return saxutils.escape(str(text) if text is not None else "")
+
+
+def _score_color(score: int) -> str:
+    if score >= 70:
+        return "#27ae60"
+    if score >= 40:
+        return "#e67e22"
+    return "#e74c3c"
 
 
 class RoundedCard(Flowable):
@@ -96,13 +135,16 @@ class ReportGenerator:
     percentage metrics, and conclusions. It adds branding, QR codes, and repository metadata to the report.
     """
 
-    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata) -> None:
+    def __init__(self, config_manager: ConfigManager, metadata: RepositoryMetadata, filename_suffix: str = "") -> None:
         """
         Initialize the ReportGenerator.
 
         Args:
             config_manager: A unified configuration manager that provides task-specific LLM settings, repository information, and workflow preferences.
             metadata (RepositoryMetadata): Metadata about the repository.
+            filename_suffix (str): Optional suffix distinguishing reports from alternate
+                pipeline variants (e.g. "_semantic") run against the same repository, so
+                they don't overwrite each other's output when run in the same invocation.
         """
         self.config_manager = config_manager
         self.repo_url = self.config_manager.get_git_settings().repository
@@ -111,27 +153,32 @@ class ReportGenerator:
         self.osa_url = "https://github.com/aimclub/OSA"
         self.logo_path = os.path.join(osa_project_root(), "docs", "images", "osa_logo.PNG")
 
-        self.filename = f"{self.metadata.name}_validation_report.pdf"
+        self.filename = f"{self.metadata.name}{filename_suffix}_validation_report.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
 
     def build_pdf(
         self,
         type_: str,
-        experiments: tuple[Experiment, ...],
+        experiments: tuple[Experiment, ...] = (),
         vkr_report: dict | None = None,
     ) -> None:
         """
         Build and save the PDF validation report.
 
         Args:
-            type_ (str): Type of validation (e.g., "Code", "Doc", "Paper").
-            experiments (tuple[Experiment]): JSON containing report data.
+            type_ (str): Type of validation (e.g., "Code", "Doc", "Paper", "VKR").
+            experiments (tuple[Experiment]): Assessed experiments, if any. Omitted
+                (empty) for a pure VKR quality/claims report with no paper-derived
+                experiment breakdown.
             vkr_report (dict | None): Optional VKR quality-check report to include.
+                May also carry a "claims_analysis" key (as produced by
+                ClaimsPipeline.verify) to render a claims verification section.
 
         Returns:
             None
         """
         logger.info(f"Building validation report for repository {self.metadata.full_name} ...")
+        claims_analysis = (vkr_report or {}).get("claims_analysis")
         try:
             doc = SimpleDocTemplate(
                 self.output_path,
@@ -144,10 +191,15 @@ class ReportGenerator:
                 Spacer(0, 20),
                 *self.__build_vkr_section(vkr_report),
                 Spacer(0, 20),
-                *self.__build_brief(experiments),
-                Spacer(0, 20),
-                *self.__build_table(experiments),
+                *self.__build_claims_section(claims_analysis),
             ]
+            if experiments:
+                elements += [
+                    Spacer(0, 20),
+                    *self.__build_brief(experiments),
+                    Spacer(0, 20),
+                    *self.__build_table(experiments),
+                ]
             try:
                 doc.build(elements, onFirstPage=self.__draw_images)
                 logger.info(f"PDF report successfully created in {self.output_path}")
@@ -158,10 +210,15 @@ class ReportGenerator:
                     Spacer(0, 20),
                     *self.__build_vkr_section(vkr_report),
                     Spacer(0, 20),
-                    *self.__build_brief(experiments),
-                    Spacer(0, 20),
-                    *self.__build_simple_table(experiments),
+                    *self.__build_claims_section(claims_analysis),
                 ]
+                if experiments:
+                    elements += [
+                        Spacer(0, 20),
+                        *self.__build_brief(experiments),
+                        Spacer(0, 20),
+                        *self.__build_simple_table(experiments),
+                    ]
                 doc.build(elements, onFirstPage=self.__draw_images)
                 logger.info(f"PDF report successfully created in {self.output_path} (simplified format)")
         except Exception as e:
@@ -294,15 +351,11 @@ class ReportGenerator:
 
     @staticmethod
     def __build_vkr_section(vkr_report: dict | None) -> list:
-        """Build PDF elements for the VKR repository quality score section."""
+        """Build PDF elements for the VKR section: general info, score, checks, code quality."""
         if not vkr_report:
             return []
 
-        from osa_tool.operations.analysis.vkr_scoring.scoring_engine import (
-            CHECK_ORDER,
-            REPO_TYPE_LABELS,
-            ScoringEngine,
-        )
+        from osa_tool.operations.analysis.vkr_scoring.scoring_engine import REPO_TYPE_LABELS
 
         styles = getSampleStyleSheet()
         header_style = ParagraphStyle(
@@ -320,44 +373,212 @@ class ReportGenerator:
             leading=15,
             fontName=_unicode_font_name,
         )
+        note_style = ParagraphStyle(
+            name="VkrNote",
+            parent=normal_style,
+            fontSize=9,
+            textColor=colors.HexColor("#555555"),
+        )
 
-        checks = vkr_report.get("checks", {})
         summary = vkr_report.get("summary", {})
         score = summary.get("score", 0)
-        repo_type = summary.get("repo_type", "")
-        type_label = REPO_TYPE_LABELS.get(repo_type, repo_type)
+        breakdown = summary.get("score_breakdown", {})
+        repo_type = summary.get("repo_type", "unknown")
+        type_label = REPO_TYPE_LABELS.get(repo_type, repo_type.replace("_", " ").title())
+        analyzed_at = vkr_report.get("analyzed_at", "")
+        score_color = _score_color(score)
+
+        # General info
+        elements: list = [Paragraph(f"Repository type: {_esc(type_label)}", normal_style)]
+        if analyzed_at:
+            elements.append(Paragraph(f"Analyzed at: {_esc(analyzed_at)}", normal_style))
+        elements.append(Spacer(0, 8))
+
+        # Score
+        elements.append(Paragraph("<b>Repository Quality Score</b>", header_style))
+        score_style = ParagraphStyle(
+            name="ScoreBig",
+            parent=normal_style,
+            fontSize=30,
+            leading=34,
+            textColor=colors.HexColor(score_color),
+        )
+        elements.append(Paragraph(f"{score}<font size=14 color='#888888'> / 100</font>", score_style))
+        elements.append(Spacer(0, 8))
+
+        # Repository checks (skip keys the score doesn't weight for this repo_type at all,
+        # as well as ones explicitly marked non-applicable)
+        applicable = [
+            (key, label)
+            for key, label in _CHECK_LABELS.items()
+            if key in breakdown and breakdown[key].get("applicable") is not False
+        ]
+        if applicable:
+            elements.append(Paragraph("<b>Repository Checks</b>", header_style))
+            table_data = [
+                [
+                    Paragraph("<b>Check</b>", normal_style),
+                    Paragraph("<b>Status</b>", normal_style),
+                    Paragraph("<b>Points</b>", normal_style),
+                ]
+            ]
+            for key, label in applicable:
+                bd = breakdown.get(key, {})
+                passed = bd.get("passed", False)
+                earned = bd.get("earned", 0)
+                weight = bd.get("weight", 0)
+                status_style = ParagraphStyle(
+                    name=f"VkrStatus_{key}",
+                    parent=normal_style,
+                    textColor=colors.HexColor("#27ae60" if passed else "#e74c3c"),
+                )
+                table_data.append(
+                    [
+                        Paragraph(_esc(label), normal_style),
+                        Paragraph(f"<b>{'PASS' if passed else 'FAIL'}</b>", status_style),
+                        Paragraph(f"{earned} / {weight}", normal_style),
+                    ]
+                )
+
+            table = Table(table_data, colWidths=[220, 100, 100])
+            table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E8EEF4")),
+                        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#C0C8D0")),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("ALIGN", (1, 0), (2, -1), "CENTER"),
+                        ("TOPPADDING", (0, 0), (-1, -1), 4),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ]
+                )
+            )
+            elements.append(table)
+            elements.append(Spacer(0, 8))
+
+        # Code quality
+        syntax = summary.get("syntax", {})
+        docstrings = summary.get("docstrings", {})
+        elements.append(Paragraph("<b>Code Quality</b>", header_style))
+
+        ok = syntax.get("ok")
+        if ok is True:
+            elements.append(Paragraph(f"<b>Syntax:</b> OK — {_esc(syntax.get('summary', ''))}", normal_style))
+        elif ok is False:
+            elements.append(Paragraph(f"<b>Syntax:</b> Errors — {_esc(syntax.get('summary', ''))}", normal_style))
+            for err in syntax.get("errors", [])[:5]:
+                elements.append(Paragraph(f"• {_esc(err)}", note_style))
+        else:
+            elements.append(Paragraph(f"<b>Syntax:</b> {_esc(syntax.get('summary', 'unavailable'))}", normal_style))
+
+        coverage_pct = docstrings.get("coverage_pct")
+        if coverage_pct is not None:
+            elements.append(Paragraph(f"<b>Docstring coverage:</b> {coverage_pct}%", normal_style))
+        else:
+            elements.append(
+                Paragraph(f"<b>Docstrings:</b> {_esc(docstrings.get('summary', 'unavailable'))}", normal_style)
+            )
+
+        return elements
+
+    @staticmethod
+    def __build_claims_section(claims_analysis: dict | None) -> list:
+        """Build PDF elements for the claims verification section (paper/doc claims vs. code)."""
+        if not claims_analysis:
+            return []
+
+        styles = getSampleStyleSheet()
+        header_style = ParagraphStyle(
+            name="ClaimsHeader",
+            parent=styles["Normal"],
+            fontSize=13,
+            leading=18,
+            spaceBefore=4,
+            fontName=_unicode_font_name,
+        )
+        normal_style = ParagraphStyle(
+            name="ClaimsNormal",
+            parent=styles["Normal"],
+            fontSize=9,
+            leading=12,
+            fontName=_unicode_font_name,
+        )
+        note_style = ParagraphStyle(
+            name="ClaimsNote",
+            parent=normal_style,
+            textColor=colors.HexColor("#555555"),
+        )
+
+        stats = claims_analysis.get("stats", {})
+        total = stats.get("total", 0)
+        implemented = stats.get("implemented", 0)
+        rate_pct = stats.get("implementation_rate_pct", 0)
+        rate_color = _score_color(rate_pct)
 
         elements: list = [
-            Paragraph(f"<b>Repository Quality Score: {score}/100</b>", header_style),
+            Paragraph("<b>Claims Analysis</b>", header_style),
             Spacer(0, 4),
-            Paragraph(f"Repository type: {type_label}", normal_style),
+            Paragraph(f"Total claims: <b>{total}</b>", normal_style),
+            Paragraph(f"Implemented: <b>{implemented} / {total}</b>", normal_style),
+            Paragraph(
+                f"Verifiability of statements score: <font color='{rate_color}'><b>{rate_pct}%</b></font>",
+                normal_style,
+            ),
             Spacer(0, 8),
         ]
 
-        table_data = [[Paragraph("<b>Check</b>", normal_style), Paragraph("<b>Result</b>", normal_style)]]
-        for key in CHECK_ORDER:
-            if key not in checks:
-                continue
-            line = ScoringEngine.format_check_line(key, checks[key])
-            # lines look like "  readme          : OK (9424 chars)"
-            name_part, _, value_part = line.strip().partition(":")
+        claims = claims_analysis.get("claims", [])
+        if not claims:
+            elements.append(Paragraph("No claims were extracted.", normal_style))
+            return elements
+
+        table_data = [
+            [
+                Paragraph("<b>Claim</b>", normal_style),
+                Paragraph("<b>Status</b>", normal_style),
+                Paragraph("<b>Confidence</b>", normal_style),
+                Paragraph("<b>Section</b>", normal_style),
+            ]
+        ]
+        for claim in claims:
+            impl = claim.get("implementation", {})
+            done = impl.get("implemented", False)
+            status_style = ParagraphStyle(
+                name="ClaimStatus",
+                parent=normal_style,
+                textColor=colors.HexColor("#27ae60" if done else "#e74c3c"),
+            )
+
+            claim_cell = _esc(claim.get("claim", ""))
+            explanation = impl.get("explanation", "")
+            if explanation:
+                claim_cell += f"<br/><font color='#555555'>{_esc(explanation)}</font>"
+
+            confidence_cell = _esc(impl.get("confidence", ""))
+            evidence = impl.get("evidence_file") or ""
+            if evidence:
+                confidence_cell += f"<br/><font color='#555555'>{_esc(evidence)}</font>"
+
             table_data.append(
                 [
-                    Paragraph(name_part.strip(), normal_style),
-                    Paragraph(value_part.strip(), normal_style),
+                    Paragraph(claim_cell, normal_style),
+                    Paragraph(f"<b>{'PASS' if done else 'FAIL'}</b>", status_style),
+                    Paragraph(confidence_cell, normal_style),
+                    Paragraph(_esc(claim.get("section_name", "")), note_style),
                 ]
             )
 
-        table = Table(table_data, colWidths=[160, 320])
+        table = Table(table_data, colWidths=[230, 55, 90, 95], repeatRows=1)
         table.setStyle(
             TableStyle(
                 [
                     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E8EEF4")),
                     ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#C0C8D0")),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
                     ("TOPPADDING", (0, 0), (-1, -1), 4),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
                 ]
             )
         )

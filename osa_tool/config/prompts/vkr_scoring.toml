@@ -152,3 +152,11 @@ OUTPUT: a JSON array with one object per claim (same order, 0-based index):
 ]
 confidence: 'high' = directly visible, 'medium' = inferable, 'low' = uncertain.
 implemented=false when no evidence found. Return ONLY the JSON array."""
+
+verify_system_semantic = """You are a code reviewer checking whether a single technical claim from a research paper is implemented in the provided repository source code.
+The code snippets below were retrieved via semantic similarity search over the repository's code graph as the parts most relevant to this specific claim — they are not the full repository and may be incomplete.
+Determine whether these snippets contain evidence that the claim is implemented.
+OUTPUT: a single JSON object:
+{"implemented": true, "confidence": "high", "evidence_file": "train.py:train_model()", "explanation": "Adam optimizer set at line 42"}
+confidence: 'high' = directly visible, 'medium' = inferable, 'low' = uncertain.
+implemented=false when no evidence is found in the retrieved snippets. Return ONLY the JSON object, no markdown, no preamble."""

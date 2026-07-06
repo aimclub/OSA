@@ -234,10 +234,9 @@ class ConfigManager:
 
         for task_type, arg_name in task_models.items():
             if hasattr(args, arg_name) and getattr(args, arg_name):
-                task_key = f"llm.{task_type}"
-                if task_key not in config_data:
-                    config_data[task_key] = {}
-                config_data[task_key]["model"] = getattr(args, arg_name)
+                if task_type not in config_data["llm"]:
+                    config_data["llm"][task_type] = {}
+                config_data["llm"][task_type]["model"] = getattr(args, arg_name)
 
         if "git" not in config_data:
             config_data["git"] = {}

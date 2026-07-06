@@ -113,6 +113,39 @@ arguments:
     type: flag
     description: "Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository."
 
+  vkr_score:
+    aliases: [ "--vkr-score" ]
+    type: flag
+    description: |
+      Run VKR-style repository quality scoring: repo quality checks plus, if a paper
+      or claims file is provided, claim extraction/verification against the repository.
+      Saves a JSON and text report. Combine with --attachment (paper PDF) or
+      --claims-file (pre-extracted claims JSON) to include claim verification.
+      Claims are matched to code via a small set of heuristically-selected files,
+      verified in a single batched LLM call. For graph/embedding-based matching,
+      use --vkr-score-semantic instead.
+
+  vkr_score_semantic:
+    aliases: [ "--vkr-score-semantic" ]
+    type: flag
+    description: |
+      Same pipeline as --vkr-score (repo quality checks, claim extraction/verification,
+      JSON/text/PDF reports), but claims are matched to code via the repository code
+      graph and embedding-based semantic retrieval instead of heuristic file selection —
+      one LLM call per claim, verified against the code snippets most relevant to it.
+      Slower and more expensive than --vkr-score, but more precise per claim.
+      Combine with --attachment (paper PDF) or --claims-file (pre-extracted claims JSON).
+      Can be run alongside or instead of --vkr-score.
+
+  claims_file:
+    aliases: [ "--claims-file" ]
+    type: str
+    description: |
+      Path to a JSON file with pre-extracted claims, for use with --vkr-score.
+      Accepts either a plain claim array or a previously saved claims_analysis
+      report. Skips PDF parsing and LLM-based claim extraction entirely and
+      verifies the given claims directly. Takes precedence over --attachment.
+
 settings:
   use_single_model:
       aliases: [ "--use-single-model" ]

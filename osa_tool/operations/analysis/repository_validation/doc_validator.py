@@ -97,7 +97,7 @@ class DocValidator:
         if not self.__path_to_doc:
             raise ValueError("Document is missing! Please pass it using --attachment argument.")
         try:
-            experiments_list = await self.__paper_analyzer.process_paper(self.__path_to_doc)
+            experiments_list = await self.__paper_analyzer.extract_experiments(self.__path_to_doc)
             self.__experiments = tuple(
                 Experiment(description_from_paper=experiment_descr) for experiment_descr in experiments_list
             )

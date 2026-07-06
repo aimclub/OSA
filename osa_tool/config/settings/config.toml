@@ -60,6 +60,9 @@ organize = false
 about = false
 validate_paper = false
 validate_doc = false
+vkr_score = false
+vkr_score_semantic = false
+# claims_file = ""
 incremental = false
 target_files = []
 

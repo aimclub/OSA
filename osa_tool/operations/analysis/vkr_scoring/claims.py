@@ -20,6 +20,7 @@ import re
 import sys
 from typing import Callable, Optional
 
+from osa_tool.tools.repository_analysis.semantic_retriever import GraphContextRetriever, format_code_snippets
 from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.utils.utils import read_file
@@ -129,6 +130,63 @@ class ClaimsPipeline:
         _prog("Verification complete.", 1.0)
 
         annotated = self._annotate_claims(claims, verifications)
+        return self._build_verify_result(annotated, csv_stats_list)
+
+    def verify_semantic(
+        self,
+        claims: list[dict],
+        flat_paths: list[str],
+        retriever: GraphContextRetriever,
+        on_progress: Progress = None,
+    ) -> dict:
+        """
+        Verify each claim against repository source code using graph + embedding retrieval.
+
+        Unlike `verify()` (one heuristically-selected batch of candidate files shared by
+        all claims, single LLM call), this retrieves the top-k most relevant code graph
+        nodes per claim and verifies each claim with its own LLM call.
+        """
+
+        def _prog(msg: str, pct: float) -> None:
+            print(msg, file=sys.stderr)
+            if on_progress:
+                on_progress(msg, pct)
+
+        if not claims:
+            return {
+                "claims": [],
+                "stats": {
+                    "total": 0,
+                    "implemented": 0,
+                    "implementation_rate": 0.0,
+                    "implementation_rate_pct": 0,
+                },
+            }
+
+        csv_section, csv_stats_list = self._collect_csv_context(claims, flat_paths, _prog)
+
+        annotated: list[dict] = []
+        total = len(claims)
+        for i, claim in enumerate(claims):
+            _prog(f"Verifying claim {i + 1}/{total} via graph retrieval...", 0.4 + 0.5 * (i / max(total, 1)))
+            context = retriever.retrieve([claim.get("claim", "")])[0]
+            code_snippets = format_code_snippets(context.retrieved_nodes)
+            include_csv = csv_section and claim.get("category") in ("dataset", "data_preprocessing")
+
+            verification = self._verify_single_claim_semantic(claim, code_snippets, csv_section if include_csv else "")
+            annotated.append(
+                {
+                    **claim,
+                    "implementation": {
+                        "implemented": verification.get("implemented", False),
+                        "confidence": verification.get("confidence", "low"),
+                        "evidence_file": verification.get("evidence_file"),
+                        "explanation": verification.get("explanation", ""),
+                    },
+                }
+            )
+
+        _prog("Verification complete.", 1.0)
         return self._build_verify_result(annotated, csv_stats_list)
 
     # ── Private: extract helpers ──────────────────────────────────────────────
@@ -282,6 +340,36 @@ class ClaimsPipeline:
             _PROMPTS.get("vkr_scoring.verify_system"),
         )
 
+    def _verify_single_claim_semantic(self, claim: dict, code_snippets: str, csv_section: str) -> dict:
+        """Send one claim + its retrieved code snippets to the LLM and return the raw verification dict."""
+        claim_for_prompt = {
+            "claim": claim.get("claim", ""),
+            "category": claim.get("category", ""),
+            "value": claim.get("value"),
+            "verifiability": claim.get("verifiability", ""),
+        }
+        user_content = (
+            f"## Claim\n{json.dumps(claim_for_prompt, ensure_ascii=False, indent=2)}\n\n"
+            f"## Retrieved code snippets\n{code_snippets or '(no relevant snippets found)'}\n\n"
+        )
+        if csv_section:
+            user_content += csv_section + "\n\n"
+        user_content += "Return the JSON object."
+
+        try:
+            return self._config.model_handler.send_and_parse(
+                user_content,
+                self._parse_json_object,
+                _PROMPTS.get("vkr_scoring.verify_system_semantic"),
+            )
+        except Exception:
+            print(
+                f"Warning: semantic verification failed for claim '{claim.get('claim', '')[:60]}', "
+                "marking as not implemented.",
+                file=sys.stderr,
+            )
+            return {}
+
     def _annotate_claims(self, claims: list[dict], verifications: list) -> list[dict]:
         """Merge LLM verification results back onto the original claim objects."""
         ver_by_index = {}
@@ -356,6 +444,11 @@ class ClaimsPipeline:
     def _parse_json_list(raw: str) -> list:
         """Parse raw LLM output as a JSON array via OSA's JsonProcessor."""
         return JsonProcessor.parse(raw, expected_type=list)
+
+    @staticmethod
+    def _parse_json_object(raw: str) -> dict:
+        """Parse raw LLM output as a JSON object via OSA's JsonProcessor."""
+        return JsonProcessor.parse(raw, expected_type=dict)
 
     @classmethod
     def _candidate_files(cls, flat_paths: list[str], max_files: int = 6) -> list[str]:

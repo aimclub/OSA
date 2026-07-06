@@ -145,13 +145,19 @@ class ScoringEngine:
 
         return "\n".join(lines)
 
-    def save_results(self, report: dict, output_dir: str) -> tuple[str, str]:
-        """Persist *report* as JSON + text files under *output_dir*."""
+    def save_results(self, report: dict, output_dir: str, filename_suffix: str = "") -> tuple[str, str]:
+        """
+        Persist *report* as JSON + text files under *output_dir*.
+
+        filename_suffix distinguishes reports from alternate pipeline variants
+        (e.g. "_semantic") run against the same repository, so they don't
+        overwrite each other's output when run in the same invocation.
+        """
         target = os.path.join(output_dir, self._sanitize_dir_name(self._repo_url))
         os.makedirs(target, exist_ok=True)
 
-        json_path = os.path.join(target, "report.json")
-        txt_path = os.path.join(target, "report.txt")
+        json_path = os.path.join(target, f"report{filename_suffix}.json")
+        txt_path = os.path.join(target, f"report{filename_suffix}.txt")
 
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(report, f, ensure_ascii=False, indent=2)

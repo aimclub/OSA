@@ -22,6 +22,7 @@ EXCLUDED_TASK = {
     "context_window",
     "top_p",
     "attachment",
+    "claims_file",
     "delete_dir",
     "no_fork",
     "no_pull_request",
