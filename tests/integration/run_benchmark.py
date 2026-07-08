@@ -18,7 +18,7 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import delete_repository, format_time, parse_git_url, rich_section
 
 
-def generate_readme(config_manager: ConfigManager, metadata: RepositoryMetadata, args) -> None:
+def generate_readme(config_manager: ConfigManager, metadata: RepositoryMetadata, args, safe_name: str) -> str:
     readmes_dir = os.path.join(os.path.dirname(args.table_path), "readmes")
     os.makedirs(readmes_dir, exist_ok=True)
 
@@ -27,7 +27,7 @@ def generate_readme(config_manager: ConfigManager, metadata: RepositoryMetadata,
         metadata=metadata,
     )
 
-    dest_path = os.path.join(readmes_dir, f"{metadata.name}_README.md")
+    dest_path = os.path.join(readmes_dir, f"{safe_name}_README.md")
     readme_agent.file_to_save = dest_path
 
     readme_agent.generate_readme()
@@ -37,6 +37,8 @@ def generate_readme(config_manager: ConfigManager, metadata: RepositoryMetadata,
         shutil.copy2(src, dest_path)
     else:
         logger.warning(f"README not found at clone path after generation: {src}")
+        
+    return dest_path
 
 
 def process_repository(repo_url: str, args) -> dict:
@@ -47,11 +49,18 @@ def process_repository(repo_url: str, args) -> dict:
     os.makedirs(logs_dir, exist_ok=True)
     os.makedirs(repos_dir, exist_ok=True)
 
-    original_cwd = os.getcwd()
-    os.chdir(repos_dir)
-
     _, _, repo_name, _ = parse_git_url(repo_url)
-    log_file = os.path.join(logs_dir, f"{repo_name}.log")
+    
+    url_parts = repo_url.rstrip("/").split("/")
+    safe_name = f"{url_parts[-2]}_{url_parts[-1]}" if len(url_parts) >= 2 else repo_name
+
+    worker_dir = os.path.join(repos_dir, safe_name)
+    os.makedirs(worker_dir, exist_ok=True)
+
+    original_cwd = os.getcwd()
+    os.chdir(worker_dir)
+
+    log_file = os.path.join(logs_dir, f"{safe_name}.log")
 
     logger.setLevel(logging.DEBUG)
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
@@ -82,10 +91,14 @@ def process_repository(repo_url: str, args) -> dict:
 
         git_agent.clone_repository()
         SourceRank(config_manager)
-        generate_readme(config_manager, git_agent.metadata, args)
+        dest_path = generate_readme(config_manager, git_agent.metadata, args, safe_name)
 
-        result.update({"name": git_agent.metadata.name, "status": "Success"})
-        logger.info(f"Successfully generated README in {format_time(time.time() - stage_start)}")
+        if os.path.exists(dest_path):
+            result.update({"name": git_agent.metadata.name, "status": "Success"})
+            logger.info(f"Successfully generated README in {format_time(time.time() - stage_start)}")
+        else:
+            result.update({"name": git_agent.metadata.name, "status": "Failed"})
+            logger.error(f"Failed to generate README for {git_agent.metadata.name}")
 
     except Exception as e:
         logger.error(f"Error processing {repo_url}: {e}")
@@ -96,6 +109,7 @@ def process_repository(repo_url: str, args) -> dict:
         logger.removeHandler(file_handler)
         delete_repository(repo_url)
         os.chdir(original_cwd)
+        shutil.rmtree(worker_dir, ignore_errors=True)
 
     return result
 
@@ -122,6 +136,9 @@ def load_table(table_path: str) -> DataFrame:
 def main():
     parser = build_parser_from_yaml(extra_sections=["settings", "arguments", "multi-run"])
     args, _ = parser.parse_known_args()
+
+    if getattr(args, "table_path", None) is None:
+        raise ValueError("Missing required argument: --table-path")
 
     args.table_path = os.path.abspath(args.table_path)
 
