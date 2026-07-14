@@ -109,7 +109,9 @@ class SnapshotManager:
                     )
                     self.original_stash_ref = None
                 except subprocess.CalledProcessError as restore_error:
-                    logger.error("Failed to restore stashed local changes after snapshot failure: %s", restore_error.stderr)
+                    logger.error(
+                        "Failed to restore stashed local changes after snapshot failure: %s", restore_error.stderr
+                    )
             logger.error("Git snapshot creation failed: %s", e.stderr)
             return False
 

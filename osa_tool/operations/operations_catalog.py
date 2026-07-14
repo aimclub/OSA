@@ -269,8 +269,9 @@ class GenerateWorkflowsOperation(Operation):
 class OrganizeRepositoryOperation(Operation):
     name = "organize"
     description = (
-        "Organize the repository structure by adding standard 'tests' and "
-        "'examples' directories if missing and moving matching files."
+        "Reorganize the repository structure with safe, convention-aware moves: "
+        "group scattered source files, create missing standard directories when helpful, "
+        "and keep the layout coherent without aggressive refactoring."
     )
 
     supported_intents = ["new_task"]

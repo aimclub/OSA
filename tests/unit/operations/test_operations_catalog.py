@@ -27,3 +27,8 @@ def test_register_all_operations_registers_known_operation():
 def test_operation_dependencies_match_executor_signatures():
     assert ConvertNotebooksOperation.executor_dependencies == ["config_manager"]
     assert OrganizeRepositoryOperation.executor_dependencies == ["config_manager", "metadata"]
+
+
+def test_organize_operation_description_reflects_safe_structural_reorganization():
+    assert "group scattered source files" in OrganizeRepositoryOperation.description
+    assert "without aggressive refactoring" in OrganizeRepositoryOperation.description

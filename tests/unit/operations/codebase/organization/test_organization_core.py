@@ -1,5 +1,6 @@
 from pathlib import Path
 from types import SimpleNamespace
+import logging
 import subprocess
 
 import pytest
@@ -16,6 +17,7 @@ from osa_tool.operations.codebase.organization.core.executor.action_executor imp
 )
 from osa_tool.operations.codebase.organization.core.executor.batch_updater import BatchImportUpdater
 from osa_tool.operations.codebase.organization.core.planning_manager import PlanningManager
+from osa_tool.operations.codebase.organization import organize as organize_module
 
 
 def test_repo_organizer_is_importable_from_new_package():
@@ -98,6 +100,13 @@ def test_action_executor_rejects_paths_outside_repository(tmp_path: Path):
         executor.execute_all([{"type": "create_file", "path": "../outside.txt", "content": "blocked"}])
 
 
+def test_action_executor_rejects_delete_actions(tmp_path: Path):
+    executor = ActionExecutor(tmp_path, {})
+
+    with pytest.raises(ActionExecutionError, match="Delete actions are disabled during reorganization"):
+        executor.execute_all([{"type": "delete_file", "path": "obsolete.txt"}])
+
+
 def test_validate_actions_rejects_existing_create_file_and_directory(tmp_path: Path):
     (tmp_path / ".gitignore").write_text("existing\n", encoding="utf-8")
     (tmp_path / "tests").mkdir()
@@ -129,8 +138,27 @@ def test_validate_actions_rejects_protected_and_build_artifact_cleanup(tmp_path:
     )
 
     assert not valid
-    assert "Protected path cannot be deleted: tox.ini" in issues
-    assert "Build artifacts should be cleaned automatically, not deleted via plan: __pycache__" in issues
+    assert "Delete actions are not allowed during reorganization; move or quarantine the file instead: tox.ini" in issues
+    assert (
+        "Delete actions are not allowed during reorganization; move or quarantine the directory instead: __pycache__"
+        in issues
+    )
+
+
+def test_validate_actions_logs_manual_review_for_secret_like_delete(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+):
+    planner = PlanningManager(None, {}, tmp_path, "python")
+
+    with caplog.at_level(logging.WARNING):
+        valid, issues = planner.validate_actions([{"type": "delete_file", "path": ".env.secret"}])
+
+    assert not valid
+    assert (
+        "Delete actions are not allowed during reorganization; move or quarantine the file instead: .env.secret"
+        in issues
+    )
+    assert "potentially sensitive file '.env.secret'" in caplog.text
 
 
 def test_validate_actions_allows_safe_python_module_extraction(tmp_path: Path):
@@ -233,7 +261,9 @@ def test_health_checker_skips_missing_toolchain(tmp_path: Path, monkeypatch: pyt
     assert checker.check_health() == (True, "")
 
 
-def test_health_checker_runs_python_and_js_fallbacks_for_mixed_projects(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_health_checker_runs_python_and_js_fallbacks_for_mixed_projects(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     (tmp_path / "broken.py").write_text("if True print('oops')\n", encoding="utf-8")
     (tmp_path / "broken.js").write_text("function () {\n", encoding="utf-8")
 
@@ -363,7 +393,9 @@ def test_snapshot_manager_restores_stash_when_snapshot_creation_fails(tmp_path: 
             return SimpleNamespace(stdout=" M file.py\n", stderr="")
         if command == ["git", "stash", "list", "--format=%gd", "-n", "1"]:
             return SimpleNamespace(stdout="stash@{0}\n", stderr="")
-        if command == ["git", "checkout", "-b", "osa-temp-" + SnapshotManager(tmp_path).temp_branch.split("osa-temp-")[1]]:
+        if command == [
+            "git", "checkout", "-b", "osa-temp-" + SnapshotManager(tmp_path).temp_branch.split("osa-temp-")[1]
+        ]:
             raise subprocess.CalledProcessError(returncode=1, cmd=command, stderr="checkout failed")
         if command[:3] == ["git", "checkout", "-b"]:
             raise subprocess.CalledProcessError(returncode=1, cmd=command, stderr="checkout failed")
@@ -400,3 +432,50 @@ def test_repo_organizer_does_not_delete_tracked_dist_directory(tmp_path: Path, m
 
     assert organizer._clean_pycache() is True
     assert tracked_dist.exists()
+
+
+def test_repo_organizer_cleans_build_artifacts_again_before_post_health_commit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    calls = []
+
+    class DummyExecutor:
+        def __init__(self, base_path, analyzers):
+            self.base_path = base_path
+            self.analyzers = analyzers
+
+        def execute_all(self, actions):
+            calls.append(("execute_all", actions))
+
+    organizer = RepoOrganizer.__new__(RepoOrganizer)
+    organizer.repo_name = "demo"
+    organizer.project_type = "python"
+    organizer.base_path = tmp_path
+    organizer.skip_health_check = False
+    organizer.analyzers = {}
+    organizer._build_import_maps = lambda: calls.append("build_import_maps")
+    organizer._clean_pycache = lambda: calls.append("clean_pycache")
+    organizer._commit_temp_branch_changes = lambda message: calls.append(("commit", message)) or True
+    organizer._run_health_phase = lambda label: calls.append(("health", label)) or True
+    organizer.planning = SimpleNamespace(
+        generate_plan=lambda tree, repo_name: {"actions": []},
+        validate_actions=lambda actions: (True, []),
+        reorder_actions=lambda actions: actions,
+    )
+    organizer.snapshot = SimpleNamespace(
+        create_snapshot=lambda: True,
+        rollback=lambda: True,
+        transfer_changes=lambda: True,
+        temp_branch="osa-temp-123",
+    )
+
+    monkeypatch.setattr(organize_module, "ActionExecutor", DummyExecutor)
+
+    organizer.organize()
+
+    post_health_index = calls.index(("health", "PHASE 6: Post-reorganization health check"))
+    post_health_commit_index = calls.index(("commit", "OSA Tool: post-health fixes"))
+    final_cleanup_index = max(index for index, entry in enumerate(calls) if entry == "clean_pycache")
+
+    assert post_health_index < final_cleanup_index
+    assert final_cleanup_index < post_health_commit_index

@@ -86,6 +86,22 @@ class PlanningManager:
             "wsgi.py",
             "asgi.py",
         }
+        self.manual_review_secret_markers = {
+            ".env",
+            ".pem",
+            ".p12",
+            ".pfx",
+            "id_rsa",
+            "id_dsa",
+            "secret",
+            "token",
+            "credential",
+            "password",
+            "passwd",
+            "private_key",
+            "apikey",
+            "api_key",
+        }
 
     @staticmethod
     def _normalize_path(path: str) -> str:
@@ -127,6 +143,13 @@ class PlanningManager:
             and dst_path.suffix == ".py"
             and src_path.name not in self.protected_entrypoints
         )
+
+    def _is_high_risk_secret_path(self, path: str) -> bool:
+        normalized = self._normalize_path(path).lower()
+        if not normalized:
+            return False
+        file_name = Path(normalized).name
+        return any(marker in normalized or marker in file_name for marker in self.manual_review_secret_markers)
 
     def generate_plan(self, tree_structure: str, repo_name: str) -> dict:
         """
@@ -350,25 +373,21 @@ class PlanningManager:
 
             elif typ == "delete_file":
                 src = self._normalize_path(action["path"])
-                full_path = self.base_path / src
-                if self._is_protected_path(src):
-                    issues.append(f"Protected path cannot be deleted: {src}")
-                if self._is_build_artifact_path(src):
-                    issues.append(f"Build artifacts should be cleaned automatically, not deleted via plan: {src}")
-                if not full_path.exists() and src not in created_paths:
-                    issues.append(f"File to delete does not exist: {src}")
+                if self._is_high_risk_secret_path(src):
+                    logger.warning(
+                        "LLM proposed deleting potentially sensitive file '%s'. Deletion is blocked; review manually.",
+                        src,
+                    )
+                issues.append(
+                    f"Delete actions are not allowed during reorganization; move or quarantine the file instead: {src}"
+                )
                 sources.add(src)
 
             elif typ == "delete_directory":
                 src = self._normalize_path(action["path"])
-                full_path = self.base_path / src
-                if self._is_protected_path(src):
-                    issues.append(f"Protected path cannot be deleted: {src}")
-                if self._is_build_artifact_path(src):
-                    issues.append(f"Build artifacts should be cleaned automatically, not deleted via plan: {src}")
-
-                if not full_path.exists() and src not in created_paths:
-                    issues.append(f"Directory to delete does not exist: {src}")
+                issues.append(
+                    f"Delete actions are not allowed during reorganization; move or quarantine the directory instead: {src}"
+                )
                 sources.add(src)
 
             else:

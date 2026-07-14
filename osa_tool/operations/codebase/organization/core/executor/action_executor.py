@@ -102,9 +102,9 @@ class ActionExecutor:
             dest_dir = action["destination_dir"]
             self._move_files(pattern, dest_dir, action.get("reason", ""))
         elif typ == "delete_file":
-            self._delete_file(action["path"])
+            self._fail(f"Delete actions are disabled during reorganization: {action['path']}")
         elif typ == "delete_directory":
-            self._delete_directory(action["path"])
+            self._fail(f"Delete actions are disabled during reorganization: {action['path']}")
         else:
             logger.warning(f"Unknown action type: {typ}")
 

@@ -483,6 +483,8 @@ class RepoOrganizer:
             if not self.skip_health_check:
                 logger.info("Project is healthy after reorganization.")
 
+            logger.info("Cleaning build artifacts after post-reorganization health check...")
+            self._clean_pycache()
             if not self._commit_temp_branch_changes("OSA Tool: post-health fixes"):
                 self.snapshot.rollback()
                 return
