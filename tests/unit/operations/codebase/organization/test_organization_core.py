@@ -397,7 +397,7 @@ def test_snapshot_manager_restores_stash_when_snapshot_creation_fails(tmp_path: 
             "git",
             "checkout",
             "-b",
-            "osa-temp-" + SnapshotManager(tmp_path).temp_branch.split("osa-temp-")[1]
+            "osa-temp-" + SnapshotManager(tmp_path).temp_branch.split("osa-temp-")[1],
         ]:
             raise subprocess.CalledProcessError(returncode=1, cmd=command, stderr="checkout failed")
         if command[:3] == ["git", "checkout", "-b"]:
