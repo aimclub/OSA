@@ -312,13 +312,17 @@ def test_github_agent_star_repository_failure_non_critical(
     # Arrange
     # 403 - does not fail the execution
     mock_response_check = mock_requests_response_factory(status_code=403, text_data="Forbidden")
+    mock_response_star = mock_requests_response_factory(status_code=204)
 
     # Act
     with patch.dict(os.environ, {"GIT_TOKEN": "any_token_for_env"}):
-        with patch("requests.get", return_value=mock_response_check) as mock_get:
+        with patch("requests.get", return_value=mock_response_check) as mock_get, patch(
+            "requests.put", return_value=mock_response_star
+        ) as mock_put:
             github_agent_instance.star_repository()
             # Assert
             mock_get.assert_called_once()
+            mock_put.assert_called_once()
 
 
 def test_github_agent_create_pull_request_update_reports(
@@ -524,7 +528,8 @@ def test_gitverse_agent_star_repository_already_starred(
 def sourcecraft_agent_instance(temp_clone_dir, mock_repository_metadata, repo_info, monkeypatch):
     platform, owner, repo_name, repo_url = repo_info
     monkeypatch.setenv("SOURCECRAFT_TOKEN", "fixture-token-sourcecraft")
-    with patch.object(SourceCraftMetadataLoader, "load_data", return_value=mock_repository_metadata):
+    with patch("osa_tool.core.git.git_agent.SourceCraftMetadataLoader", create=True) as mock_loader:
+        mock_loader.load_data.return_value = mock_repository_metadata
         agent = SourceCraftAgent(repo_url)
         agent.clone_dir = os.path.join(temp_clone_dir, parse_folder_name(repo_url))
         yield agent

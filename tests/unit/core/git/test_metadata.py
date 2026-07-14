@@ -1,5 +1,5 @@
 import os
-from unittest.mock import ANY, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -63,15 +63,16 @@ def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_fa
 
     if platform == "sourcecraft":
         mock_response = mock_requests_response_factory(status_code=200, json_data=raw_data)
-        with patch("osa_tool.core.git.metadata.requests.get", return_value=mock_response) as mock_get:
+        with patch("osa_tool.core.git.request_utils.requests.get", return_value=mock_response) as mock_get:
             with patch.dict(os.environ, TOKEN_ENVS[platform]):
                 result = loader_class._load_platform_data(repo_url, use_token=True)
 
         expected = loader_class._parse_metadata(raw_data)
         assert result == expected
         mock_get.assert_called_once_with(
-            url=BASE_URLS["sourcecraft"].format(base=f"{owner}/{repo_name}"),
+            BASE_URLS["sourcecraft"].format(base=f"{owner}/{repo_name}"),
             headers=HEADERS[platform],
+            timeout=ANY,
         )
         return
 
@@ -79,7 +80,12 @@ def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_fa
     mock_response = mock_requests_response_factory(status_code=200, json_data=raw_data)
     languages_response = mock_requests_response_factory(status_code=200, json_data=original_languages)
 
-    with patch("osa_tool.core.git.metadata.requests.get", side_effect=[mock_response, languages_response]) as mock_get:
+    metadata_requests = MagicMock()
+    metadata_requests.get.return_value = languages_response
+
+    with patch("osa_tool.core.git.request_utils.requests.get", return_value=mock_response) as mock_get, patch(
+        "osa_tool.core.git.metadata.requests", metadata_requests, create=True
+    ):
         with patch.dict(os.environ, TOKEN_ENVS[platform]):
             result = loader_class._load_platform_data(repo_url, use_token=True)
 
@@ -104,9 +110,8 @@ def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_fa
         expected_url = BASE_URLS[platform].format(base=base_url)
         expected_language_url = raw_data["languages_url"]
 
-    assert mock_get.call_count == 2
-    assert mock_get.call_args_list[0].kwargs == {"url": expected_url, "headers": HEADERS[platform]}
-    assert mock_get.call_args_list[1].kwargs == {"url": expected_language_url, "headers": HEADERS[platform]}
+    mock_get.assert_called_once_with(expected_url, headers=HEADERS[platform], timeout=ANY)
+    metadata_requests.get.assert_called_once_with(url=expected_language_url, headers=HEADERS[platform])
 
 
 @pytest.mark.parametrize("mock_config_manager", ["github", "gitlab", "gitverse", "sourcecraft"], indirect=True)
@@ -116,7 +121,7 @@ def test_load_data_http_errors(status_code, mock_requests_response_factory, repo
     mock_response = mock_requests_response_factory(status_code=status_code)
     loader_class = LOADER_CLASSES[platform]
 
-    with patch("osa_tool.core.git.metadata.requests.get", return_value=mock_response):
+    with patch("osa_tool.core.git.request_utils.requests.get", return_value=mock_response):
         with patch.dict(os.environ, TOKEN_ENVS[platform]):
             with pytest.raises(Exception):
                 loader_class.load_data(repo_url)
