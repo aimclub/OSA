@@ -83,8 +83,9 @@ def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_fa
     metadata_requests = MagicMock()
     metadata_requests.get.return_value = languages_response
 
-    with patch("osa_tool.core.git.request_utils.requests.get", return_value=mock_response) as mock_get, patch(
-        "osa_tool.core.git.metadata.requests", metadata_requests, create=True
+    with (
+        patch("osa_tool.core.git.request_utils.requests.get", return_value=mock_response) as mock_get, 
+        patch("osa_tool.core.git.metadata.requests", metadata_requests, create=True),
     ):
         with patch.dict(os.environ, TOKEN_ENVS[platform]):
             result = loader_class._load_platform_data(repo_url, use_token=True)

@@ -316,9 +316,10 @@ def test_github_agent_star_repository_failure_non_critical(
 
     # Act
     with patch.dict(os.environ, {"GIT_TOKEN": "any_token_for_env"}):
-        with patch("requests.get", return_value=mock_response_check) as mock_get, patch(
-            "requests.put", return_value=mock_response_star
-        ) as mock_put:
+        with (
+            patch("requests.get", return_value=mock_response_check) as mock_get, 
+            patch("requests.put", return_value=mock_response_star) as mock_put,
+        ):
             github_agent_instance.star_repository()
             # Assert
             mock_get.assert_called_once()
