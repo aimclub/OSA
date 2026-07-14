@@ -138,16 +138,17 @@ def test_validate_actions_rejects_protected_and_build_artifact_cleanup(tmp_path:
     )
 
     assert not valid
-    assert "Delete actions are not allowed during reorganization; move or quarantine the file instead: tox.ini" in issues
+    assert (
+        "Delete actions are not allowed during reorganization; move or quarantine the file instead: tox.ini"
+        in issues
+    )
     assert (
         "Delete actions are not allowed during reorganization; move or quarantine the directory instead: __pycache__"
         in issues
     )
 
 
-def test_validate_actions_logs_manual_review_for_secret_like_delete(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
-):
+def test_validate_actions_logs_manual_review_for_secret_like_delete(tmp_path: Path, caplog: pytest.LogCaptureFixture):
     planner = PlanningManager(None, {}, tmp_path, "python")
 
     with caplog.at_level(logging.WARNING):
@@ -394,7 +395,11 @@ def test_snapshot_manager_restores_stash_when_snapshot_creation_fails(tmp_path: 
         if command == ["git", "stash", "list", "--format=%gd", "-n", "1"]:
             return SimpleNamespace(stdout="stash@{0}\n", stderr="")
         if command == [
-            "git", "checkout", "-b", "osa-temp-" + SnapshotManager(tmp_path).temp_branch.split("osa-temp-")[1]
+            "git",
+            "checkout",
+            "-b",
+            "osa-temp-" +
+            SnapshotManager(tmp_path).temp_branch.split("osa-temp-")[1]
         ]:
             raise subprocess.CalledProcessError(returncode=1, cmd=command, stderr="checkout failed")
         if command[:3] == ["git", "checkout", "-b"]:
