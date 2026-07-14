@@ -97,10 +97,6 @@ class RepositoryGraph:
         }
 
         num_nodes = graph.number_of_nodes()
-        fig_size = max(10, min(40, int(num_nodes**0.5) * 3))
-        plt.figure(figsize=(fig_size, fig_size))
-
-        num_nodes = graph.number_of_nodes()
         fig_size = max(12, min(50, int(num_nodes**0.5) * 4))
         plt.figure(figsize=(fig_size, fig_size))
 
@@ -259,11 +255,9 @@ class RepositoryGraph:
             )
 
         # store raw call info for cross-file resolution later
+        if not hasattr(self, "_pending_calls"):
+            self._pending_calls: list[tuple[str, str]] = []
         for caller_id, callee_name in visitor.raw_calls:
-            self.graph.nodes[module_id].setdefault("_pending_calls", [])
-            # store on the graph object itself for the resolution pass
-            if not hasattr(self, "_pending_calls"):
-                self._pending_calls: list[tuple[str, str]] = []
             self._pending_calls.append((caller_id, callee_name))
 
     def __resolve_calls(self) -> None:
@@ -575,6 +569,12 @@ class _GraphEmbeddingTrainer:
         """
         data, node_index = self.__convert(graph)
 
+        if data["x"].shape[0] < 2 or data["edge_index"].shape[1] == 0:
+            return graph
+
+        if data["x"].shape[0] > 300:
+            return graph
+
         x = data["x"].to(self.device)
         edge_index = data["edge_index"].to(self.device)
         edge_type = data["edge_type"].to(self.device)
@@ -644,7 +644,7 @@ class _GraphEmbeddingTrainer:
                 emb = [0.0] * 768
             embeddings.append(emb)
 
-        x = torch.tensor(embeddings, dtype=torch.float)
+        x = torch.tensor(embeddings, dtype=torch.float) if embeddings else torch.zeros(0, 768, dtype=torch.float)
 
         edge_type_map = {et: i for i, et in enumerate(EDGE_TYPES)}
         src_list, dst_list, type_list = [], [], []

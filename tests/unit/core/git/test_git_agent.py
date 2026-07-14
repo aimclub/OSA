@@ -282,7 +282,7 @@ def test_github_agent_star_repository_already_starred(github_agent_instance, moc
             github_agent_instance.star_repository()
 
             # Assert
-            mock_get.assert_called_once_with(expected_api_url, headers=ANY)
+            mock_get.assert_called_once_with(expected_api_url, headers=ANY, timeout=ANY)
             mock_put.assert_not_called()
 
 
@@ -302,8 +302,8 @@ def test_github_agent_star_repository_success(github_agent_instance, mock_reques
             github_agent_instance.star_repository()
 
             # Assert
-            mock_get.assert_called_once_with(expected_api_url, headers=ANY)
-            mock_put.assert_called_once_with(expected_api_url, headers=ANY)
+            mock_get.assert_called_once_with(expected_api_url, headers=ANY, timeout=ANY)
+            mock_put.assert_called_once_with(expected_api_url, headers=ANY, timeout=ANY)
 
 
 def test_github_agent_star_repository_failure_non_critical(
@@ -475,10 +475,12 @@ def test_gitverse_agent_create_fork_success(gitverse_agent_instance, mock_reques
             mock_get.assert_any_call(
                 "https://api.gitverse.ru/user",
                 headers=ANY,
+                timeout=ANY,
             )
             mock_get.assert_any_call(
                 f"https://api.gitverse.ru/repos/other_user/{repo_name}",
                 headers=ANY,
+                timeout=ANY,
             )
             mock_post.assert_called_once()
             assert gitverse_agent_instance.fork_url == f"https://gitverse.ru/other_user/{repo_name}"
@@ -821,5 +823,9 @@ def test_local_git_agent_with_empty_directory(tmp_path):
 
 
 def test_local_git_agent_with_directory_without_git(tmp_path):
+    directory = tmp_path / "not_a_repo"
+    directory.mkdir()
+    (directory / "some_file.txt").write_text("content")
+
     with pytest.raises(InvalidGitRepositoryError):
-        LocalGitAgent("tests")
+        LocalGitAgent(str(directory))

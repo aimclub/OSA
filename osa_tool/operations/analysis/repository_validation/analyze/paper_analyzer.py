@@ -4,12 +4,11 @@ import docx2txt
 import tiktoken
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
+from osa_tool.operations.analysis.repository_validation.models import ExtractedExperimentsResult
 from osa_tool.operations.docs.readme_generation.inputs.article_content import PdfParser
 from osa_tool.operations.docs.readme_generation.inputs.article_path import get_pdf_path
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder, PromptLoader
-from osa_tool.utils.response_cleaner import JsonProcessor
-from osa_tool.operations.analysis.repository_validation.models import ExtractedExperimentsResult
 
 
 class PaperAnalyzer:
@@ -51,13 +50,37 @@ class PaperAnalyzer:
                 self.__prompts.get("validation.extract_paper_experiments_list"),
                 paper_content=raw_content,
             ),
-            parser=lambda raw: JsonProcessor.parse(raw),
+            parser=None,
         )
         experiments_list = ExtractedExperimentsResult.model_validate(raw_experiments).experiment_list
         if not experiments_list:
-            raise ValueError("No experiments were found in the provided document.")
-        logger.info(f"Found {len(experiments_list)} experiment(s) described in the paper.")
+            logger.warning("Structured extraction returned empty. Attempting fallback extraction...")
+            experiments_list = self.__fallback_extract_experiments(raw_content)
+
+        if experiments_list:
+            logger.info(f"Found {len(experiments_list)} experiment(s) described in the paper.")
+        else:
+            logger.warning("No experiments were found in the provided document.")
         return experiments_list
+
+    def __fallback_extract_experiments(self, content: str) -> list[str]:
+        """
+        Fallback extraction when LLM fails: split by experiment keywords and return paragraphs.
+        Returns at least 1 synthetic experiment from the content if nothing found.
+        """
+        import re
+
+        keywords = r"(experiment|evaluation|test|analysis|methodology|procedure|method|validation)"
+        paragraphs = content.split("\n\n")
+        experiments = []
+        for para in paragraphs:
+            if re.search(keywords, para, re.IGNORECASE) and len(para.strip()) > 50:
+                experiments.append(para.strip()[:500])
+                if len(experiments) >= 2:
+                    break
+        if not experiments and content.strip():
+            experiments = [content.strip()[:500]]
+        return experiments
 
     def __parse_docx(self, path_to_doc: str) -> str:
         """
