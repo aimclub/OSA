@@ -5,6 +5,7 @@ import tiktoken
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.operations.analysis.repository_validation.models import ExtractedExperimentsResult
+from osa_tool.operations.analysis.repository_validation.paper_parsing.structured_parser import StructuredPaperParser
 from osa_tool.operations.docs.readme_generation.inputs.article_content import PdfParser
 from osa_tool.operations.docs.readme_generation.inputs.article_path import get_pdf_path
 from osa_tool.utils.logger import logger
@@ -21,7 +22,7 @@ class PaperAnalyzer:
 
     async def extract_experiments(self, document_path: str) -> list[str]:
         """
-        Asynchronously extract and process content from a scientific paper.
+        Asynchronously extract and process content from a scientific paper (PDF).
 
         Args:
             document_path (str): Path to the paper PDF file.
@@ -88,5 +89,12 @@ class PaperAnalyzer:
         path_to_pdf = get_pdf_path(path_to_doc)
         if not path_to_pdf:
             raise ValueError(f"Invalid PDF source provided: {path_to_pdf}. Could not locate a valid PDF.")
+
+        args = self.__config.args
+        if args and getattr(args, "structured_paper_parser", False):
+            logger.info("Extracting content from PDF with layout-aware paper parser ...")
+            model_settings = self.__config.get_model_settings("validation")
+            return StructuredPaperParser(path_to_pdf, model_settings).data_extractor()
+
         logger.info("Extracting text from PDF ...")
         return PdfParser(path_to_pdf).data_extractor()

@@ -62,6 +62,25 @@ pytest = ">=8.3.0"
 pytest-asyncio = ">=1.0.0"
 pytest-mock = ">=3.12.0"
 
+# Optional: layout-aware, VLM-based paper parsing (enabled via --structured-paper-parser).
+# Install with: poetry install --with paper_parsing
+# Also requires the system `poppler` package for pdf2image.
+[tool.poetry.group.paper_parsing]
+optional = true
+
+[tool.poetry.group.paper_parsing.dependencies]
+torch = ">=2.0.0"
+doclayout-yolo = ">=0.0.3"
+huggingface-hub = ">=0.24.0"
+openai = ">=1.0.0"
+opencv-python = ">=4.8.0"
+pdf2image = ">=1.17.0"
+Pillow = ">=10.0.0"
+beautifulsoup4 = ">=4.12.0"
+numpy = ">=1.26.0"
+tqdm = ">=4.66.0"
+requests = ">=2.31.0"
+
 [project.scripts]
 osa-tool = "osa_tool.run:main"
 

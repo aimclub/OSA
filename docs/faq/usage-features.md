@@ -79,6 +79,7 @@ OSA provides extensive CLI arguments for customization. Here's the complete refe
 | `--attachment` | Path/URL to PDF/.docx paper | `--attachment ./paper.pdf` |
 | `--convert-notebooks` | Convert Jupyter notebooks | `--convert-notebooks ./notebooks/` |
 | `--generate-workflows` | Generate CI/CD pipelines | `--generate-workflows` |
+| `--structured-paper-parser` | Layout-aware VLM parsing of PDF papers| `--structured-paper-parser` |
 
 **Help:**
 

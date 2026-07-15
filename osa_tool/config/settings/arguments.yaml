@@ -119,6 +119,11 @@ settings:
       type: flag
       description: "Use the same model for all tasks (from default configuration)."
 
+  structured_paper_parser:
+      aliases: [ "--structured-paper-parser" ]
+      type: flag
+      description: "Use layout-aware VLM parsing for PDF papers (paper_parsing) instead of plain-text extraction during paper validation."
+
   config_file:
     aliases: [ "--config-file" ]
     type: str
