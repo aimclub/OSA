@@ -105,6 +105,7 @@ def get_base_repo_url(repo_url: str) -> str:
         r"https?://github\.com/([^/]+/[^/]+)",
         r"https?://[^/]*gitlab[^/]*/(.+)",
         r"https?://gitverse\.ru/([^/]+/[^/]+)",
+        r"https?://sourcecraft\.dev/([^/]+/[^/]+)",
     ]
     for pattern in patterns:
         match = re.match(pattern, repo_url)
