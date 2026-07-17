@@ -98,6 +98,11 @@ arguments:
     type: flag
     description: "Organize the repository structure by adding standard 'tests' and 'examples' directories if missing."
 
+  skip_health_check:
+    aliases: [ "--skip-health-check" ]
+    type: flag
+    description: "Skip pre/post reorganization health checks."
+
   about:
     aliases: [ "--about" ]
     type: flag

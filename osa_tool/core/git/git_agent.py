@@ -15,6 +15,7 @@ from osa_tool.core.git.metadata import (
     RepositoryMetadata,
     LocalMetadataLoader,
 )
+from osa_tool.core.git.request_utils import request_with_retry
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import get_base_repo_url, parse_folder_name, is_path, resolve_repo_path
 
@@ -668,7 +669,7 @@ class GitHubAgent(GitAgent):
             "Accept": "application/vnd.github.v3+json",
         }
         url = f"https://api.github.com/repos/{base_repo}/forks"
-        response = requests.post(url, headers=headers)
+        response = request_with_retry("post", url, headers=headers)
         if response.status_code in {200, 202}:
             self.fork_url = response.json()["html_url"]
             logger.info(f"GitHub fork created successfully: {self.fork_url}")
@@ -686,7 +687,7 @@ class GitHubAgent(GitAgent):
         }
 
         url = f"https://api.github.com/user/starred/{base_repo}"
-        response_check = requests.get(url, headers=headers)
+        response_check = request_with_retry("get", url, headers=headers)
 
         if response_check.status_code == 204:
             logger.info(f"GitHub repository '{base_repo}' is already starred.")
@@ -694,7 +695,7 @@ class GitHubAgent(GitAgent):
         elif response_check.status_code != 404:
             self._handle_api_error(response_check, "checking star status", raise_exception=False)
 
-        response_star = requests.put(url, headers=headers)
+        response_star = request_with_retry("put", url, headers=headers)
         if response_star.status_code == 204:
             logger.info(f"GitHub repository '{base_repo}' has been starred successfully.")
         else:
@@ -717,7 +718,7 @@ class GitHubAgent(GitAgent):
             headers["Authorization"] = f"token {self.token}"
 
         try:
-            response = requests.get(url, headers=headers, timeout=10)
+            response = request_with_retry("get", url, headers=headers, timeout=10)
             if response.status_code == 200:
                 return True
             elif response.status_code == 404:
@@ -737,7 +738,7 @@ class GitHubAgent(GitAgent):
             "Accept": "application/vnd.github.v3+json",
         }
         data = {"body": comment_body}
-        response = requests.post(url, json=data, headers=headers)
+        response = request_with_retry("post", url, json=data, headers=headers)
         if response.status_code == 201:
             logger.info(f"Successfully posted a comment to PR #{pr_number}.")
         else:
@@ -773,7 +774,7 @@ class GitHubAgent(GitAgent):
         pr_title = title if title else last_commit.message
 
         params = {"state": "open", "head": head_branch, "base": self.base_branch}
-        response = requests.get(url, headers=headers, params=params)
+        response = request_with_retry("get", url, headers=headers, params=params)
 
         if response.status_code != 200:
             self._handle_api_error(response, "checking existing pull requests", False)
@@ -805,7 +806,7 @@ class GitHubAgent(GitAgent):
                 update_url = f"{url}/{pr_number}"
                 update_data = {"body": updated_body}
 
-                update_response = requests.patch(update_url, json=update_data, headers=headers)
+                update_response = request_with_retry("patch", update_url, json=update_data, headers=headers)
                 if update_response.status_code == 200:
                     logger.info(f"Successfully updated PR #{pr_number} with new reports.")
                 else:
@@ -834,7 +835,7 @@ class GitHubAgent(GitAgent):
                 "maintainer_can_modify": True,
             }
 
-            response = requests.post(url, json=pr_data, headers=headers)
+            response = request_with_retry("post", url, json=pr_data, headers=headers)
             if response.status_code == 201:
                 logger.info(f"GitHub pull request created successfully: {response.json()['html_url']}")
             else:
@@ -852,7 +853,7 @@ class GitHubAgent(GitAgent):
             "description": about_content["description"],
             "homepage": about_content["homepage"],
         }
-        response = requests.patch(url, headers=headers, json=about_data)
+        response = request_with_retry("patch", url, headers=headers, json=about_data)
         if response.status_code in {200, 201}:
             logger.info(f"Successfully updated GitHub repository description and homepage for '{repo_path}'.")
         else:
@@ -864,7 +865,7 @@ class GitHubAgent(GitAgent):
 
         url = f"https://api.github.com/repos/{repo_path}/topics"
         topics_data = {"names": about_content["topics"]}
-        response = requests.put(url, headers=headers, json=topics_data)
+        response = request_with_retry("put", url, headers=headers, json=topics_data)
         if response.status_code in {200, 201}:
             logger.info(f"Successfully updated GitHub repository topics for '{repo_path}'")
         else:
@@ -886,7 +887,8 @@ class GitHubAgent(GitAgent):
 
         for topic in topics:
             try:
-                response = requests.get(
+                response = request_with_retry(
+                    "get",
                     f"https://api.github.com/search/topics?q={topic}+repositories:>{min_repo}",
                     headers={"Accept": "application/vnd.github.v3+json"},
                 )
@@ -936,7 +938,7 @@ class GitLabAgent(GitAgent):
         }
 
         user_url = f"{gitlab_instance}/api/v4/user"
-        user_response = requests.get(user_url, headers=headers)
+        user_response = request_with_retry("get", user_url, headers=headers)
         if user_response.status_code != 200:
             logger.error(f"Failed to get user info: {user_response.status_code} - {user_response.text}")
             raise ValueError("Failed to get user information.")
@@ -946,7 +948,7 @@ class GitLabAgent(GitAgent):
         current_username = user_data.get("username")
 
         project_url = f"{gitlab_instance}/api/v4/projects/{project_path}"
-        project_response = requests.get(project_url, headers=headers)
+        project_response = request_with_retry("get", project_url, headers=headers)
         if project_response.status_code != 200:
             logger.warning(
                 f"Could not fetch project details to verify owner. Proceeding with fork logic. Status: {project_response.status_code}"
@@ -963,7 +965,7 @@ class GitLabAgent(GitAgent):
                 return
 
         forks_url = f"{gitlab_instance}/api/v4/projects/{project_path}/forks"
-        forks_response = requests.get(forks_url, headers=headers)
+        forks_response = request_with_retry("get", forks_url, headers=headers)
         if forks_response.status_code != 200:
             logger.error(f"Failed to get forks: {forks_response.status_code} - {forks_response.text}")
             raise ValueError("Failed to get forks list.")
@@ -978,7 +980,7 @@ class GitLabAgent(GitAgent):
                 return
 
         fork_url = f"{gitlab_instance}/api/v4/projects/{project_path}/fork"
-        fork_response = requests.post(fork_url, headers=headers)
+        fork_response = request_with_retry("post", fork_url, headers=headers)
         if fork_response.status_code in {200, 201, 202}:
             fork_data = fork_response.json()
             self.fork_url = fork_data["web_url"]
@@ -1001,7 +1003,7 @@ class GitLabAgent(GitAgent):
         }
 
         url = f"{gitlab_instance}/api/v4/projects/{project_path}/star"
-        response = requests.post(url, headers=headers)
+        response = request_with_retry("post", url, headers=headers)
 
         if response.status_code == 304:
             logger.info(f"GitLab repository '{base_repo}' is already starred.")
@@ -1031,7 +1033,7 @@ class GitLabAgent(GitAgent):
             headers["Authorization"] = f"Bearer {self.token}"
 
         try:
-            response = requests.get(url, headers=headers, timeout=10)
+            response = request_with_retry("get", url, headers=headers, timeout=10)
             if response.status_code == 200:
                 return True
             elif response.status_code == 404:
@@ -1051,7 +1053,7 @@ class GitLabAgent(GitAgent):
             "Content-Type": "application/json",
         }
         data = {"body": note_body}
-        response = requests.post(url, json=data, headers=headers)
+        response = request_with_retry("post", url, json=data, headers=headers)
         if response.status_code == 201:
             logger.info(f"Successfully posted a note to MR !{mr_iid}.")
         else:
@@ -1085,7 +1087,7 @@ class GitLabAgent(GitAgent):
         target_project_path = base_repo.replace("/", "%2F")
 
         project_url = f"{gitlab_instance}/api/v4/projects/{target_project_path}"
-        proj_response = requests.get(project_url, headers=headers)
+        proj_response = request_with_retry("get", project_url, headers=headers)
         if proj_response.status_code != 200:
             raise ValueError(f"Failed to get project info: {proj_response.status_code} - {proj_response.text}")
         target_project_id = proj_response.json()["id"]
@@ -1101,7 +1103,7 @@ class GitLabAgent(GitAgent):
             "target_branch": self.base_branch,
             "target_project_id": target_project_id,
         }
-        response = requests.get(mr_url, headers=headers, params=params)
+        response = request_with_retry("get", mr_url, headers=headers, params=params)
         mrs = response.json() if response.status_code == 200 else []
 
         if mrs:
@@ -1130,7 +1132,7 @@ class GitLabAgent(GitAgent):
                 update_url = f"{gitlab_instance}/api/v4/projects/{target_project_id}/merge_requests/{mr_iid}"
                 update_data = {"description": updated_body}
 
-                update_response = requests.put(update_url, json=update_data, headers=headers)
+                update_response = request_with_retry("put", update_url, json=update_data, headers=headers)
                 if update_response.status_code == 200:
                     logger.info(f"Successfully updated MR !{mr_iid} with new reports.")
                 else:
@@ -1158,7 +1160,7 @@ class GitLabAgent(GitAgent):
                 "allow_collaboration": True,
             }
 
-            response = requests.post(mr_url, json=mr_data, headers=headers)
+            response = request_with_retry("post", mr_url, json=mr_data, headers=headers)
             if response.status_code == 201:
                 logger.info(f"GitLab merge request created successfully: {response.json()['web_url']}")
             else:
@@ -1179,7 +1181,7 @@ class GitLabAgent(GitAgent):
             "description": about_content["description"],
             "tag_list": about_content["topics"],
         }
-        response = requests.put(url, headers=headers, json=about_data)
+        response = request_with_retry("put", url, headers=headers, json=about_data)
         if response.status_code in {200, 201}:
             logger.info(f"Successfully updated GitLab repository description and topics.")
         else:
@@ -1205,7 +1207,7 @@ class GitLabAgent(GitAgent):
         for topic in topics:
             try:
                 params = {"search": topic}
-                response = requests.get(base_url, headers=headers, params=params)
+                response = request_with_retry("get", base_url, headers=headers, params=params)
                 if response.status_code == 200:
                     data = response.json()
                     for entry in data:
@@ -1251,7 +1253,7 @@ class GitverseAgent(GitAgent):
         }
 
         user_url = "https://api.gitverse.ru/user"
-        user_response = requests.get(user_url, headers=headers)
+        user_response = request_with_retry("get", user_url, headers=headers)
         if user_response.status_code != 200:
             logger.error(f"Failed to get user info: {user_response.status_code} - {user_response.text}")
             raise ValueError("Failed to get user information.")
@@ -1263,7 +1265,7 @@ class GitverseAgent(GitAgent):
             return
 
         fork_check_url = f"https://api.gitverse.ru/repos/{current_login}/{self.metadata.name}"
-        fork_check_response = requests.get(fork_check_url, headers=headers)
+        fork_check_response = request_with_retry("get", fork_check_url, headers=headers)
         if fork_check_response.status_code == 200:
             fork_data = fork_check_response.json()
             if fork_data.get("fork") and fork_data.get("parent", {}).get("full_name") == base_repo:
@@ -1272,7 +1274,7 @@ class GitverseAgent(GitAgent):
                 return
 
         fork_url = f"https://api.gitverse.ru/repos/{base_repo}/forks"
-        fork_response = requests.post(fork_url, json=body, headers=headers)
+        fork_response = request_with_retry("post", fork_url, json=body, headers=headers)
         if fork_response.status_code in {200, 201}:
             self.fork_url = "https://gitverse.ru/" + fork_response.json()["full_name"]
             logger.info(f"Gitverse fork created successfully: {self.fork_url}")
@@ -1291,7 +1293,7 @@ class GitverseAgent(GitAgent):
             "User-Agent": "Mozilla/5.0",
         }
         url = f"https://api.gitverse.ru/user/starred/{base_repo}"
-        response_check = requests.get(url, headers=headers)
+        response_check = request_with_retry("get", url, headers=headers)
         if response_check.status_code == 204:
             logger.info(f"Gitverse repository '{base_repo}' is already starred.")
             return
@@ -1299,7 +1301,7 @@ class GitverseAgent(GitAgent):
             logger.error(f"Failed to check star status: {response_check.status_code} - {response_check.text}")
             raise ValueError("Failed to check star status.")
 
-        response_star = requests.put(url, headers=headers)
+        response_star = request_with_retry("put", url, headers=headers)
         if response_star.status_code == 204:
             logger.info(f"Gitverse repository '{base_repo}' has been starred successfully.")
         else:
@@ -1322,7 +1324,7 @@ class GitverseAgent(GitAgent):
             headers["Authorization"] = f"Bearer {self.token}"
 
         try:
-            response = requests.get(url, headers=headers, timeout=10)
+            response = request_with_retry("get", url, headers=headers, timeout=10)
             if response.status_code == 200:
                 branches = response.json()
                 return any(b.get("name") == branch for b in branches)
@@ -1393,7 +1395,7 @@ class GitverseAgent(GitAgent):
             return "\n\n".join(parts).strip() + self.agent_signature
 
         params = {"state": "open", "head": self.branch_name, "base": self.base_branch}
-        response = requests.get(url, headers=headers, params=params)
+        response = request_with_retry("get", url, headers=headers, params=params)
         prs = response.json() if response.status_code == 200 else []
 
         if prs:
@@ -1415,7 +1417,7 @@ class GitverseAgent(GitAgent):
 
             update_url = f"{url}/{pr_number}"
             update_data = {"title": pr_title, "body": updated_body}
-            update_response = requests.patch(update_url, json=update_data, headers=headers)
+            update_response = request_with_retry("patch", update_url, json=update_data, headers=headers)
 
             if update_response.status_code == 200:
                 logger.info(f"Pull request #{pr_number} updated successfully.")
@@ -1440,7 +1442,7 @@ class GitverseAgent(GitAgent):
                 "base": self.base_branch,
                 "body": pr_body,
             }
-            response = requests.post(url, json=pr_data, headers=headers)
+            response = request_with_retry("post", url, json=pr_data, headers=headers)
 
             if response.status_code == 201:
                 pr_number = response.json()["number"]
@@ -1477,8 +1479,6 @@ class SourceCraftAgent(GitAgent):
         return os.getenv("SOURCECRAFT_TOKEN", os.getenv("GIT_TOKEN", ""))
 
     def _load_metadata(self, repo_url: str) -> RepositoryMetadata:
-        from osa_tool.core.git.metadata import SourceCraftMetadataLoader
-
         return SourceCraftMetadataLoader.load_data(repo_url)
 
     def _get_headers(self) -> dict:
@@ -1490,7 +1490,7 @@ class SourceCraftAgent(GitAgent):
 
     def _get_current_username(self) -> str:
         """Returns the authenticated user's username, or empty string on failure."""
-        response = requests.get(f"{self.API_BASE}/user", headers=self._get_headers())
+        response = request_with_retry("get", f"{self.API_BASE}/user", headers=self._get_headers())
         if response.status_code == 200:
             return response.json().get("username", "")
         logger.warning(f"Could not fetch SourceCraft user profile: {response.status_code}")
@@ -1520,7 +1520,7 @@ class SourceCraftAgent(GitAgent):
         url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/fork"
         body = {"org_slug": current_username, "default_branch_only": True}
 
-        response = requests.post(url, headers=self._get_headers(), json=body)
+        response = request_with_retry("post", url, headers=self._get_headers(), json=body)
 
         if response.status_code in {200, 201, 202}:
             repo_data = response.json()
@@ -1536,7 +1536,7 @@ class SourceCraftAgent(GitAgent):
     def post_comment(self, pr_slug: str, comment_body: str) -> None:
         org_slug, repo_slug = self._extract_slugs()
         url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/pulls/{pr_slug}/comments"
-        response = requests.post(url, headers=self._get_headers(), json={"body": comment_body})
+        response = request_with_retry("post", url, headers=self._get_headers(), json={"body": comment_body})
         if response.status_code == 201:
             logger.info(f"Successfully posted a comment to PR {pr_slug}.")
         else:
@@ -1565,7 +1565,7 @@ class SourceCraftAgent(GitAgent):
             ql_filter += f' and author_slug="{bot_username}"'
         params = {"filter": ql_filter}
 
-        list_response = requests.get(url, headers=headers, params=params)
+        list_response = request_with_retry("get", url, headers=headers, params=params)
         prs = list_response.json().get("pull_requests", []) if list_response.status_code == 200 else []
 
         if prs:
@@ -1592,7 +1592,8 @@ class SourceCraftAgent(GitAgent):
                 updated_body += self.agent_signature
 
                 update_url = f"{url}/{pr_slug}"
-                update_res = requests.patch(
+                update_res = request_with_retry(
+                    "patch",
                     update_url,
                     headers=headers,
                     json={"description": updated_body.strip()},
@@ -1626,7 +1627,7 @@ class SourceCraftAgent(GitAgent):
             if hasattr(self, "fork_id") and self.fork_id:
                 pr_data["fork_repo_id"] = self.fork_id
 
-            response = requests.post(url, json=pr_data, headers=headers)
+            response = request_with_retry("post", url, json=pr_data, headers=headers)
             if response.status_code == 201:
                 pr_slug = response.json().get("slug", "unknown")
                 logger.info(f"SourceCraft pull request created successfully: {pr_slug}")
@@ -1656,7 +1657,7 @@ class SourceCraftAgent(GitAgent):
         url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}"
         about_data = {"description": about_content.get("description", "")}
 
-        response = requests.patch(url, headers=self._get_headers(), json=about_data)
+        response = request_with_retry("patch", url, headers=self._get_headers(), json=about_data)
         if response.status_code in {200, 201}:
             logger.info(f"Successfully updated SourceCraft repository description for '{repo_path}'.")
         else:
@@ -1684,13 +1685,12 @@ class SourceCraftAgent(GitAgent):
         org_slug, repo_slug = self._extract_slugs()
         url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/branches"
         try:
-            response = requests.get(url, headers=self._get_headers(), timeout=10)
+            response = request_with_retry("get", url, headers=self._get_headers(), timeout=10)
             if response.status_code == 200:
                 branches = response.json().get("branches", [])
                 return any(b.get("name") == branch for b in branches)
-            else:
-                logger.warning(f"SourceCraft API returned {response.status_code} for branch check")
-                return False
+            logger.warning(f"SourceCraft API returned {response.status_code} for branch check")
+            return False
         except Exception as e:
             logger.warning(f"Failed to check SourceCraft branch: {e}")
             return False

@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Counter
 
-import requests
 from dotenv import load_dotenv
 from git import Repo
 from requests import HTTPError
 
+from osa_tool.core.git.request_utils import request_with_retry
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import get_base_repo_url
 
@@ -58,6 +58,7 @@ class RepositoryMetadata:
     # Programming languages and topics
     language: str | None
     languages: list[str]
+    language_stats: dict[str, float]
     topics: list[str]
 
     # Additional repository settings
@@ -142,6 +143,74 @@ class MetadataLoader(ABC):
         """
         pass
 
+    @staticmethod
+    def _parse_language_stats_payload(payload: object) -> dict[str, float]:
+        if isinstance(payload, dict):
+            stats = {}
+            for language, value in payload.items():
+                try:
+                    stats[str(language)] = float(value)
+                except (TypeError, ValueError):
+                    continue
+            return stats
+        if isinstance(payload, list):
+            stats = {}
+            for item in payload:
+                if isinstance(item, dict):
+                    language = item.get("name") or item.get("language")
+                    value = item.get("bytes", item.get("size", item.get("percentage", item.get("value", 0))))
+                    if language is None:
+                        continue
+                    try:
+                        stats[str(language)] = float(value)
+                    except (TypeError, ValueError):
+                        continue
+            return stats
+        return {}
+
+    @classmethod
+    def _parse_languages_payload(cls, payload: object) -> list[str]:
+        stats = cls._parse_language_stats_payload(payload)
+        if stats:
+            return list(stats.keys())
+        if isinstance(payload, dict):
+            return list(payload.keys())
+        if isinstance(payload, list):
+            languages = []
+            for item in payload:
+                if isinstance(item, dict):
+                    language = item.get("name") or item.get("language")
+                    if language:
+                        languages.append(language)
+                elif isinstance(item, str):
+                    languages.append(item)
+            return languages
+        return []
+
+    @classmethod
+    def _fetch_languages(cls, url: str, headers: dict) -> list[str]:
+        if not url:
+            return []
+        try:
+            response = requests.get(url=url, headers=headers)
+            response.raise_for_status()
+            return cls._parse_languages_payload(response.json())
+        except Exception as exc:
+            logger.warning("Failed to fetch repository languages from %s: %s", url, exc)
+            return []
+
+    @classmethod
+    def _fetch_language_stats(cls, url: str, headers: dict) -> dict[str, float]:
+        if not url:
+            return {}
+        try:
+            response = requests.get(url=url, headers=headers)
+            response.raise_for_status()
+            return cls._parse_language_stats_payload(response.json())
+        except Exception as exc:
+            logger.warning("Failed to fetch repository language stats from %s: %s", url, exc)
+            return {}
+
 
 class GitHubMetadataLoader(MetadataLoader):
     @classmethod
@@ -164,9 +233,11 @@ class GitHubMetadataLoader(MetadataLoader):
             headers["Authorization"] = f"token {os.getenv('GIT_TOKEN', os.getenv('GITHUB_TOKEN', ''))}"
 
         url = f"https://api.github.com/repos/{base_url}"
-        response = requests.get(url=url, headers=headers)
+        response = request_with_retry("get", url=url, headers=headers)
         response.raise_for_status()
         data = response.json()
+        data["language_stats"] = cls._fetch_language_stats(data.get("languages_url", ""), headers)
+        data["languages"] = list(data["language_stats"].keys())
         logger.info(f"Successfully fetched GitHub metadata for repository: '{base_url}'")
         return GitHubMetadataLoader._parse_metadata(data)
 
@@ -206,7 +277,8 @@ class GitHubMetadataLoader(MetadataLoader):
             languages_url=repo_data.get("languages_url", ""),
             issues_url=_normalize_issues_url(repo_data.get("issues_url")),
             language=repo_data.get("language", ""),
-            languages=list(languages.keys()) if languages else [],
+            languages=languages if isinstance(languages, list) else list(languages.keys()),
+            language_stats=cls._parse_language_stats_payload(repo_data.get("language_stats", languages)),
             topics=repo_data.get("topics", []),
             has_wiki=repo_data.get("has_wiki", False),
             has_issues=repo_data.get("has_issues", False),
@@ -223,6 +295,7 @@ EXT_MAP = {
     ".py": "Python",
     ".js": "JavaScript",
     ".ts": "TypeScript",
+    ".ino": "C++",
     ".cpp": "C++",
     ".hpp": "C++",
     ".c": "C",
@@ -258,6 +331,7 @@ class LocalMetadataLoader(MetadataLoader):
         dates = cls._load_dates()
         size = cls._get_repository_size()
         languages = cls._get_languages()
+        language_stats = cls._get_language_stats()
         remotes = cls._get_remotes()
         default_branch = cls._get_default_branch()
         license_name = cls._find_license()
@@ -284,6 +358,7 @@ class LocalMetadataLoader(MetadataLoader):
             issues_url=None,
             language=languages[0] if languages else None,
             languages=languages,
+            language_stats=language_stats,
             topics=[],
             has_wiki=False,
             has_issues=False,
@@ -353,8 +428,17 @@ class LocalMetadataLoader(MetadataLoader):
 
     @classmethod
     def _get_languages(cls) -> list[str]:
-        files = cls.repo.git.ls_files().split("\n")
+        weights = cls._get_language_weights()
+        return sorted(weights, key=weights.get, reverse=True)
 
+    @classmethod
+    def _get_language_stats(cls) -> dict[str, float]:
+        weights = cls._get_language_weights()
+        return {language: float(weight) for language, weight in weights.items()}
+
+    @classmethod
+    def _get_language_weights(cls) -> Counter:
+        files = cls.repo.git.ls_files().split("\n")
         weights = Counter()
 
         for f in files:
@@ -367,13 +451,21 @@ class LocalMetadataLoader(MetadataLoader):
 
             name = os.path.basename(f).lower()
             ext = os.path.splitext(name)[1].lower()
-
             lang = FILE_MAP.get(name) or EXT_MAP.get(ext)
+
+            if not lang and not ext:
+                try:
+                    with open(abs_path, "r", encoding="utf-8", errors="ignore") as file_obj:
+                        first_line = file_obj.readline(200)
+                    if first_line.startswith("#!") and "python" in first_line.lower():
+                        lang = "Python"
+                except OSError:
+                    pass
 
             if lang:
                 weights[lang] += os.path.getsize(abs_path)
 
-        return sorted(weights, key=weights.get, reverse=True)
+        return weights
 
     @classmethod
     def _get_remotes(cls) -> dict[str, str]:
@@ -439,9 +531,13 @@ class GitLabMetadataLoader(MetadataLoader):
         project_path = base_url.replace("/", "%2F")
         url = f"{gitlab_instance}/api/v4/projects/{project_path}"
 
-        response = requests.get(url=url, headers=headers)
+        response = request_with_retry("get", url=url, headers=headers)
         response.raise_for_status()
         data = response.json()
+        data["language_stats"] = cls._fetch_language_stats(f"{url}/languages", headers)
+        data["languages"] = list(data["language_stats"].keys())
+        if not data.get("language") and data["languages"]:
+            data["language"] = data["languages"][0]
         logger.info(f"Successfully fetched GitLab metadata for repository: '{base_url}'")
         return GitLabMetadataLoader._parse_metadata(data)
 
@@ -487,8 +583,11 @@ class GitLabMetadataLoader(MetadataLoader):
             contributors_url=f"{repo_data.get('web_url', '')}/contributors" if repo_data.get("web_url") else None,
             languages_url=f"{repo_data.get('web_url', '')}/languages" if repo_data.get("web_url") else "",
             issues_url=f"{repo_data.get('web_url', '')}/issues" if repo_data.get("web_url") else None,
-            language="",  # GitLab API does not provide primary language
-            languages=[],
+            language=repo_data.get("language", ""),
+            languages=repo_data.get("languages", []) or [],
+            language_stats=cls._parse_language_stats_payload(
+                repo_data.get("language_stats", repo_data.get("languages", {}))
+            ),
             topics=repo_data.get("tag_list", []),
             has_wiki=repo_data.get("wiki_enabled", False),
             has_issues=repo_data.get("issues_enabled", False),
@@ -521,9 +620,15 @@ class GitverseMetadataLoader(MetadataLoader):
         }
         url = f"https://api.gitverse.ru/repos/{base_url}"
 
-        response = requests.get(url=url, headers=headers)
+        response = request_with_retry("get", url=url, headers=headers)
         response.raise_for_status()
         data = response.json()
+        if data.get("languages_url"):
+            data["language_stats"] = cls._fetch_language_stats(data.get("languages_url", ""), headers)
+            data["languages"] = list(data["language_stats"].keys()) or data.get("languages", [])
+        if not data.get("language") and data.get("languages"):
+            first_language = data["languages"][0]
+            data["language"] = first_language if isinstance(first_language, str) else ""
         logger.info(f"Successfully fetched Gitverse metadata for repository: '{base_url}'")
         return GitverseMetadataLoader._parse_metadata(data)
 
@@ -562,7 +667,10 @@ class GitverseMetadataLoader(MetadataLoader):
             languages_url=repo_data.get("languages_url", ""),
             issues_url=_normalize_issues_url(repo_data.get("issues_url")),
             language=repo_data.get("language", ""),
-            languages=repo_data.get("languages", []) or [],
+            languages=cls._parse_languages_payload(repo_data.get("languages", [])),
+            language_stats=cls._parse_language_stats_payload(
+                repo_data.get("language_stats", repo_data.get("languages", {}))
+            ),
             topics=repo_data.get("topics", []) or [],
             has_wiki=repo_data.get("has_wiki", False),
             has_issues=repo_data.get("has_issues", False),
@@ -598,7 +706,7 @@ class SourceCraftMetadataLoader(MetadataLoader):
 
         url = f"{cls.API_BASE}/repos/{org_slug}/{repo_slug}"
 
-        response = requests.get(url=url, headers=headers)
+        response = request_with_retry("get", url=url, headers=headers)
         response.raise_for_status()
         data = response.json()
 
@@ -641,6 +749,7 @@ class SourceCraftMetadataLoader(MetadataLoader):
             ),
             language=lang_info.get("name", ""),
             languages=[],
+            language_stats={},
             topics=[],  # not in Repository response
             has_wiki=False,
             has_issues=int(counters.get("issues", 0)) > 0,

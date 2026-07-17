@@ -10,7 +10,7 @@ from osa_tool.operations.analysis.repository_validation.paper_validator import P
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
 from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
-from osa_tool.operations.codebase.organization.repo_organizer import RepoOrganizer
+from osa_tool.operations.codebase.organization.organize import RepoOrganizer
 from osa_tool.operations.codebase.requirements_generation.requirements_generation import RequirementsGenerator
 from osa_tool.operations.codebase.workflow_generation.workflow_executor import WorkflowsExecutor
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
@@ -269,8 +269,9 @@ class GenerateWorkflowsOperation(Operation):
 class OrganizeRepositoryOperation(Operation):
     name = "organize"
     description = (
-        "Organize the repository structure by adding standard 'tests' and "
-        "'examples' directories if missing and moving matching files."
+        "Reorganize the repository structure with safe, convention-aware moves: "
+        "group scattered source files, create missing standard directories when helpful, "
+        "and keep the layout coherent without aggressive refactoring."
     )
 
     supported_intents = ["new_task"]
@@ -279,7 +280,7 @@ class OrganizeRepositoryOperation(Operation):
 
     executor = RepoOrganizer
     executor_method = "organize"
-    executor_dependencies = ["config_manager"]
+    executor_dependencies = ["config_manager", "metadata"]
 
 
 def register_all_operations(generate_docs: bool = True):

@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 
 from osa_tool.scheduler.response_validation import PromptConfig
 
@@ -186,3 +187,12 @@ def test_prompt_config_boolean_fields_false(field_name):
 
     # Assert
     assert getattr(config, field_name) is False
+
+
+def test_repo_organization_prompt_balances_cohesion_and_restraint():
+    prompt_path = Path("osa_tool/config/prompts/repo_organization.toml")
+    prompt_text = prompt_path.read_text(encoding="utf-8")
+
+    assert "Consolidate scattered code when the pattern is obvious" in prompt_text
+    assert "Respect the repository's existing architecture" in prompt_text
+    assert "Do NOT propose `delete_file` or `delete_directory` actions" in prompt_text

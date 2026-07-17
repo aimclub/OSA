@@ -1,49 +1,11 @@
 """Shared file-I/O, tree-search, and markdown utilities for README generation."""
 
-import json
 import os
 import re
 
 from osa_tool.operations.docs.readme_generation.pipeline.runtime_context import ReadmeContext
 from osa_tool.utils.logger import logger
-
-
-def read_file(file_path: str) -> str:
-    """Read *file_path* and return its text content (empty string on failure)."""
-    if file_path.endswith(".ipynb"):
-        return read_ipynb_file(file_path)
-
-    if not os.path.isfile(file_path):
-        logger.warning("File not found: %s", file_path)
-        return ""
-
-    for encoding in ("utf-8", "utf-16", "latin-1"):
-        try:
-            with open(file_path, "r", encoding=encoding) as f:
-                return f.read()
-        except UnicodeDecodeError:
-            continue
-
-    logger.error("Failed to read %s with any supported encoding", file_path)
-    return ""
-
-
-def read_ipynb_file(file_path: str) -> str:
-    """Extract code and markdown cells from a Jupyter notebook."""
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            notebook = json.load(f)
-        lines: list[str] = []
-        for cell in notebook.get("cells", []):
-            cell_type = cell.get("cell_type")
-            if cell_type in ("code", "markdown"):
-                lines.append(f"# --- {cell_type.upper()} CELL ---")
-                lines.extend(cell.get("source", []))
-                lines.append("\n")
-        return "\n".join(lines)
-    except (OSError, json.JSONDecodeError):
-        logger.error("Failed to read notebook: %s", file_path, exc_info=True)
-        return ""
+from osa_tool.utils.utils import read_file, read_ipynb_file  # noqa: F401  (re-exported)
 
 
 def save_sections(sections: str, path: str) -> None:
