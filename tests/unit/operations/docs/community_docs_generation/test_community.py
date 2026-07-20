@@ -83,6 +83,7 @@ def test_build_pull_request(mock_config_manager, mock_repository_metadata, sourc
 
     builder = CommunityTemplateBuilder(mock_config_manager, mock_repository_metadata)
     builder.sourcerank = sourcerank
+    builder.repo_root = str(tmp_path)
     builder.repo_path = tmp_path / f".{mock_config_manager.config.git.host}"
     if "github" in mock_config_manager.config.git.host:
         builder.pr_to_save = builder.repo_path / "PULL_REQUEST_TEMPLATE.md"
