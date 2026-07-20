@@ -23,13 +23,38 @@ def extract_relative_paths(paths: list[str]) -> list[str]:
         raise
 
 
-def find_in_repo_tree(tree: str, pattern: str) -> str:
+def to_repo_relative_link(rel_path: str, *, from_dir: str = "") -> str:
+    """Convert a repo-relative target path to a markdown link from *from_dir* (relative to repo root)."""
+    if not rel_path:
+        return ""
+    target = rel_path.replace("\\", "/").lstrip("./")
+    source = from_dir.replace("\\", "/").strip("./").strip("/") or "."
+    link = os.path.relpath(target, start=source).replace("\\", "/")
+    if not link.startswith("."):
+        link = f"./{link}"
+    return link
+
+
+def to_readme_relative_link(rel_path: str) -> str:
+    """Convert a repo-relative path to a link from the project-root README (``./...``)."""
+    return to_repo_relative_link(rel_path)
+
+
+def find_in_repo_tree(tree: str, pattern: str, *, prefer_directory: bool = False) -> str:
     """Return the first line in *tree* matching *pattern* (case-insensitive), or ``""``."""
     compiled = re.compile(pattern, re.IGNORECASE)
+    matches: list[str] = []
     for line in tree.split("\n"):
-        if compiled.search(line):
-            return line.replace("\\", "/")
-    return ""
+        if not line.strip():
+            continue
+        normalized = line.replace("\\", "/")
+        if compiled.search(normalized):
+            matches.append(normalized)
+    if not matches:
+        return ""
+    if not prefer_directory:
+        return matches[0]
+    return min(matches, key=lambda path: (path.count("/"), path))
 
 
 def extract_example_paths(tree: str) -> list[str]:

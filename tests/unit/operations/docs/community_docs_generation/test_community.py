@@ -83,6 +83,7 @@ def test_build_pull_request(mock_config_manager, mock_repository_metadata, sourc
 
     builder = CommunityTemplateBuilder(mock_config_manager, mock_repository_metadata)
     builder.sourcerank = sourcerank
+    builder.repo_root = str(tmp_path)
     builder.repo_path = tmp_path / f".{mock_config_manager.config.git.host}"
     if "github" in mock_config_manager.config.git.host:
         builder.pr_to_save = builder.repo_path / "PULL_REQUEST_TEMPLATE.md"
@@ -98,6 +99,9 @@ def test_build_pull_request(mock_config_manager, mock_repository_metadata, sourc
 
         # Assert
         mock_save_sections.assert_called_once()
+        saved_content = mock_save_sections.call_args[0][0]
+        assert "](./" in saved_content or "../" in saved_content
+        assert "tree/" not in saved_content
         assert (
             f"PULL_REQUEST_TEMPLATE.md successfully generated in folder {os.path.dirname(builder.pr_to_save)}"
             in caplog.text

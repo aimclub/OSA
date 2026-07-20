@@ -8,6 +8,7 @@ from osa_tool.operations.docs.readme_generation.readme_utils import (
     find_in_repo_tree,
     remove_extra_blank_lines,
     save_sections,
+    to_repo_relative_link,
 )
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
@@ -26,20 +27,26 @@ class ContributingBuilder:
         self.metadata = metadata
         self.template_path = os.path.join(osa_project_root(), "docs", "templates", "contributing.toml")
         self.url_path = f"https://{self.config_manager.get_git_settings().host_domain}/{self.config_manager.get_git_settings().full_name}/"
-        self.branch_path = f"tree/{self.metadata.default_branch}/"
         self.issues_url = self.url_path + (
             "tasktracker" if "gitverse" in self.config_manager.get_git_settings().host else "issues"
         )
         self._template = self.load_template()
 
+        self.repo_root = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.repo_path = os.path.join(
             os.getcwd(), parse_folder_name(self.repo_url), "." + self.config_manager.get_git_settings().host
         )
         self.file_to_save = os.path.join(self.repo_path, "CONTRIBUTING.md")
 
         if "sourcecraft" in self.config_manager.get_git_settings().host:
-            repo_root = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
-            self.file_to_save = os.path.join(repo_root, "CONTRIBUTING.md")
+            self.file_to_save = os.path.join(self.repo_root, "CONTRIBUTING.md")
+
+    def _local_repo_link(self, pattern: str, *, prefer_directory: bool = False) -> str:
+        rel_path = find_in_repo_tree(self.sourcerank.tree, pattern, prefer_directory=prefer_directory)
+        from_dir = os.path.relpath(os.path.dirname(self.file_to_save), self.repo_root).replace("\\", "/")
+        if from_dir == ".":
+            from_dir = ""
+        return to_repo_relative_link(rel_path, from_dir=from_dir)
 
     def load_template(self) -> dict:
         """
@@ -81,7 +88,7 @@ class ContributingBuilder:
         if not self.metadata.homepage_url:
             if self.sourcerank.docs_presence():
                 pattern = r"\b(docs?|documentation|wiki|manuals?)\b"
-                path = self.url_path + self.branch_path + f"{find_in_repo_tree(self.sourcerank.tree, pattern)}"
+                path = self._local_repo_link(pattern, prefer_directory=True)
             else:
                 return ""
         else:
@@ -93,7 +100,7 @@ class ContributingBuilder:
         """Generates the README file link section."""
         if self.sourcerank.readme_presence():
             pattern = r"\bREADME(\.\w+)?\b"
-            path = self.url_path + self.branch_path + f"{find_in_repo_tree(self.sourcerank.tree, pattern)}"
+            path = self._local_repo_link(pattern)
         else:
             return ""
         return self._template["readme"].format(readme=path)
@@ -103,7 +110,7 @@ class ContributingBuilder:
         """Generates the test resources section link."""
         if self.sourcerank.tests_presence():
             pattern = r"\b(tests?|testcases?|unittest|test_suite)\b"
-            path = self.url_path + self.branch_path + f"{find_in_repo_tree(self.sourcerank.tree, pattern)}"
+            path = self._local_repo_link(pattern, prefer_directory=True)
         else:
             return ""
         return self._template["tests"].format(tests=path)

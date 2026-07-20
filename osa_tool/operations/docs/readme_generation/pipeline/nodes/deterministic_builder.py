@@ -13,7 +13,11 @@ from osa_tool.operations.docs.readme_generation.pipeline.models import SectionRe
 from osa_tool.operations.docs.readme_generation.pipeline.section_catalog import BUILDER_METHOD_BY_SECTION_NAME
 from osa_tool.operations.docs.readme_generation.sections.header import HeaderBuilder
 from osa_tool.operations.docs.readme_generation.sections.installation import InstallationSectionBuilder
-from osa_tool.operations.docs.readme_generation.readme_utils import find_in_repo_tree, build_system_message
+from osa_tool.operations.docs.readme_generation.readme_utils import (
+    build_system_message,
+    find_in_repo_tree,
+    to_readme_relative_link,
+)
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
@@ -45,7 +49,10 @@ class _DeterministicSections:
 
         git = self._cm.get_git_settings()
         self._url_path = f"https://{git.host_domain}/{git.full_name}/"
-        self._branch_path = f"tree/{self._meta.default_branch}/"
+
+    def _local_repo_link(self, pattern: str, *, prefer_directory: bool = False) -> str:
+        rel_path = find_in_repo_tree(self._sr.tree, pattern, prefer_directory=prefer_directory)
+        return to_readme_relative_link(rel_path)
 
     def header(self) -> str:
         logger.info("[DeterministicBuilder] Building section: header")
@@ -65,7 +72,7 @@ class _DeterministicSections:
             logger.info("[DeterministicBuilder] Section 'examples' skipped: no examples detected")
             return ""
         pattern = r"\b(tutorials?|examples|notebooks?)\b"
-        path = self._url_path + self._branch_path + find_in_repo_tree(self._sr.tree, pattern)
+        path = self._local_repo_link(pattern, prefer_directory=True)
         content = self._tpl["examples"].format(path=path)
         logger.info("[DeterministicBuilder] Section 'examples' built from path=%s", path)
         return content
@@ -75,7 +82,7 @@ class _DeterministicSections:
         if not self._meta.homepage_url:
             if self._sr.docs_presence():
                 pattern = r"\b(docs?|documentation|wiki|manuals?)\b"
-                path = self._url_path + self._branch_path + find_in_repo_tree(self._sr.tree, pattern)
+                path = self._local_repo_link(pattern, prefer_directory=True)
             else:
                 logger.info("[DeterministicBuilder] Section 'documentation' skipped: docs not found")
                 return ""
@@ -100,7 +107,7 @@ class _DeterministicSections:
         has_contributing = self._sr.contributing_presence()
         if has_contributing:
             pattern = r"\b\w*contribut\w*\.(md|rst|txt)$"
-            contributing_url = self._url_path + self._branch_path + find_in_repo_tree(self._sr.tree, pattern)
+            contributing_url = self._local_repo_link(pattern)
             contributing_text = self._tpl["contributing_section"].format(
                 contributing_url=contributing_url, name=self._cm.get_git_settings().name
             )
@@ -123,7 +130,7 @@ class _DeterministicSections:
         local_license_file = find_in_repo_tree(self._sr.tree, pattern)
 
         if local_license_file:
-            path = self._url_path + self._branch_path + local_license_file
+            path = to_readme_relative_link(local_license_file)
             license_name = self._meta.license_name or "License"
             content = self._tpl["license"].format(license_name=license_name, path=path)
             logger.info(
@@ -149,7 +156,7 @@ class _DeterministicSections:
         if self._sr.citation_presence():
             logger.info("[DeterministicBuilder] Citation file detected in repository")
             pattern = r"\bCITATION(\.\w+)?\b"
-            path = self._url_path + self._branch_path + find_in_repo_tree(self._sr.tree, pattern)
+            path = self._local_repo_link(pattern)
             content = self._tpl["citation"] + self._tpl["citation_v1"].format(path=path)
             logger.info("[DeterministicBuilder] Section 'citation' built from repository CITATION file")
             return content
