@@ -12,7 +12,7 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.core.llm.llm import ModelHandlerFactory
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import parse_folder_name
+from osa_tool.utils.utils import resolve_repo_path
 
 from .core.analyzers.base import BaseAnalyzer
 from .core.analyzers.factory import AnalyzerFactory
@@ -127,10 +127,11 @@ class RepoOrganizer:
         self.prompts = self.config_manager.get_prompts()
         self.model_handler = ModelHandlerFactory.build(self.model_settings)
         self.repo_url = self.config_manager.get_git_settings().repository
-        self.base_path = Path(os.getcwd()) / parse_folder_name(self.repo_url)
+        self.base_path = resolve_repo_path(self.repo_url)
         self.repo_name = self.base_path.name
         self.metadata = metadata
-        self.skip_health_check = bool(getattr(self.config_manager.args, "skip_health_check", False))
+        args = getattr(self.config_manager, "args", None)
+        self.skip_health_check = bool(getattr(args, "skip_health_check", False))
         self.analyzers: Dict[str, BaseAnalyzer] = {}
         self.moved_files: Dict[str, str] = {}
         self.project_type = self._detect_project_type()

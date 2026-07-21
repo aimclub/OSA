@@ -27,8 +27,8 @@ def generator(mock_config):
         "osa_tool.operations.codebase.requirements_generation.requirements_generation.ModelHandlerFactory.build"
     ):
         with patch(
-            "osa_tool.operations.codebase.requirements_generation.requirements_generation.parse_folder_name",
-            return_value="repo",
+            "osa_tool.operations.codebase.requirements_generation.requirements_generation.resolve_repo_path",
+            return_value=Path("/abs/path/to/repo"),
         ):
             gen = RequirementsGenerator(mock_config)
             gen.repo_path = MagicMock(spec=Path)

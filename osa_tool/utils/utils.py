@@ -12,6 +12,19 @@ from osa_tool.utils.logger import logger
 
 console = Console()
 
+KNOWN_FILE_NAMES = {
+    "readme",
+    "license",
+    "copying",
+    "citation",
+    "contributing",
+    "security",
+    "code_of_conduct",
+    "makefile",
+    "dockerfile",
+    "jenkinsfile",
+}
+
 
 def rich_section(title: str):
     """
@@ -22,6 +35,84 @@ def rich_section(title: str):
     """
     console.print("")
     console.rule(f"[bold cyan]{title}[/bold cyan]", style="cyan")
+
+
+def _remove_tree(path: str | Path) -> None:
+    """Remove a directory tree, retrying read-only files on Windows."""
+    target = Path(path)
+
+    def on_rm_error(func, failed_path, exc_info):
+        try:
+            os.chmod(failed_path, stat.S_IWRITE)
+            func(failed_path)
+        except Exception as e:
+            logger.error(f"Failed to forcibly remove {failed_path}: {e}")
+
+    shutil.rmtree(target, onerror=on_rm_error)
+
+
+def _looks_like_file_path(relative_path: str) -> bool:
+    """
+    Best-effort distinction between repository files and directories for browse URLs.
+    """
+    path = Path(relative_path.replace("\\", "/"))
+    name = path.name
+    lowered = name.lower()
+
+    if lowered in KNOWN_FILE_NAMES:
+        return True
+
+    suffix = path.suffix.lower()
+    if not suffix:
+        return False
+
+    if lowered.startswith(".") and lowered.count(".") == 1:
+        return False
+
+    file_suffixes = {
+        ".md",
+        ".rst",
+        ".txt",
+        ".py",
+        ".ipynb",
+        ".toml",
+        ".yaml",
+        ".yml",
+        ".json",
+        ".ini",
+        ".cfg",
+        ".conf",
+        ".xml",
+        ".csv",
+        ".tsv",
+        ".js",
+        ".ts",
+        ".jsx",
+        ".tsx",
+        ".java",
+        ".kt",
+        ".go",
+        ".rs",
+        ".c",
+        ".cc",
+        ".cpp",
+        ".h",
+        ".hpp",
+        ".sh",
+        ".bash",
+        ".zsh",
+        ".ps1",
+        ".bat",
+        ".cmd",
+        ".sql",
+        ".html",
+        ".css",
+        ".scss",
+        ".lock",
+        ".gitignore",
+        ".gitattributes",
+    }
+    return suffix in file_suffixes
 
 
 def parse_folder_name(repo_url: str) -> str:
@@ -87,6 +178,143 @@ def switch_to_output_directory(path: str | Path) -> Path:
     return output_path
 
 
+def prepare_local_output_repository(source_repo: str | Path, output_dir: str | Path) -> Path:
+    """
+    Create or refresh a local working copy of the repository inside the output directory.
+
+    This keeps local `-o/--output` runs consistent with remote processing, where OSA
+    operates on a repository placed under the chosen output directory.
+    """
+    source_path = Path(source_repo).expanduser().resolve()
+    output_root = Path(output_dir).expanduser().resolve()
+    target_path = output_root / source_path.name
+
+    try:
+        source_path.relative_to(target_path)
+    except ValueError:
+        pass
+    else:
+        raise ValueError("The source repository is nested inside the target output repository path.")
+
+    if target_path == source_path:
+        logger.info("Local repository already points to the output path: %s", target_path)
+        return target_path
+
+    if output_root == source_path or output_root in source_path.parents:
+        raise ValueError("The output directory cannot be the same as the source repository or located inside it.")
+
+    if target_path.exists():
+        logger.info("Refreshing local output repository at %s", target_path)
+        _remove_tree(target_path)
+    else:
+        logger.info("Creating local output repository at %s", target_path)
+
+    shutil.copytree(source_path, target_path)
+    logger.info("Copied local repository from %s to %s", source_path, target_path)
+    return target_path
+
+
+def resolve_repo_path(repo_url: str | Path, base_dir: str | Path | None = None) -> Path:
+    """
+    Resolve the local filesystem path of the processed repository.
+
+    For local processing, return the existing repository directory itself.
+    For remote repositories, return the path where OSA clones the repository.
+    """
+    repo_candidate = Path(repo_url).expanduser()
+    if repo_candidate.is_dir():
+        resolved = repo_candidate.resolve()
+        logger.debug(f"Resolved local repository path '{resolved}' from '{repo_url}'")
+        return resolved
+
+    root = Path(base_dir).resolve() if base_dir else Path.cwd()
+    resolved = (root / parse_folder_name(str(repo_url))).resolve()
+    logger.debug(f"Resolved cloned repository path '{resolved}' from '{repo_url}'")
+    return resolved
+
+
+def build_repo_browse_url(
+    repo_url: str | Path,
+    default_branch: str | None = None,
+    relative_path: str | None = None,
+    host: str | None = None,
+    host_domain: str | None = None,
+    full_name: str | None = None,
+    clone_url_http: str | None = None,
+) -> str:
+    """
+    Build a repository browse URL for remote repositories or a relative path for local ones.
+
+    Local repositories return relative paths so generated markdown links stay usable offline.
+    """
+    relative_path = (relative_path or "").strip().replace("\\", "/").lstrip("/")
+
+    resolved_host, resolved_host_domain, resolved_full_name = resolve_repo_web_identity(
+        repo_url=repo_url,
+        clone_url_http=clone_url_http,
+        host=host,
+        host_domain=host_domain,
+        full_name=full_name,
+    )
+
+    if Path(repo_url).expanduser().is_dir() and not (resolved_host_domain and resolved_full_name):
+        return relative_path or "."
+
+    if not resolved_host_domain or not resolved_full_name:
+        return relative_path or "."
+
+    base_url = f"https://{resolved_host_domain}/{resolved_full_name}/"
+    if not relative_path:
+        return base_url
+
+    if resolved_host == "sourcecraft":
+        branch = default_branch or "main"
+        return f"{base_url}browse/{relative_path}?rev={branch}"
+
+    branch = default_branch or "main"
+    browse_mode = "tree"
+    if resolved_host in {"github", "gitlab"} and _looks_like_file_path(relative_path):
+        browse_mode = "blob"
+
+    return f"{base_url}{browse_mode}/{branch}/{relative_path}"
+
+
+def resolve_repo_web_identity(
+    repo_url: str | Path,
+    clone_url_http: str | None = None,
+    host: str | None = None,
+    host_domain: str | None = None,
+    full_name: str | None = None,
+) -> tuple[str | None, str | None, str | None]:
+    """
+    Resolve repository web identity for link generation.
+
+    Prefers explicit git settings, then falls back to the repository remote URL.
+    """
+    if host_domain and full_name:
+        return host, host_domain, full_name
+
+    candidate = clone_url_http or ""
+    if candidate.endswith(".git"):
+        candidate = candidate[:-4]
+
+    if candidate.startswith(("http://", "https://")):
+        try:
+            inferred_host_domain, inferred_host, _, inferred_full_name = parse_git_url(candidate)
+            return host or inferred_host, host_domain or inferred_host_domain, full_name or inferred_full_name
+        except ValueError:
+            logger.debug("Failed to infer repository web identity from clone URL '%s'", candidate)
+
+    if not Path(repo_url).expanduser().is_dir() and isinstance(repo_url, str):
+        try:
+            inferred_host_domain, inferred_host, _, inferred_full_name = parse_git_url(repo_url)
+            return host or inferred_host, host_domain or inferred_host_domain, full_name or inferred_full_name
+        except ValueError:
+            logger.debug("Failed to infer repository web identity from repo URL '%s'", repo_url)
+
+    return host, host_domain, full_name
+
+
 def get_base_repo_url(repo_url: str) -> str:
     """
     Extracts the base repository URL path from a given Git URL.
@@ -125,19 +353,11 @@ def delete_repository(repo_url: str) -> None:
     Raises:
         Exception: Logs an error message if deletion fails.
     """
-    repo_path = os.path.join(os.getcwd(), parse_folder_name(repo_url))
-
-    def on_rm_error(func, path, exc_info):
-        """Force-remove read-only files and log the issue."""
-        try:
-            os.chmod(path, stat.S_IWRITE)
-            func(path)
-        except Exception as e:
-            logger.error(f"Failed to forcibly remove {path}: {e}")
+    repo_path = resolve_repo_path(repo_url)
 
     try:
         if os.path.exists(repo_path):
-            shutil.rmtree(repo_path, onerror=on_rm_error)
+            _remove_tree(repo_path)
             logger.info(f"Directory {repo_path} has been deleted.")
         else:
             logger.info(f"Directory {repo_path} does not exist.")
@@ -166,8 +386,14 @@ def parse_git_url(repo_url: str) -> tuple[str, str, str, str]:
     host_domain = parsed_url.netloc
     host = host_domain.split(".")[0].lower()
 
-    path_parts = parsed_url.path.strip("/").split("/")
-    full_name = "/".join(path_parts[:2])
+    path_parts = [part for part in parsed_url.path.strip("/").split("/") if part]
+    if len(path_parts) < 2:
+        raise ValueError(f"Invalid Git repository URL path: {parsed_url.path}")
+
+    if path_parts[-1].endswith(".git"):
+        path_parts[-1] = path_parts[-1][:-4]
+
+    full_name = "/".join(path_parts)
     name = path_parts[-1]
 
     return host_domain, host, name, full_name

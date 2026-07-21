@@ -1,4 +1,5 @@
 import os
+
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -7,6 +8,7 @@ from osa_tool.core.git.metadata import (
     GitHubMetadataLoader,
     GitLabMetadataLoader,
     GitverseMetadataLoader,
+    LocalMetadataLoader,
     SourceCraftMetadataLoader,
 )
 from osa_tool.utils.utils import get_base_repo_url
@@ -227,3 +229,101 @@ def test_sourcecraft_parse_metadata_clone_url_none():
     result = SourceCraftMetadataLoader._parse_metadata(raw)
     assert result.clone_url_http == ""
     assert result.clone_url_ssh == ""
+
+
+def test_github_parse_metadata_strips_issue_template_suffix():
+    raw = {
+        "name": "repo",
+        "full_name": "owner/repo",
+        "owner": {"login": "owner", "html_url": "https://github.com/owner"},
+        "description": "desc",
+        "stargazers_count": 1,
+        "forks_count": 2,
+        "watchers_count": 3,
+        "open_issues_count": 4,
+        "default_branch": "main",
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-01-02T00:00:00Z",
+        "pushed_at": "2024-01-03T00:00:00Z",
+        "size": 10,
+        "clone_url": "https://github.com/owner/repo.git",
+        "ssh_url": "git@github.com:owner/repo.git",
+        "contributors_url": "https://api.github.com/repos/owner/repo/contributors",
+        "languages_url": "https://api.github.com/repos/owner/repo/languages",
+        "issues_url": "https://api.github.com/repos/owner/repo/issues{/number}",
+        "language": "Python",
+        "languages": {},
+        "topics": [],
+        "has_wiki": False,
+        "has_issues": True,
+        "has_projects": False,
+        "private": False,
+        "homepage": "",
+        "license": {},
+    }
+
+    result = GitHubMetadataLoader._parse_metadata(raw)
+
+    assert result.issues_url == "https://api.github.com/repos/owner/repo/issues"
+
+
+def test_gitverse_parse_metadata_strips_issue_template_suffix():
+    raw = {
+        "name": "repo",
+        "full_name": "owner/repo",
+        "owner": {"login": "owner", "html_url": "https://gitverse.ru/owner"},
+        "description": "desc",
+        "stargazers_count": 1,
+        "forks_count": 2,
+        "watchers_count": 3,
+        "open_issues_count": 4,
+        "default_branch": "main",
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-01-02T00:00:00Z",
+        "pushed_at": "2024-01-03T00:00:00Z",
+        "size": 10,
+        "clone_url": "https://gitverse.ru/owner/repo.git",
+        "ssh_url": "git@gitverse.ru:owner/repo.git",
+        "contributors_url": "https://api.gitverse.ru/repos/owner/repo/contributors",
+        "languages_url": "https://api.gitverse.ru/repos/owner/repo/languages",
+        "issues_url": "https://api.gitverse.ru/repos/owner/repo/issues{/number}",
+        "language": "Python",
+        "languages": [],
+        "topics": [],
+        "has_wiki": False,
+        "has_issues": True,
+        "has_projects": False,
+        "private": False,
+        "homepage": "",
+        "license": {},
+    }
+
+    result = GitverseMetadataLoader._parse_metadata(raw)
+
+    assert result.issues_url == "https://api.gitverse.ru/repos/owner/repo/issues"
+
+
+def test_local_metadata_loader_falls_back_when_git_user_config_missing(tmp_path):
+    repo_path = tmp_path / "local_repo"
+    repo_path.mkdir()
+
+    mock_repo = MagicMock()
+    mock_reader = MagicMock()
+    mock_reader.get.side_effect = Exception("missing config")
+    mock_repo.config_reader.return_value = mock_reader
+
+    with patch("osa_tool.core.git.metadata.Repo", return_value=mock_repo):
+        with patch.object(
+            LocalMetadataLoader, "_load_dates", return_value={"created_at": "", "updated_at": "", "pushed_at": ""}
+        ):
+            with patch.object(LocalMetadataLoader, "_get_repository_size", return_value=0):
+                with patch.object(LocalMetadataLoader, "_get_languages", return_value=[]):
+                    with patch.object(
+                        LocalMetadataLoader, "_get_remotes", return_value={"clone_url_http": "", "clone_url_ssh": ""}
+                    ):
+                        with patch.object(LocalMetadataLoader, "_get_default_branch", return_value="main"):
+                            with patch.object(LocalMetadataLoader, "_find_license", return_value=None):
+                                result = LocalMetadataLoader._load_platform_data(str(repo_path), use_token=False)
+
+    assert result.owner is None
+    assert result.owner_url is None

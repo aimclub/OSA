@@ -6,7 +6,7 @@ from osa_tool.core.llm.llm import ModelHandlerFactory
 from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.utils import parse_folder_name
+from osa_tool.utils.utils import resolve_repo_path
 from pydantic import BaseModel
 
 
@@ -25,7 +25,7 @@ class RequirementsGenerator:
     def __init__(self, config_manager: ConfigManager):
         self.config_manager = config_manager
         self.repo_url = config_manager.get_git_settings().repository
-        self.repo_path = Path(parse_folder_name(self.repo_url)).resolve()
+        self.repo_path = resolve_repo_path(self.repo_url)
         self.events: list[OperationEvent] = []
         self.prompts = self.config_manager.get_prompts()
         self.model_settings = self.config_manager.get_model_settings("general")

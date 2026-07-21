@@ -4,12 +4,14 @@ from unittest.mock import mock_open, patch
 import pytest
 
 from osa_tool.utils.utils import (
+    build_repo_browse_url,
     detect_provider_from_url,
     extract_readme_content,
     get_base_repo_url,
     osa_project_root,
     parse_folder_name,
     parse_git_url,
+    prepare_local_output_repository,
 )
 
 
@@ -109,6 +111,57 @@ def test_parse_git_url_https():
     assert host == "github"
     assert name == "repo-name"
     assert full_name == "user/repo-name"
+
+
+def test_parse_git_url_gitlab_subgroup():
+    # Arrange
+    repo_url = "https://gitlab.com/group/subgroup/repo-name"
+
+    # Act
+    host_domain, host, name, full_name = parse_git_url(repo_url)
+
+    # Assert
+    assert host_domain == "gitlab.com"
+    assert host == "gitlab"
+    assert name == "repo-name"
+    assert full_name == "group/subgroup/repo-name"
+
+
+def test_build_repo_browse_url_gitlab_subgroup_blob():
+    # Act
+    browse_url = build_repo_browse_url(
+        repo_url="https://gitlab.com/group/subgroup/repo-name",
+        default_branch="main",
+        relative_path="src/module.py",
+    )
+
+    # Assert
+    assert browse_url == "https://gitlab.com/group/subgroup/repo-name/blob/main/src/module.py"
+
+
+@pytest.mark.parametrize("relative_path", [".github", "docs.v2", "config.d"])
+def test_build_repo_browse_url_treats_dotted_directories_as_tree(relative_path):
+    # Act
+    browse_url = build_repo_browse_url(
+        repo_url="https://github.com/user/repo-name",
+        default_branch="main",
+        relative_path=relative_path,
+    )
+
+    # Assert
+    assert f"/tree/main/{relative_path}" in browse_url
+
+
+def test_build_repo_browse_url_treats_extensionless_license_as_blob():
+    # Act
+    browse_url = build_repo_browse_url(
+        repo_url="https://github.com/user/repo-name",
+        default_branch="main",
+        relative_path="LICENSE",
+    )
+
+    # Assert
+    assert browse_url.endswith("/blob/main/LICENSE")
 
 
 def test_parse_git_url_invalid_scheme():
@@ -222,3 +275,25 @@ def test_extract_readme_content_prefer_md():
 
             # Assert
             assert content == "# Markdown README"
+
+
+def test_prepare_local_output_repository_refresh_uses_safe_delete(tmp_path):
+    # Arrange
+    source_repo = tmp_path / "source_repo"
+    output_dir = tmp_path / "output"
+    source_repo.mkdir()
+    output_dir.mkdir()
+    target_repo = output_dir / source_repo.name
+    target_repo.mkdir()
+
+    with (
+        patch("osa_tool.utils.utils._remove_tree") as mock_remove_tree,
+        patch("osa_tool.utils.utils.shutil.copytree") as mock_copytree,
+    ):
+        # Act
+        result = prepare_local_output_repository(source_repo, output_dir)
+
+    # Assert
+    assert result == target_repo
+    mock_remove_tree.assert_called_once_with(target_repo)
+    mock_copytree.assert_called_once_with(source_repo.resolve(), target_repo)

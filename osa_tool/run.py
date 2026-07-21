@@ -39,6 +39,7 @@ from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.logger import logger, setup_logging
 from osa_tool.utils.utils import (
     delete_repository,
+    prepare_local_output_repository,
     osa_project_root,
     parse_folder_name,
     rich_section,
@@ -69,7 +70,9 @@ def main():
     try:
         # Switch to output directory if present
         if args.output:
-            switch_to_output_directory(args.output)
+            output_path = switch_to_output_directory(args.output)
+            if os.path.isdir(args.repository):
+                args.repository = str(prepare_local_output_repository(args.repository, output_path))
 
         # Load configurations and update
         config_manager = ConfigManager(args)
