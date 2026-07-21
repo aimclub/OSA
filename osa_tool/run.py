@@ -4,6 +4,7 @@ import time
 from typing import Any, Callable
 
 from osa_tool.config.settings import ConfigManager
+from osa_tool.operations.analysis.notebook_report.report_maker import NotebookReportGenerator
 from osa_tool.core.git.git_agent import (
     GitHubAgent,
     GitLabAgent,
@@ -116,6 +117,20 @@ def main():
                 ).run(),
             )
 
+        notebook_report = plan.get("notebook_report")
+        if notebook_report is not None:
+            rich_section("Notebook report generation")
+            _run_plan_operation(
+                plan,
+                "notebook_report",
+                lambda: NotebookReportGenerator(
+                    config_manager,
+                    git_agent,
+                    create_fork,
+                    notebook_report,
+                ).run(),
+            )
+
         # NOTE: Must run first - switches GitHub branches
         if plan.get("validate_doc"):
             rich_section("Document validation")
@@ -135,7 +150,8 @@ def main():
             )
 
         # .ipynb to .py conversion
-        if notebook := plan.get("convert_notebooks"):
+        notebook = plan.get("convert_notebooks")
+        if notebook is not None:
             rich_section("Jupyter notebooks conversion")
             _run_plan_operation(
                 plan,
