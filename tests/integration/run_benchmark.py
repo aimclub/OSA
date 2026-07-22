@@ -26,7 +26,6 @@ from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import delete_repository, format_time, parse_git_url, rich_section
 
-
 README_QUALITY_CRITERIA = """
 Determine whether the AI-generated Readme file (ACTUAL_OUTPUT)
 is better than the original one (EXPECTED_OUTPUT).
@@ -62,14 +61,14 @@ def _strip_markdown_json_fence(text: str) -> str:
 
 class CustomLLM(DeepEvalBaseLLM):
     def __init__(
-            self,
-            api: str = "openrouter",
-            model: str = "gpt-4.1",
-            url: str = "https://openrouter.ai/api/v1",
-            *,
-            max_tokens: int = 1024,
-            request_timeout: float = 180.0,
-            use_json_object_mode: bool = True,
+        self,
+        api: str = "openrouter",
+        model: str = "gpt-4.1",
+        url: str = "https://openrouter.ai/api/v1",
+        *,
+        max_tokens: int = 1024,
+        request_timeout: float = 180.0,
+        use_json_object_mode: bool = True,
     ):
         self.api = api
         self.model_name = model
@@ -125,15 +124,17 @@ class CustomLLM(DeepEvalBaseLLM):
         if response_format and self.use_json_object_mode:
             payload["response_format"] = response_format
 
-        response = requests.post(f"{self.url}/chat/completions", headers=headers, json=payload,
-                                 timeout=self.request_timeout)
+        response = requests.post(
+            f"{self.url}/chat/completions", headers=headers, json=payload, timeout=self.request_timeout
+        )
         if response.status_code == 200:
             return (response.json()["choices"][0]["message"]["content"] or "").strip()
 
         if response_format and self.use_json_object_mode:
             payload.pop("response_format", None)
-            response = requests.post(f"{self.url}/chat/completions", headers=headers, json=payload,
-                                     timeout=self.request_timeout)
+            response = requests.post(
+                f"{self.url}/chat/completions", headers=headers, json=payload, timeout=self.request_timeout
+            )
             if response.status_code == 200:
                 return (response.json()["choices"][0]["message"]["content"] or "").strip()
 
@@ -209,8 +210,8 @@ def process_repository(repo_url: str, args) -> dict:
         args.repository = repo_url
         config_manager = ConfigManager(args)
 
-        if not hasattr(config_manager.config, 'git'):
-            config_manager.config.git = type('obj', (object,), {'repository': repo_url})
+        if not hasattr(config_manager.config, "git"):
+            config_manager.config.git = type("obj", (object,), {"repository": repo_url})
         else:
             config_manager.config.git.repository = repo_url
 
@@ -264,8 +265,9 @@ def process_repository(repo_url: str, args) -> dict:
 
             test_case = LLMTestCase(
                 input="",
-                actual_output=json.dumps({"readme": generated_readme, "repo_structure": repo_structure},
-                                         ensure_ascii=False),
+                actual_output=json.dumps(
+                    {"readme": generated_readme, "repo_structure": repo_structure}, ensure_ascii=False
+                ),
                 expected_output=expected_output,
             )
 
@@ -300,7 +302,7 @@ def load_table(table_path: str) -> DataFrame:
             "https://github.com/google/python-fire",
             "https://github.com/encode/httpx",
             "https://github.com/AntonOsika/gpt-engineer",
-            "https://github.com/THUDM/ChatGLM-6B"
+            "https://github.com/THUDM/ChatGLM-6B",
         ]
 
         rows = [{"repository": repo, "status": "Pending", "geval_score": None} for repo in test_repos]
@@ -368,11 +370,11 @@ def main():
                 except Exception as e:
                     logger.error(f"Failed to process {repo} — {e}")
 
-        print("\n" + "="*90)
+        print("\n" + "=" * 90)
         print(" FINAL BENCHMARK RESULTS ".center(90, "="))
-        print("="*90)
+        print("=" * 90)
         print(df.to_string(index=False))
-        print("="*90)
+        print("=" * 90)
         print(f"All files (logs, readmes, table) saved to: {os.path.dirname(args.table_path)}\n")
     else:
         rich_section("All repositories processed successfully.")
