@@ -112,10 +112,6 @@ arguments:
     aliases: [ "--validate-doc" ]
     type: flag
     description: "Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository."
-  artefacts_language:
-    aliases: [ "--artefacts-language" ]
-    type: str
-    description: "Generate reports on selected language"
 
 settings:
   use_single_model:
@@ -158,6 +154,11 @@ settings:
         auto (default)  — automatically determine necessary actions based on repository analysis.
         advanced        — run all enabled features based on provided flags.
     choices: [ "basic", "auto", "advanced" ]
+
+  artefacts_language:
+    aliases: [ "--artefacts-language" ]
+    type: str
+    description: "Generate reports on selected language"
 
   author:
     aliases: [ "--author" ]

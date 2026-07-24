@@ -584,7 +584,7 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         self.report_header = self.translator.get("summary_header")
         self.events: list[OperationEvent] = []
 
-        report_result = (self.task_results.get("Report") or {}).get("result") or {}
+        report_result = (self.task_results.get("report") or {}).get("result") or {}
         before_dict = report_result.get("scorecard")
         self.before_scorecard: ScorecardResult | None = ScorecardResult.from_dict(before_dict) if before_dict else None
 
