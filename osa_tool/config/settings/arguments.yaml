@@ -120,9 +120,9 @@ arguments:
 
 settings:
   use_single_model:
-      aliases: [ "--use-single-model" ]
-      type: flag
-      description: "Use the same model for all tasks (from default configuration)."
+    aliases: [ "--use-single-model" ]
+    type: flag
+    description: "Use the same model for all tasks (from default configuration)."
 
   config_file:
     aliases: [ "--config-file" ]
@@ -159,6 +159,11 @@ settings:
         auto (default)  — automatically determine necessary actions based on repository analysis.
         advanced        — run all enabled features based on provided flags.
     choices: [ "basic", "auto", "advanced" ]
+
+  artefacts_language:
+    aliases: [ "--artefacts-language" ]
+    type: str
+    description: "Generate reports on selected language"
 
   author:
     aliases: [ "--author" ]

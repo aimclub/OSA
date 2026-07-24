@@ -63,6 +63,7 @@ validate_paper = false
 validate_doc = false
 incremental = false
 target_files = []
+artefacts_language = "English"
 
 #Workflow Settings
 [workflows]

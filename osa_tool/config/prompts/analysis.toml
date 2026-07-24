@@ -46,7 +46,7 @@ RULES:
 - Be strictly factual about file presence
 - Check for the presence of the directory with tests
 - Prioritize 3 most critical recommendations
-
+- Write text in values on {target_language}, except names of files, directories and packages and operation identifiers
 """
 
 after_report_summary_from_events_prompt = """
@@ -63,6 +63,7 @@ REQUIREMENTS:
 - Keep it concise (about two short paragraphs)
 - Do not use markdown
 - Do not use bullet points or lists
+- Write it on target language: {target_language}
 
 OUTPUT:
 Return ONLY JSON matching the system message schema.
@@ -81,6 +82,8 @@ REQUIREMENTS:
 - Each performed operation must appear in exactly one block
 - "tasks" must list operation names exactly as provided (strings)
 - Do not invent operations
+- Write descriptions on target language: {target_language}
+- Use original task names, do not translate it
 
 OUTPUT:
 Return ONLY JSON matching the system message schema.
