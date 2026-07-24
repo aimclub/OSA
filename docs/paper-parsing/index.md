@@ -80,12 +80,9 @@ and fall back to the values of the main model configuration:
 ```toml
 [llm.for_validation]
 # Vision-language model used to describe layout elements.
-# Defaults to the model configured for validation.
+# Defaults to the model configured for validation (which itself falls back
+# to the main [llm] model, "gpt-3.5-turbo" by default).
 vlm_model = "qwen/qwen3.5-flash-02-23"
-vlm_base_url = "https://openrouter.ai/api/v1"
-vlm_api_key_env = "OPENROUTER_API_KEY"
-paper_parser_device = "cuda"          # or "cuda"
-paper_parser_max_concurrent = 5
 
 # OpenAI-compatible endpoint serving the VLM. Defaults to the configured base_url.
 vlm_base_url = "https://openrouter.ai/api/v1"

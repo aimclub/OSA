@@ -21,7 +21,7 @@ class ImageDescription:
         pages: list = [],
         bbox_json: list = None,
         device: str = "cuda",
-        model_name: str = "qwen3.6:35b-a3b-128k",
+        model_name: str = "gpt-3.5-turbo",
         use_async: bool = False,
         use_context: bool = True,
         max_new_tokens: int = 2048,
@@ -34,7 +34,7 @@ class ImageDescription:
         Args:
             bbox_json (list, optional): an output from doc_layout. Defaults to None.
             device (str, optional): device type "cpu"/"cuda". Defaults to "cuda".
-            model_name (str, optional): model name served by the API. Defaults to "qwen3.6:35b-a3b-128k".
+            model_name (str, optional): model name served by the API. Defaults to "gpt-3.5-turbo" (the OSA default model).
             use_async (bool, optional): whether to use async API calls. Defaults to False.
             base_url (str, optional): base URL of the OpenAI-compatible API. Defaults to None,
             in which case the OpenAI client falls back to the ``OPENAI_BASE_URL`` environment variable.
