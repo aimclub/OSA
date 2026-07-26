@@ -40,9 +40,7 @@ def test_validate_claim_candidate_accepts_exact_source_text():
         original_text="The model uses BERT-base without fine-tuning.",
     )
 
-    validate_claim_candidate(
-        candidate, section=make_section("The model uses BERT-base without fine-tuning.")
-    )
+    validate_claim_candidate(candidate, section=make_section("The model uses BERT-base without fine-tuning."))
 
     assert candidate.original_text == "The model uses BERT-base without fine-tuning."
 
@@ -79,9 +77,7 @@ def test_validate_claim_candidate_rejects_numeric_drift_in_fuzzy_evidence():
 
 def test_validate_claim_candidate_rejects_translation_from_devanagari():
     source = "यह मॉडल प्रशिक्षण के लिए बड़े डेटासेट का उपयोग करता है।"
-    candidate = make_candidate(
-        claim="The model uses a large training dataset.", original_text=source
-    )
+    candidate = make_candidate(claim="The model uses a large training dataset.", original_text=source)
 
     with pytest.raises(ValueError, match="plausible language script"):
         validate_claim_candidate(candidate, section=make_section(source))
@@ -93,13 +89,9 @@ def test_partition_valid_claim_candidates_returns_errors_without_raising():
         claim="The model uses BERT-base without fine-tuning.",
         original_text="The model uses BERT-base without fine-tuning.",
     )
-    invalid_candidate = make_candidate(
-        claim="Invented.", original_text="Invented sentence."
-    )
+    invalid_candidate = make_candidate(claim="Invented.", original_text="Invented sentence.")
 
-    valid, invalid = partition_valid_claim_candidates(
-        [invalid_candidate, valid_candidate], section=section
-    )
+    valid, invalid = partition_valid_claim_candidates([invalid_candidate, valid_candidate], section=section)
 
     assert valid == [valid_candidate]
     assert len(invalid) == 1

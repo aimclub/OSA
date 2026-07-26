@@ -20,11 +20,7 @@ def collect_pdf_inputs(paths: list[Path]) -> tuple[list[Path], list[str]]:
     for raw_path in paths:
         path = raw_path.expanduser().resolve()
         if path.is_dir():
-            pdfs = {
-                item
-                for item in path.iterdir()
-                if item.is_file() and item.suffix.lower() == ".pdf"
-            }
+            pdfs = {item for item in path.iterdir() if item.is_file() and item.suffix.lower() == ".pdf"}
             if not pdfs:
                 failures.append(f"{raw_path}: directory contains no PDF files")
             collected.update(pdfs)
@@ -36,9 +32,7 @@ def collect_pdf_inputs(paths: list[Path]) -> tuple[list[Path], list[str]]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Run claim extraction for multiple PDF documents."
-    )
+    parser = argparse.ArgumentParser(description="Run claim extraction for multiple PDF documents.")
     parser.add_argument("pdfs", nargs="+", type=Path)
     parser.add_argument("--output-dir", type=Path, default=Path("paper_claim_results"))
     parser.add_argument("--repository", default="https://github.com/ai-chem/DiMag")
@@ -98,9 +92,7 @@ def main() -> int:
             logger.info("Input rejected: %s", failure)
         return 1
     logger.info("Collected %s PDF documents for processing", len(pdfs))
-    stem_counts = {
-        pdf.stem: sum(other.stem == pdf.stem for other in pdfs) for pdf in pdfs
-    }
+    stem_counts = {pdf.stem: sum(other.stem == pdf.stem for other in pdfs) for pdf in pdfs}
     # NOTE: heavy LLM imports inside main() so parser/help can load without importing the full LLM stack
     from osa_tool.config.settings import ConfigManager
     from osa_tool.core.llm.llm import ModelHandlerFactory

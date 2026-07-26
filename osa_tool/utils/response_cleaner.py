@@ -16,10 +16,7 @@ class JsonProcessor:
                 continue
             candidate = match.group(2).strip()
             spans = [
-                span
-                for char in ("{", "[")
-                if (span := JsonProcessor._find_balanced_span(candidate, char))
-                is not None
+                span for char in ("{", "[") if (span := JsonProcessor._find_balanced_span(candidate, char)) is not None
             ]
             if not spans:
                 continue
@@ -101,9 +98,7 @@ class JsonProcessor:
             preferred = ["{"]
         else:
             # With no type information, preserve the outermost/earliest JSON root.
-            starts = [
-                (text.find(char), char) for char in ("{", "[") if text.find(char) >= 0
-            ]
+            starts = [(text.find(char), char) for char in ("{", "[") if text.find(char) >= 0]
             preferred = [char for _index, char in sorted(starts)]
 
         for open_char in preferred + [c for c in ["[", "{"] if c not in preferred]:
@@ -149,9 +144,7 @@ class JsonProcessor:
         """
         try:
             # expected_type applies after expected_key lookup, not to the keyed envelope.
-            cleaned = cls.process_text(
-                text, expected_type=dict if expected_key else expected_type
-            )
+            cleaned = cls.process_text(text, expected_type=dict if expected_key else expected_type)
             parsed = json.loads(cleaned)
 
             if expected_key:

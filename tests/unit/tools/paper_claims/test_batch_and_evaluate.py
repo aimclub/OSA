@@ -89,9 +89,7 @@ class FakeEmbeddingModel:
 def test_many_to_one_recall_counts_unique_human_matches():
     llm = np.array([[1.0, 0.0], [1.0, 0.0], [1.0, 0.0]])
     human = np.array([[1.0, 0.0], [0.0, 1.0]])
-    metrics = compute_semantic_matching(
-        ["a", "b", "c"], ["x", "y"], model=FakeEmbeddingModel([llm, human])
-    )
+    metrics = compute_semantic_matching(["a", "b", "c"], ["x", "y"], model=FakeEmbeddingModel([llm, human]))
 
     assert metrics["precision"] == 1.0
     assert metrics["recall"] == 0.5

@@ -28,9 +28,7 @@ from osa_tool.utils.token_counter import count_tokens
 
 
 class AsyncModelHandler(Protocol):
-    async def async_request(
-        self, prompt: str, system_message: str | None = None, retry_delay: float = 1
-    ) -> str: ...
+    async def async_request(self, prompt: str, system_message: str | None = None, retry_delay: float = 1) -> str: ...
 
 
 class ClaimExtractor:
@@ -54,18 +52,10 @@ class ClaimExtractor:
     def _section_chunks(self, section: PaperSection, system: str) -> list[PaperSection]:
         """Split a section to fit the handler input budget with a small overlap."""
         settings = getattr(self.handler, "model_settings", None)
-        if (
-            settings is None
-            or not hasattr(settings, "context_window")
-            or not hasattr(settings, "max_tokens")
-        ):
+        if settings is None or not hasattr(settings, "context_window") or not hasattr(settings, "max_tokens"):
             return [section]
         encoder = getattr(settings, "encoder", "cl100k_base")
-        total_input_budget = (
-            getattr(settings, "context_window", 0)
-            - getattr(settings, "max_tokens", 0)
-            - 256
-        )
+        total_input_budget = getattr(settings, "context_window", 0) - getattr(settings, "max_tokens", 0) - 256
         # A character is never less conservative than a token for ordinary
         # text; avoid loading an encoder at all for obviously short sections.
         if len(system) + len(section.text) <= total_input_budget:
@@ -84,9 +74,7 @@ class ClaimExtractor:
             overlap = min(128, max(1, budget // 10))
             step = max(1, budget - overlap)
             return [
-                section.model_copy(
-                    update={"text": section.text[start : start + budget]}
-                )
+                section.model_copy(update={"text": section.text[start : start + budget]})
                 for start in range(0, len(section.text), step)
             ]
 
@@ -100,9 +88,7 @@ class ClaimExtractor:
         overlap = min(128, max(1, budget // 10))
         step = max(1, budget - overlap)
         return [
-            section.model_copy(
-                update={"text": codec.decode(tokens[start : start + budget])}
-            )
+            section.model_copy(update={"text": codec.decode(tokens[start : start + budget])})
             for start in range(0, len(tokens), step)
         ]
 
@@ -148,9 +134,7 @@ class ClaimExtractor:
                     response=str(raw),
                     original_prompt=original_prompt,
                 )
-        raise ClaimExtractionError(
-            f"LLM response remained invalid after {self.max_retries} attempts: {last_error}"
-        )
+        raise ClaimExtractionError(f"LLM response remained invalid after {self.max_retries} attempts: {last_error}")
 
     async def _request_claim_candidates(
         self,
@@ -227,9 +211,7 @@ class ClaimExtractor:
             logger.debug("Parsed response after dropping invalid claims:\n%s", valid)
             return valid
 
-        raise ClaimExtractionError(
-            f"LLM response remained invalid after {self.max_retries} attempts: {last_error}"
-        )
+        raise ClaimExtractionError(f"LLM response remained invalid after {self.max_retries} attempts: {last_error}")
 
     async def _step_1_select_sections(self, sections: list[PaperSection]) -> list[str]:
         """Select claim-bearing sections while preserving their source order."""
@@ -249,9 +231,7 @@ class ClaimExtractor:
 
         def validate_sections(items: list[SelectedSectionResponse]) -> None:
             ids = [item.section_id for item in items]
-            if len(ids) != len(set(ids)) or any(
-                item not in section_by_id for item in ids
-            ):
+            if len(ids) != len(set(ids)) or any(item not in section_by_id for item in ids):
                 raise ValueError("Selection contains duplicate or unknown section IDs")
 
         selected = await self._request_validated(
@@ -265,11 +245,7 @@ class ClaimExtractor:
         )
         selected_ids = [item.section_id for item in selected]
         selected_set = set(selected_ids)
-        ordered_ids = [
-            section.section_id
-            for section in sections
-            if section.section_id in selected_set
-        ]
+        ordered_ids = [section.section_id for section in sections if section.section_id in selected_set]
         logger.info(
             "Claim extraction step 1/3 completed: selected %s sections",
             len(ordered_ids),
@@ -289,9 +265,7 @@ class ClaimExtractor:
         section_by_id = {section.section_id: section for section in sections}
         claims: list[ExtractedClaim] = []
         claim_adapter = TypeAdapter(list[ClaimCandidateResponse])
-        for section_id in track(
-            selected_section_ids, description="Extracting section claims"
-        ):
+        for section_id in track(selected_section_ids, description="Extracting section claims"):
             section = section_by_id[section_id]
             if not section.text.strip():
                 logger.info(
@@ -307,9 +281,7 @@ class ClaimExtractor:
             )
             extraction_system = self.prompts.get("paper_claims.claim_extraction_system")
             candidates: list[ClaimCandidateResponse] = []
-            for chunk_index, chunk in enumerate(
-                self._section_chunks(section, extraction_system), start=1
-            ):
+            for chunk_index, chunk in enumerate(self._section_chunks(section, extraction_system), start=1):
                 chunk_candidates = await self._request_claim_candidates(
                     "Analyze the following paper section and extract all verifiable factual claims:\n"
                     + chunk.text
@@ -335,9 +307,7 @@ class ClaimExtractor:
                 section.section_id,
                 len(candidates),
             )
-        logger.info(
-            "Claim extraction step 2/3 completed: extracted %s claims", len(claims)
-        )
+        logger.info("Claim extraction step 2/3 completed: extracted %s claims", len(claims))
         return claims
 
     async def _step_3_deduplicate_claims(
@@ -355,8 +325,7 @@ class ClaimExtractor:
             self.dedup_batch_size,
         )
         batches = [
-            claims[index : index + self.dedup_batch_size]
-            for index in range(0, len(claims), self.dedup_batch_size)
+            claims[index : index + self.dedup_batch_size] for index in range(0, len(claims), self.dedup_batch_size)
         ]
         filtered: list[ExtractedClaim] = []
         selections: list[DedupSelection] = []
@@ -401,12 +370,8 @@ class ClaimExtractor:
                     )
                     next_filtered.extend(kept)
                     next_selections.extend(chosen)
-                filtered = sorted(
-                    next_filtered, key=lambda claim: int(claim.claim_id[1:])
-                )
-                selections = sorted(
-                    next_selections, key=lambda item: int(item.claim_id[1:])
-                )
+                filtered = sorted(next_filtered, key=lambda claim: int(claim.claim_id[1:]))
+                selections = sorted(next_selections, key=lambda item: int(item.claim_id[1:]))
 
         ratio = len(filtered) / len(claims)
         logger.info(
@@ -424,32 +389,19 @@ class ClaimExtractor:
         request_name: str,
     ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
         """Deduplicate one bounded batch and fall back to preserving all claims on LLM failure."""
-        dedup_input = [
-            {"claim_id": claim.claim_id, "claim": claim.claim} for claim in claims
-        ]
+        dedup_input = [{"claim_id": claim.claim_id, "claim": claim.claim} for claim in claims]
         claims_by_id = {claim.claim_id: claim for claim in claims}
 
         def validate_dedup(items: list[DedupSelection]) -> None:
             if claims and not items:
-                raise ValueError(
-                    f"Deduplication returned 0 claims for non-empty input of {len(claims)} claims"
-                )
+                raise ValueError(f"Deduplication returned 0 claims for non-empty input of {len(claims)} claims")
             ids = [item.claim_id for item in items]
-            if len(ids) != len(set(ids)) or any(
-                item not in claims_by_id for item in ids
-            ):
-                raise ValueError(
-                    "Deduplication contains duplicate or unknown claim IDs"
-                )
-            rewritten = [
-                item.claim_id
-                for item in items
-                if item.claim != claims_by_id[item.claim_id].claim
-            ]
+            if len(ids) != len(set(ids)) or any(item not in claims_by_id for item in ids):
+                raise ValueError("Deduplication contains duplicate or unknown claim IDs")
+            rewritten = [item.claim_id for item in items if item.claim != claims_by_id[item.claim_id].claim]
             if rewritten:
                 raise ValueError(
-                    "Deduplication must copy claim text verbatim; rewritten claim IDs: "
-                    + ", ".join(rewritten)
+                    "Deduplication must copy claim text verbatim; rewritten claim IDs: " + ", ".join(rewritten)
                 )
 
         try:
@@ -463,15 +415,11 @@ class ClaimExtractor:
                 request_name=request_name,
             )
         except Exception as exc:
-            return self._fallback_deduplication(
-                claims, request_name=request_name, reason=str(exc)
-            )
+            return self._fallback_deduplication(claims, request_name=request_name, reason=str(exc))
 
         selection_by_id = {item.claim_id: item for item in selections}
         filtered = [
-            claim.model_copy(
-                update={"contradiction": selection_by_id[claim.claim_id].contradiction}
-            )
+            claim.model_copy(update={"contradiction": selection_by_id[claim.claim_id].contradiction})
             for claim in claims
             if claim.claim_id in selection_by_id
         ]
@@ -523,9 +471,7 @@ class ClaimExtractor:
         logger.info("Starting three-step claim extraction")
         selected_ids = await self._step_1_select_sections(sections)
         extracted_claims = await self._step_2_extract_claims(sections, selected_ids)
-        filtered_claims, selections = await self._step_3_deduplicate_claims(
-            extracted_claims
-        )
+        filtered_claims, selections = await self._step_3_deduplicate_claims(extracted_claims)
         logger.info(
             "Three-step claim extraction completed: final_claims=%s",
             len(filtered_claims),

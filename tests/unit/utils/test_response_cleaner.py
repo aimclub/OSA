@@ -6,9 +6,7 @@ def test_unknown_type_preserves_earliest_object_root():
 
 
 def test_keyed_list_type_applies_after_object_lookup():
-    assert JsonProcessor.parse(
-        '{"files": ["main.py"]}', expected_key="files", expected_type=list
-    ) == ["main.py"]
+    assert JsonProcessor.parse('{"files": ["main.py"]}', expected_key="files", expected_type=list) == ["main.py"]
 
 
 def test_non_json_fence_does_not_hide_later_json():

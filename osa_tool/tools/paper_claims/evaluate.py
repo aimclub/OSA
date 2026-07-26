@@ -15,12 +15,8 @@ def load_claims(
     llm_data = json.loads(Path(llm_path).read_text(encoding="utf-8"))
     human_data = json.loads(Path(human_path).read_text(encoding="utf-8"))
     llm_items = llm_data.get("result", llm_data.get("claims", []))
-    llm_claims = [
-        str(item[llm_field]).strip() for item in llm_items if item.get(llm_field)
-    ]
-    human_claims = [
-        str(item).strip() for item in human_data.get("claims", []) if str(item).strip()
-    ]
+    llm_claims = [str(item[llm_field]).strip() for item in llm_items if item.get(llm_field)]
+    human_claims = [str(item).strip() for item in human_data.get("claims", []) if str(item).strip()]
     return llm_claims, human_claims
 
 
@@ -58,12 +54,8 @@ def compute_semantic_matching(
         ) from exc
 
     embedding_model = model or SentenceTransformer(model_name)
-    llm_embeddings = embedding_model.encode(
-        llm_claims, convert_to_numpy=True, normalize_embeddings=True
-    )
-    human_embeddings = embedding_model.encode(
-        human_claims, convert_to_numpy=True, normalize_embeddings=True
-    )
+    llm_embeddings = embedding_model.encode(llm_claims, convert_to_numpy=True, normalize_embeddings=True)
+    human_embeddings = embedding_model.encode(human_claims, convert_to_numpy=True, normalize_embeddings=True)
     similarities = np.dot(llm_embeddings, human_embeddings.T)
 
     if matching == "one_to_one":
@@ -73,11 +65,7 @@ def compute_semantic_matching(
         cardinality_bonus = min(similarities.shape) + 1
         scores = np.where(valid, cardinality_bonus + similarities, 0.0)
         rows, columns = linear_sum_assignment(-scores)
-        true_positives = sum(
-            1
-            for row, column in zip(rows, columns)
-            if similarities[row, column] >= threshold
-        )
+        true_positives = sum(1 for row, column in zip(rows, columns) if similarities[row, column] >= threshold)
         false_positives = len(llm_claims) - true_positives
     else:
         best_indices = np.argmax(similarities, axis=1)
@@ -87,12 +75,8 @@ def compute_semantic_matching(
         false_positives = len(llm_claims) - true_positives
         covered_humans = {int(best_indices[row]) for row in matched_rows}
 
-    precision = (
-        true_positives / (true_positives + false_positives) if llm_claims else 0.0
-    )
-    recall_numerator = (
-        true_positives if matching == "one_to_one" else len(covered_humans)
-    )
+    precision = true_positives / (true_positives + false_positives) if llm_claims else 0.0
+    recall_numerator = true_positives if matching == "one_to_one" else len(covered_humans)
     recall = recall_numerator / len(human_claims) if human_claims else 0.0
     f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
     return {
@@ -107,24 +91,16 @@ def compute_semantic_matching(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Evaluate extracted claims against human annotations."
-    )
+    parser = argparse.ArgumentParser(description="Evaluate extracted claims against human annotations.")
     parser.add_argument("--llm", type=Path, required=True)
     parser.add_argument("--human", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=Path("evaluation_result.json"))
     parser.add_argument("--threshold", type=float, default=0.75)
     parser.add_argument("--model", default="paraphrase-multilingual-MiniLM-L12-v2")
-    parser.add_argument(
-        "--llm-field", choices=["original_text", "claim"], default="original_text"
-    )
-    parser.add_argument(
-        "--matching", choices=["one_to_one", "many_to_one"], default="many_to_one"
-    )
+    parser.add_argument("--llm-field", choices=["original_text", "claim"], default="original_text")
+    parser.add_argument("--matching", choices=["one_to_one", "many_to_one"], default="many_to_one")
     args = parser.parse_args()
-    llm_claims, human_claims = load_claims(
-        args.llm, args.human, llm_field=args.llm_field
-    )
+    llm_claims, human_claims = load_claims(args.llm, args.human, llm_field=args.llm_field)
     metrics = compute_semantic_matching(
         llm_claims,
         human_claims,
@@ -144,9 +120,7 @@ def main() -> int:
         },
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
-        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     return 0
 
 
