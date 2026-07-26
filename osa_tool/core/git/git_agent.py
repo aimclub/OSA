@@ -17,7 +17,7 @@ from osa_tool.core.git.metadata import (
 )
 from osa_tool.core.git.request_utils import request_with_retry
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import get_base_repo_url, parse_folder_name, is_path
+from osa_tool.utils.utils import get_base_repo_url, parse_folder_name, is_path, resolve_repo_path
 
 
 class GitAgent(abc.ABC):
@@ -58,7 +58,7 @@ class GitAgent(abc.ABC):
         load_dotenv()
         self.author = author
         self.repo_url = repo_url
-        self.clone_dir = os.path.join(os.getcwd(), parse_folder_name(repo_url))
+        self.clone_dir = str(resolve_repo_path(repo_url))
         self.branch_name = branch_name
         self.repo = None
         self.token = self._get_token()

@@ -11,7 +11,12 @@ from osa_tool.run import initialize_git_platform
 from osa_tool.ui.input_for_chat import InitialChatInput, collect_user_input
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.logger import setup_logging, logger
-from osa_tool.utils.utils import osa_project_root, parse_folder_name, switch_to_output_directory
+from osa_tool.utils.utils import (
+    osa_project_root,
+    parse_folder_name,
+    prepare_local_output_repository,
+    switch_to_output_directory,
+)
 
 
 def main():
@@ -27,12 +32,13 @@ def main():
     repo_name = parse_folder_name(user_input.repo_url)
     setup_logging(repo_name, logs_dir)
 
-    # Switch to output directory if present
+    args.repository = user_input.repo_url
     if args.output:
-        switch_to_output_directory(args.output)
+        output_path = switch_to_output_directory(args.output)
+        if os.path.isdir(args.repository):
+            args.repository = str(prepare_local_output_repository(args.repository, output_path))
 
     # Initialize infrastructure
-    args.repository = user_input.repo_url
     config_manager = ConfigManager(args)
     git_agent, workflow_manager = initialize_git_platform(args, config_manager)
 
