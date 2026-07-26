@@ -112,7 +112,10 @@ class ClaimExtractor:
                 attempt,
                 self.max_retries,
             )
-            raw = await self.handler.async_request(current_prompt, system)
+            try:
+                raw = await self.handler.async_request(current_prompt, system)
+            except Exception as exc:
+                raise ClaimExtractionError(f"{request_name}: model request failed: {exc}") from exc
             logger.debug("Raw response:\n%s", raw)
             try:
                 data = JsonProcessor.parse(str(raw), expected_type=list)
@@ -157,7 +160,10 @@ class ClaimExtractor:
                 attempt,
                 self.max_retries,
             )
-            raw = await self.handler.async_request(current_prompt, system)
+            try:
+                raw = await self.handler.async_request(current_prompt, system)
+            except Exception as exc:
+                raise ClaimExtractionError(f"{request_name}: model request failed: {exc}") from exc
             logger.debug("Raw response:\n%s", raw)
             try:
                 data = JsonProcessor.parse(str(raw), expected_type=list)
@@ -261,6 +267,7 @@ class ClaimExtractor:
         section_by_id = {section.section_id: section for section in sections}
         claims: list[ExtractedClaim] = []
         claim_adapter = TypeAdapter(list[ClaimCandidateResponse])
+        claim_system = self.prompts.get("paper_claims.claim_extraction_system")
         for section_id in track(selected_section_ids, description="Extracting section claims"):
             section = section_by_id[section_id]
             if not section.text.strip():
@@ -272,38 +279,66 @@ class ClaimExtractor:
                 continue
             logger.info("Extracting claims from section %s (%s)", section.section_id, section.name)
 
-            try:
-                candidates = await self._request_claim_candidates(
-                    "Analyze the following paper section and extract all verifiable factual claims:\n"
-                    + section.text
-                    + "\nReturn ONLY the JSON array as specified in the system instructions.",
-                    self.prompts.get("paper_claims.claim_extraction_system"),
-                    claim_adapter,
-                    section=section,
-                    request_name=f"Claim extraction for section {section.section_id}",
-                )
-            except ClaimExtractionError as exc:
-                logger.warning(
-                    "Skipping section %s (%s) after claim extraction failed: %s",
+            section_chunks = self._section_chunks(section, claim_system)
+            if len(section_chunks) > 1:
+                logger.info(
+                    "Section %s split into %s extraction chunks to fit model input budget",
                     section.section_id,
-                    section.name,
-                    exc,
+                    len(section_chunks),
                 )
-                continue
-            for candidate in candidates:
-                claims.append(
-                    ExtractedClaim(
-                        claim_id=f"c{len(claims) + 1:04d}",
-                        **candidate.model_dump(),
-                        section_id=section.section_id,
-                        section_name=section.name,
-                        section_heading_raw=section.heading_meta.raw,
+            section_claims = 0
+            for chunk_index, section_chunk in enumerate(section_chunks, start=1):
+                request_name = f"Claim extraction for section {section.section_id}"
+                if len(section_chunks) > 1:
+                    request_name = (
+                        f"Claim extraction for section {section.section_id} chunk "
+                        f"{chunk_index}/{len(section_chunks)}"
                     )
-                )
+
+                try:
+                    candidates = await self._request_claim_candidates(
+                        "Analyze the following paper section and extract all verifiable factual claims:\n"
+                        + section_chunk.text
+                        + "\nReturn ONLY the JSON array as specified in the system instructions.",
+                        claim_system,
+                        claim_adapter,
+                        section=section_chunk,
+                        request_name=request_name,
+                    )
+                except ClaimExtractionError as exc:
+                    logger.warning(
+                        "Skipping section %s (%s) chunk %s/%s after claim extraction failed: %s",
+                        section.section_id,
+                        section.name,
+                        chunk_index,
+                        len(section_chunks),
+                        exc,
+                    )
+                    continue
+                for candidate in candidates:
+                    claims.append(
+                        ExtractedClaim(
+                            claim_id=f"c{len(claims) + 1:04d}",
+                            **candidate.model_dump(),
+                            section_id=section.section_id,
+                            section_name=section.name,
+                            section_heading_raw=section.heading_meta.raw,
+                        )
+                    )
+                section_claims += len(candidates)
+                if len(section_chunks) > 1:
+                    logger.info(
+                        "Section %s chunk %s/%s completed: extracted %s claims",
+                        section.section_id,
+                        chunk_index,
+                        len(section_chunks),
+                        len(candidates),
+                    )
             logger.info(
-                "Section %s completed: extracted %s claims",
+                "Section %s completed: extracted %s claims from %s chunk(s)",
                 section.section_id,
-                len(candidates),
+                section_claims,
+                len(section_chunks),
             )
         logger.info("Claim extraction step 2/3 completed: extracted %s claims", len(claims))
         return claims
@@ -339,37 +374,7 @@ class ClaimExtractor:
             selections.extend(batch_selections)
 
         if len(batches) > 1 and filtered:
-            if len(filtered) <= self.dedup_batch_size:
-                logger.info(
-                    "Claim extraction step 3/3: running final deduplication pass over %s batch survivors",
-                    len(filtered),
-                )
-                filtered, selections = await self._deduplicate_claim_batch(
-                    filtered,
-                    request_name="Claim deduplication final pass",
-                )
-            else:
-                logger.info(
-                    "Claim extraction step 3/3: running cross-batch hierarchical pass over %s survivors",
-                    len(filtered),
-                )
-                # Interleave prior batches so boundary survivors are compared.
-                interleaved = [
-                    claim
-                    for offset in range(self.dedup_batch_size)
-                    for claim in filtered[offset :: self.dedup_batch_size]
-                ]
-                next_filtered: list[ExtractedClaim] = []
-                next_selections: list[DedupSelection] = []
-                for index in range(0, len(interleaved), self.dedup_batch_size):
-                    kept, chosen = await self._deduplicate_claim_batch(
-                        interleaved[index : index + self.dedup_batch_size],
-                        request_name="Claim deduplication hierarchical pass",
-                    )
-                    next_filtered.extend(kept)
-                    next_selections.extend(chosen)
-                filtered = sorted(next_filtered, key=lambda claim: int(claim.claim_id[1:]))
-                selections = sorted(next_selections, key=lambda item: int(item.claim_id[1:]))
+            filtered, selections = await self._deduplicate_global_survivors(filtered)
 
         ratio = len(filtered) / len(claims)
         logger.info(
@@ -378,6 +383,61 @@ class ClaimExtractor:
             len(claims),
             ratio * 100,
         )
+        return filtered, selections
+
+    async def _deduplicate_global_survivors(
+        self, claims: list[ExtractedClaim]
+    ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
+        """Compare survivors across batch boundaries without exceeding the dedup batch size."""
+        if len(claims) <= self.dedup_batch_size:
+            logger.info(
+                "Claim extraction step 3/3: running final deduplication pass over %s batch survivors",
+                len(claims),
+            )
+            return await self._deduplicate_claim_batch(claims, request_name="Claim deduplication final pass")
+
+        chunk_size = max(1, self.dedup_batch_size // 2)
+        chunks = [claims[index : index + chunk_size] for index in range(0, len(claims), chunk_size)]
+        total_groups = len(chunks) * (len(chunks) + 1) // 2
+        active = {claim.claim_id: claim for claim in claims}
+        original_order = {claim.claim_id: index for index, claim in enumerate(claims)}
+        logger.info(
+            "Claim extraction step 3/3: running global pairwise deduplication over %s survivors "
+            "using %s groups of up to %s claims",
+            len(claims),
+            total_groups,
+            self.dedup_batch_size,
+        )
+
+        group_number = 0
+        for left_index, left_chunk in enumerate(chunks):
+            for right_index in range(left_index, len(chunks)):
+                group_number += 1
+                group_ids = [claim.claim_id for claim in left_chunk]
+                if right_index != left_index:
+                    group_ids.extend(claim.claim_id for claim in chunks[right_index])
+                group = [active[claim_id] for claim_id in group_ids if claim_id in active]
+                if len(group) <= 1:
+                    continue
+
+                kept, _chosen = await self._deduplicate_claim_batch(
+                    group,
+                    request_name=f"Claim deduplication global group {group_number}/{total_groups}",
+                )
+                kept_by_id = {claim.claim_id: claim for claim in kept}
+                for claim_id, kept_claim in kept_by_id.items():
+                    current = active.get(claim_id)
+                    if current is None:
+                        continue
+                    active[claim_id] = kept_claim.model_copy(
+                        update={"contradiction": current.contradiction or kept_claim.contradiction}
+                    )
+                for claim in group:
+                    if claim.claim_id not in kept_by_id:
+                        active.pop(claim.claim_id, None)
+
+        filtered = sorted(active.values(), key=lambda claim: original_order[claim.claim_id])
+        selections = self._dedup_selections(filtered)
         return filtered, selections
 
     async def _deduplicate_claim_batch(
@@ -417,7 +477,9 @@ class ClaimExtractor:
 
         selection_by_id = {item.claim_id: item for item in selections}
         filtered = [
-            claim.model_copy(update={"contradiction": selection_by_id[claim.claim_id].contradiction})
+            claim.model_copy(
+                update={"contradiction": claim.contradiction or selection_by_id[claim.claim_id].contradiction}
+            )
             for claim in claims
             if claim.claim_id in selection_by_id
         ]
@@ -430,6 +492,17 @@ class ClaimExtractor:
             ratio * 100,
         )
         return filtered, selections
+
+    @staticmethod
+    def _dedup_selections(claims: list[ExtractedClaim]) -> list[DedupSelection]:
+        return [
+            DedupSelection(
+                claim_id=claim.claim_id,
+                claim=claim.claim,
+                contradiction=claim.contradiction,
+            )
+            for claim in claims
+        ]
 
     def _fallback_deduplication(
         self,
@@ -444,14 +517,7 @@ class ClaimExtractor:
             len(claims),
             reason,
         )
-        selections = [
-            DedupSelection(
-                claim_id=claim.claim_id,
-                claim=claim.claim,
-                contradiction=claim.contradiction,
-            )
-            for claim in claims
-        ]
+        selections = self._dedup_selections(claims)
         filtered = list(claims)
         return filtered, selections
 
@@ -469,12 +535,12 @@ class ClaimExtractor:
         logger.info("Starting three-step claim extraction")
         selected_ids = await self._step_1_select_sections(sections)
         extracted_claims = await self._step_2_extract_claims(sections, selected_ids)
+        extraction_model = getattr(self.handler, "last_successful_model", None) or model
         filtered_claims, selections = await self._step_3_deduplicate_claims(extracted_claims)
         logger.info(
             "Three-step claim extraction completed: final_claims=%s",
             len(filtered_claims),
         )
-        actual_model = getattr(self.handler, "last_successful_model", None) or model
 
         return ClaimExtractionResult(
             claims=filtered_claims,
@@ -482,7 +548,7 @@ class ClaimExtractor:
             selected_section_ids=selected_ids,
             meta=ExtractionMetadata(
                 source=source,
-                model=actual_model,
+                model=extraction_model,
                 filtered_claims=len(filtered_claims),
                 step3_input_count=len(extracted_claims),
                 step3_output_count=len(selections),

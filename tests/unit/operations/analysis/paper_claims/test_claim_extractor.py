@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -14,7 +15,22 @@ class FakeHandler:
 
     async def async_request(self, prompt, system_message=None, retry_delay=1):
         self.prompts.append(prompt)
-        return next(self.responses)
+        response = next(self.responses)
+        if isinstance(response, BaseException):
+            raise response
+        return response
+
+
+class ModelTrackingFakeHandler(FakeHandler):
+    def __init__(self, responses, models):
+        super().__init__(responses)
+        self.models = iter(models)
+        self.last_successful_model = None
+
+    async def async_request(self, prompt, system_message=None, retry_delay=1):
+        response = await super().async_request(prompt, system_message, retry_delay)
+        self.last_successful_model = next(self.models)
+        return response
 
 
 def section() -> PaperSection:
@@ -378,6 +394,63 @@ async def test_extract_skips_failed_section_and_keeps_document_claims():
 
 
 @pytest.mark.asyncio
+async def test_extract_skips_section_when_model_request_raises_and_keeps_document_claims():
+    sections = [
+        PaperSection(
+            section_id="s001",
+            name="Method",
+            text="The pipeline stores extracted claims as JSON files.",
+            heading_meta=HeadingMeta(raw="2. Method", level=1, numbering="2"),
+        ),
+        PaperSection(
+            section_id="s002",
+            name="Metrics",
+            text="The model request raises for this section.",
+            heading_meta=HeadingMeta(raw="3. Metrics", level=1, numbering="3"),
+        ),
+    ]
+    valid_claim = {
+        "claim": "The pipeline stores extracted claims as JSON files.",
+        "original_text": "The pipeline stores extracted claims as JSON files.",
+        "category": "infrastructure",
+        "value": "JSON",
+        "verifiability": "high",
+    }
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"},{"section_id":"s002"}]',
+            json.dumps([valid_claim]),
+            RuntimeError("provider outage"),
+            json.dumps(
+                [{"claim_id": "c0001", "claim": valid_claim["claim"], "contradiction": False}],
+                ensure_ascii=False,
+            ),
+        ]
+    )
+
+    result = await ClaimExtractor(handler, max_retries=2).extract(sections)
+
+    assert [claim.claim for claim in result.claims] == [valid_claim["claim"]]
+    assert result.meta.step3_input_count == 1
+    assert result.meta.step3_output_count == 1
+
+
+@pytest.mark.asyncio
+async def test_extract_splits_long_section_before_sending_claim_requests():
+    long_text = " ".join(f"token{i}" for i in range(300))
+    paper_section = section().model_copy(update={"text": long_text})
+    handler = FakeHandler(['[{"section_id":"s001"}]'] + ["[]"] * 20)
+    handler.model_settings = SimpleNamespace(context_window=1300, max_tokens=100, encoder="cl100k_base")
+
+    result = await ClaimExtractor(handler).extract([paper_section])
+
+    extraction_prompts = handler.prompts[1:]
+    assert result.claims == []
+    assert len(extraction_prompts) > 1
+    assert all(long_text not in prompt for prompt in extraction_prompts)
+
+
+@pytest.mark.asyncio
 async def test_extract_repairs_claim_written_in_a_different_script():
     valid_claim = {
         "claim": "The model uses BERT-base without fine-tuning.",
@@ -428,6 +501,30 @@ async def test_deduplication_repairs_rewritten_claim_text():
 
     assert result.deduplication[0].claim == valid_claim["claim"]
     assert "copy claim text verbatim" in handler.prompts[3]
+
+
+@pytest.mark.asyncio
+async def test_extract_records_claim_extraction_model_not_later_dedup_model():
+    valid_claim = {
+        "claim": "The model uses BERT-base without fine-tuning.",
+        "original_text": "The model uses BERT-base without fine-tuning.",
+        "category": "model_architecture",
+        "value": "BERT-base",
+        "verifiability": "high",
+    }
+    handler = ModelTrackingFakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            json.dumps([valid_claim]),
+            '[{"claim_id":"c0001","claim":"The model uses BERT-base without fine-tuning.",' '"contradiction":false}]',
+        ],
+        models=["section-selector-model", "claim-extraction-model", "dedup-fallback-model"],
+    )
+
+    result = await ClaimExtractor(handler).extract([section()])
+
+    assert result.meta.model == "claim-extraction-model"
+    assert handler.last_successful_model == "dedup-fallback-model"
 
 
 @pytest.mark.asyncio
@@ -560,6 +657,20 @@ async def test_batched_deduplication_sends_multiple_requests_and_preserves_order
                         "contradiction": False,
                     },
                     {
+                        "claim_id": "c0002",
+                        "claim": candidates[1]["claim"],
+                        "contradiction": False,
+                    },
+                ]
+            ),
+            json.dumps(
+                [
+                    {
+                        "claim_id": "c0001",
+                        "claim": candidates[0]["claim"],
+                        "contradiction": False,
+                    },
+                    {
                         "claim_id": "c0003",
                         "claim": candidates[2]["claim"],
                         "contradiction": False,
@@ -572,7 +683,12 @@ async def test_batched_deduplication_sends_multiple_requests_and_preserves_order
                         "claim_id": "c0002",
                         "claim": candidates[1]["claim"],
                         "contradiction": False,
-                    }
+                    },
+                    {
+                        "claim_id": "c0003",
+                        "claim": candidates[2]["claim"],
+                        "contradiction": False,
+                    },
                 ]
             ),
         ]
@@ -581,9 +697,76 @@ async def test_batched_deduplication_sends_multiple_requests_and_preserves_order
     result = await ClaimExtractor(handler, dedup_batch_size=2).extract([paper_section])
 
     assert [claim.claim_id for claim in result.claims] == ["c0001", "c0002", "c0003"]
-    assert len(handler.prompts) == 6
+    assert len(handler.prompts) == 7
     assert '"claim_id": "c0001"' in handler.prompts[2]
     assert '"claim_id": "c0003"' in handler.prompts[3]
+
+
+@pytest.mark.asyncio
+async def test_global_deduplication_compares_duplicate_survivors_across_batch_boundaries():
+    source_text = (
+        "The pipeline splits PDFs into chunks. "
+        "The pipeline caches Marker Markdown output. "
+        "The pipeline caches Marker Markdown output."
+    )
+    paper_section = section().model_copy(update={"text": source_text})
+    candidates = [
+        {
+            "claim": "The pipeline splits PDFs into chunks.",
+            "original_text": "The pipeline splits PDFs into chunks.",
+            "category": "data_preprocessing",
+            "value": None,
+            "verifiability": "high",
+        },
+        {
+            "claim": "The pipeline caches Marker Markdown output.",
+            "original_text": "The pipeline caches Marker Markdown output.",
+            "category": "infrastructure",
+            "value": "Marker Markdown",
+            "verifiability": "high",
+        },
+        {
+            "claim": "The pipeline caches Marker Markdown output.",
+            "original_text": "The pipeline caches Marker Markdown output.",
+            "category": "infrastructure",
+            "value": "Marker Markdown",
+            "verifiability": "high",
+        },
+    ]
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            json.dumps(candidates),
+            json.dumps(
+                [
+                    {"claim_id": "c0001", "claim": candidates[0]["claim"], "contradiction": False},
+                    {"claim_id": "c0002", "claim": candidates[1]["claim"], "contradiction": False},
+                ]
+            ),
+            json.dumps([{"claim_id": "c0003", "claim": candidates[2]["claim"], "contradiction": False}]),
+            json.dumps(
+                [
+                    {"claim_id": "c0001", "claim": candidates[0]["claim"], "contradiction": False},
+                    {"claim_id": "c0002", "claim": candidates[1]["claim"], "contradiction": False},
+                ]
+            ),
+            json.dumps(
+                [
+                    {"claim_id": "c0001", "claim": candidates[0]["claim"], "contradiction": False},
+                    {"claim_id": "c0003", "claim": candidates[2]["claim"], "contradiction": False},
+                ]
+            ),
+            json.dumps([{"claim_id": "c0002", "claim": candidates[1]["claim"], "contradiction": False}]),
+        ]
+    )
+
+    result = await ClaimExtractor(handler, dedup_batch_size=2).extract([paper_section])
+
+    assert [claim.claim_id for claim in result.claims] == ["c0001", "c0002"]
+    assert [claim.claim for claim in result.claims] == [
+        "The pipeline splits PDFs into chunks.",
+        "The pipeline caches Marker Markdown output.",
+    ]
 
 
 @pytest.mark.asyncio
@@ -636,6 +819,24 @@ async def test_failed_deduplication_batch_does_not_erase_successful_batches():
                 ]
             ),
             "[]",
+            json.dumps(
+                [
+                    {"claim_id": "c0001", "claim": candidates[0]["claim"], "contradiction": False},
+                    {"claim_id": "c0002", "claim": candidates[1]["claim"], "contradiction": False},
+                ]
+            ),
+            json.dumps(
+                [
+                    {"claim_id": "c0001", "claim": candidates[0]["claim"], "contradiction": False},
+                    {"claim_id": "c0003", "claim": candidates[2]["claim"], "contradiction": False},
+                ]
+            ),
+            json.dumps(
+                [
+                    {"claim_id": "c0002", "claim": candidates[1]["claim"], "contradiction": False},
+                    {"claim_id": "c0003", "claim": candidates[2]["claim"], "contradiction": False},
+                ]
+            ),
         ]
     )
 

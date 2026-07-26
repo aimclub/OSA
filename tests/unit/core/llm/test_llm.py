@@ -91,6 +91,40 @@ def test_send_request_calls_llm(monkeypatch, mock_config_manager, patch_llm_conn
     assert result == "sync response"
 
 
+def test_response_debug_token_counting_is_best_effort_for_special_tokens(
+    mock_config_manager, patch_llm_connector, caplog
+):
+    model_settings = mock_config_manager.get_model_settings("general")
+    handler = ProtollmHandler(model_settings)
+
+    with caplog.at_level(logging.DEBUG, logger="rich"):
+        handler._log_response_debug("completed <|endoftext|> response", "Synchronous")
+
+    assert "Synchronous LLM response token counting failed" in caplog.text
+    assert "tokens=unavailable" in caplog.text
+    assert "completed <|endoftext|> response" in caplog.text
+
+
+def test_response_debug_logging_skips_token_counting_when_debug_disabled(
+    monkeypatch, mock_config_manager, patch_llm_connector, caplog
+):
+    model_settings = mock_config_manager.get_model_settings("general")
+    handler = ProtollmHandler(model_settings)
+    was_called = False
+
+    def fail_count_tokens(*args, **kwargs):
+        nonlocal was_called
+        was_called = True
+        raise AssertionError("debug token counting should be skipped")
+
+    monkeypatch.setattr("osa_tool.core.llm.llm.count_tokens", fail_count_tokens)
+
+    with caplog.at_level(logging.INFO, logger="rich"):
+        handler._log_response_debug("completed <|endoftext|> response", "Synchronous")
+
+    assert was_called is False
+
+
 @pytest.mark.asyncio
 async def test_async_request_calls_llm(mock_config_manager, patch_llm_connector, caplog):
     # Arrange
