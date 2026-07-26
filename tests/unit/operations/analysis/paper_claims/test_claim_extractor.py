@@ -198,6 +198,38 @@ async def test_extract_repairs_minor_original_text_word_drift_with_fuzzy_source_
 
 
 @pytest.mark.asyncio
+async def test_extract_accepts_formula_source_text_with_minor_case_drift():
+    formula = r"$$CTR = \frac{1}{T} \sum_{t=1}^{T} \mathbf{1}[H_t(T_t) = True].$$"
+    source_text = (
+        "Confirming Test Rate (CTR) is defined as the share of turns where the hypothesis predicts True:\n\n"
+        f"{formula}\n"
+        "(2.4)"
+    )
+    paper_section = section().model_copy(update={"text": source_text})
+    candidate = {
+        "claim": "CTR is computed as the average indicator that H_t(T_t) is True.",
+        "original_text": r"$$CTR = \frac{1}{T} \sum_{t=1}^{T} \mathbf{1}[H_t(T_t) = true].$$",
+        "category": "evaluation_metric",
+        "value": "CTR",
+        "verifiability": "high",
+    }
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            json.dumps([candidate]),
+            json.dumps(
+                [{"claim_id": "c0001", "claim": candidate["claim"], "contradiction": False}],
+                ensure_ascii=False,
+            ),
+        ]
+    )
+
+    result = await ClaimExtractor(handler).extract([paper_section])
+
+    assert result.claims[0].original_text == formula
+
+
+@pytest.mark.asyncio
 async def test_extract_drops_ambiguous_fuzzy_original_text_after_final_attempt():
     source_text = (
         "The system uses version Y1 for retrieval embeddings and reranking in production. "
@@ -300,6 +332,49 @@ async def test_extract_drops_bad_claim_after_retries_and_keeps_valid_claim():
 
     assert [claim.claim for claim in result.claims] == [valid_claim["claim"]]
     assert "plausible language script" in handler.prompts[2]
+
+
+@pytest.mark.asyncio
+async def test_extract_skips_failed_section_and_keeps_document_claims():
+    sections = [
+        PaperSection(
+            section_id="s001",
+            name="Method",
+            text="The pipeline stores extracted claims as JSON files.",
+            heading_meta=HeadingMeta(raw="2. Method", level=1, numbering="2"),
+        ),
+        PaperSection(
+            section_id="s002",
+            name="Metrics",
+            text="The metric section contains malformed LLM output in this test.",
+            heading_meta=HeadingMeta(raw="3. Metrics", level=1, numbering="3"),
+        ),
+    ]
+    valid_claim = {
+        "claim": "The pipeline stores extracted claims as JSON files.",
+        "original_text": "The pipeline stores extracted claims as JSON files.",
+        "category": "infrastructure",
+        "value": "JSON",
+        "verifiability": "high",
+    }
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"},{"section_id":"s002"}]',
+            json.dumps([valid_claim]),
+            "not json",
+            "still not json",
+            json.dumps(
+                [{"claim_id": "c0001", "claim": valid_claim["claim"], "contradiction": False}],
+                ensure_ascii=False,
+            ),
+        ]
+    )
+
+    result = await ClaimExtractor(handler, max_retries=2).extract(sections)
+
+    assert [claim.claim for claim in result.claims] == [valid_claim["claim"]]
+    assert result.meta.step3_input_count == 1
+    assert result.meta.step3_output_count == 1
 
 
 @pytest.mark.asyncio
