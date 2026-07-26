@@ -70,7 +70,10 @@ class ClaimExtractor:
                 return parsed
             except (JsonParseError, ValueError, TypeError, ValidationError) as exc:
                 last_error = exc
-                logger.info("%s: response validation failed, preparing repair request", request_name)
+                if attempt < self.max_retries:
+                    logger.info("%s: response validation failed, preparing repair request", request_name)
+                else:
+                    logger.warning("%s: response validation failed after final attempt", request_name)
                 current_prompt = PromptBuilder.render(
                     self.prompts.get("paper_claims.repair"),
                     error=str(exc),
@@ -102,7 +105,10 @@ class ClaimExtractor:
                 parsed = adapter.validate_python(data)
             except (JsonParseError, TypeError, ValidationError) as exc:
                 last_error = exc
-                logger.info("%s: response validation failed, preparing repair request", request_name)
+                if attempt < self.max_retries:
+                    logger.info("%s: response validation failed, preparing repair request", request_name)
+                else:
+                    logger.warning("%s: response validation failed after final attempt", request_name)
                 current_prompt = PromptBuilder.render(
                     self.prompts.get("paper_claims.repair"),
                     error=str(exc),
@@ -129,7 +135,7 @@ class ClaimExtractor:
                 continue
 
             for error in invalid:
-                logger.info("%s: dropping invalid claim after final attempt: %s", request_name, error)
+                logger.warning("%s: dropping invalid claim after final attempt: %s", request_name, error)
             logger.info(
                 "%s: kept %s/%s claims after dropping invalid claims",
                 request_name,
@@ -194,15 +200,24 @@ class ClaimExtractor:
                 continue
             logger.info("Extracting claims from section %s (%s)", section.section_id, section.name)
 
-            candidates = await self._request_claim_candidates(
-                "Analyze the following paper section and extract all verifiable factual claims:\n"
-                + section.text
-                + "\nReturn ONLY the JSON array as specified in the system instructions.",
-                self.prompts.get("paper_claims.claim_extraction_system"),
-                claim_adapter,
-                section=section,
-                request_name=f"Claim extraction for section {section.section_id}",
-            )
+            try:
+                candidates = await self._request_claim_candidates(
+                    "Analyze the following paper section and extract all verifiable factual claims:\n"
+                    + section.text
+                    + "\nReturn ONLY the JSON array as specified in the system instructions.",
+                    self.prompts.get("paper_claims.claim_extraction_system"),
+                    claim_adapter,
+                    section=section,
+                    request_name=f"Claim extraction for section {section.section_id}",
+                )
+            except ClaimExtractionError as exc:
+                logger.warning(
+                    "Skipping section %s (%s) after claim extraction failed: %s",
+                    section.section_id,
+                    section.name,
+                    exc,
+                )
+                continue
             for candidate in candidates:
                 claims.append(
                     ExtractedClaim(

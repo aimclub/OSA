@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import unicodedata
 from dataclasses import dataclass
 
@@ -16,6 +17,7 @@ _FUZZY_SOURCE_AMBIGUITY_MARGIN = 2.0
 _MIN_RELIABLE_CONTEXT_SCRIPT_LETTERS = 20
 _MIN_RELIABLE_CLAIM_SCRIPT_LETTERS = 6
 _MIN_SCRIPT_DOMINANCE = 0.70
+_DISPLAY_MATH_PATTERN = re.compile(r"\$\$.*?\$\$|\\\[.*?\\\]", re.DOTALL)
 
 
 @dataclass(frozen=True)
@@ -39,7 +41,7 @@ def _iter_sentence_spans(text: str) -> list[tuple[int, int]]:
         if character not in _SENTENCE_END_CHARACTERS:
             continue
         end = index + 1
-        while end < len(text) and text[end] in "\"'”’»)]}":
+        while end < len(text) and text[end] in "\"'”’»)]}$":
             end += 1
         stripped_start = start
         stripped_end = end
@@ -67,14 +69,22 @@ def _iter_sentence_spans(text: str) -> list[tuple[int, int]]:
 def _candidate_source_spans(section_text: str) -> list[str]:
     sentence_spans = _iter_sentence_spans(section_text)
     candidates: list[str] = []
+
+    def append_candidate(source_text: str) -> None:
+        source_text = source_text.strip()
+        if source_text and source_text not in candidates:
+            candidates.append(source_text)
+
+    for match in _DISPLAY_MATH_PATTERN.finditer(section_text):
+        append_candidate(match.group(0))
+
     for start_index, (start, _end) in enumerate(sentence_spans):
         for window_size in (1, 2):
             end_index = start_index + window_size - 1
             if end_index >= len(sentence_spans):
                 continue
             source_text = section_text[start : sentence_spans[end_index][1]]
-            if source_text and source_text not in candidates:
-                candidates.append(source_text)
+            append_candidate(source_text)
     return candidates
 
 
