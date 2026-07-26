@@ -2,7 +2,7 @@
 section_filter_system = """
 You are an academic document structure filter. Your task is to process a list of extracted section headings from a research paper and return only the sections that should be retained for downstream technical claim extraction.
 RULES:
-1. EXCLUDE standard meta-sections that typically do not contain novel technical claims. Always remove: Abstract, Keywords, Table of Content, Domain Overview, Related Work / Literature Review, Limitations, Conclusion, Introduction, Acknowledgments, References, Appendices, and Supplementary Material.
+1. EXCLUDE standard meta-sections that typically do not contain novel technical claims. Always remove: Abstract, Keywords, Table of Content, Domain Overview, Related Work / Literature Review, Limitations, Conclusion, Introduction, Acknowledgments, References, Appendices, Supplementary Material, List of Abbreviations and Symbols, List of Abbreviations, Abbreviations, Glossary, Nomenclature, and Preliminaries.
 2. HIERARCHICAL EXCLUSION: Exclusion propagates downward. If a parent heading is excluded, ALL of its descendants (sub-sections, sub-sub-sections, etc.) must also be excluded, regardless of their individual titles. Identify parent-child relationships using the 'numbering' field or by parsing numeric prefixes from the 'raw' text (e.g., headings starting with '2.1' or '2.2' are children of '2.'). Exclude the entire subtree.
 3. RETAIN all other sections, especially those covering methods, algorithms, system design, experiments, results, theoretical analysis, or applications.
 4. MIXED TOPICS: If a section combines excluded and retained topics (e.g., 'Discussion & Limitations'), keep it. When in doubt, prefer retention over exclusion.
@@ -22,7 +22,7 @@ A 'verifiable claim' is a specific, self-contained technical fact that can be co
 RULES:
 1. GRANULARITY: Extract exactly ONE technical fact per claim. Split compound statements joined by 'and', 'while', or semicolons into separate claims.
 2. INCLUDE: Architecture, pipelines, methods, datasets, models, training procedures, infrastructure, experimental setups, and specific numerical configurations.
-3. EXCLUDE: Motivations, vague descriptions, figure or table description, references to prior work, subjective quality evaluations, and final performance outcomes (e.g., 'achieved 95% accuracy' or 'outperformed baseline by 2%').
+3. EXCLUDE: Motivations, vague descriptions, figure or table description, references to prior work, subjective quality evaluations, final performance outcomes (e.g., 'achieved 95% accuracy' or 'outperformed baseline by 2%'), glossary entries, terminology definitions, and acronym/abbreviation expansions.
 4. LANGUAGE: Preserve the original language of the paper for `claim` and `original_text`. Do not translate.
 5. ATOMICITY: If a sentence contains multiple independent facts, output separate claim objects.
 6. EVIDENCE SPAN: `original_text` is evidence, not a paraphrase. Copy it verbatim from the provided section text, including the exact wording, punctuation, capitalization, spelling, and line-break artifacts. Do not correct grammar, inflection, typos, hyphenation, or formatting.
@@ -51,6 +51,8 @@ BAD EXAMPLES (DO NOT EXTRACT):
 - Motivation: 'We chose this approach because it is computationally efficient.'
 - Prior work: 'Transformers were introduced by Vaswani et al. in 2017.'
 - Performance/Result: 'Our method achieved an F1-score of 0.88, outperforming the baseline by 1.67%.'
+- Acronym definition: 'JSON stands for JavaScript Object Notation.'
+- Acronym definition: 'GPU stands for Graphics Processing Unit.'
 OUTPUT FORMAT:
 - Keep the original language for claim and original_text, do not translate.
 - Return ONLY a valid JSON array of objects.

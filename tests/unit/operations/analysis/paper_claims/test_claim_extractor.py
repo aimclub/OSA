@@ -33,11 +33,26 @@ def test_section_filter_prompt_contains_valid_json_example():
     assert "[{section_id:s003}" not in prompt
 
 
+def test_section_filter_prompt_excludes_glossary_and_preliminaries_sections():
+    prompt = PromptLoader().get("paper_claims.section_filter_system")
+
+    assert "List of Abbreviations and Symbols" in prompt
+    assert "Preliminaries" in prompt
+
+
 def test_claim_extraction_prompt_requires_verbatim_original_text():
     prompt = PromptLoader().get("paper_claims.claim_extraction_system")
 
     assert "`original_text` is evidence, not a paraphrase" in prompt
     assert "Copy it verbatim from the input section" in prompt
+
+
+def test_claim_extraction_prompt_excludes_acronym_definitions():
+    prompt = PromptLoader().get("paper_claims.claim_extraction_system")
+
+    assert "acronym/abbreviation expansions" in prompt
+    assert "JSON stands for JavaScript Object Notation" in prompt
+    assert "GPU stands for Graphics Processing Unit" in prompt
 
 
 def test_deduplication_prompt_forbids_empty_output_for_non_empty_input():
