@@ -42,6 +42,32 @@ class DocGen(object):
     generated docstrings back into source files.
     """
 
+    GOOGLE_STYLE_EXAMPLE = '''
+Example of correct Google-style docstring format:
+
+"""Fetches rows from a Bigtable.
+
+Args:
+    keys: Keys of rows to fetch.
+
+Returns:
+    Rows mapped by key.
+"""
+'''
+
+    GOOGLE_STYLE_CLASS_EXAMPLE = '''
+Example of correct Google-style class docstring format:
+
+"""Compresses binary data.
+
+Attributes:
+    model: Probability estimation model.
+
+Methods:
+    compress: Compresses the input data.
+"""
+'''
+
     def __init__(self, config_manager: ConfigManager):
         """
         Instantiates the object of the class.
@@ -50,10 +76,17 @@ class DocGen(object):
             config_manager: Configuration manager instance
         """
         self.config_manager = config_manager
-        self.model_settings = self.config_manager.get_model_settings("docstrings")
+        self.model_settings = self.config_manager.get_model_settings("docstring")
         self.model_handler: ProtollmHandler = ModelHandlerFactory.build(self.model_settings)
         self.main_idea = None
         self._function_index_cache = None
+        small_model_indicators = [
+            "llama", "mistral", "phi", "8b", "7b", "3b", "gemma", "qwen-1.5",
+            "yi-", "tiny", "small", "mini", "lite", "nano", "micro",
+        ]
+        self.is_small_model = any(
+            indicator in self.model_settings.model.lower() for indicator in small_model_indicators
+        )
 
     def _get_repo_root(self) -> Path:
         """Return the resolved root path of the repository being processed."""
@@ -197,7 +230,9 @@ class DocGen(object):
         Returns:
             The generated class docstring.
         """
-        # Construct a structured prompt
+        class_name = class_details[0]
+        attributes = class_details[1] if len(class_details) > 1 else []
+        methods = class_details[2:-1] if len(class_details) > 3 else []
         if language in ("javascript", "typescript"):
             prompt = (
                 f"""Generate a JSDoc comment for the following JavaScript/TypeScript class {class_details[0]}. Include:\n"""
@@ -209,28 +244,48 @@ class DocGen(object):
             )
         else:
             prompt = (
-                f"""Generate a single Python docstring for the following class {class_details[0]}. The docstring should follow Google-style format and include:\n"""
-                "- Respond strictly in English.\n"
-                "- A short summary of what the class does.\n"
-                "- A list of its methods without details if class has them otherwise do not mention a list of methods.\n"
-                "- A list of its attributes that explicitly mentioned at the constructor method's docstring (can be adressed as attributes, properties, class fields, etc.), without types if class or constructor method has them otherwise do not mention a list of attributes.\n"
-                "- A brief summary of what its methods and attributes do if one has them for.\n\n"
-                "Return only docstring without any quotation."
+                self._get_class_generation_prompt_small(class_name, attributes, methods)
+                if self.is_small_model
+                else self._get_class_generation_prompt_large(class_name, attributes, methods)
             )
-
-        if len(class_details[1]) > 0:
-            prompt += f"\nClass Attributes:\n"
-            for attr in class_details[1]:
-                prompt += f"- {attr}\n"
-
-        if len(class_details[2:-1]) > 0:
-            prompt += f"\nClass Methods:\n"
-            for method in class_details[2:-1]:
-                prompt += f"- {method['method_name']}: {method['docstring']}\n"
 
         async with semaphore:
             docstring = await self.model_handler.async_request(prompt)
             return docstring.strip('"""')
+
+    def _get_class_generation_prompt_large(self, class_name: str, attributes: list, methods: list) -> str:
+        prompt = (
+            f"""Generate a single Python docstring for the following class {class_name}. The docstring should follow Google-style format and include:\n"""
+            "- Respond strictly in English.\n"
+            "- A short summary of what the class does.\n"
+            "- A list of its methods without details if class has them otherwise do not mention a list of methods.\n"
+            "- A list of its attributes that explicitly mentioned at the constructor method's docstring (can be adressed as attributes, properties, class fields, etc.), without types if class or constructor method has them otherwise do not mention a list of attributes.\n"
+            "- A brief summary of what its methods and attributes do if one has them for.\n\n"
+            "Return only docstring without any quotation."
+        )
+        if attributes:
+            prompt += "\nClass Attributes:\n" + "".join(f"- {attr}\n" for attr in attributes)
+        if methods:
+            prompt += "\nClass Methods:\n" + "".join(
+                f"- {method['method_name']}: {method['docstring']}\n" for method in methods
+            )
+        return prompt
+
+    def _get_class_generation_prompt_small(self, class_name: str, attributes: list, methods: list) -> str:
+        prompt = (
+            f"{self.GOOGLE_STYLE_CLASS_EXAMPLE}\n\n"
+            f"Generate a Google-style docstring for class '{class_name}' following the format above.\n"
+            "Return only one triple-quoted docstring; no Markdown, code, or explanation.\n"
+            "Use only Attributes: and Methods: sections when they have content.\n\n"
+        )
+        if attributes:
+            prompt += "Class attributes to document:\n" + "".join(f"- {attr}\n" for attr in attributes) + "\n"
+        if methods:
+            prompt += "Class methods to document:\n" + "".join(
+                f"- {method['method_name']}: {method.get('docstring', '').split(chr(10))[0] or 'No description'}\n"
+                for method in methods
+            ) + "\n"
+        return prompt + "Now generate the docstring:"
 
     async def update_class_documentation(
         self, class_details: list, semaphore: asyncio.Semaphore, language: str = "python"
@@ -244,7 +299,6 @@ class DocGen(object):
         Returns:
             The generated class docstring.
         """
-        # Construct a structured prompt
         try:
             desc, other = class_details[-1].split("\n\n", maxsplit=1)
             desc = desc.replace('"', "")
@@ -252,20 +306,32 @@ class DocGen(object):
             return class_details[-1].strip().strip('"').strip("'")
 
         old_desc = desc.strip('"\n ')
-        lang_word = "JavaScript/TypeScript" if language in ("javascript", "typescript") else "Python"
-        prompt = (
-            f"""Update the provided description for the following {lang_word} class {class_details[0]} using provided main idea of the project.\n"""
+        if self.is_small_model and language == "python":
+            prompt = self._build_small_model_update_class_prompt(class_details[0], old_desc)
+        else:
+            lang_word = "JavaScript/TypeScript" if language in ("javascript", "typescript") else "Python"
+            prompt = (
+                f"""Update the provided description for the following {lang_word} class {class_details[0]} using provided main idea of the project.\n"""
             """Do not pay too much attention to the provided main idea - try not to mention it explicitly.\n"""
             f"""The main idea: {self.main_idea}\n"""
             f"""Old docstring description part: {old_desc}\n\n"""
             """Return only pure changed description - without any code, other parts of docs, any quotations)"""
-        )
+            )
 
         async with semaphore:
             new_desc = await self.model_handler.async_request(prompt)
             new_desc = new_desc.strip().strip('"').strip("'")
 
         return "\n\n".join([new_desc, other])
+
+    def _build_small_model_update_class_prompt(self, class_name: str, old_desc: str) -> str:
+        return (
+            "Update this Python class docstring description. Return only the revised description.\n"
+            "Preserve the original meaning, use the project idea only as context, and add no code or commentary.\n\n"
+            f"Class name: {class_name}\n"
+            f"Project idea: {self.main_idea}\n"
+            f"Old description: {old_desc}\n"
+        )
 
     async def generate_method_documentation(
         self,
@@ -277,6 +343,20 @@ class DocGen(object):
         """
         Generate documentation for a single method.
         """
+        if language in ("javascript", "typescript"):
+            prompt = self._get_method_generation_prompt_large(method_details, context_code, language)
+        elif self.is_small_model:
+            prompt = self._get_method_generation_prompt_small(method_details, context_code)
+        else:
+            prompt = self._get_method_generation_prompt_large(method_details, context_code)
+
+        async with semaphore:
+            docstring = await self.model_handler.async_request(prompt)
+            return self.clean_docstring(docstring.strip('"""'))
+
+    def _get_method_generation_prompt_large(
+        self, method_details: dict, context_code: str = None, language: str = "python"
+    ) -> str:
         arguments = [a for a in method_details["arguments"] if a not in ("self", "cls")]
         if language in ("javascript", "typescript"):
             intro = (
@@ -333,9 +413,23 @@ class DocGen(object):
             "Return only the docstring without any quotation marks.\n"
         )
 
-        async with semaphore:
-            docstring = await self.model_handler.async_request(prompt)
-            return docstring.strip('"""')
+        return prompt
+
+    def _get_method_generation_prompt_small(self, method_details: dict, context_code: str = None) -> str:
+        arguments = [arg for arg in method_details["arguments"] if arg not in ("self", "cls")]
+        prompt = (
+            f"{self.GOOGLE_STYLE_EXAMPLE}\n\n"
+            f"Generate a Google-style docstring for method '{method_details['method_name']}'.\n"
+            "Return only a triple-quoted docstring: no code, Markdown, signature, or explanation.\n"
+            "Use Args:, Returns:, and Raises: only when they have real content.\n"
+            "Never include Attributes:, `Returns: None`, or `Raises: None`.\n\n"
+            f"Arguments: {arguments}\n"
+            f"Decorators: {method_details['decorators']}\n"
+            f"Source code (context only):\n{method_details['source_code']}\n"
+        )
+        if context_code:
+            prompt += f"\nHelper context (understand only; do not copy):\n{context_code}\n"
+        return prompt + "\nNow generate the docstring:"
 
     async def update_method_documentation(
         self,
@@ -350,6 +444,27 @@ class DocGen(object):
         """
         docstring = method_details["docstring"]
 
+        if language in ("javascript", "typescript"):
+            prompt = self._get_method_update_prompt_large(
+                method_details, docstring, context_code, class_name, language
+            )
+        elif self.is_small_model:
+            prompt = self._get_method_update_prompt_small(method_details, docstring, context_code, class_name)
+        else:
+            prompt = self._get_method_update_prompt_large(method_details, docstring, context_code, class_name)
+
+        async with semaphore:
+            response = await self.model_handler.async_request(prompt)
+            return self.clean_docstring(response.strip('"""'))
+
+    def _get_method_update_prompt_large(
+        self,
+        method_details: dict,
+        docstring: str,
+        context_code: str = None,
+        class_name: str = None,
+        language: str = "python",
+    ) -> str:
         if language in ("javascript", "typescript"):
             guidelines = (
                 "Update the provided JSDoc comment for the following JavaScript/TypeScript function.\n"
@@ -372,7 +487,6 @@ class DocGen(object):
                 "- Omit Returns section if the method does not return a value.\n"
                 "- Do NOT invent parameters or behavior.\n\n"
             )
-
         prompt = (
             guidelines + f"Original docstring:\n{docstring}\n\n"
             "Method Details:\n"
@@ -405,9 +519,26 @@ class DocGen(object):
             "Return only the docstring without any quotation marks.\n"
         )
 
-        async with semaphore:
-            docstring = await self.model_handler.async_request(prompt)
-            return docstring.strip('"""')
+        return prompt
+
+    def _get_method_update_prompt_small(
+        self, method_details: dict, docstring: str, context_code: str = None, class_name: str = None
+    ) -> str:
+        prompt = (
+            "Update this Python method docstring in Google style. Return only one triple-quoted docstring.\n"
+            "Do not return code, a signature, Markdown, Attributes:, empty sections, `Returns: None`, or `Raises: None`.\n\n"
+            f"Method: {method_details['method_name']}"
+        )
+        if class_name:
+            prompt += f" in class {class_name}"
+        prompt += (
+            f"\nExisting docstring:\n{docstring}\n"
+            f"Source code (context only):\n{method_details['source_code']}\n"
+            f"Project idea (context only): {self.main_idea}\n"
+        )
+        if context_code:
+            prompt += f"Helper context (do not copy):\n{context_code}\n"
+        return prompt + "Now output only the updated docstring:"
 
     @staticmethod
     def extract_pure_docstring(gpt_response: str) -> str:
@@ -422,6 +553,8 @@ class DocGen(object):
             A properly formatted Python docstring string with triple quotes.
         """
         response = gpt_response.strip().replace("<triple quotes>", '"""')
+        response = response.replace('\\"\\"\\"', '"""').replace('\\"', '"')
+        response = response.replace('\\\\"\\\\"\\\\"', '"""').replace('\\\\"', '"')
 
         # 1 — Strip Markdown-style code block
         markdown_match = re.search(r"```[a-z]*\n([\s\S]+?)\n```", response, re.IGNORECASE)
@@ -461,6 +594,30 @@ class DocGen(object):
             return f'"""\n{cleaned}\n"""'
 
         return '"""No valid docstring found."""'
+
+    @staticmethod
+    def clean_docstring(docstring: str) -> str:
+        """Remove empty Google-style sections while preserving class Attributes sections."""
+        if not docstring:
+            return docstring
+
+        lines = docstring.splitlines()
+        result = []
+        index = 0
+        while index < len(lines):
+            section = re.match(r"^\s*(Args|Returns|Raises|Attributes):\s*$", lines[index])
+            if section:
+                next_index = index + 1
+                while next_index < len(lines) and not lines[next_index].strip():
+                    next_index += 1
+                next_line = lines[next_index].strip().lower() if next_index < len(lines) else ""
+                if not next_line or next_line == "none" or re.match(r"^(Args|Returns|Raises|Attributes):", next_line):
+                    index = next_index
+                    continue
+            result.append(lines[index])
+            index += 1
+
+        return re.sub(r"\n\s*\n\s*\n", "\n\n", "\n".join(result)).rstrip()
 
     @staticmethod
     def strip_docstring_from_body(body: str) -> str:

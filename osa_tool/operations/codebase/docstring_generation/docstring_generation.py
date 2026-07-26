@@ -57,7 +57,7 @@ class DocstringsGenerator:
 
     async def _run_async(self) -> dict:
         try:
-            rate_limit = self.config_manager.get_model_settings("docstrings").rate_limit
+            rate_limit = self.config_manager.get_model_settings("docstring").rate_limit
 
             res = self.ts.analyze_directory(self.ts.cwd)
             self._emit(EventKind.ANALYZED, target="codebase_analysis")
