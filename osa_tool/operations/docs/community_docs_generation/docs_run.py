@@ -26,6 +26,7 @@ def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMe
     generated_files: list[str] = []
     contributing = ContributingBuilder(config_manager, metadata)
     community = CommunityTemplateBuilder(config_manager, metadata)
+    platform_host = getattr(community, "host", None) or config_manager.get_git_settings().host
 
     try:
         contributing.build()
@@ -51,7 +52,7 @@ def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMe
         logger.error("Failed to generate SECURITY: %s", repr(e), exc_info=True)
         events.append(OperationEvent(kind=EventKind.FAILED, target="SECURITY", data={"error": repr(e)}))
 
-    if config_manager.get_git_settings().host in ["github", "gitlab"]:
+    if platform_host in ["github", "gitlab"]:
         for method, target, filename in [
             (community.build_pull_request, "PULL_REQUEST_TEMPLATE", "PULL_REQUEST_TEMPLATE.md"),
             (community.build_bug_issue, "ISSUE_TEMPLATE:bug", "BUG_ISSUE.md"),
@@ -66,7 +67,7 @@ def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMe
                 logger.error("Failed to generate %s: %s", target, repr(e), exc_info=True)
                 events.append(OperationEvent(kind=EventKind.FAILED, target=target, data={"error": repr(e)}))
 
-    if config_manager.get_git_settings().host == "gitlab":
+    if platform_host == "gitlab":
         try:
             community.build_vulnerability_disclosure()
             events.append(OperationEvent(kind=EventKind.GENERATED, target="VULNERABILITY_DISCLOSURE"))

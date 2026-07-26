@@ -6,7 +6,7 @@ from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.operations.codebase.docstring_generation.docgen import DocGen
 from osa_tool.operations.codebase.docstring_generation.osa_treesitter import OSA_TreeSitter
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import parse_folder_name
+from osa_tool.utils.utils import resolve_repo_path
 
 
 class DocstringsGenerator:
@@ -26,7 +26,7 @@ class DocstringsGenerator:
         self.workers = multiprocessing.cpu_count()
 
         self.repo_url = self.config_manager.get_git_settings().repository
-        self.repo_path = parse_folder_name(self.repo_url)
+        self.repo_path = str(resolve_repo_path(self.repo_url))
 
         self.dg = DocGen(self.config_manager)
         self.ts = OSA_TreeSitter(

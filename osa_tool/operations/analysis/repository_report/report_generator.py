@@ -22,7 +22,7 @@ from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonParseError
-from osa_tool.utils.utils import extract_readme_content, parse_folder_name
+from osa_tool.utils.utils import extract_readme_content, resolve_repo_path
 
 
 class TextGenerator:
@@ -34,7 +34,7 @@ class TextGenerator:
         self.metadata = metadata
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
         self.repo_url = self.config_manager.get_git_settings().repository
-        self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.base_path = str(resolve_repo_path(self.repo_url))
 
     def make_request(self) -> RepositoryReport:
         """
