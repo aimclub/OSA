@@ -6,6 +6,7 @@ import pytest
 from osa_tool.operations.analysis.paper_claims.claim_extractor import ClaimExtractor
 from osa_tool.operations.analysis.paper_claims.models import HeadingMeta, PaperSection
 from osa_tool.utils.prompts_builder import PromptLoader
+from osa_tool.utils.token_counter import count_tokens
 
 
 class FakeHandler:
@@ -31,6 +32,31 @@ class ModelTrackingFakeHandler(FakeHandler):
         response = await super().async_request(prompt, system_message, retry_delay)
         self.last_successful_model = next(self.models)
         return response
+
+
+def _parse_selection_prompt(prompt: str) -> dict:
+    marker = '{"context_sections"'
+    if marker in prompt:
+        return json.loads(prompt[prompt.index(marker) :])
+    start = prompt.index("[")
+    end = prompt.rindex("]") + 1
+    return {
+        "context_sections": [],
+        "candidate_sections": json.loads(prompt[start:end]),
+    }
+
+
+class SectionSelectionEchoHandler:
+    def __init__(self):
+        self.prompts = []
+
+    async def async_request(self, prompt, system_message=None, retry_delay=1):
+        self.prompts.append(prompt)
+        payload = _parse_selection_prompt(prompt)
+        return json.dumps(
+            [{"section_id": item["section_id"]} for item in payload["candidate_sections"]],
+            ensure_ascii=False,
+        )
 
 
 def section() -> PaperSection:
@@ -77,6 +103,53 @@ def test_deduplication_prompt_forbids_empty_output_for_non_empty_input():
     assert "If the input array is empty, return []" in prompt
     assert "If the input array is non-empty, never return []" in prompt
     assert "fully deduplicated to zero claims" not in prompt
+
+
+def test_claim_extractor_rejects_dedup_batch_size_below_two():
+    with pytest.raises(ValueError, match="at least 2"):
+        ClaimExtractor(FakeHandler([]), dedup_batch_size=1)
+
+
+@pytest.mark.asyncio
+async def test_section_selection_batches_large_heading_lists_without_dropping_candidates():
+    sections = [
+        PaperSection(
+            section_id="s001",
+            name="Method",
+            text="Parent section.",
+            heading_meta=HeadingMeta(raw="2. Method", level=1, numbering="2"),
+        )
+    ]
+    for index in range(2, 18):
+        sections.append(
+            PaperSection(
+                section_id=f"s{index:03d}",
+                name=f"Detailed implementation subsection {index} " + "token " * 30,
+                text=f"Section {index}.",
+                heading_meta=HeadingMeta(raw=f"2.{index - 1}. Detail", level=2, numbering=f"2.{index - 1}"),
+            )
+        )
+
+    system = PromptLoader().get("paper_claims.section_filter_system")
+    handler = SectionSelectionEchoHandler()
+    handler.model_settings = SimpleNamespace(
+        context_window=count_tokens(system) + 256 + 100 + 180,
+        max_tokens=100,
+        encoder="cl100k_base",
+    )
+
+    selected = await ClaimExtractor(handler)._step_1_select_sections(sections)
+
+    assert selected == [section.section_id for section in sections]
+    assert len(handler.prompts) > 1
+    payloads = [_parse_selection_prompt(prompt) for prompt in handler.prompts]
+    candidate_ids = [item["section_id"] for payload in payloads for item in payload["candidate_sections"]]
+    assert candidate_ids == [section.section_id for section in sections]
+    assert any(
+        any(item["section_id"] == "s001" for item in payload["context_sections"])
+        and all(item["section_id"] != "s001" for item in payload["candidate_sections"])
+        for payload in payloads
+    )
 
 
 @pytest.mark.asyncio

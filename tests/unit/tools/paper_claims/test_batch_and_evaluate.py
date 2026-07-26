@@ -1,6 +1,7 @@
 import json
 
 import numpy as np
+import pytest
 
 from osa_tool.tools.paper_claims.batch import build_parser, collect_pdf_inputs
 from osa_tool.tools.paper_claims.evaluate import compute_semantic_matching, load_claims
@@ -60,6 +61,12 @@ def test_batch_can_configure_dedup_batch_size():
     assert args.dedup_batch_size == 25
     assert "--dedup-batch-size" in help_text
     assert "Maximum number of extracted claims" in help_text
+    assert "Minimum: 2" in help_text
+
+
+def test_batch_rejects_dedup_batch_size_below_two():
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(["paper.pdf", "--dedup-batch-size", "1"])
 
 
 def test_load_claims_accepts_clean_schema(tmp_path):

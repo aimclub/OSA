@@ -152,6 +152,8 @@ class MarkerDocumentConverter:
         marker_version: str | None = None,
     ) -> None:
         self._uses_default_factory = converter_factory is None
+        if converter_factory is not None and marker_version is None:
+            raise ValueError("marker_version is required when using a custom Marker converter factory")
         self.converter_factory = converter_factory or _default_converter_factory
         if marker_version is not None:
             self.marker_version = marker_version
@@ -357,6 +359,11 @@ class MarkerDocumentConverter:
         else:
             logger.info("Initializing Marker converter for %s chunks", len(chunks))
             converter, render_text, marker_version = self.converter_factory(options)
+            if not self._uses_default_factory and marker_version != self.marker_version:
+                raise PdfConversionError(
+                    "Custom Marker converter factory returned version "
+                    f"{marker_version!r}, but marker_version={self.marker_version!r} was used for the cache key"
+                )
 
         if options.force_refresh:
             shutil.rmtree(cache_dir, ignore_errors=True)

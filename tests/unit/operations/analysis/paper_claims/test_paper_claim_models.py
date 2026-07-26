@@ -1,8 +1,12 @@
+import pytest
+from pydantic import ValidationError
+
 from osa_tool.operations.analysis.paper_claims.models import (
     ClaimExtractionResult,
     DedupSelection,
     ExtractedClaim,
     ExtractionMetadata,
+    PipelineOptions,
 )
 
 
@@ -52,3 +56,8 @@ def test_legacy_serialization_can_include_debug_step3_selection():
 
     assert set(legacy) == {"result", "meta", "debug"}
     assert legacy["debug"]["step3_selection"] == [{"claim_id": "c0001", "claim": "A claim.", "contradiction": False}]
+
+
+def test_pipeline_options_reject_dedup_batch_size_below_two():
+    with pytest.raises(ValidationError):
+        PipelineOptions(dedup_batch_size=1)

@@ -14,6 +14,13 @@ from osa_tool.operations.analysis.paper_claims.pipeline import PaperClaimPipelin
 from osa_tool.utils.logger import logger, setup_logging
 
 
+def _dedup_batch_size(value: str) -> int:
+    size = int(value)
+    if size < 2:
+        raise argparse.ArgumentTypeError("--dedup-batch-size must be at least 2")
+    return size
+
+
 def collect_pdf_inputs(paths: list[Path]) -> tuple[list[Path], list[str]]:
     collected: set[Path] = set()
     failures: list[str] = []
@@ -42,11 +49,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-retries", type=int, default=5)
     parser.add_argument(
         "--dedup-batch-size",
-        type=int,
+        type=_dedup_batch_size,
         default=100,
         help=(
             "Maximum number of extracted claims to send in one deduplication request. "
-            "Smaller values reduce LLM context/output pressure."
+            "Smaller values reduce LLM context/output pressure. Minimum: 2."
         ),
     )
     parser.add_argument(

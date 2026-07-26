@@ -42,12 +42,137 @@ class ClaimExtractor:
     ) -> None:
         if max_retries <= 0:
             raise ValueError("max_retries must be greater than zero")
-        if dedup_batch_size <= 0:
-            raise ValueError("dedup_batch_size must be greater than zero")
+        if dedup_batch_size < 2:
+            raise ValueError("dedup_batch_size must be at least 2")
         self.handler = handler
         self.prompts = prompts or PromptLoader()
         self.max_retries = max_retries
         self.dedup_batch_size = dedup_batch_size
+
+    def _input_token_budget(self, system: str) -> tuple[int, str] | None:
+        settings = getattr(self.handler, "model_settings", None)
+        if settings is None or not hasattr(settings, "context_window") or not hasattr(settings, "max_tokens"):
+            return None
+        encoder = getattr(settings, "encoder", "cl100k_base")
+        total_input_budget = getattr(settings, "context_window", 0) - getattr(settings, "max_tokens", 0) - 256
+        if total_input_budget <= 0:
+            return None
+        try:
+            system_tokens = count_tokens(system, encoder)
+        except Exception as exc:
+            logger.warning("Token encoder unavailable; section selection batching disabled: %s", exc)
+            return None
+        budget = total_input_budget - system_tokens
+        if budget <= 0:
+            return None
+        return budget, encoder
+
+    @staticmethod
+    def _section_option(section: PaperSection) -> dict[str, Any]:
+        return {
+            "section_id": section.section_id,
+            "name": section.name,
+            "heading_meta": section.heading_meta.model_dump(mode="json"),
+        }
+
+    @staticmethod
+    def _section_ancestors(sections: list[PaperSection]) -> dict[str, list[PaperSection]]:
+        ancestors: dict[str, list[PaperSection]] = {}
+        stack: list[PaperSection] = []
+        for section in sections:
+            while stack and stack[-1].heading_meta.level >= section.heading_meta.level:
+                stack.pop()
+            ancestors[section.section_id] = list(stack)
+            stack.append(section)
+        return ancestors
+
+    def _section_selection_context(
+        self,
+        candidate_sections: list[PaperSection],
+        ancestors_by_id: dict[str, list[PaperSection]],
+    ) -> list[PaperSection]:
+        candidate_ids = {section.section_id for section in candidate_sections}
+        context: list[PaperSection] = []
+        seen: set[str] = set()
+        for section in candidate_sections:
+            for ancestor in ancestors_by_id.get(section.section_id, []):
+                if ancestor.section_id in candidate_ids or ancestor.section_id in seen:
+                    continue
+                context.append(ancestor)
+                seen.add(ancestor.section_id)
+        return context
+
+    def _section_selection_prompt(
+        self,
+        *,
+        candidate_sections: list[PaperSection],
+        context_sections: list[PaperSection],
+    ) -> str:
+        candidate_options = [self._section_option(section) for section in candidate_sections]
+        if not context_sections:
+            return (
+                "Below is the list of extracted sections. Each item includes section_id, cleaned heading name, and heading_meta.\n"
+                + json.dumps(candidate_options, ensure_ascii=False)
+                + "\nFilter the list according to the rules and return ONLY a JSON array of objects with section_id in original order."
+            )
+        payload = {
+            "context_sections": [self._section_option(section) for section in context_sections],
+            "candidate_sections": candidate_options,
+        }
+        return (
+            "Below is a bounded batch of extracted sections. Each item includes section_id, cleaned heading name, and heading_meta.\n"
+            "Use context_sections only to apply parent-child hierarchy rules. Do not return context-only section IDs.\n"
+            "Filter candidate_sections according to the rules and return ONLY a JSON array of objects with section_id in original order.\n"
+            "Return only section_id values that appear in candidate_sections.\n"
+            + json.dumps(payload, ensure_ascii=False)
+        )
+
+    def _section_selection_batches(
+        self,
+        sections: list[PaperSection],
+        system: str,
+    ) -> list[tuple[list[PaperSection], list[PaperSection]]]:
+        budget_info = self._input_token_budget(system)
+        if budget_info is None:
+            return [([], sections)]
+
+        user_budget, encoder = budget_info
+        ancestors_by_id = self._section_ancestors(sections)
+        batches: list[tuple[list[PaperSection], list[PaperSection]]] = []
+        current: list[PaperSection] = []
+
+        def prompt_for(candidate_sections: list[PaperSection]) -> str:
+            return self._section_selection_prompt(
+                candidate_sections=candidate_sections,
+                context_sections=self._section_selection_context(candidate_sections, ancestors_by_id),
+            )
+
+        for section in sections:
+            candidate = [*current, section]
+            try:
+                token_count = count_tokens(prompt_for(candidate), encoder)
+            except Exception as exc:
+                logger.warning("Token counting failed; section selection batching disabled: %s", exc)
+                return [([], sections)]
+            if current and token_count > user_budget:
+                batches.append((self._section_selection_context(current, ancestors_by_id), current))
+                current = [section]
+                try:
+                    single_token_count = count_tokens(prompt_for(current), encoder)
+                except Exception as exc:
+                    logger.warning("Token counting failed; section selection batching disabled: %s", exc)
+                    return [([], sections)]
+                if single_token_count > user_budget:
+                    logger.warning(
+                        "Single section selection prompt for %s exceeds input budget; sending it unchanged",
+                        section.section_id,
+                    )
+            else:
+                current = candidate
+
+        if current:
+            batches.append((self._section_selection_context(current, ancestors_by_id), current))
+        return batches
 
     def _section_chunks(self, section: PaperSection, system: str) -> list[PaperSection]:
         """Split a section to fit the handler input budget with a small overlap."""
@@ -221,31 +346,47 @@ class ClaimExtractor:
             "Claim extraction step 1/3: selecting relevant sections from %s sections",
             len(sections),
         )
+        system = self.prompts.get("paper_claims.section_filter_system")
+        batches = self._section_selection_batches(sections, system)
+        if len(batches) > 1:
+            logger.info(
+                "Claim extraction step 1/3: split section selection into %s batches to fit model input budget",
+                len(batches),
+            )
+
+        selected_ids: list[str] = []
+        for batch_index, (context_sections, candidate_sections) in enumerate(batches, start=1):
+            candidate_by_id = {section.section_id: section for section in candidate_sections}
+            request_name = "Section selection"
+            if len(batches) > 1:
+                request_name = f"Section selection batch {batch_index}/{len(batches)}"
+
+            def validate_sections(items: list[SelectedSectionResponse]) -> None:
+                ids = [item.section_id for item in items]
+                if len(ids) != len(set(ids)) or any(item not in candidate_by_id for item in ids):
+                    raise ValueError("Selection contains duplicate or unknown section IDs")
+
+            selected = await self._request_validated(
+                self._section_selection_prompt(
+                    candidate_sections=candidate_sections,
+                    context_sections=context_sections,
+                ),
+                system,
+                TypeAdapter(list[SelectedSectionResponse]),
+                validate_sections,
+                request_name=request_name,
+            )
+            selected_ids.extend(item.section_id for item in selected)
+            logger.info(
+                "%s completed: selected %s/%s candidate sections",
+                request_name,
+                len(selected),
+                len(candidate_sections),
+            )
+
         section_by_id = {section.section_id: section for section in sections}
-        section_options = [
-            {
-                "section_id": section.section_id,
-                "name": section.name,
-                "heading_meta": section.heading_meta.model_dump(mode="json"),
-            }
-            for section in sections
-        ]
-
-        def validate_sections(items: list[SelectedSectionResponse]) -> None:
-            ids = [item.section_id for item in items]
-            if len(ids) != len(set(ids)) or any(item not in section_by_id for item in ids):
-                raise ValueError("Selection contains duplicate or unknown section IDs")
-
-        selected = await self._request_validated(
-            "Below is the list of extracted sections. Each item includes section_id, cleaned heading name, and heading_meta.\n"
-            + json.dumps(section_options, ensure_ascii=False)
-            + "\nFilter the list according to the rules and return ONLY a JSON array of objects with section_id in original order.",
-            self.prompts.get("paper_claims.section_filter_system"),
-            TypeAdapter(list[SelectedSectionResponse]),
-            validate_sections,
-            request_name="Section selection",
-        )
-        selected_ids = [item.section_id for item in selected]
+        if len(selected_ids) != len(set(selected_ids)) or any(item not in section_by_id for item in selected_ids):
+            raise ClaimExtractionError("Section selection contains duplicate or unknown section IDs after merging")
         selected_set = set(selected_ids)
         ordered_ids = [section.section_id for section in sections if section.section_id in selected_set]
         logger.info(

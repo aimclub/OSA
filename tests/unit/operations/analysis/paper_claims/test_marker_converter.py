@@ -61,6 +61,40 @@ def test_converter_reuses_one_instance_and_then_uses_cache(tmp_path):
     assert (first.cache_dir / "COMPLETE").exists()
 
 
+def test_custom_converter_factory_requires_explicit_marker_version():
+    with pytest.raises(ValueError, match="marker_version is required"):
+        MarkerDocumentConverter(lambda _: (object(), lambda rendered: str(rendered), "custom-v1"))
+
+
+def test_custom_converter_factory_version_must_match_cache_key_version(tmp_path):
+    converter = MarkerDocumentConverter(
+        lambda _: (object(), lambda rendered: "# Method\nBody", "custom-v2"),
+        marker_version="custom-v1",
+    )
+
+    with pytest.raises(PdfConversionError, match="used for the cache key"):
+        converter.convert(make_chunks(tmp_path), MarkerOptions(cache_root=tmp_path / "cache"))
+
+
+def test_custom_converter_version_changes_do_not_reuse_stale_cache(tmp_path):
+    def factory(version):
+        class FakeConverter:
+            def __call__(self, path):
+                return f"# Method\nConverted with {version}"
+
+        return lambda _options: (FakeConverter(), lambda rendered: rendered, version)
+
+    chunks = make_chunks(tmp_path)
+    options = MarkerOptions(cache_root=tmp_path / "cache")
+
+    first = MarkerDocumentConverter(factory("custom-v1"), marker_version="custom-v1").convert(chunks, options)
+    second = MarkerDocumentConverter(factory("custom-v2"), marker_version="custom-v2").convert(chunks, options)
+
+    assert first.cache_dir != second.cache_dir
+    assert second.cache_hit is False
+    assert "Converted with custom-v2" in second.markdown
+
+
 def test_converter_does_not_accept_partial_empty_output(tmp_path):
     class FakeConverter:
         def __call__(self, path):
