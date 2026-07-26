@@ -59,10 +59,14 @@ def compute_semantic_matching(
     similarities = np.dot(llm_embeddings, human_embeddings.T)
 
     if matching == "one_to_one":
-        rows, columns = linear_sum_assignment(1 - similarities)
+        # Cardinality has priority over similarity: one valid edge is worth more
+        # than the total possible similarity difference across an assignment.
+        valid = similarities >= threshold
+        cardinality_bonus = min(similarities.shape) + 1
+        scores = np.where(valid, cardinality_bonus + similarities, 0.0)
+        rows, columns = linear_sum_assignment(-scores)
         true_positives = sum(1 for row, column in zip(rows, columns) if similarities[row, column] >= threshold)
         false_positives = len(llm_claims) - true_positives
-        false_negatives = len(human_claims) - true_positives
     else:
         best_indices = np.argmax(similarities, axis=1)
         best_scores = similarities[np.arange(similarities.shape[0]), best_indices]
@@ -70,10 +74,10 @@ def compute_semantic_matching(
         true_positives = int(len(matched_rows))
         false_positives = len(llm_claims) - true_positives
         covered_humans = {int(best_indices[row]) for row in matched_rows}
-        false_negatives = len(human_claims) - len(covered_humans)
 
     precision = true_positives / (true_positives + false_positives) if llm_claims else 0.0
-    recall = true_positives / (true_positives + false_negatives) if human_claims else 0.0
+    recall_numerator = true_positives if matching == "one_to_one" else len(covered_humans)
+    recall = recall_numerator / len(human_claims) if human_claims else 0.0
     f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
     return {
         "precision": round(float(precision), 4),

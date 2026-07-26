@@ -1,5 +1,7 @@
 import json
 
+import numpy as np
+
 from osa_tool.tools.paper_claims.batch import build_parser, collect_pdf_inputs
 from osa_tool.tools.paper_claims.evaluate import compute_semantic_matching, load_claims
 
@@ -74,3 +76,38 @@ def test_empty_semantic_matching_does_not_load_optional_dependencies():
 
     assert metrics["num_matched"] == 0
     assert metrics["matching"] == "many_to_one"
+
+
+class FakeEmbeddingModel:
+    def __init__(self, embeddings):
+        self.embeddings = iter(embeddings)
+
+    def encode(self, *_args, **_kwargs):
+        return next(self.embeddings)
+
+
+def test_many_to_one_recall_counts_unique_human_matches():
+    llm = np.array([[1.0, 0.0], [1.0, 0.0], [1.0, 0.0]])
+    human = np.array([[1.0, 0.0], [0.0, 1.0]])
+    metrics = compute_semantic_matching(["a", "b", "c"], ["x", "y"], model=FakeEmbeddingModel([llm, human]))
+
+    assert metrics["precision"] == 1.0
+    assert metrics["recall"] == 0.5
+    assert metrics["f1"] == 0.6667
+
+
+def test_one_to_one_prioritizes_number_of_threshold_matches():
+    # Directly use unit vectors whose dot products create two valid diagonal
+    # edges while the highest-similarity cross edge blocks them under a plain
+    # maximum-similarity assignment.
+    llm = np.eye(2)
+    human = np.array([[1.0, 0.7], [0.8, 0.8]])
+    metrics = compute_semantic_matching(
+        ["a", "b"],
+        ["x", "y"],
+        threshold=0.75,
+        matching="one_to_one",
+        model=FakeEmbeddingModel([llm, human]),
+    )
+
+    assert metrics["num_matched"] == 2

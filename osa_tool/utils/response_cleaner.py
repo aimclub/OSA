@@ -9,9 +9,28 @@ class JsonProcessor:
 
     @staticmethod
     def _extract_from_fence(text: str) -> str | None:
-        match = re.search(r"```(?:json)?\s*(.*?)\s*```", text, flags=re.IGNORECASE | re.DOTALL)
-        if match:
-            return match.group(1).strip()
+        candidates: list[tuple[bool, str]] = []
+        for match in re.finditer(r"```([^\n`]*)\n(.*?)```", text, flags=re.DOTALL):
+            language = match.group(1).strip().lower()
+            if language not in {"", "json"}:
+                continue
+            candidate = match.group(2).strip()
+            spans = [
+                span for char in ("{", "[") if (span := JsonProcessor._find_balanced_span(candidate, char)) is not None
+            ]
+            if not spans:
+                continue
+            start, end = min(spans, key=lambda span: span[0])
+            payload = candidate[start : end + 1]
+            try:
+                json.loads(payload)
+            except json.JSONDecodeError:
+                continue
+            candidates.append((language == "json", payload))
+        for explicitly_json in (True, False):
+            for is_json, payload in candidates:
+                if is_json == explicitly_json:
+                    return payload
         return None
 
     @staticmethod
@@ -61,10 +80,6 @@ class JsonProcessor:
         # Strip raw control characters that are invalid in JSON string values.
         # Preserves \t (0x09), \n (0x0A), \r (0x0D) which JSON parsers accept unescaped.
         text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", text)
-        fenced = JsonProcessor._extract_from_fence(text)
-        if fenced:
-            text = fenced
-
         replacements = {"None": "null", "True": "true", "False": "false"}
         for key, value in replacements.items():
             text = text.replace(key, value)
@@ -72,6 +87,9 @@ class JsonProcessor:
         # remove trailing commas before closing braces/brackets
         text = re.sub(r",\s*([}\]])", r"\1", text)
         text = text.strip()
+        fenced = JsonProcessor._extract_from_fence(text)
+        if fenced:
+            text = fenced
 
         preferred: list[str]
         if expected_type is list:
@@ -79,7 +97,9 @@ class JsonProcessor:
         elif expected_type is dict:
             preferred = ["{"]
         else:
-            preferred = ["[", "{"]
+            # With no type information, preserve the outermost/earliest JSON root.
+            starts = [(text.find(char), char) for char in ("{", "[") if text.find(char) >= 0]
+            preferred = [char for _index, char in sorted(starts)]
 
         for open_char in preferred + [c for c in ["[", "{"] if c not in preferred]:
             span = JsonProcessor._find_balanced_span(text, open_char)
@@ -123,7 +143,8 @@ class JsonProcessor:
             Parsed content (dict | list | str) depending on context.
         """
         try:
-            cleaned = cls.process_text(text, expected_type=expected_type)
+            # expected_type applies after expected_key lookup, not to the keyed envelope.
+            cleaned = cls.process_text(text, expected_type=dict if expected_key else expected_type)
             parsed = json.loads(cleaned)
 
             if expected_key:

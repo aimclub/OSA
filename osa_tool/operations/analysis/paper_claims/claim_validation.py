@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import re
 import unicodedata
+import re
 from dataclasses import dataclass
 
 from rapidfuzz import fuzz, process
 
-from osa_tool.operations.analysis.paper_claims.claim_schemas import ClaimCandidateResponse
+from osa_tool.operations.analysis.paper_claims.claim_schemas import (
+    ClaimCandidateResponse,
+)
 from osa_tool.operations.analysis.paper_claims.models import PaperSection
 from osa_tool.utils.logger import logger
 
@@ -106,6 +109,14 @@ def _find_fuzzy_source_match(section_text: str, original_text: str) -> _SourceTe
         return None
 
     best_text, best_score, _best_index = matches[0]
+
+    # High edit similarity can conceal a materially different measurement.
+    # Never "repair" numbers or identifiers containing digits.
+    def semantic_tokens(value: str) -> list[str]:
+        return re.findall(r"(?<!\w)[+-]?(?:\d+(?:[.,]\d+)?(?:e[+-]?\d+)?|\w*\d\w*)(?!\w)", value, re.I)
+
+    if semantic_tokens(original_text) != semantic_tokens(best_text):
+        return None
     if len(matches) > 1:
         second_text, second_score, _second_index = matches[1]
         if second_text != best_text and best_score - second_score <= _FUZZY_SOURCE_AMBIGUITY_MARGIN:
@@ -154,6 +165,11 @@ def _script_profile(text: str) -> _ScriptProfile:
             (script for script, markers in script_markers.items() if any(marker in unicode_name for marker in markers)),
             None,
         )
+        if script is None and unicode_name:
+            # Unicode letter names normally begin with their script (for
+            # example GREEK and DEVANAGARI), so retain scripts not in the
+            # small set of aliases above instead of treating them as unknown.
+            script = unicode_name.split()[0]
         if script:
             scripts[script] = scripts.get(script, 0) + 1
     if not scripts:
