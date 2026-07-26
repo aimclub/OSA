@@ -77,11 +77,14 @@ async def test_extract_repairs_invalid_source_text_and_deduplicates():
             '[{"section_id":"s001"}]',
             json.dumps([{**valid_claim, "original_text": "invented sentence"}]),
             json.dumps([valid_claim]),
-            '[{"claim_id":"c0001","claim":"The model uses BERT-base without fine-tuning.",' '"contradiction":false}]',
+            '[{"claim_id":"c0001","claim":"The model uses BERT-base without fine-tuning.",'
+            '"contradiction":false}]',
         ]
     )
 
-    result = await ClaimExtractor(handler, max_retries=2).extract([section()], source="paper.pdf", model="test")
+    result = await ClaimExtractor(handler, max_retries=2).extract(
+        [section()], source="paper.pdf", model="test"
+    )
 
     assert len(result.claims) == 1
     assert result.claims[0].section_name == "Method"
@@ -104,7 +107,8 @@ async def test_extract_accepts_layout_only_source_text_differences():
         [
             '[{"section_id":"s001"}]',
             json.dumps([candidate]),
-            '[{"claim_id":"c0001","claim":"The model uses BERT-base without fine-tuning.",' '"contradiction":false}]',
+            '[{"claim_id":"c0001","claim":"The model uses BERT-base without fine-tuning.",'
+            '"contradiction":false}]',
         ]
     )
 
@@ -179,7 +183,13 @@ async def test_extract_repairs_minor_original_text_word_drift_with_fuzzy_source_
             '[{"section_id":"s001"}]',
             json.dumps([candidate], ensure_ascii=False),
             json.dumps(
-                [{"claim_id": "c0001", "claim": candidate["claim"], "contradiction": False}],
+                [
+                    {
+                        "claim_id": "c0001",
+                        "claim": candidate["claim"],
+                        "contradiction": False,
+                    }
+                ],
                 ensure_ascii=False,
             ),
         ]
@@ -233,7 +243,13 @@ async def test_extract_accepts_russian_claim_for_short_latin_technical_evidence(
             '[{"section_id":"s001"}]',
             json.dumps([candidate], ensure_ascii=False),
             json.dumps(
-                [{"claim_id": "c0001", "claim": candidate["claim"], "contradiction": False}],
+                [
+                    {
+                        "claim_id": "c0001",
+                        "claim": candidate["claim"],
+                        "contradiction": False,
+                    }
+                ],
                 ensure_ascii=False,
             ),
         ]
@@ -248,7 +264,8 @@ async def test_extract_accepts_russian_claim_for_short_latin_technical_evidence(
 @pytest.mark.asyncio
 async def test_extract_drops_bad_claim_after_retries_and_keeps_valid_claim():
     source_text = (
-        "The model uses BERT-base without fine-tuning. " "The retrieval pipeline uses BM25 for candidate selection."
+        "The model uses BERT-base without fine-tuning. "
+        "The retrieval pipeline uses BM25 for candidate selection."
     )
     paper_section = section().model_copy(update={"text": source_text})
     valid_claim = {
@@ -272,7 +289,13 @@ async def test_extract_drops_bad_claim_after_retries_and_keeps_valid_claim():
             repeated_bad_response,
             repeated_bad_response,
             json.dumps(
-                [{"claim_id": "c0001", "claim": valid_claim["claim"], "contradiction": False}],
+                [
+                    {
+                        "claim_id": "c0001",
+                        "claim": valid_claim["claim"],
+                        "contradiction": False,
+                    }
+                ],
                 ensure_ascii=False,
             ),
         ]
@@ -299,7 +322,8 @@ async def test_extract_repairs_claim_written_in_a_different_script():
             '[{"section_id":"s001"}]',
             json.dumps([chinese_claim], ensure_ascii=False),
             json.dumps([valid_claim]),
-            '[{"claim_id":"c0001","claim":"The model uses BERT-base without fine-tuning.",' '"contradiction":false}]',
+            '[{"claim_id":"c0001","claim":"The model uses BERT-base without fine-tuning.",'
+            '"contradiction":false}]',
         ]
     )
 
@@ -319,7 +343,8 @@ async def test_deduplication_repairs_rewritten_claim_text():
         "verifiability": "high",
     }
     correct_dedup = (
-        '[{"claim_id":"c0001","claim":"The model uses BERT-base without fine-tuning.",' '"contradiction":false}]'
+        '[{"claim_id":"c0001","claim":"The model uses BERT-base without fine-tuning.",'
+        '"contradiction":false}]'
     )
     handler = FakeHandler(
         [
@@ -347,7 +372,8 @@ async def test_deduplication_repairs_empty_response_for_non_empty_input():
         "verifiability": "high",
     }
     correct_dedup = (
-        '[{"claim_id":"c0001","claim":"The model uses BERT-base without fine-tuning.",' '"contradiction":false}]'
+        '[{"claim_id":"c0001","claim":"The model uses BERT-base without fine-tuning.",'
+        '"contradiction":false}]'
     )
     handler = FakeHandler(
         [
@@ -366,7 +392,10 @@ async def test_deduplication_repairs_empty_response_for_non_empty_input():
 
 @pytest.mark.asyncio
 async def test_deduplication_falls_back_after_retries_and_keeps_original_claims():
-    source_text = "The pipeline uses chunked PDF processing. " "The pipeline caches Marker Markdown output."
+    source_text = (
+        "The pipeline uses chunked PDF processing. "
+        "The pipeline caches Marker Markdown output."
+    )
     paper_section = section().model_copy(update={"text": source_text})
     candidates = [
         {
@@ -438,18 +467,57 @@ async def test_batched_deduplication_sends_multiple_requests_and_preserves_order
             json.dumps(candidates),
             json.dumps(
                 [
-                    {"claim_id": "c0001", "claim": candidates[0]["claim"], "contradiction": False},
-                    {"claim_id": "c0002", "claim": candidates[1]["claim"], "contradiction": False},
+                    {
+                        "claim_id": "c0001",
+                        "claim": candidates[0]["claim"],
+                        "contradiction": False,
+                    },
+                    {
+                        "claim_id": "c0002",
+                        "claim": candidates[1]["claim"],
+                        "contradiction": False,
+                    },
                 ]
             ),
-            json.dumps([{"claim_id": "c0003", "claim": candidates[2]["claim"], "contradiction": False}]),
+            json.dumps(
+                [
+                    {
+                        "claim_id": "c0003",
+                        "claim": candidates[2]["claim"],
+                        "contradiction": False,
+                    }
+                ]
+            ),
+            json.dumps(
+                [
+                    {
+                        "claim_id": "c0001",
+                        "claim": candidates[0]["claim"],
+                        "contradiction": False,
+                    },
+                    {
+                        "claim_id": "c0003",
+                        "claim": candidates[2]["claim"],
+                        "contradiction": False,
+                    },
+                ]
+            ),
+            json.dumps(
+                [
+                    {
+                        "claim_id": "c0002",
+                        "claim": candidates[1]["claim"],
+                        "contradiction": False,
+                    }
+                ]
+            ),
         ]
     )
 
     result = await ClaimExtractor(handler, dedup_batch_size=2).extract([paper_section])
 
     assert [claim.claim_id for claim in result.claims] == ["c0001", "c0002", "c0003"]
-    assert len(handler.prompts) == 4
+    assert len(handler.prompts) == 6
     assert '"claim_id": "c0001"' in handler.prompts[2]
     assert '"claim_id": "c0003"' in handler.prompts[3]
 
@@ -491,18 +559,32 @@ async def test_failed_deduplication_batch_does_not_erase_successful_batches():
             json.dumps(candidates),
             json.dumps(
                 [
-                    {"claim_id": "c0001", "claim": candidates[0]["claim"], "contradiction": False},
-                    {"claim_id": "c0002", "claim": candidates[1]["claim"], "contradiction": False},
+                    {
+                        "claim_id": "c0001",
+                        "claim": candidates[0]["claim"],
+                        "contradiction": False,
+                    },
+                    {
+                        "claim_id": "c0002",
+                        "claim": candidates[1]["claim"],
+                        "contradiction": False,
+                    },
                 ]
             ),
             "[]",
         ]
     )
 
-    result = await ClaimExtractor(handler, max_retries=1, dedup_batch_size=2).extract([paper_section])
+    result = await ClaimExtractor(handler, max_retries=1, dedup_batch_size=2).extract(
+        [paper_section]
+    )
 
     assert [claim.claim_id for claim in result.claims] == ["c0001", "c0002", "c0003"]
-    assert [item.claim_id for item in result.deduplication] == ["c0001", "c0002", "c0003"]
+    assert [item.claim_id for item in result.deduplication] == [
+        "c0001",
+        "c0002",
+        "c0003",
+    ]
 
 
 @pytest.mark.asyncio
@@ -524,7 +606,9 @@ async def test_extract_drops_claim_with_unmatched_source_text_after_final_attemp
 async def test_empty_section_selection_is_a_valid_empty_result():
     handler = FakeHandler(["[]"])
     handler.last_successful_model = "actual-model"
-    result = await ClaimExtractor(handler).extract([section()], model="configured-model")
+    result = await ClaimExtractor(handler).extract(
+        [section()], model="configured-model"
+    )
 
     assert result.claims == []
     assert result.deduplication == []

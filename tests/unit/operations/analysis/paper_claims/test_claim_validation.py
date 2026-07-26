@@ -1,6 +1,8 @@
 import pytest
 
-from osa_tool.operations.analysis.paper_claims.claim_schemas import ClaimCandidateResponse
+from osa_tool.operations.analysis.paper_claims.claim_schemas import (
+    ClaimCandidateResponse,
+)
 from osa_tool.operations.analysis.paper_claims.claim_validation import (
     partition_valid_claim_candidates,
     validate_claim_candidate,
@@ -38,7 +40,9 @@ def test_validate_claim_candidate_accepts_exact_source_text():
         original_text="The model uses BERT-base without fine-tuning.",
     )
 
-    validate_claim_candidate(candidate, section=make_section("The model uses BERT-base without fine-tuning."))
+    validate_claim_candidate(
+        candidate, section=make_section("The model uses BERT-base without fine-tuning.")
+    )
 
     assert candidate.original_text == "The model uses BERT-base without fine-tuning."
 
@@ -62,15 +66,40 @@ def test_validate_claim_candidate_repairs_minor_source_text_drift():
     assert candidate.original_text == source_text
 
 
+def test_validate_claim_candidate_rejects_numeric_drift_in_fuzzy_evidence():
+    source = "The measured significance threshold was 0.001 for every experiment in the evaluation."
+    candidate = make_candidate(
+        claim="The significance threshold was 0.01.",
+        original_text="The measured significance threshold was 0.01 for every experiment in the evaluation.",
+    )
+
+    with pytest.raises(ValueError, match="original_text is not present"):
+        validate_claim_candidate(candidate, section=make_section(source))
+
+
+def test_validate_claim_candidate_rejects_translation_from_devanagari():
+    source = "यह मॉडल प्रशिक्षण के लिए बड़े डेटासेट का उपयोग करता है।"
+    candidate = make_candidate(
+        claim="The model uses a large training dataset.", original_text=source
+    )
+
+    with pytest.raises(ValueError, match="plausible language script"):
+        validate_claim_candidate(candidate, section=make_section(source))
+
+
 def test_partition_valid_claim_candidates_returns_errors_without_raising():
     section = make_section("The model uses BERT-base without fine-tuning.")
     valid_candidate = make_candidate(
         claim="The model uses BERT-base without fine-tuning.",
         original_text="The model uses BERT-base without fine-tuning.",
     )
-    invalid_candidate = make_candidate(claim="Invented.", original_text="Invented sentence.")
+    invalid_candidate = make_candidate(
+        claim="Invented.", original_text="Invented sentence."
+    )
 
-    valid, invalid = partition_valid_claim_candidates([invalid_candidate, valid_candidate], section=section)
+    valid, invalid = partition_valid_claim_candidates(
+        [invalid_candidate, valid_candidate], section=section
+    )
 
     assert valid == [valid_candidate]
     assert len(invalid) == 1
@@ -84,7 +113,10 @@ def test_validate_claim_candidate_rejects_implausible_claim_script():
     )
 
     with pytest.raises(ValueError, match="plausible language script"):
-        validate_claim_candidate(candidate, section=make_section("The model uses BERT-base without fine-tuning."))
+        validate_claim_candidate(
+            candidate,
+            section=make_section("The model uses BERT-base without fine-tuning."),
+        )
 
 
 def test_validate_claim_candidate_accepts_section_script_for_short_technical_evidence():
