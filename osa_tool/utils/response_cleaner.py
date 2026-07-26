@@ -146,19 +146,27 @@ class JsonProcessor:
         try:
             # expected_type applies after expected_key lookup, not to the keyed envelope.
             cleaned = cls.process_text(text, expected_type=dict if expected_key else expected_type)
-            parsed = json.loads(cleaned)
+        except Exception as exc:
+            logger.error(f"JSON extraction failed: {exc}")
+            raise JsonParseError(str(exc)) from exc
 
-            if expected_key:
-                parsed = parsed.get(expected_key, parsed)
+        last_error: Exception | None = None
+        for candidate in (cleaned, cls._fix_unterminated_strings(cleaned)):
+            try:
+                parsed = json.loads(candidate)
 
-            if expected_type and not isinstance(parsed, expected_type):
-                raise TypeError(f"Expected {expected_type}, got {type(parsed)}")
+                if expected_key:
+                    parsed = parsed.get(expected_key, parsed)
 
-            return parsed
+                if expected_type and not isinstance(parsed, expected_type):
+                    raise TypeError(f"Expected {expected_type}, got {type(parsed)}")
 
-        except Exception as e:
-            logger.error(f"JSON strict parse failed: {e}")
-            raise JsonParseError(str(e)) from e
+                return parsed
+
+            except Exception as exc:
+                last_error = exc
+                logger.error(f"JSON strict parse failed: {exc}")
+        raise JsonParseError(str(last_error)) from last_error
 
     @staticmethod
     def _fix_unterminated_strings(text: str) -> str:

@@ -16,7 +16,13 @@ def load_claims(
     human_data = json.loads(Path(human_path).read_text(encoding="utf-8"))
     llm_items = llm_data.get("result", llm_data.get("claims", []))
     llm_claims = [str(item[llm_field]).strip() for item in llm_items if item.get(llm_field)]
-    human_claims = [str(item).strip() for item in human_data.get("claims", []) if str(item).strip()]
+    human_claims: list[str] = []
+    for index, item in enumerate(human_data.get("claims", []), start=1):
+        if not isinstance(item, str):
+            raise ValueError(f"Human annotation claim #{index} must be a string, got {type(item).__name__}")
+        claim = item.strip()
+        if claim:
+            human_claims.append(claim)
     return llm_claims, human_claims
 
 

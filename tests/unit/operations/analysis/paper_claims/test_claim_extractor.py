@@ -152,6 +152,19 @@ async def test_section_selection_batches_large_heading_lists_without_dropping_ca
     )
 
 
+def test_section_chunks_token_count_non_latin_text_before_skipping_split():
+    text = "🙂" * 40
+    paper_section = section().model_copy(update={"text": text})
+    handler = FakeHandler([])
+    handler.model_settings = SimpleNamespace(context_window=410, max_tokens=100, encoder="cl100k_base")
+
+    chunks = ClaimExtractor(handler)._section_chunks(paper_section, system="")
+
+    assert len(text) < 410 - 100 - 256
+    assert count_tokens(text, "cl100k_base") > 410 - 100 - 256
+    assert len(chunks) > 1
+
+
 @pytest.mark.asyncio
 async def test_extract_repairs_invalid_source_text_and_deduplicates():
     valid_claim = {

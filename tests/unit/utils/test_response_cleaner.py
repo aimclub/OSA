@@ -12,3 +12,11 @@ def test_keyed_list_type_applies_after_object_lookup():
 def test_non_json_fence_does_not_hide_later_json():
     response = '```python\nprint("example")\n```\n[{"answer": true}]'
     assert JsonProcessor.parse(response, expected_type=list) == [{"answer": True}]
+
+
+def test_parse_repairs_unterminated_string_before_failing():
+    assert JsonProcessor.parse('{"name":"value}', expected_type=dict) == {"name": "value"}
+
+
+def test_parse_repairs_unquoted_string_values():
+    assert JsonProcessor.parse('{"name":value}', expected_type=dict) == {"name": "value"}

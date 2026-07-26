@@ -181,10 +181,6 @@ class ClaimExtractor:
             return [section]
         encoder = getattr(settings, "encoder", "cl100k_base")
         total_input_budget = getattr(settings, "context_window", 0) - getattr(settings, "max_tokens", 0) - 256
-        # A character is never less conservative than a token for ordinary
-        # text; avoid loading an encoder at all for obviously short sections.
-        if len(system) + len(section.text) <= total_input_budget:
-            return [section]
         try:
             system_tokens = count_tokens(system, encoder)
         except Exception as exc:

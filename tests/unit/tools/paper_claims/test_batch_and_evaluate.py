@@ -78,6 +78,16 @@ def test_load_claims_accepts_clean_schema(tmp_path):
     assert load_claims(llm, human) == (["Claim A"], ["Claim A"])
 
 
+def test_load_claims_rejects_non_string_human_annotations(tmp_path):
+    llm = tmp_path / "llm.json"
+    human = tmp_path / "human.json"
+    llm.write_text(json.dumps({"claims": [{"original_text": "Claim A"}]}))
+    human.write_text(json.dumps({"claims": ["Claim A", None]}))
+
+    with pytest.raises(ValueError, match="Human annotation claim #2 must be a string"):
+        load_claims(llm, human)
+
+
 def test_empty_semantic_matching_does_not_load_optional_dependencies():
     metrics = compute_semantic_matching([], ["human"])
 
