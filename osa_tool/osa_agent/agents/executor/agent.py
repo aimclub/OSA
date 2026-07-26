@@ -4,6 +4,7 @@ from rich import box
 from rich.table import Table
 
 from osa_tool.core.models.agent_status import AgentStatus
+from osa_tool.core.models.event import EventKind, OperationEvent
 from osa_tool.core.models.task import TaskStatus, Task
 from osa_tool.operations.registry import OperationRegistry
 from osa_tool.osa_agent.base import BaseAgent
@@ -25,6 +26,21 @@ class ExecutorAgent(BaseAgent):
     """
 
     name = "Executor"
+
+    _SUCCESS_EVENT_KINDS = frozenset(
+        {
+            EventKind.ANALYZED,
+            EventKind.CREATED,
+            EventKind.GENERATED,
+            EventKind.SET,
+            EventKind.REFINED,
+            EventKind.UPDATED,
+            EventKind.MOVED,
+            EventKind.WRITTEN,
+            EventKind.EXISTS,
+            EventKind.UPLOADED,
+        }
+    )
 
     def run(self, state: OSAState) -> OSAState:
         """
@@ -83,8 +99,13 @@ class ExecutorAgent(BaseAgent):
             result = self._execute_task(task, state)
             task.result = result.get("result")
             task.events = result.get("events", [])
-            task.status = TaskStatus.COMPLETED
-            logger.info("Task '%s' completed", task.id)
+
+            if self._is_failure_result(result):
+                task.status = TaskStatus.FAILED
+                logger.error("Task '%s' failed (reported by operation result)", task.id)
+            else:
+                task.status = TaskStatus.COMPLETED
+                logger.info("Task '%s' completed", task.id)
 
         except Exception as e:
             task.status = TaskStatus.FAILED
@@ -153,6 +174,35 @@ class ExecutorAgent(BaseAgent):
             raise TypeError(f"Invalid executor type for task '{task.id}': {type(executor)}")
 
         return self._normalize_result(result)
+
+    @classmethod
+    def _is_failure_result(cls, normalized: dict[str, Any]) -> bool:
+        """
+        Detect operation-level failure from a normalized executor result.
+
+        Operations typically return ``{"result": ..., "events": [...]}`` instead of
+        raising exceptions. Failures are indicated by an ``error`` key in the result
+        payload and/or ``EventKind.FAILED`` events without any successful outcome.
+        Partial failures (some targets failed, others succeeded) are not treated as
+        task failures.
+        """
+        payload = normalized.get("result")
+        if isinstance(payload, dict) and "error" in payload:
+            return True
+
+        events = normalized.get("events") or []
+        has_failed = any(cls._event_kind(event) == EventKind.FAILED for event in events)
+        if not has_failed:
+            return False
+
+        has_success = any(cls._event_kind(event) in cls._SUCCESS_EVENT_KINDS for event in events)
+        return not has_success
+
+    @staticmethod
+    def _event_kind(event: OperationEvent | dict) -> EventKind:
+        if isinstance(event, OperationEvent):
+            return event.kind
+        return EventKind(event["kind"])
 
     @staticmethod
     def _normalize_result(result) -> dict:

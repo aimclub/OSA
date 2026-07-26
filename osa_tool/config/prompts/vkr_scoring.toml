@@ -1,0 +1,154 @@
+[prompts]
+system_json = "You are a code repository analyst. Always respond with valid JSON and nothing else."
+
+execution_files = """You are analyzing a GitHub repository. Below is the complete list of file paths in the repository.
+
+Identify files that are likely main entry-point or execution scripts — files that a user would run to start the program, train a model, run an experiment, or launch a server.
+
+Look for files with names like: main.py, run.py, run_*.py, train.py, train_*.py, app.py, server.py, manage.py, start.py, launch.py, inference.py, predict.py, evaluate.py, demo.py, index.js, index.ts, main.js, main.go, main.cpp, main.c, __main__.py, Makefile (with run targets), run.sh, start.sh, etc.
+
+File list:
+{file_list}
+
+Respond with JSON in this exact format:
+{{
+  "entry_points": ["path/to/main.py", "another/run.py"]
+}}
+
+If no entry-point files are found, return {{"entry_points": []}}.
+Do not include test files, utility modules, or library files — only files meant to be executed directly."""
+
+repo_type = """You are analyzing a GitHub repository file structure for a student thesis project.
+Below is the file and folder tree (paths only, no file contents).
+
+Repository tree:
+{file_list}
+
+Classify this repository into exactly one of these three categories:
+
+- app: any application with a user interface — web (Flask, Django, FastAPI, Express, React, Vue, Angular, Next.js, HTML/CSS/JS), mobile (Android, iOS, Flutter, React Native), or desktop (Tkinter, PyQt, Electron, JavaFX, WPF, GTK, etc.)
+- algorithm_experiments: implements and compares algorithms or methods through systematic experiments — includes classical ML, heuristics, distillation, or custom algorithms; contains experiment scripts and/or result files
+- model_training_experiments: trains or fine-tunes ML/DL models (neural networks, transformers, etc.) AND systematically compares approaches through multiple experiment runs
+
+If repo contains more than one type choose the one that fits most.
+
+Respond with JSON in this exact format:
+{{
+  "repo_type": "algorithm_experiments",
+  "confidence": "high",
+  "reasoning": "Contains an experiments/ folder with exp*.py scripts comparing different distillation methods and visualize scripts"
+}}
+
+Use only one of the three exact type strings above for "repo_type"."""
+
+test_files = """You are analyzing a GitHub repository file list.
+Identify files that are test files — unit tests, integration tests, end-to-end tests, or any automated test scripts.
+
+Look for files matching patterns like: test_*.py, *_test.py, *_spec.py, *.test.js, *.test.ts, *.spec.js, *.spec.ts, test*.go, *_test.go, *Test.java, *Spec.java, etc.
+Also look for files inside folders named: test, tests, __tests__, spec, specs, e2e.
+
+File list:
+{file_list}
+
+Respond with JSON in this exact format:
+{{
+  "test_files": ["tests/test_main.py", "tests/test_utils.py"]
+}}
+
+If no test files are found, return {{"test_files": []}}."""
+
+data_files = """You are analyzing a GitHub repository file list.
+Identify files that are data files used for machine learning, data science, or analysis work.
+
+Look for files with these extensions or patterns:
+- Tabular data: .csv, .tsv, .xlsx, .xls, .ods
+- Binary data formats: .h5, .hdf5, .parquet, .feather, .arrow
+- Serialized objects: .pkl, .pickle, .joblib
+- NumPy arrays: .npy, .npz
+- JSON/YAML datasets: .json or .yaml files inside folders named data/, dataset/, datasets/
+- Archives likely containing data: .zip, .tar.gz, .tar.bz2 inside a data/ folder
+- Text corpora: .txt files inside a data/ folder, .conll, .tsv corpora files
+- Image datasets: folders named data/, images/, dataset/ containing many image files
+
+File list:
+{file_list}
+
+Respond with JSON in this exact format:
+{{
+  "data_files": ["data/train.csv", "data/embeddings.npy", "dataset/labels.pkl"]
+}}
+
+If no data files are found, return {{"data_files": []}}."""
+
+experiment_scripts = """You are analyzing a GitHub repository file list.
+Identify files that are experiment scripts, research notebooks, or visualization/figure-drawing scripts — files used to run experiments, ablation studies, benchmarks, hyperparameter searches, or produce plots and figures for a thesis or research paper.
+
+Look for:
+- Directories and files described in README as containing experiment-related scripts
+  (e.g., model selection, hyperparameter search, training pipelines)
+- Jupyter notebooks: any *.ipynb file
+- Scripts with names like: experiment*.py, run_experiment*.py, train*.py, evaluate*.py, benchmark*.py, ablation*.py, plot*.py, visualize*.py, draw*.py, figures*.py, compare*.py, analysis*.py, results*.py
+- Shell scripts that run multiple experiments: run_experiments.sh, sweep.sh, grid_search.sh
+- Scripts inside folders named: model_selection/, experiments/, training/,
+  ablation/, search/, tuning/
+- Configuration files for experiment frameworks: configs/ folder with yaml/json, *.yaml experiment configs for Hydra/MLflow/W&B
+
+File list:
+{file_list}
+
+{readme_section}
+
+Respond with JSON in this exact format:
+{{
+  "experiment_files": ["notebooks/experiment1.ipynb", "scripts/train_baseline.py", "scripts/plot_results.py"]
+}}
+
+If no experiment or visualization files are found, return {{"experiment_files": []}}."""
+
+filter_system = """You are an academic document structure filter. Process a list of extracted section headings from a research paper and return only those relevant for downstream technical claim extraction.
+RULES:
+1. EXCLUDE: Related Work, Literature Review, Limitations, Conclusion, Introduction, Acknowledgments, References, Appendices, Supplementary Material.
+2. RETAIN: sections covering methods, algorithms, system design, experiments, results, theoretical analysis, applications.
+3. When in doubt, prefer retention.
+4. Preserve original sequential order.
+OUTPUT: ONLY a valid JSON array of strings. No markdown, no explanations.
+Example: ["Methodology", "Experimental Setup", "Results"]"""
+
+extract_system = """You are an expert technical reviewer for machine learning research. Extract verifiable factual claims from a section of a research paper.
+DEFINITION: A 'verifiable claim' is a specific, concrete statement that can be confirmed or refuted by inspecting the code repository, configuration files, or execution logs.
+RULES:
+- EXTRACT only specific, technical statements about datasets, models, training procedures, metrics, or infrastructure.
+- EXCLUDE vague descriptions, motivations, references to prior work, subjective evaluations.
+GOOD EXAMPLES:
+- 'ResNet-50 was used as the backbone'
+- 'The dataset was split 80/10/10 for train/val/test'
+- 'Adam optimizer with lr=0.001 was used'
+- 'The model was trained for 50 epochs'
+BAD EXAMPLES (DO NOT EXTRACT):
+- 'a deep learning model was used' (vague)
+- 'we chose this approach because it is efficient' (motivation)
+OUTPUT SCHEMA (every object must have exactly these fields):
+- 'claim': string, self-contained sentence
+- 'original_text': string, verbatim fragment <=30 words
+- 'category': one of [dataset, model_architecture, training_procedure, evaluation_metric, numerical_result, baseline_comparison, data_preprocessing, infrastructure]
+- 'value': string or null — the specific value if present
+- 'verifiability': one of [high, medium, low]
+OUTPUT FORMAT: ONLY a valid JSON array. No markdown, no preamble. Return [] if nothing found."""
+
+dedup_system = """You are a technical claim deduplication engine. Process a list of ML paper claims: merge duplicates and flag factual contradictions.
+RULES:
+1. MERGE DUPLICATES: consolidate into the most specific version.
+2. FLAG CONTRADICTIONS: if claims disagree on the same fact, keep both and set 'contradiction': true.
+3. PRESERVE all claims even if they seem incorrect — accuracy is checked later.
+SCHEMA: every object must have: claim, original_text, category, value, verifiability, contradiction (bool, default false).
+OUTPUT: ONLY a valid JSON array. No markdown, no preamble. Return [] if empty."""
+
+verify_system = """You are a code reviewer checking which technical claims from a research paper are implemented in the provided repository source code.
+For each claim determine whether the code contains evidence of its implementation.
+OUTPUT: a JSON array with one object per claim (same order, 0-based index):
+[
+  {"index": 0, "implemented": true, "confidence": "high", "evidence_file": "train.py", "explanation": "Adam optimizer set at line 42"},
+  ...
+]
+confidence: 'high' = directly visible, 'medium' = inferable, 'low' = uncertain.
+implemented=false when no evidence found. Return ONLY the JSON array."""

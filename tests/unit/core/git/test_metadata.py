@@ -1,5 +1,6 @@
 import os
-from unittest.mock import patch
+
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -7,6 +8,7 @@ from osa_tool.core.git.metadata import (
     GitHubMetadataLoader,
     GitLabMetadataLoader,
     GitverseMetadataLoader,
+    LocalMetadataLoader,
     SourceCraftMetadataLoader,
 )
 from osa_tool.utils.utils import get_base_repo_url
@@ -57,45 +59,72 @@ HEADERS = {
 
 @pytest.mark.parametrize("mock_config_manager", ["github", "gitlab", "gitverse", "sourcecraft"], indirect=True)
 def test_load_platform_data_success(mock_api_raw_data, mock_requests_response_factory, repo_info):
-    # Arrange
     platform, owner, repo_name, repo_url = repo_info
     raw_data = mock_api_raw_data
-    mock_response = mock_requests_response_factory(status_code=200, json_data=raw_data)
     loader_class = LOADER_CLASSES[platform]
 
-    # Act
-    with patch("osa_tool.core.git.metadata.requests.get", return_value=mock_response) as mock_get:
+    if platform == "sourcecraft":
+        mock_response = mock_requests_response_factory(status_code=200, json_data=raw_data)
+        with patch("osa_tool.core.git.request_utils.requests.get", return_value=mock_response) as mock_get:
+            with patch.dict(os.environ, TOKEN_ENVS[platform]):
+                result = loader_class._load_platform_data(repo_url, use_token=True)
+
+        expected = loader_class._parse_metadata(raw_data)
+        assert result == expected
+        mock_get.assert_called_once_with(
+            BASE_URLS["sourcecraft"].format(base=f"{owner}/{repo_name}"),
+            headers=HEADERS[platform],
+            timeout=ANY,
+        )
+        return
+
+    original_languages = raw_data.get("languages", {})
+    mock_response = mock_requests_response_factory(status_code=200, json_data=raw_data)
+    languages_response = mock_requests_response_factory(status_code=200, json_data=original_languages)
+
+    metadata_requests = MagicMock()
+    metadata_requests.get.return_value = languages_response
+
+    with (
+        patch("osa_tool.core.git.request_utils.requests.get", return_value=mock_response) as mock_get,
+        patch("osa_tool.core.git.metadata.requests", metadata_requests, create=True),
+    ):
         with patch.dict(os.environ, TOKEN_ENVS[platform]):
             result = loader_class._load_platform_data(repo_url, use_token=True)
 
-    # Assert
-    expected = loader_class._parse_metadata(raw_data)
+    expected_payload = dict(raw_data)
+    if isinstance(original_languages, dict):
+        expected_payload["languages"] = list(original_languages.keys())
+        expected_payload["language_stats"] = {k: float(v) for k, v in original_languages.items()}
+    else:
+        expected_payload["languages"] = list(original_languages)
+        expected_payload["language_stats"] = {}
+    if platform in {"gitlab", "gitverse"} and expected_payload["languages"] and not expected_payload.get("language"):
+        expected_payload["language"] = expected_payload["languages"][0]
+
+    expected = loader_class._parse_metadata(expected_payload)
     assert result == expected
 
+    base_url = get_base_repo_url(repo_url)
     if platform == "gitlab":
-        base_url = get_base_repo_url(repo_url).replace("/", "%2F")
-        expected_url = BASE_URLS["gitlab"].format(base=base_url)
-    elif platform == "sourcecraft":
-        expected_url = BASE_URLS["sourcecraft"].format(base=f"{owner}/{repo_name}")
+        expected_url = BASE_URLS["gitlab"].format(base=base_url.replace("/", "%2F"))
+        expected_language_url = f"{expected_url}/languages"
     else:
-        expected_url = BASE_URLS[platform].format(base=get_base_repo_url(repo_url))
+        expected_url = BASE_URLS[platform].format(base=base_url)
+        expected_language_url = raw_data["languages_url"]
 
-    mock_get.assert_called_once_with(
-        url=expected_url,
-        headers=HEADERS[platform],
-    )
+    mock_get.assert_called_once_with(expected_url, headers=HEADERS[platform], timeout=ANY)
+    metadata_requests.get.assert_called_once_with(url=expected_language_url, headers=HEADERS[platform])
 
 
 @pytest.mark.parametrize("mock_config_manager", ["github", "gitlab", "gitverse", "sourcecraft"], indirect=True)
 @pytest.mark.parametrize("status_code", [401, 403, 404, 500])
 def test_load_data_http_errors(status_code, mock_requests_response_factory, repo_info):
-    # Arrange
     platform, _, _, repo_url = repo_info
     mock_response = mock_requests_response_factory(status_code=status_code)
     loader_class = LOADER_CLASSES[platform]
 
-    # Act & Assert
-    with patch("osa_tool.core.git.metadata.requests.get", return_value=mock_response):
+    with patch("osa_tool.core.git.request_utils.requests.get", return_value=mock_response):
         with patch.dict(os.environ, TOKEN_ENVS[platform]):
             with pytest.raises(Exception):
                 loader_class.load_data(repo_url)
@@ -200,3 +229,101 @@ def test_sourcecraft_parse_metadata_clone_url_none():
     result = SourceCraftMetadataLoader._parse_metadata(raw)
     assert result.clone_url_http == ""
     assert result.clone_url_ssh == ""
+
+
+def test_github_parse_metadata_strips_issue_template_suffix():
+    raw = {
+        "name": "repo",
+        "full_name": "owner/repo",
+        "owner": {"login": "owner", "html_url": "https://github.com/owner"},
+        "description": "desc",
+        "stargazers_count": 1,
+        "forks_count": 2,
+        "watchers_count": 3,
+        "open_issues_count": 4,
+        "default_branch": "main",
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-01-02T00:00:00Z",
+        "pushed_at": "2024-01-03T00:00:00Z",
+        "size": 10,
+        "clone_url": "https://github.com/owner/repo.git",
+        "ssh_url": "git@github.com:owner/repo.git",
+        "contributors_url": "https://api.github.com/repos/owner/repo/contributors",
+        "languages_url": "https://api.github.com/repos/owner/repo/languages",
+        "issues_url": "https://api.github.com/repos/owner/repo/issues{/number}",
+        "language": "Python",
+        "languages": {},
+        "topics": [],
+        "has_wiki": False,
+        "has_issues": True,
+        "has_projects": False,
+        "private": False,
+        "homepage": "",
+        "license": {},
+    }
+
+    result = GitHubMetadataLoader._parse_metadata(raw)
+
+    assert result.issues_url == "https://api.github.com/repos/owner/repo/issues"
+
+
+def test_gitverse_parse_metadata_strips_issue_template_suffix():
+    raw = {
+        "name": "repo",
+        "full_name": "owner/repo",
+        "owner": {"login": "owner", "html_url": "https://gitverse.ru/owner"},
+        "description": "desc",
+        "stargazers_count": 1,
+        "forks_count": 2,
+        "watchers_count": 3,
+        "open_issues_count": 4,
+        "default_branch": "main",
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-01-02T00:00:00Z",
+        "pushed_at": "2024-01-03T00:00:00Z",
+        "size": 10,
+        "clone_url": "https://gitverse.ru/owner/repo.git",
+        "ssh_url": "git@gitverse.ru:owner/repo.git",
+        "contributors_url": "https://api.gitverse.ru/repos/owner/repo/contributors",
+        "languages_url": "https://api.gitverse.ru/repos/owner/repo/languages",
+        "issues_url": "https://api.gitverse.ru/repos/owner/repo/issues{/number}",
+        "language": "Python",
+        "languages": [],
+        "topics": [],
+        "has_wiki": False,
+        "has_issues": True,
+        "has_projects": False,
+        "private": False,
+        "homepage": "",
+        "license": {},
+    }
+
+    result = GitverseMetadataLoader._parse_metadata(raw)
+
+    assert result.issues_url == "https://api.gitverse.ru/repos/owner/repo/issues"
+
+
+def test_local_metadata_loader_falls_back_when_git_user_config_missing(tmp_path):
+    repo_path = tmp_path / "local_repo"
+    repo_path.mkdir()
+
+    mock_repo = MagicMock()
+    mock_reader = MagicMock()
+    mock_reader.get.side_effect = Exception("missing config")
+    mock_repo.config_reader.return_value = mock_reader
+
+    with patch("osa_tool.core.git.metadata.Repo", return_value=mock_repo):
+        with patch.object(
+            LocalMetadataLoader, "_load_dates", return_value={"created_at": "", "updated_at": "", "pushed_at": ""}
+        ):
+            with patch.object(LocalMetadataLoader, "_get_repository_size", return_value=0):
+                with patch.object(LocalMetadataLoader, "_get_languages", return_value=[]):
+                    with patch.object(
+                        LocalMetadataLoader, "_get_remotes", return_value={"clone_url_http": "", "clone_url_ssh": ""}
+                    ):
+                        with patch.object(LocalMetadataLoader, "_get_default_branch", return_value="main"):
+                            with patch.object(LocalMetadataLoader, "_find_license", return_value=None):
+                                result = LocalMetadataLoader._load_platform_data(str(repo_path), use_token=False)
+
+    assert result.owner is None
+    assert result.owner_url is None

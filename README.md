@@ -77,10 +77,14 @@ Here is a short video:
 5. **Workflow Generator**: Automatically generates customizable CI/CD workflows for Python repositories,
    including unit tests, code formatting, PEP 8 compliance checks, and PyPI publication.
 
-6. **Standalone paper claims pipeline**: Extracts technical claims from PDF papers through the reusable
+6. **Thesis (VKR) check**: Evaluates a repository against a set of formal criteria (
+   non-empty README, license file, etc.).  It also extracts claims (unique entities such as preprocessing type, model
+   architecture, etc.) from the thesis (VKR) text and matches them against the repository's code.
+   
+7. **Standalone paper claims pipeline**: Extracts technical claims from PDF papers through the reusable
    `paper_claims` operation and batch utilities. This pipeline is available as a separate module and is not registered
    in the scheduler yet.
-
+   
 ---
 
 ## Installation

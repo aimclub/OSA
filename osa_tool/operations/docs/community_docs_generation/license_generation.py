@@ -97,7 +97,7 @@ class LicenseCompiler:
         try:
             return templates[self.license_type]["template"].format(
                 year=self.metadata.created_at[:4],
-                author=self.metadata.owner,
+                author=self.metadata.owner or "",
             )
         except KeyError:
             logger.error(

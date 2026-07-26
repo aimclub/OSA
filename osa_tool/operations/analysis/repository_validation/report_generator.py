@@ -4,15 +4,38 @@ import qrcode
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import (
     Flowable,
+    PageBreak,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
 )
+
+# Register Unicode-aware fonts for Cyrillic support
+_unicode_font_name = "Helvetica"
+try:
+    # Try to register DejaVuSans which supports Cyrillic on most systems
+    for font_path in [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux
+        "/System/Library/Fonts/Arial Unicode.ttf",  # macOS legacy
+        "/Library/Fonts/Arial Unicode.ttf",  # macOS
+        "C:\\Windows\\Fonts\\arial.ttf",  # Windows fallback
+    ]:
+        if os.path.exists(font_path):
+            try:
+                pdfmetrics.registerFont(TTFont("CyrillicFont", font_path))
+                _unicode_font_name = "CyrillicFont"
+                break
+            except Exception:
+                pass
+except Exception:
+    pass
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
@@ -53,9 +76,11 @@ class RoundedCard(Flowable):
         return self.width, self._height
 
     def draw(self):
+        self.canv.saveState()
         self.canv.setStrokeColor(self.stroke_color)
         self.canv.setLineWidth(1)
         self.canv.roundRect(0, 0, self.width, self._height, self.radius, stroke=1, fill=0)
+        self.canv.restoreState()
 
         y = self._height - self.padding
         for flowable, h in self._wrapped_content:
@@ -89,13 +114,19 @@ class ReportGenerator:
         self.filename = f"{self.metadata.name}_validation_report.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
 
-    def build_pdf(self, type_: str, experiments: tuple[Experiment, ...]) -> None:
+    def build_pdf(
+        self,
+        type_: str,
+        experiments: tuple[Experiment, ...],
+        vkr_report: dict | None = None,
+    ) -> None:
         """
         Build and save the PDF validation report.
 
         Args:
             type_ (str): Type of validation (e.g., "Code", "Doc", "Paper").
             experiments (tuple[Experiment]): JSON containing report data.
+            vkr_report (dict | None): Optional VKR quality-check report to include.
 
         Returns:
             None
@@ -108,17 +139,31 @@ class ReportGenerator:
                 topMargin=50,
                 bottomMargin=40,
             )
-            doc.build(
-                [
+            elements = [
+                *self.__build_header(type_),
+                Spacer(0, 20),
+                *self.__build_vkr_section(vkr_report),
+                Spacer(0, 20),
+                *self.__build_brief(experiments),
+                Spacer(0, 20),
+                *self.__build_table(experiments),
+            ]
+            try:
+                doc.build(elements, onFirstPage=self.__draw_images)
+                logger.info(f"PDF report successfully created in {self.output_path}")
+            except Exception as layout_error:
+                logger.warning(f"Layout error in PDF: {layout_error}. Retrying with simplified format...")
+                elements = [
                     *self.__build_header(type_),
-                    Spacer(0, 40),
+                    Spacer(0, 20),
+                    *self.__build_vkr_section(vkr_report),
+                    Spacer(0, 20),
                     *self.__build_brief(experiments),
                     Spacer(0, 20),
-                    *self.__build_table(experiments),
-                ],
-                onFirstPage=self.__draw_images,
-            )
-            logger.info(f"PDF report successfully created in {self.output_path}")
+                    *self.__build_simple_table(experiments),
+                ]
+                doc.build(elements, onFirstPage=self.__draw_images)
+                logger.info(f"PDF report successfully created in {self.output_path} (simplified format)")
         except Exception as e:
             logger.error("Error while building PDF report, %s", e, exc_info=True)
 
@@ -203,14 +248,15 @@ class ReportGenerator:
         """
         styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(
-            name="LeftAlignedNormal",
+            name="BriefNormal",
             parent=styles["Normal"],
             fontSize=12,
             leading=16,
             alignment=0,
+            fontName=_unicode_font_name,
         )
-        correspondence_sum = sum(e.correspondence_percent for e in experiments if e.correspondence_percent)
-        percentages = int(correspondence_sum / len(experiments) * 100)
+        correspondence_sum = sum(e.correspondence_percent or 0.0 for e in experiments)
+        percentages = int(correspondence_sum / len(experiments) * 100) if experiments else 0
         formula = "C = (Σ p<sub>i</sub> / n) × 100" f" = ({correspondence_sum:.2f} / {len(experiments)}) × 100"
         percentages_text = Paragraph(
             f"<b>Correspondence percentages: {percentages}%</b> " f"(<i>{formula}</i>)",
@@ -232,11 +278,12 @@ class ReportGenerator:
         """
         styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(
-            name="LeftAlignedNormal",
+            name="ConclusionNormal",
             parent=styles["Normal"],
             fontSize=12,
             leading=16,
             alignment=0,
+            fontName=_unicode_font_name,
         )
         conclusion_header = Paragraph("<b>Conclusion:</b>", normal_style)
         conclusion_text = Paragraph(
@@ -245,35 +292,138 @@ class ReportGenerator:
         )
         return Spacer(0, 10), conclusion_header, Spacer(0, 5), conclusion_text
 
+    @staticmethod
+    def __build_vkr_section(vkr_report: dict | None) -> list:
+        """Build PDF elements for the VKR repository quality score section."""
+        if not vkr_report:
+            return []
+
+        from osa_tool.operations.analysis.vkr_scoring.scoring_engine import (
+            CHECK_ORDER,
+            REPO_TYPE_LABELS,
+            ScoringEngine,
+        )
+
+        styles = getSampleStyleSheet()
+        header_style = ParagraphStyle(
+            name="VkrHeader",
+            parent=styles["Normal"],
+            fontSize=13,
+            leading=18,
+            spaceBefore=4,
+            fontName=_unicode_font_name,
+        )
+        normal_style = ParagraphStyle(
+            name="VkrNormal",
+            parent=styles["Normal"],
+            fontSize=11,
+            leading=15,
+            fontName=_unicode_font_name,
+        )
+
+        checks = vkr_report.get("checks", {})
+        summary = vkr_report.get("summary", {})
+        score = summary.get("score", 0)
+        repo_type = summary.get("repo_type", "")
+        type_label = REPO_TYPE_LABELS.get(repo_type, repo_type)
+
+        elements: list = [
+            Paragraph(f"<b>Repository Quality Score: {score}/100</b>", header_style),
+            Spacer(0, 4),
+            Paragraph(f"Repository type: {type_label}", normal_style),
+            Spacer(0, 8),
+        ]
+
+        table_data = [[Paragraph("<b>Check</b>", normal_style), Paragraph("<b>Result</b>", normal_style)]]
+        for key in CHECK_ORDER:
+            if key not in checks:
+                continue
+            line = ScoringEngine.format_check_line(key, checks[key])
+            # lines look like "  readme          : OK (9424 chars)"
+            name_part, _, value_part = line.strip().partition(":")
+            table_data.append(
+                [
+                    Paragraph(name_part.strip(), normal_style),
+                    Paragraph(value_part.strip(), normal_style),
+                ]
+            )
+
+        table = Table(table_data, colWidths=[160, 320])
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E8EEF4")),
+                    ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#C0C8D0")),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ]
+            )
+        )
+        elements.append(table)
+        return elements
+
+    def __build_simple_table(self, experiments) -> tuple:
+        """Simplified table format without RoundedCard for large content."""
+        styles = getSampleStyleSheet()
+        normal_style = ParagraphStyle(
+            name="SimpleNormal",
+            parent=styles["Normal"],
+            fontSize=10,
+            leading=12,
+            alignment=0,
+            fontName=_unicode_font_name,
+        )
+        elements = []
+        for i, experiment in enumerate(experiments, 1):
+            if i > 1:
+                elements.append(Spacer(0, 12))
+            elements.append(Paragraph(f"<b>Experiment {i}</b>", normal_style))
+            elements.append(
+                Paragraph(
+                    f"<i>Correspondence: {(experiment.correspondence_percent or 0.0) * 100:.1f}%</i>", normal_style
+                )
+            )
+            elements.append(Spacer(0, 4))
+            elements.append(Paragraph(f"<b>Description:</b> {experiment.description_from_paper[:300]}", normal_style))
+            if experiment.impl_src_path:
+                elements.append(Paragraph(f"<b>Found in:</b> {'; '.join(experiment.impl_src_path[:2])}", normal_style))
+        return tuple(elements)
+
     def __build_table(self, experiments) -> tuple:
         styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(
-            name="LeftAlignedNormal",
+            name="TableNormal",
             parent=styles["Normal"],
-            fontSize=12,
-            leading=16,
+            fontSize=11,
+            leading=14,
             alignment=0,
+            fontName=_unicode_font_name,
         )
         bullet_style = ParagraphStyle(
-            name="IndentedBullet",
+            name="TableBullet",
             parent=normal_style,
-            leftIndent=12,
+            leftIndent=8,
+            fontName=_unicode_font_name,
         )
 
         cards = []
         for i, experiment in enumerate(experiments, 1):
+            if i > 1:
+                cards.append(PageBreak())
             card_content = []
             header_row = Table(
                 [
                     [
                         Paragraph(f"<b>Experiment {i}</b>", normal_style),
                         Paragraph(
-                            f"<b>Correspondence:</b> {experiment.correspondence_percent * 100:.1f}%",
+                            f"<b>Correspondence:</b> {(experiment.correspondence_percent or 0.0) * 100:.1f}%",
                             normal_style,
                         ),
                     ]
                 ],
-                colWidths=[240, 240],
+                colWidths=[180, 180],
             )
             header_row.setStyle(
                 TableStyle(
@@ -315,7 +465,7 @@ class ReportGenerator:
             else:
                 card_content.append(Paragraph("• None", bullet_style))
 
-            cards.append(RoundedCard(card_content, width=500))
-            cards.append(Spacer(0, 12))
+            cards.append(RoundedCard(card_content, width=420, padding=6))
+            cards.append(Spacer(0, 8))
 
         return tuple(cards)

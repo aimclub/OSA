@@ -70,6 +70,7 @@ class JsonProcessor:
         Extracts JSON content from text by locating the first JSON bracket ('{' or '[')
         and the last corresponding closing bracket ('}' or ']').
         Replaces Python-style booleans/None and trims trailing commas.
+        For small models that don't return JSON, wraps response as {"result": text}.
 
         Raises:
             ValueError: If no valid JSON structure is found.
@@ -158,6 +159,17 @@ class JsonProcessor:
         except Exception as e:
             logger.error(f"JSON strict parse failed: {e}")
             raise JsonParseError(str(e)) from e
+
+    @staticmethod
+    def _fix_unterminated_strings(text: str) -> str:
+        """Fix common JSON issues: unterminated strings, missing quotes."""
+        import re
+
+        text = re.sub(r':\s*"([^"]*?)(\n|,|})', r': "\1"\2', text)
+        # Exclude JSON keywords true/false/null from string-quoting to avoid bool→string corruption
+        text = re.sub(r":\s*(?!true\b|false\b|null\b)([a-zA-Z_][a-zA-Z0-9_]*)\s*([,}])", r': "\1"\2', text)
+        text = text.rstrip('"') + '"' if text.count('"') % 2 == 1 else text
+        return text
 
 
 class JsonParseError(RuntimeError):

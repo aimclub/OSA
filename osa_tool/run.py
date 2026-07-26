@@ -18,17 +18,16 @@ from osa_tool.operations.analysis.repository_validation.paper_validator import P
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
 from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
-from osa_tool.operations.codebase.organization.repo_organizer import RepoOrganizer
+from osa_tool.operations.codebase.organization.organize import RepoOrganizer
 from osa_tool.operations.codebase.requirements_generation.requirements_generation import RequirementsGenerator
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
-from osa_tool.tools.repository_analysis.sourcerank import SourceRank
-
 from osa_tool.operations.docs.community_docs_generation.docs_run import generate_documentation
 from osa_tool.operations.docs.community_docs_generation.license_generation import LicenseCompiler
 from osa_tool.operations.docs.readme_generation.readme_agent import ReadmeAgent
 from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
 from osa_tool.scheduler.plan import Plan
 from osa_tool.scheduler.scheduler import ModeScheduler
+from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.scheduler.workflow_manager import (
     GitHubWorkflowManager,
     GitLabWorkflowManager,
@@ -40,6 +39,7 @@ from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.logger import logger, setup_logging
 from osa_tool.utils.utils import (
     delete_repository,
+    prepare_local_output_repository,
     osa_project_root,
     parse_folder_name,
     rich_section,
@@ -70,7 +70,9 @@ def main():
     try:
         # Switch to output directory if present
         if args.output:
-            switch_to_output_directory(args.output)
+            output_path = switch_to_output_directory(args.output)
+            if os.path.isdir(args.repository):
+                args.repository = str(prepare_local_output_repository(args.repository, output_path))
 
         # Load configurations and update
         config_manager = ConfigManager(args)
@@ -244,7 +246,7 @@ def main():
             _run_plan_operation(
                 plan,
                 "organize",
-                lambda: RepoOrganizer(config_manager).organize(),
+                lambda: RepoOrganizer(config_manager, git_agent.metadata).organize(),
             )
 
         if create_fork and create_pull_request:

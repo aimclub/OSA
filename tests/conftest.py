@@ -1,5 +1,6 @@
 import os
 from contextlib import ExitStack
+from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
 import pytest
@@ -115,7 +116,7 @@ def config_manager_with_updates(mock_config_manager):
 # SourceRank Fixtures
 # -------------------
 @pytest.fixture
-def mock_sourcerank(mock_config_manager, mock_parse_folder_name, data_factory):
+def mock_sourcerank(mock_config_manager, data_factory):
     """Factory fixture to create SourceRank instances with patched methods."""
 
     def factory(repo_tree=None, method_overrides=None) -> SourceRank:
@@ -123,9 +124,7 @@ def mock_sourcerank(mock_config_manager, mock_parse_folder_name, data_factory):
         random_methods = data_factory.random_source_rank_methods(force_overrides=overrides)
 
         patches = [
-            patch(
-                "osa_tool.tools.repository_analysis.sourcerank.parse_folder_name", return_value=mock_parse_folder_name
-            ),
+            patch("osa_tool.tools.repository_analysis.sourcerank.resolve_repo_path", return_value=Path("/tmp/repo"))
         ]
 
         if repo_tree is not None:

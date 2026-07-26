@@ -18,6 +18,7 @@ from pydantic import (
     model_validator,
 )
 
+from osa_tool.core.git.request_utils import RetryConfig
 from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.utils import (
     build_config_path,
@@ -38,6 +39,7 @@ class GitSettings(BaseModel):
     host: str | None = None
     name: str = ""
     osa_branch_name: str = "osa_tool"
+    retry: RetryConfig = Field(default_factory=RetryConfig)
 
     @model_validator(mode="after")
     def set_git_attributes(self):
@@ -168,6 +170,10 @@ class ConfigManager:
         processed_data = self._process_config_data(config_data)
 
         self.config = Settings.model_validate(processed_data)
+
+        from osa_tool.core.git import request_utils
+
+        request_utils.DEFAULT_RETRY_CONFIG = request_utils.RetryConfig(**self.config.git.retry.model_dump())
 
     def _get_config_path(self) -> str:
         """
