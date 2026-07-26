@@ -951,6 +951,22 @@ def test_create_mkdocs_git_workflow_sourcecraft(mock_config_manager, tmp_path):
     assert "root" not in sites_data["site"]
 
 
+def test_create_mkdocs_git_workflow_local_repo_falls_back_to_github_template(mock_config_manager, tmp_path):
+    docgen = DocGen(mock_config_manager)
+    local_repo_path = str(tmp_path)
+    git_settings = mock_config_manager.get_git_settings()
+    git_settings.repository = local_repo_path
+    git_settings.host = None
+    git_settings.full_name = f"local/{tmp_path.name}"
+    git_settings.name = tmp_path.name
+
+    docgen.create_mkdocs_git_workflow(local_repo_path, local_repo_path)
+
+    workflow_file = tmp_path / ".github" / "workflows" / "osa_mkdocs.yml"
+    assert workflow_file.exists(), "GitHub-compatible workflow was not created for local repository"
+    assert "mkdocs gh-deploy" in workflow_file.read_text(encoding="utf-8")
+
+
 @pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
 def test_create_mkdocs_git_workflow_sourcecraft_merges_existing_ci(mock_config_manager, tmp_path):
     # Arrange — pre-existing ci.yaml with lint workflow

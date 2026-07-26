@@ -1368,21 +1368,27 @@ class DocGen(object):
         """
         config_file = osa_project_root().resolve() / "docs" / "templates" / "ci_config.toml"
         git_host = self.config_manager.get_git_settings().host
+        workflow_host = git_host or "github"
 
         with open(config_file, "rb") as f:
             cfg = tomli.load(f)
 
-        if git_host == "github":
+        if workflow_host == "github":
             workflows_path = Path(path).resolve() / ".github" / "workflows"
             workflows_path.mkdir(parents=True, exist_ok=True)
             github_workflow_file = workflows_path / "osa_mkdocs.yml"
             github_workflow_file.write_text(cfg["github"]["workflow"])
             logger.info(f"GitHub workflow created: {github_workflow_file}")
-            logger.info(
-                f"In order to perform the documentation deployment automatically, please make sure that\n1. At {repository_url}/settings/actions following permission are enabled:\n\t1) 'Read and write permissions'\n\t2) 'Allow GitHub Actions to create and approve pull requests'\n2. 'gh-pages' branch is chosen as the source at 'Build and deployment' section at {repository_url}/settings/pages ."
-            )
+            if git_host == "github":
+                logger.info(
+                    f"In order to perform the documentation deployment automatically, please make sure that\n1. At {repository_url}/settings/actions following permission are enabled:\n\t1) 'Read and write permissions'\n\t2) 'Allow GitHub Actions to create and approve pull requests'\n2. 'gh-pages' branch is chosen as the source at 'Build and deployment' section at {repository_url}/settings/pages ."
+                )
+            else:
+                logger.info(
+                    "Local repository detected without a configured git host; generated a GitHub-compatible MkDocs workflow template."
+                )
 
-        if git_host == "gitlab":
+        if workflow_host == "gitlab":
             gitlab_cfg = cfg.get("gitlab", {})
             gitlab_file = Path(path).resolve() / ".gitlab-ci.yml"
 
@@ -1427,7 +1433,7 @@ class DocGen(object):
                 f"GitLab CI created: {gitlab_file}.\nThe resulting OSA documentation can be downloaded and reviewed at the 'mkdocs_build' job's artifacts initated by MR.\nIt will be automatically deployed once MR is proceeded into the main branch.\nNote that artifacts of the 'mkdocs_build' job are set to expire in a span of 1 week."
             )
 
-        if "sourcecraft" in git_host:
+        if workflow_host and "sourcecraft" in workflow_host:
             sc_cfg = cfg.get("sourcecraft", {})
             full_name = self.config_manager.get_git_settings().full_name
 
