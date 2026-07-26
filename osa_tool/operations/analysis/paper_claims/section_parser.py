@@ -39,7 +39,8 @@ class MarkdownSectionParser:
             cleaned = re.sub(r"[*_#`~]", "", raw_name)
             match = re.match(r"^\s*(\d+(?:\.\d+)*)\s*[.)]?\s+", cleaned)
             numbering = match.group(1) if match else None
-            cleaned = re.sub(r"^\s*\d+(?:\.\d+)*\s*[.)]?\s*", "", cleaned)
+            if match:
+                cleaned = cleaned[match.end() :]
             cleaned = re.sub(r"\s+", " ", cleaned).strip()
             if not cleaned:
                 continue

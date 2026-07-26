@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from osa_tool.operations.analysis.paper_claims.claim_extractor import ClaimExtractor
-from osa_tool.operations.analysis.paper_claims.models import HeadingMeta, PaperSection
+from osa_tool.operations.analysis.paper_claims.models import ExtractedClaim, HeadingMeta, PaperSection
 from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.token_counter import count_tokens
 
@@ -68,6 +68,20 @@ def section() -> PaperSection:
     )
 
 
+def extracted_claim(claim_id: str, claim: str) -> ExtractedClaim:
+    return ExtractedClaim(
+        claim_id=claim_id,
+        claim=claim,
+        original_text=claim,
+        category="infrastructure",
+        value=None,
+        verifiability="high",
+        section_id="s001",
+        section_name="Method",
+        section_heading_raw="2. Method",
+    )
+
+
 def test_section_filter_prompt_contains_valid_json_example():
     prompt = PromptLoader().get("paper_claims.section_filter_system")
 
@@ -108,6 +122,34 @@ def test_deduplication_prompt_forbids_empty_output_for_non_empty_input():
 def test_claim_extractor_rejects_dedup_batch_size_below_two():
     with pytest.raises(ValueError, match="at least 2"):
         ClaimExtractor(FakeHandler([]), dedup_batch_size=1)
+
+
+def test_section_ancestors_use_numbering_when_marker_flattens_heading_levels():
+    sections = [
+        PaperSection(
+            section_id="s001",
+            name="Introduction",
+            text="Intro.",
+            heading_meta=HeadingMeta(raw="1 Introduction", level=1, numbering="1"),
+        ),
+        PaperSection(
+            section_id="s002",
+            name="Background",
+            text="Background.",
+            heading_meta=HeadingMeta(raw="1.1 Background", level=1, numbering="1.1"),
+        ),
+        PaperSection(
+            section_id="s003",
+            name="Prior Systems",
+            text="Prior systems.",
+            heading_meta=HeadingMeta(raw="1.1.1 Prior Systems", level=1, numbering="1.1.1"),
+        ),
+    ]
+
+    ancestors = ClaimExtractor(FakeHandler([]))._section_ancestors(sections)
+
+    assert [section.section_id for section in ancestors["s002"]] == ["s001"]
+    assert [section.section_id for section in ancestors["s003"]] == ["s001", "s002"]
 
 
 @pytest.mark.asyncio
@@ -163,6 +205,26 @@ def test_section_chunks_token_count_non_latin_text_before_skipping_split():
     assert len(text) < 410 - 100 - 256
     assert count_tokens(text, "cl100k_base") > 410 - 100 - 256
     assert len(chunks) > 1
+
+
+def test_deduplication_batches_respect_model_input_token_budget():
+    system = PromptLoader().get("paper_claims.deduplication_system")
+    max_tokens = 80
+    user_budget = 130
+    handler = FakeHandler([])
+    handler.model_settings = SimpleNamespace(
+        context_window=count_tokens(system, "cl100k_base") + max_tokens + 256 + user_budget,
+        max_tokens=max_tokens,
+        encoder="cl100k_base",
+    )
+    extractor = ClaimExtractor(handler, dedup_batch_size=100)
+    claims = [extracted_claim(f"c{index:04d}", "Claim " + "token " * 30) for index in range(1, 6)]
+
+    batches = extractor._deduplication_batches(claims)
+
+    assert len(batches) > 1
+    assert [claim.claim_id for batch in batches for claim in batch] == [claim.claim_id for claim in claims]
+    assert all(count_tokens(extractor._deduplication_prompt(batch), "cl100k_base") <= user_budget for batch in batches)
 
 
 @pytest.mark.asyncio

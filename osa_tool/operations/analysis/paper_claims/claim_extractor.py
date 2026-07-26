@@ -60,7 +60,7 @@ class ClaimExtractor:
         try:
             system_tokens = count_tokens(system, encoder)
         except Exception as exc:
-            logger.warning("Token encoder unavailable; section selection batching disabled: %s", exc)
+            logger.warning("Token encoder unavailable; token-aware batching disabled: %s", exc)
             return None
         budget = total_input_budget - system_tokens
         if budget <= 0:
@@ -76,14 +76,38 @@ class ClaimExtractor:
         }
 
     @staticmethod
+    def _numbering_prefixes(numbering: str | None) -> list[str]:
+        if not numbering:
+            return []
+        normalized = numbering.strip().strip(".")
+        if not normalized:
+            return []
+        parts = [part for part in normalized.split(".") if part]
+        return [".".join(parts[:index]) for index in range(1, len(parts))]
+
+    @staticmethod
     def _section_ancestors(sections: list[PaperSection]) -> dict[str, list[PaperSection]]:
         ancestors: dict[str, list[PaperSection]] = {}
         stack: list[PaperSection] = []
-        for section in sections:
+        numbered_sections: dict[str, PaperSection] = {}
+        order_by_id: dict[str, int] = {}
+        for index, section in enumerate(sections):
+            order_by_id[section.section_id] = index
             while stack and stack[-1].heading_meta.level >= section.heading_meta.level:
                 stack.pop()
-            ancestors[section.section_id] = list(stack)
+            combined = {ancestor.section_id: ancestor for ancestor in stack}
+            for prefix in ClaimExtractor._numbering_prefixes(section.heading_meta.numbering):
+                numbered_ancestor = numbered_sections.get(prefix)
+                if numbered_ancestor is not None:
+                    combined[numbered_ancestor.section_id] = numbered_ancestor
+            ancestors[section.section_id] = sorted(
+                combined.values(),
+                key=lambda item: order_by_id[item.section_id],
+            )
             stack.append(section)
+            numbering = section.heading_meta.numbering
+            if numbering:
+                numbered_sections[numbering.strip().strip(".")] = section
         return ancestors
 
     def _section_selection_context(
@@ -494,9 +518,7 @@ class ClaimExtractor:
             len(claims),
             self.dedup_batch_size,
         )
-        batches = [
-            claims[index : index + self.dedup_batch_size] for index in range(0, len(claims), self.dedup_batch_size)
-        ]
+        batches = self._deduplication_batches(claims)
         filtered: list[ExtractedClaim] = []
         selections: list[DedupSelection] = []
         for batch_index, batch_claims in track(
@@ -522,6 +544,67 @@ class ClaimExtractor:
         )
         return filtered, selections
 
+    def _deduplication_prompt(self, claims: list[ExtractedClaim]) -> str:
+        dedup_input = [{"claim_id": claim.claim_id, "claim": claim.claim} for claim in claims]
+        return (
+            "Below is the JSON array of claims extracted from the report sections. Apply the deduplication and contradiction rules.\n"
+            + json.dumps(dedup_input, ensure_ascii=False)
+            + "\nReturn ONLY the final processed JSON array."
+        )
+
+    def _deduplication_batches(self, claims: list[ExtractedClaim]) -> list[list[ExtractedClaim]]:
+        system = self.prompts.get("paper_claims.deduplication_system")
+        budget_info = self._input_token_budget(system)
+        if budget_info is None:
+            return [
+                claims[index : index + self.dedup_batch_size] for index in range(0, len(claims), self.dedup_batch_size)
+            ]
+
+        user_budget, encoder = budget_info
+        batches: list[list[ExtractedClaim]] = []
+        current: list[ExtractedClaim] = []
+        for claim in claims:
+            candidate = [*current, claim]
+            try:
+                token_count = count_tokens(self._deduplication_prompt(candidate), encoder)
+            except Exception as exc:
+                logger.warning("Token counting failed; falling back to count-bounded deduplication batches: %s", exc)
+                return [
+                    claims[index : index + self.dedup_batch_size]
+                    for index in range(0, len(claims), self.dedup_batch_size)
+                ]
+
+            if current and (len(candidate) > self.dedup_batch_size or token_count > user_budget):
+                batches.append(current)
+                current = [claim]
+                try:
+                    single_token_count = count_tokens(self._deduplication_prompt(current), encoder)
+                except Exception as exc:
+                    logger.warning(
+                        "Token counting failed; falling back to count-bounded deduplication batches: %s",
+                        exc,
+                    )
+                    return [
+                        claims[index : index + self.dedup_batch_size]
+                        for index in range(0, len(claims), self.dedup_batch_size)
+                    ]
+                if single_token_count > user_budget:
+                    logger.warning(
+                        "Single claim %s exceeds deduplication input budget; sending it unchanged",
+                        claim.claim_id,
+                    )
+            else:
+                current = candidate
+
+        if current:
+            batches.append(current)
+        if len(batches) > 1:
+            logger.info(
+                "Claim extraction step 3/3: split deduplication into %s token-bounded batches",
+                len(batches),
+            )
+        return batches
+
     async def _deduplicate_global_survivors(
         self, claims: list[ExtractedClaim]
     ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
@@ -531,7 +614,7 @@ class ClaimExtractor:
                 "Claim extraction step 3/3: running final deduplication pass over %s batch survivors",
                 len(claims),
             )
-            return await self._deduplicate_claim_batch(claims, request_name="Claim deduplication final pass")
+            return await self._deduplicate_claim_group(claims, request_name="Claim deduplication final pass")
 
         chunk_size = max(1, self.dedup_batch_size // 2)
         chunks = [claims[index : index + chunk_size] for index in range(0, len(claims), chunk_size)]
@@ -557,7 +640,7 @@ class ClaimExtractor:
                 if len(group) <= 1:
                     continue
 
-                kept, _chosen = await self._deduplicate_claim_batch(
+                kept, _chosen = await self._deduplicate_claim_group(
                     group,
                     request_name=f"Claim deduplication global group {group_number}/{total_groups}",
                 )
@@ -577,6 +660,29 @@ class ClaimExtractor:
         selections = self._dedup_selections(filtered)
         return filtered, selections
 
+    async def _deduplicate_claim_group(
+        self,
+        claims: list[ExtractedClaim],
+        *,
+        request_name: str,
+    ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
+        """Deduplicate a group without sending prompts over the token or count batch limits."""
+        batches = self._deduplication_batches(claims)
+        if len(batches) == 1:
+            return await self._deduplicate_claim_batch(batches[0], request_name=request_name)
+
+        logger.info("%s split into %s token-bounded sub-batches", request_name, len(batches))
+        filtered: list[ExtractedClaim] = []
+        selections: list[DedupSelection] = []
+        for batch_index, batch_claims in enumerate(batches, start=1):
+            batch_filtered, batch_selections = await self._deduplicate_claim_batch(
+                batch_claims,
+                request_name=f"{request_name} sub-batch {batch_index}/{len(batches)}",
+            )
+            filtered.extend(batch_filtered)
+            selections.extend(batch_selections)
+        return filtered, selections
+
     async def _deduplicate_claim_batch(
         self,
         claims: list[ExtractedClaim],
@@ -584,7 +690,6 @@ class ClaimExtractor:
         request_name: str,
     ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
         """Deduplicate one bounded batch and fall back to preserving all claims on LLM failure."""
-        dedup_input = [{"claim_id": claim.claim_id, "claim": claim.claim} for claim in claims]
         claims_by_id = {claim.claim_id: claim for claim in claims}
 
         def validate_dedup(items: list[DedupSelection]) -> None:
@@ -601,9 +706,7 @@ class ClaimExtractor:
 
         try:
             selections = await self._request_validated(
-                "Below is the JSON array of claims extracted from the report sections. Apply the deduplication and contradiction rules.\n"
-                + json.dumps(dedup_input, ensure_ascii=False)
-                + "\nReturn ONLY the final processed JSON array.",
+                self._deduplication_prompt(claims),
                 self.prompts.get("paper_claims.deduplication_system"),
                 TypeAdapter(list[DedupSelection]),
                 validate_dedup,
