@@ -73,7 +73,9 @@ CORE RULES:
 OUTPUT FORMAT:
 - Return ONLY a valid JSON array of objects matching the schema above.
 - No markdown wrappers, no explanations, no preamble.
-- If the input is empty or fully deduplicated to zero claims, return [].
+- If the input array is empty, return [].
+- If the input array is non-empty, never return [].
+- Deduplication means selecting representative input claims, not filtering all claims out.
 """
 
 repair = """

@@ -44,9 +44,11 @@ class PaperClaimPipeline:
         model_settings = getattr(self.handler, "model_settings", None)
         model_name = getattr(model_settings, "model", None)
         logger.info("Stage 4/4: starting claim extraction with model %s", model_name or "unknown")
-        extraction = await ClaimExtractor(self.handler, max_retries=options.max_retries).extract(
-            sections, source=str(converted.source_path), model=model_name
-        )
+        extraction = await ClaimExtractor(
+            self.handler,
+            max_retries=options.max_retries,
+            dedup_batch_size=options.dedup_batch_size,
+        ).extract(sections, source=str(converted.source_path), model=model_name)
         logger.info(
             "Stage 4/4 completed: model=%s; selected_sections=%s; extracted_before_dedup=%s; final_claims=%s",
             extraction.meta.model or "unknown",

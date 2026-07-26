@@ -40,6 +40,14 @@ def test_claim_extraction_prompt_requires_verbatim_original_text():
     assert "Copy it verbatim from the input section" in prompt
 
 
+def test_deduplication_prompt_forbids_empty_output_for_non_empty_input():
+    prompt = PromptLoader().get("paper_claims.deduplication_system")
+
+    assert "If the input array is empty, return []" in prompt
+    assert "If the input array is non-empty, never return []" in prompt
+    assert "fully deduplicated to zero claims" not in prompt
+
+
 @pytest.mark.asyncio
 async def test_extract_repairs_invalid_source_text_and_deduplicates():
     valid_claim = {
@@ -312,6 +320,174 @@ async def test_deduplication_repairs_rewritten_claim_text():
 
     assert result.deduplication[0].claim == valid_claim["claim"]
     assert "copy claim text verbatim" in handler.prompts[3]
+
+
+@pytest.mark.asyncio
+async def test_deduplication_repairs_empty_response_for_non_empty_input():
+    valid_claim = {
+        "claim": "The model uses BERT-base without fine-tuning.",
+        "original_text": "The model uses BERT-base without fine-tuning.",
+        "category": "model_architecture",
+        "value": "BERT-base",
+        "verifiability": "high",
+    }
+    correct_dedup = (
+        '[{"claim_id":"c0001","claim":"The model uses BERT-base without fine-tuning.",' '"contradiction":false}]'
+    )
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            json.dumps([valid_claim]),
+            "[]",
+            correct_dedup,
+        ]
+    )
+
+    result = await ClaimExtractor(handler, max_retries=2).extract([section()])
+
+    assert len(result.claims) == 1
+    assert "Deduplication returned 0 claims" in handler.prompts[3]
+
+
+@pytest.mark.asyncio
+async def test_deduplication_falls_back_after_retries_and_keeps_original_claims():
+    source_text = "The pipeline uses chunked PDF processing. " "The pipeline caches Marker Markdown output."
+    paper_section = section().model_copy(update={"text": source_text})
+    candidates = [
+        {
+            "claim": "The pipeline uses chunked PDF processing.",
+            "original_text": "The pipeline uses chunked PDF processing.",
+            "category": "data_preprocessing",
+            "value": None,
+            "verifiability": "high",
+        },
+        {
+            "claim": "The pipeline caches Marker Markdown output.",
+            "original_text": "The pipeline caches Marker Markdown output.",
+            "category": "infrastructure",
+            "value": "Marker Markdown",
+            "verifiability": "high",
+        },
+    ]
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            json.dumps(candidates),
+            "[]",
+        ]
+    )
+
+    result = await ClaimExtractor(handler, max_retries=1).extract([paper_section])
+
+    assert [claim.claim_id for claim in result.claims] == ["c0001", "c0002"]
+    assert [item.claim_id for item in result.deduplication] == ["c0001", "c0002"]
+    assert all(item.contradiction is False for item in result.deduplication)
+    assert result.meta.step3_input_count == 2
+    assert result.meta.step3_output_count == 2
+
+
+@pytest.mark.asyncio
+async def test_batched_deduplication_sends_multiple_requests_and_preserves_order():
+    source_text = (
+        "The pipeline splits PDFs into chunks. "
+        "The pipeline converts chunks with Marker. "
+        "The pipeline parses Markdown into sections."
+    )
+    paper_section = section().model_copy(update={"text": source_text})
+    candidates = [
+        {
+            "claim": "The pipeline splits PDFs into chunks.",
+            "original_text": "The pipeline splits PDFs into chunks.",
+            "category": "data_preprocessing",
+            "value": None,
+            "verifiability": "high",
+        },
+        {
+            "claim": "The pipeline converts chunks with Marker.",
+            "original_text": "The pipeline converts chunks with Marker.",
+            "category": "infrastructure",
+            "value": "Marker",
+            "verifiability": "high",
+        },
+        {
+            "claim": "The pipeline parses Markdown into sections.",
+            "original_text": "The pipeline parses Markdown into sections.",
+            "category": "data_preprocessing",
+            "value": "Markdown",
+            "verifiability": "high",
+        },
+    ]
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            json.dumps(candidates),
+            json.dumps(
+                [
+                    {"claim_id": "c0001", "claim": candidates[0]["claim"], "contradiction": False},
+                    {"claim_id": "c0002", "claim": candidates[1]["claim"], "contradiction": False},
+                ]
+            ),
+            json.dumps([{"claim_id": "c0003", "claim": candidates[2]["claim"], "contradiction": False}]),
+        ]
+    )
+
+    result = await ClaimExtractor(handler, dedup_batch_size=2).extract([paper_section])
+
+    assert [claim.claim_id for claim in result.claims] == ["c0001", "c0002", "c0003"]
+    assert len(handler.prompts) == 4
+    assert '"claim_id": "c0001"' in handler.prompts[2]
+    assert '"claim_id": "c0003"' in handler.prompts[3]
+
+
+@pytest.mark.asyncio
+async def test_failed_deduplication_batch_does_not_erase_successful_batches():
+    source_text = (
+        "The pipeline splits PDFs into chunks. "
+        "The pipeline converts chunks with Marker. "
+        "The pipeline parses Markdown into sections."
+    )
+    paper_section = section().model_copy(update={"text": source_text})
+    candidates = [
+        {
+            "claim": "The pipeline splits PDFs into chunks.",
+            "original_text": "The pipeline splits PDFs into chunks.",
+            "category": "data_preprocessing",
+            "value": None,
+            "verifiability": "high",
+        },
+        {
+            "claim": "The pipeline converts chunks with Marker.",
+            "original_text": "The pipeline converts chunks with Marker.",
+            "category": "infrastructure",
+            "value": "Marker",
+            "verifiability": "high",
+        },
+        {
+            "claim": "The pipeline parses Markdown into sections.",
+            "original_text": "The pipeline parses Markdown into sections.",
+            "category": "data_preprocessing",
+            "value": "Markdown",
+            "verifiability": "high",
+        },
+    ]
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            json.dumps(candidates),
+            json.dumps(
+                [
+                    {"claim_id": "c0001", "claim": candidates[0]["claim"], "contradiction": False},
+                    {"claim_id": "c0002", "claim": candidates[1]["claim"], "contradiction": False},
+                ]
+            ),
+            "[]",
+        ]
+    )
+
+    result = await ClaimExtractor(handler, max_retries=1, dedup_batch_size=2).extract([paper_section])
+
+    assert [claim.claim_id for claim in result.claims] == ["c0001", "c0002", "c0003"]
+    assert [item.claim_id for item in result.deduplication] == ["c0001", "c0002", "c0003"]
 
 
 @pytest.mark.asyncio

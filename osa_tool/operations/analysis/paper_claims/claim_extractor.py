@@ -32,12 +32,16 @@ class ClaimExtractor:
         *,
         prompts: PromptLoader | None = None,
         max_retries: int = 5,
+        dedup_batch_size: int = 100,
     ) -> None:
         if max_retries <= 0:
             raise ValueError("max_retries must be greater than zero")
+        if dedup_batch_size <= 0:
+            raise ValueError("dedup_batch_size must be greater than zero")
         self.handler = handler
         self.prompts = prompts or PromptLoader()
         self.max_retries = max_retries
+        self.dedup_batch_size = dedup_batch_size
 
     async def _request_validated(
         self,
@@ -226,11 +230,66 @@ class ClaimExtractor:
             logger.info("Claim extraction step 3/3 skipped: no claims to deduplicate")
             return [], []
 
-        logger.info("Claim extraction step 3/3: deduplicating %s claims", len(claims))
+        logger.info(
+            "Claim extraction step 3/3: deduplicating %s claims with batch_size=%s",
+            len(claims),
+            self.dedup_batch_size,
+        )
+        batches = [
+            claims[index : index + self.dedup_batch_size] for index in range(0, len(claims), self.dedup_batch_size)
+        ]
+        filtered: list[ExtractedClaim] = []
+        selections: list[DedupSelection] = []
+        for batch_index, batch_claims in track(
+            list(enumerate(batches, start=1)),
+            description="Deduplicating claim batches",
+        ):
+            batch_filtered, batch_selections = await self._deduplicate_claim_batch(
+                batch_claims,
+                request_name=f"Claim deduplication batch {batch_index}/{len(batches)}",
+            )
+            filtered.extend(batch_filtered)
+            selections.extend(batch_selections)
+
+        if len(batches) > 1 and filtered:
+            if len(filtered) <= self.dedup_batch_size:
+                logger.info(
+                    "Claim extraction step 3/3: running final deduplication pass over %s batch survivors",
+                    len(filtered),
+                )
+                filtered, selections = await self._deduplicate_claim_batch(
+                    filtered,
+                    request_name="Claim deduplication final pass",
+                )
+            else:
+                logger.info(
+                    "Claim extraction step 3/3: skipping final global pass because %s survivors exceed batch_size=%s",
+                    len(filtered),
+                    self.dedup_batch_size,
+                )
+
+        ratio = len(filtered) / len(claims)
+        logger.info(
+            "Claim extraction step 3/3 completed: retained %s/%s claims (%.1f%%)",
+            len(filtered),
+            len(claims),
+            ratio * 100,
+        )
+        return filtered, selections
+
+    async def _deduplicate_claim_batch(
+        self,
+        claims: list[ExtractedClaim],
+        *,
+        request_name: str,
+    ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
+        """Deduplicate one bounded batch and fall back to preserving all claims on LLM failure."""
         dedup_input = [{"claim_id": claim.claim_id, "claim": claim.claim} for claim in claims]
         claims_by_id = {claim.claim_id: claim for claim in claims}
 
         def validate_dedup(items: list[DedupSelection]) -> None:
+            if claims and not items:
+                raise ValueError(f"Deduplication returned 0 claims for non-empty input of {len(claims)} claims")
             ids = [item.claim_id for item in items]
             if len(ids) != len(set(ids)) or any(item not in claims_by_id for item in ids):
                 raise ValueError("Deduplication contains duplicate or unknown claim IDs")
@@ -240,15 +299,18 @@ class ClaimExtractor:
                     "Deduplication must copy claim text verbatim; rewritten claim IDs: " + ", ".join(rewritten)
                 )
 
-        selections = await self._request_validated(
-            "Below is the JSON array of claims extracted from the report sections. Apply the deduplication and contradiction rules.\n"
-            + json.dumps(dedup_input, ensure_ascii=False)
-            + "\nReturn ONLY the final processed JSON array.",
-            self.prompts.get("paper_claims.deduplication_system"),
-            TypeAdapter(list[DedupSelection]),
-            validate_dedup,
-            request_name="Claim deduplication",
-        )
+        try:
+            selections = await self._request_validated(
+                "Below is the JSON array of claims extracted from the report sections. Apply the deduplication and contradiction rules.\n"
+                + json.dumps(dedup_input, ensure_ascii=False)
+                + "\nReturn ONLY the final processed JSON array.",
+                self.prompts.get("paper_claims.deduplication_system"),
+                TypeAdapter(list[DedupSelection]),
+                validate_dedup,
+                request_name=request_name,
+            )
+        except ClaimExtractionError as exc:
+            return self._fallback_deduplication(claims, request_name=request_name, reason=str(exc))
 
         selection_by_id = {item.claim_id: item for item in selections}
         filtered = [
@@ -256,7 +318,33 @@ class ClaimExtractor:
             for claim in claims
             if claim.claim_id in selection_by_id
         ]
-        logger.info("Claim extraction step 3/3 completed: retained %s claims", len(filtered))
+        ratio = len(filtered) / len(claims)
+        logger.info(
+            "%s completed: retained %s/%s claims (%.1f%%)",
+            request_name,
+            len(filtered),
+            len(claims),
+            ratio * 100,
+        )
+        return filtered, selections
+
+    def _fallback_deduplication(
+        self,
+        claims: list[ExtractedClaim],
+        *,
+        request_name: str,
+        reason: str,
+    ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
+        logger.warning(
+            "%s failed after retries; preserving %s original claims without LLM deduplication. reason=%s",
+            request_name,
+            len(claims),
+            reason,
+        )
+        selections = [
+            DedupSelection(claim_id=claim.claim_id, claim=claim.claim, contradiction=False) for claim in claims
+        ]
+        filtered = [claim.model_copy(update={"contradiction": False}) for claim in claims]
         return filtered, selections
 
     async def extract(

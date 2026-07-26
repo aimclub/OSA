@@ -29,6 +29,7 @@ def test_batch_uses_marker_process_isolation_by_default():
     assert args.marker_low_vram is False
     assert args.marker_log_cuda_memory is True
     assert args.include_debug is False
+    assert args.dedup_batch_size == 100
 
 
 def test_batch_can_disable_marker_process_isolation():
@@ -48,6 +49,15 @@ def test_batch_can_include_debug_payload():
     args = build_parser().parse_args(["paper.pdf", "--include-debug"])
 
     assert args.include_debug is True
+
+
+def test_batch_can_configure_dedup_batch_size():
+    args = build_parser().parse_args(["paper.pdf", "--dedup-batch-size", "25"])
+    help_text = build_parser().format_help()
+
+    assert args.dedup_batch_size == 25
+    assert "--dedup-batch-size" in help_text
+    assert "Maximum number of extracted claims" in help_text
 
 
 def test_load_claims_accepts_clean_schema(tmp_path):

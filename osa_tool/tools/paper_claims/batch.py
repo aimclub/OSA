@@ -40,6 +40,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--chunk-pages", type=int, default=10)
     parser.add_argument("--max-retries", type=int, default=5)
     parser.add_argument(
+        "--dedup-batch-size",
+        type=int,
+        default=100,
+        help=(
+            "Maximum number of extracted claims to send in one deduplication request. "
+            "Smaller values reduce LLM context/output pressure."
+        ),
+    )
+    parser.add_argument(
         "--include-debug",
         action="store_true",
         help="Include debug-only intermediate data, such as legacy debug.step3_selection, in exported JSON.",
@@ -92,6 +101,7 @@ def main() -> int:
     options = PipelineOptions(
         pages_per_chunk=args.chunk_pages,
         max_retries=args.max_retries,
+        dedup_batch_size=args.dedup_batch_size,
         marker=MarkerOptions(
             force_refresh=args.force_marker_refresh,
             low_vram=args.marker_low_vram,
