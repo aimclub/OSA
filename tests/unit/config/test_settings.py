@@ -1,3 +1,5 @@
+from argparse import Namespace
+
 import pytest
 from pydantic import ValidationError
 
@@ -9,6 +11,58 @@ from osa_tool.config.settings import (
     Settings,
     WorkflowSettings,
 )
+
+
+def _write_task_models_config(tmp_path) -> str:
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        '''
+[git]
+repository = "https://github.com/testuser/testrepo"
+
+[llm]
+rate_limit = 5
+base_url = "https://api.openai.com/v1"
+encoder = "cl100k_base"
+host_name = "https://api.openai.com/v1"
+localhost = "http://localhost:11434/"
+model = "default-model"
+path = "generate"
+temperature = 0.05
+max_tokens = 4096
+context_window = 16385
+top_p = 0.95
+max_retries = 3
+allowed_providers = ["openai"]
+fallback_models = ["fallback-model"]
+system_prompt = "You are a helpful assistant."
+
+[llm.for_docstring_gen]
+model = "docstring-model"
+
+[llm.for_readme_gen]
+model = "readme-model"
+
+[workflows]
+pep8_tool = "flake8"
+''',
+        encoding="utf-8",
+    )
+    return str(config_file)
+
+
+def _make_config_args(config_file: str, **overrides) -> Namespace:
+    args = {
+        "config_file": config_file,
+        "repository": "https://github.com/testuser/testrepo",
+        "use_single_model": False,
+        "model_docstring": None,
+        "model_readme": None,
+        "model_validation": None,
+        "model_general": None,
+    }
+    args.update(overrides)
+    return Namespace(**args)
 
 
 def test_config_manager_success(mock_config_manager):
@@ -208,6 +262,34 @@ def test_config_manager_get_model_settings(mock_config_manager):
         assert isinstance(validation_settings, ModelSettings)
     if general_settings:
         assert isinstance(general_settings, ModelSettings)
+
+
+def test_config_manager_routes_docstring_to_task_model(tmp_path):
+    manager = ConfigManager(_make_config_args(_write_task_models_config(tmp_path)))
+
+    assert manager.get_model_settings("docstring").model == "docstring-model"
+    assert manager.get_model_settings("readme").model == "readme-model"
+
+
+def test_config_manager_applies_docstring_cli_model_override(tmp_path):
+    manager = ConfigManager(
+        _make_config_args(
+            _write_task_models_config(tmp_path),
+            model_docstring="cli-docstring-model",
+        )
+    )
+
+    assert manager.get_model_settings("docstring").model == "cli-docstring-model"
+    assert manager.get_model_settings("readme").model == "readme-model"
+
+
+def test_config_manager_uses_default_model_when_single_model_is_enabled(tmp_path):
+    manager = ConfigManager(
+        _make_config_args(_write_task_models_config(tmp_path), use_single_model=True)
+    )
+
+    assert manager.get_model_settings("docstring").model == "default-model"
+    assert manager.get_model_settings("readme").model == "default-model"
 
 
 def test_git_settings_validation():

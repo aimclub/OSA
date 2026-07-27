@@ -203,7 +203,7 @@ def test_count_tokens(mock_config_manager):
 async def test_generate_class_documentation(mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)
-    docgen.model_handler.async_request = AsyncMock(return_value="Generated docstring")
+    docgen.model_handler.async_request = AsyncMock(return_value='"""Generated docstring"""')
 
     class_details = [
         "MyClass",  # class name
@@ -217,8 +217,27 @@ async def test_generate_class_documentation(mock_config_manager):
     result = await docgen.generate_class_documentation(class_details, semaphore)
 
     # Assert
-    assert result == "Generated docstring"
+    assert result == '"""\nGenerated docstring\n"""'
     docgen.model_handler.async_request.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_generate_class_documentation_uses_small_model_prompt(mock_config_manager):
+    docgen = DocGen(mock_config_manager)
+    docgen.is_small_model = True
+    docgen.model_handler.async_request = AsyncMock(return_value='"""Generated docstring"""')
+
+    result = await docgen.generate_class_documentation(
+        ["MyClass", ["name"], {"method_name": "run", "docstring": "Runs the job."}, ""],
+        asyncio.Semaphore(1),
+    )
+
+    prompt = docgen.model_handler.async_request.await_args.args[0]
+    assert result == '"""\nGenerated docstring\n"""'
+    assert "CRITICAL FORMATTING RULES:" in prompt
+    assert "Class attributes to document:" in prompt
+    assert "Indent each entry inside Attributes: and Methods: by four spaces" in prompt
+    assert "must start at column 0" not in prompt
 
 
 @pytest.mark.asyncio
@@ -260,7 +279,7 @@ async def test_generate_method_documentation(mock_config_manager):
     docstring = await docgen.generate_method_documentation(method_details, semaphore)
 
     # Assert
-    assert docstring == "Generated docstring"
+    assert docstring == '"""\nGenerated docstring\n"""'
     docgen.model_handler.async_request.assert_called_once()
 
 
@@ -285,7 +304,7 @@ async def test_update_method_documentation(mock_config_manager):
     updated_doc = await docgen.update_method_documentation(method_details, semaphore)
 
     # Assert
-    assert updated_doc == "Updated docstring"
+    assert updated_doc == '"""\nUpdated docstring\n"""'
     docgen.model_handler.async_request.assert_called_once()
 
 
@@ -299,6 +318,17 @@ def test_valid_triple_quotes(mock_config_manager):
 
     # Assert
     assert result == resp
+
+
+def test_extract_pure_docstring_preserves_class_attributes(mock_config_manager):
+    docgen = DocGen(mock_config_manager)
+
+    result = docgen.extract_pure_docstring(
+        '"""Class summary.\n\nAttributes:\n    name: Object name.\n"""'
+    )
+
+    assert "Attributes:" in result
+    assert "name: Object name." in result
 
 
 def test_with_triple_quotes_placeholder(mock_config_manager):

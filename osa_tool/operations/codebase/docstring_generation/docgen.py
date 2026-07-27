@@ -47,24 +47,41 @@ Example of correct Google-style docstring format:
 
 """Fetches rows from a Bigtable.
 
+Retrieves rows pertaining to the given keys from the Table instance
+represented by big_table. Silly things may happen if
+other_silly_variable is not None.
+
 Args:
-    keys: Keys of rows to fetch.
+    big_table: An open Bigtable Table instance.
+    keys: A sequence of strings representing the key of each table row
+        to fetch.
+    other_silly_variable: Another optional variable, that has a much
+        longer name than the other args, and which does nothing.
 
 Returns:
-    Rows mapped by key.
+    A dict mapping keys to the corresponding table row data
+    fetched. Each row is represented as a tuple of strings.
+
+Raises:
+    IOError: An error occurred accessing the bigtable.Table object.
 """
 '''
 
     GOOGLE_STYLE_CLASS_EXAMPLE = '''
 Example of correct Google-style class docstring format:
 
-"""Compresses binary data.
+"""A class for compressing binary data using arithmetic compression.
+
+Provides a range of algorithms and techniques for efficient data compression.
+The primary purpose is to create a robust and adaptable compression system.
 
 Attributes:
-    model: Probability estimation model.
+    model: The compression model used for probability estimation.
+    bit_buffer: Buffer for storing compressed bits before writing.
 
 Methods:
-    compress: Compresses the input data.
+    compress: Compresses the input binary data.
+    decompress: Decompresses previously compressed data.
 """
 '''
 
@@ -251,7 +268,7 @@ Methods:
 
         async with semaphore:
             docstring = await self.model_handler.async_request(prompt)
-            return docstring.strip('"""')
+            return self.extract_pure_docstring(docstring)
 
     def _get_class_generation_prompt_large(self, class_name: str, attributes: list, methods: list) -> str:
         prompt = (
@@ -274,17 +291,28 @@ Methods:
     def _get_class_generation_prompt_small(self, class_name: str, attributes: list, methods: list) -> str:
         prompt = (
             f"{self.GOOGLE_STYLE_CLASS_EXAMPLE}\n\n"
-            f"Generate a Google-style docstring for class '{class_name}' following the format above.\n"
-            "Return only one triple-quoted docstring; no Markdown, code, or explanation.\n"
-            "Use only Attributes: and Methods: sections when they have content.\n\n"
+            f"Generate a Google-style docstring for class '{class_name}' following the exact format above.\n\n"
+            "CRITICAL FORMATTING RULES:\n"
+            "- Use triple double-quotes ONLY at start and end of the entire docstring.\n"
+            "- NEVER put triple quotes inside the docstring content.\n"
+            "- NEVER use .. method:: or any Sphinx/rST directives.\n"
+            "- Section headers: 'Attributes:' and 'Methods:' (if needed). No other section names.\n"
+            "- Keep section headers at column 0.\n"
+            "- Indent each entry inside Attributes: and Methods: by four spaces, as in the example.\n"
+            "- Do NOT wrap any content in code blocks (```).\n"
+            "- Return ONLY the docstring, no explanatory text before or after.\n\n"
         )
         if attributes:
-            prompt += "Class attributes to document:\n" + "".join(f"- {attr}\n" for attr in attributes) + "\n"
+            prompt += "Class attributes to document:\n"
+            for attr in attributes:
+                prompt += f"- {attr}\n"
+            prompt += "\n"
         if methods:
-            prompt += "Class methods to document:\n" + "".join(
-                f"- {method['method_name']}: {method.get('docstring', '').split(chr(10))[0] or 'No description'}\n"
-                for method in methods
-            ) + "\n"
+            prompt += "Class methods (name and existing docstring summary):\n"
+            for method in methods:
+                summary = method.get("docstring", "").split("\n")[0] if method.get("docstring") else "No description"
+                prompt += f"- {method['method_name']}: {summary}\n"
+            prompt += "\n"
         return prompt + "Now generate the docstring:"
 
     async def update_class_documentation(
@@ -326,11 +354,16 @@ Methods:
 
     def _build_small_model_update_class_prompt(self, class_name: str, old_desc: str) -> str:
         return (
-            "Update this Python class docstring description. Return only the revised description.\n"
-            "Preserve the original meaning, use the project idea only as context, and add no code or commentary.\n\n"
+            "You are updating a Python class docstring description. Output ONLY the new description sentence or paragraph.\n\n"
+            "Think step by step:\n"
+            "1. Read the old description and identify its core meaning.\n"
+            "2. Consider the project's main idea to refine the description but DO NOT mention the idea explicitly.\n"
+            "3. Improve clarity and conciseness while preserving the original intent.\n"
+            "4. Write ONLY the final updated description, without any extra commentary.\n\n"
             f"Class name: {class_name}\n"
-            f"Project idea: {self.main_idea}\n"
-            f"Old description: {old_desc}\n"
+            f"Project main idea: {self.main_idea}\n"
+            f"Old description: {old_desc}\n\n"
+            "Updated description (chain-of-thought reasoning performed internally):\n"
         )
 
     async def generate_method_documentation(
@@ -352,7 +385,8 @@ Methods:
 
         async with semaphore:
             docstring = await self.model_handler.async_request(prompt)
-            return self.clean_docstring(docstring.strip('"""'))
+            extracted = self.extract_pure_docstring(docstring)
+            return self.clean_docstring(extracted)
 
     def _get_method_generation_prompt_large(
         self, method_details: dict, context_code: str = None, language: str = "python"
@@ -417,19 +451,65 @@ Methods:
 
     def _get_method_generation_prompt_small(self, method_details: dict, context_code: str = None) -> str:
         arguments = [arg for arg in method_details["arguments"] if arg not in ("self", "cls")]
+        method_name = method_details["method_name"]
+        is_constructor = method_name == "__init__"
         prompt = (
             f"{self.GOOGLE_STYLE_EXAMPLE}\n\n"
-            f"Generate a Google-style docstring for method '{method_details['method_name']}'.\n"
-            "Return only a triple-quoted docstring: no code, Markdown, signature, or explanation.\n"
-            "Use Args:, Returns:, and Raises: only when they have real content.\n"
-            "Never include Attributes:, `Returns: None`, or `Raises: None`.\n\n"
-            f"Arguments: {arguments}\n"
-            f"Decorators: {method_details['decorators']}\n"
-            f"Source code (context only):\n{method_details['source_code']}\n"
+            f"Generate a Google-style docstring for method '{method_name}'.\n\n"
+            "OUTPUT CONTRACT (STRICT):\n"
+            "- Output ONLY a valid Python docstring.\n"
+            "- Do NOT output code, explanations, or text before/after.\n"
+            "- Do NOT use markdown (no ``` blocks).\n"
+            "- Do NOT repeat the function signature.\n"
+            "- Do NOT include inner functions or any code fragments.\n\n"
+            "STRUCTURE RULES:\n"
+            "- Start and end with triple double-quotes: \"\"\"\n"
+            "- First line: short summary.\n"
+            "- Then optional sections in this order: Args, Returns, Raises.\n\n"
+            "SECTION RULES:\n"
+            "- Include a section ONLY if it has real content.\n"
+            "- NEVER write empty sections.\n"
+            "- NEVER write 'None'.\n"
+            "- If no returns -> omit Returns section.\n"
+            "- If no exceptions -> omit Raises section.\n"
         )
+        if not is_constructor:
+            prompt += (
+                "- ABSOLUTELY FORBIDDEN: 'Attributes:' section for non-__init__ methods.\n"
+                "- Methods do NOT have attributes. Only classes can have Attributes section.\n"
+                "- NEVER generate an Attributes section for a method.\n"
+            )
+        prompt += (
+            "\nFORMAT RULES:\n"
+            "- Args: each argument on new line: '    name: Description.'\n"
+            "- Returns: one line indented by 4 spaces.\n"
+            "- No 'Attributes' section (methods must NOT have it).\n"
+            "- No Sphinx/rST syntax.\n"
+            "- No extra indentation before docstring.\n\n"
+            "ANTI-PATTERNS (FORBIDDEN):\n"
+            "- Returns: None\n"
+            "- Raises: None\n"
+            "- Attributes: None\n"
+            "- Any Python code\n"
+            "- 'Here is the docstring:'\n"
+            "- Escaped quotes like \\\"\\\"\\\" (use regular triple quotes only)\n\n"
+        )
+        prompt += f"Method name: {method_name}\n"
+        prompt += f"Decorators: {method_details['decorators']}\n"
+        prompt += f"Arguments: {arguments}\n"
+        prompt += "Source code:\n```\n"
+        prompt += f"{method_details['source_code']}\n"
+        prompt += "```\n\n"
         if context_code:
-            prompt += f"\nHelper context (understand only; do not copy):\n{context_code}\n"
-        return prompt + "\nNow generate the docstring:"
+            prompt += "Context (for understanding only, DO NOT copy):\n" f"{context_code}\n\n"
+        if is_constructor:
+            prompt += (
+                "SPECIAL RULE (__init__):\n"
+                "- Describe what the object initializes.\n"
+                "- Document all parameters.\n"
+                "- Do NOT add Attributes section (class-level docstring handles attributes).\n\n"
+            )
+        return prompt + "RETURN ONLY THE DOCSTRING:"
 
     async def update_method_documentation(
         self,
@@ -455,7 +535,7 @@ Methods:
 
         async with semaphore:
             response = await self.model_handler.async_request(prompt)
-            return self.clean_docstring(response.strip('"""'))
+            return self.clean_docstring(self.extract_pure_docstring(response))
 
     def _get_method_update_prompt_large(
         self,
@@ -524,21 +604,62 @@ Methods:
     def _get_method_update_prompt_small(
         self, method_details: dict, docstring: str, context_code: str = None, class_name: str = None
     ) -> str:
+        method_name = method_details["method_name"]
+        is_constructor = method_name == "__init__"
         prompt = (
-            "Update this Python method docstring in Google style. Return only one triple-quoted docstring.\n"
-            "Do not return code, a signature, Markdown, Attributes:, empty sections, `Returns: None`, or `Raises: None`.\n\n"
-            f"Method: {method_details['method_name']}"
+            "You are updating a Python docstring (Google style). Output ONLY the updated docstring.\n"
+            "DO NOT output any Python code, function signatures, or class definitions.\n"
+            "DO NOT output the method body or any implementation details.\n"
+            "DO NOT include 'def ', 'return ', 'if ', 'else:', 'try:', 'except:' or any code keywords.\n"
+            "The response must contain ONLY the docstring text between triple quotes.\n\n"
+            "Think step by step internally, then provide the final docstring:\n"
+            "1. Analyze the existing docstring: what information is present?\n"
+            "2. Examine the method source code to understand what it does.\n"
+            "3. Write a clean Google-style docstring with appropriate sections.\n"
+            "4. Verify no code appears in the output.\n"
         )
-        if class_name:
-            prompt += f" in class {class_name}"
+        if is_constructor:
+            prompt += (
+                "5. This is __init__: document parameters and what gets initialized.\n"
+                "6. NEVER add an 'Attributes' section to __init__ docstring.\n"
+            )
+        else:
+            prompt += (
+                "5. This is NOT a constructor. NEVER add an 'Attributes' section.\n"
+                "6. Methods do NOT have attributes. Only classes can have Attributes sections.\n"
+            )
         prompt += (
-            f"\nExisting docstring:\n{docstring}\n"
-            f"Source code (context only):\n{method_details['source_code']}\n"
-            f"Project idea (context only): {self.main_idea}\n"
+            "\nFORBIDDEN OUTPUT PATTERNS:\n"
+            "- Any line starting with 'def ', 'class ', 'return ', 'if ', 'else:', 'try:', 'except:', 'raise '\n"
+            "- Any line containing 'self.' followed by assignment (e.g., 'self.attr = value')\n"
+            "- The 'Attributes:' section (forbidden for all methods, including __init__)\n"
+            "- 'Returns: None' or 'Raises: None'\n"
+            "- Empty sections\n"
+            "- Escaped quotes like \\\"\\\"\\\"\n"
+            "- Code blocks with ```\n"
+            "- Any implementation logic\n\n"
+            "CORRECT OUTPUT EXAMPLE:\n"
+            "\"\"\"Short summary of what the method does.\n\n"
+            "Args:\n"
+            "    param1: Description of param1.\n"
+            "    param2: Description of param2.\n\n"
+            "Returns:\n"
+            "    Description of return value.\n"
+            "\"\"\"\n\n"
+            f"Method name: {method_name}"
+            f"{f' (inside class {class_name})' if class_name else ''}\n"
+            f"Decorators: {method_details['decorators']}\n"
+            f"Existing docstring:\n{docstring}\n\n"
+            "Source code (for understanding only, DO NOT copy into output):\n"
+            f"{method_details['source_code']}\n\n"
         )
         if context_code:
-            prompt += f"Helper context (do not copy):\n{context_code}\n"
-        return prompt + "Now output only the updated docstring:"
+            prompt += "Helper context (for understanding only, DO NOT copy):\n" f"{context_code}\n\n"
+        prompt += (
+            f"Project main idea (context only): {self.main_idea}\n\n"
+            "Now output ONLY the updated docstring (no code, no explanation, just the docstring):\n"
+        )
+        return prompt
 
     @staticmethod
     def extract_pure_docstring(gpt_response: str) -> str:
