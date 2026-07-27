@@ -33,6 +33,7 @@ allowed_providers = ["google-vertex", "azure"]
 system_prompt = "You are a helpful assistant for analyzing open-source repositories."
 
 [llm.for_docstring_gen]
+# model = "meta-llama/llama-3.1-8b-instruct"
 [llm.for_readme_gen]
 [llm.for_validation]
 [llm.for_general_tasks]
