@@ -200,6 +200,46 @@ def test_count_tokens(mock_config_manager):
 
 
 @pytest.mark.asyncio
+async def test_classify_model_size_uses_model_self_classification(mock_config_manager):
+    docgen = DocGen(mock_config_manager)
+    docgen.model_settings.model = "provider/example-model"
+    docgen.is_small_model = False
+    docgen.model_handler.async_request = AsyncMock(return_value="SMALL")
+
+    result = await docgen.classify_model_size()
+
+    prompt = docgen.model_handler.async_request.await_args.args[0]
+    assert result is True
+    assert docgen.is_small_model is True
+    assert "provider/example-model" in prompt
+    assert "no more than 13 billion parameters" in prompt
+
+
+@pytest.mark.asyncio
+async def test_classify_model_size_can_override_name_based_heuristic(mock_config_manager):
+    docgen = DocGen(mock_config_manager)
+    docgen.is_small_model = True
+    docgen.model_handler.async_request = AsyncMock(return_value="NOT_SMALL")
+
+    result = await docgen.classify_model_size()
+
+    assert result is False
+    assert docgen.is_small_model is False
+
+
+@pytest.mark.asyncio
+async def test_classify_model_size_keeps_heuristic_for_unrecognized_response(mock_config_manager):
+    docgen = DocGen(mock_config_manager)
+    docgen.is_small_model = True
+    docgen.model_handler.async_request = AsyncMock(return_value="I do not know")
+
+    result = await docgen.classify_model_size()
+
+    assert result is True
+    assert docgen.is_small_model is True
+
+
+@pytest.mark.asyncio
 async def test_generate_class_documentation(mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)

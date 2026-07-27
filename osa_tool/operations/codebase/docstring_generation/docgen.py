@@ -42,6 +42,8 @@ class DocGen(object):
     generated docstrings back into source files.
     """
 
+    SMALL_MODEL_MAX_PARAMETERS_BILLIONS = 13
+
     GOOGLE_STYLE_EXAMPLE = '''
 Example of correct Google-style docstring format:
 
@@ -98,12 +100,66 @@ Methods:
         self.main_idea = None
         self._function_index_cache = None
         small_model_indicators = [
-            "llama", "mistral", "phi", "8b", "7b", "3b", "gemma", "qwen-1.5",
-            "yi-", "tiny", "small", "mini", "lite", "nano", "micro",
+            "llama", "mistral", "phi",
+            "8b", "7b", "3b",
+            "tiny", "small", "lite", "nano", "micro",
         ]
         self.is_small_model = any(
             indicator in self.model_settings.model.lower() for indicator in small_model_indicators
         )
+
+    async def classify_model_size(self) -> bool:
+        """Ask the selected model whether it belongs to the configured small-model class.
+
+        The answer is used only for choosing a docstring prompt profile. If the
+        model does not return the required label or the request fails, the
+        name-based heuristic established during initialization is preserved.
+        """
+        prompt = (
+            "Classify the language model named below for docstring-generation prompting.\n"
+            f"Model name: {self.model_settings.model}\n"
+            "A small language model is one with no more than "
+            f"{self.SMALL_MODEL_MAX_PARAMETERS_BILLIONS} billion parameters.\n"
+            "Reply with exactly one label and no explanation:\n"
+            "SMALL — if this model has no more than the stated number of parameters.\n"
+            "NOT_SMALL — if it has more parameters or is not a small language model.\n"
+        )
+
+        try:
+            response = await self.model_handler.async_request(prompt)
+        except Exception as error:
+            logger.warning(
+                "Could not classify model %s; using name-based small-model heuristic (%s): %s",
+                self.model_settings.model,
+                self.is_small_model,
+                error,
+            )
+            return self.is_small_model
+
+        logger.debug(
+            "Raw small-model classification response for %s: %r",
+            self.model_settings.model,
+            response,
+        )
+        label = response.strip().upper()
+        if label == "SMALL":
+            self.is_small_model = True
+        elif label == "NOT_SMALL":
+            self.is_small_model = False
+        else:
+            logger.warning(
+                "Model %s returned an unrecognized size label %r; using name-based heuristic (%s)",
+                self.model_settings.model,
+                response,
+                self.is_small_model,
+            )
+
+        logger.info(
+            "Docstring prompt profile for model %s: %s",
+            self.model_settings.model,
+            "small" if self.is_small_model else "standard",
+        )
+        return self.is_small_model
 
     def _get_repo_root(self) -> Path:
         """Return the resolved root path of the repository being processed."""
