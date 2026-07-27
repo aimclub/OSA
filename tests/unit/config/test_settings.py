@@ -16,7 +16,7 @@ from osa_tool.config.settings import (
 def _write_task_models_config(tmp_path) -> str:
     config_file = tmp_path / "config.toml"
     config_file.write_text(
-        '''
+        """
 [git]
 repository = "https://github.com/testuser/testrepo"
 
@@ -45,7 +45,7 @@ model = "readme-model"
 
 [workflows]
 pep8_tool = "flake8"
-''',
+""",
         encoding="utf-8",
     )
     return str(config_file)
@@ -284,9 +284,7 @@ def test_config_manager_applies_docstring_cli_model_override(tmp_path):
 
 
 def test_config_manager_uses_default_model_when_single_model_is_enabled(tmp_path):
-    manager = ConfigManager(
-        _make_config_args(_write_task_models_config(tmp_path), use_single_model=True)
-    )
+    manager = ConfigManager(_make_config_args(_write_task_models_config(tmp_path), use_single_model=True))
 
     assert manager.get_model_settings("docstring").model == "default-model"
     assert manager.get_model_settings("readme").model == "default-model"

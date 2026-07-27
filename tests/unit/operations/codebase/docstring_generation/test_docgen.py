@@ -363,9 +363,7 @@ def test_valid_triple_quotes(mock_config_manager):
 def test_extract_pure_docstring_preserves_class_attributes(mock_config_manager):
     docgen = DocGen(mock_config_manager)
 
-    result = docgen.extract_pure_docstring(
-        '"""Class summary.\n\nAttributes:\n    name: Object name.\n"""'
-    )
+    result = docgen.extract_pure_docstring('"""Class summary.\n\nAttributes:\n    name: Object name.\n"""')
 
     assert "Attributes:" in result
     assert "name: Object name." in result

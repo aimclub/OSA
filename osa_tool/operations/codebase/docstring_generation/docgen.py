@@ -100,9 +100,17 @@ Methods:
         self.main_idea = None
         self._function_index_cache = None
         small_model_indicators = [
-            "llama", "mistral", "phi",
-            "8b", "7b", "3b",
-            "tiny", "small", "lite", "nano", "micro",
+            "llama",
+            "mistral",
+            "phi",
+            "8b",
+            "7b",
+            "3b",
+            "tiny",
+            "small",
+            "lite",
+            "nano",
+            "micro",
         ]
         self.is_small_model = any(
             indicator in self.model_settings.model.lower() for indicator in small_model_indicators
@@ -519,7 +527,7 @@ Methods:
             "- Do NOT repeat the function signature.\n"
             "- Do NOT include inner functions or any code fragments.\n\n"
             "STRUCTURE RULES:\n"
-            "- Start and end with triple double-quotes: \"\"\"\n"
+            '- Start and end with triple double-quotes: """\n'
             "- First line: short summary.\n"
             "- Then optional sections in this order: Args, Returns, Raises.\n\n"
             "SECTION RULES:\n"
@@ -548,7 +556,7 @@ Methods:
             "- Attributes: None\n"
             "- Any Python code\n"
             "- 'Here is the docstring:'\n"
-            "- Escaped quotes like \\\"\\\"\\\" (use regular triple quotes only)\n\n"
+            '- Escaped quotes like \\"\\"\\" (use regular triple quotes only)\n\n'
         )
         prompt += f"Method name: {method_name}\n"
         prompt += f"Decorators: {method_details['decorators']}\n"
@@ -691,17 +699,17 @@ Methods:
             "- The 'Attributes:' section (forbidden for all methods, including __init__)\n"
             "- 'Returns: None' or 'Raises: None'\n"
             "- Empty sections\n"
-            "- Escaped quotes like \\\"\\\"\\\"\n"
+            '- Escaped quotes like \\"\\"\\"\n'
             "- Code blocks with ```\n"
             "- Any implementation logic\n\n"
             "CORRECT OUTPUT EXAMPLE:\n"
-            "\"\"\"Short summary of what the method does.\n\n"
+            '"""Short summary of what the method does.\n\n'
             "Args:\n"
             "    param1: Description of param1.\n"
             "    param2: Description of param2.\n\n"
             "Returns:\n"
             "    Description of return value.\n"
-            "\"\"\"\n\n"
+            '"""\n\n'
             f"Method name: {method_name}"
             f"{f' (inside class {class_name})' if class_name else ''}\n"
             f"Decorators: {method_details['decorators']}\n"
