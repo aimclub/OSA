@@ -131,8 +131,14 @@ Methods:
             "Reply with exactly one label and no explanation:\n"
             "SMALL — if this model has no more than the stated number of parameters.\n"
             "NOT_SMALL — if it has more parameters or is not a small language model.\n"
+            "UNSURE — if you cannot determine the model size with confidence.\n"
         )
 
+        logger.debug(
+            "Small-model classification prompt for %s:\n%s",
+            self.model_settings.model,
+            prompt,
+        )
         try:
             response = await self.model_handler.async_request(prompt)
         except Exception as error:
@@ -154,6 +160,12 @@ Methods:
             self.is_small_model = True
         elif label == "NOT_SMALL":
             self.is_small_model = False
+        elif label == "UNSURE":
+            logger.warning(
+                "Model %s is unsure of its size; using name-based heuristic (%s)",
+                self.model_settings.model,
+                self.is_small_model,
+            )
         else:
             logger.warning(
                 "Model %s returned an unrecognized size label %r; using name-based heuristic (%s)",

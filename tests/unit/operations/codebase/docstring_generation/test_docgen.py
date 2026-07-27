@@ -240,6 +240,18 @@ async def test_classify_model_size_keeps_heuristic_for_unrecognized_response(moc
 
 
 @pytest.mark.asyncio
+async def test_classify_model_size_uses_fallback_when_model_is_unsure(mock_config_manager):
+    docgen = DocGen(mock_config_manager)
+    docgen.is_small_model = False
+    docgen.model_handler.async_request = AsyncMock(return_value="UNSURE")
+
+    result = await docgen.classify_model_size()
+
+    assert result is False
+    assert docgen.is_small_model is False
+
+
+@pytest.mark.asyncio
 async def test_generate_class_documentation(mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)
