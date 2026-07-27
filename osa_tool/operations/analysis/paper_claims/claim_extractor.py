@@ -605,6 +605,20 @@ class ClaimExtractor:
             )
         return batches
 
+    def _deduplication_prompt_fits(self, claims: list[ExtractedClaim]) -> bool:
+        if len(claims) > self.dedup_batch_size:
+            return False
+        system = self.prompts.get("paper_claims.deduplication_system")
+        budget_info = self._input_token_budget(system)
+        if budget_info is None:
+            return True
+        user_budget, encoder = budget_info
+        try:
+            return count_tokens(self._deduplication_prompt(claims), encoder) <= user_budget
+        except Exception as exc:
+            logger.warning("Token counting failed; assuming deduplication prompt fits current budget: %s", exc)
+            return True
+
     async def _deduplicate_global_survivors(
         self, claims: list[ExtractedClaim]
     ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
@@ -672,15 +686,91 @@ class ClaimExtractor:
             return await self._deduplicate_claim_batch(batches[0], request_name=request_name)
 
         logger.info("%s split into %s token-bounded sub-batches", request_name, len(batches))
-        filtered: list[ExtractedClaim] = []
-        selections: list[DedupSelection] = []
+        survivor_batches: list[list[ExtractedClaim]] = []
         for batch_index, batch_claims in enumerate(batches, start=1):
             batch_filtered, batch_selections = await self._deduplicate_claim_batch(
                 batch_claims,
                 request_name=f"{request_name} sub-batch {batch_index}/{len(batches)}",
             )
-            filtered.extend(batch_filtered)
-            selections.extend(batch_selections)
+            survivor_batches.append(batch_filtered)
+        return await self._deduplicate_cross_sub_batch_survivors(survivor_batches, request_name=request_name)
+
+    @staticmethod
+    def _apply_dedup_result(
+        active: dict[str, ExtractedClaim],
+        group: list[ExtractedClaim],
+        kept: list[ExtractedClaim],
+    ) -> None:
+        kept_by_id = {claim.claim_id: claim for claim in kept}
+        for claim_id, kept_claim in kept_by_id.items():
+            current = active.get(claim_id)
+            if current is None:
+                continue
+            active[claim_id] = kept_claim.model_copy(
+                update={"contradiction": current.contradiction or kept_claim.contradiction}
+            )
+        for claim in group:
+            if claim.claim_id not in kept_by_id:
+                active.pop(claim.claim_id, None)
+
+    async def _deduplicate_cross_sub_batch_survivors(
+        self,
+        survivor_batches: list[list[ExtractedClaim]],
+        *,
+        request_name: str,
+    ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
+        survivors = [claim for batch in survivor_batches for claim in batch]
+        if len(survivors) <= 1:
+            return survivors, self._dedup_selections(survivors)
+
+        active = {claim.claim_id: claim for claim in survivors}
+        original_order = {claim.claim_id: index for index, claim in enumerate(survivors)}
+        total_pairs = len(survivor_batches) * (len(survivor_batches) - 1) // 2
+        pair_number = 0
+        for left_index, left_batch in enumerate(survivor_batches):
+            for right_index in range(left_index + 1, len(survivor_batches)):
+                pair_number += 1
+                right_batch = survivor_batches[right_index]
+                group_ids = [claim.claim_id for claim in [*left_batch, *right_batch]]
+                group = [active[claim_id] for claim_id in group_ids if claim_id in active]
+                if len(group) <= 1:
+                    continue
+                if self._deduplication_prompt_fits(group):
+                    kept, _chosen = await self._deduplicate_claim_batch(
+                        group,
+                        request_name=f"{request_name} cross-sub-batch group {pair_number}/{total_pairs}",
+                    )
+                    self._apply_dedup_result(active, group, kept)
+                    continue
+
+                comparison_number = 0
+                for left_claim in left_batch:
+                    for right_claim in right_batch:
+                        left_active = active.get(left_claim.claim_id)
+                        right_active = active.get(right_claim.claim_id)
+                        if left_active is None or right_active is None:
+                            continue
+                        comparison_number += 1
+                        pair = [left_active, right_active]
+                        if not self._deduplication_prompt_fits(pair):
+                            logger.warning(
+                                "%s: cannot compare verbose claims %s and %s within deduplication input budget",
+                                request_name,
+                                left_active.claim_id,
+                                right_active.claim_id,
+                            )
+                            continue
+                        kept, _chosen = await self._deduplicate_claim_batch(
+                            pair,
+                            request_name=(
+                                f"{request_name} cross-sub-batch pair {pair_number}/{total_pairs}."
+                                f"{comparison_number}"
+                            ),
+                        )
+                        self._apply_dedup_result(active, pair, kept)
+
+        filtered = sorted(active.values(), key=lambda claim: original_order[claim.claim_id])
+        selections = self._dedup_selections(filtered)
         return filtered, selections
 
     async def _deduplicate_claim_batch(

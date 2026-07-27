@@ -228,6 +228,52 @@ def test_deduplication_batches_respect_model_input_token_budget():
 
 
 @pytest.mark.asyncio
+async def test_deduplicate_claim_group_compares_survivors_across_token_split_sub_batches():
+    system = PromptLoader().get("paper_claims.deduplication_system")
+    max_tokens = 80
+    user_budget = 130
+    claims = [
+        extracted_claim("c0001", "Unique claim " + "token " * 30),
+        extracted_claim("c0002", "Duplicate verbose claim " + "token " * 30),
+        extracted_claim("c0003", "Duplicate verbose claim " + "token " * 30),
+    ]
+    handler = FakeHandler(
+        [
+            json.dumps(
+                [
+                    {"claim_id": "c0001", "claim": claims[0].claim, "contradiction": False},
+                    {"claim_id": "c0002", "claim": claims[1].claim, "contradiction": False},
+                ]
+            ),
+            json.dumps([{"claim_id": "c0003", "claim": claims[2].claim, "contradiction": False}]),
+            json.dumps(
+                [
+                    {"claim_id": "c0001", "claim": claims[0].claim, "contradiction": False},
+                    {"claim_id": "c0003", "claim": claims[2].claim, "contradiction": False},
+                ]
+            ),
+            json.dumps([{"claim_id": "c0002", "claim": claims[1].claim, "contradiction": False}]),
+        ]
+    )
+    handler.model_settings = SimpleNamespace(
+        context_window=count_tokens(system, "cl100k_base") + max_tokens + 256 + user_budget,
+        max_tokens=max_tokens,
+        encoder="cl100k_base",
+    )
+
+    filtered, selections = await ClaimExtractor(handler, dedup_batch_size=100)._deduplicate_claim_group(
+        claims,
+        request_name="Test deduplication group",
+    )
+
+    assert [claim.claim_id for claim in filtered] == ["c0001", "c0002"]
+    assert [selection.claim_id for selection in selections] == ["c0001", "c0002"]
+    assert len(handler.prompts) == 4
+    assert '"claim_id": "c0002"' in handler.prompts[-1]
+    assert '"claim_id": "c0003"' in handler.prompts[-1]
+
+
+@pytest.mark.asyncio
 async def test_extract_repairs_invalid_source_text_and_deduplicates():
     valid_claim = {
         "claim": "The model uses BERT-base without fine-tuning.",
