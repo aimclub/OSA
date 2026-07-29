@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Callable, Protocol
 
 from pydantic import TypeAdapter, ValidationError
@@ -24,7 +25,7 @@ from osa_tool.operations.analysis.paper_claims.models import (
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder, PromptLoader
 from osa_tool.utils.response_cleaner import JsonParseError, JsonProcessor
-from osa_tool.utils.token_counter import count_tokens
+from osa_tool.utils.token_counter import _get_encoder, count_tokens, truncate_to_tokens
 
 
 class AsyncModelHandler(Protocol):
@@ -48,6 +49,15 @@ class ClaimExtractor:
         self.prompts = prompts or PromptLoader()
         self.max_retries = max_retries
         self.dedup_batch_size = dedup_batch_size
+
+    def _repair_reserve_tokens(self) -> int:
+        settings = getattr(self.handler, "model_settings", None)
+        if settings is None or not hasattr(settings, "context_window") or not hasattr(settings, "max_tokens"):
+            return 0
+        context_window = getattr(settings, "context_window", 0)
+        base_input_budget = context_window - getattr(settings, "max_tokens", 0) - 256
+        configured_reserve = min(2048, max(512, context_window // 10))
+        return max(0, min(configured_reserve, base_input_budget - 1))
 
     def _input_token_budget(self, system: str) -> tuple[int, str] | None:
         settings = getattr(self.handler, "model_settings", None)
@@ -198,13 +208,101 @@ class ClaimExtractor:
             batches.append((self._section_selection_context(current, ancestors_by_id), current))
         return batches
 
+    @staticmethod
+    def _sentence_spans(text: str) -> list[str]:
+        if not text:
+            return []
+        spans: list[str] = []
+        start = 0
+        for match in re.finditer(r"(?<=[.!?…。！？])\s+|\n\s*\n+", text):
+            end = match.end()
+            if end > start:
+                spans.append(text[start:end])
+            start = end
+        if start < len(text):
+            spans.append(text[start:])
+        return [span for span in spans if span]
+
+    def _token_split_section_text(
+        self,
+        section: PaperSection,
+        text: str,
+        *,
+        budget: int,
+        encoder: str,
+    ) -> list[PaperSection]:
+        codec = _get_encoder(encoder)
+        tokens = codec.encode(text)
+        if not tokens:
+            return []
+        if budget <= 0:
+            return [section.model_copy(update={"text": text})]
+        overlap = min(128, max(1, budget // 10))
+        step = max(1, budget - overlap)
+        return [
+            section.model_copy(update={"text": codec.decode(tokens[start : start + budget])})
+            for start in range(0, len(tokens), step)
+        ]
+
+    def _sentence_chunks(
+        self,
+        section: PaperSection,
+        *,
+        budget: int,
+        encoder: str,
+    ) -> list[PaperSection]:
+        spans = self._sentence_spans(section.text)
+        if not spans:
+            return [section]
+
+        chunks: list[PaperSection] = []
+        current: list[str] = []
+
+        def current_text(items: list[str]) -> str:
+            return "".join(items)
+
+        for span in spans:
+            span_tokens = count_tokens(span, encoder)
+            if span_tokens > budget:
+                if current:
+                    chunks.append(section.model_copy(update={"text": current_text(current).strip()}))
+                    current = []
+                logger.warning(
+                    "Section %s contains one sentence-like span with %s tokens, exceeding chunk budget=%s; "
+                    "falling back to token split for that span",
+                    section.section_id,
+                    span_tokens,
+                    budget,
+                )
+                chunks.extend(self._token_split_section_text(section, span, budget=budget, encoder=encoder))
+                continue
+
+            candidate = [*current, span]
+            if current and count_tokens(current_text(candidate), encoder) > budget:
+                chunks.append(section.model_copy(update={"text": current_text(current).strip()}))
+                overlap = current[-1:]
+                current = (
+                    [*overlap, span] if count_tokens(current_text([*overlap, span]), encoder) <= budget else [span]
+                )
+            else:
+                current = candidate
+
+        if current:
+            chunks.append(section.model_copy(update={"text": current_text(current).strip()}))
+        return chunks or [section]
+
     def _section_chunks(self, section: PaperSection, system: str) -> list[PaperSection]:
-        """Split a section to fit the handler input budget with a small overlap."""
+        """Split a section into sentence-aware chunks that leave room for repair prompts."""
         settings = getattr(self.handler, "model_settings", None)
         if settings is None or not hasattr(settings, "context_window") or not hasattr(settings, "max_tokens"):
             return [section]
         encoder = getattr(settings, "encoder", "cl100k_base")
-        total_input_budget = getattr(settings, "context_window", 0) - getattr(settings, "max_tokens", 0) - 256
+        total_input_budget = (
+            getattr(settings, "context_window", 0)
+            - getattr(settings, "max_tokens", 0)
+            - 256
+            - self._repair_reserve_tokens()
+        )
         try:
             system_tokens = count_tokens(system, encoder)
         except Exception as exc:
@@ -216,7 +314,7 @@ class ClaimExtractor:
             budget = total_input_budget - system_tokens
             if budget <= 0 or len(section.text) <= budget:
                 return [section]
-            overlap = min(128, max(1, budget // 10))
+            overlap = min(512, max(1, budget // 10))
             step = max(1, budget - overlap)
             return [
                 section.model_copy(update={"text": section.text[start : start + budget]})
@@ -226,16 +324,55 @@ class ClaimExtractor:
         budget = total_input_budget - system_tokens
         if budget <= 0 or count_tokens(section.text, encoder) <= budget:
             return [section]
-        from osa_tool.utils.token_counter import _get_encoder
+        return self._sentence_chunks(section, budget=budget, encoder=encoder)
 
-        codec = _get_encoder(encoder)
-        tokens = codec.encode(section.text)
-        overlap = min(128, max(1, budget // 10))
-        step = max(1, budget - overlap)
-        return [
-            section.model_copy(update={"text": codec.decode(tokens[start : start + budget])})
-            for start in range(0, len(tokens), step)
-        ]
+    def _repair_prompt(
+        self,
+        *,
+        error: str,
+        response: str,
+        original_prompt: str,
+        system: str,
+    ) -> str:
+        template = self.prompts.get("paper_claims.repair")
+        full_prompt = PromptBuilder.render(
+            template,
+            error=error,
+            response=response,
+            original_prompt=original_prompt,
+        )
+        budget_info = self._input_token_budget(system)
+        if budget_info is None:
+            return full_prompt
+
+        user_budget, encoder = budget_info
+        try:
+            if count_tokens(full_prompt, encoder) <= user_budget:
+                return full_prompt
+        except Exception as exc:
+            logger.warning("Token counting failed; using unbounded repair prompt: %s", exc)
+            return full_prompt
+
+        empty_template_tokens = count_tokens(
+            PromptBuilder.render(template, error="", response="", original_prompt=""),
+            encoder,
+        )
+        error_tokens = count_tokens(error, encoder)
+        error_limit = max(0, min(error_tokens, 1024, user_budget // 4))
+        bounded_error = error if error_tokens <= error_limit else truncate_to_tokens(error, error_limit, encoder)
+        bounded_error_tokens = count_tokens(bounded_error, encoder)
+        remaining = max(0, user_budget - empty_template_tokens - bounded_error_tokens)
+        response_limit = max(0, min(1024, remaining // 4))
+        bounded_response = truncate_to_tokens(response, response_limit, encoder)
+        bounded_response_tokens = count_tokens(bounded_response, encoder)
+        original_limit = max(0, remaining - bounded_response_tokens)
+        bounded_original_prompt = truncate_to_tokens(original_prompt, original_limit, encoder, mode="start")
+        return PromptBuilder.render(
+            template,
+            error=bounded_error,
+            response=bounded_response,
+            original_prompt=bounded_original_prompt,
+        )
 
     async def _request_validated(
         self,
@@ -276,11 +413,11 @@ class ClaimExtractor:
                     logger.info("%s: response validation failed, preparing repair request", request_name)
                 else:
                     logger.warning("%s: response validation failed after final attempt", request_name)
-                current_prompt = PromptBuilder.render(
-                    self.prompts.get("paper_claims.repair"),
+                current_prompt = self._repair_prompt(
                     error=str(exc),
                     response=str(raw),
                     original_prompt=original_prompt,
+                    system=system,
                 )
         raise ClaimExtractionError(f"LLM response remained invalid after {self.max_retries} attempts: {last_error}")
 
@@ -319,11 +456,11 @@ class ClaimExtractor:
                     logger.info("%s: response validation failed, preparing repair request", request_name)
                 else:
                     logger.warning("%s: response validation failed after final attempt", request_name)
-                current_prompt = PromptBuilder.render(
-                    self.prompts.get("paper_claims.repair"),
+                current_prompt = self._repair_prompt(
                     error=str(exc),
                     response=str(raw),
                     original_prompt=original_prompt,
+                    system=system,
                 )
                 continue
 
@@ -339,11 +476,11 @@ class ClaimExtractor:
                     "%s: response validation failed, preparing repair request",
                     request_name,
                 )
-                current_prompt = PromptBuilder.render(
-                    self.prompts.get("paper_claims.repair"),
+                current_prompt = self._repair_prompt(
                     error=str(last_error),
                     response=str(raw),
                     original_prompt=original_prompt,
+                    system=system,
                 )
                 continue
 

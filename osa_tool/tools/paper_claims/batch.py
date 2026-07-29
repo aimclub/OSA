@@ -121,6 +121,9 @@ def main() -> int:
     for pdf in track(pdfs, description="Processing PDF documents"):
         logger.info("Starting document %s", pdf)
         try:
+            reset_to_primary = getattr(handler, "reset_to_primary_model", None)
+            if callable(reset_to_primary):
+                reset_to_primary()
             result = pipeline.run(pdf, options)
             output_name = pdf.stem
             if stem_counts[pdf.stem] > 1:

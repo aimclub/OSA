@@ -1,8 +1,10 @@
 import json
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
+from osa_tool.tools.paper_claims import batch as batch_module
 from osa_tool.tools.paper_claims.batch import build_parser, collect_pdf_inputs
 from osa_tool.tools.paper_claims.evaluate import compute_semantic_matching, load_claims
 
@@ -67,6 +69,61 @@ def test_batch_can_configure_dedup_batch_size():
 def test_batch_rejects_dedup_batch_size_below_two():
     with pytest.raises(SystemExit):
         build_parser().parse_args(["paper.pdf", "--dedup-batch-size", "1"])
+
+
+def test_batch_resets_primary_model_before_each_document(tmp_path, monkeypatch):
+    pdf_a = tmp_path / "a.pdf"
+    pdf_b = tmp_path / "b.pdf"
+    pdf_a.write_bytes(b"%PDF-a")
+    pdf_b.write_bytes(b"%PDF-b")
+
+    class FakeConfig:
+        def __init__(self, args):
+            self.args = args
+
+        def get_model_settings(self, _name):
+            return SimpleNamespace(model="primary")
+
+    class FakeHandler:
+        def __init__(self):
+            self.model_settings = SimpleNamespace(model="primary")
+            self.reset_count = 0
+
+        def reset_to_primary_model(self):
+            self.reset_count += 1
+            self.model_settings.model = "primary"
+
+    fake_handler = FakeHandler()
+
+    class FakeFactory:
+        @staticmethod
+        def build(_settings):
+            return fake_handler
+
+    class FakePipeline:
+        def __init__(self, handler):
+            self.handler = handler
+
+        def run(self, _pdf, _options):
+            assert self.handler.model_settings.model == "primary"
+            self.handler.model_settings.model = "fallback"
+            return SimpleNamespace(
+                sections=[],
+                extraction=SimpleNamespace(selected_section_ids=[], claims=[]),
+            )
+
+        @staticmethod
+        def export(_result, output_dir, *, legacy=False, include_debug=False):
+            return output_dir / "claims_legacy.json"
+
+    monkeypatch.setattr("sys.argv", ["batch", str(pdf_a), str(pdf_b), "--output-dir", str(tmp_path / "out")])
+    monkeypatch.setattr(batch_module, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(batch_module, "PaperClaimPipeline", FakePipeline)
+    monkeypatch.setattr("osa_tool.config.settings.ConfigManager", FakeConfig)
+    monkeypatch.setattr("osa_tool.core.llm.llm.ModelHandlerFactory", FakeFactory)
+
+    assert batch_module.main() == 0
+    assert fake_handler.reset_count == 2
 
 
 def test_load_claims_accepts_clean_schema(tmp_path):

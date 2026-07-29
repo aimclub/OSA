@@ -1,6 +1,8 @@
 import json
 import re
 
+from json_repair import repair_json
+
 from osa_tool.utils.logger import logger
 
 
@@ -150,34 +152,27 @@ class JsonProcessor:
             logger.error(f"JSON extraction failed: {exc}")
             raise JsonParseError(str(exc)) from exc
 
-        last_error: Exception | None = None
-        for candidate in (cleaned, cls._fix_unterminated_strings(cleaned)):
+        try:
+            parsed = json.loads(cleaned)
+        except Exception as strict_error:
+            logger.error(f"JSON strict parse failed: {strict_error}")
             try:
-                parsed = json.loads(candidate)
+                parsed = repair_json(json_str=cleaned, ensure_ascii=False, return_objects=True)
+            except Exception as repair_error:
+                logger.error(f"JSON repair parse failed: {repair_error}")
+                raise JsonParseError(str(repair_error)) from repair_error
 
-                if expected_key:
-                    parsed = parsed.get(expected_key, parsed)
+        try:
+            if expected_key:
+                parsed = parsed.get(expected_key, parsed)
 
-                if expected_type and not isinstance(parsed, expected_type):
-                    raise TypeError(f"Expected {expected_type}, got {type(parsed)}")
+            if expected_type and not isinstance(parsed, expected_type):
+                raise TypeError(f"Expected {expected_type}, got {type(parsed)}")
 
-                return parsed
-
-            except Exception as exc:
-                last_error = exc
-                logger.error(f"JSON strict parse failed: {exc}")
-        raise JsonParseError(str(last_error)) from last_error
-
-    @staticmethod
-    def _fix_unterminated_strings(text: str) -> str:
-        """Fix common JSON issues: unterminated strings, missing quotes."""
-        import re
-
-        text = re.sub(r':\s*"([^"]*?)(\n|,|})', r': "\1"\2', text)
-        # Exclude JSON keywords true/false/null from string-quoting to avoid bool→string corruption
-        text = re.sub(r":\s*(?!true\b|false\b|null\b)([a-zA-Z_][a-zA-Z0-9_]*)\s*([,}])", r': "\1"\2', text)
-        text = text.rstrip('"') + '"' if text.count('"') % 2 == 1 else text
-        return text
+            return parsed
+        except Exception as exc:
+            logger.error(f"JSON validation failed: {exc}")
+            raise JsonParseError(str(exc)) from exc
 
 
 class JsonParseError(RuntimeError):
