@@ -1134,9 +1134,7 @@ class GitLabAgent(GitAgent):
                     updated_body += "\n\n" + "\n".join(all_reports)
                 updated_body += self.agent_signature
 
-                update_url = (
-                    f"{gitlab_instance}{self.PROJECTS_API_PATH}/{target_project_id}/merge_requests/{mr_iid}"
-                )
+                update_url = f"{gitlab_instance}{self.PROJECTS_API_PATH}/{target_project_id}/merge_requests/{mr_iid}"
                 update_data = {"description": updated_body}
 
                 update_response = request_with_retry("put", update_url, json=update_data, headers=headers)
