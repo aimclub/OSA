@@ -35,6 +35,46 @@ def test_contributing_builder_initialization(mock_config_manager, mock_repositor
     assert builder._template == template
 
 
+def test_contributing_builder_initialization_for_local_repository(
+    mock_config_manager, mock_repository_metadata, tmp_path
+):
+    repo_dir = tmp_path / "local_repo"
+    repo_dir.mkdir()
+    git = mock_config_manager.config.git
+    git.repository = repo_dir
+    git.host = None
+    git.host_domain = None
+    git.full_name = f"local/{repo_dir.name}"
+    mock_repository_metadata.clone_url_http = ""
+    mock_repository_metadata.issues_url = ""
+
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
+
+    assert builder.repo_root == str(repo_dir)
+    assert builder.repo_path == os.path.join(str(repo_dir), ".github")
+    assert builder.file_to_save == os.path.join(str(repo_dir), ".github", "CONTRIBUTING.md")
+    assert builder.url_path == "."
+    assert builder.issues_url == "."
+
+
+def test_local_repository_uses_http_origin_identity(mock_config_manager, mock_repository_metadata, tmp_path):
+    repo_dir = tmp_path / "local_repo"
+    repo_dir.mkdir()
+    git = mock_config_manager.config.git
+    git.repository = repo_dir
+    git.host = None
+    git.host_domain = None
+    git.full_name = f"local/{repo_dir.name}"
+    mock_repository_metadata.clone_url_http = "https://gitlab.com/group/repository.git"
+    mock_repository_metadata.issues_url = ""
+
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
+
+    assert builder.host == "gitlab"
+    assert builder.url_path == "https://gitlab.com/group/repository/"
+    assert builder.repo_path == os.path.join(str(repo_dir), ".gitlab")
+
+
 def test_introduction_property(mock_config_manager, mock_repository_metadata):
     # Arrange
     builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
@@ -264,6 +304,7 @@ def test_contributing_builder_sourcecraft_file_to_save_in_repo_root(mock_config_
     parent = os.path.basename(os.path.dirname(builder.file_to_save))
     assert parent != ".sourcecraft"
     assert parent != ".github"
+    assert builder.repo_path == os.path.dirname(builder.file_to_save)
 
 
 @pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)

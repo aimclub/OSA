@@ -7,12 +7,13 @@ from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.docs.readme_generation.readme_utils import (
     find_in_repo_tree,
     remove_extra_blank_lines,
+    resolve_repo_host_and_root_url,
     save_sections,
     to_repo_relative_link,
 )
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import osa_project_root, parse_folder_name
+from osa_tool.utils.utils import osa_project_root, resolve_repo_path
 
 
 class ContributingBuilder:
@@ -26,26 +27,26 @@ class ContributingBuilder:
         self.repo_url = self.config_manager.get_git_settings().repository
         self.metadata = metadata
         self.template_path = os.path.join(osa_project_root(), "docs", "templates", "contributing.toml")
-        self.url_path = f"https://{self.config_manager.get_git_settings().host_domain}/{self.config_manager.get_git_settings().full_name}/"
-        self.issues_url = self.url_path + (
-            "tasktracker" if "gitverse" in self.config_manager.get_git_settings().host else "issues"
+        git = self.config_manager.get_git_settings()
+        self.host, self.url_path = resolve_repo_host_and_root_url(
+            repo_url=self.repo_url,
+            clone_url_http=self.metadata.clone_url_http,
+            host=git.host,
+            host_domain=git.host_domain,
+            full_name=git.full_name,
+        )
+        self.issues_url = self.metadata.issues_url or (
+            f"{self.url_path}{'tasktracker' if 'gitverse' in self.host else 'issues'}" if self.url_path != "." else "."
         )
         self._template = self.load_template()
 
-        self.repo_root = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
-        self.repo_path = os.path.join(
-            self.repo_root, "." + self.config_manager.get_git_settings().host
-        )
+        self.repo_root = str(resolve_repo_path(self.repo_url))
+        self.repo_path = self.repo_root if "sourcecraft" in self.host else os.path.join(self.repo_root, f".{self.host}")
         self.file_to_save = os.path.join(self.repo_path, "CONTRIBUTING.md")
-
-        if "sourcecraft" in self.config_manager.get_git_settings().host:
-            self.file_to_save = os.path.join(self.repo_root, "CONTRIBUTING.md")
 
     def _local_repo_link(self, pattern: str, *, prefer_directory: bool = False) -> str:
         rel_path = find_in_repo_tree(self.sourcerank.tree, pattern, prefer_directory=prefer_directory)
         from_dir = os.path.relpath(os.path.dirname(self.file_to_save), self.repo_root).replace("\\", "/")
-        if from_dir == ".":
-            from_dir = ""
         return to_repo_relative_link(rel_path, from_dir=from_dir)
 
     def load_template(self) -> dict:
@@ -67,7 +68,7 @@ class ContributingBuilder:
     def guide(self) -> str:
         """Generates the guide section with basic project contribution instructions."""
         return self._template["guide"].format(
-            url=self.url_path,
+            url=self.url_path if self.url_path != "." else "./",
             project_name=self.metadata.name,
             clone_url=self.metadata.clone_url_http or self.url_path,
         )

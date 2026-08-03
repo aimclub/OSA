@@ -13,6 +13,7 @@ from osa_tool.operations.docs.readme_generation.readme_utils import (
     to_repo_relative_link,
     clean_code_block_indents,
     remove_extra_blank_lines,
+    resolve_repo_host_and_root_url,
     extract_example_paths,
 )
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
@@ -144,6 +145,10 @@ def test_to_readme_relative_link():
     assert to_readme_relative_link("examples") == "./examples"
     assert to_readme_relative_link("LICENSE") == "./LICENSE"
     assert to_readme_relative_link("./docs/index.md") == "./docs/index.md"
+    assert to_readme_relative_link(".github/CONTRIBUTING.md") == "./.github/CONTRIBUTING.md"
+    assert (
+        to_readme_relative_link("docs/getting started (draft)#1.md") == "./docs/getting%20started%20%28draft%29%231.md"
+    )
     assert to_readme_relative_link("") == ""
 
 
@@ -151,6 +156,21 @@ def test_to_repo_relative_link_from_subdirectory():
     assert to_repo_relative_link("docs/index.rst", from_dir=".github") == "../docs/index.rst"
     assert to_repo_relative_link("README.md", from_dir=".github") == "../README.md"
     assert to_repo_relative_link("CONTRIBUTING.md", from_dir=".github") == "../CONTRIBUTING.md"
+    assert to_repo_relative_link(".github/CONTRIBUTING.md", from_dir=".github") == "./CONTRIBUTING.md"
+
+
+def test_resolve_repo_host_and_root_url_uses_local_http_origin(tmp_path):
+    repo_dir = tmp_path / "repository"
+    repo_dir.mkdir()
+
+    host, root_url = resolve_repo_host_and_root_url(
+        repo_dir,
+        clone_url_http="https://gitverse.ru/owner/repository.git",
+        full_name=f"local/{repo_dir.name}",
+    )
+
+    assert host == "gitverse"
+    assert root_url == "https://gitverse.ru/owner/repository/"
 
 
 def test_find_in_repo_tree_prefers_directory():
@@ -166,6 +186,14 @@ docs/index.rst
 
     assert examples == "examples"
     assert docs == "docs"
+
+    tree_with_matching_file = "docs.md\nmanuals\nmanuals/guide.md"
+    manuals = find_in_repo_tree(
+        tree_with_matching_file,
+        r"\b(docs?|documentation|wiki|manuals?)\b",
+        prefer_directory=True,
+    )
+    assert manuals == "manuals"
 
 
 def test_extract_example_paths():

@@ -43,6 +43,52 @@ def test_license_section_uses_local_repo_link(mock_config_manager, mock_reposito
     assert "https://" not in content
 
 
+def test_contributing_section_preserves_hidden_directory(mock_config_manager, mock_repository_metadata):
+    builder, _ = _make_builder(mock_config_manager, mock_repository_metadata)
+    builder._sr.contributing_presence.return_value = True
+    builder._sr.tree = ".github\n.github/CONTRIBUTING.md"
+
+    with patch(
+        "osa_tool.operations.docs.readme_generation.pipeline.nodes.deterministic_builder._check_url",
+        return_value=False,
+    ):
+        content = builder.contributing()
+
+    assert "](./.github/CONTRIBUTING.md)" in content
+
+
+@pytest.mark.parametrize("local_repository", [False, True])
+def test_gitverse_contributing_uses_tasktracker_fallback(
+    mock_config_manager, mock_repository_metadata, tmp_path, local_repository
+):
+    git = mock_config_manager.config.git
+    if local_repository:
+        repo_dir = tmp_path / "repository"
+        repo_dir.mkdir()
+        git.repository = repo_dir
+        git.host = None
+        git.host_domain = None
+        git.full_name = f"local/{repo_dir.name}"
+        mock_repository_metadata.clone_url_http = "https://gitverse.ru/owner/repository.git"
+    else:
+        git.repository = "https://gitverse.ru/owner/repository"
+        git.host = "gitverse"
+        git.host_domain = "gitverse.ru"
+        git.full_name = "owner/repository"
+    mock_repository_metadata.issues_url = ""
+
+    builder, _ = _make_builder(mock_config_manager, mock_repository_metadata)
+    builder._sr.contributing_presence.return_value = False
+
+    with patch(
+        "osa_tool.operations.docs.readme_generation.pipeline.nodes.deterministic_builder._check_url",
+        return_value=False,
+    ):
+        content = builder.contributing()
+
+    assert "https://gitverse.ru/owner/repository/tasktracker" in content
+
+
 def test_citation_fallback_uses_created_at_year(mock_config_manager, mock_repository_metadata):
     # Arrange - metadata has a valid ISO created_at
     mock_repository_metadata.created_at = "2021-04-15T10:00:00Z"
@@ -135,11 +181,39 @@ def test_local_contributing_section_points_to_issue_template(mock_config_manager
 
     builder, _ = _make_builder(mock_config_manager, mock_repository_metadata)
     builder._sr.contributing_presence.return_value = True
+    builder._sr.tree = "\n".join(
+        [
+            ".github",
+            ".github/CONTRIBUTING.md",
+            ".github/ISSUE_TEMPLATE",
+            ".github/ISSUE_TEMPLATE/BUG_ISSUE.md",
+        ]
+    )
 
     content = builder.contributing()
 
-    assert ".github/ISSUE_TEMPLATE/BUG_ISSUE.md" in content
-    assert ".github/CONTRIBUTING.md" in content
+    assert "./.github/ISSUE_TEMPLATE/BUG_ISSUE.md" in content
+    assert "./.github/CONTRIBUTING.md" in content
+
+
+def test_local_contributing_does_not_invent_missing_repo_paths(mock_config_manager, mock_repository_metadata, tmp_path):
+    repo_dir = tmp_path / "local_test_repo"
+    repo_dir.mkdir()
+    mock_config_manager.config.git.repository = repo_dir
+    mock_config_manager.config.git.host = None
+    mock_config_manager.config.git.host_domain = None
+    mock_repository_metadata.clone_url_http = ""
+    mock_repository_metadata.issues_url = ""
+
+    builder, _ = _make_builder(mock_config_manager, mock_repository_metadata)
+    builder._sr.contributing_presence.return_value = True
+    builder._sr.tree = "README.md"
+
+    content = builder.contributing()
+
+    assert ".github/" not in content
+    assert "Report Issues" not in content
+    assert "Submit Pull Requests" not in content
 
 
 def test_contributing_strips_issue_url_template_suffix(mock_config_manager, mock_repository_metadata):

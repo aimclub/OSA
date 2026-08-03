@@ -2,6 +2,7 @@
 
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -16,12 +17,13 @@ from osa_tool.operations.docs.readme_generation.sections.installation import Ins
 from osa_tool.operations.docs.readme_generation.readme_utils import (
     build_system_message,
     find_in_repo_tree,
+    resolve_repo_host_and_root_url,
     to_readme_relative_link,
 )
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.utils import extract_readme_content, osa_project_root, parse_folder_name
+from osa_tool.utils.utils import extract_readme_content, osa_project_root, resolve_repo_path
 
 
 def _load_template() -> dict[str, Any]:
@@ -48,11 +50,38 @@ class _DeterministicSections:
         self._tpl = _load_template()
 
         git = self._cm.get_git_settings()
-        self._url_path = f"https://{git.host_domain}/{git.full_name}/"
+        self._host, self._repo_root_url = resolve_repo_host_and_root_url(
+            repo_url=git.repository,
+            clone_url_http=self._meta.clone_url_http,
+            host=git.host,
+            host_domain=git.host_domain,
+            full_name=git.full_name,
+        )
+        self._is_local_repo = Path(git.repository).expanduser().is_dir()
 
     def _local_repo_link(self, pattern: str, *, prefer_directory: bool = False) -> str:
         rel_path = find_in_repo_tree(self._sr.tree, pattern, prefer_directory=prefer_directory)
         return to_readme_relative_link(rel_path)
+
+    def _issues_link(self) -> str:
+        if self._meta.issues_url:
+            return self._meta.issues_url.split("{", 1)[0]
+        if self._repo_root_url != ".":
+            suffix = "tasktracker" if self._host == "gitverse" else "issues"
+            return f"{self._repo_root_url}{suffix}"
+        pattern = r"\bBUG_ISSUE\.(md|rst|txt)$"
+        return self._local_repo_link(pattern)
+
+    def _contributing_link(self) -> str:
+        pattern = r"\b\w*contribut\w*\.(md|rst|txt)$"
+        return self._local_repo_link(pattern)
+
+    def _citation_repository_reference(self) -> str:
+        if self._meta.clone_url_http:
+            return self._meta.clone_url_http.removesuffix(".git")
+        if self._repo_root_url != ".":
+            return self._repo_root_url.rstrip("/")
+        return "REPOSITORY_URL"
 
     def header(self) -> str:
         logger.info("[DeterministicBuilder] Building section: header")
@@ -94,23 +123,23 @@ class _DeterministicSections:
 
     def contributing(self) -> str:
         logger.info("[DeterministicBuilder] Building section: contributing")
-        discussions_url = self._url_path + "discussions"
-        discussions_enabled = _check_url(discussions_url)
+        discussions_url = f"{self._repo_root_url}discussions" if self._repo_root_url != "." else "."
+        discussions_enabled = discussions_url != "." and _check_url(discussions_url)
         discussions = (
             self._tpl["discussion_section"].format(discussions_url=discussions_url) if discussions_enabled else ""
         )
 
-        issues_url = self._url_path + "issues"
-        issues = self._tpl["issues_section"].format(issues_url=issues_url)
+        issues_url = self._issues_link()
+        issues = self._tpl["issues_section"].format(issues_url=issues_url) if issues_url else ""
 
-        contributing_text = ""
-        has_contributing = self._sr.contributing_presence()
-        if has_contributing:
-            pattern = r"\b\w*contribut\w*\.(md|rst|txt)$"
-            contributing_url = self._local_repo_link(pattern)
-            contributing_text = self._tpl["contributing_section"].format(
+        contributing_url = self._contributing_link() if self._sr.contributing_presence() else ""
+        contributing_text = (
+            self._tpl["contributing_section"].format(
                 contributing_url=contributing_url, name=self._cm.get_git_settings().name
             )
+            if contributing_url
+            else ""
+        )
 
         content = self._tpl["contributing"].format(
             dicsussion_section=discussions,
@@ -120,7 +149,7 @@ class _DeterministicSections:
         logger.info(
             "[DeterministicBuilder] Section 'contributing' built (discussions=%s, contributing_file=%s)",
             discussions_enabled,
-            has_contributing,
+            bool(contributing_url),
         )
         return content
 
@@ -169,12 +198,22 @@ class _DeterministicSections:
 
         git = self._cm.get_git_settings()
         year = self._meta.created_at.split("-")[0] if self._meta.created_at else str(datetime.now().year)
+        repository_reference = self._citation_repository_reference()
+        if self._is_local_repo and not self._meta.clone_url_http:
+            content = self._tpl["citation"] + self._tpl["citation_v3"].format(
+                owner=self._meta.owner or "",
+                year=year,
+                repo_name=git.name,
+                repository_hint=repository_reference,
+            )
+            logger.info("[DeterministicBuilder] Section 'citation' built from local fallback template")
+            return content
         content = self._tpl["citation"] + self._tpl["citation_v2"].format(
             owner=self._meta.owner or "",
             year=year,
             repo_name=git.name,
-            publisher=git.host_domain,
-            repository_url=git.repository,
+            publisher=git.host_domain or "Repository host",
+            repository_url=repository_reference,
         )
         logger.info("[DeterministicBuilder] Section 'citation' built from fallback template")
         return content
@@ -182,7 +221,7 @@ class _DeterministicSections:
     def _extract_citation_from_readme(self) -> str:
         """Ask the shared model_handler to find citations in the existing README."""
         logger.info("[DeterministicBuilder] Checking existing README for citation block")
-        repo_path = os.path.join(os.getcwd(), parse_folder_name(self._cm.get_git_settings().repository))
+        repo_path = str(resolve_repo_path(self._cm.get_git_settings().repository))
         readme_content = extract_readme_content(repo_path)
 
         logger.info("[DeterministicBuilder] Detecting citations in README via LLM...")

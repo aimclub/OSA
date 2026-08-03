@@ -1,11 +1,15 @@
 """Shared file-I/O, tree-search, and markdown utilities for README generation."""
 
 import os
+import posixpath
 import re
+from pathlib import Path
+from urllib.parse import quote
 
 from osa_tool.operations.docs.readme_generation.pipeline.runtime_context import ReadmeContext
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import read_file, read_ipynb_file  # noqa: F401  (re-exported)
+from osa_tool.utils.utils import resolve_repo_web_identity
 
 
 def save_sections(sections: str, path: str) -> None:
@@ -23,16 +27,36 @@ def extract_relative_paths(paths: list[str]) -> list[str]:
         raise
 
 
+def resolve_repo_host_and_root_url(
+    repo_url: str | Path,
+    *,
+    clone_url_http: str | None = None,
+    host: str | None = None,
+    host_domain: str | None = None,
+    full_name: str | None = None,
+) -> tuple[str, str]:
+    """Resolve the repository host and canonical web root used by generated documentation."""
+    resolved_host, resolved_domain, resolved_full_name = resolve_repo_web_identity(
+        repo_url=repo_url,
+        clone_url_http=clone_url_http,
+        host=host,
+        host_domain=host_domain,
+        full_name=full_name if host_domain else None,
+    )
+    root_url = f"https://{resolved_domain}/{resolved_full_name}/" if resolved_domain and resolved_full_name else "."
+    return resolved_host or "github", root_url
+
+
 def to_repo_relative_link(rel_path: str, *, from_dir: str = "") -> str:
     """Convert a repo-relative target path to a markdown link from *from_dir* (relative to repo root)."""
     if not rel_path:
         return ""
-    target = rel_path.replace("\\", "/").lstrip("./")
-    source = from_dir.replace("\\", "/").strip("./").strip("/") or "."
-    link = os.path.relpath(target, start=source).replace("\\", "/")
-    if not link.startswith("."):
+    target = posixpath.normpath(rel_path.replace("\\", "/").lstrip("/"))
+    source = posixpath.normpath(from_dir.replace("\\", "/").strip("/")) if from_dir else "."
+    link = posixpath.relpath(target, start=source)
+    if link not in {".", ".."} and not link.startswith(("./", "../")):
         link = f"./{link}"
-    return link
+    return quote(link, safe="/._~-%")
 
 
 def to_readme_relative_link(rel_path: str) -> str:
@@ -41,19 +65,17 @@ def to_readme_relative_link(rel_path: str) -> str:
 
 
 def find_in_repo_tree(tree: str, pattern: str, *, prefer_directory: bool = False) -> str:
-    """Return the first line in *tree* matching *pattern* (case-insensitive), or ``""``."""
+    """Return a repository path matching *pattern* (case-insensitive), or ``""``."""
     compiled = re.compile(pattern, re.IGNORECASE)
-    matches: list[str] = []
-    for line in tree.split("\n"):
-        if not line.strip():
-            continue
-        normalized = line.replace("\\", "/")
-        if compiled.search(normalized):
-            matches.append(normalized)
+    paths = [line.strip().replace("\\", "/") for line in tree.splitlines() if line.strip()]
+    matches = [path for path in paths if compiled.search(path)]
     if not matches:
         return ""
     if not prefer_directory:
         return matches[0]
+    directory_matches = [match for match in matches if any(path.startswith(f"{match.rstrip('/')}/") for path in paths)]
+    if directory_matches:
+        matches = directory_matches
     return min(matches, key=lambda path: (path.count("/"), path))
 
 
