@@ -2,7 +2,6 @@
 
 import asyncio
 import os
-
 from osa_tool.core.models.llm_output_models import LlmTextOutput
 from osa_tool.operations.docs.readme_generation.pipeline.runtime_context import ReadmeContext
 from osa_tool.operations.docs.readme_generation.pipeline.models import RepositoryContext
@@ -19,7 +18,7 @@ from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.token_counter import count_tokens, truncate_to_tokens
-from osa_tool.utils.utils import extract_readme_content, parse_folder_name
+from osa_tool.utils.utils import extract_readme_content, resolve_repo_path
 
 _IMPORTANT_FILENAMES = frozenset(
     {
@@ -192,7 +191,7 @@ def _gather_raw_context(
 ) -> dict:
     """Phase 1: Gather raw repository context (tree, files, README, PDF)."""
     sourcerank = SourceRank(context.config_manager)
-    repo_path = os.path.join(os.getcwd(), parse_folder_name(state.repo_url))
+    repo_path = str(resolve_repo_path(state.repo_url))
     raw_tree = sourcerank.tree
     repo_tree = _truncate_tree(raw_tree, budgets["tree"], encoding)
     logger.info(

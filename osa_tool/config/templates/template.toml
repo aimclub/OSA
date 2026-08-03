@@ -149,6 +149,30 @@ If you use this software, please cite it as below.
 ---
 """
 
+citation_v3 = """
+If you use this local copy of the project, replace the placeholder below with the canonical repository URL before publishing the citation.
+
+### APA format:
+
+    {owner} ({year}). {repo_name} repository [Computer software]. local repository checkout ({repository_hint})
+
+### BibTeX format:
+
+    @misc{{{repo_name},
+
+        author = {{{owner}}},
+
+        title = {{{repo_name} repository}},
+
+        year = {{{year}}},
+
+        note = {{Local repository checkout. Replace {repository_hint} with the canonical repository URL before publishing.}}
+
+    }}
+
+---
+"""
+
 # -- ARTICLE-README SECTIONS----------------------------------------------------
 
 # -- Repository Contents Section -----------------------------------------------

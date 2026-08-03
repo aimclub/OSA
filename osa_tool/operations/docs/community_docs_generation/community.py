@@ -30,7 +30,7 @@ class CommunityTemplateBuilder:
 
         self.repo_root = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.repo_path = os.path.join(
-            os.getcwd(), parse_folder_name(self.repo_url), "." + self.config_manager.get_git_settings().host
+            self.repo_root, "." + self.config_manager.get_git_settings().host
         )
         self.code_of_conduct_to_save = os.path.join(self.repo_path, "CODE_OF_CONDUCT.md")
         self.security_to_save = os.path.join(self.repo_path, "SECURITY.md")
@@ -56,7 +56,7 @@ class CommunityTemplateBuilder:
             self.issue_templates_path = os.path.join(self.repo_path, "ISSUE_TEMPLATE")
             os.makedirs(self.issue_templates_path, exist_ok=True)
             self.pr_to_save = os.path.join(self.repo_path, "PULL_REQUEST_TEMPLATE.md")
-            self.docs_issue_to_save = os.path.join(self.repo_path, "DOCUMENTATION_ISSUE.md")
+            self.docs_issue_to_save = os.path.join(self.issue_templates_path, "DOCUMENTATION_ISSUE.md")
             self.feature_issue_to_save = os.path.join(self.issue_templates_path, "FEATURE_ISSUE.md")
             self.bug_issue_to_save = os.path.join(self.issue_templates_path, "BUG_ISSUE.md")
         elif "sourcecraft" in self.config_manager.get_git_settings().host:

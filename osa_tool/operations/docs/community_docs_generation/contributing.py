@@ -34,7 +34,7 @@ class ContributingBuilder:
 
         self.repo_root = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
         self.repo_path = os.path.join(
-            os.getcwd(), parse_folder_name(self.repo_url), "." + self.config_manager.get_git_settings().host
+            self.repo_root, "." + self.config_manager.get_git_settings().host
         )
         self.file_to_save = os.path.join(self.repo_path, "CONTRIBUTING.md")
 

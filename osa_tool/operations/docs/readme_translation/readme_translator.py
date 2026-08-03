@@ -9,7 +9,7 @@ from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.operations.docs.readme_generation.readme_utils import read_file, save_sections, remove_extra_blank_lines
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.utils import parse_folder_name
+from osa_tool.utils.utils import resolve_repo_path
 
 
 class ReadmeTranslator:
@@ -27,7 +27,7 @@ class ReadmeTranslator:
         self.metadata = metadata
         self.repo_url = self.config_manager.get_git_settings().repository
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
-        self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.base_path = str(resolve_repo_path(self.repo_url))
 
         self.events: list[OperationEvent] = []
 

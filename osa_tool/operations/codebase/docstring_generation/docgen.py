@@ -27,7 +27,7 @@ from osa_tool.operations.codebase.docstring_generation.topology import (
     build_dependency_graph,
 )
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import osa_project_root
+from osa_tool.utils.utils import osa_project_root, resolve_repo_path
 
 dotenv.load_dotenv()
 
@@ -53,6 +53,10 @@ class DocGen(object):
         self.model_handler: ProtollmHandler = ModelHandlerFactory.build(self.model_settings)
         self.main_idea = None
         self._function_index_cache = None
+
+    def _get_repo_root(self) -> Path:
+        """Return the resolved root path of the repository being processed."""
+        return resolve_repo_path(self.config_manager.get_git_settings().repository)
 
     @staticmethod
     def format_structure_openai(structure: dict) -> str:
@@ -1181,7 +1185,8 @@ class DocGen(object):
             Dict[str, str]
         """
 
-        self._rename_invalid_dirs(Path(self.config_manager.get_git_settings().name).resolve())
+        repo_root = self._get_repo_root()
+        self._rename_invalid_dirs(repo_root)
 
         semaphore = asyncio.Semaphore(rate_limit)
 
@@ -1261,14 +1266,14 @@ class DocGen(object):
             if leaves_summaries or folder_summaries:
                 summary = (
                     self.main_idea
-                    if path == self.config_manager.get_git_settings().name
+                    if Path(path).resolve() == repo_root
                     else await summarize_directory(Path(path).name, leaves_summaries, folder_summaries)
                 )
                 _summaries[str(path)] = summary
 
                 return summary
 
-        await traverse_and_summarize(self.config_manager.get_git_settings().name, project_structure)
+        await traverse_and_summarize(repo_root, project_structure)
         return _summaries
 
     @staticmethod
@@ -1363,21 +1368,27 @@ class DocGen(object):
         """
         config_file = osa_project_root().resolve() / "docs" / "templates" / "ci_config.toml"
         git_host = self.config_manager.get_git_settings().host
+        workflow_host = git_host or "github"
 
         with open(config_file, "rb") as f:
             cfg = tomli.load(f)
 
-        if git_host == "github":
+        if workflow_host == "github":
             workflows_path = Path(path).resolve() / ".github" / "workflows"
             workflows_path.mkdir(parents=True, exist_ok=True)
             github_workflow_file = workflows_path / "osa_mkdocs.yml"
             github_workflow_file.write_text(cfg["github"]["workflow"])
             logger.info(f"GitHub workflow created: {github_workflow_file}")
-            logger.info(
-                f"In order to perform the documentation deployment automatically, please make sure that\n1. At {repository_url}/settings/actions following permission are enabled:\n\t1) 'Read and write permissions'\n\t2) 'Allow GitHub Actions to create and approve pull requests'\n2. 'gh-pages' branch is chosen as the source at 'Build and deployment' section at {repository_url}/settings/pages ."
-            )
+            if git_host == "github":
+                logger.info(
+                    f"In order to perform the documentation deployment automatically, please make sure that\n1. At {repository_url}/settings/actions following permission are enabled:\n\t1) 'Read and write permissions'\n\t2) 'Allow GitHub Actions to create and approve pull requests'\n2. 'gh-pages' branch is chosen as the source at 'Build and deployment' section at {repository_url}/settings/pages ."
+                )
+            else:
+                logger.info(
+                    "Local repository detected without a configured git host; generated a GitHub-compatible MkDocs workflow template."
+                )
 
-        if git_host == "gitlab":
+        if workflow_host == "gitlab":
             gitlab_cfg = cfg.get("gitlab", {})
             gitlab_file = Path(path).resolve() / ".gitlab-ci.yml"
 
@@ -1422,7 +1433,7 @@ class DocGen(object):
                 f"GitLab CI created: {gitlab_file}.\nThe resulting OSA documentation can be downloaded and reviewed at the 'mkdocs_build' job's artifacts initated by MR.\nIt will be automatically deployed once MR is proceeded into the main branch.\nNote that artifacts of the 'mkdocs_build' job are set to expire in a span of 1 week."
             )
 
-        if "sourcecraft" in git_host:
+        if workflow_host and "sourcecraft" in workflow_host:
             sc_cfg = cfg.get("sourcecraft", {})
             full_name = self.config_manager.get_git_settings().full_name
 

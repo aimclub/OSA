@@ -16,7 +16,7 @@ from osa_tool.scheduler.plan import Plan
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.arguments_parser import get_keys_from_group_in_yaml
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import parse_folder_name
+from osa_tool.utils.utils import resolve_repo_path
 
 
 class WorkflowManager(ABC):
@@ -44,7 +44,7 @@ class WorkflowManager(ABC):
 
     def __init__(self, repo_url: str, metadata: RepositoryMetadata, args: Any):
         self.repo_url = repo_url
-        self.base_path = os.path.join(os.getcwd(), parse_folder_name(repo_url))
+        self.base_path = str(resolve_repo_path(repo_url))
         self.metadata = metadata
         self.workflow_keys = get_keys_from_group_in_yaml("workflow")
         self.workflow_plan = {key: value for key, value in vars(args).items() if key in self.workflow_keys}
