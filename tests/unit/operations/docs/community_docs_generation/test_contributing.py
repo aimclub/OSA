@@ -19,12 +19,12 @@ def test_contributing_builder_initialization(mock_config_manager, mock_repositor
     assert isinstance(builder.sourcerank, SourceRank)
 
     assert builder.url_path.startswith("https://")
-    assert builder.url_path
+    assert builder.url_path.endswith("/")
 
     assert builder.template_path.endswith("contributing.toml")
     assert builder.file_to_save.endswith("CONTRIBUTING.md")
     assert os.path.basename(os.path.dirname(builder.file_to_save)) == ".github"
-    expected_repo_path = os.path.join(os.getcwd(), mock_config_manager.config.git.name, ".github")
+    expected_repo_path = os.path.join(os.getcwd(), builder.repo_url.split("/")[-1], ".github")
     assert builder.repo_path == expected_repo_path
 
     template = builder.load_template()
@@ -33,6 +33,46 @@ def test_contributing_builder_initialization(mock_config_manager, mock_repositor
         assert key in template
 
     assert builder._template == template
+
+
+def test_contributing_builder_initialization_for_local_repository(
+    mock_config_manager, mock_repository_metadata, tmp_path
+):
+    repo_dir = tmp_path / "local_repo"
+    repo_dir.mkdir()
+    git = mock_config_manager.config.git
+    git.repository = repo_dir
+    git.host = None
+    git.host_domain = None
+    git.full_name = f"local/{repo_dir.name}"
+    mock_repository_metadata.clone_url_http = ""
+    mock_repository_metadata.issues_url = ""
+
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
+
+    assert builder.repo_root == str(repo_dir)
+    assert builder.repo_path == os.path.join(str(repo_dir), ".github")
+    assert builder.file_to_save == os.path.join(str(repo_dir), ".github", "CONTRIBUTING.md")
+    assert builder.url_path == "."
+    assert builder.issues_url == "."
+
+
+def test_local_repository_uses_http_origin_identity(mock_config_manager, mock_repository_metadata, tmp_path):
+    repo_dir = tmp_path / "local_repo"
+    repo_dir.mkdir()
+    git = mock_config_manager.config.git
+    git.repository = repo_dir
+    git.host = None
+    git.host_domain = None
+    git.full_name = f"local/{repo_dir.name}"
+    mock_repository_metadata.clone_url_http = "https://gitlab.com/group/repository.git"
+    mock_repository_metadata.issues_url = ""
+
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
+
+    assert builder.host == "gitlab"
+    assert builder.url_path == "https://gitlab.com/group/repository/"
+    assert builder.repo_path == os.path.join(str(repo_dir), ".gitlab")
 
 
 def test_introduction_property(mock_config_manager, mock_repository_metadata):
@@ -101,7 +141,8 @@ def test_documentation_with_docs_presence_true(
     doc_section = builder.documentation
 
     # Assert
-    assert "docs/" in doc_section or builder.metadata.homepage_url in doc_section
+    assert "../" in doc_section or "](./" in doc_section or builder.metadata.homepage_url in doc_section
+    assert "tree/" not in doc_section
 
 
 def test_documentation_with_docs_presence_false_and_no_homepage(
@@ -135,6 +176,8 @@ def test_readme_with_readme_presence_true(mock_config_manager, mock_repository_m
 
     # Assert
     assert "README" in readme_section
+    assert "../" in readme_section or "](./" in readme_section
+    assert "tree/" not in readme_section
 
 
 def test_readme_with_readme_presence_false(mock_config_manager, mock_repository_metadata, sourcerank_with_repo_tree):
@@ -164,8 +207,9 @@ def test_tests_property_with_tests_presence(mock_config_manager, mock_repository
     tests_section = builder.tests
 
     # Assert
-    assert "tests/" in tests_section or "test" in tests_section.lower()
+    assert "../" in tests_section or "](./" in tests_section
     assert tests_section != ""
+    assert "tree/" not in tests_section
 
 
 def test_tests_property_without_tests_presence(
@@ -195,6 +239,21 @@ def test_acknowledgements_property(mock_config_manager, mock_repository_metadata
     # Assert
     assert isinstance(acknowledgements, str)
     assert len(acknowledgements) > 0
+
+
+def test_contributing_documentation_uses_path_from_github_subdirectory(
+    mock_config_manager, mock_repository_metadata, sourcerank_with_repo_tree
+):
+    repo_tree_data = "docs\ndocs/index.rst\nREADME.md"
+    sourcerank = sourcerank_with_repo_tree(repo_tree_data)
+
+    builder = ContributingBuilder(mock_config_manager, mock_repository_metadata)
+    builder.sourcerank = sourcerank
+    builder.metadata.homepage_url = ""
+
+    doc_section = builder.documentation
+
+    assert "](../docs)" in doc_section
 
 
 def test_build_creates_dir_and_saves_file(mock_config_manager, mock_repository_metadata, tmp_path, caplog):
@@ -245,6 +304,7 @@ def test_contributing_builder_sourcecraft_file_to_save_in_repo_root(mock_config_
     parent = os.path.basename(os.path.dirname(builder.file_to_save))
     assert parent != ".sourcecraft"
     assert parent != ".github"
+    assert builder.repo_path == os.path.dirname(builder.file_to_save)
 
 
 @pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
