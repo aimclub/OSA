@@ -187,6 +187,8 @@ Important modules:
 | `section_parser.py` | Markdown-to-section parsing. |
 | `claim_schemas.py` | Private Pydantic schemas for LLM response validation. |
 | `claim_validation.py` | Source-text matching, script guard, and claim candidate partitioning. |
+| `claim_input_planner.py` | Token budgets plus hierarchy-aware selection and sentence-aware claim inputs. |
+| `claim_deduplicator.py` | Token-bounded, fail-safe LLM claim deduplication. |
 | `claim_extractor.py` | LLM request/repair loop and three-step extraction orchestration. |
 | `pipeline.py` | Single-document pipeline composition and artifact export. |
 

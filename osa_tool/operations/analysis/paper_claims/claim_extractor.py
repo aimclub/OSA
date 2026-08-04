@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-import json
-import re
 from typing import Any, Callable, Protocol
 
 from pydantic import TypeAdapter, ValidationError
 from rich.progress import track
 
+from osa_tool.operations.analysis.paper_claims.claim_deduplicator import ClaimDeduplicator
+from osa_tool.operations.analysis.paper_claims.claim_input_planner import ClaimInputPlanner
 from osa_tool.operations.analysis.paper_claims.claim_schemas import (
     ClaimCandidateResponse,
     SelectedSectionResponse,
 )
-from osa_tool.operations.analysis.paper_claims.claim_validation import (
-    partition_valid_claim_candidates,
-)
+from osa_tool.operations.analysis.paper_claims.claim_validation import partition_valid_claim_candidates
 from osa_tool.operations.analysis.paper_claims.exceptions import ClaimExtractionError
 from osa_tool.operations.analysis.paper_claims.models import (
     ClaimExtractionResult,
@@ -25,7 +23,7 @@ from osa_tool.operations.analysis.paper_claims.models import (
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder, PromptLoader
 from osa_tool.utils.response_cleaner import JsonParseError, JsonProcessor
-from osa_tool.utils.token_counter import _get_encoder, count_tokens, truncate_to_tokens
+from osa_tool.utils.token_counter import count_tokens, truncate_to_tokens
 
 
 class AsyncModelHandler(Protocol):
@@ -33,6 +31,8 @@ class AsyncModelHandler(Protocol):
 
 
 class ClaimExtractor:
+    """Run the three claim-extraction stages for one parsed report."""
+
     def __init__(
         self,
         handler: AsyncModelHandler,
@@ -49,282 +49,13 @@ class ClaimExtractor:
         self.prompts = prompts or PromptLoader()
         self.max_retries = max_retries
         self.dedup_batch_size = dedup_batch_size
-
-    def _repair_reserve_tokens(self) -> int:
-        settings = getattr(self.handler, "model_settings", None)
-        if settings is None or not hasattr(settings, "context_window") or not hasattr(settings, "max_tokens"):
-            return 0
-        context_window = getattr(settings, "context_window", 0)
-        base_input_budget = context_window - getattr(settings, "max_tokens", 0) - 256
-        configured_reserve = min(2048, max(512, context_window // 10))
-        return max(0, min(configured_reserve, base_input_budget - 1))
-
-    def _input_token_budget(self, system: str) -> tuple[int, str] | None:
-        settings = getattr(self.handler, "model_settings", None)
-        if settings is None or not hasattr(settings, "context_window") or not hasattr(settings, "max_tokens"):
-            return None
-        encoder = getattr(settings, "encoder", "cl100k_base")
-        total_input_budget = getattr(settings, "context_window", 0) - getattr(settings, "max_tokens", 0) - 256
-        if total_input_budget <= 0:
-            return None
-        try:
-            system_tokens = count_tokens(system, encoder)
-        except Exception as exc:
-            logger.warning("Token encoder unavailable; token-aware batching disabled: %s", exc)
-            return None
-        budget = total_input_budget - system_tokens
-        if budget <= 0:
-            return None
-        return budget, encoder
-
-    @staticmethod
-    def _section_option(section: PaperSection) -> dict[str, Any]:
-        return {
-            "section_id": section.section_id,
-            "name": section.name,
-            "heading_meta": section.heading_meta.model_dump(mode="json"),
-        }
-
-    @staticmethod
-    def _numbering_prefixes(numbering: str | None) -> list[str]:
-        if not numbering:
-            return []
-        normalized = numbering.strip().strip(".")
-        if not normalized:
-            return []
-        parts = [part for part in normalized.split(".") if part]
-        return [".".join(parts[:index]) for index in range(1, len(parts))]
-
-    @staticmethod
-    def _section_ancestors(sections: list[PaperSection]) -> dict[str, list[PaperSection]]:
-        ancestors: dict[str, list[PaperSection]] = {}
-        stack: list[PaperSection] = []
-        numbered_sections: dict[str, PaperSection] = {}
-        order_by_id: dict[str, int] = {}
-        for index, section in enumerate(sections):
-            order_by_id[section.section_id] = index
-            while stack and stack[-1].heading_meta.level >= section.heading_meta.level:
-                stack.pop()
-            combined = {ancestor.section_id: ancestor for ancestor in stack}
-            for prefix in ClaimExtractor._numbering_prefixes(section.heading_meta.numbering):
-                numbered_ancestor = numbered_sections.get(prefix)
-                if numbered_ancestor is not None:
-                    combined[numbered_ancestor.section_id] = numbered_ancestor
-            ancestors[section.section_id] = sorted(
-                combined.values(),
-                key=lambda item: order_by_id[item.section_id],
-            )
-            stack.append(section)
-            numbering = section.heading_meta.numbering
-            if numbering:
-                numbered_sections[numbering.strip().strip(".")] = section
-        return ancestors
-
-    def _section_selection_context(
-        self,
-        candidate_sections: list[PaperSection],
-        ancestors_by_id: dict[str, list[PaperSection]],
-    ) -> list[PaperSection]:
-        candidate_ids = {section.section_id for section in candidate_sections}
-        context: list[PaperSection] = []
-        seen: set[str] = set()
-        for section in candidate_sections:
-            for ancestor in ancestors_by_id.get(section.section_id, []):
-                if ancestor.section_id in candidate_ids or ancestor.section_id in seen:
-                    continue
-                context.append(ancestor)
-                seen.add(ancestor.section_id)
-        return context
-
-    def _section_selection_prompt(
-        self,
-        *,
-        candidate_sections: list[PaperSection],
-        context_sections: list[PaperSection],
-    ) -> str:
-        candidate_options = [self._section_option(section) for section in candidate_sections]
-        if not context_sections:
-            return (
-                "Below is the list of extracted sections. Each item includes section_id, cleaned heading name, and heading_meta.\n"
-                + json.dumps(candidate_options, ensure_ascii=False)
-                + "\nFilter the list according to the rules and return ONLY a JSON array of objects with section_id in original order."
-            )
-        payload = {
-            "context_sections": [self._section_option(section) for section in context_sections],
-            "candidate_sections": candidate_options,
-        }
-        return (
-            "Below is a bounded batch of extracted sections. Each item includes section_id, cleaned heading name, and heading_meta.\n"
-            "Use context_sections only to apply parent-child hierarchy rules. Do not return context-only section IDs.\n"
-            "Filter candidate_sections according to the rules and return ONLY a JSON array of objects with section_id in original order.\n"
-            "Return only section_id values that appear in candidate_sections.\n"
-            + json.dumps(payload, ensure_ascii=False)
+        self._input_planner = ClaimInputPlanner(lambda: getattr(self.handler, "model_settings", None))
+        self._deduplicator = ClaimDeduplicator(
+            request_validated=self._request_validated,
+            input_planner=self._input_planner,
+            deduplication_system=self.prompts.get("paper_claims.deduplication_system"),
+            dedup_batch_size=dedup_batch_size,
         )
-
-    def _section_selection_batches(
-        self,
-        sections: list[PaperSection],
-        system: str,
-    ) -> list[tuple[list[PaperSection], list[PaperSection]]]:
-        budget_info = self._input_token_budget(system)
-        if budget_info is None:
-            return [([], sections)]
-
-        user_budget, encoder = budget_info
-        ancestors_by_id = self._section_ancestors(sections)
-        batches: list[tuple[list[PaperSection], list[PaperSection]]] = []
-        current: list[PaperSection] = []
-
-        def prompt_for(candidate_sections: list[PaperSection]) -> str:
-            return self._section_selection_prompt(
-                candidate_sections=candidate_sections,
-                context_sections=self._section_selection_context(candidate_sections, ancestors_by_id),
-            )
-
-        for section in sections:
-            candidate = [*current, section]
-            try:
-                token_count = count_tokens(prompt_for(candidate), encoder)
-            except Exception as exc:
-                logger.warning("Token counting failed; section selection batching disabled: %s", exc)
-                return [([], sections)]
-            if current and token_count > user_budget:
-                batches.append((self._section_selection_context(current, ancestors_by_id), current))
-                current = [section]
-                try:
-                    single_token_count = count_tokens(prompt_for(current), encoder)
-                except Exception as exc:
-                    logger.warning("Token counting failed; section selection batching disabled: %s", exc)
-                    return [([], sections)]
-                if single_token_count > user_budget:
-                    logger.warning(
-                        "Single section selection prompt for %s exceeds input budget; sending it unchanged",
-                        section.section_id,
-                    )
-            else:
-                current = candidate
-
-        if current:
-            batches.append((self._section_selection_context(current, ancestors_by_id), current))
-        return batches
-
-    @staticmethod
-    def _sentence_spans(text: str) -> list[str]:
-        if not text:
-            return []
-        spans: list[str] = []
-        start = 0
-        for match in re.finditer(r"(?<=[.!?…。！？])\s+|\n\s*\n+", text):
-            end = match.end()
-            if end > start:
-                spans.append(text[start:end])
-            start = end
-        if start < len(text):
-            spans.append(text[start:])
-        return [span for span in spans if span]
-
-    def _token_split_section_text(
-        self,
-        section: PaperSection,
-        text: str,
-        *,
-        budget: int,
-        encoder: str,
-    ) -> list[PaperSection]:
-        codec = _get_encoder(encoder)
-        tokens = codec.encode(text)
-        if not tokens:
-            return []
-        if budget <= 0:
-            return [section.model_copy(update={"text": text})]
-        overlap = min(128, max(1, budget // 10))
-        step = max(1, budget - overlap)
-        return [
-            section.model_copy(update={"text": codec.decode(tokens[start : start + budget])})
-            for start in range(0, len(tokens), step)
-        ]
-
-    def _sentence_chunks(
-        self,
-        section: PaperSection,
-        *,
-        budget: int,
-        encoder: str,
-    ) -> list[PaperSection]:
-        spans = self._sentence_spans(section.text)
-        if not spans:
-            return [section]
-
-        chunks: list[PaperSection] = []
-        current: list[str] = []
-
-        def current_text(items: list[str]) -> str:
-            return "".join(items)
-
-        for span in spans:
-            span_tokens = count_tokens(span, encoder)
-            if span_tokens > budget:
-                if current:
-                    chunks.append(section.model_copy(update={"text": current_text(current).strip()}))
-                    current = []
-                logger.warning(
-                    "Section %s contains one sentence-like span with %s tokens, exceeding chunk budget=%s; "
-                    "falling back to token split for that span",
-                    section.section_id,
-                    span_tokens,
-                    budget,
-                )
-                chunks.extend(self._token_split_section_text(section, span, budget=budget, encoder=encoder))
-                continue
-
-            candidate = [*current, span]
-            if current and count_tokens(current_text(candidate), encoder) > budget:
-                chunks.append(section.model_copy(update={"text": current_text(current).strip()}))
-                overlap = current[-1:]
-                current = (
-                    [*overlap, span] if count_tokens(current_text([*overlap, span]), encoder) <= budget else [span]
-                )
-            else:
-                current = candidate
-
-        if current:
-            chunks.append(section.model_copy(update={"text": current_text(current).strip()}))
-        return chunks or [section]
-
-    def _section_chunks(self, section: PaperSection, system: str) -> list[PaperSection]:
-        """Split a section into sentence-aware chunks that leave room for repair prompts."""
-        settings = getattr(self.handler, "model_settings", None)
-        if settings is None or not hasattr(settings, "context_window") or not hasattr(settings, "max_tokens"):
-            return [section]
-        encoder = getattr(settings, "encoder", "cl100k_base")
-        total_input_budget = (
-            getattr(settings, "context_window", 0)
-            - getattr(settings, "max_tokens", 0)
-            - 256
-            - self._repair_reserve_tokens()
-        )
-        try:
-            system_tokens = count_tokens(system, encoder)
-        except Exception as exc:
-            logger.warning(
-                "Token encoder unavailable; using conservative character-based section chunks: %s",
-                exc,
-            )
-            system_tokens = len(system)
-            budget = total_input_budget - system_tokens
-            if budget <= 0 or len(section.text) <= budget:
-                return [section]
-            overlap = min(512, max(1, budget // 10))
-            step = max(1, budget - overlap)
-            return [
-                section.model_copy(update={"text": section.text[start : start + budget]})
-                for start in range(0, len(section.text), step)
-            ]
-
-        budget = total_input_budget - system_tokens
-        if budget <= 0 or count_tokens(section.text, encoder) <= budget:
-            return [section]
-        return self._sentence_chunks(section, budget=budget, encoder=encoder)
 
     def _repair_prompt(
         self,
@@ -341,7 +72,7 @@ class ClaimExtractor:
             response=response,
             original_prompt=original_prompt,
         )
-        budget_info = self._input_token_budget(system)
+        budget_info = self._input_planner.input_token_budget(system)
         if budget_info is None:
             return full_prompt
 
@@ -388,12 +119,7 @@ class ClaimExtractor:
         original_prompt = prompt
         last_error: Exception | None = None
         for attempt in range(1, self.max_retries + 1):
-            logger.info(
-                "%s: sending request (attempt %s/%s)",
-                request_name,
-                attempt,
-                self.max_retries,
-            )
+            logger.info("%s: sending request (attempt %s/%s)", request_name, attempt, self.max_retries)
             try:
                 raw = await self.handler.async_request(current_prompt, system)
             except Exception as exc:
@@ -436,12 +162,7 @@ class ClaimExtractor:
         original_prompt = prompt
         last_error: Exception | None = None
         for attempt in range(1, self.max_retries + 1):
-            logger.info(
-                "%s: sending request (attempt %s/%s)",
-                request_name,
-                attempt,
-                self.max_retries,
-            )
+            logger.info("%s: sending request (attempt %s/%s)", request_name, attempt, self.max_retries)
             try:
                 raw = await self.handler.async_request(current_prompt, system)
             except Exception as exc:
@@ -472,10 +193,7 @@ class ClaimExtractor:
 
             last_error = ValueError("; ".join(invalid))
             if attempt < self.max_retries:
-                logger.info(
-                    "%s: response validation failed, preparing repair request",
-                    request_name,
-                )
+                logger.info("%s: response validation failed, preparing repair request", request_name)
                 current_prompt = self._repair_prompt(
                     error=str(last_error),
                     response=str(raw),
@@ -486,12 +204,7 @@ class ClaimExtractor:
 
             for error in invalid:
                 logger.warning("%s: dropping invalid claim after final attempt: %s", request_name, error)
-            logger.info(
-                "%s: kept %s/%s claims after dropping invalid claims",
-                request_name,
-                len(valid),
-                len(parsed),
-            )
+            logger.info("%s: kept %s/%s claims after dropping invalid claims", request_name, len(valid), len(parsed))
             logger.debug("Parsed response after dropping invalid claims:\n%s", valid)
             return valid
 
@@ -499,12 +212,9 @@ class ClaimExtractor:
 
     async def _step_1_select_sections(self, sections: list[PaperSection]) -> list[str]:
         """Select claim-bearing sections while preserving their source order."""
-        logger.info(
-            "Claim extraction step 1/3: selecting relevant sections from %s sections",
-            len(sections),
-        )
+        logger.info("Claim extraction step 1/3: selecting relevant sections from %s sections", len(sections))
         system = self.prompts.get("paper_claims.section_filter_system")
-        batches = self._section_selection_batches(sections, system)
+        batches = self._input_planner.section_selection_batches(sections, system)
         if len(batches) > 1:
             logger.info(
                 "Claim extraction step 1/3: split section selection into %s batches to fit model input budget",
@@ -512,8 +222,8 @@ class ClaimExtractor:
             )
 
         selected_ids: list[str] = []
-        for batch_index, (context_sections, candidate_sections) in enumerate(batches, start=1):
-            candidate_by_id = {section.section_id: section for section in candidate_sections}
+        for batch_index, batch in enumerate(batches, start=1):
+            candidate_by_id = {section.section_id: section for section in batch.candidate_sections}
             request_name = "Section selection"
             if len(batches) > 1:
                 request_name = f"Section selection batch {batch_index}/{len(batches)}"
@@ -524,9 +234,9 @@ class ClaimExtractor:
                     raise ValueError("Selection contains duplicate or unknown section IDs")
 
             selected = await self._request_validated(
-                self._section_selection_prompt(
-                    candidate_sections=candidate_sections,
-                    context_sections=context_sections,
+                self._input_planner.section_selection_prompt(
+                    candidate_sections=batch.candidate_sections,
+                    context_sections=batch.context_sections,
                 ),
                 system,
                 TypeAdapter(list[SelectedSectionResponse]),
@@ -538,7 +248,7 @@ class ClaimExtractor:
                 "%s completed: selected %s/%s candidate sections",
                 request_name,
                 len(selected),
-                len(candidate_sections),
+                len(batch.candidate_sections),
             )
 
         section_by_id = {section.section_id: section for section in sections}
@@ -546,10 +256,7 @@ class ClaimExtractor:
             raise ClaimExtractionError("Section selection contains duplicate or unknown section IDs after merging")
         selected_set = set(selected_ids)
         ordered_ids = [section.section_id for section in sections if section.section_id in selected_set]
-        logger.info(
-            "Claim extraction step 1/3 completed: selected %s sections",
-            len(ordered_ids),
-        )
+        logger.info("Claim extraction step 1/3 completed: selected %s sections", len(ordered_ids))
         return ordered_ids
 
     async def _step_2_extract_claims(
@@ -569,15 +276,11 @@ class ClaimExtractor:
         for section_id in track(selected_section_ids, description="Extracting section claims"):
             section = section_by_id[section_id]
             if not section.text.strip():
-                logger.info(
-                    "Skipping empty selected section %s (%s)",
-                    section.section_id,
-                    section.name,
-                )
+                logger.info("Skipping empty selected section %s (%s)", section.section_id, section.name)
                 continue
             logger.info("Extracting claims from section %s (%s)", section.section_id, section.name)
 
-            section_chunks = self._section_chunks(section, claim_system)
+            section_chunks = self._input_planner.section_chunks(section, claim_system)
             if len(section_chunks) > 1:
                 logger.info(
                     "Section %s split into %s extraction chunks to fit model input budget",
@@ -589,15 +292,12 @@ class ClaimExtractor:
                 request_name = f"Claim extraction for section {section.section_id}"
                 if len(section_chunks) > 1:
                     request_name = (
-                        f"Claim extraction for section {section.section_id} chunk "
-                        f"{chunk_index}/{len(section_chunks)}"
+                        f"Claim extraction for section {section.section_id} chunk {chunk_index}/{len(section_chunks)}"
                     )
 
                 try:
                     candidates = await self._request_claim_candidates(
-                        "Analyze the following paper section and extract all verifiable factual claims:\n"
-                        + section_chunk.text
-                        + "\nReturn ONLY the JSON array as specified in the system instructions.",
+                        self._input_planner.claim_extraction_prompt(section_chunk),
                         claim_system,
                         claim_adapter,
                         section=section_chunk,
@@ -645,370 +345,7 @@ class ClaimExtractor:
         self,
         claims: list[ExtractedClaim],
     ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
-        """Deduplicate claims, retain contradictions, and enrich kept claims."""
-        if not claims:
-            logger.info("Claim extraction step 3/3 skipped: no claims to deduplicate")
-            return [], []
-
-        logger.info(
-            "Claim extraction step 3/3: deduplicating %s claims with batch_size=%s",
-            len(claims),
-            self.dedup_batch_size,
-        )
-        batches = self._deduplication_batches(claims)
-        filtered: list[ExtractedClaim] = []
-        selections: list[DedupSelection] = []
-        for batch_index, batch_claims in track(
-            list(enumerate(batches, start=1)),
-            description="Deduplicating claim batches",
-        ):
-            batch_filtered, batch_selections = await self._deduplicate_claim_batch(
-                batch_claims,
-                request_name=f"Claim deduplication batch {batch_index}/{len(batches)}",
-            )
-            filtered.extend(batch_filtered)
-            selections.extend(batch_selections)
-
-        if len(batches) > 1 and filtered:
-            filtered, selections = await self._deduplicate_global_survivors(filtered)
-
-        ratio = len(filtered) / len(claims)
-        logger.info(
-            "Claim extraction step 3/3 completed: retained %s/%s claims (%.1f%%)",
-            len(filtered),
-            len(claims),
-            ratio * 100,
-        )
-        return filtered, selections
-
-    def _deduplication_prompt(self, claims: list[ExtractedClaim]) -> str:
-        dedup_input = [{"claim_id": claim.claim_id, "claim": claim.claim} for claim in claims]
-        return (
-            "Below is the JSON array of claims extracted from the report sections. Apply the deduplication and contradiction rules.\n"
-            + json.dumps(dedup_input, ensure_ascii=False)
-            + "\nReturn ONLY the final processed JSON array."
-        )
-
-    def _deduplication_batches(self, claims: list[ExtractedClaim]) -> list[list[ExtractedClaim]]:
-        system = self.prompts.get("paper_claims.deduplication_system")
-        budget_info = self._input_token_budget(system)
-        if budget_info is None:
-            return [
-                claims[index : index + self.dedup_batch_size] for index in range(0, len(claims), self.dedup_batch_size)
-            ]
-
-        user_budget, encoder = budget_info
-        batches: list[list[ExtractedClaim]] = []
-        current: list[ExtractedClaim] = []
-        for claim in claims:
-            candidate = [*current, claim]
-            try:
-                token_count = count_tokens(self._deduplication_prompt(candidate), encoder)
-            except Exception as exc:
-                logger.warning("Token counting failed; falling back to count-bounded deduplication batches: %s", exc)
-                return [
-                    claims[index : index + self.dedup_batch_size]
-                    for index in range(0, len(claims), self.dedup_batch_size)
-                ]
-
-            if current and (len(candidate) > self.dedup_batch_size or token_count > user_budget):
-                batches.append(current)
-                current = [claim]
-                try:
-                    single_token_count = count_tokens(self._deduplication_prompt(current), encoder)
-                except Exception as exc:
-                    logger.warning(
-                        "Token counting failed; falling back to count-bounded deduplication batches: %s",
-                        exc,
-                    )
-                    return [
-                        claims[index : index + self.dedup_batch_size]
-                        for index in range(0, len(claims), self.dedup_batch_size)
-                    ]
-                if single_token_count > user_budget:
-                    logger.warning(
-                        "Single claim %s exceeds deduplication input budget; sending it unchanged",
-                        claim.claim_id,
-                    )
-            else:
-                current = candidate
-
-        if current:
-            batches.append(current)
-        if len(batches) > 1:
-            logger.info(
-                "Claim extraction step 3/3: split deduplication into %s token-bounded batches",
-                len(batches),
-            )
-        return batches
-
-    def _deduplication_prompt_fits(self, claims: list[ExtractedClaim]) -> bool:
-        if len(claims) > self.dedup_batch_size:
-            return False
-        system = self.prompts.get("paper_claims.deduplication_system")
-        budget_info = self._input_token_budget(system)
-        if budget_info is None:
-            return True
-        user_budget, encoder = budget_info
-        try:
-            return count_tokens(self._deduplication_prompt(claims), encoder) <= user_budget
-        except Exception as exc:
-            logger.warning("Token counting failed; assuming deduplication prompt fits current budget: %s", exc)
-            return True
-
-    async def _deduplicate_global_survivors(
-        self, claims: list[ExtractedClaim]
-    ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
-        """Compare survivors across batch boundaries without exceeding the dedup batch size."""
-        if len(claims) <= self.dedup_batch_size:
-            logger.info(
-                "Claim extraction step 3/3: running final deduplication pass over %s batch survivors",
-                len(claims),
-            )
-            return await self._deduplicate_claim_group(claims, request_name="Claim deduplication final pass")
-
-        chunk_size = max(1, self.dedup_batch_size // 2)
-        chunks = [claims[index : index + chunk_size] for index in range(0, len(claims), chunk_size)]
-        total_groups = len(chunks) * (len(chunks) + 1) // 2
-        active = {claim.claim_id: claim for claim in claims}
-        original_order = {claim.claim_id: index for index, claim in enumerate(claims)}
-        logger.info(
-            "Claim extraction step 3/3: running global pairwise deduplication over %s survivors "
-            "using %s groups of up to %s claims",
-            len(claims),
-            total_groups,
-            self.dedup_batch_size,
-        )
-
-        group_number = 0
-        for left_index, left_chunk in enumerate(chunks):
-            for right_index in range(left_index, len(chunks)):
-                group_number += 1
-                group_ids = [claim.claim_id for claim in left_chunk]
-                if right_index != left_index:
-                    group_ids.extend(claim.claim_id for claim in chunks[right_index])
-                group = [active[claim_id] for claim_id in group_ids if claim_id in active]
-                if len(group) <= 1:
-                    continue
-
-                kept, _chosen = await self._deduplicate_claim_group(
-                    group,
-                    request_name=f"Claim deduplication global group {group_number}/{total_groups}",
-                )
-                kept_by_id = {claim.claim_id: claim for claim in kept}
-                for claim_id, kept_claim in kept_by_id.items():
-                    current = active.get(claim_id)
-                    if current is None:
-                        continue
-                    active[claim_id] = kept_claim.model_copy(
-                        update={"contradiction": current.contradiction or kept_claim.contradiction}
-                    )
-                for claim in group:
-                    if claim.claim_id not in kept_by_id:
-                        active.pop(claim.claim_id, None)
-
-        filtered = sorted(active.values(), key=lambda claim: original_order[claim.claim_id])
-        selections = self._dedup_selections(filtered)
-        return filtered, selections
-
-    async def _deduplicate_claim_group(
-        self,
-        claims: list[ExtractedClaim],
-        *,
-        request_name: str,
-    ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
-        """Deduplicate a group without sending prompts over the token or count batch limits."""
-        batches = self._deduplication_batches(claims)
-        if len(batches) == 1:
-            return await self._deduplicate_claim_batch(batches[0], request_name=request_name)
-
-        logger.info("%s split into %s token-bounded sub-batches", request_name, len(batches))
-        survivor_batches: list[list[ExtractedClaim]] = []
-        for batch_index, batch_claims in enumerate(batches, start=1):
-            batch_filtered, batch_selections = await self._deduplicate_claim_batch(
-                batch_claims,
-                request_name=f"{request_name} sub-batch {batch_index}/{len(batches)}",
-            )
-            survivor_batches.append(batch_filtered)
-        return await self._deduplicate_cross_sub_batch_survivors(survivor_batches, request_name=request_name)
-
-    @staticmethod
-    def _apply_dedup_result(
-        active: dict[str, ExtractedClaim],
-        group: list[ExtractedClaim],
-        kept: list[ExtractedClaim],
-    ) -> None:
-        kept_by_id = {claim.claim_id: claim for claim in kept}
-        for claim_id, kept_claim in kept_by_id.items():
-            current = active.get(claim_id)
-            if current is None:
-                continue
-            active[claim_id] = kept_claim.model_copy(
-                update={"contradiction": current.contradiction or kept_claim.contradiction}
-            )
-        for claim in group:
-            if claim.claim_id not in kept_by_id:
-                active.pop(claim.claim_id, None)
-
-    async def _deduplicate_cross_sub_batch_survivors(
-        self,
-        survivor_batches: list[list[ExtractedClaim]],
-        *,
-        request_name: str,
-    ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
-        survivors = [claim for batch in survivor_batches for claim in batch]
-        if len(survivors) <= 1:
-            return survivors, self._dedup_selections(survivors)
-
-        active = {claim.claim_id: claim for claim in survivors}
-        original_order = {claim.claim_id: index for index, claim in enumerate(survivors)}
-        total_pairs = len(survivor_batches) * (len(survivor_batches) - 1) // 2
-        pair_number = 0
-        for left_index, left_batch in enumerate(survivor_batches):
-            for right_index in range(left_index + 1, len(survivor_batches)):
-                pair_number += 1
-                right_batch = survivor_batches[right_index]
-                group_ids = [claim.claim_id for claim in [*left_batch, *right_batch]]
-                group = [active[claim_id] for claim_id in group_ids if claim_id in active]
-                if len(group) <= 1:
-                    continue
-                if self._deduplication_prompt_fits(group):
-                    kept, _chosen = await self._deduplicate_claim_batch(
-                        group,
-                        request_name=f"{request_name} cross-sub-batch group {pair_number}/{total_pairs}",
-                    )
-                    self._apply_dedup_result(active, group, kept)
-                    continue
-
-                comparison_number = 0
-                for left_claim in left_batch:
-                    for right_claim in right_batch:
-                        left_active = active.get(left_claim.claim_id)
-                        right_active = active.get(right_claim.claim_id)
-                        if left_active is None or right_active is None:
-                            continue
-                        comparison_number += 1
-                        pair = [left_active, right_active]
-                        if not self._deduplication_prompt_fits(pair):
-                            logger.warning(
-                                "%s: cannot compare verbose claims %s and %s within deduplication input budget",
-                                request_name,
-                                left_active.claim_id,
-                                right_active.claim_id,
-                            )
-                            continue
-                        kept, _chosen = await self._deduplicate_claim_batch(
-                            pair,
-                            request_name=(
-                                f"{request_name} cross-sub-batch pair {pair_number}/{total_pairs}."
-                                f"{comparison_number}"
-                            ),
-                        )
-                        self._apply_dedup_result(active, pair, kept)
-
-        filtered = sorted(active.values(), key=lambda claim: original_order[claim.claim_id])
-        selections = self._dedup_selections(filtered)
-        return filtered, selections
-
-    async def _deduplicate_claim_batch(
-        self,
-        claims: list[ExtractedClaim],
-        *,
-        request_name: str,
-    ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
-        """Deduplicate one bounded batch and fall back to preserving all claims on LLM failure."""
-        claims_by_id = {claim.claim_id: claim for claim in claims}
-
-        def validate_dedup(items: list[DedupSelection]) -> None:
-            if claims and not items:
-                raise ValueError(f"Deduplication returned 0 claims for non-empty input of {len(claims)} claims")
-            ids = [item.claim_id for item in items]
-            if len(ids) != len(set(ids)) or any(item not in claims_by_id for item in ids):
-                raise ValueError("Deduplication contains duplicate or unknown claim IDs")
-            rewritten = [item.claim_id for item in items if item.claim != claims_by_id[item.claim_id].claim]
-            if rewritten:
-                raise ValueError(
-                    "Deduplication must copy claim text verbatim; rewritten claim IDs: " + ", ".join(rewritten)
-                )
-
-        try:
-            selections = await self._request_validated(
-                self._deduplication_prompt(claims),
-                self.prompts.get("paper_claims.deduplication_system"),
-                TypeAdapter(list[DedupSelection]),
-                validate_dedup,
-                request_name=request_name,
-            )
-        except Exception as exc:
-            return self._fallback_deduplication(claims, request_name=request_name, reason=str(exc))
-
-        # A later pass can replace an already contradiction-marked claim with
-        # a different representative. The selection schema does not expose a
-        # duplicate-to-representative mapping. Use identical claim text when it
-        # identifies the replacement; otherwise preserve the fact
-        # conservatively on every survivor rather than silently losing it.
-        contradictory_texts = {claim.claim for claim in claims if claim.contradiction}
-        replacement_ids = {selection.claim_id for selection in selections if selection.claim in contradictory_texts}
-        if contradictory_texts and not replacement_ids:
-            logger.debug(
-                "%s: no replacement mapping for an existing contradiction; carrying it to %s survivor(s)",
-                request_name,
-                len(selections),
-            )
-            replacement_ids = {selection.claim_id for selection in selections}
-        if replacement_ids:
-            selections = [
-                selection.model_copy(
-                    update={"contradiction": selection.contradiction or selection.claim_id in replacement_ids}
-                )
-                for selection in selections
-            ]
-
-        selection_by_id = {item.claim_id: item for item in selections}
-        filtered = [
-            claim.model_copy(
-                update={"contradiction": claim.contradiction or selection_by_id[claim.claim_id].contradiction}
-            )
-            for claim in claims
-            if claim.claim_id in selection_by_id
-        ]
-        ratio = len(filtered) / len(claims)
-        logger.info(
-            "%s completed: retained %s/%s claims (%.1f%%)",
-            request_name,
-            len(filtered),
-            len(claims),
-            ratio * 100,
-        )
-        return filtered, selections
-
-    @staticmethod
-    def _dedup_selections(claims: list[ExtractedClaim]) -> list[DedupSelection]:
-        return [
-            DedupSelection(
-                claim_id=claim.claim_id,
-                claim=claim.claim,
-                contradiction=claim.contradiction,
-            )
-            for claim in claims
-        ]
-
-    def _fallback_deduplication(
-        self,
-        claims: list[ExtractedClaim],
-        *,
-        request_name: str,
-        reason: str,
-    ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
-        logger.warning(
-            "%s failed after retries; preserving %s original claims without LLM deduplication. reason=%s",
-            request_name,
-            len(claims),
-            reason,
-        )
-        selections = self._dedup_selections(claims)
-        filtered = list(claims)
-        return filtered, selections
+        return await self._deduplicator.deduplicate(claims)
 
     async def extract(
         self,
@@ -1026,10 +363,7 @@ class ClaimExtractor:
         extracted_claims = await self._step_2_extract_claims(sections, selected_ids)
         extraction_model = getattr(self.handler, "last_successful_model", None) or model
         filtered_claims, selections = await self._step_3_deduplicate_claims(extracted_claims)
-        logger.info(
-            "Three-step claim extraction completed: final_claims=%s",
-            len(filtered_claims),
-        )
+        logger.info("Three-step claim extraction completed: final_claims=%s", len(filtered_claims))
 
         return ClaimExtractionResult(
             claims=filtered_claims,

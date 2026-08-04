@@ -1,5 +1,4 @@
 import json
-import logging
 from types import SimpleNamespace
 
 import pytest
@@ -34,53 +33,8 @@ class ModelTrackingFakeHandler(FakeHandler):
         return response
 
 
-def _parse_selection_prompt(prompt: str) -> dict:
-    marker = '{"context_sections"'
-    if marker in prompt:
-        return json.loads(prompt[prompt.index(marker) :])
-    start = prompt.index("[")
-    end = prompt.rindex("]") + 1
-    return {
-        "context_sections": [],
-        "candidate_sections": json.loads(prompt[start:end]),
-    }
-
-
-class SectionSelectionEchoHandler:
-    def __init__(self):
-        self.prompts = []
-
-    async def async_request(self, prompt, system_message=None, retry_delay=1):
-        self.prompts.append(prompt)
-        payload = _parse_selection_prompt(prompt)
-        return json.dumps(
-            [{"section_id": item["section_id"]} for item in payload["candidate_sections"]],
-            ensure_ascii=False,
-        )
-
-
 def fake_token_count(text, _encoder="fake"):
     return len(text.split())
-
-
-class FakeWordCodec:
-    @staticmethod
-    def encode(text):
-        return text.split()
-
-    @staticmethod
-    def decode(tokens):
-        return " ".join(tokens)
-
-
-class FakeCharCodec:
-    @staticmethod
-    def encode(text):
-        return [char for char in text for _copy in range(2)]
-
-    @staticmethod
-    def decode(tokens):
-        return "".join(tokens)
 
 
 def section() -> PaperSection:
@@ -148,181 +102,6 @@ def test_claim_extractor_rejects_dedup_batch_size_below_two():
         ClaimExtractor(FakeHandler([]), dedup_batch_size=1)
 
 
-@pytest.mark.asyncio
-async def test_deduplication_transfers_existing_contradiction_to_replacement_representative():
-    claims = [
-        extracted_claim("c0001", "The model uses configuration A.").model_copy(update={"contradiction": True}),
-        extracted_claim("c0002", "The model uses configuration A."),
-        extracted_claim("c0003", "The model uses configuration B."),
-    ]
-    handler = FakeHandler(
-        [
-            json.dumps(
-                [
-                    {"claim_id": "c0002", "claim": claims[1].claim, "contradiction": False},
-                    {"claim_id": "c0003", "claim": claims[2].claim, "contradiction": False},
-                ],
-                ensure_ascii=False,
-            )
-        ]
-    )
-
-    filtered, selections = await ClaimExtractor(handler)._deduplicate_claim_batch(
-        claims,
-        request_name="Test deduplication",
-    )
-
-    assert [claim.claim_id for claim in filtered] == ["c0002", "c0003"]
-    assert filtered[0].contradiction is True
-    assert filtered[1].contradiction is False
-    assert selections[0].contradiction is True
-    assert selections[1].contradiction is False
-
-
-def test_section_ancestors_use_numbering_when_marker_flattens_heading_levels():
-    sections = [
-        PaperSection(
-            section_id="s001",
-            name="Introduction",
-            text="Intro.",
-            heading_meta=HeadingMeta(raw="1 Introduction", level=1, numbering="1"),
-        ),
-        PaperSection(
-            section_id="s002",
-            name="Background",
-            text="Background.",
-            heading_meta=HeadingMeta(raw="1.1 Background", level=1, numbering="1.1"),
-        ),
-        PaperSection(
-            section_id="s003",
-            name="Prior Systems",
-            text="Prior systems.",
-            heading_meta=HeadingMeta(raw="1.1.1 Prior Systems", level=1, numbering="1.1.1"),
-        ),
-    ]
-
-    ancestors = ClaimExtractor(FakeHandler([]))._section_ancestors(sections)
-
-    assert [section.section_id for section in ancestors["s002"]] == ["s001"]
-    assert [section.section_id for section in ancestors["s003"]] == ["s001", "s002"]
-
-
-@pytest.mark.asyncio
-async def test_section_selection_batches_large_heading_lists_without_dropping_candidates(monkeypatch):
-    monkeypatch.setattr(
-        "osa_tool.operations.analysis.paper_claims.claim_extractor.count_tokens",
-        fake_token_count,
-    )
-    sections = [
-        PaperSection(
-            section_id="s001",
-            name="Method",
-            text="Parent section.",
-            heading_meta=HeadingMeta(raw="2. Method", level=1, numbering="2"),
-        )
-    ]
-    for index in range(2, 18):
-        sections.append(
-            PaperSection(
-                section_id=f"s{index:03d}",
-                name=f"Detailed implementation subsection {index} " + "token " * 30,
-                text=f"Section {index}.",
-                heading_meta=HeadingMeta(raw=f"2.{index - 1}. Detail", level=2, numbering=f"2.{index - 1}"),
-            )
-        )
-
-    system = PromptLoader().get("paper_claims.section_filter_system")
-    handler = SectionSelectionEchoHandler()
-    handler.model_settings = SimpleNamespace(
-        context_window=fake_token_count(system) + 256 + 100 + 180,
-        max_tokens=100,
-        encoder="fake",
-    )
-
-    selected = await ClaimExtractor(handler)._step_1_select_sections(sections)
-
-    assert selected == [section.section_id for section in sections]
-    assert len(handler.prompts) > 1
-    payloads = [_parse_selection_prompt(prompt) for prompt in handler.prompts]
-    candidate_ids = [item["section_id"] for payload in payloads for item in payload["candidate_sections"]]
-    assert candidate_ids == [section.section_id for section in sections]
-    assert any(
-        any(item["section_id"] == "s001" for item in payload["context_sections"])
-        and all(item["section_id"] != "s001" for item in payload["candidate_sections"])
-        for payload in payloads
-    )
-
-
-def test_section_chunks_token_count_non_latin_text_before_skipping_split(monkeypatch):
-    def fake_count_tokens(text, _encoder="fake"):
-        return len(text) * 2 if "🙂" in text else len(text.split())
-
-    monkeypatch.setattr(
-        "osa_tool.operations.analysis.paper_claims.claim_extractor.count_tokens",
-        fake_count_tokens,
-    )
-    monkeypatch.setattr(
-        "osa_tool.operations.analysis.paper_claims.claim_extractor._get_encoder",
-        lambda _name: FakeCharCodec(),
-    )
-    text = "🙂" * 50
-    paper_section = section().model_copy(update={"text": text})
-    handler = FakeHandler([])
-    handler.model_settings = SimpleNamespace(context_window=950, max_tokens=100, encoder="fake")
-
-    chunks = ClaimExtractor(handler)._section_chunks(paper_section, system="")
-
-    section_budget = 950 - 100 - 256 - ClaimExtractor(handler)._repair_reserve_tokens()
-    assert len(text) < section_budget
-    assert fake_count_tokens(text) > section_budget
-    assert len(chunks) > 1
-
-
-def test_section_chunks_preserve_complete_sentences_across_boundaries(monkeypatch):
-    def fake_count_tokens(text, _encoder="fake"):
-        return len(text.split())
-
-    monkeypatch.setattr(
-        "osa_tool.operations.analysis.paper_claims.claim_extractor.count_tokens",
-        fake_count_tokens,
-    )
-    first_sentence = " ".join(["alpha"] * 20) + ". "
-    boundary_sentence = " ".join(["boundary"] * 70) + ". "
-    final_sentence = " ".join(["omega"] * 20) + "."
-    paper_section = section().model_copy(update={"text": first_sentence + boundary_sentence + final_sentence})
-    handler = FakeHandler([])
-    handler.model_settings = SimpleNamespace(context_window=950, max_tokens=100, encoder="fake")
-
-    chunks = ClaimExtractor(handler)._section_chunks(paper_section, system="")
-
-    chunk_texts = [chunk.text for chunk in chunks]
-    assert len(chunks) > 1
-    assert any(boundary_sentence.strip() in chunk for chunk in chunk_texts)
-    assert all("boundary boundary" not in chunk or boundary_sentence.strip() in chunk for chunk in chunk_texts)
-
-
-def test_section_chunks_warn_and_token_split_oversized_single_sentence(monkeypatch, caplog):
-    def fake_count_tokens(text, _encoder="fake"):
-        return len(text.split())
-
-    monkeypatch.setattr(
-        "osa_tool.operations.analysis.paper_claims.claim_extractor.count_tokens",
-        fake_count_tokens,
-    )
-    monkeypatch.setattr(
-        "osa_tool.operations.analysis.paper_claims.claim_extractor._get_encoder",
-        lambda _name: FakeWordCodec(),
-    )
-    oversized_sentence = " ".join(["oversized"] * 120) + "."
-    paper_section = section().model_copy(update={"text": oversized_sentence})
-
-    with caplog.at_level(logging.WARNING, logger="rich"):
-        chunks = ClaimExtractor(FakeHandler([]))._sentence_chunks(paper_section, budget=50, encoder="fake")
-
-    assert len(chunks) > 1
-    assert "falling back to token split" in caplog.text
-
-
 def test_repair_prompt_is_bounded_to_model_input_budget(monkeypatch):
     def fake_count_tokens(text, _encoder="fake"):
         return len(text.split())
@@ -341,6 +120,10 @@ def test_repair_prompt_is_bounded_to_model_input_budget(monkeypatch):
         fake_count_tokens,
     )
     monkeypatch.setattr(
+        "osa_tool.operations.analysis.paper_claims.claim_input_planner.count_tokens",
+        fake_count_tokens,
+    )
+    monkeypatch.setattr(
         "osa_tool.operations.analysis.paper_claims.claim_extractor.truncate_to_tokens",
         fake_truncate_to_tokens,
     )
@@ -354,84 +137,10 @@ def test_repair_prompt_is_bounded_to_model_input_budget(monkeypatch):
         original_prompt="original " * 1000,
         system="system",
     )
-    budget, _encoder = extractor._input_token_budget("system")
+    budget, _encoder = extractor._input_planner.input_token_budget("system")
 
     assert "Validation error: original_text is missing" in prompt
     assert fake_count_tokens(prompt) <= budget
-
-
-def test_deduplication_batches_respect_model_input_token_budget(monkeypatch):
-    monkeypatch.setattr(
-        "osa_tool.operations.analysis.paper_claims.claim_extractor.count_tokens",
-        fake_token_count,
-    )
-    system = PromptLoader().get("paper_claims.deduplication_system")
-    max_tokens = 80
-    user_budget = 130
-    handler = FakeHandler([])
-    handler.model_settings = SimpleNamespace(
-        context_window=fake_token_count(system) + max_tokens + 256 + user_budget,
-        max_tokens=max_tokens,
-        encoder="fake",
-    )
-    extractor = ClaimExtractor(handler, dedup_batch_size=100)
-    claims = [extracted_claim(f"c{index:04d}", "Claim " + "token " * 30) for index in range(1, 6)]
-
-    batches = extractor._deduplication_batches(claims)
-
-    assert len(batches) > 1
-    assert [claim.claim_id for batch in batches for claim in batch] == [claim.claim_id for claim in claims]
-    assert all(fake_token_count(extractor._deduplication_prompt(batch)) <= user_budget for batch in batches)
-
-
-@pytest.mark.asyncio
-async def test_deduplicate_claim_group_compares_survivors_across_token_split_sub_batches(monkeypatch):
-    monkeypatch.setattr(
-        "osa_tool.operations.analysis.paper_claims.claim_extractor.count_tokens",
-        fake_token_count,
-    )
-    system = PromptLoader().get("paper_claims.deduplication_system")
-    max_tokens = 80
-    user_budget = 130
-    claims = [
-        extracted_claim("c0001", "Unique claim " + "token " * 30),
-        extracted_claim("c0002", "Duplicate verbose claim " + "token " * 30),
-        extracted_claim("c0003", "Duplicate verbose claim " + "token " * 30),
-    ]
-    handler = FakeHandler(
-        [
-            json.dumps(
-                [
-                    {"claim_id": "c0001", "claim": claims[0].claim, "contradiction": False},
-                    {"claim_id": "c0002", "claim": claims[1].claim, "contradiction": False},
-                ]
-            ),
-            json.dumps([{"claim_id": "c0003", "claim": claims[2].claim, "contradiction": False}]),
-            json.dumps(
-                [
-                    {"claim_id": "c0001", "claim": claims[0].claim, "contradiction": False},
-                    {"claim_id": "c0003", "claim": claims[2].claim, "contradiction": False},
-                ]
-            ),
-            json.dumps([{"claim_id": "c0002", "claim": claims[1].claim, "contradiction": False}]),
-        ]
-    )
-    handler.model_settings = SimpleNamespace(
-        context_window=fake_token_count(system) + max_tokens + 256 + user_budget,
-        max_tokens=max_tokens,
-        encoder="fake",
-    )
-
-    filtered, selections = await ClaimExtractor(handler, dedup_batch_size=100)._deduplicate_claim_group(
-        claims,
-        request_name="Test deduplication group",
-    )
-
-    assert [claim.claim_id for claim in filtered] == ["c0001", "c0002"]
-    assert [selection.claim_id for selection in selections] == ["c0001", "c0002"]
-    assert len(handler.prompts) == 4
-    assert '"claim_id": "c0002"' in handler.prompts[-1]
-    assert '"claim_id": "c0003"' in handler.prompts[-1]
 
 
 @pytest.mark.asyncio
@@ -793,7 +502,7 @@ async def test_extract_skips_section_when_model_request_raises_and_keeps_documen
 @pytest.mark.asyncio
 async def test_extract_splits_long_section_before_sending_claim_requests(monkeypatch):
     monkeypatch.setattr(
-        "osa_tool.operations.analysis.paper_claims.claim_extractor.count_tokens",
+        "osa_tool.operations.analysis.paper_claims.claim_input_planner.count_tokens",
         fake_token_count,
     )
     long_text = ". ".join(" ".join(f"token{i}_{word}" for word in range(35)) for i in range(8)) + "."
