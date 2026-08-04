@@ -176,6 +176,14 @@ class MarkerDocumentConverter:
         return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
     @staticmethod
+    def _validate_chunk_sources(chunks: list[PdfChunk]) -> None:
+        """Reject a mixed document before cache-key or metadata construction."""
+        source_path = chunks[0].source_path
+        source_hash = chunks[0].source_hash
+        if any(chunk.source_path != source_path or chunk.source_hash != source_hash for chunk in chunks[1:]):
+            raise PdfConversionError("All PDF chunks must originate from the same source_path and source_hash")
+
+    @staticmethod
     def _load_cache(cache_dir: Path, chunks: list[PdfChunk]) -> ConvertedDocument | None:
         metadata_path = cache_dir / "metadata.json"
         merged_path = cache_dir / "merged.md"
@@ -337,6 +345,7 @@ class MarkerDocumentConverter:
     def convert(self, chunks: list[PdfChunk], options: MarkerOptions | None = None) -> ConvertedDocument:
         if not chunks:
             raise PdfConversionError("At least one PDF chunk is required")
+        self._validate_chunk_sources(chunks)
         options = options or MarkerOptions()
         cache_root = options.cache_root or DEFAULT_MARKER_CACHE
         cache_dir = Path(cache_root) / self._cache_key(chunks, options, self.marker_version)

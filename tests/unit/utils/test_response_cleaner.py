@@ -35,4 +35,10 @@ def test_parse_raises_json_parse_error_when_json_repair_fails(monkeypatch):
     monkeypatch.setattr("osa_tool.utils.response_cleaner.repair_json", fail_repair)
 
     with pytest.raises(JsonParseError, match="cannot repair"):
-        JsonProcessor.parse("not json", expected_type=dict)
+        JsonProcessor.parse('{"name":value', expected_type=dict)
+
+
+@pytest.mark.parametrize(("text", "expected_type"), [("not valid json", dict), ("not valid json {{{", list)])
+def test_parse_rejects_plain_non_json_text(text, expected_type):
+    with pytest.raises(JsonParseError, match="No JSON"):
+        JsonProcessor.parse(text, expected_type=expected_type)

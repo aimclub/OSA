@@ -69,10 +69,12 @@ class JsonProcessor:
     @staticmethod
     def process_text(text: str, expected_type: type | None = None) -> str:
         """
-        Extracts JSON content from text by locating the first JSON bracket ('{' or '[')
-        and the last corresponding closing bracket ('}' or ']').
+        Extracts JSON content from text by locating a JSON bracket ('{' or '[')
+        and its corresponding closing bracket ('}' or ']').
         Replaces Python-style booleans/None and trims trailing commas.
-        For small models that don't return JSON, wraps response as {"result": text}.
+        When a JSON root is present but malformed, returns that root for
+        ``json_repair`` to repair during parsing. Plain non-JSON prose is
+        rejected instead of being fabricated into a JSON structure.
 
         Raises:
             ValueError: If no valid JSON structure is found.
@@ -111,21 +113,21 @@ class JsonProcessor:
                 return text[start : end + 1]
 
         if expected_type is list:
-            logger.error("No JSON start bracket found, adding '[' at the beginning")
-            if not text.startswith("["):
-                text = "[" + text
-            if not text.endswith("]"):
-                logger.error("No valid JSON end bracket found, adding ']' at the end")
-                text = text + "]"
-            return text
+            start = text.find("[")
+            if start == -1:
+                raise ValueError("No JSON array start bracket found")
+            return text[start:]
+        if expected_type is dict:
+            start = text.find("{")
+            if start == -1:
+                raise ValueError("No JSON object start bracket found")
+            return text[start:]
 
-        logger.error("No JSON start bracket found, adding '{' at the beginning")
-        if not text.startswith("{"):
-            text = "{" + text
-        if not text.endswith("}"):
-            logger.error("No valid JSON end bracket found, adding '}' at the end")
-            text = text + "}"
-        return text
+        starts = [(text.find(char), char) for char in ("{", "[") if text.find(char) >= 0]
+        if not starts:
+            raise ValueError("No JSON start bracket found")
+        start, _open_char = min(starts)
+        return text[start:]
 
     @classmethod
     def parse(

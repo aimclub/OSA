@@ -5,6 +5,7 @@ import unicodedata
 from dataclasses import dataclass
 
 from rapidfuzz import fuzz, process
+from rapidfuzz.distance import Levenshtein
 
 from osa_tool.operations.analysis.paper_claims.claim_schemas import (
     ClaimCandidateResponse,
@@ -20,6 +21,8 @@ _MIN_RELIABLE_CONTEXT_SCRIPT_LETTERS = 20
 _MIN_RELIABLE_CLAIM_SCRIPT_LETTERS = 6
 _MIN_SCRIPT_DOMINANCE = 0.70
 _DISPLAY_MATH_PATTERN = re.compile(r"\$\$.*?\$\$|\\\[.*?\\\]", re.DOTALL)
+_SEMANTIC_WORD_PATTERN = re.compile(r"\w+", re.UNICODE)
+_MATH_OPERATOR_PATTERN = re.compile(r"<=|>=|==|!=|[<>=+\-*/^≤≥≠≈∈]")
 
 
 @dataclass(frozen=True)
@@ -90,6 +93,44 @@ def _candidate_source_spans(section_text: str) -> list[str]:
     return candidates
 
 
+def _semantic_word_tokens(value: str) -> list[str]:
+    """Return case-insensitive lexical tokens while retaining all word scripts."""
+    return _SEMANTIC_WORD_PATTERN.findall(value.casefold())
+
+
+def _math_operator_tokens(value: str) -> list[str]:
+    """Return comparison and arithmetic operators that carry formula meaning."""
+    return _MATH_OPERATOR_PATTERN.findall(value)
+
+
+def _has_only_safe_fuzzy_drift(original_text: str, candidate_text: str) -> bool:
+    """Allow casing, layout, and a one-character inflection, but not meaning changes.
+
+    Fuzzy source repair replaces LLM-provided evidence with a source span. It
+    therefore must not accept a changed negation, value, word substitution, or
+    mathematical relation merely because the surrounding sentence is similar.
+    """
+    original_words = _semantic_word_tokens(original_text)
+    candidate_words = _semantic_word_tokens(candidate_text)
+    if len(original_words) != len(candidate_words):
+        return False
+    if _math_operator_tokens(original_text) != _math_operator_tokens(candidate_text):
+        return False
+
+    for original_word, candidate_word in zip(original_words, candidate_words, strict=True):
+        if original_word == candidate_word:
+            continue
+        # Numeric literals and identifiers must agree exactly. For words, only
+        # permit a single-character inflection on sufficiently long tokens.
+        if (
+            any(character.isdigit() for character in original_word + candidate_word)
+            or min(len(original_word), len(candidate_word)) < 5
+            or Levenshtein.distance(original_word, candidate_word) > 1
+        ):
+            return False
+    return True
+
+
 def _find_fuzzy_source_match(section_text: str, original_text: str) -> _SourceTextMatch | None:
     if len(original_text.strip()) < _FUZZY_SOURCE_MIN_CHARS:
         return None
@@ -109,12 +150,7 @@ def _find_fuzzy_source_match(section_text: str, original_text: str) -> _SourceTe
 
     best_text, best_score, _best_index = matches[0]
 
-    # High edit similarity can conceal a materially different measurement.
-    # Never "repair" numbers or identifiers containing digits.
-    def semantic_tokens(value: str) -> list[str]:
-        return re.findall(r"(?<!\w)[+-]?(?:\d+(?:[.,]\d+)?(?:e[+-]?\d+)?|\w*\d\w*)(?!\w)", value, re.I)
-
-    if semantic_tokens(original_text) != semantic_tokens(best_text):
+    if not _has_only_safe_fuzzy_drift(original_text, best_text):
         return None
     if len(matches) > 1:
         second_text, second_score, _second_index = matches[1]

@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from osa_tool.operations.analysis.paper_claims.exceptions import SectionParsingError
@@ -21,6 +23,13 @@ def test_parse_preserves_digits_in_unnumbered_headings():
 
     assert [item.name for item in sections] == ["3D Reconstruction", "2FA Authentication"]
     assert [item.heading_meta.numbering for item in sections] == [None, None]
+
+
+def test_write_json_preserves_section_ids(tmp_path):
+    sections = MarkdownSectionParser().parse("# Method\nBody")
+    output_path = MarkdownSectionParser.write_json(sections, tmp_path / "sections.json")
+
+    assert json.loads(output_path.read_text(encoding="utf-8"))[0]["section_id"] == "s001"
 
 
 @pytest.mark.parametrize("markdown", ["", "plain text without headings"])

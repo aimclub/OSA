@@ -75,6 +75,26 @@ def test_validate_claim_candidate_rejects_numeric_drift_in_fuzzy_evidence():
         validate_claim_candidate(candidate, section=make_section(source))
 
 
+@pytest.mark.parametrize(
+    ("source", "original_text"),
+    [
+        (
+            "The retrieval pipeline does not use reranking for every production search result.",
+            "The retrieval pipeline does use reranking for every production search result.",
+        ),
+        (
+            "The retrieval pipeline keeps reranking disabled for every production search result.",
+            "The retrieval pipeline keeps reranking enabled for every production search result.",
+        ),
+    ],
+)
+def test_validate_claim_candidate_rejects_polarity_or_word_drift_in_fuzzy_evidence(source, original_text):
+    candidate = make_candidate(claim="The retrieval pipeline uses reranking.", original_text=original_text)
+
+    with pytest.raises(ValueError, match="original_text is not present"):
+        validate_claim_candidate(candidate, section=make_section(source))
+
+
 def test_validate_claim_candidate_rejects_translation_from_devanagari():
     source = "यह मॉडल प्रशिक्षण के लिए बड़े डेटासेट का उपयोग करता है।"
     candidate = make_candidate(claim="The model uses a large training dataset.", original_text=source)

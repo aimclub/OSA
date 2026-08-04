@@ -61,6 +61,22 @@ def test_converter_reuses_one_instance_and_then_uses_cache(tmp_path):
     assert (first.cache_dir / "COMPLETE").exists()
 
 
+def test_converter_rejects_chunks_from_different_source_documents(tmp_path):
+    chunks = make_chunks(tmp_path)
+    other_source = tmp_path / "other-paper.pdf"
+    other_source.write_bytes(b"%PDF-other")
+    mixed_chunks = [
+        chunks[0],
+        chunks[1].model_copy(update={"source_path": other_source, "source_hash": "different-hash"}),
+    ]
+    converter = MarkerDocumentConverter(
+        lambda _: (object(), lambda rendered: str(rendered), "test"), marker_version="test"
+    )
+
+    with pytest.raises(PdfConversionError, match="same source_path and source_hash"):
+        converter.convert(mixed_chunks, MarkerOptions(cache_root=tmp_path / "cache"))
+
+
 def test_custom_converter_factory_requires_explicit_marker_version():
     with pytest.raises(ValueError, match="marker_version is required"):
         MarkerDocumentConverter(lambda _: (object(), lambda rendered: str(rendered), "custom-v1"))

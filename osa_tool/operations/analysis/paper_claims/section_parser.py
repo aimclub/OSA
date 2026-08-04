@@ -60,6 +60,6 @@ class MarkdownSectionParser:
     def write_json(sections: list[PaperSection], output_path: Path) -> Path:
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        payload = [section.model_dump(mode="json", exclude={"section_id"}) for section in sections]
+        payload = [section.model_dump(mode="json") for section in sections]
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         return path

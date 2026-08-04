@@ -942,6 +942,28 @@ class ClaimExtractor:
         except Exception as exc:
             return self._fallback_deduplication(claims, request_name=request_name, reason=str(exc))
 
+        # A later pass can replace an already contradiction-marked claim with
+        # a different representative. The selection schema does not expose a
+        # duplicate-to-representative mapping. Use identical claim text when it
+        # identifies the replacement; otherwise preserve the fact
+        # conservatively on every survivor rather than silently losing it.
+        contradictory_texts = {claim.claim for claim in claims if claim.contradiction}
+        replacement_ids = {selection.claim_id for selection in selections if selection.claim in contradictory_texts}
+        if contradictory_texts and not replacement_ids:
+            logger.debug(
+                "%s: no replacement mapping for an existing contradiction; carrying it to %s survivor(s)",
+                request_name,
+                len(selections),
+            )
+            replacement_ids = {selection.claim_id for selection in selections}
+        if replacement_ids:
+            selections = [
+                selection.model_copy(
+                    update={"contradiction": selection.contradiction or selection.claim_id in replacement_ids}
+                )
+                for selection in selections
+            ]
+
         selection_by_id = {item.claim_id: item for item in selections}
         filtered = [
             claim.model_copy(
