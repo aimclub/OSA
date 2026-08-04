@@ -1,37 +1,13 @@
 import pytest
 
-from osa_tool.operations.analysis.paper_claims.claim_schemas import (
-    ClaimCandidateResponse,
-)
 from osa_tool.operations.analysis.paper_claims.claim_validation import (
     partition_valid_claim_candidates,
     validate_claim_candidate,
 )
-from osa_tool.operations.analysis.paper_claims.models import HeadingMeta, PaperSection
-
-
-def make_section(text: str) -> PaperSection:
-    return PaperSection(
-        section_id="s001",
-        name="Method",
-        text=text,
-        heading_meta=HeadingMeta(raw="2. Method", level=1, numbering="2"),
-    )
-
-
-def make_candidate(
-    *,
-    claim: str,
-    original_text: str,
-    category: str = "model_architecture",
-) -> ClaimCandidateResponse:
-    return ClaimCandidateResponse(
-        claim=claim,
-        original_text=original_text,
-        category=category,
-        value=None,
-        verifiability="high",
-    )
+from tests.unit.operations.analysis.paper_claims.fixtures import (
+    make_claim_candidate as make_candidate,
+    make_paper_section as make_section,
+)
 
 
 def test_validate_claim_candidate_accepts_exact_source_text():

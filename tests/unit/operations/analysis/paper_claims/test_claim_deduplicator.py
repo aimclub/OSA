@@ -5,36 +5,12 @@ import pytest
 
 from osa_tool.operations.analysis.paper_claims.claim_deduplicator import ClaimDeduplicator
 from osa_tool.operations.analysis.paper_claims.claim_extractor import ClaimExtractor
-from osa_tool.operations.analysis.paper_claims.models import ExtractedClaim
 from osa_tool.utils.prompts_builder import PromptLoader
-
-
-class FakeHandler:
-    def __init__(self, responses):
-        self.responses = iter(responses)
-        self.prompts = []
-
-    async def async_request(self, prompt, system_message=None, retry_delay=1):
-        self.prompts.append(prompt)
-        return next(self.responses)
-
-
-def fake_token_count(text, _encoder="fake"):
-    return len(text.split())
-
-
-def extracted_claim(claim_id: str, claim: str) -> ExtractedClaim:
-    return ExtractedClaim(
-        claim_id=claim_id,
-        claim=claim,
-        original_text=claim,
-        category="infrastructure",
-        value=None,
-        verifiability="high",
-        section_id="s001",
-        section_name="Method",
-        section_heading_raw="2. Method",
-    )
+from tests.unit.operations.analysis.paper_claims.fixtures import (
+    FakeAsyncHandler as FakeHandler,
+    make_extracted_claim as extracted_claim,
+    word_token_count as fake_token_count,
+)
 
 
 def deduplicator(handler, *, dedup_batch_size=100) -> ClaimDeduplicator:

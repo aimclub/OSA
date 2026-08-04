@@ -3,6 +3,10 @@ from types import SimpleNamespace
 
 from osa_tool.operations.analysis.paper_claims.claim_input_planner import ClaimInputPlanner
 from osa_tool.operations.analysis.paper_claims.models import HeadingMeta, PaperSection
+from tests.unit.operations.analysis.paper_claims.fixtures import (
+    make_paper_section as section,
+    word_token_count as fake_token_count,
+)
 
 
 class FakeWordCodec:
@@ -23,19 +27,6 @@ class FakeCharCodec:
     @staticmethod
     def decode(tokens):
         return "".join(tokens)
-
-
-def fake_token_count(text, _encoder="fake"):
-    return len(text.split())
-
-
-def section(text="The model uses BERT-base without fine-tuning."):
-    return PaperSection(
-        section_id="s001",
-        name="Method",
-        text=text,
-        heading_meta=HeadingMeta(raw="2. Method", level=1, numbering="2"),
-    )
 
 
 def test_section_ancestors_use_numbering_when_marker_flattens_heading_levels():

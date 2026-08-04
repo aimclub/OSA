@@ -4,60 +4,15 @@ from types import SimpleNamespace
 import pytest
 
 from osa_tool.operations.analysis.paper_claims.claim_extractor import ClaimExtractor
-from osa_tool.operations.analysis.paper_claims.models import ExtractedClaim, HeadingMeta, PaperSection
+from osa_tool.operations.analysis.paper_claims.models import HeadingMeta, PaperSection
 from osa_tool.utils.prompts_builder import PromptLoader
-
-
-class FakeHandler:
-    def __init__(self, responses):
-        self.responses = iter(responses)
-        self.prompts = []
-
-    async def async_request(self, prompt, system_message=None, retry_delay=1):
-        self.prompts.append(prompt)
-        response = next(self.responses)
-        if isinstance(response, BaseException):
-            raise response
-        return response
-
-
-class ModelTrackingFakeHandler(FakeHandler):
-    def __init__(self, responses, models):
-        super().__init__(responses)
-        self.models = iter(models)
-        self.last_successful_model = None
-
-    async def async_request(self, prompt, system_message=None, retry_delay=1):
-        response = await super().async_request(prompt, system_message, retry_delay)
-        self.last_successful_model = next(self.models)
-        return response
-
-
-def fake_token_count(text, _encoder="fake"):
-    return len(text.split())
-
-
-def section() -> PaperSection:
-    return PaperSection(
-        section_id="s001",
-        name="Method",
-        text="The model uses BERT-base without fine-tuning.",
-        heading_meta=HeadingMeta(raw="2. Method", level=1, numbering="2"),
-    )
-
-
-def extracted_claim(claim_id: str, claim: str) -> ExtractedClaim:
-    return ExtractedClaim(
-        claim_id=claim_id,
-        claim=claim,
-        original_text=claim,
-        category="infrastructure",
-        value=None,
-        verifiability="high",
-        section_id="s001",
-        section_name="Method",
-        section_heading_raw="2. Method",
-    )
+from tests.unit.operations.analysis.paper_claims.fixtures import (
+    FakeAsyncHandler as FakeHandler,
+    ModelTrackingFakeHandler,
+    make_extracted_claim as extracted_claim,
+    make_paper_section as section,
+    word_token_count as fake_token_count,
+)
 
 
 def test_section_filter_prompt_contains_valid_json_example():
