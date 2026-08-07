@@ -6,13 +6,13 @@ no_pull_request = false
 
 # Language Model API Settings
 [llm]
-# api = "openai"
+api = "REDACTED"
 rate_limit = 10
 base_url = "https://openrouter.ai/api/v1"
 encoder = "cl100k_base"
 host_name = "https://openrouter.ai/api/v1"
 localhost = "http://localhost:11434/"
-model = "gpt-3.5-turbo"
+model = "qwen/qwen3.6-35b-a3b"
 path = "chat/completions"
 temperature = 0.05
 max_tokens = 4096
@@ -26,6 +26,10 @@ system_prompt = "You are a helpful assistant for analyzing open-source repositor
 [llm.for_docstring_gen]
 [llm.for_readme_gen]
 [llm.for_validation]
+api = "REDACTED"
+model = "qwen/qwen3.6-35b-a3b"
+vlm_model = "qwen/qwen3.6-35b-a3b"
+vlm_base_url = "https://openrouter.ai/api/v1"
 [llm.for_general_tasks]
 
 # General CLI-related defaults
