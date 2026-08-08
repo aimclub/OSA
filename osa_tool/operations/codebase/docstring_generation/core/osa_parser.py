@@ -5,7 +5,7 @@ from osa_tool.operations.codebase.docstring_generation.core.source_view import S
 
 from osa_tool.operations.codebase.docstring_generation.adapters.python_adapter import PythonAdapter
 from osa_tool.operations.codebase.docstring_generation.adapters.javascript_adapter import JavaScriptAdapter
-from osa_tool.operations.codebase.docstring_generation.adapters.typescript_adapter import TypeScriptAdapter
+from osa_tool.operations.codebase.docstring_generation.adapters.typescript_adapter import TypeScriptAdapter, TSXAdapter
 
 
 class OSA_TreeSitter:
@@ -14,6 +14,7 @@ class OSA_TreeSitter:
         PythonAdapter(),
         JavaScriptAdapter(),
         TypeScriptAdapter(),
+        TSXAdapter(),
     ]
 
     def __init__(self, scripts_path: str, ignore_list: list[str] = None, target_files: list[str] = None):

@@ -9,7 +9,7 @@ class AugmentorFactory:
         if file_path.endswith(".py"):
             return PythonAugmentor()
 
-        if file_path.endswith((".ts", ".js")):
+        if file_path.endswith((".ts", ".tsx", ".js", ".jsx")):
             return TSJSAugmentor()
 
         raise ValueError(f"Unsupported file type: {file_path}")

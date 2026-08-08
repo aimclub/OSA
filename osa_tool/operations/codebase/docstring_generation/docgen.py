@@ -174,26 +174,49 @@ class DocGen(object):
         tokens = enc.encode(prompt)
         return len(tokens)
 
-    async def generate_class_documentation(self, class_details: list, semaphore: asyncio.Semaphore) -> str:
+    @staticmethod
+    def _lang_of(file_path: str) -> str:
+        """Detect the documentation language from a file extension."""
+        p = str(file_path)
+        if p.endswith((".ts", ".tsx")):
+            return "typescript"
+        if p.endswith((".js", ".jsx")):
+            return "javascript"
+        return "python"
+
+    async def generate_class_documentation(
+        self, class_details: list, semaphore: asyncio.Semaphore, language: str = "python"
+    ) -> str:
         """
         Generate documentation for a class.
 
         Args:
             class_details: A list of dictionaries containing method names and their docstrings.
             semaphore: synchronous primitive that implements limitation of concurrency degree to avoid overloading api.
+            language: Source language of the class ("python", "javascript" or "typescript").
         Returns:
             The generated class docstring.
         """
         # Construct a structured prompt
-        prompt = (
-            f"""Generate a single Python docstring for the following class {class_details[0]}. The docstring should follow Google-style format and include:\n"""
-            "- Respond strictly in English.\n"
-            "- A short summary of what the class does.\n"
-            "- A list of its methods without details if class has them otherwise do not mention a list of methods.\n"
-            "- A list of its attributes that explicitly mentioned at the constructor method's docstring (can be adressed as attributes, properties, class fields, etc.), without types if class or constructor method has them otherwise do not mention a list of attributes.\n"
-            "- A brief summary of what its methods and attributes do if one has them for.\n\n"
-            "Return only docstring without any quotation."
-        )
+        if language in ("javascript", "typescript"):
+            prompt = (
+                f"""Generate a JSDoc comment for the following JavaScript/TypeScript class {class_details[0]}. Include:\n"""
+                "- Respond strictly in English.\n"
+                "- A short summary of what the class does.\n"
+                "- Keep it concise; do NOT list methods/attributes as separate sections.\n"
+                "- Do NOT use Python conventions: no `self`, no `__init__`, no `Args:`/`Returns:`/`Attributes:` sections.\n\n"
+                "Return only the comment text without any quotation."
+            )
+        else:
+            prompt = (
+                f"""Generate a single Python docstring for the following class {class_details[0]}. The docstring should follow Google-style format and include:\n"""
+                "- Respond strictly in English.\n"
+                "- A short summary of what the class does.\n"
+                "- A list of its methods without details if class has them otherwise do not mention a list of methods.\n"
+                "- A list of its attributes that explicitly mentioned at the constructor method's docstring (can be adressed as attributes, properties, class fields, etc.), without types if class or constructor method has them otherwise do not mention a list of attributes.\n"
+                "- A brief summary of what its methods and attributes do if one has them for.\n\n"
+                "Return only docstring without any quotation."
+            )
 
         if len(class_details[1]) > 0:
             prompt += f"\nClass Attributes:\n"
@@ -209,7 +232,9 @@ class DocGen(object):
             docstring = await self.model_handler.async_request(prompt)
             return docstring.strip('"""')
 
-    async def update_class_documentation(self, class_details: list, semaphore: asyncio.Semaphore) -> str:
+    async def update_class_documentation(
+        self, class_details: list, semaphore: asyncio.Semaphore, language: str = "python"
+    ) -> str:
         """
         Generate documentation for a class.
 
@@ -227,8 +252,9 @@ class DocGen(object):
             return class_details[-1].strip().strip('"').strip("'")
 
         old_desc = desc.strip('"\n ')
+        lang_word = "JavaScript/TypeScript" if language in ("javascript", "typescript") else "Python"
         prompt = (
-            f"""Update the provided description for the following Python class {class_details[0]} using provided main idea of the project.\n"""
+            f"""Update the provided description for the following {lang_word} class {class_details[0]} using provided main idea of the project.\n"""
             """Do not pay too much attention to the provided main idea - try not to mention it explicitly.\n"""
             f"""The main idea: {self.main_idea}\n"""
             f"""Old docstring description part: {old_desc}\n\n"""
@@ -246,21 +272,34 @@ class DocGen(object):
         method_details: dict,
         semaphore: asyncio.Semaphore,
         context_code: str = None,
+        language: str = "python",
     ) -> str:
         """
         Generate documentation for a single method.
         """
         arguments = [a for a in method_details["arguments"] if a not in ("self", "cls")]
+        if language in ("javascript", "typescript"):
+            intro = (
+                "Generate a JSDoc comment for the following JavaScript/TypeScript function. Use JSDoc tags and include:\n"
+                "- Respond strictly in English.\n"
+                "- A short summary of what the function does.\n"
+                "- A `@param {type} name` line for each parameter (infer the type from the code; use `*` if unknown).\n"
+                "- A `@returns {type}` line describing the return value (omit it if the function returns nothing).\n"
+                "- Do NOT use Python conventions: no `self`, no `__init__`, no `Args:`/`Returns:` sections.\n\n"
+            )
+        else:
+            intro = (
+                "Generate a Python docstring for the following method. The docstring should follow Google-style format and include:\n"
+                "- Respond strictly in English.\n"
+                "- A short summary of what the method does.\n"
+                "- A description of its parameters without types.\n"
+                "- If the method is a class constructor, explicitly list all class fields (object properties) that are initialized, "
+                "including their names and purposes. These fields should match the attributes assigned within the constructor "
+                "(e.g., this.field = ..., self.field = ...). This information will be used to generate the class-level documentation.\n"
+                "- The return type and description (omit Returns section if the method does not return a value).\n\n"
+            )
         prompt = (
-            "Generate a Python docstring for the following method. The docstring should follow Google-style format and include:\n"
-            "- A short summary of what the method does.\n"
-            "- A description of its parameters without types.\n"
-            "- Respond strictly in English.\n"
-            "- If the method is a class constructor, explicitly list all class fields (object properties) that are initialized, "
-            "including their names and purposes. These fields should match the attributes assigned within the constructor "
-            "(e.g., this.field = ..., self.field = ...). This information will be used to generate the class-level documentation.\n"
-            "- The return type and description (omit Returns section if the method does not return a value).\n\n"
-            f"- Method Name: {method_details['method_name']}\n\n"
+            intro + f"- Method Name: {method_details['method_name']}\n\n"
             "Method source code: You are given only the body of a single method, without its signature. "
             "All visible code, including any inner functions or nested logic, belongs to this single method. "
             "Do NOT write separate docstrings for inner functions — they are part of the main method's logic.\n"
@@ -304,23 +343,38 @@ class DocGen(object):
         semaphore: asyncio.Semaphore,
         context_code: str = None,
         class_name: str = None,
+        language: str = "python",
     ) -> str:
         """
         Update documentation for a single method.
         """
         docstring = method_details["docstring"]
 
+        if language in ("javascript", "typescript"):
+            guidelines = (
+                "Update the provided JSDoc comment for the following JavaScript/TypeScript function.\n"
+                "Preserve correct existing information and add missing details based on the source code.\n\n"
+                "Guidelines:\n"
+                "- Improve clarity and completeness without rewriting everything from scratch.\n"
+                "- Use JSDoc tags: `@param {type} name` for each parameter, `@returns {type}` for the return value (omit if nothing is returned).\n"
+                "- Do NOT use Python conventions: no `self`, no `__init__`, no `Args:`/`Returns:` sections.\n"
+                "- Do NOT invent parameters or behavior.\n\n"
+            )
+        else:
+            guidelines = (
+                "Update the provided docstring for the following Python method.\n"
+                "Preserve correct existing information and add missing details based on the source code.\n\n"
+                "Guidelines:\n"
+                "- Improve clarity and completeness without rewriting everything from scratch.\n"
+                "- Be specific and clear about the method's purpose and possible usages in a system based on a field-specific main idea if it can be vague for non-participant compliances.\n"
+                "- If the original docstring contains only a description, add Args and Returns sections if needed.\n"
+                "- Describe parameters without types.\n"
+                "- Omit Returns section if the method does not return a value.\n"
+                "- Do NOT invent parameters or behavior.\n\n"
+            )
+
         prompt = (
-            "Update the provided docstring for the following Python method.\n"
-            "Preserve correct existing information and add missing details based on the source code.\n\n"
-            "Guidelines:\n"
-            "- Improve clarity and completeness without rewriting everything from scratch.\n"
-            "- Be specific and clear about the method's purpose and possible usages in a system based on a field-specific main idea if it can be vague for non-participant compliances.\n"
-            "- If the original docstring contains only a description, add Args and Returns sections if needed.\n"
-            "- Describe parameters without types.\n"
-            "- Omit Returns section if the method does not return a value.\n"
-            "- Do NOT invent parameters or behavior.\n\n"
-            f"Original docstring:\n{docstring}\n\n"
+            guidelines + f"Original docstring:\n{docstring}\n\n"
             "Method Details:\n"
             f"- Method Name: {method_details['method_name']}"
             f"{f' (located inside {class_name} class)' if class_name else ''}\n"
@@ -895,16 +949,19 @@ class DocGen(object):
             )
 
         context = self.context_extractor(metadata, parsed_structure, function_index, generated_docstrings)
+        language = self._lang_of(file_path)
 
         try:
             if self.main_idea:
                 if node_type == "method":
                     class_name = node_info.get("class", "")
-                    docstring = await self.update_method_documentation(metadata, semaphore, context, class_name)
+                    docstring = await self.update_method_documentation(
+                        metadata, semaphore, context, class_name, language
+                    )
                 else:
-                    docstring = await self.update_method_documentation(metadata, semaphore, context)
+                    docstring = await self.update_method_documentation(metadata, semaphore, context, language=language)
             else:
-                docstring = await self.generate_method_documentation(metadata, semaphore, context)
+                docstring = await self.generate_method_documentation(metadata, semaphore, context, language=language)
 
             return (node_id, node_type, file_path, docstring, metadata) if docstring else None
 
@@ -1097,10 +1154,11 @@ class DocGen(object):
                             f"""{progress_label} Requesting for docstrings {"update" if self.main_idea else "generation"} for the class: {item["name"]} at {file}"""
                         )
 
+                        class_language = self._lang_of(file)
                         request_coroutine = (
-                            self.generate_class_documentation(class_metadata, semaphore)
+                            self.generate_class_documentation(class_metadata, semaphore, class_language)
                             if not self.main_idea
-                            else self.update_class_documentation(class_metadata, semaphore)
+                            else self.update_class_documentation(class_metadata, semaphore, class_language)
                         )
 
                         # just add new coroutine and class name to a task list
@@ -1148,14 +1206,12 @@ class DocGen(object):
                 else:
                     docstring = component["details"]["docstring"] if component["details"]["docstring"] else ""
 
-                prompt_structure.append(
-                    f"""
+                prompt_structure.append(f"""
                     {_type.capitalize()} name: {component["name"] if _type == "class" else component["details"]["method_name"]}
                     Component description: {docstring}
                     Component place in hierarchy: {file}
                     Component importance score: {score}
-                    """
-                )
+                    """)
 
         logger.info(f"Generating the main idea of the project...")
 

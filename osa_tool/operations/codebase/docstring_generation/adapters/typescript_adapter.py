@@ -7,7 +7,7 @@ from osa_tool.operations.codebase.docstring_generation.adapters.base import Lang
 
 class TypeScriptAdapter(LanguageAdapter):
 
-    EXTENSIONS = (".ts", ".tsx")
+    EXTENSIONS = (".ts",)
 
     def build_parser(self):
         return Parser(Language(tstypescript.language_typescript()))
@@ -25,8 +25,18 @@ class TypeScriptAdapter(LanguageAdapter):
 
     def get_name(self, node, sv):
         n = node.child_by_field_name("name")
+        if n:
+            return sv.text(n)
 
-        return sv.text(n) if n else "anonymous"
+        # arrow functions / function expressions have no name field;
+        # the name usually sits on the enclosing declarator (const foo = () => ...)
+        parent = node.parent
+        if parent and parent.type == "variable_declarator":
+            declared = parent.child_by_field_name("name")
+            if declared:
+                return sv.text(declared)
+
+        return "anonymous"
 
     def _get_doc_owner(self, node):
         parent = node.parent
@@ -100,6 +110,10 @@ class TypeScriptAdapter(LanguageAdapter):
         pnode = node.child_by_field_name("parameters")
 
         if not pnode:
+            # single paren-less arrow parameter, e.g. `x => x * 2`
+            single = node.child_by_field_name("parameter")
+            if single:
+                params.append(sv.text(single))
             return params
 
         for c in pnode.children:
@@ -117,3 +131,11 @@ class TypeScriptAdapter(LanguageAdapter):
 
     def resolve_method_calls(self, node, sv):
         return []
+
+
+class TSXAdapter(TypeScriptAdapter):
+
+    EXTENSIONS = (".tsx",)
+
+    def build_parser(self):
+        return Parser(Language(tstypescript.language_tsx()))

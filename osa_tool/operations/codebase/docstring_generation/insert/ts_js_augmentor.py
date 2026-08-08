@@ -185,9 +185,20 @@ class TSJSAugmentor(BaseAugmentor):
         indent = re.match(r"\s*", line).group(0)
         clean = text.strip()
 
-        # remove existing jsdoc wrappers if already present
-        clean = re.sub(r"^\s*/\*\*", "", clean)
-        clean = re.sub(r"\*/\s*$", "", clean)
+        # strip a Markdown code fence if the model wrapped its answer in one
+        fence = re.search(r"```[a-zA-Z]*\n([\s\S]+?)\n```", clean)
+        if fence:
+            clean = fence.group(1).strip()
+
+        # if the model emitted a full /** ... */ block, keep only what's inside it
+        # (drop anything before "/**" and after the matching "*/", e.g. a trailing fence)
+        start = clean.find("/**")
+        if start != -1:
+            end = clean.find("*/", start + 3)
+            clean = (clean[start + 3 : end] if end != -1 else clean[start + 3 :]).strip()
+
+        # drop any residual lone code-fence lines (``` or ```lang)
+        clean = "\n".join(l for l in clean.splitlines() if not re.match(r"^\s*```", l.strip()))
 
         # remove leading *
         clean_lines = []
