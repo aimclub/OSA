@@ -653,6 +653,10 @@ class LocalGitAgent(GitAgent):
 
 
 class GitHubAgent(GitAgent):
+    API_BASE = "https://api.github.com"
+    REPOS_API_BASE = f"{API_BASE}/repos"
+    WEB_BASE = "https://github.com"
+
     def _get_token(self) -> str:
         return os.getenv("GIT_TOKEN", os.getenv("GITHUB_TOKEN", ""))
 
@@ -668,7 +672,7 @@ class GitHubAgent(GitAgent):
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json",
         }
-        url = f"https://api.github.com/repos/{base_repo}/forks"
+        url = f"{self.REPOS_API_BASE}/{base_repo}/forks"
         response = request_with_retry("post", url, headers=headers)
         if response.status_code in {200, 202}:
             self.fork_url = response.json()["html_url"]
@@ -686,7 +690,7 @@ class GitHubAgent(GitAgent):
             "Accept": "application/vnd.github.v3+json",
         }
 
-        url = f"https://api.github.com/user/starred/{base_repo}"
+        url = f"{self.API_BASE}/user/starred/{base_repo}"
         response_check = request_with_retry("get", url, headers=headers)
 
         if response_check.status_code == 204:
@@ -703,12 +707,8 @@ class GitHubAgent(GitAgent):
 
     def _check_github_branch_exists(self, branch: str) -> bool:
         """Check if branch exists on GitHub using API."""
-        if not self.fork_url:
-            repo_to_check = get_base_repo_url(self.repo_url)
-            url = f"https://api.github.com/repos/{repo_to_check}/branches/{branch}"
-        else:
-            repo_to_check = get_base_repo_url(self.fork_url)
-            url = f"https://api.github.com/repos/{repo_to_check}/branches/{branch}"
+        repo_to_check = get_base_repo_url(self.fork_url or self.repo_url)
+        url = f"{self.REPOS_API_BASE}/{repo_to_check}/branches/{branch}"
 
         headers = {
             "Accept": "application/vnd.github.v3+json",
@@ -732,7 +732,7 @@ class GitHubAgent(GitAgent):
 
     def post_comment(self, pr_number: int, comment_body: str):
         base_repo = get_base_repo_url(self.repo_url)
-        url = f"https://api.github.com/repos/{base_repo}/issues/{pr_number}/comments"
+        url = f"{self.REPOS_API_BASE}/{base_repo}/issues/{pr_number}/comments"
         headers = {
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json",
@@ -764,7 +764,7 @@ class GitHubAgent(GitAgent):
         base_repo = get_base_repo_url(self.repo_url)
         head_branch = f"{self.fork_url.split('/')[-2]}:{self.branch_name}"
 
-        url = f"https://api.github.com/repos/{base_repo}/pulls"
+        url = f"{self.REPOS_API_BASE}/{base_repo}/pulls"
         headers = {
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json",
@@ -842,7 +842,7 @@ class GitHubAgent(GitAgent):
                 self._handle_api_error(response, "creating pull request", raise_exception=True)
 
     def _update_about_section(self, repo_path: str, about_content: dict) -> None:
-        url = f"https://api.github.com/repos/{repo_path}"
+        url = f"{self.REPOS_API_BASE}/{repo_path}"
         headers = {
             "Accept": "application/vnd.github+json",
             "Authorization": f"token {self.token}",
@@ -863,7 +863,7 @@ class GitHubAgent(GitAgent):
                 raise_exception=False,
             )
 
-        url = f"https://api.github.com/repos/{repo_path}/topics"
+        url = f"{self.REPOS_API_BASE}/{repo_path}/topics"
         topics_data = {"names": about_content["topics"]}
         response = request_with_retry("put", url, headers=headers, json=topics_data)
         if response.status_code in {200, 201}:
@@ -875,8 +875,9 @@ class GitHubAgent(GitAgent):
         return f"{self.fork_url}/blob/{report_branch}/{report_filename}"
 
     def _build_auth_url(self, repo_url: str) -> str:
-        if repo_url.startswith("https://github.com/"):
-            repo_path = repo_url[len("https://github.com/") :]
+        web_prefix = f"{self.WEB_BASE}/"
+        if repo_url.startswith(web_prefix):
+            repo_path = repo_url[len(web_prefix) :]
             return f"https://{self.token}@github.com/{repo_path}.git"
         raise ValueError(f"Unsupported repository URL format for GitHub: {repo_url}")
 
@@ -889,7 +890,7 @@ class GitHubAgent(GitAgent):
             try:
                 response = request_with_retry(
                     "get",
-                    f"https://api.github.com/search/topics?q={topic}+repositories:>{min_repo}",
+                    f"{self.API_BASE}/search/topics?q={topic}+repositories:>{min_repo}",
                     headers={"Accept": "application/vnd.github.v3+json"},
                 )
 
@@ -919,6 +920,10 @@ class GitHubAgent(GitAgent):
 
 
 class GitLabAgent(GitAgent):
+    API_PATH = "/api/v4"
+    PROJECTS_API_PATH = f"{API_PATH}/projects"
+    PUBLIC_API_BASE = f"https://gitlab.com{API_PATH}"
+
     def _get_token(self) -> str:
         return os.getenv("GITLAB_TOKEN", os.getenv("GIT_TOKEN", ""))
 
@@ -937,7 +942,7 @@ class GitLabAgent(GitAgent):
             "Content-Type": "application/json",
         }
 
-        user_url = f"{gitlab_instance}/api/v4/user"
+        user_url = f"{gitlab_instance}{self.API_PATH}/user"
         user_response = request_with_retry("get", user_url, headers=headers)
         if user_response.status_code != 200:
             logger.error(f"Failed to get user info: {user_response.status_code} - {user_response.text}")
@@ -947,7 +952,7 @@ class GitLabAgent(GitAgent):
         current_user_id = user_data.get("id")
         current_username = user_data.get("username")
 
-        project_url = f"{gitlab_instance}/api/v4/projects/{project_path}"
+        project_url = f"{gitlab_instance}{self.PROJECTS_API_PATH}/{project_path}"
         project_response = request_with_retry("get", project_url, headers=headers)
         if project_response.status_code != 200:
             logger.warning(
@@ -964,7 +969,7 @@ class GitLabAgent(GitAgent):
                 )
                 return
 
-        forks_url = f"{gitlab_instance}/api/v4/projects/{project_path}/forks"
+        forks_url = f"{project_url}/forks"
         forks_response = request_with_retry("get", forks_url, headers=headers)
         if forks_response.status_code != 200:
             logger.error(f"Failed to get forks: {forks_response.status_code} - {forks_response.text}")
@@ -979,7 +984,7 @@ class GitLabAgent(GitAgent):
                 logger.info(f"Fork already exists: {self.fork_url}")
                 return
 
-        fork_url = f"{gitlab_instance}/api/v4/projects/{project_path}/fork"
+        fork_url = f"{project_url}/fork"
         fork_response = request_with_retry("post", fork_url, headers=headers)
         if fork_response.status_code in {200, 201, 202}:
             fork_data = fork_response.json()
@@ -1002,7 +1007,7 @@ class GitLabAgent(GitAgent):
             "Content-Type": "application/json",
         }
 
-        url = f"{gitlab_instance}/api/v4/projects/{project_path}/star"
+        url = f"{gitlab_instance}{self.PROJECTS_API_PATH}/{project_path}/star"
         response = request_with_retry("post", url, headers=headers)
 
         if response.status_code == 304:
@@ -1024,7 +1029,7 @@ class GitLabAgent(GitAgent):
             repo_to_check = get_base_repo_url(self.fork_url)
 
         project_path = repo_to_check.replace("/", "%2F")
-        url = f"{gitlab_instance}/api/v4/projects/{project_path}/repository/branches/{branch}"
+        url = f"{gitlab_instance}{self.PROJECTS_API_PATH}/{project_path}/repository/branches/{branch}"
 
         headers = {
             "Accept": "application/json",
@@ -1047,7 +1052,7 @@ class GitLabAgent(GitAgent):
 
     def post_note(self, project_id: int, mr_iid: int, note_body: str):
         gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
-        url = f"{gitlab_instance}/api/v4/projects/{project_id}/merge_requests/{mr_iid}/notes"
+        url = f"{gitlab_instance}{self.PROJECTS_API_PATH}/{project_id}/merge_requests/{mr_iid}/notes"
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
@@ -1086,7 +1091,7 @@ class GitLabAgent(GitAgent):
         source_project_path = get_base_repo_url(self.fork_url).replace("/", "%2F")
         target_project_path = base_repo.replace("/", "%2F")
 
-        project_url = f"{gitlab_instance}/api/v4/projects/{target_project_path}"
+        project_url = f"{gitlab_instance}{self.PROJECTS_API_PATH}/{target_project_path}"
         proj_response = request_with_retry("get", project_url, headers=headers)
         if proj_response.status_code != 200:
             raise ValueError(f"Failed to get project info: {proj_response.status_code} - {proj_response.text}")
@@ -1096,7 +1101,7 @@ class GitLabAgent(GitAgent):
         mr_title = title if title else last_commit.message
         new_body_content = (body if body else "").strip()
 
-        mr_url = f"{gitlab_instance}/api/v4/projects/{source_project_path}/merge_requests"
+        mr_url = f"{gitlab_instance}{self.PROJECTS_API_PATH}/{source_project_path}/merge_requests"
         params = {
             "state": "opened",
             "source_branch": self.branch_name,
@@ -1129,7 +1134,7 @@ class GitLabAgent(GitAgent):
                     updated_body += "\n\n" + "\n".join(all_reports)
                 updated_body += self.agent_signature
 
-                update_url = f"{gitlab_instance}/api/v4/projects/{target_project_id}/merge_requests/{mr_iid}"
+                update_url = f"{gitlab_instance}{self.PROJECTS_API_PATH}/{target_project_id}/merge_requests/{mr_iid}"
                 update_data = {"description": updated_body}
 
                 update_response = request_with_retry("put", update_url, json=update_data, headers=headers)
@@ -1172,7 +1177,7 @@ class GitLabAgent(GitAgent):
         gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
         project_path = repo_path.replace("/", "%2F")
 
-        url = f"{gitlab_instance}/api/v4/projects/{project_path}"
+        url = f"{gitlab_instance}{self.PROJECTS_API_PATH}/{project_path}"
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
@@ -1201,7 +1206,7 @@ class GitLabAgent(GitAgent):
     def validate_topics(self, topics: List[str]) -> List[str]:
         logger.info("Validating topics against GitLab Topics API...")
         validated_topics = []
-        base_url = "https://gitlab.com/api/v4/topics"
+        base_url = f"{self.PUBLIC_API_BASE}/topics"
         headers = {"Accept": "application/json"}
 
         for topic in topics:
@@ -1230,6 +1235,10 @@ class GitLabAgent(GitAgent):
 
 
 class GitverseAgent(GitAgent):
+    API_BASE = "https://api.gitverse.ru"
+    REPOS_API_BASE = f"{API_BASE}/repos"
+    WEB_BASE = "https://gitverse.ru"
+
     def _get_token(self) -> str:
         return os.getenv("GITVERSE_TOKEN", os.getenv("GIT_TOKEN", ""))
 
@@ -1252,7 +1261,7 @@ class GitverseAgent(GitAgent):
             "User-Agent": "Mozilla/5.0",
         }
 
-        user_url = "https://api.gitverse.ru/user"
+        user_url = f"{self.API_BASE}/user"
         user_response = request_with_retry("get", user_url, headers=headers)
         if user_response.status_code != 200:
             logger.error(f"Failed to get user info: {user_response.status_code} - {user_response.text}")
@@ -1264,19 +1273,19 @@ class GitverseAgent(GitAgent):
             logger.info(f"User '{current_login}' already owns the repository. Using original URL: {self.fork_url}")
             return
 
-        fork_check_url = f"https://api.gitverse.ru/repos/{current_login}/{self.metadata.name}"
+        fork_check_url = f"{self.REPOS_API_BASE}/{current_login}/{self.metadata.name}"
         fork_check_response = request_with_retry("get", fork_check_url, headers=headers)
         if fork_check_response.status_code == 200:
             fork_data = fork_check_response.json()
             if fork_data.get("fork") and fork_data.get("parent", {}).get("full_name") == base_repo:
-                self.fork_url = f"https://gitverse.ru/{fork_data['full_name']}"
+                self.fork_url = f"{self.WEB_BASE}/{fork_data['full_name']}"
                 logger.info(f"Fork already exists: {self.fork_url}")
                 return
 
-        fork_url = f"https://api.gitverse.ru/repos/{base_repo}/forks"
+        fork_url = f"{self.REPOS_API_BASE}/{base_repo}/forks"
         fork_response = request_with_retry("post", fork_url, json=body, headers=headers)
         if fork_response.status_code in {200, 201}:
-            self.fork_url = "https://gitverse.ru/" + fork_response.json()["full_name"]
+            self.fork_url = f"{self.WEB_BASE}/{fork_response.json()['full_name']}"
             logger.info(f"Gitverse fork created successfully: {self.fork_url}")
         else:
             logger.error(f"Failed to create Gitverse fork: {fork_response.status_code} - {fork_response.text}")
@@ -1292,7 +1301,7 @@ class GitverseAgent(GitAgent):
             "Accept": "application/vnd.gitverse.object+json;version=1",
             "User-Agent": "Mozilla/5.0",
         }
-        url = f"https://api.gitverse.ru/user/starred/{base_repo}"
+        url = f"{self.API_BASE}/user/starred/{base_repo}"
         response_check = request_with_retry("get", url, headers=headers)
         if response_check.status_code == 204:
             logger.info(f"Gitverse repository '{base_repo}' is already starred.")
@@ -1314,7 +1323,7 @@ class GitverseAgent(GitAgent):
         else:
             repo_to_check = get_base_repo_url(self.fork_url)
 
-        url = f"https://api.gitverse.ru/repos/{repo_to_check}/branches"
+        url = f"{self.REPOS_API_BASE}/{repo_to_check}/branches"
 
         headers = {
             "Accept": "application/vnd.gitverse.object+json;version=1",
@@ -1361,7 +1370,7 @@ class GitverseAgent(GitAgent):
             "User-Agent": "Mozilla/5.0",
         }
 
-        url = f"https://api.gitverse.ru/repos/{base_repo}/pulls"
+        url = f"{self.REPOS_API_BASE}/{base_repo}/pulls"
         last_commit = self.repo.head.commit
         pr_title = title if title else last_commit.message
         new_body_content = (body or "").strip()
@@ -1401,7 +1410,7 @@ class GitverseAgent(GitAgent):
         if prs:
             existing_pr = prs[0]
             pr_number = existing_pr.get("number")
-            pr_url = f"https://gitverse.ru/{base_repo}/pulls/{pr_number}"
+            pr_url = f"{self.WEB_BASE}/{base_repo}/pulls/{pr_number}"
             logger.info(f"Pull request already exists. Updating PR #{pr_number}: {pr_url}")
 
             old_body = existing_pr.get("body", "") or ""
@@ -1446,7 +1455,7 @@ class GitverseAgent(GitAgent):
 
             if response.status_code == 201:
                 pr_number = response.json()["number"]
-                pr_url = f"https://gitverse.ru/{base_repo}/pulls/{pr_number}"
+                pr_url = f"{self.WEB_BASE}/{base_repo}/pulls/{pr_number}"
                 logger.info(f"Gitverse pull request created successfully: {pr_url}")
             else:
                 logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
@@ -1462,8 +1471,9 @@ class GitverseAgent(GitAgent):
         return f"{self.fork_url}/content/{report_branch}/{report_filename}"
 
     def _build_auth_url(self, repo_url: str) -> str:
-        if repo_url.startswith("https://gitverse.ru/"):
-            repo_path = repo_url[len("https://gitverse.ru/") :]
+        web_prefix = f"{self.WEB_BASE}/"
+        if repo_url.startswith(web_prefix):
+            repo_path = repo_url[len(web_prefix) :]
             return f"https://{self.token}@gitverse.ru/{repo_path}.git"
         raise ValueError(f"Unsupported repository URL format for Gitverse: {repo_url}")
 
@@ -1474,6 +1484,8 @@ class GitverseAgent(GitAgent):
 
 class SourceCraftAgent(GitAgent):
     API_BASE = "https://api.sourcecraft.tech"
+    REPOS_API_BASE = f"{API_BASE}/repos"
+    WEB_BASE = "https://sourcecraft.dev"
 
     def _get_token(self) -> str:
         return os.getenv("SOURCECRAFT_TOKEN", os.getenv("GIT_TOKEN", ""))
@@ -1517,14 +1529,14 @@ class SourceCraftAgent(GitAgent):
             logger.info(f"User '{current_username}' already owns the repository. Using original URL.")
             return
 
-        url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/fork"
+        url = f"{self.REPOS_API_BASE}/{org_slug}/{repo_slug}/fork"
         body = {"org_slug": current_username, "default_branch_only": True}
 
         response = request_with_retry("post", url, headers=self._get_headers(), json=body)
 
         if response.status_code in {200, 201, 202}:
             repo_data = response.json()
-            self.fork_url = repo_data.get("web_url", f"https://sourcecraft.dev/{current_username}/{repo_slug}")
+            self.fork_url = repo_data.get("web_url", f"{self.WEB_BASE}/{current_username}/{repo_slug}")
             self.fork_id = repo_data.get("id")
             logger.info(f"SourceCraft fork created successfully: {self.fork_url}")
         else:
@@ -1535,7 +1547,7 @@ class SourceCraftAgent(GitAgent):
 
     def post_comment(self, pr_slug: str, comment_body: str) -> None:
         org_slug, repo_slug = self._extract_slugs()
-        url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/pulls/{pr_slug}/comments"
+        url = f"{self.REPOS_API_BASE}/{org_slug}/{repo_slug}/pulls/{pr_slug}/comments"
         response = request_with_retry("post", url, headers=self._get_headers(), json={"body": comment_body})
         if response.status_code == 201:
             logger.info(f"Successfully posted a comment to PR {pr_slug}.")
@@ -1553,7 +1565,7 @@ class SourceCraftAgent(GitAgent):
             raise ValueError("SourceCraft token is required to create a pull request.")
 
         org_slug, repo_slug = self._extract_slugs()
-        url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/pulls"
+        url = f"{self.REPOS_API_BASE}/{org_slug}/{repo_slug}/pulls"
         headers = self._get_headers()
 
         pr_title = title if title else self.repo.head.commit.message.strip()
@@ -1654,7 +1666,7 @@ class SourceCraftAgent(GitAgent):
         parts = repo_path.strip("/").split("/")
         org_slug, repo_slug = parts[-2], parts[-1]
 
-        url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}"
+        url = f"{self.REPOS_API_BASE}/{org_slug}/{repo_slug}"
         about_data = {"description": about_content.get("description", "")}
 
         response = request_with_retry("patch", url, headers=self._get_headers(), json=about_data)
@@ -1683,7 +1695,7 @@ class SourceCraftAgent(GitAgent):
     def _check_sourcecraft_branch_exists(self, branch: str) -> bool:
         """Check if branch exists on SourceCraft using API."""
         org_slug, repo_slug = self._extract_slugs()
-        url = f"{self.API_BASE}/repos/{org_slug}/{repo_slug}/branches"
+        url = f"{self.REPOS_API_BASE}/{org_slug}/{repo_slug}/branches"
         try:
             response = request_with_retry("get", url, headers=self._get_headers(), timeout=10)
             if response.status_code == 200:
