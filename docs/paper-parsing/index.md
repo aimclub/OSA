@@ -66,8 +66,9 @@ python -m osa_tool.run \
 
 Without the flag, OSA falls back to the default plain-text PDF extraction.
 
-The VLM is called through an OpenAI-compatible API; the key is read from the
-`OPENAI_API_KEY` environment variable by default (see [Configuration](#configuration)).
+The VLM is called through an OpenAI-compatible API. The key comes from the `vlm_api_key`
+setting if it is present, and otherwise from the `OPENAI_API_KEY` environment variable
+(see [Configuration](#configuration)).
 
 ---
 
@@ -87,7 +88,12 @@ vlm_model = "qwen/qwen3.5-flash-02-23"
 # OpenAI-compatible endpoint serving the VLM. Defaults to the configured base_url.
 vlm_base_url = "https://openrouter.ai/api/v1"
 
-# Name of the environment variable holding the API key. Defaults to "OPENAI_API_KEY".
+# API key for the endpoint above, read straight from the configuration.
+# Prefer the environment variable below unless the key is safe to keep in the file.
+vlm_api_key = "..."
+
+# Name of the environment variable to read the key from when `vlm_api_key` is unset.
+# `.env` is loaded first. Defaults to "OPENAI_API_KEY".
 vlm_api_key_env = "OPENAI_API_KEY"
 
 # Device for layout detection: "cpu" or "cuda". Defaults to "cpu".

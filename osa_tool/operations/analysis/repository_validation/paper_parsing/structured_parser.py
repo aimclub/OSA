@@ -15,6 +15,8 @@ install it with ``poetry install --with paper_parsing``.
 
 import os
 
+import dotenv
+
 from osa_tool.config.settings import ModelSettings
 from osa_tool.operations.analysis.repository_validation.paper_parsing.models import PaperParsingOptions
 from osa_tool.operations.analysis.repository_validation.paper_parsing.pipeline import PaperParsingPipeline
@@ -29,7 +31,9 @@ class StructuredPaperParser:
 
     - ``vlm_model``: vision-language model name (default: ``model_settings.model``).
     - ``vlm_base_url``: OpenAI-compatible base URL (default: ``model_settings.base_url``).
-    - ``vlm_api_key_env``: env var holding the API key (default: ``"OPENAI_API_KEY"``).
+    - ``vlm_api_key``: the API key itself, taken straight from the configuration.
+    - ``vlm_api_key_env``: env var to read the key from when ``vlm_api_key`` is
+      unset (default: ``"OPENAI_API_KEY"``).
     - ``paper_parser_device``: ``"cpu"`` or ``"cuda"`` (default: ``"cpu"``).
     - ``paper_parser_max_concurrent``: concurrent VLM calls (default: ``5``).
     """
@@ -37,10 +41,11 @@ class StructuredPaperParser:
     def __init__(self, pdf_path: str, model_settings: ModelSettings) -> None:
         self.path = pdf_path
         extras = model_settings.model_extra or {}
+        dotenv.load_dotenv()
         self.__pipeline = PaperParsingPipeline(
             vlm_model=extras.get("vlm_model", model_settings.model),
             vlm_base_url=extras.get("vlm_base_url", model_settings.base_url),
-            api_key=os.getenv(extras.get("vlm_api_key_env", "OPENAI_API_KEY")),
+            api_key=extras.get("vlm_api_key") or os.getenv(extras.get("vlm_api_key_env", "OPENAI_API_KEY")),
             system_prompt=model_settings.system_prompt,
         )
         self.__options = PaperParsingOptions(

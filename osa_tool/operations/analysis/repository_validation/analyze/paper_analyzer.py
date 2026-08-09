@@ -1,7 +1,7 @@
 import asyncio
 
 import docx2txt
-import tiktoken
+
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.operations.analysis.repository_validation.models import ExtractedExperimentsResult
@@ -93,7 +93,7 @@ class PaperAnalyzer:
         args = self.__config.args
         if args and getattr(args, "structured_paper_parser", False):
             logger.info("Extracting content from PDF with layout-aware paper parser ...")
-            model_settings = self.__config.get_model_settings("validation")
+            model_settings = self.__config.config.llm.for_validation or self.__config.get_model_settings("validation")
             return StructuredPaperParser(path_to_pdf, model_settings).data_extractor()
 
         logger.info("Extracting text from PDF ...")
