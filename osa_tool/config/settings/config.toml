@@ -6,7 +6,7 @@ no_pull_request = false
 
 # Language Model API Settings
 [llm]
-# api = "openai"
+# api = ""
 rate_limit = 10
 base_url = "https://openrouter.ai/api/v1"
 encoder = "cl100k_base"
@@ -26,8 +26,8 @@ system_prompt = "You are a helpful assistant for analyzing open-source repositor
 [llm.for_docstring_gen]
 [llm.for_readme_gen]
 [llm.for_validation]
-model = "qwen/qwen3.6-35b-a3b"
-vlm_model = "qwen/qwen3.6-35b-a3b"
+model = ""
+vlm_model = ""
 vlm_base_url = "https://openrouter.ai/api/v1"
 # vlm_api_key = ""  # falls back to $OPENAI_API_KEY (or $vlm_api_key_env) when unset
 [llm.for_general_tasks]
