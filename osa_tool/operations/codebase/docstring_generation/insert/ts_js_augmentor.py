@@ -191,14 +191,16 @@ class TSJSAugmentor(BaseAugmentor):
             clean = fence.group(1).strip()
 
         # if the model emitted a full /** ... */ block, keep only what's inside it
-        # (drop anything before "/**" and after the matching "*/", e.g. a trailing fence)
+        # (drop anything before "/**" and after the closing "*/", e.g. a trailing fence).
+        # Use the LAST "*/" as the close: a trailing fence contains none, while any "*/"
+        # the model wrote inside the body stays in the slice and is escaped below.
         start = clean.find("/**")
         if start != -1:
-            end = clean.find("*/", start + 3)
-            clean = (clean[start + 3 : end] if end != -1 else clean[start + 3 :]).strip()
+            end = clean.rfind("*/")
+            clean = (clean[start + 3 : end] if end > start + 2 else clean[start + 3 :]).strip()
 
-        # drop any residual lone code-fence lines (``` or ```lang)
-        clean = "\n".join(l for l in clean.splitlines() if not re.match(r"^\s*```", l.strip()))
+        # drop any residual line that is nothing but a code fence (``` or ```lang)
+        clean = "\n".join(l for l in clean.splitlines() if not re.match(r"^```[a-zA-Z]*$", l.strip()))
 
         # remove leading *
         clean_lines = []
