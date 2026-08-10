@@ -25,6 +25,15 @@ class NotebookReportGenerator(AbstractReportGenerator):
         create_fork: bool,
         notebook_paths: list[str] | None = None,
     ) -> None:
+        """Initialize PDF report generation for a repository's notebooks.
+
+        Args:
+            config_manager: Provides repository configuration.
+            git_agent: Supplies metadata, clone directory, and optional upload.
+            create_fork: Whether the generated report should be uploaded.
+            notebook_paths: Optional paths to limit analysis; an empty list scans
+                the complete repository.
+        """
         super().__init__(config_manager, git_agent)
         self.filename = f"{self.metadata.name}_notebook_report.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
@@ -42,6 +51,7 @@ class NotebookReportGenerator(AbstractReportGenerator):
         self._first_page_body_spacer = 148
 
     def run(self) -> dict:
+        """Analyze notebooks, build the PDF report, and return operation events."""
         try:
             self.bundle = self.analyzer.analyze()
             self.events.extend(self.analyzer.events)
@@ -58,6 +68,7 @@ class NotebookReportGenerator(AbstractReportGenerator):
             return {"result": {"error": str(exc)}, "events": self.events}
 
     def table_generator(self) -> tuple[Table, Table]:
+        """Build summary tables rendered on the first PDF page."""
         bundle = self._require_bundle()
         summary = bundle.summary
         label_style, value_style = self._table_cell_styles()
@@ -97,6 +108,7 @@ class NotebookReportGenerator(AbstractReportGenerator):
         return self._build_combined_summary_table(combined_data), Table([[""]], colWidths=[0], rowHeights=[0])
 
     def body_second_part(self) -> list[Flowable]:
+        """Build detailed per-notebook PDF content after the summary page."""
         bundle = self._require_bundle()
         normal_style, custom_style, subtle_style = self._notebook_styles()
         story: list[Flowable] = []
@@ -178,6 +190,11 @@ class NotebookReportGenerator(AbstractReportGenerator):
         return story
 
     def build_pdf(self) -> None:
+        """Render the configured notebook analysis bundle to a PDF file.
+
+        Raises:
+            RuntimeError: If ReportLab fails or no output file is produced.
+        """
         from osa_tool.utils.logger import logger
 
         logger.info(self.start_log)

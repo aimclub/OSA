@@ -64,6 +64,14 @@ class NotebookReportAnalyzer:
         *,
         repo_path: str | None = None,
     ) -> None:
+        """Configure analysis for selected notebooks or an entire repository.
+
+        Args:
+            config_manager: Provides the repository configuration.
+            notebook_paths: Optional notebook files or directories to scan.
+            repo_path: Resolved clone directory. When omitted, the legacy
+                current-working-directory location is used.
+        """
         self.repo_url = str(config_manager.get_git_settings().repository)
         self.repo_path = os.path.abspath(repo_path or os.path.join(os.getcwd(), parse_folder_name(self.repo_url)))
         self.notebook_paths = notebook_paths or []
@@ -71,6 +79,11 @@ class NotebookReportAnalyzer:
         self.events: list[OperationEvent] = []
 
     def analyze(self) -> NotebookAnalysisBundle:
+        """Collect and analyze notebooks without aborting after one failure.
+
+        Returns:
+            Per-notebook results together with aggregate quality statistics.
+        """
         notebook_files = self._collect_notebook_files()
         results: list[NotebookAnalysisResult] = []
 
@@ -95,6 +108,7 @@ class NotebookReportAnalyzer:
         return NotebookAnalysisBundle(summary=summary, notebooks=results)
 
     def _collect_notebook_files(self) -> list[str]:
+        """Return unique notebook files from configured paths, excluding checkpoints."""
         roots = self.notebook_paths or [self.repo_path]
         collected: set[str] = set()
 
@@ -123,6 +137,7 @@ class NotebookReportAnalyzer:
         return sorted(collected)
 
     def _resolve_input_path(self, raw_path: str) -> str | None:
+        """Resolve an absolute path or a repository-relative analysis target."""
         candidates = []
         if os.path.isabs(raw_path):
             candidates.append(raw_path)
@@ -140,6 +155,11 @@ class NotebookReportAnalyzer:
         return None
 
     def _analyze_single(self, notebook_path: str) -> NotebookAnalysisResult:
+        """Analyze one readable notebook and return its findings and statistics.
+
+        Read failures are represented in the returned result rather than raised
+        so summaries can distinguish failed notebooks from clean ones.
+        """
         relative_path = self._relative_path(notebook_path)
         self.events.append(OperationEvent(kind=EventKind.ANALYZED, target=relative_path))
 
@@ -329,6 +349,7 @@ class NotebookReportAnalyzer:
         )
 
     def _export_notebook(self, notebook, relative_path: str) -> tuple[str | None, str | None]:
+        """Export a Python notebook to source code, returning an error message on failure."""
         try:
             body, _ = self.exporter.from_notebook_node(notebook)
             return body, None
@@ -349,6 +370,7 @@ class NotebookReportAnalyzer:
         return language is None or str(language).casefold() in {"python", "python3", "ipython"}
 
     def _build_summary(self, results: list[NotebookAnalysisResult]) -> NotebookAnalysisSummary:
+        """Aggregate notebook results into report-level counters and frequencies."""
         issue_counter = Counter()
         invalid_syntax = 0
         non_executed_notebooks = 0
@@ -373,6 +395,7 @@ class NotebookReportAnalyzer:
         )
 
     def _relative_path(self, path: str) -> str:
+        """Return a path relative to the analyzed repository when possible."""
         try:
             return os.path.relpath(path, self.repo_path)
         except ValueError:
@@ -380,12 +403,14 @@ class NotebookReportAnalyzer:
 
     @staticmethod
     def _count_defs(ast_tree: ast.AST | None, node_type: type[ast.AST] | tuple[type[ast.AST], ...]) -> int | None:
+        """Count AST definitions of one or more types, preserving unavailable values."""
         if ast_tree is None:
             return None
         return sum(isinstance(node, node_type) for node in ast.walk(ast_tree))
 
     @staticmethod
     def _count_markdown_titles(markdown_cells: list) -> int:
+        """Count Markdown lines that begin with a heading marker."""
         total = 0
         for cell in markdown_cells:
             for line in str(cell.get("source", "")).splitlines():
@@ -395,19 +420,23 @@ class NotebookReportAnalyzer:
 
     @staticmethod
     def _is_empty_code_cell(cell) -> bool:
+        """Return whether a code cell has neither source code nor execution state."""
         return cell.get("execution_count") is None and not str(cell.get("source", "")).strip()
 
     @staticmethod
     def _is_non_executed_code_cell(cell) -> bool:
+        """Return whether a non-empty code cell has not been executed."""
         return cell.get("execution_count") is None and bool(str(cell.get("source", "")).strip())
 
     @staticmethod
     def _non_linear_execution(code_cells: list) -> bool:
+        """Detect execution counts that are not in their notebook order."""
         execution_counts = [cell.get("execution_count") for cell in code_cells if cell.get("execution_count")]
         return execution_counts != sorted(execution_counts)
 
     @staticmethod
     def _imports_beyond_first_code_cell(code_cells: list) -> bool:
+        """Detect Python imports outside the first code cell."""
         for cell in code_cells[1:]:
             source = str(cell.get("source", ""))
             try:
@@ -420,6 +449,7 @@ class NotebookReportAnalyzer:
 
     @staticmethod
     def _is_heading_markdown(cell) -> bool:
+        """Return whether a Markdown cell contains headings only."""
         if cell.get("cell_type") != "markdown":
             return False
         pattern = re.compile(r"^\s*#{1,6}\s*[^#\n]*$")
@@ -427,6 +457,7 @@ class NotebookReportAnalyzer:
         return bool(lines) and all(pattern.match(line) for line in lines)
 
     def _missing_h1_heading(self, cells: list) -> bool:
+        """Return whether the opening cells omit an H1 Markdown heading."""
         pattern = re.compile(r"^\s*#\s*[^#\n]*$")
         initial_markdown = "\n".join(
             str(cell.get("source", "")) for cell in cells[:_INITIAL_CELLS] if cell.get("cell_type") == "markdown"
@@ -434,12 +465,14 @@ class NotebookReportAnalyzer:
         return not any(pattern.match(line) for line in initial_markdown.splitlines())
 
     def _missing_opening_markdown(self, cells: list) -> bool:
+        """Return whether the opening cells lack descriptive Markdown content."""
         return not any(
             cell.get("cell_type") == "markdown" and not self._is_heading_markdown(cell)
             for cell in cells[:_INITIAL_CELLS]
         )
 
     def _missing_closing_markdown(self, cells: list) -> bool:
+        """Return whether the final cells lack descriptive Markdown content."""
         return not any(
             cell.get("cell_type") == "markdown" and not self._is_heading_markdown(cell)
             for cell in cells[-_FINAL_CELLS:]
@@ -447,27 +480,32 @@ class NotebookReportAnalyzer:
 
     @staticmethod
     def _too_few_markdown_cells(stats: NotebookStatistics) -> bool:
+        """Return whether the Markdown-to-code ratio is below the quality threshold."""
         if stats.number_of_code_cells == 0:
             return False
         return (stats.number_of_markdown_cells / stats.number_of_code_cells) < _MIN_MD_CODE_RATIO
 
     @staticmethod
     def _is_non_executed_notebook(code_cells: list) -> bool:
+        """Return whether every non-empty code cell has no execution count."""
         return bool(code_cells) and all(
             cell.get("execution_count") is None and bool(str(cell.get("source", "")).strip()) for cell in code_cells
         )
 
     @staticmethod
     def _count_long_multiline_comment_cells(code_cells: list) -> int:
+        """Count cells containing a block of at least four Python comment lines."""
         pattern = re.compile(rf"([^\S\r\n]*#.*\n*){{{_MAX_MULTILINE_PYTHON_COMMENT},}}")
         return sum(1 for cell in code_cells if pattern.search(str(cell.get("source", ""))))
 
     @staticmethod
     def _count_long_code_cells(code_cells: list) -> int:
+        """Count code cells exceeding the configured line limit."""
         return sum(1 for cell in code_cells if len(str(cell.get("source", "")).splitlines()) > _MAX_LINES_IN_CODE_CELL)
 
     @staticmethod
     def _filename_issues(relative_path: str) -> list[NotebookIssue]:
+        """Return portability and naming findings for a notebook filename."""
         issues: list[NotebookIssue] = []
         filename = os.path.basename(relative_path)
         if re.match(r"Untitled\d*\.ipynb$", filename):
