@@ -4,6 +4,7 @@ from typing import List, Literal
 
 from pydantic import BaseModel, Field
 
+from osa_tool.operations.analysis.notebook_report.report_maker import NotebookReportGenerator
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator
 from osa_tool.operations.analysis.repository_validation.doc_validator import DocValidator
 from osa_tool.operations.analysis.repository_validation.paper_validator import PaperValidator
@@ -31,6 +32,32 @@ class GenerateReportOperation(Operation):
     priority = 5
 
     executor = ReportGenerator
+    executor_method = "run"
+    executor_dependencies = ["config_manager", "git_agent", "create_fork"]
+
+
+class NotebookReportArgs(BaseModel):
+    notebook_paths: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Optional list of notebook files or directories to analyze. "
+            "If omitted, all notebooks in the repository are analyzed."
+        ),
+    )
+
+
+class GenerateNotebookReportOperation(Operation):
+    name = "generate_notebook_report"
+    description = "Generate a PDF report describing notebook quality and issues."
+
+    supported_intents = ["new_task"]
+    supported_scopes = ["full_repo", "analysis"]
+    priority = 7
+
+    args_schema = NotebookReportArgs
+    args_policy = "auto"
+
+    executor = NotebookReportGenerator
     executor_method = "run"
     executor_dependencies = ["config_manager", "git_agent", "create_fork"]
 

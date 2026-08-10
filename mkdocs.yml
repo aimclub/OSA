@@ -46,6 +46,10 @@ nav:
           - Catalog: api/operations/operations_catalog.md
           - Registry: api/operations/registry.md
           - Analysis:
+              - Notebook Report:
+                  - Analyzer: api/operations/analysis/notebook_report/analyzer.md
+                  - Models: api/operations/analysis/notebook_report/models.md
+                  - Report Maker: api/operations/analysis/notebook_report/report_maker.md
               - Repository Report Generator: api/operations/analysis/repository_report/report_generator.md
               - Repository Report Maker: api/operations/analysis/repository_report/report_maker.md
               - Repository Report Validation: api/operations/analysis/repository_report/response_validation.md
