@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -31,7 +32,11 @@ class NotebookReportGenerator(AbstractReportGenerator):
         self.report_header = "Notebook Analysis Report"
         self.create_fork = create_fork
         self.notebook_paths = notebook_paths or []
-        self.analyzer = NotebookReportAnalyzer(config_manager, self.notebook_paths)
+        self.analyzer = NotebookReportAnalyzer(
+            config_manager,
+            self.notebook_paths,
+            repo_path=git_agent.clone_dir,
+        )
         self.bundle: NotebookAnalysisBundle | None = None
         self.events: list[OperationEvent] = []
         self._first_page_body_spacer = 148
@@ -46,7 +51,7 @@ class NotebookReportGenerator(AbstractReportGenerator):
                 self.git_agent.upload_report(self.filename, self.output_path)
                 self.events.append(OperationEvent(kind=EventKind.UPLOADED, target=self.filename))
             return {"result": {"report": self.filename}, "events": self.events}
-        except ValueError as exc:
+        except Exception as exc:
             self.events.append(
                 OperationEvent(kind=EventKind.FAILED, target="Notebook report generation", data={"error": str(exc)})
             )
@@ -124,7 +129,7 @@ class NotebookReportGenerator(AbstractReportGenerator):
 
         story.append(Paragraph("<b>Notebook Details</b>", custom_style))
         for notebook in bundle.notebooks:
-            story.append(Paragraph(f"<b>{notebook.relative_path}</b>", custom_style))
+            story.append(Paragraph(f"<b>{escape(notebook.relative_path)}</b>", custom_style))
             stats = notebook.statistics
             status_parts = []
             if notebook.analysis_errors:
@@ -156,7 +161,7 @@ class NotebookReportGenerator(AbstractReportGenerator):
 
             if notebook.analysis_errors:
                 for error in notebook.analysis_errors:
-                    story.append(Paragraph(f"• Analysis error: {error}", normal_style))
+                    story.append(Paragraph(f"• Analysis error: {escape(error)}", normal_style))
 
             if not notebook.issues:
                 story.append(Paragraph("• No notebook issues detected.", normal_style))
@@ -193,9 +198,12 @@ class NotebookReportGenerator(AbstractReportGenerator):
                 ],
                 onFirstPage=self.draw_images_and_tables,
             )
-            logger.info("PDF report successfully created in %s", self.output_path)
         except Exception as exc:
             logger.error("Error while building notebook PDF report, %s", exc, exc_info=True)
+            raise RuntimeError(f"Failed to build notebook PDF report: {exc}") from exc
+        if not os.path.isfile(self.output_path):
+            raise RuntimeError(f"Notebook PDF report was not created: {self.output_path}")
+        logger.info("PDF report successfully created in %s", self.output_path)
 
     def draw_images_and_tables(self, canvas_obj: Canvas, doc: SimpleDocTemplate) -> None:
         # Logo OSA

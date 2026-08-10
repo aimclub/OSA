@@ -51,7 +51,10 @@ def build_parser_from_yaml(extra_sections: list[str] | None = None) -> argparse.
                 kwargs["type"] = float
                 kwargs["default"] = default
             elif arg_type == "list":
-                kwargs["nargs"] = "*"
+                # Most list options require at least one value.  Only options
+                # explicitly marked in the YAML may use an empty list as an
+                # active sentinel (for example, a repository-wide notebook scan).
+                kwargs["nargs"] = "*" if options.get("allow_empty", False) else "+"
                 kwargs["type"] = str
                 kwargs["default"] = default
             else:

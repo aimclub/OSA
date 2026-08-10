@@ -57,9 +57,15 @@ _MAX_MULTILINE_PYTHON_COMMENT = 4
 class NotebookReportAnalyzer:
     """Analyze notebooks without aborting on per-notebook failures."""
 
-    def __init__(self, config_manager: ConfigManager, notebook_paths: list[str] | None = None) -> None:
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        notebook_paths: list[str] | None = None,
+        *,
+        repo_path: str | None = None,
+    ) -> None:
         self.repo_url = str(config_manager.get_git_settings().repository)
-        self.repo_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.repo_path = os.path.abspath(repo_path or os.path.join(os.getcwd(), parse_folder_name(self.repo_url)))
         self.notebook_paths = notebook_paths or []
         self.exporter = PythonExporter()
         self.events: list[OperationEvent] = []
@@ -69,7 +75,20 @@ class NotebookReportAnalyzer:
         results: list[NotebookAnalysisResult] = []
 
         for notebook_path in notebook_files:
-            result = self._analyze_single(notebook_path)
+            try:
+                result = self._analyze_single(notebook_path)
+            except Exception as exc:
+                relative_path = self._relative_path(notebook_path)
+                logger.exception("Unexpected notebook analysis failure for %s", notebook_path)
+                self.events.append(
+                    OperationEvent(kind=EventKind.FAILED, target=relative_path, data={"error": repr(exc)})
+                )
+                result = NotebookAnalysisResult(
+                    path=notebook_path,
+                    relative_path=relative_path,
+                    statistics=NotebookStatistics(),
+                    analysis_errors=[f"Unexpected notebook analysis failure: {exc}"],
+                )
             results.append(result)
 
         summary = self._build_summary(results)
@@ -142,21 +161,26 @@ class NotebookReportAnalyzer:
         markdown_cells = [cell for cell in cells if cell.get("cell_type") == "markdown"]
         raw_cells = [cell for cell in cells if cell.get("cell_type") == "raw"]
 
-        exported_script = self._export_notebook(notebook, relative_path)
+        is_python = self._is_python_notebook(notebook)
+        analysis_errors: list[str] = []
         ast_tree = None
         has_invalid_python_syntax = False
-        if exported_script is not None:
-            try:
-                ast_tree = ast.parse(exported_script)
-            except SyntaxError:
-                has_invalid_python_syntax = True
+        if is_python:
+            exported_script, export_error = self._export_notebook(notebook, relative_path)
+            if export_error:
+                analysis_errors.append(export_error)
+            elif exported_script is not None:
+                try:
+                    ast_tree = ast.parse(exported_script)
+                except SyntaxError:
+                    has_invalid_python_syntax = True
 
         stats = NotebookStatistics(
             number_of_cells=len(cells),
             number_of_markdown_cells=len(markdown_cells),
             number_of_code_cells=len(code_cells),
             number_of_raw_cells=len(raw_cells),
-            number_of_functions=self._count_defs(ast_tree, ast.FunctionDef),
+            number_of_functions=self._count_defs(ast_tree, (ast.FunctionDef, ast.AsyncFunctionDef)),
             number_of_classes=self._count_defs(ast_tree, ast.ClassDef),
             number_of_markdown_lines=sum(len(str(cell.get("source", "")).splitlines()) for cell in markdown_cells),
             number_of_markdown_titles=self._count_markdown_titles(markdown_cells),
@@ -185,7 +209,7 @@ class NotebookReportAnalyzer:
                     details=f"Detected {stats.number_of_cells} cells.",
                 )
             )
-        if self._imports_beyond_first_code_cell(code_cells):
+        if is_python and self._imports_beyond_first_code_cell(code_cells):
             issues.append(
                 NotebookIssue(
                     slug="imports-beyond-first-cell",
@@ -270,7 +294,7 @@ class NotebookReportAnalyzer:
                 )
             )
 
-        long_comment_cells = self._count_long_multiline_comment_cells(code_cells)
+        long_comment_cells = self._count_long_multiline_comment_cells(code_cells) if is_python else 0
         if long_comment_cells:
             issues.append(
                 NotebookIssue(
@@ -301,18 +325,28 @@ class NotebookReportAnalyzer:
             relative_path=relative_path,
             statistics=stats,
             issues=issues,
+            analysis_errors=analysis_errors,
         )
 
-    def _export_notebook(self, notebook, relative_path: str) -> str | None:
+    def _export_notebook(self, notebook, relative_path: str) -> tuple[str | None, str | None]:
         try:
             body, _ = self.exporter.from_notebook_node(notebook)
-            return body
+            return body, None
         except Exception as exc:
             logger.warning("Failed to export notebook %s to Python: %s", relative_path, exc)
-            self.events.append(
-                OperationEvent(kind=EventKind.SKIPPED, target=relative_path, data={"reason": "export failed"})
-            )
-            return None
+            self.events.append(OperationEvent(kind=EventKind.FAILED, target=relative_path, data={"error": repr(exc)}))
+            return None, f"Failed to export notebook to Python: {exc}"
+
+    @staticmethod
+    def _is_python_notebook(notebook) -> bool:
+        """Return whether Python-specific static checks apply to a notebook."""
+        metadata = getattr(notebook, "metadata", {})
+        language_info = metadata.get("language_info", {})
+        kernelspec = metadata.get("kernelspec", {})
+        language = language_info.get("name") or kernelspec.get("language")
+        # Older notebooks often omit kernel metadata; preserve the historical
+        # Python-first behavior in that case.
+        return language is None or str(language).casefold() in {"python", "python3", "ipython"}
 
     def _build_summary(self, results: list[NotebookAnalysisResult]) -> NotebookAnalysisSummary:
         issue_counter = Counter()
@@ -345,7 +379,7 @@ class NotebookReportAnalyzer:
             return path
 
     @staticmethod
-    def _count_defs(ast_tree: ast.AST | None, node_type: type[ast.AST]) -> int | None:
+    def _count_defs(ast_tree: ast.AST | None, node_type: type[ast.AST] | tuple[type[ast.AST], ...]) -> int | None:
         if ast_tree is None:
             return None
         return sum(isinstance(node, node_type) for node in ast.walk(ast_tree))
@@ -426,7 +460,7 @@ class NotebookReportAnalyzer:
     @staticmethod
     def _count_long_multiline_comment_cells(code_cells: list) -> int:
         pattern = re.compile(rf"([^\S\r\n]*#.*\n*){{{_MAX_MULTILINE_PYTHON_COMMENT},}}")
-        return sum(1 for cell in code_cells if pattern.match(str(cell.get("source", ""))))
+        return sum(1 for cell in code_cells if pattern.search(str(cell.get("source", ""))))
 
     @staticmethod
     def _count_long_code_cells(code_cells: list) -> int:
