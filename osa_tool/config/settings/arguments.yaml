@@ -16,6 +16,7 @@ arguments:
   convert_notebooks:
     aliases: [ "--convert-notebooks" ]
     type: list
+    allow_empty: true
     description: |
       Convert Jupyter notebooks from .ipynb to .py format.
       Provide one or multiple paths, or leave empty for repo directory.
@@ -77,6 +78,14 @@ arguments:
     aliases: [ "--scorecard" ]
     type: flag
     description: "Run OpenSSF Scorecard analysis and include the results in the PDF reports."
+  notebook_report:
+    aliases: [ "--notebook-report" ]
+    type: list
+    allow_empty: true
+    description: |
+      Analyze Jupyter notebooks and generate a notebook PDF report.
+      Provide one or multiple paths, or leave empty for repo directory.
+    example: notebooks/eda.ipynb research notebooks/experiments
 
   readme:
     aliases: [ "--readme" ]

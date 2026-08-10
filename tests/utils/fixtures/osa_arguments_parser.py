@@ -32,8 +32,14 @@ platform_group:
 
 tags:
   type: list
+  allow_empty: true
   aliases: ["--tags"]
   description: "List of tags"
+
+required_tags:
+  type: list
+  aliases: ["--required-tags"]
+  description: "List of required tags"
 """
 
 TOML_CONFIG_EXAMPLE = {

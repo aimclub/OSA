@@ -34,9 +34,16 @@ EXCLUDED_TASK = {
 
 class Plan:
     def __init__(self, generated_plan: dict):
-        self.tasks: dict[str, TaskStatus] = {key: TaskStatus.PENDING for key in generated_plan if generated_plan[key]}
+        self.tasks: dict[str, TaskStatus] = {
+            key: TaskStatus.PENDING for key, value in generated_plan.items() if self._is_active_task(key, value)
+        }
         self.generated_plan = generated_plan
         self.results: dict[str, dict] = {}
+
+    @staticmethod
+    def _is_active_task(task: str, value: Any) -> bool:
+        """Treat an empty notebook path list as a repository-wide scan."""
+        return bool(value) or (task == "notebook_report" and value == [])
 
     @staticmethod
     def _normalize_result(result: Any) -> dict:

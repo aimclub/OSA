@@ -57,6 +57,7 @@ community_docs = false
 docstring = false
 report = false
 scorecard = false
+# notebook_report = []
 readme = false
 refine_readme = false
 requirements = false
