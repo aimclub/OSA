@@ -55,7 +55,10 @@ class GitAgent(abc.ABC):
             branch_name: The name of the branch to be created. Defaults to "osa_tool".
             author: The name of the author of the pull request.
         """
-        load_dotenv()
+        # override=True so values from .env take precedence over a stale variable
+        # already present in the OS environment (otherwise a leftover token/key shadows
+        # the freshly configured .env value)
+        load_dotenv(override=True)
         self.author = author
         self.repo_url = repo_url
         self.clone_dir = str(resolve_repo_path(repo_url))

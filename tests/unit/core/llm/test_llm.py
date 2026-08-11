@@ -161,6 +161,21 @@ def test_model_handler_factory_builds_correct_type(mock_config_manager):
     assert isinstance(handler, ProtollmHandler)
 
 
+def test_configure_api_loads_dotenv_with_override(mock_config_manager, patch_llm_connector, mocker):
+    # Arrange: spy on load_dotenv so we can assert how it is invoked
+    spy = mocker.patch("osa_tool.core.llm.llm.dotenv.load_dotenv")
+    model_settings = mock_config_manager.get_model_settings("general")
+
+    # Act
+    ProtollmHandler(model_settings)
+
+    # Assert: .env must take precedence over a stale key already in the OS environment
+    # (a stale OPENAI key otherwise shadows the updated .env value -> 401 "User not found")
+    assert spy.called
+    for call in spy.call_args_list:
+        assert call.kwargs.get("override") is True
+
+
 def test_protollm_handler_init(mock_config_manager):
     # Arrange
     model_settings = mock_config_manager.get_model_settings("general")
