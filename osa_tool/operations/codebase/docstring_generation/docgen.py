@@ -20,7 +20,7 @@ from osa_tool.core.llm.llm import ModelHandlerFactory, ProtollmHandler
 from osa_tool.operations.codebase.docstring_generation.docstring_transformer import (
     DocstringTransformer,
 )
-from osa_tool.operations.codebase.docstring_generation.osa_treesitter import (
+from osa_tool.operations.codebase.docstring_generation.core.osa_parser import (
     OSA_TreeSitter,
 )
 from osa_tool.operations.codebase.docstring_generation.insert.factory import AugmentorFactory
@@ -643,7 +643,7 @@ class DocGen(object):
         Parameters:
         - method_details: A dictionary containing details about the method, including 'method_calls' list.
         - structure: A dictionary representing the code structure (for fallback search)
-        - function_index: Optional index built by osa_treesitter.build_function_index() for fast O(1) lookup.
+        - function_index: Optional index built by OSA_TreeSitter.build_function_index() for fast O(1) lookup.
         - generated_docstrings: Optional dict mapping node_id to generated docstring (from topological sort)
 
         Returns:
@@ -1206,12 +1206,14 @@ class DocGen(object):
                 else:
                     docstring = component["details"]["docstring"] if component["details"]["docstring"] else ""
 
-                prompt_structure.append(f"""
+                prompt_structure.append(
+                    f"""
                     {_type.capitalize()} name: {component["name"] if _type == "class" else component["details"]["method_name"]}
                     Component description: {docstring}
                     Component place in hierarchy: {file}
                     Component importance score: {score}
-                    """)
+                    """
+                )
 
         logger.info(f"Generating the main idea of the project...")
 
