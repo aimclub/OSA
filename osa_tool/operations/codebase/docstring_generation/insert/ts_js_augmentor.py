@@ -23,7 +23,7 @@ class TSJSAugmentor(BaseAugmentor):
     def _inject_classes(self, lines, classes):
         for doc, class_name in classes:
 
-            class_pattern = re.compile(rf"^\s*(export\s+)?(abstract\s+)?class\s+{re.escape(class_name)}\b")
+            class_pattern = re.compile(rf"^\s*(export\s+)?(default\s+)?(abstract\s+)?class\s+{re.escape(class_name)}\b")
 
             for i, line in enumerate(lines):
                 if class_pattern.search(line):
@@ -59,6 +59,11 @@ class TSJSAugmentor(BaseAugmentor):
         return lines
 
     def _inject_methods(self, lines, methods):
+        # Decide targets first (pure scan, no mutation) so `used` line indices stay
+        # stable, then apply bottom-up so earlier indices remain valid while we edit.
+        used = set()
+        actions = []
+
         for doc, meta in methods:
             name = meta["method_name"]
             patterns = [
@@ -89,6 +94,19 @@ class TSJSAugmentor(BaseAugmentor):
                     """,
                     re.VERBOSE,
                 ),
+                # generator method: * method<T>(  /  async * method(  /  static * method(
+                re.compile(
+                    rf"""^\s*
+                    (?:public|private|protected|static|readonly|async|\s)*
+                    \*\s*
+                    {re.escape(name)}
+                    \s*
+                    (?:<[^>]*>)?
+                    \s*
+                    \(
+                    """,
+                    re.VERBOSE,
+                ),
                 # method<T>(
                 re.compile(
                     rf"""^\s*
@@ -111,10 +129,21 @@ class TSJSAugmentor(BaseAugmentor):
                     re.VERBOSE,
                 ),
             ]
+            # class field arrow: name = (...) =>  /  name = async (...) =>  /  name = x =>
+            field_arrow = re.compile(
+                rf"^\s*(?:(?:public|private|protected|static|readonly)\s+)*"
+                rf"{re.escape(name)}\s*=\s*(?:async\s+)?"
+                rf"(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*(?::\s*[^=]+?)?\s*=>"
+            )
 
             for i, line in enumerate(lines):
+                if i in used:
+                    continue
+
                 stripped = line.strip()
-                # skip obvious calls/usages
+                is_field_arrow = bool(field_arrow.search(line))
+
+                # skip obvious calls / control-flow / usages
                 if (
                     stripped.startswith("return ")
                     or stripped.startswith("if ")
@@ -124,16 +153,30 @@ class TSJSAugmentor(BaseAugmentor):
                     or stripped.startswith("catch ")
                     or stripped.startswith("new ")
                     or re.search(rf"\.\s*{re.escape(name)}\s*\(", stripped)
-                    or "=" in stripped
                 ):
                     continue
 
-                if any(p.search(line) for p in patterns):
-                    if self._has_doc(lines, i):
-                        lines = self._replace_doc(lines, i, doc)
-                    else:
-                        lines.insert(i, self._format(doc, line))
+                # a statement (ends with ';') or an assignment ('=' before the call
+                # parens) is a call/usage, not a declaration -- skip it. A legitimate
+                # class-field arrow is allowed through (it also ends with ';').
+                if not is_field_arrow:
+                    if stripped.endswith(";"):
+                        continue
+                    paren = stripped.find("(")
+                    before_paren = stripped if paren == -1 else stripped[:paren]
+                    if "=" in before_paren:
+                        continue
+
+                if is_field_arrow or any(p.search(line) for p in patterns):
+                    used.add(i)
+                    actions.append((i, doc))
                     break
+
+        for i, doc in sorted(actions, key=lambda a: a[0], reverse=True):
+            if self._has_doc(lines, i):
+                lines = self._replace_doc(lines, i, doc)
+            else:
+                lines.insert(i, self._format(doc, lines[i]))
 
         return lines
 
