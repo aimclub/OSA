@@ -241,6 +241,23 @@ async def test_update_class_documentation(mock_config_manager):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("existing_docstring", [None, ""])
+async def test_update_class_documentation_empty_docstring_returns_empty(mock_config_manager, existing_docstring):
+    # a class with no existing docstring reaches update_class_documentation in the
+    # main-idea pass; it must return "" (dropped by the caller) instead of crashing
+    docgen = DocGen(mock_config_manager)
+    docgen.model_handler.async_request = AsyncMock(return_value="should not be called")
+    docgen.main_idea = "Main idea here"
+
+    class_details = ["MyClass", "Other info", existing_docstring]  # last element = existing class docstring
+
+    result = await docgen.update_class_documentation(class_details, asyncio.Semaphore(1))
+
+    assert result == ""
+    docgen.model_handler.async_request.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_generate_method_documentation(mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)
