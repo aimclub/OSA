@@ -1,8 +1,10 @@
+import builtins
 import json
 
 import pytest
 
 from osa_tool.operations.analysis.paper_claims.exceptions import SectionParsingError
+from osa_tool.operations.analysis.paper_claims import section_parser
 from osa_tool.operations.analysis.paper_claims.section_parser import MarkdownSectionParser
 
 
@@ -36,3 +38,17 @@ def test_write_json_preserves_section_ids(tmp_path):
 def test_parse_rejects_markdown_without_sections(markdown):
     with pytest.raises(SectionParsingError):
         MarkdownSectionParser().parse(markdown)
+
+
+def test_parse_explains_how_to_install_missing_markdown_dependency(monkeypatch):
+    original_import = builtins.__import__
+
+    def raise_for_markdown_it(name, *args, **kwargs):
+        if name == "markdown_it":
+            raise ImportError("missing markdown-it-py")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", raise_for_markdown_it)
+
+    with pytest.raises(SectionParsingError, match=r'pip install "osa_tool\[paper-claims\]"'):
+        section_parser._load_markdown_it()

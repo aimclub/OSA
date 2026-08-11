@@ -145,7 +145,11 @@ clear_marker_cache()
 
 ## Evaluation utilities
 
-Evaluation dependencies are included in the main project dependency files.
+Install the paper-claims extra before running the conversion or evaluation utilities:
+
+```bash
+pip install "osa_tool[paper-claims]"
+```
 
 Run semantic matching:
 
@@ -164,10 +168,11 @@ python -m osa_tool.tools.paper_claims.aggregate ./evaluations --output aggregate
 
 ## Dependencies
 
-The project dependency files include the paper-claims runtime and evaluation dependencies, including `pypdf`,
-`markdown-it-py`, `rapidfuzz`, `marker-pdf`, `pandas`, `numpy`, `scipy`, and `sentence-transformers`.
+The `paper-claims` extra provides `pypdf`, `markdown-it-py`, `rapidfuzz`, `marker-pdf`, `numpy`, `scipy`, and
+`sentence-transformers`. Pandas remains part of OSA's core dependencies and is used by the aggregate utility.
 
-Marker is loaded lazily at conversion time. OSA does not enable Marker's LLM processors.
+Marker, Markdown parsing, and RapidFuzz validation are loaded lazily when their corresponding pipeline stage runs.
+OSA does not enable Marker's LLM processors.
 
 ## Module layout
 

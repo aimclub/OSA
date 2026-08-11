@@ -64,6 +64,16 @@ Install Open-Source-Advisor using one of the following methods:
 pip install osa_tool
 ```
 
+Install optional features when needed:
+
+```sh
+# PDF-to-claims extraction and evaluation utilities
+pip install "osa_tool[paper-claims]"
+
+# Legacy graph-based document and paper validation
+pip install "osa_tool[repository-validation]"
+```
+
 **Build from source:**
 
 1. Clone the Open-Source-Advisor repository:
@@ -92,6 +102,12 @@ pip install -r requirements.txt
 
 ```sh
 poetry install 
+```
+
+For a source checkout with both optional feature sets:
+
+```sh
+poetry install --all-extras
 ```
 
 **Using `docker`** &nbsp;

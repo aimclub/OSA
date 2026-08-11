@@ -111,8 +111,7 @@ def _default_converter_factory(options: MarkerOptions) -> tuple[Any, Callable[[A
         from marker.output import text_from_rendered
     except ImportError as exc:
         raise PdfConversionError(
-            "Marker conversion requires `marker-pdf` in the active environment. Install the project dependencies "
-            "from pyproject.toml or requirements.txt."
+            'Marker conversion requires the paper-claims extra. Install it with: pip install "osa_tool[paper-claims]".'
         ) from exc
 
     config_values = {

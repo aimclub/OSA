@@ -1,3 +1,4 @@
+import builtins
 from pathlib import Path
 
 import pytest
@@ -6,6 +7,7 @@ from osa_tool.operations.analysis.paper_claims.exceptions import PdfConversionEr
 from osa_tool.operations.analysis.paper_claims.marker_converter import (
     LOW_VRAM_MARKER_CONFIG,
     MarkerDocumentConverter,
+    _default_converter_factory,
     _effective_marker_config,
 )
 from osa_tool.operations.analysis.paper_claims.models import MarkerOptions, PdfChunk
@@ -187,3 +189,17 @@ def test_process_isolation_rejects_custom_converter_factory(tmp_path):
             make_chunks(tmp_path),
             MarkerOptions(cache_root=tmp_path / "cache", process_isolation=True),
         )
+
+
+def test_default_converter_factory_explains_how_to_install_missing_marker(monkeypatch):
+    original_import = builtins.__import__
+
+    def raise_for_marker(name, *args, **kwargs):
+        if name.startswith("marker"):
+            raise ImportError("missing marker-pdf")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", raise_for_marker)
+
+    with pytest.raises(PdfConversionError, match=r'pip install "osa_tool\[paper-claims\]"'):
+        _default_converter_factory(MarkerOptions())

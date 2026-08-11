@@ -32,6 +32,13 @@ OSA can be installed in several ways depending on your needs. Here's the quick s
 pip install osa_tool
 ```
 
+Install an optional feature set when required:
+
+```bash
+pip install "osa_tool[paper-claims]"
+pip install "osa_tool[repository-validation]"
+```
+
 **Complete Installation Steps:**
 
 | Step | Action | Command |
@@ -128,6 +135,9 @@ pip install -r requirements.txt
 
 # Option B: Using poetry (recommended for development)
 poetry install
+
+# Include optional paper-claims and repository-validation features
+poetry install --all-extras
 
 # Step 4: Run tests
 pytest .

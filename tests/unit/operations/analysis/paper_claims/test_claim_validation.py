@@ -1,5 +1,9 @@
+import builtins
+
 import pytest
 
+from osa_tool.operations.analysis.paper_claims import claim_validation
+from osa_tool.operations.analysis.paper_claims.exceptions import ClaimExtractionError
 from osa_tool.operations.analysis.paper_claims.claim_validation import (
     partition_valid_claim_candidates,
     validate_claim_candidate,
@@ -122,3 +126,17 @@ def test_validate_claim_candidate_accepts_section_script_for_short_technical_evi
     validate_claim_candidate(candidate, section=make_section(source_text))
 
     assert candidate.original_text == "- Top-k: 50;"
+
+
+def test_fuzzy_validation_explains_how_to_install_missing_rapidfuzz(monkeypatch):
+    original_import = builtins.__import__
+
+    def raise_for_rapidfuzz(name, *args, **kwargs):
+        if name.startswith("rapidfuzz"):
+            raise ImportError("missing rapidfuzz")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", raise_for_rapidfuzz)
+
+    with pytest.raises(ClaimExtractionError, match=r'pip install "osa_tool\[paper-claims\]"'):
+        claim_validation._load_rapidfuzz()

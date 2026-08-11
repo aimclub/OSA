@@ -55,8 +55,7 @@ def compute_semantic_matching(
         from sentence_transformers import SentenceTransformer
     except ImportError as exc:
         raise RuntimeError(
-            "Claim evaluation dependencies are missing; install the project dependencies from pyproject.toml "
-            "or requirements.txt."
+            'Claim evaluation requires the paper-claims extra. Install it with: pip install "osa_tool[paper-claims]".'
         ) from exc
 
     embedding_model = model or SentenceTransformer(model_name)

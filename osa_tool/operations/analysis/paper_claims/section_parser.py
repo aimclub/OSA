@@ -3,11 +3,20 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-
-from markdown_it import MarkdownIt
+from typing import Any
 
 from osa_tool.operations.analysis.paper_claims.exceptions import SectionParsingError
 from osa_tool.operations.analysis.paper_claims.models import HeadingMeta, PaperSection
+
+
+def _load_markdown_it() -> type[Any]:
+    try:
+        from markdown_it import MarkdownIt
+    except ImportError as exc:
+        raise SectionParsingError(
+            'Markdown parsing requires the paper-claims extra. Install it with: pip install "osa_tool[paper-claims]".'
+        ) from exc
+    return MarkdownIt
 
 
 class MarkdownSectionParser:
@@ -20,7 +29,7 @@ class MarkdownSectionParser:
         text = self.normalize(markdown)
         if not text:
             raise SectionParsingError("Marker produced empty Markdown")
-        tokens = MarkdownIt().parse(text)
+        tokens = _load_markdown_it()().parse(text)
         lines = text.splitlines()
         headings: list[tuple[int, int, str]] = []
         for index, token in enumerate(tokens):

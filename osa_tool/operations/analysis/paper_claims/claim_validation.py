@@ -3,13 +3,12 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass
-
-from rapidfuzz import fuzz, process
-from rapidfuzz.distance import Levenshtein
+from typing import Any
 
 from osa_tool.operations.analysis.paper_claims.claim_schemas import (
     ClaimCandidateResponse,
 )
+from osa_tool.operations.analysis.paper_claims.exceptions import ClaimExtractionError
 from osa_tool.operations.analysis.paper_claims.models import PaperSection
 from osa_tool.utils.logger import logger
 
@@ -37,6 +36,17 @@ class _ScriptProfile:
     script: str | None
     letters: int
     dominance: float
+
+
+def _load_rapidfuzz() -> tuple[Any, Any, Any]:
+    try:
+        from rapidfuzz import fuzz, process
+        from rapidfuzz.distance import Levenshtein
+    except ImportError as exc:
+        raise ClaimExtractionError(
+            'Claim validation requires the paper-claims extra. Install it with: pip install "osa_tool[paper-claims]".'
+        ) from exc
+    return fuzz, process, Levenshtein
 
 
 def _iter_sentence_spans(text: str) -> list[tuple[int, int]]:
@@ -103,7 +113,7 @@ def _math_operator_tokens(value: str) -> list[str]:
     return _MATH_OPERATOR_PATTERN.findall(value)
 
 
-def _has_only_safe_fuzzy_drift(original_text: str, candidate_text: str) -> bool:
+def _has_only_safe_fuzzy_drift(original_text: str, candidate_text: str, levenshtein: Any) -> bool:
     """Allow casing, layout, and a one-character inflection, but not meaning changes.
 
     Fuzzy source repair replaces LLM-provided evidence with a source span. It
@@ -125,7 +135,7 @@ def _has_only_safe_fuzzy_drift(original_text: str, candidate_text: str) -> bool:
         if (
             any(character.isdigit() for character in original_word + candidate_word)
             or min(len(original_word), len(candidate_word)) < 5
-            or Levenshtein.distance(original_word, candidate_word) > 1
+            or levenshtein.distance(original_word, candidate_word) > 1
         ):
             return False
     return True
@@ -138,6 +148,7 @@ def _find_fuzzy_source_match(section_text: str, original_text: str) -> _SourceTe
     if not candidates:
         return None
 
+    fuzz, process, levenshtein = _load_rapidfuzz()
     matches = process.extract(
         original_text,
         candidates,
@@ -150,7 +161,7 @@ def _find_fuzzy_source_match(section_text: str, original_text: str) -> _SourceTe
 
     best_text, best_score, _best_index = matches[0]
 
-    if not _has_only_safe_fuzzy_drift(original_text, best_text):
+    if not _has_only_safe_fuzzy_drift(original_text, best_text, levenshtein):
         return None
     if len(matches) > 1:
         second_text, second_score, _second_index = matches[1]
