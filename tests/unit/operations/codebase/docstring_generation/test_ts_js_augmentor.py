@@ -233,3 +233,179 @@ def test_bare_call_with_operator_not_documented():
     decl_idx = next(i for i, l in enumerate(lines) if "assert(cond)" in l)
     assert lines[decl_idx - 1].strip() == "*/"
     assert "Asserts a condition." in out
+
+
+def test_same_named_methods_mapped_by_source_order():
+    """When entries arrive out of source order (dependency order), each doc must land
+    on the method at its own start_line, not get swapped (regression for the swap bug)."""
+    aug = TSJSAugmentor()
+    src = (
+        "class A {\n\tadd(item, priority = 0) {\n\t\treturn item;\n\t}\n}\n"
+        "class B {\n\tadd(key, value) {\n\t\treturn key;\n\t}\n}\n"
+    )
+    # entries deliberately reversed (B.add first) to mimic dependency-order output
+    docs = {
+        "methods": [
+            ("Doc for B add.", {"method_name": "add", "start_line": 7}),
+            ("Doc for A add.", {"method_name": "add", "start_line": 2}),
+        ]
+    }
+    out = aug.augment("f.ts", src, docs)["f.ts"]
+    lines = out.splitlines()
+
+    a_idx = next(i for i, l in enumerate(lines) if "add(item, priority = 0)" in l)
+    b_idx = next(i for i, l in enumerate(lines) if "add(key, value)" in l)
+    a_block = "\n".join(lines[max(0, a_idx - 4) : a_idx])
+    b_block = "\n".join(lines[max(0, b_idx - 4) : b_idx])
+
+    assert "Doc for A add." in a_block
+    assert "Doc for B add." in b_block
+
+
+def test_comment_body_not_matched_as_declaration():
+    """A JSDoc body line like ` * save(entity) ...` must not be matched as the method
+    declaration (the generator `*` pattern must not hit comment lines and corrupt the
+    file). Regenerating updates the real method's doc instead."""
+    aug = TSJSAugmentor()
+    src = (
+        "class Repo {\n"
+        "\t/**\n"
+        "\t * save(entity) persists the record.\n"
+        "\t */\n"
+        "\tsave(entity) {\n"
+        "\t\treturn entity;\n"
+        "\t}\n"
+        "}\n"
+    )
+    out = aug.augment(
+        "f.ts",
+        src,
+        {"methods": [("Persists the entity.", {"method_name": "save", "start_line": 5})]},
+    )["f.ts"]
+
+    assert "Persists the entity." in out
+    # exactly one JSDoc block (the method's, replaced) -> no nested/corrupted /**
+    assert out.count("/**") == 1
+    lines = out.splitlines()
+    decl = next(i for i, l in enumerate(lines) if "save(entity) {" in l)
+    assert lines[decl - 1].strip() == "*/"
+
+
+def test_block_comment_line_not_matched_as_declaration():
+    """A plain block-comment line starting with a method name must not be matched."""
+    aug = TSJSAugmentor()
+    src = (
+        "class Repo {\n"
+        "\t/*\n"
+        "\tload(id) is deprecated, use fetch instead.\n"
+        "\t*/\n"
+        "\tload(id) {\n"
+        "\t\treturn id;\n"
+        "\t}\n"
+        "}\n"
+    )
+    out = aug.augment(
+        "f.ts",
+        src,
+        {"methods": [("Loads by id.", {"method_name": "load", "start_line": 5})]},
+    )["f.ts"]
+
+    assert "Loads by id." in out
+    # the doc must land above the real declaration, not inside the block comment
+    lines = out.splitlines()
+    decl = next(i for i, l in enumerate(lines) if "load(id) {" in l)
+    assert lines[decl - 1].strip() == "*/"
+    # the deprecated block-comment text is untouched (still present, not wrapped in /**)
+    assert "load(id) is deprecated" in out
+
+
+def test_method_with_inline_block_comment_still_documented():
+    """A method whose declaration line has an inline `/* */` comment must still be
+    documented (single-line block comments are not treated as comment lines)."""
+    aug = TSJSAugmentor()
+    src = "class C {\n\tparse(url) /* TODO */ {\n\t\treturn url;\n\t}\n}\n"
+    out = aug.augment(
+        "f.ts",
+        src,
+        {"methods": [("Parses a URL.", {"method_name": "parse", "start_line": 2})]},
+    )["f.ts"]
+
+    assert "Parses a URL." in out
+    lines = out.splitlines()
+    decl = next(i for i, l in enumerate(lines) if "parse(url)" in l)
+    assert lines[decl - 1].strip() == "*/"
+
+
+def test_string_literal_slash_star_does_not_suppress_methods():
+    """A `/*` inside a string literal must NOT open a phantom comment block that
+    suppresses documentation of later methods (literal-aware comment scan)."""
+    aug = TSJSAugmentor()
+    src = "class Repo {\n" '\tglob = "src/*";\n' "\tsave(entity) {\n\t\treturn entity;\n\t}\n" "}\n"
+    out = aug.augment(
+        "f.ts",
+        src,
+        {"methods": [("Saves the entity.", {"method_name": "save", "start_line": 3})]},
+    )["f.ts"]
+
+    assert "Saves the entity." in out
+    lines = out.splitlines()
+    decl = next(i for i, l in enumerate(lines) if "save(entity) {" in l)
+    assert lines[decl - 1].strip() == "*/"
+
+
+def test_declaration_opening_trailing_block_comment_still_documented():
+    """A declaration line that also opens a multi-line comment after the code must still
+    be documented (the code part is a real declaration)."""
+    aug = TSJSAugmentor()
+    src = "class I {\n" "\tsave(entity) { /* note:\n" "\t   multi-line */\n" "\t\treturn entity;\n" "\t}\n" "}\n"
+    out = aug.augment(
+        "f.ts",
+        src,
+        {"methods": [("Saves it.", {"method_name": "save", "start_line": 2})]},
+    )["f.ts"]
+
+    assert "Saves it." in out
+    lines = out.splitlines()
+    decl = next(i for i, l in enumerate(lines) if "save(entity)" in l and "*" != l.strip()[:1])
+    assert lines[decl - 1].strip() == "*/"
+
+
+def test_multiline_template_literal_does_not_suppress_methods():
+    """A multi-line template literal containing '/*' must not open a phantom comment
+    block (quote state is threaded across lines), so later methods stay documented."""
+    aug = TSJSAugmentor()
+    src = (
+        "class Q {\n"
+        "\tsql = `\n"
+        "\t\tSELECT /* unclosed marker\n"
+        "\t`;\n"
+        "\tsave(entity) {\n\t\treturn entity;\n\t}\n"
+        "}\n"
+    )
+    out = aug.augment(
+        "f.ts",
+        src,
+        {"methods": [("Saves it.", {"method_name": "save", "start_line": 5})]},
+    )["f.ts"]
+
+    assert "Saves it." in out
+    lines = out.splitlines()
+    decl = next(i for i, l in enumerate(lines) if "save(entity) {" in l)
+    assert lines[decl - 1].strip() == "*/"
+
+
+def test_regex_with_apostrophe_does_not_suppress_methods():
+    """A regex literal containing a lone quote char (e.g. /O'Brien/) must not leave a
+    dangling string state that suppresses documentation of later methods."""
+    aug = TSJSAugmentor()
+    src = "class M {\n" "\tre = /O'Brien/;\n" "\tsave(entity) {\n\t\treturn entity;\n\t}\n" "}\n"
+    out = aug.augment(
+        "f.ts",
+        src,
+        {"methods": [("Saves it.", {"method_name": "save", "start_line": 3})]},
+    )["f.ts"]
+
+    assert "Saves it." in out
+    lines = out.splitlines()
+    decl = next(i for i, l in enumerate(lines) if "save(entity) {" in l)
+    assert lines[decl - 1].strip() == "*/"
