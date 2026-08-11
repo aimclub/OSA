@@ -21,11 +21,14 @@ class TSJSAugmentor(BaseAugmentor):
         return {file: "".join(lines)}
 
     def _inject_classes(self, lines, classes):
+        comment_idx = self._comment_lines(lines)
         for doc, class_name in classes:
 
             class_pattern = re.compile(rf"^\s*(export\s+)?(default\s+)?(abstract\s+)?class\s+{re.escape(class_name)}\b")
 
             for i, line in enumerate(lines):
+                if i in comment_idx:
+                    continue
                 if class_pattern.search(line):
                     if self._has_doc(lines, i):
                         lines = self._replace_doc(lines, i, doc)
@@ -36,7 +39,14 @@ class TSJSAugmentor(BaseAugmentor):
         return lines
 
     def _inject_functions(self, lines, functions):
-        for doc, meta in functions:
+        # same robustness as _inject_methods: skip comment/string lines, map same-named
+        # entries to distinct declarations in source order, and apply bottom-up.
+        used = set()
+        actions = []
+        comment_idx = self._comment_lines(lines)
+        ordered = sorted(functions, key=lambda dm: dm[1].get("start_line", 0))
+
+        for doc, meta in ordered:
             name = meta["method_name"]
             patterns = [
                 re.compile(rf"^\s*export\s+(async\s+)?function\s+{re.escape(name)}\s*\("),
@@ -48,13 +58,18 @@ class TSJSAugmentor(BaseAugmentor):
             ]
 
             for i, line in enumerate(lines):
+                if i in used or i in comment_idx:
+                    continue
                 if any(p.search(line) for p in patterns):
-                    if self._has_doc(lines, i):
-                        lines = self._replace_doc(lines, i, doc)
-                    else:
-                        lines.insert(i, self._format(doc, line))
-
+                    used.add(i)
+                    actions.append((i, doc))
                     break
+
+        for i, doc in sorted(actions, key=lambda a: a[0], reverse=True):
+            if self._has_doc(lines, i):
+                lines = self._replace_doc(lines, i, doc)
+            else:
+                lines.insert(i, self._format(doc, lines[i]))
 
         return lines
 
@@ -174,6 +189,9 @@ class TSJSAugmentor(BaseAugmentor):
                         continue
                     paren = stripped.find("(")
                     before_paren = stripped if paren == -1 else stripped[:paren]
+                    # ignore '=' inside a generic default type param list, e.g.
+                    # `method<T = string>(...)`, which is not an assignment
+                    before_paren = re.sub(r"<[^>]*>", "", before_paren)
                     if "=" in before_paren:
                         continue
 
@@ -313,9 +331,19 @@ class TSJSAugmentor(BaseAugmentor):
         if start != -1:
             end = clean.rfind("*/")
             clean = (clean[start + 3 : end] if end > start + 2 else clean[start + 3 :]).strip()
+        else:
+            # model emitted a closing "*/" delimiter without an opening "/**"; drop a
+            # trailing "*/" so it is not turned into ` * /` junk. An inline "*/" inside
+            # prose (not at the very end) is left for the escape step below.
+            clean = re.sub(r"\s*\*/\s*$", "", clean).strip()
 
-        # drop any residual line that is nothing but a code fence (``` or ```lang)
-        clean = "\n".join(l for l in clean.splitlines() if not re.match(r"^```[a-zA-Z]*$", l.strip()))
+        # drop any residual line that is nothing but a code fence (``` or ```lang) or a
+        # stray JSDoc delimiter (`/**` / `*/`) the model left on its own line
+        clean = "\n".join(
+            l
+            for l in clean.splitlines()
+            if not re.match(r"^```[a-zA-Z]*$", l.strip()) and l.strip() not in ("/**", "*/")
+        )
 
         # remove leading *
         clean_lines = []
