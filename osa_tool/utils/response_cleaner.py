@@ -10,42 +10,31 @@ class JsonProcessor:
     """Utility class for robust extraction and parsing of JSON-like content from LLM responses."""
 
     @staticmethod
-    def _extract_from_fence(text: str) -> str | None:
-        candidates: list[tuple[bool, str]] = []
+    def _json_sources(text: str) -> list[str]:
+        """Return raw JSON-capable text while ignoring explicitly non-JSON fences."""
+        sources: list[str] = []
+        position = 0
         for match in re.finditer(r"```([^\n`]*)\n(.*?)```", text, flags=re.DOTALL):
+            sources.append(text[position : match.start()])
             language = match.group(1).strip().lower()
-            if language not in {"", "json"}:
-                continue
-            candidate = match.group(2).strip()
-            spans = [
-                span for char in ("{", "[") if (span := JsonProcessor._find_balanced_span(candidate, char)) is not None
-            ]
-            if not spans:
-                continue
-            start, end = min(spans, key=lambda span: span[0])
-            payload = candidate[start : end + 1]
-            try:
-                json.loads(payload)
-            except json.JSONDecodeError:
-                continue
-            candidates.append((language == "json", payload))
-        for explicitly_json in (True, False):
-            for is_json, payload in candidates:
-                if is_json == explicitly_json:
-                    return payload
-        return None
+            if language in {"", "json"}:
+                sources.append(match.group(2))
+            position = match.end()
+        sources.append(text[position:])
+        return sources
 
     @staticmethod
-    def _find_balanced_span(text: str, open_char: str) -> tuple[int, int] | None:
-        close_char = "}" if open_char == "{" else "]"
-        start = text.find(open_char)
-        if start == -1:
+    def _find_balanced_span(text: str, start: int) -> tuple[int, int] | None:
+        """Return the balanced JSON object or array beginning at ``start``."""
+        open_char = text[start]
+        if open_char not in "{[":
             return None
 
-        depth = 0
+        closing = {"{": "}", "[": "]"}
+        stack = [open_char]
         in_string = False
         escaped = False
-        for i in range(start, len(text)):
+        for i in range(start + 1, len(text)):
             ch = text[i]
             if in_string:
                 if escaped:
@@ -58,23 +47,51 @@ class JsonProcessor:
 
             if ch == '"':
                 in_string = True
-            elif ch == open_char:
-                depth += 1
-            elif ch == close_char:
-                depth -= 1
-                if depth == 0:
+            elif ch in "{[":
+                stack.append(ch)
+            elif ch in "}]":
+                if not stack or closing[stack[-1]] != ch:
+                    return None
+                stack.pop()
+                if not stack:
                     return (start, i)
         return None
+
+    @classmethod
+    def _find_balanced_roots(cls, text: str) -> list[tuple[int, int]]:
+        """Find outermost complete object/array spans in a JSON-capable text source."""
+        roots: list[tuple[int, int]] = []
+        index = 0
+        while index < len(text):
+            if text[index] not in "{[":
+                index += 1
+                continue
+            span = cls._find_balanced_span(text, index)
+            if span is None:
+                index += 1
+                continue
+            roots.append(span)
+            index = span[1] + 1
+        return roots
+
+    @staticmethod
+    def _root_characters(expected_type: type | None) -> set[str]:
+        if expected_type is list:
+            return {"["}
+        if expected_type is dict:
+            return {"{"}
+        return {"{", "["}
 
     @staticmethod
     def process_text(text: str, expected_type: type | None = None) -> str:
         """
-        Extracts JSON content from text by locating a JSON bracket ('{' or '[')
-        and its corresponding closing bracket ('}' or ']').
+        Extracts one JSON object or array from text.
         Replaces Python-style booleans/None and trims trailing commas.
         When a JSON root is present but malformed, returns that root for
         ``json_repair`` to repair during parsing. Plain non-JSON prose is
-        rejected instead of being fabricated into a JSON structure.
+        rejected instead of being fabricated into a JSON structure. Multiple
+        complete JSON roots are rejected as ambiguous so a caller can request
+        one definitive response.
 
         Raises:
             ValueError: If no valid JSON structure is found.
@@ -92,42 +109,27 @@ class JsonProcessor:
         # remove trailing commas before closing braces/brackets
         text = re.sub(r",\s*([}\]])", r"\1", text)
         text = text.strip()
-        fenced = JsonProcessor._extract_from_fence(text)
-        if fenced:
-            text = fenced
+        root_characters = JsonProcessor._root_characters(expected_type)
+        complete_roots = [
+            source[start : end + 1]
+            for source in JsonProcessor._json_sources(text)
+            for start, end in JsonProcessor._find_balanced_roots(source)
+        ]
+        if len(complete_roots) > 1:
+            raise ValueError("Multiple complete JSON values found; return exactly one")
+        if complete_roots:
+            return complete_roots[0]
 
-        preferred: list[str]
-        if expected_type is list:
-            preferred = ["["]
-        elif expected_type is dict:
-            preferred = ["{"]
-        else:
-            # With no type information, preserve the outermost/earliest JSON root.
-            starts = [(text.find(char), char) for char in ("{", "[") if text.find(char) >= 0]
-            preferred = [char for _index, char in sorted(starts)]
-
-        for open_char in preferred + [c for c in ["[", "{"] if c not in preferred]:
-            span = JsonProcessor._find_balanced_span(text, open_char)
-            if span:
-                start, end = span
-                return text[start : end + 1]
-
-        if expected_type is list:
-            start = text.find("[")
-            if start == -1:
-                raise ValueError("No JSON array start bracket found")
-            return text[start:]
-        if expected_type is dict:
-            start = text.find("{")
-            if start == -1:
-                raise ValueError("No JSON object start bracket found")
-            return text[start:]
-
-        starts = [(text.find(char), char) for char in ("{", "[") if text.find(char) >= 0]
+        starts = [
+            (source.find(character), source)
+            for source in JsonProcessor._json_sources(text)
+            for character in root_characters
+            if source.find(character) >= 0
+        ]
         if not starts:
             raise ValueError("No JSON start bracket found")
-        start, _open_char = min(starts)
-        return text[start:]
+        start, source = min(starts, key=lambda item: item[0])
+        return source[start:]
 
     @classmethod
     def parse(

@@ -12,8 +12,29 @@ def test_keyed_list_type_applies_after_object_lookup():
 
 
 def test_non_json_fence_does_not_hide_later_json():
-    response = '```python\nprint("example")\n```\n[{"answer": true}]'
+    response = '```python\nexample = []\n```\n[{"answer": true}]'
     assert JsonProcessor.parse(response, expected_type=list) == [{"answer": True}]
+
+
+def test_parse_rejects_multiple_complete_json_arrays():
+    response = 'Example: [{"section_id": "s003"}]\nActual answer: [{"section_id": "s001"}]'
+
+    with pytest.raises(JsonParseError, match="Multiple complete JSON values"):
+        JsonProcessor.parse(response, expected_type=list)
+
+
+def test_parse_rejects_example_object_before_expected_json_array():
+    response = 'Example: {"section_id": "s003"}\nActual answer: [{"section_id": "s001"}]'
+
+    with pytest.raises(JsonParseError, match="Multiple complete JSON values"):
+        JsonProcessor.parse(response, expected_type=list)
+
+
+def test_parse_rejects_multiple_complete_json_fences():
+    response = '```json\n[{"section_id": "s003"}]\n```\n```json\n[{"section_id": "s001"}]\n```'
+
+    with pytest.raises(JsonParseError, match="Multiple complete JSON values"):
+        JsonProcessor.parse(response, expected_type=list)
 
 
 def test_parse_repairs_unterminated_string_before_failing():
