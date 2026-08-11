@@ -1,0 +1,59 @@
+[prompts]
+model_size_classification = """
+Classify the language model named below for docstring-generation prompting.
+Model name: {model_name}
+A small language model is one with no more than {max_parameters_billions} billion parameters.
+Reply with exactly one label and no explanation:
+SMALL — if this model has no more than the stated number of parameters.
+NOT_SMALL — if it has more parameters or is not a small language model.
+UNSURE — if you cannot determine the model size with confidence.
+"""
+
+class_update_small = """
+You are updating a Python class docstring description. Output ONLY the new description sentence or paragraph.
+
+Preserve the old description's intent, improve clarity and conciseness, and use the project idea only as context. Do not mention the project idea explicitly.
+
+Class name: {class_name}
+Project main idea: {main_idea}
+Old description: {old_description}
+
+Updated description:
+"""
+
+class_update_standard = """
+Update the provided description for the following Python class {class_name} using provided main idea of the project.
+Do not pay too much attention to the provided main idea - try not to mention it explicitly.
+The main idea: {main_idea}
+Old docstring description part: {old_description}
+
+Return only pure changed description - without any code, other parts of docs, or quotations.
+"""
+
+class_generation_small = """
+{example}
+
+Generate a Google-style docstring for class '{class_name}' following the exact format above.
+
+CRITICAL FORMATTING RULES:
+- Use triple double-quotes ONLY at start and end of the entire docstring.
+- NEVER put triple quotes inside the docstring content.
+- NEVER use Sphinx/rST directives.
+- Section headers: 'Attributes:' and 'Methods:' (if needed). No other section names.
+- Keep section headers at column 0.
+- Indent each entry inside Attributes: and Methods: by four spaces, as in the example.
+- Do NOT wrap any content in code blocks.
+- Return ONLY the docstring, no explanatory text before or after.
+
+"""
+
+class_generation_standard = """
+Generate a single Python docstring for the following class {class_name}. The docstring should follow Google-style format and include:
+- Respond strictly in English.
+- A short summary of what the class does.
+- A list of its methods without details if class has them otherwise do not mention a list of methods.
+- A list of its attributes without types if class or constructor method has them otherwise do not mention a list of attributes.
+- A brief summary of what its methods and attributes do if one has them for.
+
+Return only docstring without any quotation.
+"""

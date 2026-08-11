@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 
 import pytest
 
-from osa_tool.operations.codebase.docstring_generation.docgen import DocGen
+from osa_tool.operations.codebase.docstring_generation.docgen import ClassDocumentationDetails, DocGen
 
 
 def test_format_class(mock_config_manager):
@@ -252,16 +252,49 @@ async def test_classify_model_size_uses_fallback_when_model_is_unsure(mock_confi
 
 
 @pytest.mark.asyncio
+async def test_classify_model_size_reclassifies_active_fallback(mock_config_manager):
+    docgen = DocGen(mock_config_manager)
+
+    async def classify(prompt):
+        if "primary-model" in prompt:
+            docgen.model_settings.model = "fallback-7B"
+            return "NOT_SMALL"
+        return "SMALL"
+
+    docgen.model_settings.model = "primary-model"
+    docgen.model_handler.async_request = AsyncMock(side_effect=classify)
+
+    assert await docgen.classify_model_size() is True
+    assert docgen.model_handler.async_request.await_count == 2
+    assert "fallback-7B" in docgen.model_handler.async_request.await_args.args[0]
+
+
+@pytest.mark.parametrize(
+    ("model_name", "expected"),
+    [
+        ("meta-llama/Llama-3.2-3B-Instruct", True),
+        ("Qwen/Qwen2.5-1.5B-Instruct", True),
+        ("mistralai/Mistral-7B-Instruct", True),
+        ("meta-llama/Llama-3.1-70B-Instruct", False),
+        ("mistralai/Mistral-Large-Instruct", False),
+        ("meta-llama/Llama-3.1-405B-Instruct", False),
+    ],
+)
+def test_small_model_name_uses_parameter_count(mock_config_manager, model_name, expected):
+    docgen = DocGen(mock_config_manager)
+
+    assert docgen._is_small_model_name(model_name) is expected
+
+
+@pytest.mark.asyncio
 async def test_generate_class_documentation(mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)
     docgen.model_handler.async_request = AsyncMock(return_value='"""Generated docstring"""')
 
-    class_details = [
-        "MyClass",  # class name
-        ["attr1", "attr2"],  # attributes
-        {"method_name": "foo", "docstring": "Does foo"},  # methods
-    ]
+    class_details = ClassDocumentationDetails(
+        name="MyClass", attributes=["attr1", "attr2"], methods=[{"method_name": "foo", "docstring": "Does foo"}]
+    )
 
     semaphore = asyncio.Semaphore(1)
 
@@ -280,7 +313,9 @@ async def test_generate_class_documentation_uses_small_model_prompt(mock_config_
     docgen.model_handler.async_request = AsyncMock(return_value='"""Generated docstring"""')
 
     result = await docgen.generate_class_documentation(
-        ["MyClass", ["name"], {"method_name": "run", "docstring": "Runs the job."}, ""],
+        ClassDocumentationDetails(
+            name="MyClass", attributes=["name"], methods=[{"method_name": "run", "docstring": "Runs the job."}]
+        ),
         asyncio.Semaphore(1),
     )
 
@@ -299,7 +334,7 @@ async def test_update_class_documentation(mock_config_manager):
     docgen.model_handler.async_request = AsyncMock(return_value="Updated description")
     docgen.main_idea = "Main idea here"
 
-    class_details = ["MyClass", "Other info", "Old description\n\nRest of doc"]
+    class_details = ClassDocumentationDetails(name="MyClass", docstring="Old description\n\nRest of doc")
 
     semaphore = asyncio.Semaphore(1)
 
@@ -469,16 +504,35 @@ def test_fallback_when_no_quotes(mock_config_manager):
     assert result.endswith('"""')
 
 
-def test_invalid_short_response(mock_config_manager):
+def test_short_unquoted_response_is_preserved(mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)
-    resp = "Hi"
+    resp = "Return the result."
 
     # Act
     result = docgen.extract_pure_docstring(resp)
 
     # Assert
-    assert result == '"""No valid docstring found."""'
+    assert result == '"""\nReturn the result.\n"""'
+
+
+def test_extract_pure_docstring_preserves_escaped_triple_quotes_in_content(mock_config_manager):
+    docgen = DocGen(mock_config_manager)
+
+    result = docgen.extract_pure_docstring('"""Return \\"\\"\\" as the delimiter."""')
+
+    assert r'\"\"\"' in result
+    assert "as the delimiter." in result
+
+
+def test_clean_docstring_removes_empty_section_and_none_sentinel(mock_config_manager):
+    docgen = DocGen(mock_config_manager)
+
+    result = docgen.clean_docstring('"""Summary.\n\nReturns:\n    None\n\nArgs:\n    value: A value.\n"""')
+
+    assert "Returns:" not in result
+    assert "\n    None" not in result
+    assert "Args:" in result
 
 
 @pytest.mark.parametrize(

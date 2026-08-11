@@ -4,6 +4,8 @@ import re
 import shutil
 import subprocess
 from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, List
 
@@ -14,6 +16,7 @@ import libcst as cst
 import tiktoken
 import tomli
 import yaml
+from pydantic import TypeAdapter, ValidationError
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.llm.llm import ModelHandlerFactory, ProtollmHandler
@@ -28,9 +31,28 @@ from osa_tool.operations.codebase.docstring_generation.topology import (
     build_dependency_graph,
 )
 from osa_tool.utils.logger import logger
+from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.utils import osa_project_root, resolve_repo_path
 
 dotenv.load_dotenv()
+
+
+class ModelSizeLabel(str, Enum):
+    """Supported responses for model-size classification."""
+
+    SMALL = "SMALL"
+    NOT_SMALL = "NOT_SMALL"
+    UNSURE = "UNSURE"
+
+
+@dataclass
+class ClassDocumentationDetails:
+    """Named input used to create or update a class docstring."""
+
+    name: str
+    attributes: list[str] = field(default_factory=list)
+    methods: list[dict] = field(default_factory=list)
+    docstring: str | None = None
 
 
 class DocGen(object):
@@ -99,22 +121,15 @@ Methods:
         self.model_handler: ProtollmHandler = ModelHandlerFactory.build(self.model_settings)
         self.main_idea = None
         self._function_index_cache = None
-        small_model_indicators = [
-            "llama",
-            "mistral",
-            "phi",
-            "8b",
-            "7b",
-            "3b",
-            "tiny",
-            "small",
-            "lite",
-            "nano",
-            "micro",
-        ]
-        self.is_small_model = any(
-            indicator in self.model_settings.model.lower() for indicator in small_model_indicators
-        )
+        self.is_small_model = self._is_small_model_name(self.model_settings.model)
+
+    @classmethod
+    def _is_small_model_name(cls, model_name: str) -> bool:
+        """Infer model size from an explicit parameter-count suffix in its name."""
+        match = re.search(r"(?<![\d.])(\d+(?:[._-]\d+)?)\s*(?:b|bn|billion)(?![a-z])", model_name, re.IGNORECASE)
+        if not match:
+            return False
+        return float(match.group(1).replace("_", ".").replace("-", ".")) <= cls.SMALL_MODEL_MAX_PARAMETERS_BILLIONS
 
     async def classify_model_size(self) -> bool:
         """Ask the selected model whether it belongs to the configured small-model class.
@@ -123,15 +138,11 @@ Methods:
         model does not return the required label or the request fails, the
         name-based heuristic established during initialization is preserved.
         """
-        prompt = (
-            "Classify the language model named below for docstring-generation prompting.\n"
-            f"Model name: {self.model_settings.model}\n"
-            "A small language model is one with no more than "
-            f"{self.SMALL_MODEL_MAX_PARAMETERS_BILLIONS} billion parameters.\n"
-            "Reply with exactly one label and no explanation:\n"
-            "SMALL — if this model has no more than the stated number of parameters.\n"
-            "NOT_SMALL — if it has more parameters or is not a small language model.\n"
-            "UNSURE — if you cannot determine the model size with confidence.\n"
+        model_name = self.model_settings.model
+        prompt = self._render_prompt(
+            "model_size_classification",
+            model_name=model_name,
+            max_parameters_billions=self.SMALL_MODEL_MAX_PARAMETERS_BILLIONS,
         )
 
         logger.debug(
@@ -155,12 +166,37 @@ Methods:
             self.model_settings.model,
             response,
         )
-        label = response.strip().upper()
-        if label == "SMALL":
+        if self.model_settings.model != model_name:
+            model_name = self.model_settings.model
+            logger.info("Reclassifying active fallback model %s", model_name)
+            try:
+                response = await self.model_handler.async_request(
+                    self._render_prompt(
+                        "model_size_classification",
+                        model_name=model_name,
+                        max_parameters_billions=self.SMALL_MODEL_MAX_PARAMETERS_BILLIONS,
+                    )
+                )
+            except Exception as error:
+                self.is_small_model = self._is_small_model_name(model_name)
+                logger.warning(
+                    "Could not classify active fallback model %s; using size heuristic (%s): %s",
+                    model_name,
+                    self.is_small_model,
+                    error,
+                )
+                return self.is_small_model
+
+        try:
+            label = TypeAdapter(ModelSizeLabel).validate_python(response.strip().upper())
+        except ValidationError:
+            label = None
+
+        if label is ModelSizeLabel.SMALL:
             self.is_small_model = True
-        elif label == "NOT_SMALL":
+        elif label is ModelSizeLabel.NOT_SMALL:
             self.is_small_model = False
-        elif label == "UNSURE":
+        elif label is ModelSizeLabel.UNSURE:
             logger.warning(
                 "Model %s is unsure of its size; using name-based heuristic (%s)",
                 self.model_settings.model,
@@ -184,6 +220,11 @@ Methods:
     def _get_repo_root(self) -> Path:
         """Return the resolved root path of the repository being processed."""
         return resolve_repo_path(self.config_manager.get_git_settings().repository)
+
+    def _render_prompt(self, name: str, **kwargs: Any) -> str:
+        """Render a docstring-generation template from the shared prompt catalog."""
+        template = self.config_manager.get_prompts().get(f"docstring_generation.{name}")
+        return PromptBuilder.render(template, **kwargs)
 
     @staticmethod
     def format_structure_openai(structure: dict) -> str:
@@ -311,24 +352,24 @@ Methods:
         return "python"
 
     async def generate_class_documentation(
-        self, class_details: list, semaphore: asyncio.Semaphore, language: str = "python"
+        self, class_details: ClassDocumentationDetails, semaphore: asyncio.Semaphore, language: str = "python"
     ) -> str:
         """
         Generate documentation for a class.
 
         Args:
-            class_details: A list of dictionaries containing method names and their docstrings.
+            class_details: Named class metadata used to build the prompt.
             semaphore: synchronous primitive that implements limitation of concurrency degree to avoid overloading api.
             language: Source language of the class ("python", "javascript" or "typescript").
         Returns:
             The generated class docstring.
         """
-        class_name = class_details[0]
-        attributes = class_details[1] if len(class_details) > 1 else []
-        methods = class_details[2:-1] if len(class_details) > 3 else []
+        class_name = class_details.name
+        attributes = class_details.attributes
+        methods = class_details.methods
         if language in ("javascript", "typescript"):
             prompt = (
-                f"""Generate a JSDoc comment for the following JavaScript/TypeScript class {class_details[0]}. Include:\n"""
+                f"""Generate a JSDoc comment for the following JavaScript/TypeScript class {class_name}. Include:\n"""
                 "- Respond strictly in English.\n"
                 "- A short summary of what the class does.\n"
                 "- Keep it concise; do NOT list methods/attributes as separate sections.\n"
@@ -347,15 +388,7 @@ Methods:
             return self.extract_pure_docstring(docstring)
 
     def _get_class_generation_prompt_large(self, class_name: str, attributes: list, methods: list) -> str:
-        prompt = (
-            f"""Generate a single Python docstring for the following class {class_name}. The docstring should follow Google-style format and include:\n"""
-            "- Respond strictly in English.\n"
-            "- A short summary of what the class does.\n"
-            "- A list of its methods without details if class has them otherwise do not mention a list of methods.\n"
-            "- A list of its attributes that explicitly mentioned at the constructor method's docstring (can be adressed as attributes, properties, class fields, etc.), without types if class or constructor method has them otherwise do not mention a list of attributes.\n"
-            "- A brief summary of what its methods and attributes do if one has them for.\n\n"
-            "Return only docstring without any quotation."
-        )
+        prompt = self._render_prompt("class_generation_standard", class_name=class_name)
         if attributes:
             prompt += "\nClass Attributes:\n" + "".join(f"- {attr}\n" for attr in attributes)
         if methods:
@@ -365,18 +398,8 @@ Methods:
         return prompt
 
     def _get_class_generation_prompt_small(self, class_name: str, attributes: list, methods: list) -> str:
-        prompt = (
-            f"{self.GOOGLE_STYLE_CLASS_EXAMPLE}\n\n"
-            f"Generate a Google-style docstring for class '{class_name}' following the exact format above.\n\n"
-            "CRITICAL FORMATTING RULES:\n"
-            "- Use triple double-quotes ONLY at start and end of the entire docstring.\n"
-            "- NEVER put triple quotes inside the docstring content.\n"
-            "- NEVER use .. method:: or any Sphinx/rST directives.\n"
-            "- Section headers: 'Attributes:' and 'Methods:' (if needed). No other section names.\n"
-            "- Keep section headers at column 0.\n"
-            "- Indent each entry inside Attributes: and Methods: by four spaces, as in the example.\n"
-            "- Do NOT wrap any content in code blocks (```).\n"
-            "- Return ONLY the docstring, no explanatory text before or after.\n\n"
+        prompt = self._render_prompt(
+            "class_generation_small", class_name=class_name, example=self.GOOGLE_STYLE_CLASS_EXAMPLE
         )
         if attributes:
             prompt += "Class attributes to document:\n"
@@ -386,40 +409,51 @@ Methods:
         if methods:
             prompt += "Class methods (name and existing docstring summary):\n"
             for method in methods:
-                summary = method.get("docstring", "").split("\n")[0] if method.get("docstring") else "No description"
+                summary = self._docstring_summary(method.get("docstring"))
                 prompt += f"- {method['method_name']}: {summary}\n"
             prompt += "\n"
         return prompt + "Now generate the docstring:"
 
     async def update_class_documentation(
-        self, class_details: list, semaphore: asyncio.Semaphore, language: str = "python"
+        self, class_details: ClassDocumentationDetails, semaphore: asyncio.Semaphore, language: str = "python"
     ) -> str:
         """
         Generate documentation for a class.
 
         Args:
-            class_details: A list of dictionaries containing method names and their docstrings.
+            class_details: Named class metadata used to build the prompt.
             semaphore: synchronous primitive that implements limitation of concurrency degree to avoid overloading api.
         Returns:
             The generated class docstring.
         """
         try:
-            desc, other = class_details[-1].split("\n\n", maxsplit=1)
+            desc, other = (class_details.docstring or "").split("\n\n", maxsplit=1)
             desc = desc.replace('"', "")
         except:
-            return class_details[-1].strip().strip('"').strip("'")
+            return (class_details.docstring or "").strip().strip('"').strip("'")
 
         old_desc = desc.strip('"\n ')
         if self.is_small_model and language == "python":
-            prompt = self._build_small_model_update_class_prompt(class_details[0], old_desc)
+            prompt = self._render_prompt(
+                "class_update_small",
+                class_name=class_details.name,
+                main_idea=self.main_idea,
+                old_description=old_desc,
+            )
+        elif language == "python":
+            prompt = self._render_prompt(
+                "class_update_standard",
+                class_name=class_details.name,
+                main_idea=self.main_idea,
+                old_description=old_desc,
+            )
         else:
-            lang_word = "JavaScript/TypeScript" if language in ("javascript", "typescript") else "Python"
             prompt = (
-                f"""Update the provided description for the following {lang_word} class {class_details[0]} using provided main idea of the project.\n"""
-            """Do not pay too much attention to the provided main idea - try not to mention it explicitly.\n"""
-            f"""The main idea: {self.main_idea}\n"""
-            f"""Old docstring description part: {old_desc}\n\n"""
-            """Return only pure changed description - without any code, other parts of docs, any quotations)"""
+                f"""Update the provided description for the following JavaScript/TypeScript class {class_details.name} using provided main idea of the project.\n"""
+                """Do not pay too much attention to the provided main idea - try not to mention it explicitly.\n"""
+                f"""The main idea: {self.main_idea}\n"""
+                f"""Old docstring description part: {old_desc}\n\n"""
+                """Return only pure changed description - without any code, other parts of docs, any quotations)"""
             )
 
         async with semaphore:
@@ -428,19 +462,13 @@ Methods:
 
         return "\n\n".join([new_desc, other])
 
-    def _build_small_model_update_class_prompt(self, class_name: str, old_desc: str) -> str:
-        return (
-            "You are updating a Python class docstring description. Output ONLY the new description sentence or paragraph.\n\n"
-            "Think step by step:\n"
-            "1. Read the old description and identify its core meaning.\n"
-            "2. Consider the project's main idea to refine the description but DO NOT mention the idea explicitly.\n"
-            "3. Improve clarity and conciseness while preserving the original intent.\n"
-            "4. Write ONLY the final updated description, without any extra commentary.\n\n"
-            f"Class name: {class_name}\n"
-            f"Project main idea: {self.main_idea}\n"
-            f"Old description: {old_desc}\n\n"
-            "Updated description (chain-of-thought reasoning performed internally):\n"
-        )
+    @staticmethod
+    def _docstring_summary(docstring: str | None) -> str:
+        """Return the first content line, excluding Python string delimiters."""
+        if not docstring:
+            return "No description"
+        content = DocGen.extract_pure_docstring(docstring)[3:-3].strip()
+        return next((line.strip() for line in content.splitlines() if line.strip()), "No description")
 
     async def generate_method_documentation(
         self,
@@ -750,8 +778,9 @@ Methods:
             A properly formatted Python docstring string with triple quotes.
         """
         response = gpt_response.strip().replace("<triple quotes>", '"""')
-        response = response.replace('\\"\\"\\"', '"""').replace('\\"', '"')
-        response = response.replace('\\\\"\\\\"\\\\"', '"""').replace('\\\\"', '"')
+        escaped_outer = re.fullmatch(r'\\"""([\s\S]*?)\\"""', response)
+        if escaped_outer:
+            response = f'"""{escaped_outer.group(1)}"""'
 
         # 1 — Strip Markdown-style code block
         markdown_match = re.search(r"```[a-z]*\n([\s\S]+?)\n```", response, re.IGNORECASE)
@@ -787,7 +816,7 @@ Methods:
         if response.startswith("'''") and response.endswith("'''"):
             response = f'"""{response[3:-3].strip()}"""'
         cleaned = response.strip("`'\" \n")
-        if len(cleaned.split()) > 3:
+        if cleaned:
             return f'"""\n{cleaned}\n"""'
 
         return '"""No valid docstring found."""'
@@ -808,8 +837,10 @@ Methods:
                 while next_index < len(lines) and not lines[next_index].strip():
                     next_index += 1
                 next_line = lines[next_index].strip().lower() if next_index < len(lines) else ""
-                if not next_line or next_line == "none" or re.match(r"^(Args|Returns|Raises|Attributes):", next_line):
-                    index = next_index
+                if not next_line or next_line == "none" or re.match(
+                    r"^(Args|Returns|Raises|Attributes):", next_line, re.IGNORECASE
+                ):
+                    index = next_index + (next_line == "none")
                     continue
             result.append(lines[index])
             index += 1
@@ -1488,18 +1519,27 @@ Methods:
                     if not item.get("docstring") or self.main_idea:
                         # collecting a class metadata ahead
                         class_name = item["name"]
-                        class_metadata = [class_name, item["attributes"]]
+                        attributes = list(item["attributes"])
+                        constructor = next(
+                            (method for method in item["methods"] if method["method_name"] == "__init__"), None
+                        )
+                        if constructor:
+                            initialized_attributes = re.findall(
+                                r"\bself\.([A-Za-z_]\w*)\s*(?::[^=]+)?=", constructor["source_code"]
+                            )
+                            attributes.extend(attr for attr in initialized_attributes if attr not in attributes)
+                        class_metadata = ClassDocumentationDetails(
+                            name=class_name, attributes=attributes, docstring=item["docstring"]
+                        )
 
                         # enrich the class metadata by meta about it's methods
                         for method in item["methods"]:
-                            class_metadata.append(
+                            class_metadata.methods.append(
                                 {
                                     "method_name": method["method_name"],
                                     "docstring": method["docstring"],
                                 }
                             )
-
-                        class_metadata.append(item["docstring"])
 
                         progress["count"] += 1
                         progress_label = f"[{progress['count']}/{progress['total']}]"
