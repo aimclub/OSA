@@ -244,6 +244,11 @@ class DocGen(object):
         Returns:
             The generated class docstring.
         """
+        # a class without an existing docstring has nothing to "update"; the caller drops
+        # empty results, so return "" instead of crashing on None in the split/strip below
+        if not class_details[-1]:
+            return ""
+
         # Construct a structured prompt
         try:
             desc, other = class_details[-1].split("\n\n", maxsplit=1)
@@ -1206,12 +1211,14 @@ class DocGen(object):
                 else:
                     docstring = component["details"]["docstring"] if component["details"]["docstring"] else ""
 
-                prompt_structure.append(f"""
+                prompt_structure.append(
+                    f"""
                     {_type.capitalize()} name: {component["name"] if _type == "class" else component["details"]["method_name"]}
                     Component description: {docstring}
                     Component place in hierarchy: {file}
                     Component importance score: {score}
-                    """)
+                    """
+                )
 
         logger.info(f"Generating the main idea of the project...")
 
