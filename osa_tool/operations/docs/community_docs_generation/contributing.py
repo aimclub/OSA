@@ -7,11 +7,13 @@ from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.docs.readme_generation.readme_utils import (
     find_in_repo_tree,
     remove_extra_blank_lines,
+    resolve_repo_host_and_root_url,
     save_sections,
+    to_repo_relative_link,
 )
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import build_repo_browse_url, osa_project_root, resolve_repo_path, resolve_repo_web_identity
+from osa_tool.utils.utils import osa_project_root, resolve_repo_path
 
 
 class ContributingBuilder:
@@ -26,32 +28,26 @@ class ContributingBuilder:
         self.metadata = metadata
         self.template_path = os.path.join(osa_project_root(), "docs", "templates", "contributing.toml")
         git = self.config_manager.get_git_settings()
-        self.host, self.host_domain, self.full_name = resolve_repo_web_identity(
+        self.host, self.url_path = resolve_repo_host_and_root_url(
             repo_url=self.repo_url,
             clone_url_http=self.metadata.clone_url_http,
             host=git.host,
             host_domain=git.host_domain,
             full_name=git.full_name,
         )
-        self.host = self.host or "github"
-        self.url_path = build_repo_browse_url(
-            repo_url=self.repo_url,
-            default_branch=self.metadata.default_branch,
-            host=self.host,
-            host_domain=self.host_domain,
-            full_name=self.full_name,
-            clone_url_http=self.metadata.clone_url_http,
-        )
         self.issues_url = self.metadata.issues_url or (
             f"{self.url_path}{'tasktracker' if 'gitverse' in self.host else 'issues'}" if self.url_path != "." else "."
         )
         self._template = self.load_template()
-        repo_root = resolve_repo_path(self.repo_url)
-        if "sourcecraft" in self.host:
-            self.repo_path = str(repo_root)
-        else:
-            self.repo_path = str(repo_root / f".{self.host}")
+
+        self.repo_root = str(resolve_repo_path(self.repo_url))
+        self.repo_path = self.repo_root if "sourcecraft" in self.host else os.path.join(self.repo_root, f".{self.host}")
         self.file_to_save = os.path.join(self.repo_path, "CONTRIBUTING.md")
+
+    def _local_repo_link(self, pattern: str, *, prefer_directory: bool = False) -> str:
+        rel_path = find_in_repo_tree(self.sourcerank.tree, pattern, prefer_directory=prefer_directory)
+        from_dir = os.path.relpath(os.path.dirname(self.file_to_save), self.repo_root).replace("\\", "/")
+        return to_repo_relative_link(rel_path, from_dir=from_dir)
 
     def load_template(self) -> dict:
         """
@@ -93,15 +89,7 @@ class ContributingBuilder:
         if not self.metadata.homepage_url:
             if self.sourcerank.docs_presence():
                 pattern = r"\b(docs?|documentation|wiki|manuals?)\b"
-                path = build_repo_browse_url(
-                    repo_url=self.repo_url,
-                    default_branch=self.metadata.default_branch,
-                    relative_path=find_in_repo_tree(self.sourcerank.tree, pattern),
-                    host=self.host,
-                    host_domain=self.host_domain,
-                    full_name=self.full_name,
-                    clone_url_http=self.metadata.clone_url_http,
-                )
+                path = self._local_repo_link(pattern, prefer_directory=True)
             else:
                 return ""
         else:
@@ -113,15 +101,7 @@ class ContributingBuilder:
         """Generates the README file link section."""
         if self.sourcerank.readme_presence():
             pattern = r"\bREADME(\.\w+)?\b"
-            path = build_repo_browse_url(
-                repo_url=self.repo_url,
-                default_branch=self.metadata.default_branch,
-                relative_path=find_in_repo_tree(self.sourcerank.tree, pattern),
-                host=self.host,
-                host_domain=self.host_domain,
-                full_name=self.full_name,
-                clone_url_http=self.metadata.clone_url_http,
-            )
+            path = self._local_repo_link(pattern)
         else:
             return ""
         return self._template["readme"].format(readme=path)
@@ -131,15 +111,7 @@ class ContributingBuilder:
         """Generates the test resources section link."""
         if self.sourcerank.tests_presence():
             pattern = r"\b(tests?|testcases?|unittest|test_suite)\b"
-            path = build_repo_browse_url(
-                repo_url=self.repo_url,
-                default_branch=self.metadata.default_branch,
-                relative_path=find_in_repo_tree(self.sourcerank.tree, pattern),
-                host=self.host,
-                host_domain=self.host_domain,
-                full_name=self.full_name,
-                clone_url_http=self.metadata.clone_url_http,
-            )
+            path = self._local_repo_link(pattern, prefer_directory=True)
         else:
             return ""
         return self._template["tests"].format(tests=path)

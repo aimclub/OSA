@@ -14,11 +14,16 @@ from osa_tool.operations.docs.readme_generation.pipeline.models import SectionRe
 from osa_tool.operations.docs.readme_generation.pipeline.section_catalog import BUILDER_METHOD_BY_SECTION_NAME
 from osa_tool.operations.docs.readme_generation.sections.header import HeaderBuilder
 from osa_tool.operations.docs.readme_generation.sections.installation import InstallationSectionBuilder
-from osa_tool.operations.docs.readme_generation.readme_utils import find_in_repo_tree, build_system_message
+from osa_tool.operations.docs.readme_generation.readme_utils import (
+    build_system_message,
+    find_in_repo_tree,
+    resolve_repo_host_and_root_url,
+    to_readme_relative_link,
+)
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.utils import build_repo_browse_url, extract_readme_content, osa_project_root, resolve_repo_path
+from osa_tool.utils.utils import extract_readme_content, osa_project_root, resolve_repo_path
 
 
 def _load_template() -> dict[str, Any]:
@@ -45,41 +50,31 @@ class _DeterministicSections:
         self._tpl = _load_template()
 
         git = self._cm.get_git_settings()
-        self._repo_root_url = build_repo_browse_url(
+        self._host, self._repo_root_url = resolve_repo_host_and_root_url(
             repo_url=git.repository,
-            default_branch=self._meta.default_branch,
+            clone_url_http=self._meta.clone_url_http,
             host=git.host,
             host_domain=git.host_domain,
             full_name=git.full_name,
-            clone_url_http=self._meta.clone_url_http,
         )
-        self._git = git
         self._is_local_repo = Path(git.repository).expanduser().is_dir()
 
-    def _repo_link(self, relative_path: str | None = None) -> str:
-        return build_repo_browse_url(
-            repo_url=self._git.repository,
-            default_branch=self._meta.default_branch,
-            relative_path=relative_path,
-            host=self._git.host,
-            host_domain=self._git.host_domain,
-            full_name=self._git.full_name,
-            clone_url_http=self._meta.clone_url_http,
-        )
+    def _local_repo_link(self, pattern: str, *, prefer_directory: bool = False) -> str:
+        rel_path = find_in_repo_tree(self._sr.tree, pattern, prefer_directory=prefer_directory)
+        return to_readme_relative_link(rel_path)
 
     def _issues_link(self) -> str:
         if self._meta.issues_url:
             return self._meta.issues_url.split("{", 1)[0]
         if self._repo_root_url != ".":
-            return f"{self._repo_root_url}issues"
-        return ".github/ISSUE_TEMPLATE/BUG_ISSUE.md"
+            suffix = "tasktracker" if self._host == "gitverse" else "issues"
+            return f"{self._repo_root_url}{suffix}"
+        pattern = r"\bBUG_ISSUE\.(md|rst|txt)$"
+        return self._local_repo_link(pattern)
 
     def _contributing_link(self) -> str:
         pattern = r"\b\w*contribut\w*\.(md|rst|txt)$"
-        found = find_in_repo_tree(self._sr.tree, pattern)
-        if found:
-            return self._repo_link(found)
-        return ".github/CONTRIBUTING.md" if self._is_local_repo else "CONTRIBUTING.md"
+        return self._local_repo_link(pattern)
 
     def _citation_repository_reference(self) -> str:
         if self._meta.clone_url_http:
@@ -106,7 +101,7 @@ class _DeterministicSections:
             logger.info("[DeterministicBuilder] Section 'examples' skipped: no examples detected")
             return ""
         pattern = r"\b(tutorials?|examples|notebooks?)\b"
-        path = self._repo_link(find_in_repo_tree(self._sr.tree, pattern))
+        path = self._local_repo_link(pattern, prefer_directory=True)
         content = self._tpl["examples"].format(path=path)
         logger.info("[DeterministicBuilder] Section 'examples' built from path=%s", path)
         return content
@@ -116,7 +111,7 @@ class _DeterministicSections:
         if not self._meta.homepage_url:
             if self._sr.docs_presence():
                 pattern = r"\b(docs?|documentation|wiki|manuals?)\b"
-                path = self._repo_link(find_in_repo_tree(self._sr.tree, pattern))
+                path = self._local_repo_link(pattern, prefer_directory=True)
             else:
                 logger.info("[DeterministicBuilder] Section 'documentation' skipped: docs not found")
                 return ""
@@ -135,15 +130,16 @@ class _DeterministicSections:
         )
 
         issues_url = self._issues_link()
-        issues = self._tpl["issues_section"].format(issues_url=issues_url)
+        issues = self._tpl["issues_section"].format(issues_url=issues_url) if issues_url else ""
 
-        contributing_text = ""
-        has_contributing = self._sr.contributing_presence()
-        if has_contributing:
-            contributing_url = self._contributing_link()
-            contributing_text = self._tpl["contributing_section"].format(
+        contributing_url = self._contributing_link() if self._sr.contributing_presence() else ""
+        contributing_text = (
+            self._tpl["contributing_section"].format(
                 contributing_url=contributing_url, name=self._cm.get_git_settings().name
             )
+            if contributing_url
+            else ""
+        )
 
         content = self._tpl["contributing"].format(
             dicsussion_section=discussions,
@@ -153,7 +149,7 @@ class _DeterministicSections:
         logger.info(
             "[DeterministicBuilder] Section 'contributing' built (discussions=%s, contributing_file=%s)",
             discussions_enabled,
-            has_contributing,
+            bool(contributing_url),
         )
         return content
 
@@ -163,7 +159,7 @@ class _DeterministicSections:
         local_license_file = find_in_repo_tree(self._sr.tree, pattern)
 
         if local_license_file:
-            path = self._repo_link(local_license_file)
+            path = to_readme_relative_link(local_license_file)
             license_name = self._meta.license_name or "License"
             content = self._tpl["license"].format(license_name=license_name, path=path)
             logger.info(
@@ -189,7 +185,7 @@ class _DeterministicSections:
         if self._sr.citation_presence():
             logger.info("[DeterministicBuilder] Citation file detected in repository")
             pattern = r"\bCITATION(\.\w+)?\b"
-            path = self._repo_link(find_in_repo_tree(self._sr.tree, pattern))
+            path = self._local_repo_link(pattern)
             content = self._tpl["citation"] + self._tpl["citation_v1"].format(path=path)
             logger.info("[DeterministicBuilder] Section 'citation' built from repository CITATION file")
             return content

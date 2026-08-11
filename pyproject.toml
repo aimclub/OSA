@@ -52,7 +52,9 @@ tomli = ">=2.0.0"
 torch = { version = ">=2.11.0", python = "<3.15" }
 torch-geometric = ">=2.7.0"
 tree-sitter = ">=0.23.0"
+tree-sitter-javascript = ">=0.25.0"
 tree-sitter-python = ">=0.23.0"
+tree-sitter-typescript = ">=0.23.2"
 pipreqs = { version = ">=0.5.0", python = "<3.13" }
 marker-pdf = { version = ">=1.10.2,<2.0.0", python = "<3.15" }
 

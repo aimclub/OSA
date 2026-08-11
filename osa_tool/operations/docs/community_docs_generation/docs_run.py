@@ -25,8 +25,6 @@ def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMe
     events: list[OperationEvent] = []
     generated_files: list[str] = []
     contributing = ContributingBuilder(config_manager, metadata)
-    community = CommunityTemplateBuilder(config_manager, metadata)
-    platform_host = getattr(community, "host", None) or config_manager.get_git_settings().host
 
     try:
         contributing.build()
@@ -35,6 +33,9 @@ def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMe
     except Exception as e:
         logger.error("Failed to generate CONTRIBUTING: %s", repr(e), exc_info=True)
         events.append(OperationEvent(kind=EventKind.FAILED, target="CONTRIBUTING", data={"error": repr(e)}))
+
+    community = CommunityTemplateBuilder(config_manager, metadata)
+    platform_host = community.host
 
     try:
         community.build_code_of_conduct()
