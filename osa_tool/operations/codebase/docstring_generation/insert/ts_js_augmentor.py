@@ -64,7 +64,17 @@ class TSJSAugmentor(BaseAugmentor):
         used = set()
         actions = []
 
-        for doc, meta in methods:
+        # lines inside an existing comment must never be matched as a declaration
+        # (e.g. a JSDoc body line ` * save(entity) ...` would otherwise look like a
+        # generator method `* save(`), which would corrupt the file on regeneration.
+        comment_idx = self._comment_lines(lines)
+
+        # methods may arrive out of source order (they are generated in dependency
+        # order). Map them to declarations by ascending source position so two methods
+        # sharing a name each get their OWN doc instead of a swapped one.
+        ordered = sorted(methods, key=lambda dm: dm[1].get("start_line", 0))
+
+        for doc, meta in ordered:
             name = meta["method_name"]
             patterns = [
                 # public/private/protected async static method<T>(
@@ -137,7 +147,7 @@ class TSJSAugmentor(BaseAugmentor):
             )
 
             for i, line in enumerate(lines):
-                if i in used:
+                if i in used or i in comment_idx:
                     continue
 
                 stripped = line.strip()
@@ -179,6 +189,68 @@ class TSJSAugmentor(BaseAugmentor):
                 lines.insert(i, self._format(doc, lines[i]))
 
         return lines
+
+    @staticmethod
+    def _scan_comment_state(line, in_block, quote):
+        """Advance the (in_block, quote) lexer state across one line.
+        Honours block comments `/* */`, `//` line comments, and string/template literals
+        (with backslash escapes). `quote` is threaded so a multi-line template literal
+        keeps its state and a `/*` inside it never opens a comment."""
+        i, n = 0, len(line)
+        while i < n:
+            pair = line[i : i + 2]
+            if in_block:
+                if pair == "*/":
+                    in_block = False
+                    i += 2
+                    continue
+                i += 1
+                continue
+            if quote:
+                if line[i] == "\\":
+                    i += 2
+                    continue
+                if line[i] == quote:
+                    quote = None
+                i += 1
+                continue
+            if line[i] in "\"'`":
+                quote = line[i]
+                i += 1
+                continue
+            if pair == "//":
+                break
+            if pair == "/*":
+                in_block = True
+                i += 2
+                continue
+            i += 1
+
+        # only a template literal (backtick) may legally span lines; a dangling ' or "
+        # at end of line is a mis-lexed regex/division, not a real multi-line string, so
+        # drop it instead of leaking the quote state onto the next line.
+        if quote is not None and quote != "`":
+            quote = None
+        return in_block, quote
+
+    @staticmethod
+    def _comment_lines(lines):
+        """Indices of lines whose start sits inside a block comment or a (multi-line)
+        string/template literal, or that are whole-line `//` comments, so declaration
+        patterns are never matched against comment or string text. A line that merely
+        opens a comment/string after real code is NOT marked (its code may be a
+        declaration); only lines that begin inside one are skipped."""
+        marked = set()
+        in_block = False
+        quote = None
+        for i, line in enumerate(lines):
+            if in_block or quote is not None:
+                marked.add(i)
+            elif line.strip().startswith("//"):
+                marked.add(i)
+            in_block, quote = TSJSAugmentor._scan_comment_state(line, in_block, quote)
+
+        return marked
 
     def _has_doc(self, lines, i):
         j = i - 1
