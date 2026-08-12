@@ -66,49 +66,6 @@ class DocGen(object):
 
     SMALL_MODEL_MAX_PARAMETERS_BILLIONS = 13
 
-    GOOGLE_STYLE_EXAMPLE = '''
-Example of correct Google-style docstring format:
-
-"""Fetches rows from a Bigtable.
-
-Retrieves rows pertaining to the given keys from the Table instance
-represented by big_table. Silly things may happen if
-other_silly_variable is not None.
-
-Args:
-    big_table: An open Bigtable Table instance.
-    keys: A sequence of strings representing the key of each table row
-        to fetch.
-    other_silly_variable: Another optional variable, that has a much
-        longer name than the other args, and which does nothing.
-
-Returns:
-    A dict mapping keys to the corresponding table row data
-    fetched. Each row is represented as a tuple of strings.
-
-Raises:
-    IOError: An error occurred accessing the bigtable.Table object.
-"""
-'''
-
-    GOOGLE_STYLE_CLASS_EXAMPLE = '''
-Example of correct Google-style class docstring format:
-
-"""A class for compressing binary data using arithmetic compression.
-
-Provides a range of algorithms and techniques for efficient data compression.
-The primary purpose is to create a robust and adaptable compression system.
-
-Attributes:
-    model: The compression model used for probability estimation.
-    bit_buffer: Buffer for storing compressed bits before writing.
-
-Methods:
-    compress: Compresses the input binary data.
-    decompress: Decompresses previously compressed data.
-"""
-'''
-
     def __init__(self, config_manager: ConfigManager):
         """
         Instantiates the object of the class.
@@ -390,29 +347,35 @@ Methods:
     def _get_class_generation_prompt_large(self, class_name: str, attributes: list, methods: list) -> str:
         prompt = self._render_prompt("class_generation_standard", class_name=class_name)
         if attributes:
-            prompt += "\nClass Attributes:\n" + "".join(f"- {attr}\n" for attr in attributes)
+            prompt += self._render_prompt(
+                "class_generation_standard_attributes", attributes="".join(f"- {attr}\n" for attr in attributes)
+            )
         if methods:
-            prompt += "\nClass Methods:\n" + "".join(
-                f"- {method['method_name']}: {method['docstring']}\n" for method in methods
+            prompt += self._render_prompt(
+                "class_generation_standard_methods",
+                methods="".join(f"- {method['method_name']}: {method['docstring']}\n" for method in methods),
             )
         return prompt
 
     def _get_class_generation_prompt_small(self, class_name: str, attributes: list, methods: list) -> str:
         prompt = self._render_prompt(
-            "class_generation_small", class_name=class_name, example=self.GOOGLE_STYLE_CLASS_EXAMPLE
+            "class_generation_small",
+            class_name=class_name,
+            example=self._render_prompt("google_style_class_example"),
         )
         if attributes:
-            prompt += "Class attributes to document:\n"
-            for attr in attributes:
-                prompt += f"- {attr}\n"
-            prompt += "\n"
+            prompt += self._render_prompt(
+                "class_generation_small_attributes", attributes="".join(f"- {attr}\n" for attr in attributes)
+            )
         if methods:
-            prompt += "Class methods (name and existing docstring summary):\n"
-            for method in methods:
-                summary = self._docstring_summary(method.get("docstring"))
-                prompt += f"- {method['method_name']}: {summary}\n"
-            prompt += "\n"
-        return prompt + "Now generate the docstring:"
+            prompt += self._render_prompt(
+                "class_generation_small_methods",
+                methods="".join(
+                    f"- {method['method_name']}: {self._docstring_summary(method.get('docstring'))}\n"
+                    for method in methods
+                ),
+            )
+        return prompt + self._render_prompt("class_generation_small_suffix")
 
     async def update_class_documentation(
         self, class_details: ClassDocumentationDetails, semaphore: asyncio.Semaphore, language: str = "python"
@@ -531,89 +494,44 @@ Methods:
             f"- Method decorators: {method_details['decorators']}\n\n"
         )
 
-        if context_code:
-            prompt += (
-                "Related functions documentation (for context only):\n"
-                f"{context_code}\n\n"
-                "Use this documentation ONLY to understand what the current method does.\n"
-                "Do NOT document helper functions.\n"
-                "Do NOT add their parameters to the Args section.\n"
-                "Do NOT describe their internal implementation.\n\n"
-            )
-
-        prompt += (
-            "Note:\n"
-            "- DO NOT return the method body.\n"
-            "- DO NOT invent parameters or behavior.\n"
-            "- DO NOT count parameters which are not listed in the parameters list.\n"
-            "- DO NOT lose any parameter.\n"
-            "- DO NOT wrap any sections of the docstring into <any_tag> — remove such tags if generated.\n\n"
-            "Return only the docstring without any quotation marks.\n"
+        if language in ("javascript", "typescript"):
+            return prompt
+        return self._render_prompt(
+            "method_generation_standard",
+            method_name=method_details["method_name"],
+            source_code=method_details["source_code"],
+            arguments=arguments,
+            decorators=method_details["decorators"],
+            context=(
+                self._render_prompt("method_generation_standard_context", context_code=context_code)
+                if context_code
+                else ""
+            ),
         )
-
-        return prompt
 
     def _get_method_generation_prompt_small(self, method_details: dict, context_code: str = None) -> str:
         arguments = [arg for arg in method_details["arguments"] if arg not in ("self", "cls")]
         method_name = method_details["method_name"]
         is_constructor = method_name == "__init__"
-        prompt = (
-            f"{self.GOOGLE_STYLE_EXAMPLE}\n\n"
-            f"Generate a Google-style docstring for method '{method_name}'.\n\n"
-            "OUTPUT CONTRACT (STRICT):\n"
-            "- Output ONLY a valid Python docstring.\n"
-            "- Do NOT output code, explanations, or text before/after.\n"
-            "- Do NOT use markdown (no ``` blocks).\n"
-            "- Do NOT repeat the function signature.\n"
-            "- Do NOT include inner functions or any code fragments.\n\n"
-            "STRUCTURE RULES:\n"
-            '- Start and end with triple double-quotes: """\n'
-            "- First line: short summary.\n"
-            "- Then optional sections in this order: Args, Returns, Raises.\n\n"
-            "SECTION RULES:\n"
-            "- Include a section ONLY if it has real content.\n"
-            "- NEVER write empty sections.\n"
-            "- NEVER write 'None'.\n"
-            "- If no returns -> omit Returns section.\n"
-            "- If no exceptions -> omit Raises section.\n"
+        return self._render_prompt(
+            "method_generation_small",
+            example=self._render_prompt("google_style_example"),
+            method_name=method_name,
+            decorators=method_details["decorators"],
+            arguments=arguments,
+            source_code=method_details["source_code"],
+            non_constructor_rules=(
+                "" if is_constructor else self._render_prompt("method_generation_small_non_constructor")
+            ),
+            context=(
+                self._render_prompt("method_generation_small_context", context_code=context_code)
+                if context_code
+                else ""
+            ),
+            constructor_rules=(
+                self._render_prompt("method_generation_small_constructor") if is_constructor else ""
+            ),
         )
-        if not is_constructor:
-            prompt += (
-                "- ABSOLUTELY FORBIDDEN: 'Attributes:' section for non-__init__ methods.\n"
-                "- Methods do NOT have attributes. Only classes can have Attributes section.\n"
-                "- NEVER generate an Attributes section for a method.\n"
-            )
-        prompt += (
-            "\nFORMAT RULES:\n"
-            "- Args: each argument on new line: '    name: Description.'\n"
-            "- Returns: one line indented by 4 spaces.\n"
-            "- No 'Attributes' section (methods must NOT have it).\n"
-            "- No Sphinx/rST syntax.\n"
-            "- No extra indentation before docstring.\n\n"
-            "ANTI-PATTERNS (FORBIDDEN):\n"
-            "- Returns: None\n"
-            "- Raises: None\n"
-            "- Attributes: None\n"
-            "- Any Python code\n"
-            "- 'Here is the docstring:'\n"
-            '- Escaped quotes like \\"\\"\\" (use regular triple quotes only)\n\n'
-        )
-        prompt += f"Method name: {method_name}\n"
-        prompt += f"Decorators: {method_details['decorators']}\n"
-        prompt += f"Arguments: {arguments}\n"
-        prompt += "Source code:\n```\n"
-        prompt += f"{method_details['source_code']}\n"
-        prompt += "```\n\n"
-        if context_code:
-            prompt += "Context (for understanding only, DO NOT copy):\n" f"{context_code}\n\n"
-        if is_constructor:
-            prompt += (
-                "SPECIAL RULE (__init__):\n"
-                "- Describe what the object initializes.\n"
-                "- Document all parameters.\n"
-                "- Do NOT add Attributes section (class-level docstring handles attributes).\n\n"
-            )
-        return prompt + "RETURN ONLY THE DOCSTRING:"
 
     async def update_method_documentation(
         self,
@@ -683,87 +601,45 @@ Methods:
             "```\n\n"
         )
 
-        if context_code:
-            prompt += (
-                "Imported methods / helper functions source code:\n"
-                "```\n"
-                f"{context_code}\n"
-                "```\n\n"
-                "Use this context ONLY to better understand the method behavior.\n"
-                "Do NOT document helper functions.\n"
-                "Do NOT mention their parameters explicitly.\n\n"
-            )
-
-        prompt += (
-            f"The main idea of the project (for context only): {self.main_idea}\n\n"
-            "Return only the updated docstring.\n"
-            "DO NOT return code.\n"
-            "Do NOT repeat the function signature or decorators.\n"
-            "DO NOT return other documentation sections.\n"
-            "Return only the docstring without any quotation marks.\n"
+        if language in ("javascript", "typescript"):
+            return prompt
+        return self._render_prompt(
+            "method_update_standard",
+            docstring=docstring,
+            method_name=method_details["method_name"],
+            class_location=f" (located inside {class_name} class)" if class_name else "",
+            decorators=method_details["decorators"],
+            source_code=method_details["source_code"],
+            context=(
+                self._render_prompt("method_update_standard_context", context_code=context_code)
+                if context_code
+                else ""
+            ),
+            main_idea=self.main_idea,
         )
-
-        return prompt
 
     def _get_method_update_prompt_small(
         self, method_details: dict, docstring: str, context_code: str = None, class_name: str = None
     ) -> str:
         method_name = method_details["method_name"]
         is_constructor = method_name == "__init__"
-        prompt = (
-            "You are updating a Python docstring (Google style). Output ONLY the updated docstring.\n"
-            "DO NOT output any Python code, function signatures, or class definitions.\n"
-            "DO NOT output the method body or any implementation details.\n"
-            "DO NOT include 'def ', 'return ', 'if ', 'else:', 'try:', 'except:' or any code keywords.\n"
-            "The response must contain ONLY the docstring text between triple quotes.\n\n"
-            "Think step by step internally, then provide the final docstring:\n"
-            "1. Analyze the existing docstring: what information is present?\n"
-            "2. Examine the method source code to understand what it does.\n"
-            "3. Write a clean Google-style docstring with appropriate sections.\n"
-            "4. Verify no code appears in the output.\n"
+        return self._render_prompt(
+            "method_update_small",
+            method_name=method_name,
+            class_location=f" (inside class {class_name})" if class_name else "",
+            decorators=method_details["decorators"],
+            docstring=docstring,
+            source_code=method_details["source_code"],
+            constructor_rules=self._render_prompt(
+                "method_update_small_constructor" if is_constructor else "method_update_small_non_constructor"
+            ),
+            context=(
+                self._render_prompt("method_update_small_context", context_code=context_code)
+                if context_code
+                else ""
+            ),
+            main_idea=self.main_idea,
         )
-        if is_constructor:
-            prompt += (
-                "5. This is __init__: document parameters and what gets initialized.\n"
-                "6. NEVER add an 'Attributes' section to __init__ docstring.\n"
-            )
-        else:
-            prompt += (
-                "5. This is NOT a constructor. NEVER add an 'Attributes' section.\n"
-                "6. Methods do NOT have attributes. Only classes can have Attributes sections.\n"
-            )
-        prompt += (
-            "\nFORBIDDEN OUTPUT PATTERNS:\n"
-            "- Any line starting with 'def ', 'class ', 'return ', 'if ', 'else:', 'try:', 'except:', 'raise '\n"
-            "- Any line containing 'self.' followed by assignment (e.g., 'self.attr = value')\n"
-            "- The 'Attributes:' section (forbidden for all methods, including __init__)\n"
-            "- 'Returns: None' or 'Raises: None'\n"
-            "- Empty sections\n"
-            '- Escaped quotes like \\"\\"\\"\n'
-            "- Code blocks with ```\n"
-            "- Any implementation logic\n\n"
-            "CORRECT OUTPUT EXAMPLE:\n"
-            '"""Short summary of what the method does.\n\n'
-            "Args:\n"
-            "    param1: Description of param1.\n"
-            "    param2: Description of param2.\n\n"
-            "Returns:\n"
-            "    Description of return value.\n"
-            '"""\n\n'
-            f"Method name: {method_name}"
-            f"{f' (inside class {class_name})' if class_name else ''}\n"
-            f"Decorators: {method_details['decorators']}\n"
-            f"Existing docstring:\n{docstring}\n\n"
-            "Source code (for understanding only, DO NOT copy into output):\n"
-            f"{method_details['source_code']}\n\n"
-        )
-        if context_code:
-            prompt += "Helper context (for understanding only, DO NOT copy):\n" f"{context_code}\n\n"
-        prompt += (
-            f"Project main idea (context only): {self.main_idea}\n\n"
-            "Now output ONLY the updated docstring (no code, no explanation, just the docstring):\n"
-        )
-        return prompt
 
     @staticmethod
     def extract_pure_docstring(gpt_response: str) -> str:
@@ -1565,20 +1441,6 @@ Methods:
 
     async def generate_the_main_idea(self, parsed_structure: dict, top_n: int = 5) -> None:
 
-        prompt = (
-            "You are an AI documentation assistant, and your task is to deduce the main idea of the project and formulate for which purpose it was written."
-            "You are given with the list of the main components (classes and functions) with it's short description and location in project hierarchy:\n"
-            "{components}\n\n"
-            "Formulate only main idea without describing components. DO NOT list components, just return overview of the project and it's purpose."
-            "Format you answer in a way you're writing markdown README file\n"
-            "Use such format for result:\n"
-            "# Name of the project\n"
-            "## Overview\n"
-            "## Purpose\n"
-            "Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know "
-            "you're provided with any information. AVOID ANY SPECULATION and inaccurate descriptions! Now, provide the summarized idea of the project based on it's components"
-        )
-
         _exclusions = (".git", ".github", "test", "tests", "__init__", "__pycache__")
 
         prompt_structure = []
@@ -1611,7 +1473,9 @@ Methods:
 
         components = "\n\n".join(prompt_structure)
 
-        self.main_idea = await self.model_handler.async_request(prompt.format(components=components))
+        self.main_idea = await self.model_handler.async_request(
+            self._render_prompt("main_idea_generation", components=components)
+        )
 
     async def summarize_submodules(self, project_structure: dict[str, Any], rate_limit: int = 20) -> Dict[str, str]:
         """
@@ -1632,22 +1496,6 @@ Methods:
 
         semaphore = asyncio.Semaphore(rate_limit)
 
-        _prompt = (
-            "You are an AI documentation assistant, and your task is to summarize the module of project and formulate for which purpose it was written."
-            "You are given with the list of the components (classes and functions or submodules) with it's short description:\n\n"
-            "{components}\n\n"
-            "Also you have the snippet from README file of project from this module has came describing the main idea of the whole project:\n\n"
-            "{main_idea}\n\n"
-            "You should generate markdown-formatted documentation page describing this module using description of all files and all submodules.\n"
-            "Do not too generalize overview and purpose parts using main idea, but try to explicit which part of main functionality does this module. Concentrate on local module features were infered previously.\n"
-            "Format you answer in a way you're writing README file for the module. Use such template:\n\n"
-            "# Name\n"
-            "## Overview\n"
-            "## Purpose\n"
-            "Do not mention or describe any submodule or files! Rename snake_case names on meaningful names."
-            "Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know "
-            "you're provided with any information. AVOID ANY SPECULATION and inaccurate descriptions! Now, provide the summarized idea of the module based on it's components"
-        )
 
         _summaries = {}
 
@@ -1676,7 +1524,7 @@ Methods:
 
             async with semaphore:
                 return await self.model_handler.async_request(
-                    _prompt.format(components=components, main_idea=self.main_idea)
+                    self._render_prompt("submodule_summary", components=components, main_idea=self.main_idea)
                 )
 
         async def traverse_and_summarize(path: Path, project: dict) -> str:

@@ -57,3 +57,301 @@ Generate a single Python docstring for the following class {class_name}. The doc
 
 Return only docstring without any quotation.
 """
+
+class_generation_standard_attributes = '''
+Class Attributes:
+{attributes}'''
+
+class_generation_standard_methods = '''
+Class Methods:
+{methods}'''
+
+class_generation_small_attributes = '''Class attributes to document:
+{attributes}
+'''
+
+class_generation_small_methods = '''Class methods (name and existing docstring summary):
+{methods}
+'''
+
+class_generation_small_suffix = "Now generate the docstring:"
+
+google_style_example = '''
+
+Example of correct Google-style docstring format:
+
+"""Fetches rows from a Bigtable.
+
+Retrieves rows pertaining to the given keys from the Table instance
+represented by big_table. Silly things may happen if
+other_silly_variable is not None.
+
+Args:
+    big_table: An open Bigtable Table instance.
+    keys: A sequence of strings representing the key of each table row
+        to fetch.
+    other_silly_variable: Another optional variable, that has a much
+        longer name than the other args, and which does nothing.
+
+Returns:
+    A dict mapping keys to the corresponding table row data
+    fetched. Each row is represented as a tuple of strings.
+
+Raises:
+    IOError: An error occurred accessing the bigtable.Table object.
+"""
+'''
+
+google_style_class_example = '''
+
+Example of correct Google-style class docstring format:
+
+"""A class for compressing binary data using arithmetic compression.
+
+Provides a range of algorithms and techniques for efficient data compression.
+The primary purpose is to create a robust and adaptable compression system.
+
+Attributes:
+    model: The compression model used for probability estimation.
+    bit_buffer: Buffer for storing compressed bits before writing.
+
+Methods:
+    compress: Compresses the input binary data.
+    decompress: Decompresses previously compressed data.
+"""
+'''
+
+method_generation_standard = '''Generate a Python docstring for the following method. The docstring should follow Google-style format and include:
+- A short summary of what the method does.
+- A description of its parameters without types.
+- Respond strictly in English.
+- If the method is a class constructor, explicitly list all class fields (object properties) that are initialized, including their names and purposes. These fields should match the attributes assigned within the constructor (e.g., this.field = ..., self.field = ...). This information will be used to generate the class-level documentation.
+- The return type and description (omit Returns section if the method does not return a value).
+
+- Method Name: {method_name}
+
+Method source code: You are given only the body of a single method, without its signature. All visible code, including any inner functions or nested logic, belongs to this single method. Do NOT write separate docstrings for inner functions — they are part of the main method's logic.
+Do NOT repeat the function signature or decorators.
+```
+{source_code}
+```
+
+- List of arguments:
+{arguments}
+
+Method Details:
+- Method decorators: {decorators}
+
+{context}Note:
+- DO NOT return the method body.
+- DO NOT invent parameters or behavior.
+- DO NOT count parameters which are not listed in the parameters list.
+- DO NOT lose any parameter.
+- DO NOT wrap any sections of the docstring into <any_tag> — remove such tags if generated.
+
+Return only the docstring without any quotation marks.
+'''
+
+method_generation_standard_context = '''Related functions documentation (for context only):
+{context_code}
+
+Use this documentation ONLY to understand what the current method does.
+Do NOT document helper functions.
+Do NOT add their parameters to the Args section.
+Do NOT describe their internal implementation.
+
+'''
+
+method_generation_small = '''{example}
+
+Generate a Google-style docstring for method '{method_name}'.
+
+OUTPUT CONTRACT (STRICT):
+- Output ONLY a valid Python docstring.
+- Do NOT output code, explanations, or text before/after.
+- Do NOT use markdown (no ``` blocks).
+- Do NOT repeat the function signature.
+- Do NOT include inner functions or any code fragments.
+
+STRUCTURE RULES:
+- Start and end with triple double-quotes: """
+- First line: short summary.
+- Then optional sections in this order: Args, Returns, Raises.
+
+SECTION RULES:
+- Include a section ONLY if it has real content.
+- NEVER write empty sections.
+- NEVER write 'None'.
+- If no returns -> omit Returns section.
+- If no exceptions -> omit Raises section.
+{non_constructor_rules}
+FORMAT RULES:
+- Args: each argument on new line: '    name: Description.'
+- Returns: one line indented by 4 spaces.
+- No 'Attributes' section (methods must NOT have it).
+- No Sphinx/rST syntax.
+- No extra indentation before docstring.
+
+ANTI-PATTERNS (FORBIDDEN):
+- Returns: None
+- Raises: None
+- Attributes: None
+- Any Python code
+- 'Here is the docstring:'
+- Escaped quotes like \"\"\" (use regular triple quotes only)
+
+Method name: {method_name}
+Decorators: {decorators}
+Arguments: {arguments}
+Source code:
+```
+{source_code}
+```
+
+{context}{constructor_rules}RETURN ONLY THE DOCSTRING:'''
+
+method_generation_small_non_constructor = '''- ABSOLUTELY FORBIDDEN: 'Attributes:' section for non-__init__ methods.
+- Methods do NOT have attributes. Only classes can have Attributes section.
+- NEVER generate an Attributes section for a method.
+'''
+
+method_generation_small_context = '''Context (for understanding only, DO NOT copy):
+{context_code}
+
+'''
+
+method_generation_small_constructor = '''SPECIAL RULE (__init__):
+- Describe what the object initializes.
+- Document all parameters.
+- Do NOT add Attributes section (class-level docstring handles attributes).
+
+'''
+
+method_update_standard = '''Update the provided docstring for the following Python method.
+Preserve correct existing information and add missing details based on the source code.
+
+Guidelines:
+- Improve clarity and completeness without rewriting everything from scratch.
+- Answer WHY the method does what it does when it is not obvious.
+- If the original docstring contains only a description, add Args and Returns sections if needed.
+- Describe parameters without types.
+- Omit Returns section if the method does not return a value.
+- Do NOT invent parameters or behavior.
+
+Original docstring:
+{docstring}
+
+Method Details:
+- Method Name: {method_name}{class_location}
+- Method decorators: {decorators}
+
+Source Code:
+```
+{source_code}
+```
+
+{context}The main idea of the project (for context only): {main_idea}
+
+Return only the updated docstring.
+DO NOT return code.
+DO NOT repeat the function signature or decorators.
+DO NOT return other documentation sections.
+Return only the docstring without any quotation marks.
+'''
+
+method_update_standard_context = '''Imported methods / helper functions source code:
+```
+{context_code}
+```
+
+Use this context ONLY to better understand the method behavior.
+Do NOT document helper functions.
+Do NOT mention their parameters explicitly.
+
+'''
+
+method_update_small = '''You are updating a Python docstring (Google style). Output ONLY the updated docstring.
+DO NOT output any Python code, function signatures, or class definitions.
+DO NOT output the method body or any implementation details.
+DO NOT include 'def ', 'return ', 'if ', 'else:', 'try:', 'except:' or any code keywords.
+The response must contain ONLY the docstring text between triple quotes.
+
+Think step by step internally, then provide the final docstring:
+1. Analyze the existing docstring: what information is present?
+2. Examine the method source code to understand what it does.
+3. Write a clean Google-style docstring with appropriate sections.
+4. Verify no code appears in the output.
+{constructor_rules}
+FORBIDDEN OUTPUT PATTERNS:
+- Any line starting with 'def ', 'class ', 'return ', 'if ', 'else:', 'try:', 'except:', 'raise '
+- Any line containing 'self.' followed by assignment (e.g., 'self.attr = value')
+- The 'Attributes:' section (forbidden for all methods, including __init__)
+- 'Returns: None' or 'Raises: None'
+- Empty sections
+- Escaped quotes like \"\"\"
+- Code blocks with ```
+- Any implementation logic
+
+CORRECT OUTPUT EXAMPLE:
+"""Short summary of what the method does.
+
+Args:
+    param1: Description of param1.
+    param2: Description of param2.
+
+Returns:
+    Description of return value.
+"""
+
+Method name: {method_name}{class_location}
+Decorators: {decorators}
+Existing docstring:
+{docstring}
+
+Source code (for understanding only, DO NOT copy into output):
+{source_code}
+
+{context}Project main idea (context only): {main_idea}
+
+Now output ONLY the updated docstring (no code, no explanation, just the docstring):
+'''
+
+method_update_small_constructor = '''5. This is __init__: document parameters and what gets initialized.
+6. NEVER add an 'Attributes' section to __init__ docstring.
+'''
+
+method_update_small_non_constructor = '''5. This is NOT a constructor. NEVER add an 'Attributes' section.
+6. Methods do NOT have attributes. Only classes can have Attributes sections.
+'''
+
+method_update_small_context = '''Helper context (for understanding only, DO NOT copy):
+{context_code}
+
+'''
+
+main_idea_generation = '''You are an AI documentation assistant, and your task is to deduce the main idea of the project and formulate for which purpose it was written.You are given with the list of the main components (classes and functions) with it's short description and location in project hierarchy:
+{components}
+
+Formulate only main idea without describing components. DO NOT list components, just return overview of the project and it's purpose.Format you answer in a way you're writing markdown README file
+Use such format for result:
+# Name of the project
+## Overview
+## Purpose
+Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know you're provided with any information. AVOID ANY SPECULATION and inaccurate descriptions! Now, provide the summarized idea of the project based on it's components'''
+
+submodule_summary = '''You are an AI documentation assistant, and your task is to summarize the module of project and formulate for which purpose it was written.You are given with the list of the components (classes and functions or submodules) with it's short description:
+
+{components}
+
+Also you have the snippet from README file of project from this module has came describing the main idea of the whole project:
+
+{main_idea}
+
+You should generate markdown-formatted documentation page describing this module using description of all files and all submodules.
+Do not too generalize overview and purpose parts using main idea, but try to explicit which part of main functionality does this module. Concentrate on local module features were infered previously.
+Format you answer in a way you're writing README file for the module. Use such template:
+
+# Name
+## Overview
+## Purpose
+Do not mention or describe any submodule or files! Rename snake_case names on meaningful names.Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know you're provided with any information. AVOID ANY SPECULATION and inaccurate descriptions! Now, provide the summarized idea of the module based on it's components'''
