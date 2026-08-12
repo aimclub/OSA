@@ -328,6 +328,24 @@ async def test_generate_class_documentation_uses_small_model_prompt(mock_config_
 
 
 @pytest.mark.asyncio
+async def test_generate_class_documentation_keeps_jsdoc_response_raw(mock_config_manager):
+    docgen = DocGen(mock_config_manager)
+    docgen.is_small_model = True
+    docgen.model_handler.async_request = AsyncMock(return_value="/**\n * Documents a class.\n */")
+
+    result = await docgen.generate_class_documentation(
+        ClassDocumentationDetails(name="Widget"),
+        asyncio.Semaphore(1),
+        language="typescript",
+    )
+
+    prompt = docgen.model_handler.async_request.await_args.args[0]
+    assert result == "/**\n * Documents a class.\n */"
+    assert "JSDoc" in prompt
+    assert "Google-style" not in prompt
+
+
+@pytest.mark.asyncio
 async def test_update_class_documentation(mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)
@@ -393,6 +411,30 @@ async def test_update_method_documentation(mock_config_manager):
     # Assert
     assert updated_doc == '"""\nUpdated docstring\n"""'
     docgen.model_handler.async_request.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_generate_method_documentation_uses_jsdoc_for_small_models(mock_config_manager):
+    docgen = DocGen(mock_config_manager)
+    docgen.is_small_model = True
+    docgen.model_handler.async_request = AsyncMock(return_value="Describes the function.")
+
+    result = await docgen.generate_method_documentation(
+        {
+            "method_name": "run",
+            "source_code": "return value;",
+            "arguments": ["value"],
+            "decorators": [],
+            "docstring": "",
+        },
+        asyncio.Semaphore(1),
+        language="javascript",
+    )
+
+    prompt = docgen.model_handler.async_request.await_args.args[0]
+    assert result == "Describes the function."
+    assert "JSDoc" in prompt
+    assert "Google-style" not in prompt
 
 
 def test_valid_triple_quotes(mock_config_manager):
@@ -722,7 +764,7 @@ async def test_generate_the_main_idea_filters_and_sorts(mock_config_manager, moc
     # Arrange
     docgen = DocGen(mock_config_manager)
     mock_request = mocker.AsyncMock(return_value="# Project\n## Overview\n## Purpose")
-    docgen.model_handler.async_request = mock_request
+    docgen.readme_model_handler.async_request = mock_request
 
     parsed_structure = {
         "src/core.py": {
@@ -772,7 +814,11 @@ async def test_summarize_submodules_creates_summaries(mock_config_manager, mocke
     (sub_dir / "__init__.py").write_text("")
     (sub_dir / "helper.py").write_text("def helper(): pass")
 
-    mocker.patch.object(docgen.model_handler, "async_request", new=mocker.AsyncMock(return_value="Summary of module"))
+    mocker.patch.object(
+        docgen.readme_model_handler,
+        "async_request",
+        new=mocker.AsyncMock(return_value="Summary of module"),
+    )
 
     project_structure = {
         str(pkg_dir / "core.py"): {

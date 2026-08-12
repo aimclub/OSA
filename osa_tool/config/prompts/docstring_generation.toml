@@ -355,3 +355,60 @@ Format you answer in a way you're writing README file for the module. Use such t
 ## Overview
 ## Purpose
 Do not mention or describe any submodule or files! Rename snake_case names on meaningful names.Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know you're provided with any information. AVOID ANY SPECULATION and inaccurate descriptions! Now, provide the summarized idea of the module based on it's components'''
+
+class_generation_jsdoc = '''Generate a JSDoc comment for the following JavaScript/TypeScript class {class_name}. Include:
+- Respond strictly in English.
+- A short summary of what the class does.
+- Keep it concise; do NOT list methods or attributes as separate sections.
+- Do NOT use Python conventions: no self, __init__, Args:, Returns:, or Attributes: sections.
+
+Return only the comment text, without quotation marks.'''
+
+class_update_jsdoc = '''Update the provided description for the following JavaScript/TypeScript class {class_name} using the project's main idea as context.
+Do not mention the project idea explicitly.
+
+The main idea: {main_idea}
+Old docstring description part: {old_description}
+
+Return only the changed description, without code, other documentation parts, or quotation marks.'''
+
+method_generation_jsdoc = '''Generate a JSDoc comment for the following JavaScript/TypeScript function.
+- Respond strictly in English.
+- Include a short summary.
+- Include an @param {{type}} name line for every parameter; infer types from code and use * if unknown.
+- Include an @returns {{type}} line when the function returns a value.
+- Do NOT use Python conventions such as self, __init__, Args:, or Returns:.
+- Do NOT document inner functions separately.
+
+Method name: {method_name}
+Source code:
+```
+{source_code}
+```
+Arguments: {arguments}
+Decorators: {decorators}
+Related context (for understanding only; do not document it):
+{context}
+
+Return only the JSDoc comment text.'''
+
+method_update_jsdoc = '''Update the provided JSDoc comment for the following JavaScript/TypeScript function.
+Preserve correct information and add missing details based on the source code.
+- Use @param {{type}} name for each parameter and @returns {{type}} for a returned value.
+- Do NOT use Python conventions such as self, __init__, Args:, or Returns:.
+- Do NOT invent parameters or behaviour.
+
+Original JSDoc:
+{docstring}
+
+Method name: {method_name}{class_location}
+Decorators: {decorators}
+Source code:
+```
+{source_code}
+```
+Related context (for understanding only; do not document it):
+{context}
+Project main idea (context only): {main_idea}
+
+Return only the updated JSDoc comment text.'''

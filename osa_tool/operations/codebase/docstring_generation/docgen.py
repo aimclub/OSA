@@ -76,6 +76,9 @@ class DocGen(object):
         self.config_manager = config_manager
         self.model_settings = self.config_manager.get_model_settings("docstring")
         self.model_handler: ProtollmHandler = ModelHandlerFactory.build(self.model_settings)
+        self.readme_model_handler: ProtollmHandler = ModelHandlerFactory.build(
+            self.config_manager.get_model_settings("readme")
+        )
         self.main_idea = None
         self._function_index_cache = None
         self.is_small_model = self._is_small_model_name(self.model_settings.model)
@@ -325,14 +328,7 @@ class DocGen(object):
         attributes = class_details.attributes
         methods = class_details.methods
         if language in ("javascript", "typescript"):
-            prompt = (
-                f"""Generate a JSDoc comment for the following JavaScript/TypeScript class {class_name}. Include:\n"""
-                "- Respond strictly in English.\n"
-                "- A short summary of what the class does.\n"
-                "- Keep it concise; do NOT list methods/attributes as separate sections.\n"
-                "- Do NOT use Python conventions: no `self`, no `__init__`, no `Args:`/`Returns:`/`Attributes:` sections.\n\n"
-                "Return only the comment text without any quotation."
-            )
+            prompt = self._render_prompt("class_generation_jsdoc", class_name=class_name)
         else:
             prompt = (
                 self._get_class_generation_prompt_small(class_name, attributes, methods)
@@ -342,6 +338,8 @@ class DocGen(object):
 
         async with semaphore:
             docstring = await self.model_handler.async_request(prompt)
+            if language in ("javascript", "typescript"):
+                return docstring.strip()
             return self.extract_pure_docstring(docstring)
 
     def _get_class_generation_prompt_large(self, class_name: str, attributes: list, methods: list) -> str:
@@ -411,12 +409,11 @@ class DocGen(object):
                 old_description=old_desc,
             )
         else:
-            prompt = (
-                f"""Update the provided description for the following JavaScript/TypeScript class {class_details.name} using provided main idea of the project.\n"""
-                """Do not pay too much attention to the provided main idea - try not to mention it explicitly.\n"""
-                f"""The main idea: {self.main_idea}\n"""
-                f"""Old docstring description part: {old_desc}\n\n"""
-                """Return only pure changed description - without any code, other parts of docs, any quotations)"""
+            prompt = self._render_prompt(
+                "class_update_jsdoc",
+                class_name=class_details.name,
+                main_idea=self.main_idea,
+                old_description=old_desc,
             )
 
         async with semaphore:
@@ -452,6 +449,8 @@ class DocGen(object):
 
         async with semaphore:
             docstring = await self.model_handler.async_request(prompt)
+            if language in ("javascript", "typescript"):
+                return docstring.strip()
             extracted = self.extract_pure_docstring(docstring)
             return self.clean_docstring(extracted)
 
@@ -460,13 +459,13 @@ class DocGen(object):
     ) -> str:
         arguments = [a for a in method_details["arguments"] if a not in ("self", "cls")]
         if language in ("javascript", "typescript"):
-            intro = (
-                "Generate a JSDoc comment for the following JavaScript/TypeScript function. Use JSDoc tags and include:\n"
-                "- Respond strictly in English.\n"
-                "- A short summary of what the function does.\n"
-                "- A `@param {type} name` line for each parameter (infer the type from the code; use `*` if unknown).\n"
-                "- A `@returns {type}` line describing the return value (omit it if the function returns nothing).\n"
-                "- Do NOT use Python conventions: no `self`, no `__init__`, no `Args:`/`Returns:` sections.\n\n"
+            return self._render_prompt(
+                "method_generation_jsdoc",
+                method_name=method_details["method_name"],
+                source_code=method_details["source_code"],
+                arguments=arguments,
+                decorators=method_details["decorators"],
+                context=context_code or "",
             )
         else:
             intro = (
@@ -493,9 +492,6 @@ class DocGen(object):
             "Method Details:\n"
             f"- Method decorators: {method_details['decorators']}\n\n"
         )
-
-        if language in ("javascript", "typescript"):
-            return prompt
         return self._render_prompt(
             "method_generation_standard",
             method_name=method_details["method_name"],
@@ -557,6 +553,8 @@ class DocGen(object):
 
         async with semaphore:
             response = await self.model_handler.async_request(prompt)
+            if language in ("javascript", "typescript"):
+                return response.strip()
             return self.clean_docstring(self.extract_pure_docstring(response))
 
     def _get_method_update_prompt_large(
@@ -568,14 +566,15 @@ class DocGen(object):
         language: str = "python",
     ) -> str:
         if language in ("javascript", "typescript"):
-            guidelines = (
-                "Update the provided JSDoc comment for the following JavaScript/TypeScript function.\n"
-                "Preserve correct existing information and add missing details based on the source code.\n\n"
-                "Guidelines:\n"
-                "- Improve clarity and completeness without rewriting everything from scratch.\n"
-                "- Use JSDoc tags: `@param {type} name` for each parameter, `@returns {type}` for the return value (omit if nothing is returned).\n"
-                "- Do NOT use Python conventions: no `self`, no `__init__`, no `Args:`/`Returns:` sections.\n"
-                "- Do NOT invent parameters or behavior.\n\n"
+            return self._render_prompt(
+                "method_update_jsdoc",
+                docstring=docstring,
+                method_name=method_details["method_name"],
+                class_location=f" (located inside {class_name} class)" if class_name else "",
+                decorators=method_details["decorators"],
+                source_code=method_details["source_code"],
+                context=context_code or "",
+                main_idea=self.main_idea,
             )
         else:
             guidelines = (
@@ -600,9 +599,6 @@ class DocGen(object):
             f"{method_details['source_code']}\n"
             "```\n\n"
         )
-
-        if language in ("javascript", "typescript"):
-            return prompt
         return self._render_prompt(
             "method_update_standard",
             docstring=docstring,
@@ -1473,7 +1469,7 @@ class DocGen(object):
 
         components = "\n\n".join(prompt_structure)
 
-        self.main_idea = await self.model_handler.async_request(
+        self.main_idea = await self.readme_model_handler.async_request(
             self._render_prompt("main_idea_generation", components=components)
         )
 
@@ -1523,7 +1519,7 @@ class DocGen(object):
             logger.info(f"Generating summary for the module {name}")
 
             async with semaphore:
-                return await self.model_handler.async_request(
+                return await self.readme_model_handler.async_request(
                     self._render_prompt("submodule_summary", components=components, main_idea=self.main_idea)
                 )
 
