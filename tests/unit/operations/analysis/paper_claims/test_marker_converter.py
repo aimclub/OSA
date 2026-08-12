@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from osa_tool.operations.analysis.paper_claims import marker_converter
 from osa_tool.operations.analysis.paper_claims.exceptions import PdfConversionError
 from osa_tool.operations.analysis.paper_claims.marker_converter import (
     LOW_VRAM_MARKER_CONFIG,
@@ -202,4 +203,11 @@ def test_default_converter_factory_explains_how_to_install_missing_marker(monkey
     monkeypatch.setattr(builtins, "__import__", raise_for_marker)
 
     with pytest.raises(PdfConversionError, match=r'pip install "osa_tool\[paper-claims\]"'):
+        _default_converter_factory(MarkerOptions())
+
+
+def test_default_converter_factory_rejects_python_315_before_importing_marker(monkeypatch):
+    monkeypatch.setattr(marker_converter.sys, "version_info", (3, 15, 0))
+
+    with pytest.raises(PdfConversionError, match=r"Python 3\.11 through 3\.14"):
         _default_converter_factory(MarkerOptions())

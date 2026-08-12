@@ -103,7 +103,18 @@ def _render_chunk_markdown(
         _cleanup_marker_chunk_memory(torch=torch)
 
 
+def _require_supported_default_marker_python() -> None:
+    """Raise an actionable error before importing an unsupported Marker stack."""
+    if sys.version_info >= (3, 15):
+        raise PdfConversionError(
+            "Paper-claims PDF conversion with the default Marker converter is currently supported only on Python "
+            "3.11 through 3.14. Use Python 3.14 or earlier and install it with: "
+            'pip install "osa_tool[paper-claims]".'
+        )
+
+
 def _default_converter_factory(options: MarkerOptions) -> tuple[Any, Callable[[Any], str], str]:
+    _require_supported_default_marker_python()
     try:
         from marker.config.parser import ConfigParser
         from marker.converters.pdf import PdfConverter

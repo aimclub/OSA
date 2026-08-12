@@ -107,6 +107,9 @@ pip install "osa_tool[paper-claims]"
 pip install "osa_tool[repository-validation]"
 ```
 
+The core package supports Python 3.11 and later. The `paper-claims` PDF conversion workflow currently requires
+Python 3.11--3.14 because its Marker dependency stack is not available for Python 3.15+.
+
 **Build from source:**
 
 1. Clone the Open-Source-Advisor repository:

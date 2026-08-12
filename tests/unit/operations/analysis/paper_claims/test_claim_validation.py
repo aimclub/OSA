@@ -1,8 +1,10 @@
 import builtins
 
 import pytest
+from pydantic import ValidationError
 
 from osa_tool.operations.analysis.paper_claims import claim_validation
+from osa_tool.operations.analysis.paper_claims.claim_schemas import ClaimCandidateResponse
 from osa_tool.operations.analysis.paper_claims.exceptions import ClaimExtractionError
 from osa_tool.operations.analysis.paper_claims.claim_validation import (
     partition_valid_claim_candidates,
@@ -23,6 +25,38 @@ def test_validate_claim_candidate_accepts_exact_source_text():
     validate_claim_candidate(candidate, section=make_section("The model uses BERT-base without fine-tuning."))
 
     assert candidate.original_text == "The model uses BERT-base without fine-tuning."
+
+
+@pytest.mark.parametrize("field", ["claim", "original_text"])
+@pytest.mark.parametrize("value", ["", " \t\n "])
+def test_claim_candidate_rejects_blank_claim_or_evidence(field, value):
+    payload = {
+        "claim": "The model uses BERT-base without fine-tuning.",
+        "original_text": "The model uses BERT-base without fine-tuning.",
+        "category": "model_architecture",
+        "value": "BERT-base",
+        "verifiability": "high",
+    }
+    payload[field] = value
+
+    with pytest.raises(ValidationError, match="non-whitespace"):
+        ClaimCandidateResponse.model_validate(payload)
+
+
+def test_claim_candidate_preserves_non_blank_verbatim_evidence():
+    original_text = "  The model uses BERT-base without fine-tuning.  "
+
+    candidate = ClaimCandidateResponse.model_validate(
+        {
+            "claim": "The model uses BERT-base without fine-tuning.",
+            "original_text": original_text,
+            "category": "model_architecture",
+            "value": "BERT-base",
+            "verifiability": "high",
+        }
+    )
+
+    assert candidate.original_text == original_text
 
 
 def test_validate_claim_candidate_repairs_minor_source_text_drift():

@@ -151,6 +151,11 @@ Install the paper-claims extra before running the conversion or evaluation utili
 pip install "osa_tool[paper-claims]"
 ```
 
+> **Python compatibility:** core OSA supports Python 3.11 and later, but the PDF-to-claims conversion workflow
+> requires Python 3.11--3.14. Marker and its dependency stack are not currently available for Python 3.15+.
+> On those interpreters, the default converter fails early with an actionable compatibility error instead of attempting
+> conversion with an incomplete extra.
+
 Run semantic matching:
 
 ```bash

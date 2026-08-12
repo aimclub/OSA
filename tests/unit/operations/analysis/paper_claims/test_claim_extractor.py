@@ -401,6 +401,36 @@ async def test_extract_drops_bad_claim_after_retries_and_keeps_valid_claim():
 
 
 @pytest.mark.asyncio
+async def test_extract_drops_blank_candidate_after_retry_and_keeps_valid_claim():
+    source_text = (
+        "The model uses BERT-base without fine-tuning. " "The retrieval pipeline uses BM25 for candidate selection."
+    )
+    paper_section = section().model_copy(update={"text": source_text})
+    valid_claim = {
+        "claim": "The retrieval pipeline uses BM25 for candidate selection.",
+        "original_text": "The retrieval pipeline uses BM25 for candidate selection.",
+        "category": "model_architecture",
+        "value": "BM25",
+        "verifiability": "high",
+    }
+    blank_claim = {**valid_claim, "claim": "", "original_text": ""}
+    repeated_response = json.dumps([blank_claim, valid_claim])
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            repeated_response,
+            repeated_response,
+            json.dumps([{"claim_id": "c0001", "claim": valid_claim["claim"], "contradiction": False}]),
+        ]
+    )
+
+    result = await ClaimExtractor(handler, max_retries=2).extract([paper_section])
+
+    assert [claim.claim for claim in result.claims] == [valid_claim["claim"]]
+    assert "schema validation failed" in handler.prompts[2]
+
+
+@pytest.mark.asyncio
 async def test_extract_skips_failed_section_and_keeps_document_claims():
     sections = [
         PaperSection(

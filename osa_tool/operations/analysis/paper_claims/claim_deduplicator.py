@@ -72,7 +72,14 @@ class ClaimDeduplicator:
 
     @staticmethod
     def _deduplication_prompt(claims: list[ExtractedClaim]) -> str:
-        dedup_input = [{"claim_id": claim.claim_id, "claim": claim.claim} for claim in claims]
+        dedup_input = [
+            {
+                "claim_id": claim.claim_id,
+                "claim": claim.claim,
+                "contradiction": claim.contradiction,
+            }
+            for claim in claims
+        ]
         return (
             "Below is the JSON array of claims extracted from the report sections. Apply the deduplication and contradiction rules.\n"
             + json.dumps(dedup_input, ensure_ascii=False)
@@ -323,11 +330,10 @@ class ClaimDeduplicator:
         replacement_ids = {selection.claim_id for selection in selections if selection.claim in contradictory_texts}
         if contradictory_texts and not replacement_ids:
             logger.debug(
-                "%s: no replacement mapping for an existing contradiction; carrying it to %s survivor(s)",
+                "%s: no exact replacement mapping for an existing contradiction; using the current deduplication "
+                "response flags",
                 request_name,
-                len(selections),
             )
-            replacement_ids = {selection.claim_id for selection in selections}
         if replacement_ids:
             selections = [
                 selection.model_copy(

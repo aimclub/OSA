@@ -48,6 +48,63 @@ async def test_deduplication_transfers_existing_contradiction_to_replacement_rep
     assert selections[1].contradiction is False
 
 
+@pytest.mark.asyncio
+async def test_deduplication_does_not_mark_unrelated_survivors_for_reworded_contradiction():
+    claims = [
+        extracted_claim("c0001", "The model uses configuration A.").model_copy(update={"contradiction": True}),
+        extracted_claim("c0002", "Configuration A is used by the model."),
+        extracted_claim("c0003", "The model uses configuration B."),
+    ]
+    handler = FakeHandler(
+        [
+            json.dumps(
+                [
+                    {"claim_id": "c0002", "claim": claims[1].claim, "contradiction": True},
+                    {"claim_id": "c0003", "claim": claims[2].claim, "contradiction": False},
+                ],
+                ensure_ascii=False,
+            )
+        ]
+    )
+
+    filtered, selections = await deduplicator(handler)._deduplicate_claim_batch(
+        claims,
+        request_name="Test reworded contradiction",
+    )
+
+    assert [claim.claim_id for claim in filtered] == ["c0002", "c0003"]
+    assert [claim.contradiction for claim in filtered] == [True, False]
+    assert [selection.contradiction for selection in selections] == [True, False]
+    assert '"contradiction": true' in handler.prompts[0]
+
+
+@pytest.mark.asyncio
+async def test_deduplication_does_not_guess_reworded_contradiction_replacement():
+    claims = [
+        extracted_claim("c0001", "The model uses configuration A.").model_copy(update={"contradiction": True}),
+        extracted_claim("c0002", "Configuration A is used by the model."),
+        extracted_claim("c0003", "The model uses configuration B."),
+    ]
+    handler = FakeHandler(
+        [
+            json.dumps(
+                [
+                    {"claim_id": "c0002", "claim": claims[1].claim, "contradiction": False},
+                    {"claim_id": "c0003", "claim": claims[2].claim, "contradiction": False},
+                ],
+                ensure_ascii=False,
+            )
+        ]
+    )
+
+    filtered, _selections = await deduplicator(handler)._deduplicate_claim_batch(
+        claims,
+        request_name="Test reworded contradiction without mapping",
+    )
+
+    assert [claim.contradiction for claim in filtered] == [False, False]
+
+
 def test_deduplication_batches_respect_model_input_token_budget(monkeypatch):
     monkeypatch.setattr(
         "osa_tool.operations.analysis.paper_claims.claim_deduplicator.count_tokens",

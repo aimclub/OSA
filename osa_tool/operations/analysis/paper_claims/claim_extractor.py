@@ -151,7 +151,7 @@ class ClaimExtractor:
         self,
         prompt: str,
         system: str,
-        adapter: TypeAdapter[list[ClaimCandidateResponse]],
+        adapter: TypeAdapter[ClaimCandidateResponse],
         *,
         section: PaperSection,
         request_name: str,
@@ -170,8 +170,9 @@ class ClaimExtractor:
             logger.debug("Raw response:\n%s", raw)
             try:
                 data = JsonProcessor.parse(str(raw), expected_type=list)
-                parsed = adapter.validate_python(data)
-            except (JsonParseError, TypeError, ValidationError) as exc:
+                if not isinstance(data, list):
+                    raise TypeError(f"Expected list, got {type(data)}")
+            except (JsonParseError, TypeError) as exc:
                 last_error = exc
                 if attempt < self.max_retries:
                     logger.info("%s: response validation failed, preparing repair request", request_name)
@@ -185,7 +186,16 @@ class ClaimExtractor:
                 )
                 continue
 
-            valid, invalid = partition_valid_claim_candidates(parsed, section=section)
+            parsed: list[ClaimCandidateResponse] = []
+            invalid: list[str] = []
+            for index, item in enumerate(data, start=1):
+                try:
+                    parsed.append(adapter.validate_python(item))
+                except ValidationError as exc:
+                    invalid.append(f"claim #{index}: schema validation failed: {exc}")
+
+            valid, source_invalid = partition_valid_claim_candidates(parsed, section=section)
+            invalid.extend(source_invalid)
             if not invalid:
                 logger.info("%s: response validated", request_name)
                 logger.debug("Parsed response:\n%s", valid)
@@ -271,7 +281,7 @@ class ClaimExtractor:
         )
         section_by_id = {section.section_id: section for section in sections}
         claims: list[ExtractedClaim] = []
-        claim_adapter = TypeAdapter(list[ClaimCandidateResponse])
+        claim_adapter = TypeAdapter(ClaimCandidateResponse)
         claim_system = self.prompts.get("paper_claims.claim_extraction_system")
         for section_id in track(selected_section_ids, description="Extracting section claims"):
             section = section_by_id[section_id]
