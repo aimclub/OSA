@@ -467,31 +467,6 @@ class DocGen(object):
                 decorators=method_details["decorators"],
                 context=context_code or "",
             )
-        else:
-            intro = (
-                "Generate a Python docstring for the following method. The docstring should follow Google-style format and include:\n"
-                "- Respond strictly in English.\n"
-                "- A short summary of what the method does.\n"
-                "- A description of its parameters without types.\n"
-                "- If the method is a class constructor, explicitly list all class fields (object properties) that are initialized, "
-                "including their names and purposes. These fields should match the attributes assigned within the constructor "
-                "(e.g., this.field = ..., self.field = ...). This information will be used to generate the class-level documentation.\n"
-                "- The return type and description (omit Returns section if the method does not return a value).\n\n"
-            )
-        prompt = (
-            intro + f"- Method Name: {method_details['method_name']}\n\n"
-            "Method source code: You are given only the body of a single method, without its signature. "
-            "All visible code, including any inner functions or nested logic, belongs to this single method. "
-            "Do NOT write separate docstrings for inner functions — they are part of the main method's logic.\n"
-            "Do NOT repeat the function signature or decorators.\n"
-            "```\n"
-            f"{method_details['source_code']}\n"
-            "```\n\n"
-            "- List of arguments:\n"
-            f"{arguments}\n\n"
-            "Method Details:\n"
-            f"- Method decorators: {method_details['decorators']}\n\n"
-        )
         return self._render_prompt(
             "method_generation_standard",
             method_name=method_details["method_name"],
@@ -572,29 +547,6 @@ class DocGen(object):
                 context=context_code or "",
                 main_idea=self.main_idea,
             )
-        else:
-            guidelines = (
-                "Update the provided docstring for the following Python method.\n"
-                "Preserve correct existing information and add missing details based on the source code.\n\n"
-                "Guidelines:\n"
-                "- Improve clarity and completeness without rewriting everything from scratch.\n"
-                "- Be specific and clear about the method's purpose and possible usages in a system based on a field-specific main idea if it can be vague for non-participant compliances.\n"
-                "- If the original docstring contains only a description, add Args and Returns sections if needed.\n"
-                "- Describe parameters without types.\n"
-                "- Omit Returns section if the method does not return a value.\n"
-                "- Do NOT invent parameters or behavior.\n\n"
-            )
-        prompt = (
-            guidelines + f"Original docstring:\n{docstring}\n\n"
-            "Method Details:\n"
-            f"- Method Name: {method_details['method_name']}"
-            f"{f' (located inside {class_name} class)' if class_name else ''}\n"
-            f"- Method decorators: {method_details['decorators']}\n\n"
-            "Source Code:\n"
-            "```\n"
-            f"{method_details['source_code']}\n"
-            "```\n\n"
-        )
         return self._render_prompt(
             "method_update_standard",
             docstring=docstring,
@@ -602,7 +554,9 @@ class DocGen(object):
             class_location=f" (located inside {class_name} class)" if class_name else "",
             decorators=method_details["decorators"],
             source_code=method_details["source_code"],
-            context=(self._render_prompt("method_update_standard_context", context_code=context_code) if context_code else ""),
+            context=(
+                self._render_prompt("method_update_standard_context", context_code=context_code) if context_code else ""
+            ),
             main_idea=self.main_idea,
         )
 
@@ -621,7 +575,9 @@ class DocGen(object):
             constructor_rules=self._render_prompt(
                 "method_update_small_constructor" if is_constructor else "method_update_small_non_constructor"
             ),
-            context=(self._render_prompt("method_update_small_context", context_code=context_code) if context_code else ""),
+            context=(
+                self._render_prompt("method_update_small_context", context_code=context_code) if context_code else ""
+            ),
             main_idea=self.main_idea,
         )
 
