@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from osa_tool.operations.analysis.paper_claims import claim_validation
 from osa_tool.operations.analysis.paper_claims.claim_extractor import ClaimExtractor
 from osa_tool.operations.analysis.paper_claims.models import HeadingMeta, PaperSection
 from osa_tool.utils.prompts_builder import PromptLoader
@@ -122,6 +123,36 @@ async def test_extract_repairs_invalid_source_text_and_deduplicates():
     assert result.claims[0].section_name == "Method"
     assert result.meta.filtered_claims == 1
     assert "Validation error" in handler.prompts[2]
+
+
+@pytest.mark.asyncio
+async def test_extract_preserves_verbatim_evidence_with_json_like_words(monkeypatch):
+    source_text = "The flag is True."
+    candidate = {
+        "claim": source_text,
+        "original_text": source_text,
+        "category": "infrastructure",
+        "value": "True",
+        "verifiability": "high",
+    }
+
+    def fail_fuzzy_match(*_args, **_kwargs):
+        raise AssertionError("exact original_text must not require fuzzy repair")
+
+    monkeypatch.setattr(claim_validation, "_find_fuzzy_source_match", fail_fuzzy_match)
+    handler = FakeHandler(
+        [
+            '[{"section_id":"s001"}]',
+            json.dumps([candidate]),
+            json.dumps([{"claim_id": "c0001", "claim": source_text, "contradiction": False}]),
+        ]
+    )
+
+    result = await ClaimExtractor(handler).extract([section(source_text)])
+
+    assert result.claims[0].claim == source_text
+    assert result.claims[0].original_text == source_text
+    assert result.claims[0].value == "True"
 
 
 @pytest.mark.asyncio

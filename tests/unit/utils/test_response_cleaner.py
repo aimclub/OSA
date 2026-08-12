@@ -45,6 +45,47 @@ def test_parse_repairs_unquoted_string_values():
     assert JsonProcessor.parse('{"name":value}', expected_type=dict) == {"name": "value"}
 
 
+def test_parse_preserves_quoted_json_like_content_verbatim():
+    raw = (
+        '[{"claim":"The flag is True and False.",'
+        '"original_text":"The flag is True, False, and None.",'
+        '"value":"True",'
+        '"literal":"The sequences ,] and ,} are text."}]'
+    )
+
+    assert JsonProcessor.parse(raw, expected_type=list) == [
+        {
+            "claim": "The flag is True and False.",
+            "original_text": "The flag is True, False, and None.",
+            "value": "True",
+            "literal": "The sequences ,] and ,} are text.",
+        }
+    ]
+
+
+def test_parse_repairs_trailing_comma_without_rewriting_quoted_content():
+    raw = '[{"original_text":"The flag is True, and the literal is ,] .","value":"None",}]'
+
+    assert JsonProcessor.parse(raw, expected_type=list) == [
+        {"original_text": "The flag is True, and the literal is ,] .", "value": "None"}
+    ]
+
+
+def test_parse_repairs_bare_python_boolean_literals():
+    assert JsonProcessor.parse('[{"enabled": True, "disabled": False}]', expected_type=list) == [
+        {"enabled": True, "disabled": False}
+    ]
+
+
+def test_parse_rejects_bare_python_none_literal():
+    with pytest.raises(JsonParseError, match="use null"):
+        JsonProcessor.parse('[{"value": None}]', expected_type=list)
+
+
+def test_parse_preserves_quoted_none_literal():
+    assert JsonProcessor.parse('[{"value": "None"}]', expected_type=list) == [{"value": "None"}]
+
+
 def test_parse_repairs_json_before_expected_key_and_type_validation():
     assert JsonProcessor.parse('{"files":["main.py",}', expected_key="files", expected_type=list) == ["main.py"]
 

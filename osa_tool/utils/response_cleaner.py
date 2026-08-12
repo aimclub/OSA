@@ -83,10 +83,37 @@ class JsonProcessor:
         return {"{", "["}
 
     @staticmethod
+    def _contains_bare_none_literal(text: str) -> bool:
+        """Return whether an unquoted standalone Python ``None`` literal is present."""
+        in_string = False
+        escaped = False
+        for index, character in enumerate(text):
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif character == "\\":
+                    escaped = True
+                elif character == '"':
+                    in_string = False
+                continue
+
+            if character == '"':
+                in_string = True
+                continue
+            if not text.startswith("None", index):
+                continue
+
+            before = text[index - 1] if index else ""
+            after_index = index + len("None")
+            after = text[after_index] if after_index < len(text) else ""
+            if not (before.isalnum() or before == "_") and not (after.isalnum() or after == "_"):
+                return True
+        return False
+
+    @staticmethod
     def process_text(text: str, expected_type: type | None = None) -> str:
         """
         Extracts one JSON object or array from text.
-        Replaces Python-style booleans/None and trims trailing commas.
         When a JSON root is present but malformed, returns that root for
         ``json_repair`` to repair during parsing. Plain non-JSON prose is
         rejected instead of being fabricated into a JSON structure. Multiple
@@ -99,15 +126,6 @@ class JsonProcessor:
         if not isinstance(text, str):
             raise ValueError("Input must be a string.")
 
-        # Strip raw control characters that are invalid in JSON string values.
-        # Preserves \t (0x09), \n (0x0A), \r (0x0D) which JSON parsers accept unescaped.
-        text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", text)
-        replacements = {"None": "null", "True": "true", "False": "false"}
-        for key, value in replacements.items():
-            text = text.replace(key, value)
-
-        # remove trailing commas before closing braces/brackets
-        text = re.sub(r",\s*([}\]])", r"\1", text)
         text = text.strip()
         root_characters = JsonProcessor._root_characters(expected_type)
         complete_roots = [
@@ -160,6 +178,10 @@ class JsonProcessor:
             parsed = json.loads(cleaned)
         except Exception as strict_error:
             logger.error(f"JSON strict parse failed: {strict_error}")
+            if cls._contains_bare_none_literal(cleaned):
+                message = "Bare Python None literal is not valid JSON; use null instead"
+                logger.error("JSON repair rejected: %s", message)
+                raise JsonParseError(message) from strict_error
             try:
                 parsed = repair_json(json_str=cleaned, ensure_ascii=False, return_objects=True)
             except Exception as repair_error:
