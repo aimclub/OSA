@@ -563,7 +563,7 @@ def test_extract_pure_docstring_preserves_escaped_triple_quotes_in_content(mock_
 
     result = docgen.extract_pure_docstring('"""Return \\"\\"\\" as the delimiter."""')
 
-    assert r'\"\"\"' in result
+    assert r"\"\"\"" in result
     assert "as the delimiter." in result
 
 

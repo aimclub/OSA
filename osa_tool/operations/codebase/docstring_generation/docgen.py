@@ -524,9 +524,7 @@ class DocGen(object):
                 if context_code
                 else ""
             ),
-            constructor_rules=(
-                self._render_prompt("method_generation_small_constructor") if is_constructor else ""
-            ),
+            constructor_rules=(self._render_prompt("method_generation_small_constructor") if is_constructor else ""),
         )
 
     async def update_method_documentation(
@@ -543,9 +541,7 @@ class DocGen(object):
         docstring = method_details["docstring"]
 
         if language in ("javascript", "typescript"):
-            prompt = self._get_method_update_prompt_large(
-                method_details, docstring, context_code, class_name, language
-            )
+            prompt = self._get_method_update_prompt_large(method_details, docstring, context_code, class_name, language)
         elif self.is_small_model:
             prompt = self._get_method_update_prompt_small(method_details, docstring, context_code, class_name)
         else:
@@ -606,11 +602,7 @@ class DocGen(object):
             class_location=f" (located inside {class_name} class)" if class_name else "",
             decorators=method_details["decorators"],
             source_code=method_details["source_code"],
-            context=(
-                self._render_prompt("method_update_standard_context", context_code=context_code)
-                if context_code
-                else ""
-            ),
+            context=(self._render_prompt("method_update_standard_context", context_code=context_code) if context_code else ""),
             main_idea=self.main_idea,
         )
 
@@ -629,11 +621,7 @@ class DocGen(object):
             constructor_rules=self._render_prompt(
                 "method_update_small_constructor" if is_constructor else "method_update_small_non_constructor"
             ),
-            context=(
-                self._render_prompt("method_update_small_context", context_code=context_code)
-                if context_code
-                else ""
-            ),
+            context=(self._render_prompt("method_update_small_context", context_code=context_code) if context_code else ""),
             main_idea=self.main_idea,
         )
 
@@ -709,8 +697,10 @@ class DocGen(object):
                 while next_index < len(lines) and not lines[next_index].strip():
                     next_index += 1
                 next_line = lines[next_index].strip().lower() if next_index < len(lines) else ""
-                if not next_line or next_line == "none" or re.match(
-                    r"^(Args|Returns|Raises|Attributes):", next_line, re.IGNORECASE
+                if (
+                    not next_line
+                    or next_line == "none"
+                    or re.match(r"^(Args|Returns|Raises|Attributes):", next_line, re.IGNORECASE)
                 ):
                     index = next_index + (next_line == "none")
                     continue
@@ -1458,12 +1448,14 @@ class DocGen(object):
                 else:
                     docstring = component["details"]["docstring"] if component["details"]["docstring"] else ""
 
-                prompt_structure.append(f"""
+                prompt_structure.append(
+                    f"""
                     {_type.capitalize()} name: {component["name"] if _type == "class" else component["details"]["method_name"]}
                     Component description: {docstring}
                     Component place in hierarchy: {file}
                     Component importance score: {score}
-                    """)
+                    """
+                )
 
         logger.info(f"Generating the main idea of the project...")
 
@@ -1491,7 +1483,6 @@ class DocGen(object):
         self._rename_invalid_dirs(repo_root)
 
         semaphore = asyncio.Semaphore(rate_limit)
-
 
         _summaries = {}
 
