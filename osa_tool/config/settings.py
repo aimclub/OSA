@@ -150,6 +150,13 @@ class ConfigManager:
     Manages configuration loading and provides model settings for different tasks.
     """
 
+    TASK_MODEL_MAP = {
+        "docstring": "for_docstring_gen",
+        "readme": "for_readme_gen",
+        "validation": "for_validation",
+        "general": "for_general_tasks",
+    }
+
     def __init__(self, args: Namespace | None = None):
         """
         Initialize ConfigManager with CLI arguments.
@@ -234,10 +241,11 @@ class ConfigManager:
 
         for task_type, arg_name in task_models.items():
             if hasattr(args, arg_name) and getattr(args, arg_name):
-                task_key = f"llm.{task_type}"
-                if task_key not in config_data:
-                    config_data[task_key] = {}
-                config_data[task_key]["model"] = getattr(args, arg_name)
+                if "llm" not in config_data:
+                    config_data["llm"] = {}
+                if task_type not in config_data["llm"]:
+                    config_data["llm"][task_type] = {}
+                config_data["llm"][task_type]["model"] = getattr(args, arg_name)
 
         if "git" not in config_data:
             config_data["git"] = {}
@@ -301,19 +309,13 @@ class ConfigManager:
         Returns:
             ModelSettings for the specified task type
         """
-        use_single_model = getattr(self.args, "use_single_model", True) if self.args else True
+        use_single_model = getattr(self.args, "use_single_model", False) if self.args else False
 
         if use_single_model:
             return self.config.llm.default
 
-        task_config_map = {
-            "docstring": self.config.llm.for_docstring_gen,
-            "readme": self.config.llm.for_readme_gen,
-            "validation": self.config.llm.for_validation,
-            "general": self.config.llm.for_general_tasks,
-        }
-
-        task_config = task_config_map.get(task_type)
+        task_attr = self.TASK_MODEL_MAP.get(task_type)
+        task_config = getattr(self.config.llm, task_attr) if task_attr else None
 
         return task_config if task_config else self.config.llm.default
 
