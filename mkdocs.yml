@@ -29,6 +29,7 @@ nav:
   - Home: index.md
   - Scheduler: scheduler/index.md
   - Workflow Generator: workflow-generator/index.md
+  - Paper Claims: paper-claims/index.md
   - API Reference:
       - Core:
           - Git Agent: api/core/git/git_agent.md

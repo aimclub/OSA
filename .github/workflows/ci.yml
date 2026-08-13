@@ -30,6 +30,7 @@ jobs:
       - name: Installing dependencies
         run: |
           pip install -r requirements.txt
+          pip install ".[paper-claims,repository-validation]"
           pip install pytest
 
       - name: Run tests

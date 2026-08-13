@@ -37,7 +37,7 @@ osa-dev\Scripts\activate     # Windows
 
 # Step 4: Install development dependencies
 pip install -r requirements.txt
-pip install -r requirements-dev.txt
+pip install ".[paper-claims,repository-validation]"
 
 # Step 5: Create a feature branch
 git checkout -b feature/your-feature-name

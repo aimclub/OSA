@@ -12,12 +12,17 @@ from osa_tool.core.git.metadata import (
     GitHubMetadataLoader,
     GitLabMetadataLoader,
     GitverseMetadataLoader,
-    RepositoryMetadata,
     LocalMetadataLoader,
+    RepositoryMetadata,
 )
 from osa_tool.core.git.request_utils import request_with_retry
 from osa_tool.utils.logger import logger
-from osa_tool.utils.utils import get_base_repo_url, parse_folder_name, is_path, resolve_repo_path
+from osa_tool.utils.utils import (
+    get_base_repo_url,
+    is_path,
+    parse_folder_name,
+    resolve_repo_path,
+)
 
 
 class GitAgent(abc.ABC):
