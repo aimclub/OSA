@@ -131,6 +131,7 @@ class PipelineOptions(StrictModel):
     pages_per_chunk: PositiveInt = 10
     marker: MarkerOptions = Field(default_factory=MarkerOptions)
     max_retries: PositiveInt = 5
+    dedup_batch_size: int = Field(default=100, ge=2)
 
 
 class PipelineResult(StrictModel):

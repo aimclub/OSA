@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 from pathlib import Path
 
 from rich.progress import track
@@ -11,6 +12,13 @@ from osa_tool.operations.analysis.paper_claims.models import (
 )
 from osa_tool.operations.analysis.paper_claims.pipeline import PaperClaimPipeline
 from osa_tool.utils.logger import logger, setup_logging
+
+
+def _dedup_batch_size(value: str) -> int:
+    size = int(value)
+    if size < 2:
+        raise argparse.ArgumentTypeError("--dedup-batch-size must be at least 2")
+    return size
 
 
 def collect_pdf_inputs(paths: list[Path]) -> tuple[list[Path], list[str]]:
@@ -39,6 +47,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--config-file", default=None)
     parser.add_argument("--chunk-pages", type=int, default=10)
     parser.add_argument("--max-retries", type=int, default=5)
+    parser.add_argument(
+        "--dedup-batch-size",
+        type=_dedup_batch_size,
+        default=100,
+        help=(
+            "Maximum number of extracted claims to send in one deduplication request. "
+            "Smaller values reduce LLM context/output pressure. Minimum: 2."
+        ),
+    )
     parser.add_argument(
         "--include-debug",
         action="store_true",
@@ -82,6 +99,7 @@ def main() -> int:
             logger.info("Input rejected: %s", failure)
         return 1
     logger.info("Collected %s PDF documents for processing", len(pdfs))
+    stem_counts = {pdf.stem: sum(other.stem == pdf.stem for other in pdfs) for pdf in pdfs}
     # NOTE: heavy LLM imports inside main() so parser/help can load without importing the full LLM stack
     from osa_tool.config.settings import ConfigManager
     from osa_tool.core.llm.llm import ModelHandlerFactory
@@ -92,6 +110,7 @@ def main() -> int:
     options = PipelineOptions(
         pages_per_chunk=args.chunk_pages,
         max_retries=args.max_retries,
+        dedup_batch_size=args.dedup_batch_size,
         marker=MarkerOptions(
             force_refresh=args.force_marker_refresh,
             low_vram=args.marker_low_vram,
@@ -102,10 +121,17 @@ def main() -> int:
     for pdf in track(pdfs, description="Processing PDF documents"):
         logger.info("Starting document %s", pdf)
         try:
+            reset_to_primary = getattr(handler, "reset_to_primary_model", None)
+            if callable(reset_to_primary):
+                reset_to_primary()
             result = pipeline.run(pdf, options)
+            output_name = pdf.stem
+            if stem_counts[pdf.stem] > 1:
+                digest = hashlib.sha256(str(pdf).encode()).hexdigest()[:10]
+                output_name = f"{pdf.stem}-{digest}"
             output_path = pipeline.export(
                 result,
-                args.output_dir / pdf.stem,
+                args.output_dir / output_name,
                 legacy=True,
                 include_debug=args.include_debug,
             )

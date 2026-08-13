@@ -103,7 +103,18 @@ def _render_chunk_markdown(
         _cleanup_marker_chunk_memory(torch=torch)
 
 
+def _require_supported_default_marker_python() -> None:
+    """Raise an actionable error before importing an unsupported Marker stack."""
+    if sys.version_info >= (3, 15):
+        raise PdfConversionError(
+            "Paper-claims PDF conversion with the default Marker converter is currently supported only on Python "
+            "3.11 through 3.14. Use Python 3.14 or earlier and install it with: "
+            'pip install "osa_tool[paper-claims]".'
+        )
+
+
 def _default_converter_factory(options: MarkerOptions) -> tuple[Any, Callable[[Any], str], str]:
+    _require_supported_default_marker_python()
     try:
         from marker.config.parser import ConfigParser
         from marker.converters.pdf import PdfConverter
@@ -111,8 +122,7 @@ def _default_converter_factory(options: MarkerOptions) -> tuple[Any, Callable[[A
         from marker.output import text_from_rendered
     except ImportError as exc:
         raise PdfConversionError(
-            "Marker conversion requires `marker-pdf` in the active environment. Install the project dependencies "
-            "from pyproject.toml or requirements.txt."
+            'Marker conversion requires the paper-claims extra. Install it with: pip install "osa_tool[paper-claims]".'
         ) from exc
 
     config_values = {
@@ -152,6 +162,8 @@ class MarkerDocumentConverter:
         marker_version: str | None = None,
     ) -> None:
         self._uses_default_factory = converter_factory is None
+        if converter_factory is not None and marker_version is None:
+            raise ValueError("marker_version is required when using a custom Marker converter factory")
         self.converter_factory = converter_factory or _default_converter_factory
         if marker_version is not None:
             self.marker_version = marker_version
@@ -172,6 +184,14 @@ class MarkerDocumentConverter:
         }
         serialized = json.dumps(payload, sort_keys=True, default=str, separators=(",", ":"))
         return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _validate_chunk_sources(chunks: list[PdfChunk]) -> None:
+        """Reject a mixed document before cache-key or metadata construction."""
+        source_path = chunks[0].source_path
+        source_hash = chunks[0].source_hash
+        if any(chunk.source_path != source_path or chunk.source_hash != source_hash for chunk in chunks[1:]):
+            raise PdfConversionError("All PDF chunks must originate from the same source_path and source_hash")
 
     @staticmethod
     def _load_cache(cache_dir: Path, chunks: list[PdfChunk]) -> ConvertedDocument | None:
@@ -335,6 +355,7 @@ class MarkerDocumentConverter:
     def convert(self, chunks: list[PdfChunk], options: MarkerOptions | None = None) -> ConvertedDocument:
         if not chunks:
             raise PdfConversionError("At least one PDF chunk is required")
+        self._validate_chunk_sources(chunks)
         options = options or MarkerOptions()
         cache_root = options.cache_root or DEFAULT_MARKER_CACHE
         cache_dir = Path(cache_root) / self._cache_key(chunks, options, self.marker_version)
@@ -357,6 +378,11 @@ class MarkerDocumentConverter:
         else:
             logger.info("Initializing Marker converter for %s chunks", len(chunks))
             converter, render_text, marker_version = self.converter_factory(options)
+            if not self._uses_default_factory and marker_version != self.marker_version:
+                raise PdfConversionError(
+                    "Custom Marker converter factory returned version "
+                    f"{marker_version!r}, but marker_version={self.marker_version!r} was used for the cache key"
+                )
 
         if options.force_refresh:
             shutil.rmtree(cache_dir, ignore_errors=True)

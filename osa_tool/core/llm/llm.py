@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import time
 from abc import ABC, abstractmethod
@@ -259,11 +260,18 @@ class ProtollmHandler(ModelHandler):
         return self.payload["messages"]
 
     def _log_response_debug(self, content: Any, request_kind: str) -> None:
+        if not logger.isEnabledFor(logging.DEBUG):
+            return
         content_text = content if isinstance(content, str) else str(content)
+        try:
+            response_tokens: int | str = count_tokens(content_text, self.model_settings.encoder)
+        except Exception as exc:
+            response_tokens = "unavailable"
+            logger.debug("%s LLM response token counting failed: %r", request_kind, exc)
         logger.debug(
             "%s LLM response: tokens=%s, max_output_tokens=%s, characters=%s\n%s",
             request_kind,
-            count_tokens(content_text, self.model_settings.encoder),
+            response_tokens,
             self.model_settings.max_tokens,
             len(content_text),
             content_text,

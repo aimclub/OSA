@@ -5,6 +5,12 @@ this directory are thin utilities around that single-document pipeline.
 
 Full documentation is available in [`docs/paper-claims/index.md`](../../../docs/paper-claims/index.md).
 
+Install the optional feature set before using these utilities:
+
+```bash
+pip install "osa_tool[paper-claims]"
+```
+
 ## Quickstart
 
 Run claim extraction for one PDF:
@@ -47,7 +53,7 @@ contains `debug.step3_selection`.
 
 ## Evaluation
 
-Evaluation dependencies are included in the main project dependency files:
+Evaluation dependencies are included in the `paper-claims` extra:
 
 ```bash
 python -m osa_tool.tools.paper_claims.evaluate --help
@@ -56,5 +62,5 @@ python -m osa_tool.tools.paper_claims.aggregate --help
 
 ## Marker dependency note
 
-`marker-pdf` is declared in the project dependency files and loaded lazily at conversion time. OSA does not enable
+`marker-pdf` is declared in the `paper-claims` extra and loaded lazily at conversion time. OSA does not enable
 Marker's LLM processors.

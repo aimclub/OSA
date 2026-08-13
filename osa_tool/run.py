@@ -14,8 +14,10 @@ from osa_tool.core.git.git_agent import (
     LocalGitAgent,
 )
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
-from osa_tool.operations.analysis.repository_validation.doc_validator import DocValidator
-from osa_tool.operations.analysis.repository_validation.paper_validator import PaperValidator
+from osa_tool.operations.analysis.repository_validation.optional_dependencies import (
+    load_doc_validator,
+    load_paper_validator,
+)
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
 from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
@@ -140,7 +142,7 @@ def main():
             _run_plan_operation(
                 plan,
                 "validate_doc",
-                lambda: DocValidator(config_manager, git_agent, create_fork, plan.get("attachment")).run(),
+                lambda: load_doc_validator()(config_manager, git_agent, create_fork, plan.get("attachment")).run(),
             )
 
         # NOTE: Must run first - switches GitHub branches
@@ -149,7 +151,7 @@ def main():
             _run_plan_operation(
                 plan,
                 "validate_paper",
-                lambda: PaperValidator(config_manager, git_agent, create_fork, plan.get("attachment")).run(),
+                lambda: load_paper_validator()(config_manager, git_agent, create_fork, plan.get("attachment")).run(),
             )
 
         # .ipynb to .py conversion

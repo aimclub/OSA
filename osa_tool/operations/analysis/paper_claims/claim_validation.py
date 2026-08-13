@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import re
 import unicodedata
 from dataclasses import dataclass
+from typing import Any
 
-from rapidfuzz import fuzz, process
-
-from osa_tool.operations.analysis.paper_claims.claim_schemas import ClaimCandidateResponse
+from osa_tool.operations.analysis.paper_claims.claim_schemas import (
+    ClaimCandidateResponse,
+)
+from osa_tool.operations.analysis.paper_claims.exceptions import ClaimExtractionError
 from osa_tool.operations.analysis.paper_claims.models import PaperSection
 from osa_tool.utils.logger import logger
 
@@ -16,6 +19,9 @@ _FUZZY_SOURCE_AMBIGUITY_MARGIN = 2.0
 _MIN_RELIABLE_CONTEXT_SCRIPT_LETTERS = 20
 _MIN_RELIABLE_CLAIM_SCRIPT_LETTERS = 6
 _MIN_SCRIPT_DOMINANCE = 0.70
+_DISPLAY_MATH_PATTERN = re.compile(r"\$\$.*?\$\$|\\\[.*?\\\]", re.DOTALL)
+_SEMANTIC_WORD_PATTERN = re.compile(r"\w+", re.UNICODE)
+_MATH_OPERATOR_PATTERN = re.compile(r"<=|>=|==|!=|[<>=+\-*/^≤≥≠≈∈]")
 
 
 @dataclass(frozen=True)
@@ -32,6 +38,17 @@ class _ScriptProfile:
     dominance: float
 
 
+def _load_rapidfuzz() -> tuple[Any, Any, Any]:
+    try:
+        from rapidfuzz import fuzz, process
+        from rapidfuzz.distance import Levenshtein
+    except ImportError as exc:
+        raise ClaimExtractionError(
+            'Claim validation requires the paper-claims extra. Install it with: pip install "osa_tool[paper-claims]".'
+        ) from exc
+    return fuzz, process, Levenshtein
+
+
 def _iter_sentence_spans(text: str) -> list[tuple[int, int]]:
     spans: list[tuple[int, int]] = []
     start = 0
@@ -39,7 +56,7 @@ def _iter_sentence_spans(text: str) -> list[tuple[int, int]]:
         if character not in _SENTENCE_END_CHARACTERS:
             continue
         end = index + 1
-        while end < len(text) and text[end] in "\"'”’»)]}":
+        while end < len(text) and text[end] in "\"'”’»)]}$":
             end += 1
         stripped_start = start
         stripped_end = end
@@ -67,15 +84,61 @@ def _iter_sentence_spans(text: str) -> list[tuple[int, int]]:
 def _candidate_source_spans(section_text: str) -> list[str]:
     sentence_spans = _iter_sentence_spans(section_text)
     candidates: list[str] = []
+
+    def append_candidate(source_text: str) -> None:
+        source_text = source_text.strip()
+        if source_text and source_text not in candidates:
+            candidates.append(source_text)
+
+    for match in _DISPLAY_MATH_PATTERN.finditer(section_text):
+        append_candidate(match.group(0))
+
     for start_index, (start, _end) in enumerate(sentence_spans):
         for window_size in (1, 2):
             end_index = start_index + window_size - 1
             if end_index >= len(sentence_spans):
                 continue
             source_text = section_text[start : sentence_spans[end_index][1]]
-            if source_text and source_text not in candidates:
-                candidates.append(source_text)
+            append_candidate(source_text)
     return candidates
+
+
+def _semantic_word_tokens(value: str) -> list[str]:
+    """Return case-insensitive lexical tokens while retaining all word scripts."""
+    return _SEMANTIC_WORD_PATTERN.findall(value.casefold())
+
+
+def _math_operator_tokens(value: str) -> list[str]:
+    """Return comparison and arithmetic operators that carry formula meaning."""
+    return _MATH_OPERATOR_PATTERN.findall(value)
+
+
+def _has_only_safe_fuzzy_drift(original_text: str, candidate_text: str, levenshtein: Any) -> bool:
+    """Allow casing, layout, and a one-character inflection, but not meaning changes.
+
+    Fuzzy source repair replaces LLM-provided evidence with a source span. It
+    therefore must not accept a changed negation, value, word substitution, or
+    mathematical relation merely because the surrounding sentence is similar.
+    """
+    original_words = _semantic_word_tokens(original_text)
+    candidate_words = _semantic_word_tokens(candidate_text)
+    if len(original_words) != len(candidate_words):
+        return False
+    if _math_operator_tokens(original_text) != _math_operator_tokens(candidate_text):
+        return False
+
+    for original_word, candidate_word in zip(original_words, candidate_words, strict=True):
+        if original_word == candidate_word:
+            continue
+        # Numeric literals and identifiers must agree exactly. For words, only
+        # permit a single-character inflection on sufficiently long tokens.
+        if (
+            any(character.isdigit() for character in original_word + candidate_word)
+            or min(len(original_word), len(candidate_word)) < 5
+            or levenshtein.distance(original_word, candidate_word) > 1
+        ):
+            return False
+    return True
 
 
 def _find_fuzzy_source_match(section_text: str, original_text: str) -> _SourceTextMatch | None:
@@ -85,6 +148,7 @@ def _find_fuzzy_source_match(section_text: str, original_text: str) -> _SourceTe
     if not candidates:
         return None
 
+    fuzz, process, levenshtein = _load_rapidfuzz()
     matches = process.extract(
         original_text,
         candidates,
@@ -96,6 +160,9 @@ def _find_fuzzy_source_match(section_text: str, original_text: str) -> _SourceTe
         return None
 
     best_text, best_score, _best_index = matches[0]
+
+    if not _has_only_safe_fuzzy_drift(original_text, best_text, levenshtein):
+        return None
     if len(matches) > 1:
         second_text, second_score, _second_index = matches[1]
         if second_text != best_text and best_score - second_score <= _FUZZY_SOURCE_AMBIGUITY_MARGIN:
@@ -144,6 +211,11 @@ def _script_profile(text: str) -> _ScriptProfile:
             (script for script, markers in script_markers.items() if any(marker in unicode_name for marker in markers)),
             None,
         )
+        if script is None and unicode_name:
+            # Unicode letter names normally begin with their script (for
+            # example GREEK and DEVANAGARI), so retain scripts not in the
+            # small set of aliases above instead of treating them as unknown.
+            script = unicode_name.split()[0]
         if script:
             scripts[script] = scripts.get(script, 0) + 1
     if not scripts:

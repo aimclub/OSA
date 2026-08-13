@@ -48,7 +48,9 @@ class PdfChunker:
         try:
             from pypdf import PdfReader, PdfWriter
         except ImportError as exc:
-            raise PdfConversionError("PDF splitting requires `pypdf`. Install the paper-claims dependencies.") from exc
+            raise PdfConversionError(
+                'PDF splitting requires the paper-claims extra. Install it with: pip install "osa_tool[paper-claims]".'
+            ) from exc
 
         try:
             reader = PdfReader(str(path))

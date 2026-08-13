@@ -145,7 +145,16 @@ clear_marker_cache()
 
 ## Evaluation utilities
 
-Evaluation dependencies are included in the main project dependency files.
+Install the paper-claims extra before running the conversion or evaluation utilities:
+
+```bash
+pip install "osa_tool[paper-claims]"
+```
+
+> **Python compatibility:** core OSA supports Python 3.11 and later, but the PDF-to-claims conversion workflow
+> requires Python 3.11--3.14. Marker and its dependency stack are not currently available for Python 3.15+.
+> On those interpreters, the default converter fails early with an actionable compatibility error instead of attempting
+> conversion with an incomplete extra.
 
 Run semantic matching:
 
@@ -164,10 +173,11 @@ python -m osa_tool.tools.paper_claims.aggregate ./evaluations --output aggregate
 
 ## Dependencies
 
-The project dependency files include the paper-claims runtime and evaluation dependencies, including `pypdf`,
-`markdown-it-py`, `rapidfuzz`, `marker-pdf`, `pandas`, `numpy`, `scipy`, and `sentence-transformers`.
+The `paper-claims` extra provides `pypdf`, `markdown-it-py`, `rapidfuzz`, `marker-pdf`, `numpy`, `scipy`, and
+`sentence-transformers`. Pandas remains part of OSA's core dependencies and is used by the aggregate utility.
 
-Marker is loaded lazily at conversion time. OSA does not enable Marker's LLM processors.
+Marker, Markdown parsing, and RapidFuzz validation are loaded lazily when their corresponding pipeline stage runs.
+OSA does not enable Marker's LLM processors.
 
 ## Module layout
 
@@ -187,6 +197,8 @@ Important modules:
 | `section_parser.py` | Markdown-to-section parsing. |
 | `claim_schemas.py` | Private Pydantic schemas for LLM response validation. |
 | `claim_validation.py` | Source-text matching, script guard, and claim candidate partitioning. |
+| `claim_input_planner.py` | Token budgets plus hierarchy-aware selection and sentence-aware claim inputs. |
+| `claim_deduplicator.py` | Token-bounded, fail-safe LLM claim deduplication. |
 | `claim_extractor.py` | LLM request/repair loop and three-step extraction orchestration. |
 | `pipeline.py` | Single-document pipeline composition and artifact export. |
 

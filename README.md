@@ -80,7 +80,11 @@ Here is a short video:
 6. **Thesis (VKR) check**: Evaluates a repository against a set of formal criteria (
    non-empty README, license file, etc.).  It also extracts claims (unique entities such as preprocessing type, model
    architecture, etc.) from the thesis (VKR) text and matches them against the repository's code.
-
+   
+7. **Standalone paper claims pipeline**: Extracts technical claims from PDF papers through the reusable
+   `paper_claims` operation and batch utilities. This pipeline is available as a separate module and is not registered
+   in the scheduler yet.
+   
 ---
 
 ## Installation
@@ -92,6 +96,19 @@ Install Open-Source-Advisor using one of the following methods:
 ```sh
 pip install osa_tool
 ```
+
+Install optional features when needed:
+
+```sh
+# PDF-to-claims extraction and evaluation utilities
+pip install "osa_tool[paper-claims]"
+
+# Legacy graph-based document and paper validation
+pip install "osa_tool[repository-validation]"
+```
+
+The core package supports Python 3.11 and later. The `paper-claims` PDF conversion workflow currently requires
+Python 3.11--3.14 because its Marker dependency stack is not available for Python 3.15+.
 
 **Build from source:**
 
@@ -121,6 +138,12 @@ pip install -r requirements.txt
 
 ```sh
 poetry install 
+```
+
+For a source checkout with both optional feature sets:
+
+```sh
+poetry install --all-extras
 ```
 
 **Using `docker`** &nbsp;

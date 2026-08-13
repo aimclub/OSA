@@ -1,35 +1,19 @@
-import pytest
+import builtins
 
+import pytest
+from pydantic import ValidationError
+
+from osa_tool.operations.analysis.paper_claims import claim_validation
 from osa_tool.operations.analysis.paper_claims.claim_schemas import ClaimCandidateResponse
+from osa_tool.operations.analysis.paper_claims.exceptions import ClaimExtractionError
 from osa_tool.operations.analysis.paper_claims.claim_validation import (
     partition_valid_claim_candidates,
     validate_claim_candidate,
 )
-from osa_tool.operations.analysis.paper_claims.models import HeadingMeta, PaperSection
-
-
-def make_section(text: str) -> PaperSection:
-    return PaperSection(
-        section_id="s001",
-        name="Method",
-        text=text,
-        heading_meta=HeadingMeta(raw="2. Method", level=1, numbering="2"),
-    )
-
-
-def make_candidate(
-    *,
-    claim: str,
-    original_text: str,
-    category: str = "model_architecture",
-) -> ClaimCandidateResponse:
-    return ClaimCandidateResponse(
-        claim=claim,
-        original_text=original_text,
-        category=category,
-        value=None,
-        verifiability="high",
-    )
+from tests.unit.operations.analysis.paper_claims.fixtures import (
+    make_claim_candidate as make_candidate,
+    make_paper_section as make_section,
+)
 
 
 def test_validate_claim_candidate_accepts_exact_source_text():
@@ -41,6 +25,38 @@ def test_validate_claim_candidate_accepts_exact_source_text():
     validate_claim_candidate(candidate, section=make_section("The model uses BERT-base without fine-tuning."))
 
     assert candidate.original_text == "The model uses BERT-base without fine-tuning."
+
+
+@pytest.mark.parametrize("field", ["claim", "original_text"])
+@pytest.mark.parametrize("value", ["", " \t\n "])
+def test_claim_candidate_rejects_blank_claim_or_evidence(field, value):
+    payload = {
+        "claim": "The model uses BERT-base without fine-tuning.",
+        "original_text": "The model uses BERT-base without fine-tuning.",
+        "category": "model_architecture",
+        "value": "BERT-base",
+        "verifiability": "high",
+    }
+    payload[field] = value
+
+    with pytest.raises(ValidationError, match="non-whitespace"):
+        ClaimCandidateResponse.model_validate(payload)
+
+
+def test_claim_candidate_preserves_non_blank_verbatim_evidence():
+    original_text = "  The model uses BERT-base without fine-tuning.  "
+
+    candidate = ClaimCandidateResponse.model_validate(
+        {
+            "claim": "The model uses BERT-base without fine-tuning.",
+            "original_text": original_text,
+            "category": "model_architecture",
+            "value": "BERT-base",
+            "verifiability": "high",
+        }
+    )
+
+    assert candidate.original_text == original_text
 
 
 def test_validate_claim_candidate_repairs_minor_source_text_drift():
@@ -60,6 +76,45 @@ def test_validate_claim_candidate_repairs_minor_source_text_drift():
     validate_claim_candidate(candidate, section=make_section(source_text))
 
     assert candidate.original_text == source_text
+
+
+def test_validate_claim_candidate_rejects_numeric_drift_in_fuzzy_evidence():
+    source = "The measured significance threshold was 0.001 for every experiment in the evaluation."
+    candidate = make_candidate(
+        claim="The significance threshold was 0.01.",
+        original_text="The measured significance threshold was 0.01 for every experiment in the evaluation.",
+    )
+
+    with pytest.raises(ValueError, match="original_text is not present"):
+        validate_claim_candidate(candidate, section=make_section(source))
+
+
+@pytest.mark.parametrize(
+    ("source", "original_text"),
+    [
+        (
+            "The retrieval pipeline does not use reranking for every production search result.",
+            "The retrieval pipeline does use reranking for every production search result.",
+        ),
+        (
+            "The retrieval pipeline keeps reranking disabled for every production search result.",
+            "The retrieval pipeline keeps reranking enabled for every production search result.",
+        ),
+    ],
+)
+def test_validate_claim_candidate_rejects_polarity_or_word_drift_in_fuzzy_evidence(source, original_text):
+    candidate = make_candidate(claim="The retrieval pipeline uses reranking.", original_text=original_text)
+
+    with pytest.raises(ValueError, match="original_text is not present"):
+        validate_claim_candidate(candidate, section=make_section(source))
+
+
+def test_validate_claim_candidate_rejects_translation_from_devanagari():
+    source = "यह मॉडल प्रशिक्षण के लिए बड़े डेटासेट का उपयोग करता है।"
+    candidate = make_candidate(claim="The model uses a large training dataset.", original_text=source)
+
+    with pytest.raises(ValueError, match="plausible language script"):
+        validate_claim_candidate(candidate, section=make_section(source))
 
 
 def test_partition_valid_claim_candidates_returns_errors_without_raising():
@@ -84,7 +139,10 @@ def test_validate_claim_candidate_rejects_implausible_claim_script():
     )
 
     with pytest.raises(ValueError, match="plausible language script"):
-        validate_claim_candidate(candidate, section=make_section("The model uses BERT-base without fine-tuning."))
+        validate_claim_candidate(
+            candidate,
+            section=make_section("The model uses BERT-base without fine-tuning."),
+        )
 
 
 def test_validate_claim_candidate_accepts_section_script_for_short_technical_evidence():
@@ -102,3 +160,17 @@ def test_validate_claim_candidate_accepts_section_script_for_short_technical_evi
     validate_claim_candidate(candidate, section=make_section(source_text))
 
     assert candidate.original_text == "- Top-k: 50;"
+
+
+def test_fuzzy_validation_explains_how_to_install_missing_rapidfuzz(monkeypatch):
+    original_import = builtins.__import__
+
+    def raise_for_rapidfuzz(name, *args, **kwargs):
+        if name.startswith("rapidfuzz"):
+            raise ImportError("missing rapidfuzz")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", raise_for_rapidfuzz)
+
+    with pytest.raises(ClaimExtractionError, match=r'pip install "osa_tool\[paper-claims\]"'):
+        claim_validation._load_rapidfuzz()
