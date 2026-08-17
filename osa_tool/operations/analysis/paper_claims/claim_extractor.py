@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import re
+import unicodedata
+from functools import partial
 from typing import Any, Callable, Protocol
 
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
@@ -17,6 +20,60 @@ from osa_tool.operations.analysis.paper_claims.models import (
 )
 from osa_tool.utils.prompts_builder import PromptBuilder, PromptLoader
 from osa_tool.utils.response_cleaner import JsonParseError, JsonProcessor
+
+_INVISIBLE_CHARACTERS = "\u00ad\u200b\u200c\u200d\u2060\ufeff"
+_INVISIBLE_GAP_PATTERN = f"[{_INVISIBLE_CHARACTERS}]*"
+_WORD_GAP_PATTERN = f"(?:\\s|[{_INVISIBLE_CHARACTERS}])+"
+
+
+def _find_original_source_text(section_text: str, original_text: str) -> str | None:
+    """Return the exact source span while tolerating layout-only character differences."""
+    if original_text in section_text:
+        return original_text
+
+    candidate = original_text.strip().translate({ord(character): None for character in _INVISIBLE_CHARACTERS})
+    if not candidate:
+        return None
+
+    tokens = re.split(r"\s+", candidate)
+    token_patterns = [
+        _INVISIBLE_GAP_PATTERN.join(re.escape(character) for character in token) for token in tokens if token
+    ]
+    if not token_patterns:
+        return None
+
+    match = re.search(_WORD_GAP_PATTERN.join(token_patterns), section_text)
+    return match.group(0) if match else None
+
+
+def _section_text_preview(text: str, limit: int = 2_000) -> str:
+    if len(text) <= limit:
+        return text
+    half = limit // 2
+    return f"{text[:half]}\n... <{len(text) - limit} characters omitted> ...\n{text[-half:]}"
+
+
+def _dominant_script(text: str) -> str | None:
+    """Return the dominant Unicode script for letters in text."""
+    scripts: dict[str, int] = {}
+    script_markers = {
+        "LATIN": ("LATIN",),
+        "CYRILLIC": ("CYRILLIC",),
+        "EAST_ASIAN": ("CJK", "HIRAGANA", "KATAKANA", "HANGUL"),
+        "ARABIC": ("ARABIC",),
+        "HEBREW": ("HEBREW",),
+    }
+    for character in text:
+        if not character.isalpha():
+            continue
+        unicode_name = unicodedata.name(character, "")
+        script = next(
+            (script for script, markers in script_markers.items() if any(marker in unicode_name for marker in markers)),
+            None,
+        )
+        if script:
+            scripts[script] = scripts.get(script, 0) + 1
+    return max(scripts, key=scripts.get) if scripts else None
 
 
 class AsyncModelHandler(Protocol):
@@ -37,6 +94,34 @@ class _ClaimCandidate(_StrictResponse):
     category: ClaimCategory
     value: str | None = None
     verifiability: Verifiability
+
+
+def _validate_source_text(items: list[_ClaimCandidate], *, section: PaperSection) -> None:
+    """Validate candidate quotations and restore their exact source representation."""
+    for item in items:
+        source_text = _find_original_source_text(section.text, item.original_text)
+        if source_text is None:
+            logger.debug(
+                "Source-text validation failed for section %s. Candidate=%r; section_text=%r",
+                section.section_id,
+                item.original_text,
+                section.text,
+            )
+            raise ValueError(
+                f"original_text is not present in section {section.section_id}. "
+                f"original_text={item.original_text!r}; "
+                f"section_text_preview={_section_text_preview(section.text)!r}; "
+                f"section_text_length={len(section.text)}"
+            )
+        item.original_text = source_text
+        source_script = _dominant_script(source_text)
+        claim_script = _dominant_script(item.claim)
+        if source_script and claim_script and source_script != claim_script:
+            raise ValueError(
+                "claim must use the same language script as original_text. "
+                f"claim_script={claim_script}; original_text_script={source_script}; "
+                f"claim={item.claim!r}; original_text={source_text!r}"
+            )
 
 
 class ClaimExtractor:
@@ -162,12 +247,17 @@ class ClaimExtractor:
             return [], []
 
         dedup_input = [{"claim_id": claim.claim_id, "claim": claim.claim} for claim in claims]
-        known_ids = {claim.claim_id for claim in claims}
+        claims_by_id = {claim.claim_id: claim for claim in claims}
 
         def validate_dedup(items: list[DedupSelection]) -> None:
             ids = [item.claim_id for item in items]
-            if len(ids) != len(set(ids)) or any(item not in known_ids for item in ids):
+            if len(ids) != len(set(ids)) or any(item not in claims_by_id for item in ids):
                 raise ValueError("Deduplication contains duplicate or unknown claim IDs")
+            rewritten = [item.claim_id for item in items if item.claim != claims_by_id[item.claim_id].claim]
+            if rewritten:
+                raise ValueError(
+                    "Deduplication must copy claim text verbatim; rewritten claim IDs: " + ", ".join(rewritten)
+                )
 
         selections = await self._request_validated(
             "Below is the JSON array of claims extracted from the report sections. Apply the deduplication and contradiction rules.\n"
@@ -200,6 +290,8 @@ class ClaimExtractor:
         selected_ids = await self._step_1_select_sections(sections)
         extracted_claims = await self._step_2_extract_claims(sections, selected_ids)
         filtered_claims, selections = await self._step_3_deduplicate_claims(extracted_claims)
+        logger.info("Three-step claim extraction completed: final_claims=%s", len(filtered_claims))
+        actual_model = getattr(self.handler, "last_successful_model", None) or model
 
         return ClaimExtractionResult(
             claims=filtered_claims,
@@ -207,7 +299,7 @@ class ClaimExtractor:
             selected_section_ids=selected_ids,
             meta=ExtractionMetadata(
                 source=source,
-                model=model,
+                model=actual_model,
                 filtered_claims=len(filtered_claims),
                 step3_input_count=len(extracted_claims),
                 step3_output_count=len(selections),

@@ -34,6 +34,14 @@ class PaperClaimPipeline:
         extraction = await ClaimExtractor(self.handler, max_retries=options.max_retries).extract(
             sections, source=str(converted.source_path), model=model_name
         )
+        logger.info(
+            "Stage 4/4 completed: model=%s; selected_sections=%s; extracted_before_dedup=%s; final_claims=%s",
+            extraction.meta.model or "unknown",
+            len(extraction.selected_section_ids),
+            extraction.meta.step3_input_count,
+            len(extraction.claims),
+        )
+        logger.info("Paper claims pipeline completed for %s", pdf_path)
         return PipelineResult(converted_document=converted, sections=sections, extraction=extraction)
 
     def run(self, pdf_path: Path, options: PipelineOptions | None = None) -> PipelineResult:
