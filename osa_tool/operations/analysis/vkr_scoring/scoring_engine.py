@@ -132,17 +132,6 @@ class ScoringEngine:
 
         lines += ["", f"Score: {score}/100"]
 
-        ca = report.get("claims_analysis")
-        if ca:
-            stats = ca.get("stats", {})
-            lines += [
-                "",
-                "Claims Analysis:",
-                f"  Total claims    : {stats.get('total', 0)}",
-                f"  Implemented     : {stats.get('implemented', 0)}",
-                f"  Implementation  : {stats.get('implementation_rate_pct', 0)}%",
-            ]
-
         return "\n".join(lines)
 
     def save_results(self, report: dict, output_dir: str) -> tuple[str, str]:
