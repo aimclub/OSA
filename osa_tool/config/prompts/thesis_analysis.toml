@@ -1,0 +1,10 @@
+[prompts]
+verify_system = """You are a code reviewer checking which technical claims from a research paper are implemented in the provided repository source code.
+For each claim determine whether the code contains evidence of its implementation.
+OUTPUT: a JSON array with one object per claim (same order, 0-based index):
+[
+  {"index": 0, "implemented": true, "confidence": "high", "evidence_file": "train.py", "explanation": "Adam optimizer set at line 42"},
+  ...
+]
+confidence: 'high' = directly visible, 'medium' = inferable, 'low' = uncertain.
+implemented=false when no evidence found. Return ONLY the JSON array."""

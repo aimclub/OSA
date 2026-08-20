@@ -1,8 +1,8 @@
 # Thesis Repository Analysis
 
-`thesis_analysis` is the canonical OSA operation for evaluating a thesis and its repository together. It deliberately
-keeps presentation layers such as OSA.Edu Streamlit, leaderboard data, and bilingual PDF layouts outside the core
-operation.
+`thesis_analysis` is OSA's sole CLI-supported pipeline for evaluating a thesis and its repository together. It
+deliberately keeps legacy experiment-reproducibility validation, OSA.Edu Streamlit, leaderboard data, and bilingual
+PDF layouts outside the core operation.
 
 ## Pipeline
 
@@ -19,6 +19,9 @@ claims JSON ───────────────────^
   excluded from the implementation rate. Both decisions are recorded in the result.
 - Verification is performed in batches of at most 50 claims. Each model result must cover every requested claim index
   exactly once.
+- A root `thesis_analysis.json` and `thesis_analysis.txt` are written only after scoring and verification succeed.
+  A completed PDF extraction is exported under `paper_claims/`, so it can be supplied to a later run with
+  `--claims-json` if verification must be retried.
 
 ## CLI
 
@@ -42,3 +45,9 @@ Use `--include-low-verifiability` or `--include-low-confidence` only when the de
 
 The command writes `thesis_analysis.json` and `thesis_analysis.txt`. PDF and UI renderers should consume this canonical
 JSON artifact rather than duplicate verification logic.
+
+## Migration from the removed VKR claim flow
+
+`VkrScorer` now calculates repository quality only. Its former PDF parser and claim extractor/verifier were removed;
+use this CLI for all thesis claim analysis. The `paper_claims` module's `claims_legacy.json` export remains accepted as
+an input adapter for staged runs, but it does not activate the removed VKR flow.

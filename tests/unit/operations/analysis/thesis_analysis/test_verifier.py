@@ -10,10 +10,12 @@ from osa_tool.operations.analysis.thesis_analysis.verifier import ClaimVerifier
 class BatchHandler:
     def __init__(self, *, low_confidence_indices: set[int] | None = None) -> None:
         self.calls: list[str] = []
+        self.system_prompts: list[str] = []
         self.low_confidence_indices = low_confidence_indices or set()
 
     def send_and_parse(self, prompt, parser, _system):
         self.calls.append(prompt)
+        self.system_prompts.append(_system)
         claims = json.loads(prompt.split("## Claims\n", 1)[1].split("\n\n## Repository file tree", 1)[0])
         payload = [
             {
@@ -49,6 +51,7 @@ def test_verifier_filters_before_llm_and_hides_low_confidence(tmp_path):
     assert result.stats.hidden_low_confidence == 1
     assert result.stats.total == result.stats.implemented == 1
     assert result.stats.implementation_rate_pct == 100
+    assert handler.system_prompts[0] == ClaimVerifier(tmp_path, handler)._prompts.get("thesis_analysis.verify_system")
 
 
 def test_verifier_uses_two_strict_batches_for_fifty_one_claims(tmp_path):

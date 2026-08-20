@@ -7,6 +7,7 @@ from .models import (
     ThesisAnalysisRequest,
     ThesisAnalysisResult,
 )
+from .data_context import CsvAnalyzer
 from .pipeline import ThesisAnalysisOperation
 from .verifier import ClaimVerifier
 
@@ -14,6 +15,7 @@ __all__ = [
     "ClaimSelection",
     "ClaimVerificationResult",
     "ClaimVerificationStats",
+    "CsvAnalyzer",
     "ClaimVerifier",
     "ThesisAnalysisOperation",
     "ThesisAnalysisRequest",

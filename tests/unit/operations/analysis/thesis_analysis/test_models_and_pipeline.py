@@ -145,3 +145,6 @@ def test_pdf_input_preserves_optional_pipeline_failure(monkeypatch, tmp_path):
 
     with pytest.raises(RuntimeError, match="paper-claims"):
         operation.run()
+
+    assert not (tmp_path / "out" / "thesis_analysis.json").exists()
+    assert not (tmp_path / "out" / "thesis_analysis.txt").exists()

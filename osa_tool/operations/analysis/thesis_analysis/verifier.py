@@ -7,10 +7,10 @@ import re
 from pathlib import Path
 from typing import Any, Callable
 
-from osa_tool.operations.analysis.vkr_scoring.csv_analyzer import CsvAnalyzer
 from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.response_cleaner import JsonProcessor
 
+from .data_context import CsvAnalyzer
 from .models import ClaimSelection, ClaimVerificationResult, ClaimVerificationStats
 
 Progress = Callable[[str, float], None] | None
@@ -216,7 +216,7 @@ class ClaimVerifier:
             parsed = self._model_handler.send_and_parse(
                 prompt,
                 lambda raw: self._parse_verification_batch(raw, expected_indices),
-                self._prompts.get("vkr_scoring.verify_system"),
+                self._prompts.get("thesis_analysis.verify_system"),
             )
             verification_by_index.update({item["index"]: item for item in parsed})
 

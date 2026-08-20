@@ -77,17 +77,16 @@ Here is a short video:
 5. **Workflow Generator**: Automatically generates customizable CI/CD workflows for Python repositories,
    including unit tests, code formatting, PEP 8 compliance checks, and PyPI publication.
 
-6. **Thesis (VKR) check**: Evaluates a repository against a set of formal criteria (
-   non-empty README, license file, etc.).  It also extracts claims (unique entities such as preprocessing type, model
-   architecture, etc.) from the thesis (VKR) text and matches them against the repository's code.
+6. **Thesis (VKR) repository-quality score**: Evaluates a repository against formal criteria such as a non-empty
+   README and license file. This score is a component of the canonical thesis-analysis pipeline.
    
 7. **Standalone paper claims pipeline**: Extracts technical claims from PDF papers through the reusable
    `paper_claims` operation and batch utilities. This pipeline is available as a separate module and is not registered
    in the scheduler yet.
 
-8. **Thesis repository analysis**: Composes the VKR repository-quality score, the typed paper-claims pipeline, and
-   batched claim-to-code verification into a canonical JSON/text artifact. Run it with
-   `python -m osa_tool.tools.thesis_analysis --help`.
+8. **Thesis repository analysis**: The sole CLI-supported thesis pipeline composes the VKR repository-quality score,
+   typed paper-claim extraction, and batched claim-to-code verification into canonical JSON/text artifacts. Run it
+   with `python -m osa_tool.tools.thesis_analysis --help`.
    
 ---
 

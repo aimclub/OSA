@@ -74,3 +74,17 @@ def test_score_not_applicable_skipped():
         if key == "data_files":
             continue
         assert val.get("passed") is True
+
+
+def test_text_report_does_not_render_removed_claim_analysis():
+    report = {
+        "repo_url": "https://github.com/test/repo",
+        "analyzed_at": "2026-08-20T00:00:00Z",
+        "checks": {"repo_type": {"value": "app", "confidence": "high"}},
+        "summary": {"score": 0, "repo_type": "app"},
+        "claims_analysis": {"stats": {"total": 1, "implemented": 1, "implementation_rate_pct": 100}},
+    }
+
+    text = _engine.build_text_report(report)
+
+    assert "Claims Analysis:" not in text

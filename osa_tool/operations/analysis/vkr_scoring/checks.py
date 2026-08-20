@@ -31,7 +31,7 @@ _PROMPTS = PromptLoader()
 
 @dataclass
 class VkrConfig:
-    """Thin config object threaded through all VKR check/claim functions."""
+    """Thin config object threaded through all VKR repository-quality checks."""
 
     clone_dir: str  # absolute path to the already-cloned repository
     repo_url: str  # original URL — used only in report metadata
