@@ -84,6 +84,10 @@ Here is a short video:
 7. **Standalone paper claims pipeline**: Extracts technical claims from PDF papers through the reusable
    `paper_claims` operation and batch utilities. This pipeline is available as a separate module and is not registered
    in the scheduler yet.
+
+8. **Thesis repository analysis**: Composes the VKR repository-quality score, the typed paper-claims pipeline, and
+   batched claim-to-code verification into a canonical JSON/text artifact. Run it with
+   `python -m osa_tool.tools.thesis_analysis --help`.
    
 ---
 
