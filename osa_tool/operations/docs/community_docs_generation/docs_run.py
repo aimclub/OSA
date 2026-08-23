@@ -1,6 +1,7 @@
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.core.models.event import OperationEvent, EventKind
+from osa_tool.operations.docs.community_docs_generation.codemeta_generator import CodeMetaGenerator
 from osa_tool.operations.docs.community_docs_generation.community import CommunityTemplateBuilder
 from osa_tool.operations.docs.community_docs_generation.contributing import ContributingBuilder
 from osa_tool.utils.logger import logger
@@ -52,6 +53,15 @@ def generate_documentation(config_manager: ConfigManager, metadata: RepositoryMe
     except Exception as e:
         logger.error("Failed to generate SECURITY: %s", repr(e), exc_info=True)
         events.append(OperationEvent(kind=EventKind.FAILED, target="SECURITY", data={"error": repr(e)}))
+
+    try:
+        codemeta = CodeMetaGenerator(config_manager, metadata)
+        codemeta.generate()
+        events.append(OperationEvent(kind=EventKind.GENERATED, target="CODEMETA"))
+        generated_files.append("codemeta.json")
+    except Exception as e:
+        logger.error("Failed to generate codemeta.json: %s", repr(e), exc_info=True)
+        events.append(OperationEvent(kind=EventKind.FAILED, target="CODEMETA", data={"error": repr(e)}))
 
     if platform_host in ["github", "gitlab"]:
         for method, target, filename in [

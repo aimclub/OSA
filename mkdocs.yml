@@ -74,6 +74,7 @@ nav:
           - Docs:
               - About Generator: api/operations/docs/about_generation/about_generator.md
               - Community Docs:
+                  - CodeMeta Generator: api/operations/docs/community_docs_generation/codemeta_generator.md
                   - Community: api/operations/docs/community_docs_generation/community.md
                   - Contributing: api/operations/docs/community_docs_generation/contributing.md
                   - Docs Run: api/operations/docs/community_docs_generation/docs_run.md
