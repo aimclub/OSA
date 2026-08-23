@@ -6,6 +6,7 @@ import yaml
 
 from osa_tool.config.settings import WorkflowSettings
 from osa_tool.scheduler.plan import Plan
+from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root
 
 
@@ -69,6 +70,11 @@ class WorkflowGenerator(ABC):
     @abstractmethod
     def generate_pypi_publish(self) -> None:
         """Generate PyPI publish part."""
+        pass
+
+    @abstractmethod
+    def generate_ruff(self) -> None:
+        """Generate Ruff linter and formatter part."""
         pass
 
     @abstractmethod
@@ -192,6 +198,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
         coverage: bool = True,
         timeout_minutes: int = 15,
         codecov_token: bool = False,
+        use_uv: bool = False,
     ) -> str:
         """
         Generate a GitHub Actions workflow for running unit tests.
@@ -206,10 +213,18 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
             coverage: Whether to include code coverage reporting.
             timeout_minutes: Maximum time in minutes for the job to run.
             codecov_token: Whether to use a Codecov token for uploading coverage.
+            use_uv: Whether to use uv instead of pip for dependency installation.
 
         Returns:
             str: Path to the generated file.
         """
+        if use_uv:
+            uv_setup_step = '      - name: "Set up uv"\n        uses: astral-sh/setup-uv@v7\n'
+            install_command = "uv pip install --system -r requirements.txt && uv pip install --system pytest pytest-cov"
+        else:
+            uv_setup_step = ""
+            install_command = f"{dependencies_command} && pip install pytest pytest-cov"
+
         if branches:
             on_section = {
                 "push": {"branches": branches},
@@ -236,7 +251,8 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
             timeout_minutes=timeout_minutes,
             os_list=os_list,
             python_versions=python_versions,
-            dependencies_command=dependencies_command,
+            install_command=install_command,
+            uv_setup_step=uv_setup_step,
             test_command=test_command,
             codecov_step=codecov_step,
         )
@@ -254,6 +270,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
         python_version: str = "3.10",
         args: str = "",
         branches: List[str] = ["main", "master"],
+        use_uv: bool = False,
     ) -> str:
         """
         Generate a workflow for checking PEP 8 compliance.
@@ -264,6 +281,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
             python_version: Python version to use.
             args: Arguments to pass to the tool.
             branches: List of branches to trigger the workflow on.
+            use_uv: Whether to use uv instead of pip for dependency installation.
 
         Returns:
             str: Path to the generated file.
@@ -278,6 +296,13 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
 
         tool_command = f"{tool} {args}" if args else tool
 
+        if use_uv:
+            uv_setup_step = '      - name: "Set up uv"\n        uses: astral-sh/setup-uv@v7\n'
+            install_command = f"uv pip install --system {tool}"
+        else:
+            uv_setup_step = ""
+            install_command = f"pip install {tool}"
+
         template = self.load_template("pep8.yml")
         rendered = template.format(
             name=name,
@@ -285,6 +310,8 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
             tool=tool,
             python_version=python_version,
             tool_command=tool_command,
+            uv_setup_step=uv_setup_step,
+            install_command=install_command,
         )
 
         file_path = os.path.join(self.output_dir, "pep8.yml")
@@ -494,6 +521,41 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
 
         return file_path
 
+    def generate_ruff(
+        self,
+        name: str = "Ruff",
+        branches: List[str] = [],
+        src: str = ".",
+    ) -> str:
+        """
+        Generate a GitHub Actions workflow for running the Ruff linter and formatter.
+
+        Args:
+            name: Workflow name.
+            branches: List of branches to trigger on.
+            src: Source directory to lint/format.
+
+        Returns:
+            str: Path to the generated file.
+        """
+        if branches:
+            on_section = {"push": {"branches": branches}, "pull_request": {"branches": branches}}
+        else:
+            on_section = ["push", "pull_request"]
+
+        template = self.load_template("ruff.yml")
+        rendered = template.format(
+            name=name,
+            on_section=yaml.dump(on_section, default_flow_style=False).rstrip(),
+            src=src,
+        )
+
+        file_path = os.path.join(self.output_dir, "ruff.yml")
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(rendered)
+
+        return file_path
+
     def generate_selected_jobs(self, settings: WorkflowSettings, plan: Plan) -> List[str]:
         """
         Generate a complete set of workflows.
@@ -507,6 +569,12 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
         self._ensure_output_dir()
         generated_files = []
 
+        if settings.include_ruff and settings.include_black:
+            logger.warning(
+                "Both include_ruff and include_black are enabled. "
+                "Ruff's formatter and Black may produce conflicting style changes."
+            )
+
         if settings.include_black:
             file_path = self.generate_black_formatter(branches=settings.branches)
             generated_files.append(file_path)
@@ -519,6 +587,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
                 python_versions=settings.python_versions,
                 codecov_token=settings.codecov_token,
                 coverage=settings.include_codecov,
+                use_uv=settings.use_uv,
             )
             generated_files.append(file_path)
             if plan is not None:
@@ -530,6 +599,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
                 # Use the latest Python version
                 python_version=settings.python_versions[-1],
                 branches=settings.branches,
+                use_uv=settings.use_uv,
             )
             generated_files.append(file_path)
             if plan is not None:
@@ -556,6 +626,12 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
             generated_files.append(file_path)
             if plan is not None:
                 plan.mark_done("include_pypi")
+
+        if settings.include_ruff:
+            file_path = self.generate_ruff(branches=settings.branches)
+            generated_files.append(file_path)
+            if plan is not None:
+                plan.mark_done("include_ruff")
 
         return generated_files
 
@@ -584,26 +660,43 @@ class SourceCraftWorkflowGenerator(WorkflowGenerator):
         }
 
     def generate_black_formatter(
-        self, python_version: str = "3.11", src: str = ".", options: str = "--check --diff"
+        self, python_version: str = "3.11", src: str = ".", options: str = "--check --diff", use_uv: bool = False
     ) -> dict:
-        return self._cube("black", python_version, [f"pip install black", f"black {options} {src}"])
+        install_cmd = "uv pip install --system" if use_uv else "pip install"
+        return self._cube("black", python_version, [f"{install_cmd} black", f"black {options} {src}"])
 
-    def generate_unit_test(self, python_version: str = "3.11", test_command: str = "pytest") -> dict:
+    def generate_unit_test(
+        self, python_version: str = "3.11", test_command: str = "pytest", use_uv: bool = False
+    ) -> dict:
+        install_cmd = "uv pip install --system" if use_uv else "pip install"
         return self._cube(
             f"pytest-{python_version.replace('.', '-')}",
             python_version,
-            ["pip install -r requirements.txt pytest pytest-cov", f"{test_command} || test $? -eq 5"],
+            [f"{install_cmd} -r requirements.txt pytest pytest-cov", f"{test_command} || test $? -eq 5"],
         )
 
-    def generate_pep8(self, tool: str = "flake8", python_version: str = "3.11", src: str = ".") -> dict:
-        return self._cube(tool, python_version, [f"pip install {tool}", f"{tool} {src}"])
+    def generate_pep8(
+        self, tool: str = "flake8", python_version: str = "3.11", src: str = ".", use_uv: bool = False
+    ) -> dict:
+        install_cmd = "uv pip install --system" if use_uv else "pip install"
+        return self._cube(tool, python_version, [f"{install_cmd} {tool}", f"{tool} {src}"])
 
-    def generate_autopep8(self, python_version: str = "3.11", src: str = ".") -> dict:
-        return self._cube("autopep8", python_version, ["pip install autopep8", f"autopep8 --check --recursive {src}"])
-
-    def generate_fix_pep8_command(self, python_version: str = "3.11", src: str = ".") -> dict:
+    def generate_autopep8(self, python_version: str = "3.11", src: str = ".", use_uv: bool = False) -> dict:
+        install_cmd = "uv pip install --system" if use_uv else "pip install"
         return self._cube(
-            "fix-pep8", python_version, ["pip install autopep8", f"autopep8 --in-place --recursive {src}"]
+            "autopep8", python_version, [f"{install_cmd} autopep8", f"autopep8 --check --recursive {src}"]
+        )
+
+    def generate_fix_pep8_command(self, python_version: str = "3.11", src: str = ".", use_uv: bool = False) -> dict:
+        install_cmd = "uv pip install --system" if use_uv else "pip install"
+        return self._cube(
+            "fix-pep8", python_version, [f"{install_cmd} autopep8", f"autopep8 --in-place --recursive {src}"]
+        )
+
+    def generate_ruff(self, python_version: str = "3.11", src: str = ".", use_uv: bool = False) -> dict:
+        install_cmd = "uv pip install --system" if use_uv else "pip install"
+        return self._cube(
+            "ruff", python_version, [f"{install_cmd} ruff", f"ruff check {src}", f"ruff format --check {src}"]
         )
 
     def generate_slash_command_dispatch(self) -> None:
@@ -631,33 +724,46 @@ class SourceCraftWorkflowGenerator(WorkflowGenerator):
         latest = python_versions[-1]
         branches: List[str] = settings.branches or []
 
+        if settings.include_ruff and settings.include_black:
+            logger.warning(
+                "Both include_ruff and include_black are enabled. "
+                "Ruff's formatter and Black may produce conflicting style changes."
+            )
+
         lint_cubes = []
         test_cubes = []
         publish_cubes = []
 
         if settings.include_black:
-            lint_cubes.append(self.generate_black_formatter(python_version=latest))
+            lint_cubes.append(self.generate_black_formatter(python_version=latest, use_uv=settings.use_uv))
             if plan is not None:
                 plan.mark_done("include_black")
 
         if settings.include_pep8:
-            lint_cubes.append(self.generate_pep8(tool=settings.pep8_tool, python_version=latest))
+            lint_cubes.append(
+                self.generate_pep8(tool=settings.pep8_tool, python_version=latest, use_uv=settings.use_uv)
+            )
             if plan is not None:
                 plan.mark_done("include_pep8")
 
         if settings.include_autopep8:
-            lint_cubes.append(self.generate_autopep8(python_version=latest))
+            lint_cubes.append(self.generate_autopep8(python_version=latest, use_uv=settings.use_uv))
             if plan is not None:
                 plan.mark_done("include_autopep8")
 
         if settings.include_fix_pep8:
-            lint_cubes.append(self.generate_fix_pep8_command(python_version=latest))
+            lint_cubes.append(self.generate_fix_pep8_command(python_version=latest, use_uv=settings.use_uv))
             if plan is not None:
                 plan.mark_done("include_fix_pep8")
 
+        if settings.include_ruff:
+            lint_cubes.append(self.generate_ruff(python_version=latest, use_uv=settings.use_uv))
+            if plan is not None:
+                plan.mark_done("include_ruff")
+
         if settings.include_tests:
             for version in python_versions:
-                test_cubes.append(self.generate_unit_test(python_version=version))
+                test_cubes.append(self.generate_unit_test(python_version=version, use_uv=settings.use_uv))
             if plan is not None:
                 plan.mark_done("include_tests")
 
@@ -762,6 +868,21 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
         with open(template_path, "r", encoding="utf-8") as file:
             return file.read()
 
+    @staticmethod
+    def _uv_install_parts(use_uv: bool) -> tuple[str, str]:
+        """Return the (install_command, uv_bootstrap) pair for GitLab scripts.
+
+        Args:
+            use_uv: Whether to install dependencies with uv instead of pip.
+
+        Returns:
+            tuple[str, str]: The install command prefix and the bootstrap line
+                that installs uv itself (empty when use_uv is False).
+        """
+        if use_uv:
+            return "uv pip install --system", "    - pip install uv\n"
+        return "pip install", ""
+
     def generate_black_formatter(
         self,
         name: str = "Black Formatter",
@@ -769,8 +890,10 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
         src: str = ".",
         black_options: str = "--check --diff",
         branches: List[str] = None,
+        use_uv: bool = False,
     ) -> str:
         branches_section = self._generate_branches_section(branches)
+        install_command, uv_bootstrap = self._uv_install_parts(use_uv)
 
         template = self.load_template("black.yml")
         return template.format(
@@ -778,6 +901,8 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
             src=src,
             black_options=black_options,
             branches_section=branches_section,
+            install_command=install_command,
+            uv_bootstrap=uv_bootstrap,
         )
 
     def generate_unit_test(
@@ -786,6 +911,7 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
         python_versions: List[str] = ["3.9", "3.10"],
         test_dir: str = "tests",
         branches: List[str] = None,
+        use_uv: bool = False,
     ) -> str:
         branches_section = self._generate_branches_section(branches)
         matrix_yaml = yaml.dump(
@@ -793,11 +919,15 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
         )
         matrix_yaml = matrix_yaml.replace("\n- ", "\n      - ")
 
+        install_command, uv_bootstrap = self._uv_install_parts(use_uv)
+
         template = self.load_template("unit_test.yml")
         return template.format(
             matrix_yaml=matrix_yaml,
             test_dir=test_dir,
             branches_section=branches_section,
+            install_command=install_command,
+            uv_bootstrap=uv_bootstrap,
         )
 
     def generate_pep8(
@@ -807,8 +937,10 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
         python_version: str = "3.10",
         src: str = ".",
         branches: List[str] = None,
+        use_uv: bool = False,
     ) -> str:
         branches_section = self._generate_branches_section(branches)
+        install_command, uv_bootstrap = self._uv_install_parts(use_uv)
 
         template = self.load_template("pep8.yml")
         return template.format(
@@ -816,6 +948,8 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
             src=src,
             tool=tool,
             branches_section=branches_section,
+            install_command=install_command,
+            uv_bootstrap=uv_bootstrap,
         )
 
     def generate_autopep8(
@@ -824,14 +958,18 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
         python_version: str = "3.10",
         src: str = ".",
         branches: List[str] = None,
+        use_uv: bool = False,
     ) -> str:
         branches_section = self._generate_branches_section(branches)
+        install_command, uv_bootstrap = self._uv_install_parts(use_uv)
 
         template = self.load_template("autopep8.yml")
         return template.format(
             python_version=python_version,
             src=src,
             branches_section=branches_section,
+            install_command=install_command,
+            uv_bootstrap=uv_bootstrap,
         )
 
     def generate_fix_pep8_command(
@@ -840,15 +978,40 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
         python_version: str = "3.10",
         src: str = ".",
         branches: List[str] = None,
+        use_uv: bool = False,
     ) -> str:
         branches_section = self._generate_branches_section(branches)
+        install_command, uv_bootstrap = self._uv_install_parts(use_uv)
 
         template = self.load_template("fix_pep8.yml")
         return template.format(
             python_version=python_version,
             src=src,
             branches_section=branches_section,
+            install_command=install_command,
+            uv_bootstrap=uv_bootstrap,
         )
+
+    def generate_ruff(
+        self,
+        name: str = "Ruff Lint & Format",
+        python_version: str = "3.10",
+        src: str = ".",
+        branches: List[str] = None,
+        use_uv: bool = False,
+    ) -> str:
+        branches_section = self._generate_branches_section(branches)
+        install_command, uv_bootstrap = self._uv_install_parts(use_uv)
+
+        return f"""ruff:
+  stage: lint
+  image: python:{python_version}
+  script:
+{uv_bootstrap}    - {install_command} ruff
+    - ruff check {src}
+    - ruff format --check {src}
+  {branches_section}
+"""
 
     def generate_slash_command_dispatch(
         self,
@@ -914,6 +1077,7 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
                 self.generate_black_formatter(
                     python_version=settings.python_versions[-1],
                     branches=settings.branches,
+                    use_uv=settings.use_uv,
                 )
             )
             if plan is not None:
@@ -924,6 +1088,7 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
                 self.generate_unit_test(
                     python_versions=settings.python_versions,
                     branches=settings.branches,
+                    use_uv=settings.use_uv,
                 )
             )
             if plan is not None:
@@ -935,6 +1100,7 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
                     tool=settings.pep8_tool,
                     python_version=settings.python_versions[-1],
                     branches=settings.branches,
+                    use_uv=settings.use_uv,
                 )
             )
             if plan is not None:
@@ -945,6 +1111,7 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
                 self.generate_autopep8(
                     python_version=settings.python_versions[-1],
                     branches=settings.branches,
+                    use_uv=settings.use_uv,
                 )
             )
 
@@ -953,6 +1120,7 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
                     self.generate_fix_pep8_command(
                         python_version=settings.python_versions[-1],
                         branches=settings.branches,
+                        use_uv=settings.use_uv,
                     )
                 )
                 if plan is not None:
@@ -966,6 +1134,17 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
             )
             if plan is not None:
                 plan.mark_done("include_pypi")
+
+        if settings.include_ruff:
+            yaml_parts.append(
+                self.generate_ruff(
+                    python_version=settings.python_versions[-1],
+                    branches=settings.branches,
+                    use_uv=settings.use_uv,
+                )
+            )
+            if plan is not None:
+                plan.mark_done("include_ruff")
 
         content = "\n".join(part for part in yaml_parts if part) + "\n"
         file_path = os.path.join(self.output_dir, ".gitlab-ci.yml")

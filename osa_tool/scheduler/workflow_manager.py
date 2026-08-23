@@ -38,6 +38,7 @@ class WorkflowManager(ABC):
         "include_pep8": ["lint", "Lint", "pep8_check"],
         "include_autopep8": ["autopep8"],
         "include_fix_pep8": ["fix_pep8_command", "fix-pep8"],
+        "include_ruff": ["ruff", "ruff-lint", "ruff-format"],
         "slash-command-dispatch": ["slash_command_dispatch", "slashCommandDispatch"],
         "pypi-publish": ["pypi_publish", "pypi-publish", "publish"],
     }

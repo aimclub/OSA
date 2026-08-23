@@ -2,6 +2,6 @@ autopep8_fix:
   image: python:{python_version}
   stage: fix
   script:
-    - pip install autopep8
+{uv_bootstrap}    - {install_command} autopep8
     - autopep8 --in-place --recursive {src}
   {branches_section}
