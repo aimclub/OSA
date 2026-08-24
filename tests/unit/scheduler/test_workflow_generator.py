@@ -316,3 +316,70 @@ def test_gitlab_workflow_generator_unit_test_uv(tmp_path):
         stripped = line.strip()
         if stripped.startswith("- pip install") and "pip install uv" not in stripped:
             pytest.fail(f"Bare 'pip install' found in uv workflow: {stripped}")
+
+
+def test_gitlab_uv_yaml_indentation(tmp_path):
+    gen = GitLabWorkflowGenerator(str(tmp_path))
+    gen.generate_selected_jobs(
+        _settings(include_black=True, include_tests=True, include_pep8=True, use_uv=True, branches=["main"]),
+        plan=None,
+    )
+    content = (tmp_path / ".gitlab-ci.yml").read_text()
+    parsed = yaml.safe_load(content)
+    for job_name in ("black_formatter", "pep8_check"):
+        job = parsed[job_name]
+        assert job["script"][0] == "pip install uv", f"{job_name}: first script line must bootstrap uv"
+        assert "uv pip install --system" in job["script"][1], f"{job_name}: second script line must use uv"
+    unit = parsed["unit_test"]
+    assert unit["before_script"][0] == "pip install uv"
+    assert "uv pip install --system" in unit["before_script"][1]
+
+
+def test_github_uv_yaml_indentation(tmp_path):
+    gen = GitHubWorkflowGenerator(str(tmp_path))
+    gen.generate_selected_jobs(_settings(include_tests=True, use_uv=True), plan=None)
+    content = (tmp_path / "unit_test.yml").read_text()
+    parsed = yaml.safe_load(content)
+    steps = parsed["jobs"]["test"]["steps"]
+    step_names = [s.get("name", "") for s in steps]
+    assert "Set up uv" in step_names
+    uv_idx = step_names.index("Set up uv")
+    assert steps[uv_idx]["uses"] == "astral-sh/setup-uv@v7"
+    install_idx = step_names.index("Install dependencies")
+    assert uv_idx < install_idx, "uv setup step must come before install step"
+
+
+def test_github_pep8_uv_yaml_indentation(tmp_path):
+    gen = GitHubWorkflowGenerator(str(tmp_path))
+    gen.generate_selected_jobs(_settings(include_pep8=True, use_uv=True), plan=None)
+    content = (tmp_path / "pep8.yml").read_text()
+    parsed = yaml.safe_load(content)
+    steps = parsed["jobs"]["lint"]["steps"]
+    step_names = [s.get("name", "") for s in steps]
+    assert "Set up uv" in step_names
+    assert steps[step_names.index("Set up uv")]["uses"] == "astral-sh/setup-uv@v7"
+
+
+def test_sourcecraft_uv_bootstraps_uv(tmp_path):
+    gen = SourceCraftWorkflowGenerator(str(tmp_path))
+    gen.generate_selected_jobs(
+        _settings(include_black=True, include_tests=True, include_ruff=True, use_uv=True), plan=None
+    )
+    config = yaml.safe_load((tmp_path / "ci.yaml").read_text())
+    for wf_name in ("lint", "tests"):
+        cubes = config["workflows"][wf_name]["tasks"][0]["cubes"]
+        for cube in cubes:
+            assert cube["script"][0] == "pip install uv", (
+                f"SourceCraft cube {cube['name']} must bootstrap uv as first script step"
+            )
+            assert "uv pip install --system" in cube["script"][1]
+
+
+def test_gitlab_no_uv_no_blank_bootstrap(tmp_path):
+    gen = GitLabWorkflowGenerator(str(tmp_path))
+    gen.generate_selected_jobs(_settings(include_black=True), plan=None)
+    content = (tmp_path / ".gitlab-ci.yml").read_text()
+    parsed = yaml.safe_load(content)
+    job = parsed["black_formatter"]
+    assert job["script"][0] == "pip install black"
+    assert "pip install uv" not in str(job["script"])

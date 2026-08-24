@@ -162,5 +162,4 @@ to the repository.
 | validate_paper       | `--validate-paper`       | flag | Check whether the experiments proposed in an attached research paper can be reproduced using the selected repository               | `false`                          | —                           |
 | validate_doc         | `--validate-doc`         | flag | Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository           | `false`                          | —                           |
 
-!!! warning "Ruff + Black conflict"
-    Enabling both `--include-ruff` and `--include-black` generates CI jobs that may produce conflicting formatting results, since Ruff's formatter and Black apply different style rules. Prefer one formatter per project.
+**Note:** Enabling both `--include-ruff` and `--include-black` generates CI jobs that may produce conflicting formatting results, since Ruff's formatter and Black apply different style rules. Prefer one formatter per project.

@@ -5,7 +5,8 @@ unit_test:
       {matrix_yaml}
   image: python:${{PYTHON_VERSION}}
   before_script:
-{uv_bootstrap}    - {install_command} -r requirements.txt pytest
+{uv_bootstrap}
+    - {install_command} -r requirements.txt pytest
   script:
     - pytest {test_dir}
 {branches_section}

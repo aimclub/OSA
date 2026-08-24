@@ -219,8 +219,9 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
             str: Path to the generated file.
         """
         if use_uv:
-            uv_setup_step = '      - name: "Set up uv"\n        uses: astral-sh/setup-uv@v7\n'
-            install_command = "uv pip install --system -r requirements.txt && uv pip install --system pytest pytest-cov"
+            uv_setup_step = '      - name: "Set up uv"\n        uses: astral-sh/setup-uv@v7'
+            uv_deps = dependencies_command.replace("pip install", "uv pip install --system", 1)
+            install_command = f"{uv_deps} && uv pip install --system pytest pytest-cov"
         else:
             uv_setup_step = ""
             install_command = f"{dependencies_command} && pip install pytest pytest-cov"
@@ -297,7 +298,7 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
         tool_command = f"{tool} {args}" if args else tool
 
         if use_uv:
-            uv_setup_step = '      - name: "Set up uv"\n        uses: astral-sh/setup-uv@v7\n'
+            uv_setup_step = '      - name: "Set up uv"\n        uses: astral-sh/setup-uv@v7'
             install_command = f"uv pip install --system {tool}"
         else:
             uv_setup_step = ""
@@ -663,40 +664,46 @@ class SourceCraftWorkflowGenerator(WorkflowGenerator):
         self, python_version: str = "3.11", src: str = ".", options: str = "--check --diff", use_uv: bool = False
     ) -> dict:
         install_cmd = "uv pip install --system" if use_uv else "pip install"
-        return self._cube("black", python_version, [f"{install_cmd} black", f"black {options} {src}"])
+        bootstrap = ["pip install uv"] if use_uv else []
+        return self._cube("black", python_version, bootstrap + [f"{install_cmd} black", f"black {options} {src}"])
 
     def generate_unit_test(
         self, python_version: str = "3.11", test_command: str = "pytest", use_uv: bool = False
     ) -> dict:
         install_cmd = "uv pip install --system" if use_uv else "pip install"
+        bootstrap = ["pip install uv"] if use_uv else []
         return self._cube(
             f"pytest-{python_version.replace('.', '-')}",
             python_version,
-            [f"{install_cmd} -r requirements.txt pytest pytest-cov", f"{test_command} || test $? -eq 5"],
+            bootstrap + [f"{install_cmd} -r requirements.txt pytest pytest-cov", f"{test_command} || test $? -eq 5"],
         )
 
     def generate_pep8(
         self, tool: str = "flake8", python_version: str = "3.11", src: str = ".", use_uv: bool = False
     ) -> dict:
         install_cmd = "uv pip install --system" if use_uv else "pip install"
-        return self._cube(tool, python_version, [f"{install_cmd} {tool}", f"{tool} {src}"])
+        bootstrap = ["pip install uv"] if use_uv else []
+        return self._cube(tool, python_version, bootstrap + [f"{install_cmd} {tool}", f"{tool} {src}"])
 
     def generate_autopep8(self, python_version: str = "3.11", src: str = ".", use_uv: bool = False) -> dict:
         install_cmd = "uv pip install --system" if use_uv else "pip install"
+        bootstrap = ["pip install uv"] if use_uv else []
         return self._cube(
-            "autopep8", python_version, [f"{install_cmd} autopep8", f"autopep8 --check --recursive {src}"]
+            "autopep8", python_version, bootstrap + [f"{install_cmd} autopep8", f"autopep8 --check --recursive {src}"]
         )
 
     def generate_fix_pep8_command(self, python_version: str = "3.11", src: str = ".", use_uv: bool = False) -> dict:
         install_cmd = "uv pip install --system" if use_uv else "pip install"
+        bootstrap = ["pip install uv"] if use_uv else []
         return self._cube(
-            "fix-pep8", python_version, [f"{install_cmd} autopep8", f"autopep8 --in-place --recursive {src}"]
+            "fix-pep8", python_version, bootstrap + [f"{install_cmd} autopep8", f"autopep8 --in-place --recursive {src}"]
         )
 
     def generate_ruff(self, python_version: str = "3.11", src: str = ".", use_uv: bool = False) -> dict:
         install_cmd = "uv pip install --system" if use_uv else "pip install"
+        bootstrap = ["pip install uv"] if use_uv else []
         return self._cube(
-            "ruff", python_version, [f"{install_cmd} ruff", f"ruff check {src}", f"ruff format --check {src}"]
+            "ruff", python_version, bootstrap + [f"{install_cmd} ruff", f"ruff check {src}", f"ruff format --check {src}"]
         )
 
     def generate_slash_command_dispatch(self) -> None:
@@ -880,7 +887,7 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
                 that installs uv itself (empty when use_uv is False).
         """
         if use_uv:
-            return "uv pip install --system", "    - pip install uv\n"
+            return "uv pip install --system", "    - pip install uv"
         return "pip install", ""
 
     def generate_black_formatter(
@@ -1007,7 +1014,8 @@ class GitLabWorkflowGenerator(WorkflowGenerator):
   stage: lint
   image: python:{python_version}
   script:
-{uv_bootstrap}    - {install_command} ruff
+{uv_bootstrap}
+    - {install_command} ruff
     - ruff check {src}
     - ruff format --check {src}
   {branches_section}

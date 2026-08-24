@@ -147,7 +147,7 @@ class WorkflowManager(ABC):
                 result_plan[key] = default_value and has_tests and not job_exists
             elif key == "include_pep8":
                 result_plan[key] = default_value and not job_exists
-            elif key in ["include_autopep8", "include_fix_pep8", "slash-command-dispatch", "pypi-publish"]:
+            elif key in ["include_autopep8", "include_fix_pep8", "include_ruff", "slash-command-dispatch", "pypi-publish"]:
                 result_plan[key] = default_value and not job_exists
             else:
                 result_plan[key] = default_value
