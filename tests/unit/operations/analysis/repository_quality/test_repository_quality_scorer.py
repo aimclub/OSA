@@ -1,4 +1,4 @@
-"""Regression tests for the quality-only VKR scorer boundary."""
+"""Regression tests for the quality-only repository scorer boundary."""
 
 from __future__ import annotations
 
@@ -7,10 +7,10 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from osa_tool.operations.analysis.vkr_scoring.vkr_scorer import VkrScorer
+from osa_tool.operations.analysis.repository_quality.repository_quality_scorer import RepositoryQualityScorer
 
 
-def test_vkr_scorer_is_quality_only_and_preserves_quality_report(monkeypatch, tmp_path):
+def test_repository_quality_scorer_is_quality_only_and_preserves_quality_report(monkeypatch, tmp_path):
     config_manager = MagicMock()
     config_manager.config.git.repository = "https://github.com/example/thesis"
     config_manager.get_model_settings.return_value = MagicMock()
@@ -22,20 +22,20 @@ def test_vkr_scorer_is_quality_only_and_preserves_quality_report(monkeypatch, tm
         "readme": {"present": True, "meaningful": True},
     }
     monkeypatch.setattr(
-        "osa_tool.operations.analysis.vkr_scoring.vkr_scorer.ModelHandlerFactory.build",
+        "osa_tool.operations.analysis.repository_quality.repository_quality_scorer.ModelHandlerFactory.build",
         MagicMock(return_value=MagicMock()),
     )
     monkeypatch.setattr(
-        "osa_tool.operations.analysis.vkr_scoring.vkr_scorer.build_file_tree",
+        "osa_tool.operations.analysis.repository_quality.repository_quality_scorer.build_file_tree",
         MagicMock(return_value=(["README.md"], ["README.md"])),
     )
     monkeypatch.setattr(
-        "osa_tool.operations.analysis.vkr_scoring.vkr_scorer.VkrChecker",
+        "osa_tool.operations.analysis.repository_quality.repository_quality_scorer.RepositoryQualityChecker",
         MagicMock(return_value=checker),
     )
 
-    assert "paper_path" not in inspect.signature(VkrScorer).parameters
-    scorer = VkrScorer(config_manager, git_agent, output_dir=str(tmp_path / "out"))
+    assert "paper_path" not in inspect.signature(RepositoryQualityScorer).parameters
+    scorer = RepositoryQualityScorer(config_manager, git_agent, output_dir=str(tmp_path / "out"))
 
     quality = scorer.get_quality_report()
     run_result = scorer.run()

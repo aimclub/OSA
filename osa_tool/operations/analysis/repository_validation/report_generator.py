@@ -298,10 +298,10 @@ class ReportGenerator:
         if not vkr_report:
             return []
 
-        from osa_tool.operations.analysis.vkr_scoring.scoring_engine import (
+        from osa_tool.operations.analysis.repository_quality.scoring_engine import (
             CHECK_ORDER,
             REPO_TYPE_LABELS,
-            ScoringEngine,
+            RepositoryQualityScoringEngine,
         )
 
         styles = getSampleStyleSheet()
@@ -338,7 +338,7 @@ class ReportGenerator:
         for key in CHECK_ORDER:
             if key not in checks:
                 continue
-            line = ScoringEngine.format_check_line(key, checks[key])
+            line = RepositoryQualityScoringEngine.format_check_line(key, checks[key])
             # lines look like "  readme          : OK (9424 chars)"
             name_part, _, value_part = line.strip().partition(":")
             table_data.append(

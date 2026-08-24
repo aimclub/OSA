@@ -7,12 +7,12 @@ PDF layouts outside the core operation.
 ## Pipeline
 
 ```text
-repository clone ──> VKR quality score
+repository clone ──> repository quality score
 paper PDF ──> paper_claims ──> filtered, batched claim verification ──> canonical JSON + text
 claims JSON ───────────────────^
 ```
 
-- The repository score is produced by the existing `VkrScorer.get_quality_report()` contract.
+- The repository score is produced by the existing `RepositoryQualityScorer.get_quality_report()` contract.
 - PDFs use the typed `paper_claims` operation. Install `osa_tool[paper-claims]` for this path.
 - Existing `claims.json`, `claims_legacy.json`, and bare claim arrays can start directly at verification.
 - By default, only `high` and `medium` verifiability claims reach the model. Low-confidence outcomes are hidden and
@@ -46,8 +46,8 @@ Use `--include-low-verifiability` or `--include-low-confidence` only when the de
 The command writes `thesis_analysis.json` and `thesis_analysis.txt`. PDF and UI renderers should consume this canonical
 JSON artifact rather than duplicate verification logic.
 
-## Migration from the removed VKR claim flow
+## Migration from the removed legacy claim flow
 
-`VkrScorer` now calculates repository quality only. Its former PDF parser and claim extractor/verifier were removed;
+`RepositoryQualityScorer` calculates repository quality only. The former PDF parser and claim extractor/verifier were removed;
 use this CLI for all thesis claim analysis. The `paper_claims` module's `claims_legacy.json` export remains accepted as
-an input adapter for staged runs, but it does not activate the removed VKR flow.
+an input adapter for staged runs, but it does not activate the removed legacy flow.

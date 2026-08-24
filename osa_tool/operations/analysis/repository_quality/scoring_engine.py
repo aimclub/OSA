@@ -1,7 +1,7 @@
 """
-Scoring and report-building logic for VKR repository quality assessment.
+Scoring and report-building logic for formal repository quality assessment.
 
-Separated from VkrScorer so the scorer class stays focused on orchestration
+Separated from RepositoryQualityScorer so the scorer class stays focused on orchestration
 while this module owns all score-computation, formatting, and persistence.
 """
 
@@ -60,8 +60,8 @@ _APP_TYPES = {"app"}
 # ── Engine class ──────────────────────────────────────────────────────────────
 
 
-class ScoringEngine:
-    """Computes VKR quality scores and builds human-readable reports."""
+class RepositoryQualityScoringEngine:
+    """Computes formal repository-quality scores and builds reports."""
 
     def __init__(self, repo_url: str) -> None:
         self._repo_url = repo_url

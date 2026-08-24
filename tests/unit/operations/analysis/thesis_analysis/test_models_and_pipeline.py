@@ -52,7 +52,7 @@ def test_operation_reuses_quality_report_and_writes_artifacts(monkeypatch, tmp_p
     quality_scorer = MagicMock()
     quality_scorer.get_quality_report.return_value = quality
     monkeypatch.setattr(
-        "osa_tool.operations.analysis.thesis_analysis.pipeline.VkrScorer",
+        "osa_tool.operations.analysis.thesis_analysis.pipeline.RepositoryQualityScorer",
         MagicMock(return_value=quality_scorer),
     )
 
@@ -123,7 +123,7 @@ def test_pdf_input_preserves_optional_pipeline_failure(monkeypatch, tmp_path):
     quality_scorer = MagicMock()
     quality_scorer.get_quality_report.return_value = {"repo_url": "local/repository", "summary": {"score": 0}}
     monkeypatch.setattr(
-        "osa_tool.operations.analysis.thesis_analysis.pipeline.VkrScorer",
+        "osa_tool.operations.analysis.thesis_analysis.pipeline.RepositoryQualityScorer",
         MagicMock(return_value=quality_scorer),
     )
 

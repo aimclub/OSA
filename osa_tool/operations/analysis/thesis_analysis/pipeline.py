@@ -10,8 +10,8 @@ from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandlerFactory
 from osa_tool.operations.analysis.paper_claims import PaperClaimPipeline
-from osa_tool.operations.analysis.vkr_scoring.checks import build_file_tree
-from osa_tool.operations.analysis.vkr_scoring.vkr_scorer import VkrScorer
+from osa_tool.operations.analysis.repository_quality.checks import build_file_tree
+from osa_tool.operations.analysis.repository_quality.repository_quality_scorer import RepositoryQualityScorer
 
 from .models import PaperClaimsSummary, ThesisAnalysisArtifacts, ThesisAnalysisRequest, ThesisAnalysisResult
 from .verifier import ClaimVerifier
@@ -39,7 +39,7 @@ class ThesisAnalysisOperation:
         """Create JSON/text artifacts and return their typed canonical result."""
         output_dir = self._request.output_dir.resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
-        quality = VkrScorer(self._config_manager, self._git_agent).get_quality_report()
+        quality = RepositoryQualityScorer(self._config_manager, self._git_agent).get_quality_report()
         flat_paths, _ = build_file_tree(self._git_agent.clone_dir)
         handler = ModelHandlerFactory.build(self._config_manager.get_model_settings("validation"))
         claims, paper_summary = self._load_claims(output_dir, handler)

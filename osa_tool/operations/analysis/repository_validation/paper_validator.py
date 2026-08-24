@@ -25,7 +25,7 @@ from osa_tool.operations.analysis.repository_validation.models import Experiment
 from osa_tool.operations.analysis.repository_validation.report_generator import (
     ReportGenerator as ValidationReportGenerator,
 )
-from osa_tool.operations.analysis.vkr_scoring.vkr_scorer import VkrScorer
+from osa_tool.operations.analysis.repository_quality.repository_quality_scorer import RepositoryQualityScorer
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 
@@ -74,7 +74,7 @@ class PaperValidator:
         self.__paper_analyzer = PaperAnalyzer(config_manager, self.__prompts)
         self.__experiments = []
 
-        self.__vkr_scorer = VkrScorer(config_manager, git_agent)
+        self.__vkr_scorer = RepositoryQualityScorer(config_manager, git_agent)
 
     def run(self) -> dict:
         try:

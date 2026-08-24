@@ -1,4 +1,4 @@
-"""VKR repository quality checks — uses OSA's LLM and the already-cloned repo."""
+"""Repository-quality checks using OSA's LLM and an already-cloned repository."""
 
 from __future__ import annotations
 
@@ -30,8 +30,8 @@ _PROMPTS = PromptLoader()
 
 
 @dataclass
-class VkrConfig:
-    """Thin config object threaded through all VKR repository-quality checks."""
+class RepositoryQualityConfig:
+    """Thin config object threaded through repository-quality checks."""
 
     clone_dir: str  # absolute path to the already-cloned repository
     repo_url: str  # original URL — used only in report metadata
@@ -83,10 +83,10 @@ def build_file_tree(clone_dir: str):
 Progress = Optional[Callable[[str, float], None]]
 
 
-class VkrChecker:
-    """Runs all VKR quality checks against a cloned repository."""
+class RepositoryQualityChecker:
+    """Runs all formal repository-quality checks against a cloned repository."""
 
-    def __init__(self, config: VkrConfig) -> None:
+    def __init__(self, config: RepositoryQualityConfig) -> None:
         self._config = config
 
     # ── Private helpers ───────────────────────────────────────────────────────
@@ -131,11 +131,11 @@ class VkrChecker:
         try:
             result = self._config.model_handler.send_and_parse(
                 PromptBuilder.render(
-                    _PROMPTS.get("vkr_scoring.execution_files"),
+                    _PROMPTS.get("repository_quality.execution_files"),
                     file_list="\n".join(flat_paths),
                 ),
                 JsonProcessor.parse,
-                _PROMPTS.get("vkr_scoring.system_json"),
+                _PROMPTS.get("repository_quality.system_json"),
             )
         except Exception:
             return {"present": False, "error": "llm_failed", "llm_suggested": [], "verified": []}
@@ -149,11 +149,11 @@ class VkrChecker:
         try:
             result = self._config.model_handler.send_and_parse(
                 PromptBuilder.render(
-                    _PROMPTS.get("vkr_scoring.repo_type"),
+                    _PROMPTS.get("repository_quality.repo_type"),
                     file_list="\n".join(_sample_tree(all_paths)),
                 ),
                 JsonProcessor.parse,
-                _PROMPTS.get("vkr_scoring.system_json"),
+                _PROMPTS.get("repository_quality.system_json"),
             )
         except Exception:
             return {"value": "algorithm_experiments", "confidence": "low", "reasoning": "", "error": "llm_failed"}
@@ -175,11 +175,11 @@ class VkrChecker:
         try:
             result = self._config.model_handler.send_and_parse(
                 PromptBuilder.render(
-                    _PROMPTS.get("vkr_scoring.test_files"),
+                    _PROMPTS.get("repository_quality.test_files"),
                     file_list="\n".join(flat_paths),
                 ),
                 JsonProcessor.parse,
-                _PROMPTS.get("vkr_scoring.system_json"),
+                _PROMPTS.get("repository_quality.system_json"),
             )
         except Exception:
             return {"applicable": True, "present": False, "error": "llm_failed", "files": []}
@@ -192,11 +192,11 @@ class VkrChecker:
         try:
             result = self._config.model_handler.send_and_parse(
                 PromptBuilder.render(
-                    _PROMPTS.get("vkr_scoring.data_files"),
+                    _PROMPTS.get("repository_quality.data_files"),
                     file_list="\n".join(flat_paths),
                 ),
                 JsonProcessor.parse,
-                _PROMPTS.get("vkr_scoring.system_json"),
+                _PROMPTS.get("repository_quality.system_json"),
             )
         except Exception:
             return {"applicable": True, "present": False, "error": "llm_failed", "files": []}
@@ -210,12 +210,12 @@ class VkrChecker:
         try:
             result = self._config.model_handler.send_and_parse(
                 PromptBuilder.render(
-                    _PROMPTS.get("vkr_scoring.experiment_scripts"),
+                    _PROMPTS.get("repository_quality.experiment_scripts"),
                     file_list="\n".join(flat_paths),
                     readme_section=readme_section,
                 ),
                 JsonProcessor.parse,
-                _PROMPTS.get("vkr_scoring.system_json"),
+                _PROMPTS.get("repository_quality.system_json"),
             )
         except Exception:
             return {"applicable": True, "present": False, "error": "llm_failed", "files": []}

@@ -1,16 +1,16 @@
-"""Tests for ScoringEngine.compute_score — scoring logic in scoring_engine.py."""
+"""Tests for RepositoryQualityScoringEngine.compute_score."""
 
 from __future__ import annotations
 
 import pytest
 
-from osa_tool.operations.analysis.vkr_scoring.scoring_engine import (
+from osa_tool.operations.analysis.repository_quality.scoring_engine import (
     WEIGHTS_APPS,
     WEIGHTS_DATA_EXPERIMENT,
-    ScoringEngine,
+    RepositoryQualityScoringEngine,
 )
 
-_engine = ScoringEngine("https://github.com/test/repo")
+_engine = RepositoryQualityScoringEngine("https://github.com/test/repo")
 compute_score = _engine.compute_score
 
 
