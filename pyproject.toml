@@ -27,15 +27,6 @@ paper-claims = [
     "scipy>=1.13.0,<2.0.0",
     "sentence-transformers>=3.0.0,<6.0.0",
 ]
-repository-validation = [
-    "matplotlib>=3.10.9",
-    "networkx>=3.6.1; python_full_version != '3.14.1'",
-    "networkx>=3.6,<3.6.1; python_full_version == '3.14.1'",
-    "torch>=2.11.0; python_version < '3.15'",
-    "torch-geometric>=2.7.0",
-    "transformers>=4.45.2,<5.0.0",
-]
-
 [tool.poetry.dependencies]
 aiofiles = ">=24.1.0"
 black = ">=25.0.0"

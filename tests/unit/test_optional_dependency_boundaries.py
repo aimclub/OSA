@@ -12,16 +12,11 @@ _OPTIONAL_MODULES = {
     "scipy",
     "sentence_transformers",
     "torch",
-    "torch_geometric",
-    "transformers",
-    "networkx",
-    "matplotlib",
 }
 
 
 def test_core_imports_do_not_require_optional_feature_dependencies():
-    script = textwrap.dedent(
-        f"""
+    script = textwrap.dedent(f"""
         import importlib.abc
         import sys
 
@@ -36,8 +31,7 @@ def test_core_imports_do_not_require_optional_feature_dependencies():
         import osa_tool.run
         import osa_tool.operations.operations_catalog
         import osa_tool.operations.analysis.paper_claims
-        """
-    )
+        """)
     project_root = Path(__file__).resolve().parents[2]
 
     result = subprocess.run(
