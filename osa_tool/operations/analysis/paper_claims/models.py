@@ -24,8 +24,8 @@ class MarkerOptions(StrictModel):
     extract_images: bool = False
     cache_root: Path | None = None
     force_refresh: bool = False
-    low_vram: bool = False
-    process_isolation: bool = False
+    low_vram: bool = True
+    process_isolation: bool = True
     log_cuda_memory: bool = True
     marker_config: dict[str, Any] = Field(default_factory=dict)
 
@@ -128,10 +128,10 @@ class ClaimExtractionResult(StrictModel):
 
 
 class PipelineOptions(StrictModel):
-    pages_per_chunk: PositiveInt = 10
+    pages_per_chunk: PositiveInt = 5
     marker: MarkerOptions = Field(default_factory=MarkerOptions)
     max_retries: PositiveInt = 5
-    dedup_batch_size: int = Field(default=100, ge=2)
+    dedup_batch_size: int = Field(default=50, ge=2)
 
 
 class PipelineResult(StrictModel):
