@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from functools import partial
 from pathlib import Path
 from typing import Any, Callable
 
@@ -20,7 +21,9 @@ class ClaimVerifier:
     """Run the OSA.Edu verification policy on an OSA local clone."""
 
     _HIGH_MEDIUM = frozenset({"high", "medium"})
-    _VERIFICATION_BATCH_SIZE = 50
+    # 50 is the externally documented maximum. A smaller subgroup keeps the
+    # structured response below output limits of conservative model settings.
+    _VERIFICATION_BATCH_SIZE = 25
     _CSV_PATTERN = re.compile(r"\.(csv|tsv)$", re.IGNORECASE)
     _CANDIDATE_PATTERNS = [
         r"(^|/)train[^/]*\.py$",
@@ -50,7 +53,7 @@ class ClaimVerifier:
         hide_low_confidence: bool = True,
         on_progress: Progress = None,
     ) -> ClaimVerificationResult:
-        """Verify claims in strict 50-item batches and return reportable results."""
+        """Verify claims in strict, output-safe batches and return reportable results."""
         source_total = len(claims)
         eligible, excluded_low, excluded_invalid = self._eligible_claims(claims, only_high_medium_verifiability)
         selection = ClaimSelection(
@@ -207,7 +210,14 @@ class ClaimVerifier:
         for batch_number, start in enumerate(batch_starts, start=1):
             batch = indexed_claims[start : start + self._VERIFICATION_BATCH_SIZE]
             expected_indices = {item["index"] for item in batch}
-            prompt = f"## Claims\n{json.dumps(batch, ensure_ascii=False, indent=2)}\n\n{context}Return the JSON array."
+            expected_list = sorted(expected_indices)
+            prompt = (
+                f"## Claims\n{json.dumps(batch, ensure_ascii=False, indent=2)}\n\n{context}"
+                "## Response contract\n"
+                f"Return exactly {len(batch)} objects for indices {expected_list}. "
+                "Include every listed index exactly once; do not add indices from another batch. "
+                "Return the JSON array only."
+            )
             self._progress(
                 on_progress,
                 f"Verifying batch {batch_number}/{len(batch_starts)}: claims {start + 1}-{start + len(batch)} of {len(claims)}.",
@@ -215,7 +225,7 @@ class ClaimVerifier:
             )
             parsed = self._model_handler.send_and_parse(
                 prompt,
-                lambda raw: self._parse_verification_batch(raw, expected_indices),
+                partial(self._parse_verification_batch, expected_indices=expected_indices),
                 self._prompts.get("thesis_analysis.verify_system"),
             )
             verification_by_index.update({item["index"]: item for item in parsed})
