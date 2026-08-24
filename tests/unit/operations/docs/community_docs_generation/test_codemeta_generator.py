@@ -18,7 +18,8 @@ def test_codemeta_generator_basic(mock_config_manager, mock_repository_metadata,
     mock_repository_metadata.license_name = "MIT"
     mock_repository_metadata.languages = ["Python", "C++"]
     mock_repository_metadata.created_at = "2024-01-01T00:00:00Z"
-    mock_repository_metadata.updated_at = "2024-06-01T00:00:00Z"
+    mock_repository_metadata.pushed_at = "2024-06-01T00:00:00Z"
+    mock_repository_metadata.updated_at = "2024-07-01T00:00:00Z"
     mock_repository_metadata.issues_url = "https://github.com/example/my-research-tool/issues"
     mock_repository_metadata.topics = ["machine-learning", "fair-software"]
 
@@ -69,6 +70,7 @@ authors = [
     mock_repository_metadata.clone_url_http = "https://github.com/example/pep621-pkg"
     mock_repository_metadata.languages = ["Python"]
     mock_repository_metadata.created_at = None
+    mock_repository_metadata.pushed_at = None
     mock_repository_metadata.updated_at = None
     mock_repository_metadata.issues_url = None
     mock_repository_metadata.topics = []
@@ -111,6 +113,7 @@ authors = ["Charlie Brown <charlie@peanuts.com>", "Snoopy"]
     mock_repository_metadata.clone_url_http = "https://github.com/example/poetry-pkg"
     mock_repository_metadata.languages = []
     mock_repository_metadata.created_at = None
+    mock_repository_metadata.pushed_at = None
     mock_repository_metadata.updated_at = None
     mock_repository_metadata.issues_url = None
     mock_repository_metadata.topics = []

@@ -82,8 +82,11 @@ class CodeMetaGenerator:
             "@type": "SoftwareSourceCode",
             "name": self.metadata.name,
             "description": self._pick_description(pyproject),
-            "codeRepository": self.metadata.clone_url_http,
         }
+
+        repo_url = self.metadata.clone_url_http or self.metadata.clone_url_ssh
+        if repo_url:
+            codemeta["codeRepository"] = repo_url
 
         # License
         license_url = self._resolve_license(pyproject)
@@ -107,8 +110,9 @@ class CodeMetaGenerator:
         # Dates
         if self.metadata.created_at:
             codemeta["dateCreated"] = self.metadata.created_at
-        if self.metadata.updated_at:
-            codemeta["dateModified"] = self.metadata.updated_at
+        date_modified = self.metadata.pushed_at or self.metadata.updated_at
+        if date_modified:
+            codemeta["dateModified"] = date_modified
 
         # Issue tracker
         if self.metadata.issues_url:
@@ -205,4 +209,4 @@ class CodeMetaGenerator:
         if not license_name:
             return None
 
-        return _SPDX_LICENSE_MAP.get(license_name, f"https://spdx.org/licenses/{license_name}")
+        return _SPDX_LICENSE_MAP.get(license_name)
