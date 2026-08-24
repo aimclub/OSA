@@ -105,13 +105,14 @@ Useful options:
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `--chunk-pages` | `10` | Number of PDF pages per physical chunk. |
+| `--chunk-pages` | `5` | Number of PDF pages per physical chunk. |
 | `--max-retries` | `5` | LLM response validation and repair attempts. |
+| `--dedup-batch-size` | `50` | Maximum extracted claims sent in one deduplication request. |
 | `--model` | `openai/gpt-5.4-mini` | Model name passed through the normal OSA validation model settings. |
 | `--include-debug` | `false` | Include debug-only data such as `debug.step3_selection` in `claims_legacy.json`. |
 | `--force-marker-refresh` | `false` | Ignore cached Marker Markdown and reconvert PDFs. LLM extraction is still rerun. |
 | `--marker-process-isolation` / `--no-marker-process-isolation` | `true` | Run each Marker chunk in a separate Python process to release CUDA memory between chunks. |
-| `--marker-low-vram` | `false` | Use conservative Marker batch sizes for low-VRAM GPUs. |
+| `--marker-low-vram` / `--no-marker-low-vram` | `true` | Use conservative Marker batch sizes for low-VRAM GPUs. |
 | `--marker-log-cuda-memory` / `--no-marker-log-cuda-memory` | `true` | Log CUDA memory before and after each Marker chunk when CUDA is available. |
 
 Example for a low-VRAM GPU:
