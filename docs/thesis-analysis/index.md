@@ -1,8 +1,8 @@
 # Thesis Repository Analysis
 
-`thesis_analysis` is OSA's sole CLI-supported pipeline for evaluating a thesis and its repository together. It
-deliberately keeps legacy experiment-reproducibility validation, OSA.Edu Streamlit, leaderboard data, and bilingual
-PDF layouts outside the core operation.
+`thesis_analysis` is OSA's canonical analysis-only mode for evaluating a thesis and its repository together. It
+deliberately keeps scheduler workflows, repository mutations, OSA.Edu Streamlit, leaderboard data, and PDF layouts
+outside the core operation.
 
 ## Pipeline
 
@@ -36,25 +36,37 @@ The three stages select independently overridable models from `[llm.for_reposito
 ## CLI
 
 ```bash
-python -m osa_tool.tools.thesis_analysis \
+osa-tool --thesis-analysis \
   --repository https://github.com/example/project \
   --paper ./thesis.pdf \
-  --output-dir ./analysis
+  --thesis-output-dir ./analysis
 ```
 
 Resume from extracted claims without running Marker:
 
 ```bash
-python -m osa_tool.tools.thesis_analysis \
+osa-tool --thesis-analysis \
   --repository ./project \
   --claims-json ./paper_claims/claims.json \
-  --output-dir ./analysis
+  --thesis-output-dir ./analysis
 ```
 
-Use `--include-low-verifiability` or `--include-low-confidence` only when the default reporting policy is unsuitable.
+The main mode clones once and never invokes the scheduler, README generation, forks, pull requests, or repository
+mutations. Rich progress is written to stderr; the final JSON artifact path is written to stdout.
+
+`python -m osa_tool.tools.thesis_analysis` remains a focused wrapper over the same runner and uses `--output-dir`.
+Use `--include-low-verifiability` or `--include-low-confidence` only when the configured reporting policy is unsuitable.
 
 The command writes `thesis_analysis.json` and `thesis_analysis.txt`. PDF and UI renderers should consume this canonical
 JSON artifact rather than duplicate verification logic.
+
+For the formal repository score alone, run:
+
+```bash
+python -m osa_tool.tools.repository_quality \
+  --repository https://github.com/example/project \
+  --output-dir ./quality
+```
 
 ## Migration from the removed legacy claim flow
 

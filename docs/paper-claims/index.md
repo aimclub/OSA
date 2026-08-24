@@ -2,8 +2,8 @@
 
 The paper claims pipeline extracts verifiable technical claims from PDF papers. It is a reusable single-document
 operation under `osa_tool.operations.analysis.paper_claims` and is not registered in the legacy scheduler or agent graph.
-Use `python -m osa_tool.tools.thesis_analysis` when those claims must be verified against a repository together with
-the formal VKR quality score.
+Use `osa-tool --thesis-analysis` when those claims must be verified against a repository together with the formal
+repository-quality score.
 
 The current flow is:
 
@@ -20,7 +20,7 @@ typed result objects.
 ## Runtime behavior
 
 - PDFs are split with `pypdf` into physical chunks before Marker conversion.
-- The default chunk size is ten pages and can be changed per run.
+- The default chunk size is five pages and can be changed per run.
 - Temporary chunk PDFs are deleted after conversion.
 - Marker Markdown is cached under the system temporary directory.
 - Section parsing and LLM claim extraction are intentionally rerun every time.
@@ -38,7 +38,7 @@ from pathlib import Path
 from osa_tool.operations.analysis.paper_claims import PaperClaimPipeline, PipelineOptions
 
 pipeline = PaperClaimPipeline(model_handler)
-result = await pipeline.arun(Path("paper.pdf"), PipelineOptions(pages_per_chunk=10))
+result = await pipeline.arun(Path("paper.pdf"), PipelineOptions(pages_per_chunk=5))
 ```
 
 The synchronous wrapper is available for scripts:

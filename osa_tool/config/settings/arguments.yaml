@@ -1,4 +1,9 @@
 arguments:
+  thesis_analysis:
+    aliases: [ "--thesis-analysis" ]
+    type: flag
+    description: "Run the analysis-only thesis paper and repository pipeline."
+
   attachment:
     aliases: [ "--attachment" ]
     type: str
