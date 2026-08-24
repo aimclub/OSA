@@ -39,18 +39,20 @@ def collect_pdf_inputs(paths: list[Path]) -> tuple[list[Path], list[str]]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    defaults = PipelineOptions()
+    marker_defaults = defaults.marker
     parser = argparse.ArgumentParser(description="Run claim extraction for multiple PDF documents.")
     parser.add_argument("pdfs", nargs="+", type=Path)
     parser.add_argument("--output-dir", type=Path, default=Path("paper_claim_results"))
     parser.add_argument("--repository", default="https://github.com/ai-chem/DiMag")
     parser.add_argument("--model", default="openai/gpt-5.4-mini")
     parser.add_argument("--config-file", default=None)
-    parser.add_argument("--chunk-pages", type=int, default=10)
+    parser.add_argument("--chunk-pages", type=int, default=defaults.pages_per_chunk)
     parser.add_argument("--max-retries", type=int, default=5)
     parser.add_argument(
         "--dedup-batch-size",
         type=_dedup_batch_size,
-        default=100,
+        default=defaults.dedup_batch_size,
         help=(
             "Maximum number of extracted claims to send in one deduplication request. "
             "Smaller values reduce LLM context/output pressure. Minimum: 2."
@@ -72,12 +74,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--marker-process-isolation",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=marker_defaults.process_isolation,
         help="Convert each PDF chunk in a separate Python process to release CUDA memory between chunks.",
     )
     parser.add_argument(
         "--marker-low-vram",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=marker_defaults.low_vram,
         help="Use conservative Marker batch sizes for low-VRAM GPUs.",
     )
     parser.add_argument(
