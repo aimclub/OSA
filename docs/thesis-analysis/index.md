@@ -23,6 +23,16 @@ claims JSON ───────────────────^
   A completed PDF extraction is exported under `paper_claims/`, so it can be supplied to a later run with
   `--claims-json` if verification must be retried.
 
+## Configuration
+
+`config.toml` contains the stable defaults under `[thesis_analysis]`: output directory, selection policy, typed
+paper-claims/Marker options, and bounded verification context limits. The formal score weights, result schema, and
+verification response contract remain code-level contracts to keep reports comparable.
+
+The three stages select independently overridable models from `[llm.for_repository_quality]`,
+`[llm.for_paper_claims]`, and `[llm.for_thesis_verification]`; omitted values inherit `[llm]`. The old
+`[llm.for_validation]` profile is rejected with migration guidance.
+
 ## CLI
 
 ```bash

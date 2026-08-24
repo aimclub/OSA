@@ -8,6 +8,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any, Callable
 
+from osa_tool.config.settings import ThesisVerificationSettings
 from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.response_cleaner import JsonProcessor
 
@@ -21,9 +22,6 @@ class ClaimVerifier:
     """Run the OSA.Edu verification policy on an OSA local clone."""
 
     _HIGH_MEDIUM = frozenset({"high", "medium"})
-    # 50 is the externally documented maximum. A smaller subgroup keeps the
-    # structured response below output limits of conservative model settings.
-    _VERIFICATION_BATCH_SIZE = 25
     _CSV_PATTERN = re.compile(r"\.(csv|tsv)$", re.IGNORECASE)
     _CANDIDATE_PATTERNS = [
         r"(^|/)train[^/]*\.py$",
@@ -39,9 +37,17 @@ class ClaimVerifier:
         r"(^|/)trainer[^/]*\.py$",
     ]
 
-    def __init__(self, clone_dir: str | Path, model_handler: Any, *, prompts: PromptLoader | None = None) -> None:
+    def __init__(
+        self,
+        clone_dir: str | Path,
+        model_handler: Any,
+        settings: ThesisVerificationSettings | None = None,
+        *,
+        prompts: PromptLoader | None = None,
+    ) -> None:
         self._clone_dir = Path(clone_dir).resolve()
         self._model_handler = model_handler
+        self._settings = settings or ThesisVerificationSettings()
         self._prompts = prompts or PromptLoader()
 
     def verify(
@@ -147,12 +153,12 @@ class ClaimVerifier:
         )
 
     def _read_candidate_code(self, flat_paths: list[str], on_progress: Progress) -> list[str]:
-        candidates = self._candidate_files(flat_paths)
+        candidates = self._candidate_files(flat_paths, max_files=self._settings.candidate_file_limit)
         snippets: list[str] = []
         for index, path in enumerate(candidates, start=1):
             try:
                 content = self._read_repo_file(path)
-                snippet = f"### {path}\n{self._truncate(content)}"
+                snippet = f"### {path}\n{self._truncate(content, self._settings.source_snippet_max_lines)}"
             except OSError as exc:
                 snippet = f"### {path}\n[could not read: {exc}]"
             snippets.append(snippet)
@@ -166,7 +172,7 @@ class ClaimVerifier:
             return "", []
         self._progress(on_progress, "Analysing data files (CSV/TSV)...", 0.35)
         stats: list[dict[str, Any]] = []
-        csv_paths = [path for path in flat_paths if self._CSV_PATTERN.search(path)][:5]
+        csv_paths = [path for path in flat_paths if self._CSV_PATTERN.search(path)][: self._settings.csv_file_limit]
         for index, path in enumerate(csv_paths, start=1):
             try:
                 stats.append(CsvAnalyzer(self._read_repo_file(path), filename=path).analyze())
@@ -204,11 +210,16 @@ class ClaimVerifier:
             }
             for index, claim in enumerate(claims)
         ]
-        context = self._verification_context(flat_paths, snippets, csv_section)
-        batch_starts = list(range(0, len(indexed_claims), self._VERIFICATION_BATCH_SIZE))
+        context = self._verification_context(
+            flat_paths,
+            snippets,
+            csv_section,
+            tree_max_paths=self._settings.repository_tree_max_paths,
+        )
+        batch_starts = list(range(0, len(indexed_claims), self._settings.batch_size))
         verification_by_index: dict[int, dict[str, Any]] = {}
         for batch_number, start in enumerate(batch_starts, start=1):
-            batch = indexed_claims[start : start + self._VERIFICATION_BATCH_SIZE]
+            batch = indexed_claims[start : start + self._settings.batch_size]
             expected_indices = {item["index"] for item in batch}
             expected_list = sorted(expected_indices)
             prompt = (
@@ -288,9 +299,15 @@ class ClaimVerifier:
         return "\n".join(lines[:max_lines]) + f"\n... (truncated, {len(lines)} total lines)"
 
     @staticmethod
-    def _verification_context(flat_paths: list[str], snippets: list[str], csv_section: str) -> str:
+    def _verification_context(
+        flat_paths: list[str],
+        snippets: list[str],
+        csv_section: str,
+        *,
+        tree_max_paths: int = 300,
+    ) -> str:
         code_context = "\n\n".join(snippets) if snippets else "(no source files selected)"
-        tree_sample = "\n".join(flat_paths[:300])
+        tree_sample = "\n".join(flat_paths[:tree_max_paths])
         context = f"## Repository file tree\n{tree_sample}\n\n" f"## Source code\n{code_context}\n\n"
         return context + (csv_section + "\n\n" if csv_section else "")
 

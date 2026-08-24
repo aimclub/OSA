@@ -3,18 +3,22 @@
 from __future__ import annotations
 
 import json
+from time import perf_counter
 from pathlib import Path
 from typing import Any, Callable
 
-from osa_tool.config.settings import ConfigManager
+from osa_tool.config.settings import ConfigManager, ThesisPaperClaimsSettings, ThesisVerificationSettings
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandlerFactory
 from osa_tool.operations.analysis.paper_claims import PaperClaimPipeline
 from osa_tool.operations.analysis.repository_quality.checks import build_file_tree
 from osa_tool.operations.analysis.repository_quality.repository_quality_scorer import RepositoryQualityScorer
+from osa_tool.utils.logger import logger
 
 from .models import PaperClaimsSummary, ThesisAnalysisArtifacts, ThesisAnalysisRequest, ThesisAnalysisResult
 from .verifier import ClaimVerifier
+
+ProgressCallback = Callable[[str, float], None] | None
 
 
 class ThesisAnalysisOperation:
@@ -27,7 +31,7 @@ class ThesisAnalysisOperation:
         request: ThesisAnalysisRequest,
         *,
         paper_pipeline_factory: Callable[[Any], PaperClaimPipeline] = PaperClaimPipeline,
-        verifier_factory: Callable[[str | Path, Any], ClaimVerifier] = ClaimVerifier,
+        verifier_factory: Callable[[str | Path, Any, ThesisVerificationSettings], ClaimVerifier] = ClaimVerifier,
     ) -> None:
         self._config_manager = config_manager
         self._git_agent = git_agent
@@ -35,19 +39,55 @@ class ThesisAnalysisOperation:
         self._paper_pipeline_factory = paper_pipeline_factory
         self._verifier_factory = verifier_factory
 
-    def run(self) -> ThesisAnalysisResult:
+    def run(self, *, on_progress: ProgressCallback = None) -> ThesisAnalysisResult:
         """Create JSON/text artifacts and return their typed canonical result."""
         output_dir = self._request.output_dir.resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
-        quality = RepositoryQualityScorer(self._config_manager, self._git_agent).get_quality_report()
-        flat_paths, _ = build_file_tree(self._git_agent.clone_dir)
-        handler = ModelHandlerFactory.build(self._config_manager.get_model_settings("validation"))
-        claims, paper_summary = self._load_claims(output_dir, handler)
-        verification = self._verifier_factory(self._git_agent.clone_dir, handler).verify(
-            claims,
-            flat_paths,
-            only_high_medium_verifiability=self._request.only_high_medium_verifiability,
-            hide_low_confidence=self._request.hide_low_confidence,
+        settings = self._config_manager.get_thesis_analysis_settings()
+        quality = self._run_stage(
+            "Repository quality scoring",
+            0.0,
+            0.25,
+            lambda: RepositoryQualityScorer(self._config_manager, self._git_agent).get_quality_report(),
+            on_progress,
+        )
+        flat_paths = self._run_stage(
+            "Repository file-tree collection",
+            0.25,
+            0.30,
+            lambda: build_file_tree(self._git_agent.clone_dir)[0],
+            on_progress,
+        )
+        paper_handler = (
+            ModelHandlerFactory.build(self._config_manager.get_model_settings("paper_claims"))
+            if self._request.paper_path is not None
+            else None
+        )
+        claims, paper_summary = self._run_stage(
+            "Paper-claim extraction" if self._request.paper_path is not None else "Claim-artifact loading",
+            0.30,
+            0.60,
+            lambda: self._load_claims(output_dir, paper_handler, settings.paper_claims),
+            on_progress,
+        )
+        verification_handler = ModelHandlerFactory.build(self._config_manager.get_model_settings("thesis_verification"))
+        verifier = self._verifier_factory(self._git_agent.clone_dir, verification_handler, settings.verification)
+        verification = self._run_stage(
+            "Claim verification",
+            0.60,
+            0.95,
+            lambda: verifier.verify(
+                claims,
+                flat_paths,
+                only_high_medium_verifiability=self._request.only_high_medium_verifiability,
+                hide_low_confidence=self._request.hide_low_confidence,
+                on_progress=lambda message, fraction: self._progress(
+                    on_progress,
+                    message,
+                    0.60 + 0.35 * fraction,
+                ),
+            ),
+            on_progress,
         )
 
         json_path = output_dir / "thesis_analysis.json"
@@ -58,11 +98,21 @@ class ThesisAnalysisOperation:
             claim_verification=verification,
             artifacts=ThesisAnalysisArtifacts(json_path=json_path, text_path=text_path),
         )
-        json_path.write_text(json.dumps(result.model_dump(mode="json"), ensure_ascii=False, indent=2), encoding="utf-8")
-        text_path.write_text(self.build_text_report(result), encoding="utf-8")
+        self._run_stage(
+            "Writing canonical artifacts",
+            0.95,
+            1.0,
+            lambda: self._write_artifacts(result),
+            on_progress,
+        )
         return result
 
-    def _load_claims(self, output_dir: Path, handler: Any) -> tuple[list[dict[str, Any]], PaperClaimsSummary]:
+    def _load_claims(
+        self,
+        output_dir: Path,
+        handler: Any | None,
+        paper_claim_settings: ThesisPaperClaimsSettings,
+    ) -> tuple[list[dict[str, Any]], PaperClaimsSummary]:
         if self._request.claims_path is not None:
             claims = self.load_claims_json(self._request.claims_path)
             return claims, PaperClaimsSummary(
@@ -72,8 +122,9 @@ class ThesisAnalysisOperation:
             )
 
         assert self._request.paper_path is not None
+        assert handler is not None
         pipeline = self._paper_pipeline_factory(handler)
-        pipeline_result = pipeline.run(self._request.paper_path)
+        pipeline_result = pipeline.run(self._request.paper_path, paper_claim_settings.to_pipeline_options())
         paper_output_dir = output_dir / "paper_claims"
         claims_path = pipeline.export(pipeline_result, paper_output_dir, legacy=False)
         claims = [claim.model_dump(mode="json") for claim in pipeline_result.extraction.claims]
@@ -101,6 +152,40 @@ class ThesisAnalysisOperation:
         if not isinstance(claims, list) or any(not isinstance(item, dict) for item in claims):
             raise ValueError("Claims JSON must contain a list under 'claims' or 'result', or be a list itself")
         return claims
+
+    @staticmethod
+    def _write_artifacts(result: ThesisAnalysisResult) -> None:
+        result.artifacts.json_path.write_text(
+            json.dumps(result.model_dump(mode="json"), ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        result.artifacts.text_path.write_text(ThesisAnalysisOperation.build_text_report(result), encoding="utf-8")
+
+    @staticmethod
+    def _run_stage(
+        name: str,
+        start: float,
+        finish: float,
+        action: Callable[[], Any],
+        on_progress: ProgressCallback,
+    ) -> Any:
+        logger.info("Thesis analysis stage started: %s", name)
+        ThesisAnalysisOperation._progress(on_progress, name, start)
+        started_at = perf_counter()
+        try:
+            result = action()
+        except Exception:
+            logger.exception("Thesis analysis stage failed: %s", name)
+            ThesisAnalysisOperation._progress(on_progress, f"{name} failed", start)
+            raise
+        logger.info("Thesis analysis stage completed: %s (%.2fs)", name, perf_counter() - started_at)
+        ThesisAnalysisOperation._progress(on_progress, name, finish)
+        return result
+
+    @staticmethod
+    def _progress(callback: ProgressCallback, message: str, fraction: float) -> None:
+        if callback:
+            callback(message, min(max(fraction, 0.0), 1.0))
 
     @staticmethod
     def build_text_report(result: ThesisAnalysisResult) -> str:

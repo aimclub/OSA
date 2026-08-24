@@ -69,8 +69,10 @@ class DataFactory:
             "default": default_settings,
             "for_docstring_gen": default_settings.copy(),
             "for_readme_gen": default_settings.copy(),
-            "for_validation": default_settings.copy(),
             "for_general_tasks": default_settings.copy(),
+            "for_repository_quality": default_settings.copy(),
+            "for_paper_claims": default_settings.copy(),
+            "for_thesis_verification": default_settings.copy(),
         }
 
     @staticmethod

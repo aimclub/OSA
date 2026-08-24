@@ -225,10 +225,20 @@ settings:
     type: str
     description: "Specific LLM model for README generation tasks."
 
-  model_validation:
-    aliases: [ "--model-validation" ]
+  model_repository_quality:
+    aliases: [ "--model-repository-quality" ]
     type: str
-    description: "Specific LLM model for validation tasks."
+    description: "Specific LLM model for formal repository-quality scoring."
+
+  model_paper_claims:
+    aliases: [ "--model-paper-claims" ]
+    type: str
+    description: "Specific LLM model for typed thesis paper claim extraction."
+
+  model_thesis_verification:
+    aliases: [ "--model-thesis-verification" ]
+    type: str
+    description: "Specific LLM model for thesis claim verification."
 
   model_general:
     aliases: [ "--model-general" ]

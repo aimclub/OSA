@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import ValidationError
 
+from osa_tool.config.settings import ThesisAnalysisSettings
 from osa_tool.operations.analysis.thesis_analysis.models import ThesisAnalysisRequest
 from osa_tool.operations.analysis.thesis_analysis.pipeline import ThesisAnalysisOperation
 
@@ -93,19 +94,21 @@ def test_operation_reuses_quality_report_and_writes_artifacts(monkeypatch, tmp_p
 
     verifier.verify.return_value = ClaimVerificationResult.model_validate(verifier.verify.return_value.model_dump())
     config_manager = MagicMock()
+    config_manager.get_thesis_analysis_settings.return_value = ThesisAnalysisSettings()
     git_agent = MagicMock(clone_dir=str(repository))
     operation = ThesisAnalysisOperation(
         config_manager,
         git_agent,
         ThesisAnalysisRequest(repository=str(repository), claims_path=claims_path, output_dir=tmp_path / "out"),
-        verifier_factory=lambda _clone_dir, _handler: verifier,
+        verifier_factory=lambda _clone_dir, _handler, _settings: verifier,
     )
     monkeypatch.setattr(
         "osa_tool.operations.analysis.thesis_analysis.pipeline.ModelHandlerFactory.build",
         MagicMock(return_value=MagicMock()),
     )
 
-    result = operation.run()
+    progress: list[tuple[str, float]] = []
+    result = operation.run(on_progress=lambda message, fraction: progress.append((message, fraction)))
 
     quality_scorer.get_quality_report.assert_called_once_with()
     verifier.verify.assert_called_once()
@@ -115,6 +118,9 @@ def test_operation_reuses_quality_report_and_writes_artifacts(monkeypatch, tmp_p
     saved = json.loads(result.artifacts.json_path.read_text(encoding="utf-8"))
     assert saved["schema_version"] == "1.0"
     assert saved["repository_quality"]["summary"]["score"] == 80
+    assert progress[0] == ("Repository quality scoring", 0.0)
+    assert progress[-1] == ("Writing canonical artifacts", 1.0)
+    assert any(message == "Claim verification" and fraction == 0.95 for message, fraction in progress)
 
 
 def test_pdf_input_preserves_optional_pipeline_failure(monkeypatch, tmp_path):
@@ -138,6 +144,7 @@ def test_pdf_input_preserves_optional_pipeline_failure(monkeypatch, tmp_path):
         ),
         paper_pipeline_factory=unavailable_pipeline,
     )
+    operation._config_manager.get_thesis_analysis_settings.return_value = ThesisAnalysisSettings()
     monkeypatch.setattr(
         "osa_tool.operations.analysis.thesis_analysis.pipeline.ModelHandlerFactory.build",
         MagicMock(return_value=MagicMock()),

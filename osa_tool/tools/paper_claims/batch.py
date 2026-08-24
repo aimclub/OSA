@@ -108,7 +108,7 @@ def main() -> int:
     from osa_tool.core.llm.llm import ModelHandlerFactory
 
     config = ConfigManager(args)
-    handler = ModelHandlerFactory.build(config.get_model_settings("validation"))
+    handler = ModelHandlerFactory.build(config.get_model_settings("paper_claims"))
     pipeline = PaperClaimPipeline(handler)
     options = PipelineOptions(
         pages_per_chunk=args.chunk_pages,

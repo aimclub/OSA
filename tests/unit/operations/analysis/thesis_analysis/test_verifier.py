@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from osa_tool.config.settings import ThesisVerificationSettings
 from osa_tool.operations.analysis.thesis_analysis.verifier import ClaimVerifier
 
 
@@ -69,6 +70,27 @@ def test_verifier_splits_fifty_six_claims_before_the_model_response_limit(tmp_pa
     assert "Return exactly 6 objects for indices [50, 51, 52, 53, 54, 55]" in handler.calls[-1]
     assert result.stats.scored_total == 56
     assert result.stats.total == 56
+
+
+def test_verifier_uses_configured_context_limits_and_batch_size(tmp_path):
+    (tmp_path / "main.py").write_text("\n".join(f"line {index}" for index in range(10)), encoding="utf-8")
+    handler = BatchHandler()
+    settings = ThesisVerificationSettings(
+        batch_size=2,
+        candidate_file_limit=1,
+        source_snippet_max_lines=2,
+        repository_tree_max_paths=1,
+        csv_file_limit=1,
+    )
+
+    ClaimVerifier(tmp_path, handler, settings).verify(
+        [{"claim": f"claim {index}", "verifiability": "high"} for index in range(3)],
+        ["main.py", "ignored.py"],
+    )
+
+    assert len(handler.calls) == 2
+    assert "line 2" not in handler.calls[0]
+    assert "ignored.py" not in handler.calls[0]
 
 
 @pytest.mark.parametrize(
