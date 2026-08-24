@@ -54,15 +54,21 @@ def test_verifier_filters_before_llm_and_hides_low_confidence(tmp_path):
     assert handler.system_prompts[0] == ClaimVerifier(tmp_path, handler)._prompts.get("thesis_analysis.verify_system")
 
 
-def test_verifier_uses_two_strict_batches_for_fifty_one_claims(tmp_path):
+def test_verifier_splits_fifty_six_claims_before_the_model_response_limit(tmp_path):
     handler = BatchHandler()
-    claims = [{"claim": f"claim {index}", "verifiability": "high"} for index in range(51)]
+    claims = [{"claim": f"claim {index}", "verifiability": "high"} for index in range(56)]
 
     result = ClaimVerifier(tmp_path, handler).verify(claims, [])
 
-    assert len(handler.calls) == 2
-    assert result.stats.scored_total == 51
-    assert result.stats.total == 51
+    assert len(handler.calls) == 3
+    batch_sizes = [
+        len(json.loads(call.split("## Claims\n", 1)[1].split("\n\n## Repository file tree", 1)[0]))
+        for call in handler.calls
+    ]
+    assert batch_sizes == [25, 25, 6]
+    assert "Return exactly 6 objects for indices [50, 51, 52, 53, 54, 55]" in handler.calls[-1]
+    assert result.stats.scored_total == 56
+    assert result.stats.total == 56
 
 
 @pytest.mark.parametrize(
