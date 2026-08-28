@@ -192,3 +192,36 @@ def test_verifier_marks_unreadable_notebook_context(tmp_path):
     )
 
     assert "[notebook contained no readable code or markdown cells]" in handler.calls[0]
+
+
+def test_verifier_exports_a_report_with_both_sources(tmp_path):
+    handler = BatchHandler()
+    verifier = ClaimVerifier(tmp_path, handler)
+    result = verifier.verify([{"claim": "implemented", "verifiability": "high"}], [])
+
+    report_path = verifier.export(
+        result,
+        tmp_path / "claim_verification",
+        source={
+            "repository": "https://github.com/example/repository",
+            "paper": {"kind": "pdf", "path": "/tmp/paper.pdf"},
+        },
+    )
+
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+    assert payload["meta"] == {
+        "source": {
+            "repository": "https://github.com/example/repository",
+            "paper": {"kind": "pdf", "path": "/tmp/paper.pdf"},
+        },
+        "model": {"configured": None, "used": []},
+    }
+    assert payload["result"] == result.model_dump(mode="json")
+
+
+def test_verifier_export_requires_repository_and_paper_sources(tmp_path):
+    verifier = ClaimVerifier(tmp_path, BatchHandler())
+    result = verifier.verify([], [])
+
+    with pytest.raises(ValueError, match="both 'repository' and 'paper'"):
+        verifier.export(result, tmp_path / "output", source={"repository": "repo"})

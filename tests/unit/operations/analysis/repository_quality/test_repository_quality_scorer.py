@@ -13,8 +13,9 @@ from osa_tool.operations.analysis.repository_quality.repository_quality_scorer i
 def test_repository_quality_scorer_is_quality_only_and_preserves_quality_report(monkeypatch, tmp_path):
     config_manager = MagicMock()
     config_manager.config.git.repository = "https://github.com/example/thesis"
-    config_manager.get_model_settings.return_value = MagicMock()
+    config_manager.get_model_settings.return_value = MagicMock(model="quality-primary")
     git_agent = MagicMock(clone_dir=str(tmp_path), repo=MagicMock())
+    model_handler = MagicMock(successful_models=["quality-primary", "quality-fallback"])
 
     checker = MagicMock()
     checker.run_all.return_value = {
@@ -23,7 +24,7 @@ def test_repository_quality_scorer_is_quality_only_and_preserves_quality_report(
     }
     monkeypatch.setattr(
         "osa_tool.operations.analysis.repository_quality.repository_quality_scorer.ModelHandlerFactory.build",
-        MagicMock(return_value=MagicMock()),
+        MagicMock(return_value=model_handler),
     )
     monkeypatch.setattr(
         "osa_tool.operations.analysis.repository_quality.repository_quality_scorer.build_file_tree",
@@ -43,6 +44,10 @@ def test_repository_quality_scorer_is_quality_only_and_preserves_quality_report(
     assert quality["summary"]["score"] == 25
     assert "claims_analysis" not in quality
     saved_report = json.loads(Path(run_result["result"]["json_path"]).read_text(encoding="utf-8"))
-    assert saved_report["checks"] == quality["checks"]
-    assert saved_report["summary"] == quality["summary"]
-    assert "claims_analysis" not in saved_report
+    assert saved_report["meta"] == {
+        "source": {"repository": "https://github.com/example/thesis"},
+        "model": {"configured": "quality-primary", "used": ["quality-primary", "quality-fallback"]},
+    }
+    assert saved_report["result"]["checks"] == quality["checks"]
+    assert saved_report["result"]["summary"] == quality["summary"]
+    assert "claims_analysis" not in saved_report["result"]

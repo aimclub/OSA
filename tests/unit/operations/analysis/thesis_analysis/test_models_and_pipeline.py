@@ -8,8 +8,25 @@ import pytest
 from pydantic import ValidationError
 
 from osa_tool.config.settings import ThesisAnalysisSettings, ThesisPaperClaimsSettings
+from osa_tool.operations.analysis.artifacts import ModelProvenance
 from osa_tool.operations.analysis.thesis_analysis.models import ThesisAnalysisRequest
 from osa_tool.operations.analysis.thesis_analysis.pipeline import ThesisAnalysisOperation
+
+
+def _write_fake_quality_report(_report, destination, *, source):
+    destination.mkdir(parents=True, exist_ok=True)
+    json_path = destination / "report.json"
+    text_path = destination / "report.txt"
+    json_path.write_text(json.dumps({"meta": {"source": source}}), encoding="utf-8")
+    text_path.write_text("quality", encoding="utf-8")
+    return json_path, text_path
+
+
+def _write_fake_verification_report(_result, destination, *, source):
+    destination.mkdir(parents=True, exist_ok=True)
+    path = destination / "report.json"
+    path.write_text(json.dumps({"meta": {"source": source}}), encoding="utf-8")
+    return path
 
 
 def test_request_requires_exactly_one_claim_source(tmp_path):
@@ -52,6 +69,10 @@ def test_operation_reuses_quality_report_and_writes_artifacts(monkeypatch, tmp_p
     quality = {"repo_url": "local/repository", "summary": {"score": 80}}
     quality_scorer = MagicMock()
     quality_scorer.get_quality_report.return_value = quality
+    quality_scorer.export_report.side_effect = _write_fake_quality_report
+    quality_scorer.get_model_provenance.return_value = ModelProvenance(
+        configured="quality-primary", used=["quality-primary"]
+    )
     monkeypatch.setattr(
         "osa_tool.operations.analysis.thesis_analysis.pipeline.RepositoryQualityScorer",
         MagicMock(return_value=quality_scorer),
@@ -93,6 +114,10 @@ def test_operation_reuses_quality_report_and_writes_artifacts(monkeypatch, tmp_p
     from osa_tool.operations.analysis.thesis_analysis.models import ClaimVerificationResult
 
     verifier.verify.return_value = ClaimVerificationResult.model_validate(verifier.verify.return_value.model_dump())
+    verifier.export.side_effect = _write_fake_verification_report
+    verifier.get_model_provenance.return_value = ModelProvenance(
+        configured="verification-primary", used=["verification-primary"]
+    )
     config_manager = MagicMock()
     config_manager.get_thesis_analysis_settings.return_value = ThesisAnalysisSettings()
     git_agent = MagicMock(clone_dir=str(repository))
@@ -116,8 +141,16 @@ def test_operation_reuses_quality_report_and_writes_artifacts(monkeypatch, tmp_p
     assert result.artifacts.json_path.is_file()
     assert result.artifacts.text_path.read_text(encoding="utf-8").endswith("\n")
     saved = json.loads(result.artifacts.json_path.read_text(encoding="utf-8"))
-    assert saved["schema_version"] == "1.0"
+    assert saved["schema_version"] == "1.1"
+    assert saved["meta"]["source"] == {
+        "repository": str(repository),
+        "paper": {"kind": "claims_json", "path": str(claims_path)},
+    }
     assert saved["repository_quality"]["summary"]["score"] == 80
+    assert result.artifacts.repository_quality_json_path.is_file()
+    assert result.artifacts.paper_claims_claims_path.is_file()
+    assert result.artifacts.paper_claims_report_path.is_file()
+    assert result.artifacts.claim_verification_json_path.is_file()
     assert progress[0] == ("Repository quality scoring", 0.0)
     assert progress[-1] == ("Writing canonical artifacts", 1.0)
     assert any(message == "Claim verification" and fraction == 0.95 for message, fraction in progress)
@@ -128,6 +161,8 @@ def test_pdf_input_preserves_optional_pipeline_failure(monkeypatch, tmp_path):
     repository.mkdir()
     quality_scorer = MagicMock()
     quality_scorer.get_quality_report.return_value = {"repo_url": "local/repository", "summary": {"score": 0}}
+    quality_scorer.export_report.side_effect = _write_fake_quality_report
+    quality_scorer.get_model_provenance.return_value = ModelProvenance()
     monkeypatch.setattr(
         "osa_tool.operations.analysis.thesis_analysis.pipeline.RepositoryQualityScorer",
         MagicMock(return_value=quality_scorer),
@@ -155,6 +190,7 @@ def test_pdf_input_preserves_optional_pipeline_failure(monkeypatch, tmp_path):
 
     assert not (tmp_path / "out" / "thesis_analysis.json").exists()
     assert not (tmp_path / "out" / "thesis_analysis.txt").exists()
+    assert (tmp_path / "out" / "repository_quality" / "report.json").is_file()
 
 
 def test_operation_rejects_output_inside_the_repository_before_scoring(monkeypatch, tmp_path):

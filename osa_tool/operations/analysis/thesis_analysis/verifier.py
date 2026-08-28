@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from osa_tool.config.settings import ThesisVerificationSettings
+from osa_tool.operations.analysis.artifacts import StageReportMetadata, model_provenance, write_stage_report
 from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.utils.utils import read_file
@@ -49,6 +50,8 @@ class ClaimVerifier:
     ) -> None:
         self._clone_dir = Path(clone_dir).resolve()
         self._model_handler = model_handler
+        configured_model = getattr(getattr(model_handler, "model_settings", None), "model", None)
+        self._configured_model = configured_model if isinstance(configured_model, str) else None
         self._settings = settings or ThesisVerificationSettings()
         self._prompts = prompts or PromptLoader()
 
@@ -91,6 +94,29 @@ class ClaimVerifier:
             scored_total=len(annotated),
             csv_stats=csv_stats,
         )
+
+    def export(
+        self,
+        result: ClaimVerificationResult,
+        output_dir: str | Path,
+        *,
+        source: dict[str, Any],
+    ) -> Path:
+        """Write the canonical verification report with both input sources."""
+        if "repository" not in source or "paper" not in source:
+            raise ValueError("Claim verification report source must include both 'repository' and 'paper'")
+        return write_stage_report(
+            Path(output_dir),
+            meta=StageReportMetadata(
+                source=source,
+                model=self.get_model_provenance(),
+            ),
+            result=result.model_dump(mode="json"),
+        )
+
+    def get_model_provenance(self):
+        """Return model provenance for the most recent verification run."""
+        return model_provenance(self._model_handler, configured=self._configured_model)
 
     @classmethod
     def _normalized_verifiability(cls, claim: dict[str, Any]) -> str:

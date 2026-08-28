@@ -6,6 +6,7 @@ from .models import (
     ClaimVerificationStats,
     ThesisAnalysisRequest,
     ThesisAnalysisResult,
+    ThesisAnalysisMetadata,
 )
 from .data_context import CsvAnalyzer
 from .pipeline import ThesisAnalysisOperation
@@ -18,6 +19,7 @@ __all__ = [
     "CsvAnalyzer",
     "ClaimVerifier",
     "ThesisAnalysisOperation",
+    "ThesisAnalysisMetadata",
     "ThesisAnalysisRequest",
     "ThesisAnalysisResult",
 ]

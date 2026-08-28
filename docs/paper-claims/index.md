@@ -69,6 +69,7 @@ The main public objects are:
 | `sections.json` | Parsed sections with heading metadata. |
 | `claims.json` | Typed extraction schema when `legacy=False`. |
 | `claims_legacy.json` | MVP-compatible claim JSON when `legacy=True`. |
+| `report.json` | Canonical stage report with paper source, configured model, actual successful models, and typed extraction result. |
 
 Legacy JSON excludes debug-only `step3_selection` by default:
 

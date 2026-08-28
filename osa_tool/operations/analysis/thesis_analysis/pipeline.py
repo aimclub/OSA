@@ -15,7 +15,13 @@ from osa_tool.operations.analysis.repository_quality.checks import build_file_tr
 from osa_tool.operations.analysis.repository_quality.repository_quality_scorer import RepositoryQualityScorer
 from osa_tool.utils.logger import logger
 
-from .models import PaperClaimsSummary, ThesisAnalysisArtifacts, ThesisAnalysisRequest, ThesisAnalysisResult
+from .models import (
+    PaperClaimsSummary,
+    ThesisAnalysisArtifacts,
+    ThesisAnalysisMetadata,
+    ThesisAnalysisRequest,
+    ThesisAnalysisResult,
+)
 from .verifier import ClaimVerifier
 
 ProgressCallback = Callable[[str, float], None] | None
@@ -43,11 +49,12 @@ class ThesisAnalysisOperation:
         """Create JSON/text artifacts and return their typed canonical result."""
         settings = self._config_manager.get_thesis_analysis_settings()
         output_dir = self._resolve_output_dir()
-        quality = self._run_stage(
+        quality_scorer = RepositoryQualityScorer(self._config_manager, self._git_agent)
+        quality, quality_json_path, quality_text_path = self._run_stage(
             "Repository quality scoring",
             0.0,
             0.25,
-            lambda: RepositoryQualityScorer(self._config_manager, self._git_agent).get_quality_report(),
+            lambda: self._score_and_export(quality_scorer, output_dir),
             on_progress,
         )
         flat_paths = self._run_stage(
@@ -71,20 +78,16 @@ class ThesisAnalysisOperation:
         )
         verification_handler = ModelHandlerFactory.build(self._config_manager.get_model_settings("thesis_verification"))
         verifier = self._verifier_factory(self._git_agent.clone_dir, verification_handler, settings.verification)
-        verification = self._run_stage(
+        verification, verification_json_path = self._run_stage(
             "Claim verification",
             0.60,
             0.95,
-            lambda: verifier.verify(
+            lambda: self._verify_and_export(
+                verifier,
                 claims,
                 flat_paths,
-                only_high_medium_verifiability=self._request.only_high_medium_verifiability,
-                hide_low_confidence=self._request.hide_low_confidence,
-                on_progress=lambda message, fraction: self._progress(
-                    on_progress,
-                    message,
-                    0.60 + 0.35 * fraction,
-                ),
+                output_dir,
+                on_progress,
             ),
             on_progress,
         )
@@ -92,10 +95,26 @@ class ThesisAnalysisOperation:
         json_path = output_dir / "thesis_analysis.json"
         text_path = output_dir / "thesis_analysis.txt"
         result = ThesisAnalysisResult(
+            meta=ThesisAnalysisMetadata(
+                source=self._source_metadata(),
+                models={
+                    "repository_quality": quality_scorer.get_model_provenance(),
+                    "paper_claims": paper_summary.model,
+                    "claim_verification": verifier.get_model_provenance(),
+                },
+            ),
             repository_quality=quality,
             paper_claims=paper_summary,
             claim_verification=verification,
-            artifacts=ThesisAnalysisArtifacts(json_path=json_path, text_path=text_path),
+            artifacts=ThesisAnalysisArtifacts(
+                json_path=json_path,
+                text_path=text_path,
+                paper_claims_report_path=paper_summary.artifacts["report_json"],
+                paper_claims_claims_path=paper_summary.artifacts["claims_json"],
+                repository_quality_json_path=quality_json_path,
+                repository_quality_text_path=quality_text_path,
+                claim_verification_json_path=verification_json_path,
+            ),
         )
         self._run_stage(
             "Writing canonical artifacts",
@@ -106,18 +125,71 @@ class ThesisAnalysisOperation:
         )
         return result
 
+    def _score_and_export(
+        self,
+        scorer: RepositoryQualityScorer,
+        output_dir: Path,
+    ) -> tuple[dict[str, Any], Path, Path]:
+        quality = scorer.get_quality_report()
+        json_path, text_path = scorer.export_report(
+            quality,
+            output_dir / "repository_quality",
+            source={"repository": self._request.repository},
+        )
+        return quality, json_path, text_path
+
+    def _verify_and_export(
+        self,
+        verifier: ClaimVerifier,
+        claims: list[dict[str, Any]],
+        flat_paths: list[str],
+        output_dir: Path,
+        on_progress: ProgressCallback,
+    ) -> tuple[Any, Path]:
+        verification = verifier.verify(
+            claims,
+            flat_paths,
+            only_high_medium_verifiability=self._request.only_high_medium_verifiability,
+            hide_low_confidence=self._request.hide_low_confidence,
+            on_progress=lambda message, fraction: self._progress(
+                on_progress,
+                message,
+                0.60 + 0.35 * fraction,
+            ),
+        )
+        report_path = verifier.export(
+            verification,
+            output_dir / "claim_verification",
+            source=self._source_metadata(),
+        )
+        return verification, report_path
+
+    def _source_metadata(self) -> dict[str, Any]:
+        if self._request.paper_path is not None:
+            paper = {"kind": "pdf", "path": str(self._request.paper_path)}
+        else:
+            paper = {"kind": "claims_json", "path": str(self._request.claims_path)}
+        return {"repository": self._request.repository, "paper": paper}
+
     def _load_claims(
         self,
         output_dir: Path,
         handler: Any | None,
         paper_claim_settings: ThesisPaperClaimsSettings,
     ) -> tuple[list[dict[str, Any]], PaperClaimsSummary]:
+        paper_output_dir = output_dir / "paper_claims"
         if self._request.claims_path is not None:
-            claims = self.load_claims_json(self._request.claims_path)
-            return claims, PaperClaimsSummary(
+            loaded = PaperClaimPipeline.load_claims_json(self._request.claims_path)
+            claims_path = PaperClaimPipeline.export_loaded_claims(loaded, paper_output_dir)
+            return loaded.claims, PaperClaimsSummary(
                 source_kind="claims_json",
                 source_path=self._request.claims_path,
-                claim_count=len(claims),
+                claim_count=len(loaded.claims),
+                model=PaperClaimPipeline.model_provenance_for_loaded(loaded),
+                artifacts={
+                    "claims_json": claims_path,
+                    "report_json": paper_output_dir / "report.json",
+                },
             )
 
         assert self._request.paper_path is not None
@@ -128,15 +200,16 @@ class ThesisAnalysisOperation:
             paper_claim_settings.to_pipeline_options(),
             show_progress=False,
         )
-        paper_output_dir = output_dir / "paper_claims"
         claims_path = pipeline.export(pipeline_result, paper_output_dir, legacy=False)
         claims = [claim.model_dump(mode="json") for claim in pipeline_result.extraction.claims]
         return claims, PaperClaimsSummary(
             source_kind="pdf",
             source_path=self._request.paper_path,
             claim_count=len(claims),
+            model=PaperClaimPipeline.model_provenance_for_extraction(pipeline_result),
             artifacts={
                 "claims_json": claims_path,
+                "report_json": paper_output_dir / "report.json",
                 "document_markdown": paper_output_dir / "document.md",
                 "sections_json": paper_output_dir / "sections.json",
             },
@@ -144,17 +217,8 @@ class ThesisAnalysisOperation:
 
     @staticmethod
     def load_claims_json(path: Path) -> list[dict[str, Any]]:
-        """Accept typed ``claims.json``, legacy ``claims_legacy.json``, or a bare list."""
-        payload = json.loads(Path(path).read_text(encoding="utf-8"))
-        if isinstance(payload, list):
-            claims = payload
-        elif isinstance(payload, dict):
-            claims = payload.get("claims", payload.get("result"))
-        else:
-            claims = None
-        if not isinstance(claims, list) or any(not isinstance(item, dict) for item in claims):
-            raise ValueError("Claims JSON must contain a list under 'claims' or 'result', or be a list itself")
-        return claims
+        """Compatibility wrapper; claim-artifact parsing is owned by ``paper_claims``."""
+        return PaperClaimPipeline.load_claims_json(path).claims
 
     @staticmethod
     def _write_artifacts(result: ThesisAnalysisResult) -> None:

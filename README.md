@@ -78,15 +78,16 @@ Here is a short video:
    including unit tests, code formatting, PEP 8 compliance checks, and PyPI publication.
 
 6. **Repository-quality score**: Evaluates a repository against formal criteria such as a non-empty README and
-   license file. Run it independently with `python -m osa_tool.tools.repository_quality` or as part of thesis analysis.
+   license file. Its standalone artifact is a provenance-bearing `report.json`; run it independently with
+   `python -m osa_tool.tools.repository_quality` or as part of thesis analysis.
    
 7. **Standalone paper claims pipeline**: Extracts technical claims from PDF papers through the reusable
    `paper_claims` operation and batch utilities. This pipeline is available as a separate module and is not registered
    in the scheduler yet.
 
-8. **Thesis repository analysis**: The canonical `osa-tool --thesis-analysis` mode composes repository quality,
-   typed paper-claim extraction, and batched claim-to-code verification into canonical JSON/text artifacts. The
-   focused `python -m osa_tool.tools.thesis_analysis` wrapper runs the same pipeline.
+8. **Thesis repository analysis**: The canonical `osa-tool --thesis-analysis` mode composes independently exported
+   repository-quality, typed paper-claim, and batched claim-verification reports into one JSON/text artifact layout.
+   The focused `python -m osa_tool.tools.thesis_analysis` wrapper runs the same pipeline.
    
 ---
 

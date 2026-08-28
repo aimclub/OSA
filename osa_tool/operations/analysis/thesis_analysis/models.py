@@ -7,6 +7,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from osa_tool.operations.analysis.artifacts import ModelProvenance
+
 
 class StrictModel(BaseModel):
     """Base model that rejects accidental public-contract fields."""
@@ -70,6 +72,7 @@ class PaperClaimsSummary(StrictModel):
     source_kind: Literal["pdf", "claims_json"]
     source_path: Path
     claim_count: int
+    model: ModelProvenance = Field(default_factory=ModelProvenance)
     artifacts: dict[str, Path] = Field(default_factory=dict)
 
 
@@ -78,12 +81,25 @@ class ThesisAnalysisArtifacts(StrictModel):
 
     json_path: Path
     text_path: Path
+    paper_claims_report_path: Path
+    paper_claims_claims_path: Path
+    repository_quality_json_path: Path
+    repository_quality_text_path: Path
+    claim_verification_json_path: Path
+
+
+class ThesisAnalysisMetadata(StrictModel):
+    """Both analysis inputs and actual model use across composed stages."""
+
+    source: dict[str, Any]
+    models: dict[str, ModelProvenance]
 
 
 class ThesisAnalysisResult(StrictModel):
     """Versioned canonical artifact for the complete thesis-analysis flow."""
 
-    schema_version: Literal["1.0"] = "1.0"
+    schema_version: Literal["1.1"] = "1.1"
+    meta: ThesisAnalysisMetadata
     repository_quality: dict[str, Any]
     paper_claims: PaperClaimsSummary
     claim_verification: ClaimVerificationResult

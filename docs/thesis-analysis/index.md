@@ -19,9 +19,12 @@ claims JSON ───────────────────^
   excluded from the implementation rate. Both decisions are recorded in the result.
 - Verification is performed in batches of at most 50 claims. Each model result must cover every requested claim index
   exactly once.
-- A root `thesis_analysis.json` and `thesis_analysis.txt` are written only after scoring and verification succeed.
-  A completed PDF extraction is exported under `paper_claims/`, so it can be supplied to a later run with
-  `--claims-json` if verification must be retried.
+- Each completed stage writes its own `report.json` immediately. The root `thesis_analysis.json` and
+  `thesis_analysis.txt` are written only after scoring and verification succeed. This preserves useful completed-stage
+  diagnostics if a later stage fails.
+- A completed PDF extraction is exported under `paper_claims/`, so it can be supplied to a later run with
+  `--claims-json` if verification must be retried. Resumed typed, legacy, and bare-list inputs are normalized into
+  a new `paper_claims/claims.json` artifact.
 
 ## Configuration
 
@@ -60,8 +63,29 @@ mutations. Rich progress is written to stderr; the final JSON artifact path is w
 `python -m osa_tool.tools.thesis_analysis` remains a focused wrapper over the same runner and uses `--output-dir`.
 Use `--include-low-verifiability` or `--include-low-confidence` only when the configured reporting policy is unsuitable.
 
-The command writes `thesis_analysis.json` and `thesis_analysis.txt`. PDF and UI renderers should consume this canonical
-JSON artifact rather than duplicate verification logic.
+The command produces one self-contained analysis directory:
+
+```text
+analysis/
+  thesis_analysis.json
+  thesis_analysis.txt
+  paper_claims/
+    report.json
+    claims.json
+    document.md            # PDF input
+    sections.json          # PDF input
+  repository_quality/
+    report.json
+    report.txt
+  claim_verification/
+    report.json
+```
+
+Each stage `report.json` is a versioned envelope with `meta.source`, `meta.model.configured`, and the ordered
+`meta.model.used` model IDs. Repository-quality reports name the repository source; paper-claims reports name the PDF
+or claims artifact; verification and root thesis metadata include both repository and paper/claims sources. The root
+artifact also exposes all stage artifact paths. PDF and UI renderers should consume this canonical JSON rather than
+duplicate verification logic.
 
 For the formal repository score alone, run:
 
