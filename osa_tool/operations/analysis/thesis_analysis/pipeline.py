@@ -41,9 +41,8 @@ class ThesisAnalysisOperation:
 
     def run(self, *, on_progress: ProgressCallback = None) -> ThesisAnalysisResult:
         """Create JSON/text artifacts and return their typed canonical result."""
-        output_dir = self._request.output_dir.resolve()
-        output_dir.mkdir(parents=True, exist_ok=True)
         settings = self._config_manager.get_thesis_analysis_settings()
+        output_dir = self._resolve_output_dir()
         quality = self._run_stage(
             "Repository quality scoring",
             0.0,
@@ -124,7 +123,11 @@ class ThesisAnalysisOperation:
         assert self._request.paper_path is not None
         assert handler is not None
         pipeline = self._paper_pipeline_factory(handler)
-        pipeline_result = pipeline.run(self._request.paper_path, paper_claim_settings.to_pipeline_options())
+        pipeline_result = pipeline.run(
+            self._request.paper_path,
+            paper_claim_settings.to_pipeline_options(),
+            show_progress=False,
+        )
         paper_output_dir = output_dir / "paper_claims"
         claims_path = pipeline.export(pipeline_result, paper_output_dir, legacy=False)
         claims = [claim.model_dump(mode="json") for claim in pipeline_result.extraction.claims]
@@ -155,11 +158,20 @@ class ThesisAnalysisOperation:
 
     @staticmethod
     def _write_artifacts(result: ThesisAnalysisResult) -> None:
+        result.artifacts.json_path.parent.mkdir(parents=True, exist_ok=True)
         result.artifacts.json_path.write_text(
             json.dumps(result.model_dump(mode="json"), ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
         result.artifacts.text_path.write_text(ThesisAnalysisOperation.build_text_report(result), encoding="utf-8")
+
+    def _resolve_output_dir(self) -> Path:
+        """Return an external artifact directory without creating it."""
+        clone_dir = Path(self._git_agent.clone_dir).resolve()
+        output_dir = self._request.output_dir.expanduser().resolve()
+        if output_dir == clone_dir or output_dir.is_relative_to(clone_dir):
+            raise ValueError("Thesis-analysis output directory must be outside the analyzed repository")
+        return output_dir
 
     @staticmethod
     def _run_stage(

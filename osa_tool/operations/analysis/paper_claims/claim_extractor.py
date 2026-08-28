@@ -40,6 +40,7 @@ class ClaimExtractor:
         prompts: PromptLoader | None = None,
         max_retries: int = 5,
         dedup_batch_size: int = 100,
+        show_progress: bool = True,
     ) -> None:
         if max_retries <= 0:
             raise ValueError("max_retries must be greater than zero")
@@ -49,12 +50,14 @@ class ClaimExtractor:
         self.prompts = prompts or PromptLoader()
         self.max_retries = max_retries
         self.dedup_batch_size = dedup_batch_size
+        self.show_progress = show_progress
         self._input_planner = ClaimInputPlanner(lambda: getattr(self.handler, "model_settings", None))
         self._deduplicator = ClaimDeduplicator(
             request_validated=self._request_validated,
             input_planner=self._input_planner,
             deduplication_system=self.prompts.get("paper_claims.deduplication_system"),
             dedup_batch_size=dedup_batch_size,
+            show_progress=show_progress,
         )
 
     def _repair_prompt(
@@ -283,7 +286,12 @@ class ClaimExtractor:
         claims: list[ExtractedClaim] = []
         claim_adapter = TypeAdapter(ClaimCandidateResponse)
         claim_system = self.prompts.get("paper_claims.claim_extraction_system")
-        for section_id in track(selected_section_ids, description="Extracting section claims"):
+        progress_items = (
+            track(selected_section_ids, description="Extracting section claims")
+            if self.show_progress
+            else selected_section_ids
+        )
+        for section_id in progress_items:
             section = section_by_id[section_id]
             if not section.text.strip():
                 logger.info("Skipping empty selected section %s (%s)", section.section_id, section.name)

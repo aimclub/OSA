@@ -29,6 +29,9 @@ claims JSON ───────────────────^
 paper-claims/Marker options, and bounded verification context limits. The formal score weights, result schema, and
 verification response contract remain code-level contracts to keep reports comparable.
 
+A relative default output directory is created beside the repository clone, never inside it. Explicit output paths
+inside the analyzed repository are rejected.
+
 The three stages select independently overridable models from `[llm.for_repository_quality]`,
 `[llm.for_paper_claims]`, and `[llm.for_thesis_verification]`; omitted values inherit `[llm]`. The old
 `[llm.for_validation]` profile is rejected with migration guidance.

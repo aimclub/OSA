@@ -52,11 +52,21 @@ def test_request_uses_config_defaults_and_explicit_cli_overrides(tmp_path):
     assert override_request.hide_low_confidence is True
 
 
+def test_request_places_a_relative_default_output_beside_the_clone(tmp_path):
+    clone_dir = tmp_path / "repository"
+    config_manager = MagicMock()
+    config_manager.get_thesis_analysis_settings.return_value = ThesisAnalysisSettings(output_dir=Path("analysis"))
+
+    request = cli.build_request(_args(tmp_path), config_manager, clone_dir=clone_dir)
+
+    assert request.output_dir == tmp_path / "analysis"
+
+
 def test_shared_runner_clones_once_and_forwards_progress(monkeypatch, tmp_path):
     args = _args(tmp_path)
     config_manager = MagicMock()
     config_manager.get_thesis_analysis_settings.return_value = ThesisAnalysisSettings(output_dir=tmp_path / "output")
-    git_agent = MagicMock()
+    git_agent = MagicMock(clone_dir=str(tmp_path / "clone"))
     operation = MagicMock()
     operation.run.side_effect = lambda *, on_progress: on_progress("Writing canonical artifacts", 1.0) or "result"
     updates: list[tuple[str, float]] = []

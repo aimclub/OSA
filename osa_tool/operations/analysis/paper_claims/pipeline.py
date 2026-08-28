@@ -24,16 +24,26 @@ class PaperClaimPipeline:
         self.converter = converter or MarkerDocumentConverter()
         self.section_parser = section_parser or MarkdownSectionParser()
 
-    async def arun(self, pdf_path: Path, options: PipelineOptions | None = None) -> PipelineResult:
+    async def arun(
+        self,
+        pdf_path: Path,
+        options: PipelineOptions | None = None,
+        *,
+        show_progress: bool = True,
+    ) -> PipelineResult:
         options = options or PipelineOptions()
         pdf_path = Path(pdf_path)
         logger.info("Paper claims pipeline started for %s", pdf_path)
         logger.info("Stage 1/4: starting PDF splitting")
         with PdfChunker() as chunker:
-            chunks = chunker.split(pdf_path, pages_per_chunk=options.pages_per_chunk)
+            chunks = chunker.split(
+                pdf_path,
+                pages_per_chunk=options.pages_per_chunk,
+                show_progress=show_progress,
+            )
             logger.info("Stage 1/4 completed: PDF split into %s chunks", len(chunks))
             logger.info("Stage 2/4: starting Marker conversion")
-            converted = self.converter.convert(chunks, options.marker)
+            converted = self.converter.convert(chunks, options.marker, show_progress=show_progress)
             logger.info(
                 "Stage 2/4 completed: Marker conversion finished (cache_hit=%s)",
                 converted.cache_hit,
@@ -48,6 +58,7 @@ class PaperClaimPipeline:
             self.handler,
             max_retries=options.max_retries,
             dedup_batch_size=options.dedup_batch_size,
+            show_progress=show_progress,
         ).extract(sections, source=str(converted.source_path), model=model_name)
         logger.info(
             "Stage 4/4 completed: model=%s; selected_sections=%s; extracted_before_dedup=%s; final_claims=%s",
@@ -59,11 +70,17 @@ class PaperClaimPipeline:
         logger.info("Paper claims pipeline completed for %s", pdf_path)
         return PipelineResult(converted_document=converted, sections=sections, extraction=extraction)
 
-    def run(self, pdf_path: Path, options: PipelineOptions | None = None) -> PipelineResult:
+    def run(
+        self,
+        pdf_path: Path,
+        options: PipelineOptions | None = None,
+        *,
+        show_progress: bool = True,
+    ) -> PipelineResult:
         try:
             asyncio.get_running_loop()
         except RuntimeError:
-            return asyncio.run(self.arun(pdf_path, options))
+            return asyncio.run(self.arun(pdf_path, options, show_progress=show_progress))
         raise RuntimeError("PaperClaimPipeline.run() cannot be used inside an active event loop; await arun() instead")
 
     @staticmethod

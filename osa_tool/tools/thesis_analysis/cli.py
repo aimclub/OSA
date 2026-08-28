@@ -26,7 +26,10 @@ def add_thesis_analysis_arguments(parser: argparse.ArgumentParser, *, main_cli: 
         dest="thesis_output_dir",
         type=Path,
         default=None,
-        help="Directory for thesis-analysis artifacts; defaults to [thesis_analysis].output_dir.",
+        help=(
+            "Directory for thesis-analysis artifacts. The configured relative default is created beside the "
+            "repository clone; paths inside the analyzed repository are rejected."
+        ),
     )
     filter_group = group.add_mutually_exclusive_group()
     filter_group.add_argument(
@@ -74,14 +77,22 @@ def validate_thesis_analysis_args(parser: argparse.ArgumentParser, args: argpars
         parser.error("Provide exactly one of --paper or --claims-json")
 
 
-def build_request(args: argparse.Namespace, config_manager: ConfigManager) -> ThesisAnalysisRequest:
+def build_request(
+    args: argparse.Namespace,
+    config_manager: ConfigManager,
+    *,
+    clone_dir: str | Path | None = None,
+) -> ThesisAnalysisRequest:
     """Resolve CLI overrides over typed config defaults into the public request contract."""
     settings = config_manager.get_thesis_analysis_settings()
+    output_dir = args.thesis_output_dir or settings.output_dir
+    if args.thesis_output_dir is None and clone_dir is not None and not output_dir.is_absolute():
+        output_dir = Path(clone_dir).resolve().parent / output_dir
     return ThesisAnalysisRequest(
         repository=str(args.repository),
         paper_path=args.paper,
         claims_path=args.claims_json,
-        output_dir=args.thesis_output_dir or settings.output_dir,
+        output_dir=output_dir,
         only_high_medium_verifiability=(
             settings.only_high_medium_verifiability
             if args.only_high_medium_verifiability is None
@@ -110,13 +121,13 @@ def run_thesis_analysis(
 
     config_manager = config_manager_factory(args)
     git_agent, _ = git_initializer(args, config_manager)
-    request = build_request(args, config_manager)
     with RichStageProgress("Preparing thesis analysis") as progress:
         logger.info("Thesis analysis stage started: Repository clone")
         progress.update("Cloning repository", 0.0)
         git_agent.clone_repository()
         logger.info("Thesis analysis stage completed: Repository clone")
         progress.update("Repository cloned", 0.10)
+        request = build_request(args, config_manager, clone_dir=git_agent.clone_dir)
         result = operation_factory(config_manager, git_agent, request).run(
             on_progress=lambda message, fraction: progress.update(message, 0.10 + 0.90 * fraction)
         )

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import ValidationError
 
-from osa_tool.config.settings import ThesisAnalysisSettings
+from osa_tool.config.settings import ThesisAnalysisSettings, ThesisPaperClaimsSettings
 from osa_tool.operations.analysis.thesis_analysis.models import ThesisAnalysisRequest
 from osa_tool.operations.analysis.thesis_analysis.pipeline import ThesisAnalysisOperation
 
@@ -155,3 +155,109 @@ def test_pdf_input_preserves_optional_pipeline_failure(monkeypatch, tmp_path):
 
     assert not (tmp_path / "out" / "thesis_analysis.json").exists()
     assert not (tmp_path / "out" / "thesis_analysis.txt").exists()
+
+
+def test_operation_rejects_output_inside_the_repository_before_scoring(monkeypatch, tmp_path):
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    claims_path = tmp_path / "claims.json"
+    claims_path.write_text(json.dumps([]), encoding="utf-8")
+    quality_scorer = MagicMock()
+    quality_scorer_class = MagicMock(return_value=quality_scorer)
+    monkeypatch.setattr(
+        "osa_tool.operations.analysis.thesis_analysis.pipeline.RepositoryQualityScorer",
+        quality_scorer_class,
+    )
+    config_manager = MagicMock()
+    config_manager.get_thesis_analysis_settings.return_value = ThesisAnalysisSettings()
+    output_dir = repository / "thesis_analysis"
+    operation = ThesisAnalysisOperation(
+        config_manager,
+        MagicMock(clone_dir=str(repository)),
+        ThesisAnalysisRequest(repository=str(repository), claims_path=claims_path, output_dir=output_dir),
+    )
+
+    with pytest.raises(ValueError, match="outside the analyzed repository"):
+        operation.run()
+
+    quality_scorer_class.assert_not_called()
+    assert not output_dir.exists()
+
+
+def test_operation_rejects_symlink_output_resolving_inside_the_repository(monkeypatch, tmp_path):
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    internal_output_dir = repository / "thesis_analysis"
+    internal_output_dir.mkdir()
+    output_link = tmp_path / "analysis-link"
+    output_link.symlink_to(internal_output_dir, target_is_directory=True)
+    claims_path = tmp_path / "claims.json"
+    claims_path.write_text(json.dumps([]), encoding="utf-8")
+    config_manager = MagicMock()
+    config_manager.get_thesis_analysis_settings.return_value = ThesisAnalysisSettings()
+    quality_scorer_class = MagicMock()
+    monkeypatch.setattr(
+        "osa_tool.operations.analysis.thesis_analysis.pipeline.RepositoryQualityScorer",
+        quality_scorer_class,
+    )
+    operation = ThesisAnalysisOperation(
+        config_manager,
+        MagicMock(clone_dir=str(repository)),
+        ThesisAnalysisRequest(repository=str(repository), claims_path=claims_path, output_dir=output_link),
+    )
+
+    with pytest.raises(ValueError, match="outside the analyzed repository"):
+        operation.run()
+
+    quality_scorer_class.assert_not_called()
+
+
+def test_operation_does_not_create_external_output_when_scoring_fails(monkeypatch, tmp_path):
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    claims_path = tmp_path / "claims.json"
+    claims_path.write_text(json.dumps([]), encoding="utf-8")
+    quality_scorer = MagicMock()
+    quality_scorer.get_quality_report.side_effect = RuntimeError("scoring failed")
+    monkeypatch.setattr(
+        "osa_tool.operations.analysis.thesis_analysis.pipeline.RepositoryQualityScorer",
+        MagicMock(return_value=quality_scorer),
+    )
+    config_manager = MagicMock()
+    config_manager.get_thesis_analysis_settings.return_value = ThesisAnalysisSettings()
+    output_dir = tmp_path / "analysis"
+    operation = ThesisAnalysisOperation(
+        config_manager,
+        MagicMock(clone_dir=str(repository)),
+        ThesisAnalysisRequest(repository=str(repository), claims_path=claims_path, output_dir=output_dir),
+    )
+
+    with pytest.raises(RuntimeError, match="scoring failed"):
+        operation.run()
+
+    assert not output_dir.exists()
+
+
+def test_pdf_claim_loading_disables_nested_paper_claim_progress(tmp_path):
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    paper_path = tmp_path / "paper.pdf"
+    paper_path.write_bytes(b"%PDF-test")
+    pipeline = MagicMock()
+    pipeline_result = MagicMock()
+    pipeline_result.extraction.claims = []
+    pipeline.run.return_value = pipeline_result
+    pipeline.export.return_value = tmp_path / "analysis" / "paper_claims" / "claims.json"
+    operation = ThesisAnalysisOperation(
+        MagicMock(),
+        MagicMock(clone_dir=str(repository)),
+        ThesisAnalysisRequest(repository=str(repository), paper_path=paper_path, output_dir=tmp_path / "analysis"),
+        paper_pipeline_factory=lambda _handler: pipeline,
+    )
+    settings = ThesisPaperClaimsSettings()
+
+    claims, summary = operation._load_claims(tmp_path / "analysis", MagicMock(), settings)
+
+    assert claims == []
+    assert summary.source_kind == "pdf"
+    pipeline.run.assert_called_once_with(paper_path, settings.to_pipeline_options(), show_progress=False)

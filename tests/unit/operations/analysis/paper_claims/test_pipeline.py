@@ -27,9 +27,11 @@ class FakeHandler:
 class FakeConverter:
     def __init__(self):
         self.chunk_paths: list[Path] = []
+        self.show_progress: bool | None = None
 
-    def convert(self, chunks, options):
+    def convert(self, chunks, options, *, show_progress=True):
         self.chunk_paths = [item.path for item in chunks]
+        self.show_progress = show_progress
         return ConvertedDocument(
             source_path=chunks[0].source_path,
             source_hash=chunks[0].source_hash,
@@ -60,6 +62,7 @@ async def test_pipeline_composes_stages_and_removes_pdf_chunks(tmp_path, caplog)
     assert all(not path.exists() for path in converter.chunk_paths)
     assert "Stage 1/4: starting PDF splitting" in caplog.text
     assert "final_claims=0" in caplog.text
+    assert converter.show_progress is True
 
     default_path = PaperClaimPipeline.export(result, tmp_path / "export-default", legacy=True)
     default_payload = json.loads(default_path.read_text())
@@ -68,3 +71,27 @@ async def test_pipeline_composes_stages_and_removes_pdf_chunks(tmp_path, caplog)
     debug_path = PaperClaimPipeline.export(result, tmp_path / "export-debug", legacy=True, include_debug=True)
     debug_payload = json.loads(debug_path.read_text())
     assert debug_payload["debug"]["step3_selection"] == []
+
+
+@pytest.mark.asyncio
+async def test_pipeline_can_disable_nested_progress(tmp_path, monkeypatch):
+    from osa_tool.operations.analysis.paper_claims import claim_extractor, claim_deduplicator, pdf_splitter
+
+    pdf = tmp_path / "paper.pdf"
+    create_pdf(pdf)
+    converter = FakeConverter()
+
+    def progress_must_not_render(*_args, **_kwargs):
+        raise AssertionError("nested Rich progress must be disabled")
+
+    monkeypatch.setattr(pdf_splitter, "track", progress_must_not_render)
+    monkeypatch.setattr(claim_extractor, "track", progress_must_not_render)
+    monkeypatch.setattr(claim_deduplicator, "track", progress_must_not_render)
+
+    await PaperClaimPipeline(FakeHandler(), converter=converter).arun(
+        pdf,
+        PipelineOptions(),
+        show_progress=False,
+    )
+
+    assert converter.show_progress is False
