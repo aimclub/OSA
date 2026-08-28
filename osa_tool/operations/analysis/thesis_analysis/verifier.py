@@ -11,6 +11,7 @@ from typing import Any, Callable
 from osa_tool.config.settings import ThesisVerificationSettings
 from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.response_cleaner import JsonProcessor
+from osa_tool.utils.utils import read_file
 
 from .data_context import CsvAnalyzer
 from .models import ClaimSelection, ClaimVerificationResult, ClaimVerificationStats
@@ -24,18 +25,19 @@ class ClaimVerifier:
     _HIGH_MEDIUM = frozenset({"high", "medium"})
     _CSV_PATTERN = re.compile(r"\.(csv|tsv)$", re.IGNORECASE)
     _CANDIDATE_PATTERNS = [
-        r"(^|/)train[^/]*\.py$",
-        r"(^|/)main\.py$",
-        r"(^|/)run[^/]*\.py$",
-        r"(^|/)model[^/]*\.py$",
-        r"(^|/)experiment[^/]*\.py$",
+        r"(^|/)train[^/]*\.(py|ipynb)$",
+        r"(^|/)main\.(py|ipynb)$",
+        r"(^|/)run[^/]*\.(py|ipynb)$",
+        r"(^|/)model[^/]*\.(py|ipynb)$",
+        r"(^|/)experiment[^/]*\.(py|ipynb)$",
         r"(^|/)configs?[^/]*\.(py|yaml|yml|json)$",
         r"(^|/)configs?/.*\.(yaml|yml|json)$",
-        r"(^|/)dataset[^/]*\.py$",
-        r"(^|/)data[^/]*\.py$",
-        r"(^|/)solver[^/]*\.py$",
-        r"(^|/)trainer[^/]*\.py$",
+        r"(^|/)dataset[^/]*\.(py|ipynb)$",
+        r"(^|/)data[^/]*\.(py|ipynb)$",
+        r"(^|/)solver[^/]*\.(py|ipynb)$",
+        r"(^|/)trainer[^/]*\.(py|ipynb)$",
     ]
+    _NOTEBOOK_PATTERN = re.compile(r"\.ipynb$", re.IGNORECASE)
 
     def __init__(
         self,
@@ -245,7 +247,7 @@ class ClaimVerifier:
             {
                 **claim,
                 "implementation": {
-                    "implemented": bool(verification_by_index[index].get("implemented", False)),
+                    "implemented": verification_by_index[index]["implemented"],
                     "confidence": verification_by_index[index].get("confidence", "low"),
                     "evidence_file": verification_by_index[index].get("evidence_file"),
                     "explanation": verification_by_index[index].get("explanation", ""),
@@ -261,6 +263,8 @@ class ClaimVerifier:
         for item in parsed:
             if not isinstance(item, dict) or type(item.get("index")) is not int:
                 raise ValueError("Each verification result must include an integer index")
+            if type(item.get("implemented")) is not bool:
+                raise ValueError("Each verification result must include a boolean implemented field")
             indices.append(item["index"])
         returned_indices = set(indices)
         if len(indices) != len(returned_indices):
@@ -278,7 +282,10 @@ class ClaimVerifier:
         path = (self._clone_dir / relative_path).resolve()
         if not path.is_relative_to(self._clone_dir):
             raise OSError(f"Refusing to read outside repository: {relative_path}")
-        return path.read_text(encoding="utf-8", errors="replace")
+        content = read_file(str(path))
+        if not content and self._NOTEBOOK_PATTERN.search(relative_path):
+            return "[notebook contained no readable code or markdown cells]"
+        return content
 
     @classmethod
     def _candidate_files(cls, flat_paths: list[str], max_files: int = 6) -> list[str]:
@@ -289,6 +296,11 @@ class ClaimVerifier:
                     result.append(path)
                     if len(result) == max_files:
                         return result
+        for path in flat_paths:
+            if path not in result and cls._NOTEBOOK_PATTERN.search(path):
+                result.append(path)
+                if len(result) == max_files:
+                    return result
         return result
 
     @staticmethod

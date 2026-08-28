@@ -9,10 +9,16 @@ from osa_tool.operations.analysis.thesis_analysis.verifier import ClaimVerifier
 
 
 class BatchHandler:
-    def __init__(self, *, low_confidence_indices: set[int] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        low_confidence_indices: set[int] | None = None,
+        implemented_by_index: dict[int, bool] | None = None,
+    ) -> None:
         self.calls: list[str] = []
         self.system_prompts: list[str] = []
         self.low_confidence_indices = low_confidence_indices or set()
+        self.implemented_by_index = implemented_by_index or {}
 
     def send_and_parse(self, prompt, parser, _system):
         self.calls.append(prompt)
@@ -21,7 +27,7 @@ class BatchHandler:
         payload = [
             {
                 "index": claim["index"],
-                "implemented": True,
+                "implemented": self.implemented_by_index.get(claim["index"], True),
                 "confidence": "low" if claim["index"] in self.low_confidence_indices else "high",
                 "evidence_file": "main.py",
                 "explanation": "Evidence found.",
@@ -96,13 +102,36 @@ def test_verifier_uses_configured_context_limits_and_batch_size(tmp_path):
 @pytest.mark.parametrize(
     "payload",
     [
-        [{"index": 0}, {"index": 0}],
-        [{"index": 1}],
+        [{"index": 0, "implemented": True}, {"index": 0, "implemented": False}],
+        [{"index": 1, "implemented": False}],
     ],
 )
 def test_verification_batch_rejects_duplicate_missing_or_unexpected_indices(payload):
     with pytest.raises(ValueError, match="duplicate|does not cover"):
         ClaimVerifier._parse_verification_batch(json.dumps(payload), {0})
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        [{"index": 0, "implemented": "false"}],
+        [{"index": 0, "implemented": 0}],
+        [{"index": 0}],
+    ],
+)
+def test_verification_batch_rejects_non_boolean_implemented_values(payload):
+    with pytest.raises(ValueError, match="boolean implemented"):
+        ClaimVerifier._parse_verification_batch(json.dumps(payload), {0})
+
+
+def test_verifier_preserves_a_valid_false_implementation_value(tmp_path):
+    handler = BatchHandler(implemented_by_index={0: False})
+
+    result = ClaimVerifier(tmp_path, handler).verify([{"claim": "missing", "verifiability": "high"}], [])
+
+    assert result.claims[0]["implementation"]["implemented"] is False
+    assert result.stats.implemented == 0
+    assert result.stats.implementation_rate_pct == 0
 
 
 def test_verifier_adds_csv_statistics_for_dataset_claims(tmp_path):
@@ -115,3 +144,51 @@ def test_verifier_adds_csv_statistics_for_dataset_claims(tmp_path):
 
     assert result.csv_stats[0]["filename"] == "dataset.csv"
     assert "## Data file statistics" in handler.calls[0]
+
+
+def test_verifier_reads_notebook_context_with_the_existing_reader(tmp_path):
+    notebook = tmp_path / "notebooks" / "train.ipynb"
+    notebook.parent.mkdir()
+    notebook.write_text(
+        json.dumps(
+            {
+                "cells": [
+                    {"cell_type": "markdown", "source": ["# Experiment"]},
+                    {"cell_type": "code", "source": ["model.fit(features, labels)\n"]},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    handler = BatchHandler()
+
+    ClaimVerifier(tmp_path, handler).verify(
+        [{"claim": "The model is trained", "verifiability": "high"}],
+        ["notebooks/train.ipynb"],
+    )
+
+    assert "### notebooks/train.ipynb" in handler.calls[0]
+    assert "# --- CODE CELL ---" in handler.calls[0]
+    assert "model.fit(features, labels)" in handler.calls[0]
+
+
+def test_candidate_files_include_remaining_notebooks_after_named_sources():
+    candidates = ClaimVerifier._candidate_files(
+        ["main.py", "notebooks/train.ipynb", "notebooks/exploration.ipynb"],
+        max_files=3,
+    )
+
+    assert candidates == ["notebooks/train.ipynb", "main.py", "notebooks/exploration.ipynb"]
+
+
+def test_verifier_marks_unreadable_notebook_context(tmp_path):
+    notebook = tmp_path / "analysis.ipynb"
+    notebook.write_text("{not valid json", encoding="utf-8")
+    handler = BatchHandler()
+
+    ClaimVerifier(tmp_path, handler).verify(
+        [{"claim": "A notebook analysis exists", "verifiability": "high"}],
+        ["analysis.ipynb"],
+    )
+
+    assert "[notebook contained no readable code or markdown cells]" in handler.calls[0]
