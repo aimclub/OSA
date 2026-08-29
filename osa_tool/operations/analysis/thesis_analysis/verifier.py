@@ -24,6 +24,7 @@ class ClaimVerifier:
     """Run the OSA.Edu verification policy on an OSA local clone."""
 
     _HIGH_MEDIUM = frozenset({"high", "medium"})
+    _CONFIDENCE_LEVELS = frozenset({"high", "medium", "low"})
     _CSV_PATTERN = re.compile(r"\.(csv|tsv)$", re.IGNORECASE)
     _CANDIDATE_PATTERNS = [
         r"(^|/)train[^/]*\.(py|ipynb)$",
@@ -291,6 +292,8 @@ class ClaimVerifier:
                 raise ValueError("Each verification result must include an integer index")
             if type(item.get("implemented")) is not bool:
                 raise ValueError("Each verification result must include a boolean implemented field")
+            if type(item.get("confidence")) is not str or item["confidence"] not in ClaimVerifier._CONFIDENCE_LEVELS:
+                raise ValueError("Each verification result must include confidence: high, medium, or low")
             indices.append(item["index"])
         returned_indices = set(indices)
         if len(indices) != len(returned_indices):

@@ -32,8 +32,10 @@ claims JSON ───────────────────^
 paper-claims/Marker options, and bounded verification context limits. The formal score weights, result schema, and
 verification response contract remain code-level contracts to keep reports comparable.
 
-A relative default output directory is created beside the repository clone, never inside it. Explicit output paths
-inside the analyzed repository are rejected.
+Configured default output directories are namespaced by clone name: a relative `thesis_analysis` default becomes
+`<clone-parent>/thesis_analysis/<clone-name>/`; absolute configured defaults receive the same final clone-name
+segment. This keeps results for sibling repositories separate and outside the clone. Explicit output paths inside the
+analyzed repository are rejected.
 
 The three stages select independently overridable models from `[llm.for_repository_quality]`,
 `[llm.for_paper_claims]`, and `[llm.for_thesis_verification]`; omitted values inherit `[llm]`. The old
@@ -58,7 +60,8 @@ osa-tool --thesis-analysis \
 ```
 
 The main mode clones once and never invokes the scheduler, README generation, forks, pull requests, or repository
-mutations. Rich progress is written to stderr; the final JSON artifact path is written to stdout.
+mutations. Rich progress is written to stderr; the final JSON artifact path is written to stdout. For remote
+repositories, `--delete-dir` removes the downloaded clone after either successful or failed analysis.
 
 `python -m osa_tool.tools.thesis_analysis` remains a focused wrapper over the same runner and uses `--output-dir`.
 Use `--include-low-verifiability` or `--include-low-confidence` only when the configured reporting policy is unsuitable.

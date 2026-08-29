@@ -6,6 +6,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
+
 from osa_tool.config.settings import ThesisAnalysisSettings
 from osa_tool.tools.thesis_analysis import __main__ as thesis_main
 from osa_tool.tools.thesis_analysis import cli
@@ -19,6 +21,7 @@ def _args(tmp_path, **overrides):
         "thesis_output_dir": None,
         "only_high_medium_verifiability": None,
         "hide_low_confidence": None,
+        "delete_dir": False,
     }
     values.update(overrides)
     return SimpleNamespace(**values)
@@ -52,14 +55,42 @@ def test_request_uses_config_defaults_and_explicit_cli_overrides(tmp_path):
     assert override_request.hide_low_confidence is True
 
 
-def test_request_places_a_relative_default_output_beside_the_clone(tmp_path):
+def test_request_namespaces_a_relative_default_output_by_clone(tmp_path):
     clone_dir = tmp_path / "repository"
     config_manager = MagicMock()
     config_manager.get_thesis_analysis_settings.return_value = ThesisAnalysisSettings(output_dir=Path("analysis"))
 
     request = cli.build_request(_args(tmp_path), config_manager, clone_dir=clone_dir)
 
-    assert request.output_dir == tmp_path / "analysis"
+    assert request.output_dir == tmp_path / "analysis" / "repository"
+
+
+def test_request_namespaces_absolute_defaults_and_preserves_explicit_overrides(tmp_path):
+    clone_dir = tmp_path / "repository"
+    config_manager = MagicMock()
+    config_manager.get_thesis_analysis_settings.return_value = ThesisAnalysisSettings(output_dir=tmp_path / "analysis")
+
+    default_request = cli.build_request(_args(tmp_path), config_manager, clone_dir=clone_dir)
+    override_request = cli.build_request(
+        _args(tmp_path, thesis_output_dir=tmp_path / "explicit-output"),
+        config_manager,
+        clone_dir=clone_dir,
+    )
+
+    assert default_request.output_dir == tmp_path / "analysis" / "repository"
+    assert override_request.output_dir == tmp_path / "explicit-output"
+
+
+def test_request_uses_distinct_default_paths_for_sibling_clones(tmp_path):
+    config_manager = MagicMock()
+    config_manager.get_thesis_analysis_settings.return_value = ThesisAnalysisSettings(output_dir=Path("analysis"))
+
+    first = cli.build_request(_args(tmp_path), config_manager, clone_dir=tmp_path / "first")
+    second = cli.build_request(_args(tmp_path), config_manager, clone_dir=tmp_path / "second")
+
+    assert first.output_dir == tmp_path / "analysis" / "first"
+    assert second.output_dir == tmp_path / "analysis" / "second"
+    assert first.output_dir != second.output_dir
 
 
 def test_shared_runner_clones_once_and_forwards_progress(monkeypatch, tmp_path):
@@ -132,3 +163,35 @@ def test_main_cli_thesis_mode_bypasses_scheduler_and_legacy_workflows(monkeypatc
 
     assert run.main() == 0
     assert capsys.readouterr().out == "analysis.json\n"
+
+
+@pytest.mark.parametrize("fails", [False, True])
+def test_main_cli_thesis_mode_honors_delete_dir_on_success_and_failure(monkeypatch, tmp_path, fails):
+    from osa_tool import run
+
+    args = _args(tmp_path, thesis_analysis=True, delete_dir=True)
+    parser = MagicMock()
+    parser.parse_args.return_value = args
+    result = SimpleNamespace(artifacts=SimpleNamespace(json_path=Path("analysis.json")))
+    runner = MagicMock(side_effect=RuntimeError("analysis failed")) if fails else MagicMock(return_value=result)
+
+    monkeypatch.setattr(run, "build_parser_from_yaml", MagicMock(return_value=parser))
+    monkeypatch.setattr("osa_tool.tools.thesis_analysis.cli.configure_focused_tool_logging", MagicMock())
+    monkeypatch.setattr("osa_tool.tools.thesis_analysis.cli.run_thesis_analysis", runner)
+    delete_repository = MagicMock()
+    monkeypatch.setattr(run, "delete_repository", delete_repository)
+    monkeypatch.setattr(run, "rich_section", MagicMock())
+
+    assert run.main() == (1 if fails else 0)
+    delete_repository.assert_called_once_with(args.repository)
+
+
+def test_main_module_entrypoint_exits_with_thesis_failure_status(monkeypatch):
+    from osa_tool import run
+
+    monkeypatch.setattr(run, "main", MagicMock(return_value=1))
+
+    with pytest.raises(SystemExit) as exc_info:
+        run._main_entrypoint()
+
+    assert exc_info.value.code == 1

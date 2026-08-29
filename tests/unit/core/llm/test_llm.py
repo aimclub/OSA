@@ -112,6 +112,20 @@ def test_successful_models_tracks_primary_and_fallback_in_order(mock_config_mana
     assert handler.last_successful_model == fallback_model
 
 
+def test_reset_model_provenance_preserves_active_model(mock_config_manager, patch_llm_connector):
+    model_settings = mock_config_manager.get_model_settings("general")
+    handler = ProtollmHandler(model_settings)
+    handler.successful_models = ["primary", "fallback"]
+    handler.last_successful_model = "fallback"
+    active_model = handler.model_settings.model
+
+    handler.reset_model_provenance()
+
+    assert handler.successful_models == []
+    assert handler.last_successful_model is None
+    assert handler.model_settings.model == active_model
+
+
 def test_response_debug_token_counting_is_best_effort_for_special_tokens(
     mock_config_manager, patch_llm_connector, caplog
 ):

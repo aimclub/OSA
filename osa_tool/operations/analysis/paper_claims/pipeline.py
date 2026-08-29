@@ -40,6 +40,9 @@ class PaperClaimPipeline:
     ) -> PipelineResult:
         options = options or PipelineOptions()
         pdf_path = Path(pdf_path)
+        reset_provenance = getattr(self.handler, "reset_model_provenance", None)
+        if callable(reset_provenance):
+            reset_provenance()
         logger.info("Paper claims pipeline started for %s", pdf_path)
         logger.info("Stage 1/4: starting PDF splitting")
         with PdfChunker() as chunker:

@@ -75,8 +75,13 @@ def main():
         except Exception as exc:
             logger.exception("Thesis analysis failed: %s", exc)
             return 1
-        print(result.artifacts.json_path)
-        return 0
+        else:
+            print(result.artifacts.json_path)
+            return 0
+        finally:
+            if getattr(args, "delete_dir", False):
+                rich_section("Repository deletion")
+                delete_repository(args.repository)
     create_fork = not args.no_fork
     create_pull_request = not args.no_pull_request
 
@@ -349,5 +354,10 @@ def _run_plan_operation(plan: Plan, task_key: str, call: Callable[[], Any]) -> N
             plan.mark_failed(task_key)
 
 
+def _main_entrypoint() -> None:
+    """Exit a module invocation with the status returned by :func:`main`."""
+    raise SystemExit(main())
+
+
 if __name__ == "__main__":
-    main()
+    _main_entrypoint()

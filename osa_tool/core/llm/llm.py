@@ -218,6 +218,11 @@ class ProtollmHandler(ModelHandler):
         if model not in self.successful_models:
             self.successful_models.append(model)
 
+    def reset_model_provenance(self) -> None:
+        """Clear model-use history before starting an independent analysis document."""
+        self.last_successful_model = None
+        self.successful_models.clear()
+
     def reset_to_primary_model(self) -> None:
         """Explicitly restore primary model configuration."""
         primary = self._original_primary_model

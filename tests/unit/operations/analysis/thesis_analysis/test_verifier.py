@@ -102,8 +102,11 @@ def test_verifier_uses_configured_context_limits_and_batch_size(tmp_path):
 @pytest.mark.parametrize(
     "payload",
     [
-        [{"index": 0, "implemented": True}, {"index": 0, "implemented": False}],
-        [{"index": 1, "implemented": False}],
+        [
+            {"index": 0, "implemented": True, "confidence": "high"},
+            {"index": 0, "implemented": False, "confidence": "low"},
+        ],
+        [{"index": 1, "implemented": False, "confidence": "medium"}],
     ],
 )
 def test_verification_batch_rejects_duplicate_missing_or_unexpected_indices(payload):
@@ -114,14 +117,39 @@ def test_verification_batch_rejects_duplicate_missing_or_unexpected_indices(payl
 @pytest.mark.parametrize(
     "payload",
     [
-        [{"index": 0, "implemented": "false"}],
-        [{"index": 0, "implemented": 0}],
-        [{"index": 0}],
+        [{"index": 0, "implemented": "false", "confidence": "high"}],
+        [{"index": 0, "implemented": 0, "confidence": "high"}],
+        [{"index": 0, "confidence": "high"}],
     ],
 )
 def test_verification_batch_rejects_non_boolean_implemented_values(payload):
     with pytest.raises(ValueError, match="boolean implemented"):
         ClaimVerifier._parse_verification_batch(json.dumps(payload), {0})
+
+
+@pytest.mark.parametrize(
+    "confidence",
+    ["unknown", "uncertain", "HIGH", " medium", None, 1],
+)
+def test_verification_batch_rejects_unsupported_confidence_values(confidence):
+    payload = [{"index": 0, "implemented": True, "confidence": confidence}]
+
+    with pytest.raises(ValueError, match="confidence: high, medium, or low"):
+        ClaimVerifier._parse_verification_batch(json.dumps(payload), {0})
+
+
+def test_verification_batch_rejects_missing_confidence():
+    payload = [{"index": 0, "implemented": True}]
+
+    with pytest.raises(ValueError, match="confidence: high, medium, or low"):
+        ClaimVerifier._parse_verification_batch(json.dumps(payload), {0})
+
+
+@pytest.mark.parametrize("confidence", ["high", "medium", "low"])
+def test_verification_batch_accepts_canonical_confidence_values(confidence):
+    payload = [{"index": 0, "implemented": True, "confidence": confidence}]
+
+    assert ClaimVerifier._parse_verification_batch(json.dumps(payload), {0}) == payload
 
 
 def test_verifier_preserves_a_valid_false_implementation_value(tmp_path):

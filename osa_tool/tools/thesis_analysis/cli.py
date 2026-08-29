@@ -27,8 +27,8 @@ def add_thesis_analysis_arguments(parser: argparse.ArgumentParser, *, main_cli: 
         type=Path,
         default=None,
         help=(
-            "Directory for thesis-analysis artifacts. The configured relative default is created beside the "
-            "repository clone; paths inside the analyzed repository are rejected."
+            "Directory for thesis-analysis artifacts. Configured defaults are namespaced by clone name outside the "
+            "repository; paths inside the analyzed repository are rejected."
         ),
     )
     filter_group = group.add_mutually_exclusive_group()
@@ -86,8 +86,10 @@ def build_request(
     """Resolve CLI overrides over typed config defaults into the public request contract."""
     settings = config_manager.get_thesis_analysis_settings()
     output_dir = args.thesis_output_dir or settings.output_dir
-    if args.thesis_output_dir is None and clone_dir is not None and not output_dir.is_absolute():
-        output_dir = Path(clone_dir).resolve().parent / output_dir
+    if args.thesis_output_dir is None and clone_dir is not None:
+        clone_path = Path(clone_dir).resolve()
+        output_base = output_dir if output_dir.is_absolute() else clone_path.parent / output_dir
+        output_dir = output_base / clone_path.name
     return ThesisAnalysisRequest(
         repository=str(args.repository),
         paper_path=args.paper,
