@@ -209,6 +209,22 @@ def test_candidate_files_include_remaining_notebooks_after_named_sources():
     assert candidates == ["notebooks/train.ipynb", "main.py", "notebooks/exploration.ipynb"]
 
 
+def test_candidate_files_fall_back_to_ordinary_python_modules(tmp_path):
+    module = tmp_path / "src" / "architecture.py"
+    module.parent.mkdir()
+    module.write_text("class Architecture: pass", encoding="utf-8")
+    handler = BatchHandler()
+
+    ClaimVerifier(tmp_path, handler).verify(
+        [{"claim": "An architecture is implemented", "verifiability": "high"}],
+        ["src/architecture.py"],
+    )
+
+    assert ClaimVerifier._candidate_files(["src/architecture.py"]) == ["src/architecture.py"]
+    assert "### src/architecture.py" in handler.calls[0]
+    assert "class Architecture" in handler.calls[0]
+
+
 def test_verifier_marks_unreadable_notebook_context(tmp_path):
     notebook = tmp_path / "analysis.ipynb"
     notebook.write_text("{not valid json", encoding="utf-8")

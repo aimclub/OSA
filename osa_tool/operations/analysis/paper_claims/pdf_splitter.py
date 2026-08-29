@@ -41,6 +41,27 @@ class PdfChunker:
                 raise PdfInputError(f"File does not have a PDF signature: {path}")
         return path
 
+    @classmethod
+    def validate_readable(cls, pdf_path: Path) -> Path:
+        """Validate that a PDF can be parsed without producing split artifacts."""
+        path = cls.validate(pdf_path)
+        try:
+            from pypdf import PdfReader
+        except ImportError as exc:
+            raise PdfConversionError(
+                'PDF validation requires the paper-claims extra. Install it with: pip install "osa_tool[paper-claims]".'
+            ) from exc
+
+        try:
+            reader = PdfReader(str(path))
+            if len(reader.pages) == 0:
+                raise PdfInputError(f"PDF contains no pages: {path}")
+        except PdfInputError:
+            raise
+        except Exception as exc:
+            raise PdfConversionError(f"Cannot read PDF {path}: {exc}") from exc
+        return path
+
     def split(self, pdf_path: Path, pages_per_chunk: int = 10, *, show_progress: bool = True) -> list[PdfChunk]:
         if pages_per_chunk <= 0:
             raise ValueError("pages_per_chunk must be greater than zero")

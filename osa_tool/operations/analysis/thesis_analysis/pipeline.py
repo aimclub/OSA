@@ -10,7 +10,7 @@ from typing import Any, Callable
 from osa_tool.config.settings import ConfigManager, ThesisPaperClaimsSettings, ThesisVerificationSettings
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandlerFactory
-from osa_tool.operations.analysis.paper_claims import PaperClaimPipeline
+from osa_tool.operations.analysis.paper_claims import LoadedClaimsArtifact, PaperClaimPipeline, PdfChunker
 from osa_tool.operations.analysis.repository_quality.checks import build_file_tree
 from osa_tool.operations.analysis.repository_quality.repository_quality_scorer import RepositoryQualityScorer
 from osa_tool.utils.logger import logger
@@ -49,18 +49,25 @@ class ThesisAnalysisOperation:
         """Create JSON/text artifacts and return their typed canonical result."""
         settings = self._config_manager.get_thesis_analysis_settings()
         output_dir = self._resolve_output_dir()
+        claim_input = self._run_stage(
+            "Claim input preflight",
+            0.0,
+            0.05,
+            self._preflight_claim_input,
+            on_progress,
+        )
         quality_scorer = RepositoryQualityScorer(self._config_manager, self._git_agent)
         quality, quality_json_path, quality_text_path = self._run_stage(
             "Repository quality scoring",
-            0.0,
-            0.25,
+            0.05,
+            0.30,
             lambda: self._score_and_export(quality_scorer, output_dir),
             on_progress,
         )
         flat_paths = self._run_stage(
             "Repository file-tree collection",
-            0.25,
             0.30,
+            0.35,
             lambda: build_file_tree(self._git_agent.clone_dir)[0],
             on_progress,
         )
@@ -71,9 +78,9 @@ class ThesisAnalysisOperation:
         )
         claims, paper_summary = self._run_stage(
             "Paper-claim extraction" if self._request.paper_path is not None else "Claim-artifact loading",
-            0.30,
+            0.35,
             0.60,
-            lambda: self._load_claims(output_dir, paper_handler, settings.paper_claims),
+            lambda: self._load_claims(output_dir, paper_handler, settings.paper_claims, claim_input),
             on_progress,
         )
         verification_handler = ModelHandlerFactory.build(self._config_manager.get_model_settings("thesis_verification"))
@@ -176,10 +183,12 @@ class ThesisAnalysisOperation:
         output_dir: Path,
         handler: Any | None,
         paper_claim_settings: ThesisPaperClaimsSettings,
+        claim_input: LoadedClaimsArtifact | Path,
     ) -> tuple[list[dict[str, Any]], PaperClaimsSummary]:
         paper_output_dir = output_dir / "paper_claims"
         if self._request.claims_path is not None:
-            loaded = PaperClaimPipeline.load_claims_json(self._request.claims_path)
+            assert isinstance(claim_input, LoadedClaimsArtifact)
+            loaded = claim_input
             claims_path = PaperClaimPipeline.export_loaded_claims(loaded, paper_output_dir)
             return loaded.claims, PaperClaimsSummary(
                 source_kind="claims_json",
@@ -194,9 +203,10 @@ class ThesisAnalysisOperation:
 
         assert self._request.paper_path is not None
         assert handler is not None
+        assert isinstance(claim_input, Path)
         pipeline = self._paper_pipeline_factory(handler)
         pipeline_result = pipeline.run(
-            self._request.paper_path,
+            claim_input,
             paper_claim_settings.to_pipeline_options(),
             show_progress=False,
         )
@@ -214,6 +224,13 @@ class ThesisAnalysisOperation:
                 "sections_json": paper_output_dir / "sections.json",
             },
         )
+
+    def _preflight_claim_input(self) -> LoadedClaimsArtifact | Path:
+        """Validate the selected claim source before repository-quality model calls."""
+        if self._request.claims_path is not None:
+            return PaperClaimPipeline.load_claims_json(self._request.claims_path)
+        assert self._request.paper_path is not None
+        return PdfChunker.validate_readable(self._request.paper_path)
 
     @staticmethod
     def load_claims_json(path: Path) -> list[dict[str, Any]]:

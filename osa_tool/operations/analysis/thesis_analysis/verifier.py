@@ -39,6 +39,7 @@ class ClaimVerifier:
         r"(^|/)solver[^/]*\.(py|ipynb)$",
         r"(^|/)trainer[^/]*\.(py|ipynb)$",
     ]
+    _PYTHON_PATTERN = re.compile(r"\.py$", re.IGNORECASE)
     _NOTEBOOK_PATTERN = re.compile(r"\.ipynb$", re.IGNORECASE)
 
     def __init__(
@@ -319,17 +320,24 @@ class ClaimVerifier:
     @classmethod
     def _candidate_files(cls, flat_paths: list[str], max_files: int = 6) -> list[str]:
         result: list[str] = []
-        for pattern in cls._CANDIDATE_PATTERNS:
+
+        def append_matches(pattern: str | re.Pattern[str]) -> bool:
             for path in flat_paths:
-                if path not in result and re.search(pattern, path, re.IGNORECASE):
+                matched = (
+                    pattern.search(path) if isinstance(pattern, re.Pattern) else re.search(pattern, path, re.IGNORECASE)
+                )
+                if path not in result and matched:
                     result.append(path)
                     if len(result) == max_files:
-                        return result
-        for path in flat_paths:
-            if path not in result and cls._NOTEBOOK_PATTERN.search(path):
-                result.append(path)
-                if len(result) == max_files:
-                    return result
+                        return True
+            return False
+
+        for pattern in cls._CANDIDATE_PATTERNS:
+            if append_matches(pattern):
+                return result
+        if append_matches(cls._PYTHON_PATTERN):
+            return result
+        append_matches(cls._NOTEBOOK_PATTERN)
         return result
 
     @staticmethod
