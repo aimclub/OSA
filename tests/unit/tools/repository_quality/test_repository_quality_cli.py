@@ -64,6 +64,20 @@ def test_quality_tool_resolves_omitted_output_outside_the_clone(tmp_path):
     assert not output_dir.exists()
 
 
+def test_quality_tool_relocates_a_colliding_default_output(tmp_path):
+    clone_dir = tmp_path / "repository_quality"
+    clone_dir.mkdir()
+
+    output_dir = quality_cli.resolve_output_dir(
+        None,
+        clone_dir=clone_dir,
+        repository="https://github.com/example/repository_quality",
+    )
+
+    assert output_dir == tmp_path / "repository_quality.osa-artifacts"
+    assert not output_dir.exists()
+
+
 @pytest.mark.parametrize(
     "output_dir",
     [

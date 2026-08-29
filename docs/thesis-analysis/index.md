@@ -34,8 +34,9 @@ verification response contract remain code-level contracts to keep reports compa
 
 Configured default output directories are namespaced by clone name: a relative `thesis_analysis` default becomes
 `<clone-parent>/thesis_analysis/<clone-name>/`; absolute configured defaults receive the same final clone-name
-segment. This keeps results for sibling repositories separate and outside the clone. Explicit output paths inside the
-analyzed repository are rejected.
+segment. If that location would collide with or fall inside the clone, the default moves to the deterministic sibling
+`<clone-parent>/<clone-name>.osa-artifacts/<clone-name>/`. This keeps results for sibling repositories separate and
+outside the clone. Explicit output paths inside the analyzed repository are rejected.
 
 The three stages select independently overridable models from `[llm.for_repository_quality]`,
 `[llm.for_paper_claims]`, and `[llm.for_thesis_verification]`; omitted values inherit `[llm]`. The old
@@ -99,9 +100,10 @@ python -m osa_tool.tools.repository_quality \
   --output-dir ./quality
 ```
 
-When `--output-dir` is omitted, this command writes below a `repository_quality/` sibling of the analyzed clone.
-The scorer retains its repository-specific subdirectory there. Explicit output paths inside the analyzed repository
-are rejected, so the command cannot affect the score by creating untracked report files in its target.
+When `--output-dir` is omitted, this command writes below a collision-safe `repository_quality/` sibling of the
+analyzed clone. If that directory is the clone itself, it uses `<clone-name>.osa-artifacts/` instead. The scorer
+retains its repository-specific subdirectory there. Explicit output paths inside the analyzed repository are rejected,
+so the command cannot affect the score by creating untracked report files in its target.
 
 ## Migration from the removed legacy claim flow
 

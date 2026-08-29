@@ -26,7 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Base directory for repository-quality JSON and text reports. The default is a "
-            "repository_quality sibling of the analyzed clone; paths inside the clone are rejected."
+            "collision-safe repository_quality sibling of the analyzed clone; paths inside the clone are rejected."
         ),
     )
     return parser
@@ -47,6 +47,9 @@ def resolve_output_dir(output_dir: Path | None, *, clone_dir: str | Path, reposi
     base_dir = clone_path.parent / "repository_quality" if output_dir is None else output_dir.expanduser().resolve()
     report_dir_name = RepositoryQualityScoringEngine._sanitize_dir_name(repository)
     report_dir = base_dir / report_dir_name
+    if output_dir is None and (_is_same_or_nested(base_dir, clone_path) or _is_same_or_nested(report_dir, clone_path)):
+        base_dir = clone_path.parent / f"{clone_path.name}.osa-artifacts"
+        report_dir = base_dir / report_dir_name
     if _is_same_or_nested(base_dir, clone_path) or _is_same_or_nested(report_dir, clone_path):
         raise ValueError("The output directory cannot be the analyzed repository or located inside it.")
     return base_dir

@@ -27,8 +27,8 @@ def add_thesis_analysis_arguments(parser: argparse.ArgumentParser, *, main_cli: 
         type=Path,
         default=None,
         help=(
-            "Directory for thesis-analysis artifacts. Configured defaults are namespaced by clone name outside the "
-            "repository; paths inside the analyzed repository are rejected."
+            "Directory for thesis-analysis artifacts. Configured defaults use a collision-safe clone-name namespace "
+            "outside the repository; paths inside the analyzed repository are rejected."
         ),
     )
     filter_group = group.add_mutually_exclusive_group()
@@ -89,6 +89,9 @@ def build_request(
     if args.thesis_output_dir is None and clone_dir is not None:
         clone_path = Path(clone_dir).resolve()
         output_base = output_dir if output_dir.is_absolute() else clone_path.parent / output_dir
+        candidate = (output_base / clone_path.name).resolve()
+        if candidate.is_relative_to(clone_path):
+            output_base = clone_path.parent / f"{clone_path.name}.osa-artifacts"
         output_dir = output_base / clone_path.name
     return ThesisAnalysisRequest(
         repository=str(args.repository),

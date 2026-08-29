@@ -65,6 +65,18 @@ def test_request_namespaces_a_relative_default_output_by_clone(tmp_path):
     assert request.output_dir == tmp_path / "analysis" / "repository"
 
 
+def test_request_relocates_a_default_output_that_collides_with_the_clone(tmp_path):
+    clone_dir = tmp_path / "thesis_analysis"
+    config_manager = MagicMock()
+    config_manager.get_thesis_analysis_settings.return_value = ThesisAnalysisSettings(
+        output_dir=Path("thesis_analysis")
+    )
+
+    request = cli.build_request(_args(tmp_path), config_manager, clone_dir=clone_dir)
+
+    assert request.output_dir == tmp_path / "thesis_analysis.osa-artifacts" / "thesis_analysis"
+
+
 def test_request_namespaces_absolute_defaults_and_preserves_explicit_overrides(tmp_path):
     clone_dir = tmp_path / "repository"
     config_manager = MagicMock()
