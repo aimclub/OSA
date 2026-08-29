@@ -50,7 +50,6 @@ class AbstractReportGenerator(ABC):
         pdfmetrics.registerFont(TTFont("notosanssc-Bold", os.path.join(assets_dir, "notosans-sc-bold.ttf")))
         pdfmetrics.registerFont(TTFont("notosanssc-Black", os.path.join(assets_dir, "notosans-sc-black.ttf")))
 
-        # 2. Регистрируем для него отдельное семейство (чтобы ReportLab не выдавал ошибок при попытке применить теги)
         pdfmetrics.registerFontFamily(
             "notosanssc-black",
             normal="notosanssc-Black",
@@ -94,6 +93,16 @@ class AbstractReportGenerator(ABC):
     ) -> Table:
         """
         Builds a styled table with customizable column widths and optional row coloring.
+
+        Args:
+            data (List): The table data, where the first row is treated as a header.
+            w_first_col (int): The width of the first column.
+            w_second_col (int): The width of the second column.
+            coloring (bool, optional): If True, applies conditional row coloring based on
+                                   the values in the second column. Defaults to False.
+
+        Returns:
+            Table: A formatted table with applied styles.
         """
         table = Table(data, colWidths=[w_first_col, w_second_col])
         style = [
@@ -102,9 +111,9 @@ class AbstractReportGenerator(ABC):
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
             ("ALIGN", (0, 0), (0, -1), "LEFT"),
             ("ALIGN", (1, 0), (-1, -1), "CENTER"),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),  # Выравнивание по центру вертикали
-            ("FONTSIZE", (0, 0), (-1, -1), 10),  # Шрифт 10pt для компактности
-            ("TOPPADDING", (0, 0), (-1, -1), 3),  # Компактные вертикальные отступы
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"), 
+            ("FONTSIZE", (0, 0), (-1, -1), 10), 
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
             ("GRID", (0, 0), (-1, -1), 1, colors.black),
             ("FONTNAME", (0, 0), (-1, -1), "notosanssc"),
@@ -194,6 +203,9 @@ class AbstractReportGenerator(ABC):
     def generate_qr_code(self) -> str:
         """
         Generates a QR code for the given URL and saves it as an image file.
+
+        Returns:
+            str: The file path of the generated QR code image.
         """
         qr = qrcode.make(self.osa_url)
         qr_path = os.path.join(os.getcwd(), "temp_qr.png")
@@ -203,6 +215,14 @@ class AbstractReportGenerator(ABC):
     def draw_images_and_tables(self, canvas_obj: Canvas, doc: SimpleDocTemplate) -> None:
         """
         Draws images, a QR code, lines, and tables on the given PDF canvas.
+
+        Args:
+            canvas_obj (Canvas): The PDF canvas object to draw on
+            doc (SimpleDocTemplate): The PDF document that is being generated. This parameter is not used directly
+                                     but is required by the ReportLab framework for page rendering.
+
+        Returns:
+            None
         """
         # Logo OSA
         canvas_obj.drawImage(self.logo_path, 335, 700, width=130, height=120)
@@ -234,6 +254,9 @@ class AbstractReportGenerator(ABC):
     def header(self) -> list:
         """
         Generates the header section for the repository analysis report.
+
+        Returns:
+            list: A list of Paragraph elements representing the header content.
         """
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
@@ -260,6 +283,12 @@ class AbstractReportGenerator(ABC):
     def table_generator(self) -> tuple[Table, Table]:
         """
         Generates two tables containing repository statistics and presence of key elements.
+
+        The first table includes basic repository statistics, and the second table shows
+        the presence of important elements such as README, License, Documentation, etc.
+
+        Returns:
+            tuple[Table, Table]: A tuple containing two Table objects.
         """
         styles = getSampleStyleSheet()
 
@@ -351,6 +380,12 @@ class AbstractReportGenerator(ABC):
     def body_first_part(self) -> ListFlowable:
         """
         Generates the first part of the body content for the repository report.
+
+        This includes the repository name with a hyperlink, owner information with a hyperlink,
+        and the repository creation date. The data is presented as a bulleted list.
+
+        Returns:
+            ListFlowable: A ListFlowable object containing a bulleted list of repository details.
         """
         styles = getSampleStyleSheet()
         normal_style = ParagraphStyle(
@@ -423,6 +458,16 @@ class AbstractReportGenerator(ABC):
     def build_pdf(self) -> None:
         """
         Generates and builds the PDF report for the repository analysis.
+
+        This method initializes the PDF document, adds the header, body content (first and second parts),
+        and then generates the PDF file. The `draw_images_and_tables` method is used to draw images and tables
+        on the first page of the document.
+
+        Returns:
+            None
+
+        Raises:
+            Exception: If there is an error during the PDF creation process.
         """
         logger.info(self.start_log)
 
@@ -493,6 +538,9 @@ class ReportGenerator(AbstractReportGenerator):
     def body_second_part(self) -> list[Flowable]:
         """
         Generates the second part of the report, which contains the analysis of the repository.
+
+        Returns:
+            list: A list of Paragraph objects for the PDF report.
         """
         parsed_report = self.text_generator.make_request()
         normal_style, custom_style = self.get_styles()
@@ -589,6 +637,13 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         self.before_scorecard: ScorecardResult | None = ScorecardResult.from_dict(before_dict) if before_dict else None
 
     def run(self) -> dict:
+        """
+        Build the OSA work summary PDF and return a structured result with events.
+
+        This mirrors the contract used by other operations so that:
+        - callers receive a dict with "result" and "events"
+        - each generated report is tracked as an OperationEvent
+        """
         try:
             if self.run_scorecard:
                 self.scorecard_result = ScorecardRunner(self.repo_path).run()
@@ -698,6 +753,9 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
     def body_second_part(self) -> list[Flowable]:
         """
         Generates the second part of the report, which contains the steps for improving repository taken by the OSA.
+
+        Returns:
+            list: A list of Paragraph objects for the PDF report.
         """
         response = self.text_generator.make_request()
         normal_style, custom_style = self.get_styles()
