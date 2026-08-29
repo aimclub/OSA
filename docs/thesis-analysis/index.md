@@ -61,7 +61,8 @@ osa-tool --thesis-analysis \
 
 The main mode clones once and never invokes the scheduler, README generation, forks, pull requests, or repository
 mutations. Rich progress is written to stderr; the final JSON artifact path is written to stdout. For remote
-repositories, `--delete-dir` removes the downloaded clone after either successful or failed analysis.
+repositories, `--delete-dir` removes a clone created by this invocation after either successful or failed analysis.
+It never removes a user-supplied local repository or a remote checkout that existed before the command started.
 
 `python -m osa_tool.tools.thesis_analysis` remains a focused wrapper over the same runner and uses `--output-dir`.
 Use `--include-low-verifiability` or `--include-low-confidence` only when the configured reporting policy is unsuitable.
@@ -97,6 +98,10 @@ python -m osa_tool.tools.repository_quality \
   --repository https://github.com/example/project \
   --output-dir ./quality
 ```
+
+When `--output-dir` is omitted, this command writes below a `repository_quality/` sibling of the analyzed clone.
+The scorer retains its repository-specific subdirectory there. Explicit output paths inside the analyzed repository
+are rejected, so the command cannot affect the score by creating untracked report files in its target.
 
 ## Migration from the removed legacy claim flow
 

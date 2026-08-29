@@ -87,7 +87,8 @@ Here is a short video:
 
 8. **Thesis repository analysis**: The canonical `osa-tool --thesis-analysis` mode composes independently exported
    repository-quality, typed paper-claim, and batched claim-verification reports into one JSON/text artifact layout.
-   The focused `python -m osa_tool.tools.thesis_analysis` wrapper runs the same pipeline.
+   The focused `python -m osa_tool.tools.thesis_analysis` wrapper runs the same pipeline. With `--delete-dir`, both
+   entry points remove only a remote clone created by that invocation, never a user-supplied local repository.
    
 ---
 

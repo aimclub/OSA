@@ -133,6 +133,54 @@ def test_shared_runner_clones_once_and_forwards_progress(monkeypatch, tmp_path):
     ]
 
 
+@pytest.mark.parametrize("fails", [False, True])
+def test_shared_runner_cleans_up_a_new_remote_clone_on_success_and_failure(monkeypatch, tmp_path, fails):
+    args = _args(tmp_path, delete_dir=True)
+    config_manager = MagicMock()
+    config_manager.get_thesis_analysis_settings.return_value = ThesisAnalysisSettings(output_dir=tmp_path / "output")
+    git_agent = MagicMock(clone_dir=str(tmp_path / "clone"))
+    operation = MagicMock()
+    operation.run.side_effect = RuntimeError("analysis failed") if fails else lambda **_kwargs: "result"
+    cleanup = MagicMock()
+
+    class FakeProgress:
+        def __init__(self, _description):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def update(self, *_args):
+            return None
+
+    monkeypatch.setattr(cli, "RichStageProgress", FakeProgress)
+    monkeypatch.setattr(cli, "delete_created_remote_clone", cleanup)
+
+    if fails:
+        with pytest.raises(RuntimeError, match="analysis failed"):
+            cli.run_thesis_analysis(
+                args,
+                config_manager_factory=lambda _args: config_manager,
+                git_initializer=lambda _args, _config: (git_agent, MagicMock()),
+                operation_factory=lambda _config, _git, _request: operation,
+            )
+    else:
+        assert (
+            cli.run_thesis_analysis(
+                args,
+                config_manager_factory=lambda _args: config_manager,
+                git_initializer=lambda _args, _config: (git_agent, MagicMock()),
+                operation_factory=lambda _config, _git, _request: operation,
+            )
+            == "result"
+        )
+
+    cleanup.assert_called_once_with(args.repository, git_agent.clone_dir, existed_before_clone=False)
+
+
 def test_focused_cli_delegates_to_shared_runner(monkeypatch, tmp_path, capsys):
     args = _args(tmp_path)
     parser = MagicMock()
@@ -166,7 +214,7 @@ def test_main_cli_thesis_mode_bypasses_scheduler_and_legacy_workflows(monkeypatc
 
 
 @pytest.mark.parametrize("fails", [False, True])
-def test_main_cli_thesis_mode_honors_delete_dir_on_success_and_failure(monkeypatch, tmp_path, fails):
+def test_main_cli_thesis_mode_delegates_delete_dir_handling_to_shared_runner(monkeypatch, tmp_path, fails):
     from osa_tool import run
 
     args = _args(tmp_path, thesis_analysis=True, delete_dir=True)
@@ -178,12 +226,9 @@ def test_main_cli_thesis_mode_honors_delete_dir_on_success_and_failure(monkeypat
     monkeypatch.setattr(run, "build_parser_from_yaml", MagicMock(return_value=parser))
     monkeypatch.setattr("osa_tool.tools.thesis_analysis.cli.configure_focused_tool_logging", MagicMock())
     monkeypatch.setattr("osa_tool.tools.thesis_analysis.cli.run_thesis_analysis", runner)
-    delete_repository = MagicMock()
-    monkeypatch.setattr(run, "delete_repository", delete_repository)
-    monkeypatch.setattr(run, "rich_section", MagicMock())
 
     assert run.main() == (1 if fails else 0)
-    delete_repository.assert_called_once_with(args.repository)
+    runner.assert_called_once_with(args)
 
 
 def test_main_module_entrypoint_exits_with_thesis_failure_status(monkeypatch):

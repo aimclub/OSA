@@ -12,7 +12,7 @@ from osa_tool.operations.analysis.thesis_analysis import ThesisAnalysisOperation
 from osa_tool.tools.progress import RichStageProgress
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.logger import logger, setup_logging
-from osa_tool.utils.utils import osa_project_root, parse_folder_name
+from osa_tool.utils.utils import delete_created_remote_clone, osa_project_root, parse_folder_name
 
 
 def add_thesis_analysis_arguments(parser: argparse.ArgumentParser, *, main_cli: bool) -> None:
@@ -123,17 +123,26 @@ def run_thesis_analysis(
 
     config_manager = config_manager_factory(args)
     git_agent, _ = git_initializer(args, config_manager)
-    with RichStageProgress("Preparing thesis analysis") as progress:
-        logger.info("Thesis analysis stage started: Repository clone")
-        progress.update("Cloning repository", 0.0)
-        git_agent.clone_repository()
-        logger.info("Thesis analysis stage completed: Repository clone")
-        progress.update("Repository cloned", 0.10)
-        request = build_request(args, config_manager, clone_dir=git_agent.clone_dir)
-        result = operation_factory(config_manager, git_agent, request).run(
-            on_progress=lambda message, fraction: progress.update(message, 0.10 + 0.90 * fraction)
-        )
-    return result
+    clone_existed_before = Path(git_agent.clone_dir).exists()
+    try:
+        with RichStageProgress("Preparing thesis analysis") as progress:
+            logger.info("Thesis analysis stage started: Repository clone")
+            progress.update("Cloning repository", 0.0)
+            git_agent.clone_repository()
+            logger.info("Thesis analysis stage completed: Repository clone")
+            progress.update("Repository cloned", 0.10)
+            request = build_request(args, config_manager, clone_dir=git_agent.clone_dir)
+            result = operation_factory(config_manager, git_agent, request).run(
+                on_progress=lambda message, fraction: progress.update(message, 0.10 + 0.90 * fraction)
+            )
+        return result
+    finally:
+        if getattr(args, "delete_dir", False):
+            delete_created_remote_clone(
+                args.repository,
+                git_agent.clone_dir,
+                existed_before_clone=clone_existed_before,
+            )
 
 
 def configure_focused_tool_logging(repository: str) -> None:

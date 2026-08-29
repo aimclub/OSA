@@ -5,6 +5,7 @@ import pytest
 
 from osa_tool.utils.utils import (
     build_repo_browse_url,
+    delete_created_remote_clone,
     detect_provider_from_url,
     extract_readme_content,
     get_base_repo_url,
@@ -24,6 +25,43 @@ def test_parse_folder_name_github():
 
     # Assert
     assert folder_name == "repo-name"
+
+
+def test_delete_created_remote_clone_deletes_only_a_new_matching_remote_clone(monkeypatch, tmp_path):
+    from osa_tool.utils import utils
+
+    repo_url = "https://github.com/example/repository"
+    clone_dir = tmp_path / "repository"
+    delete_repository = patch.object(utils, "delete_repository")
+    monkeypatch.setattr(utils, "resolve_repo_path", lambda _url: clone_dir)
+
+    with delete_repository as delete:
+        assert delete_created_remote_clone(repo_url, clone_dir, existed_before_clone=False) is True
+
+    delete.assert_called_once_with(repo_url)
+
+
+def test_delete_created_remote_clone_never_deletes_local_or_preexisting_repositories(monkeypatch, tmp_path):
+    from osa_tool.utils import utils
+
+    local_repository = tmp_path / "local-repository"
+    local_repository.mkdir()
+    remote_clone = tmp_path / "remote-repository"
+    delete_repository = patch.object(utils, "delete_repository")
+    monkeypatch.setattr(utils, "resolve_repo_path", lambda _url: remote_clone)
+
+    with delete_repository as delete:
+        assert delete_created_remote_clone(local_repository, local_repository, existed_before_clone=False) is False
+        assert (
+            delete_created_remote_clone(
+                "https://github.com/example/repository",
+                remote_clone,
+                existed_before_clone=True,
+            )
+            is False
+        )
+
+    delete.assert_not_called()
 
 
 def test_parse_folder_name_gitlab():

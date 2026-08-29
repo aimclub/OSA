@@ -78,10 +78,6 @@ def main():
         else:
             print(result.artifacts.json_path)
             return 0
-        finally:
-            if getattr(args, "delete_dir", False):
-                rich_section("Repository deletion")
-                delete_repository(args.repository)
     create_fork = not args.no_fork
     create_pull_request = not args.no_pull_request
 
