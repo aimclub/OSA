@@ -48,7 +48,7 @@ class PlanEditor:
             "top_p",
             "max_retries",
         ]
-        self.special_keys = ["convert_notebooks"]
+        self.special_keys = ["convert_notebooks", "notebook_report"]
         self.arguments_metadata = read_arguments_file_flat(build_arguments_path())
         self.modified_keys = set()
 
@@ -164,26 +164,22 @@ class PlanEditor:
             self._print_key_info(key_to_edit)
 
             if key_to_edit in self.special_keys:
-                if key_to_edit == "convert_notebooks":
-                    console.print(
-                        "[bold]Options:[/bold]\n"
-                        "[1] Enter comma-separated paths\n"
-                        "[2] Clear value (None)\n"
-                        "[3] Set to empty list ([])\n"
-                        "[4] Keep current"
-                    )
-                    choice = Prompt.ask(
-                        "Select an option", choices=["1", "2", "3", "4"], default="4", show_choices=True
-                    )
-                    if choice == "1":
-                        paths_input = Prompt.ask("Enter comma-separated paths").strip()
-                        new_value = [p.strip() for p in paths_input.split(",") if p.strip()]
-                        plan[key_to_edit] = new_value
-                    elif choice == "2":
-                        plan[key_to_edit] = None
-                    elif choice == "3":
-                        plan[key_to_edit] = []
-                    # 4 -skip
+                console.print(
+                    "[bold]Options:[/bold]\n"
+                    "[1] Enter comma-separated paths\n"
+                    "[2] Clear value (None)\n"
+                    "[3] Set to empty list ([])\n"
+                    "[4] Keep current"
+                )
+                choice = Prompt.ask("Select an option", choices=["1", "2", "3", "4"], default="4", show_choices=True)
+                if choice == "1":
+                    paths_input = Prompt.ask("Enter comma-separated paths").strip()
+                    plan[key_to_edit] = [p.strip() for p in paths_input.split(",") if p.strip()]
+                elif choice == "2":
+                    plan[key_to_edit] = None
+                elif choice == "3":
+                    plan[key_to_edit] = []
+                # 4 -skip
 
                 if plan[key_to_edit] != current_value:
                     self._mark_key_as_changed(key_to_edit, plan)

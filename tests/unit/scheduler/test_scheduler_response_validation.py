@@ -22,3 +22,10 @@ def test_prompt_config_safe_validate_ignores_unknown_keys():
 
     # Assert
     assert cfg.readme is True
+
+
+def test_prompt_config_organize_description_reflects_structural_reorganization():
+    description = PromptConfig.model_fields["organize"].description
+
+    assert "group scattered source files" in description
+    assert "without unnecessary churn" in description

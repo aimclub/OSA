@@ -12,7 +12,7 @@ from osa_tool.tools.repository_analysis.repo_graph import RepositoryGraph
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.utils import parse_folder_name
+from osa_tool.utils.utils import resolve_repo_path
 
 
 class CodeAnalyzer:
@@ -53,7 +53,7 @@ class CodeAnalyzer:
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
         self.sourcerank = SourceRank(self.config_manager)
         self.tree = self.sourcerank.tree
-        self.__repo_path = Path(parse_folder_name(str(self.config_manager.get_git_settings().repository))).resolve()
+        self.__repo_path = resolve_repo_path(self.config_manager.get_git_settings().repository)
         source_files = self.get_code_files()
         self.repo_graph = RepositoryGraph(self.__repo_path)
         self.repo_graph.build(source_files)

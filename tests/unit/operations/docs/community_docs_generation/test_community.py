@@ -41,6 +41,37 @@ def test_community_template_builder_init(
     assert builder.bug_issue_to_save.endswith("BUG_ISSUE.md")
 
 
+def test_community_template_builder_init_for_local_repository(mock_config_manager, mock_repository_metadata, tmp_path):
+    repo_dir = tmp_path / "local_repo"
+    repo_dir.mkdir()
+    git = mock_config_manager.config.git
+    git.repository = repo_dir
+    git.host = None
+    git.host_domain = None
+    git.full_name = f"local/{repo_dir.name}"
+    mock_repository_metadata.clone_url_http = ""
+
+    builder = CommunityTemplateBuilder(mock_config_manager, mock_repository_metadata)
+
+    assert builder.repo_root == str(repo_dir)
+    assert builder.repo_path == os.path.join(str(repo_dir), ".github")
+    assert builder.code_of_conduct_to_save == os.path.join(str(repo_dir), ".github", "CODE_OF_CONDUCT.md")
+    assert builder.url_path == "."
+
+
+def test_security_repository_reference_normalizes_git_suffix(mock_config_manager, mock_repository_metadata):
+    git = mock_config_manager.config.git
+    git.repository = "https://github.com/owner/repository.git"
+    git.host = "github"
+    git.host_domain = "github.com"
+    git.full_name = "owner/repository"
+    mock_repository_metadata.clone_url_http = "https://github.com/owner/repository.git"
+
+    builder = CommunityTemplateBuilder(mock_config_manager, mock_repository_metadata)
+
+    assert builder._build_security_repo_reference() == "https://github.com/owner/repository"
+
+
 @pytest.mark.parametrize("mock_config_manager", ["sourcecraft"], indirect=True)
 def test_community_template_builder_sourcecraft_paths_in_repo_root(mock_config_manager, mock_repository_metadata):
     builder = CommunityTemplateBuilder(mock_config_manager, mock_repository_metadata)
@@ -56,6 +87,7 @@ def test_community_template_builder_sourcecraft_paths_in_repo_root(mock_config_m
         path = getattr(builder, attr)
         assert ".sourcecraft" not in path, f"{attr} must not be inside .sourcecraft/"
         assert os.path.dirname(path) == os.path.dirname(builder.code_of_conduct_to_save)
+    assert builder.repo_path == os.path.dirname(builder.code_of_conduct_to_save)
 
 
 def test_build_code_of_conduct(mock_config_manager, mock_repository_metadata, tmp_path, caplog):
@@ -83,6 +115,7 @@ def test_build_pull_request(mock_config_manager, mock_repository_metadata, sourc
 
     builder = CommunityTemplateBuilder(mock_config_manager, mock_repository_metadata)
     builder.sourcerank = sourcerank
+    builder.repo_root = str(tmp_path)
     builder.repo_path = tmp_path / f".{mock_config_manager.config.git.host}"
     if "github" in mock_config_manager.config.git.host:
         builder.pr_to_save = builder.repo_path / "PULL_REQUEST_TEMPLATE.md"
@@ -98,6 +131,9 @@ def test_build_pull_request(mock_config_manager, mock_repository_metadata, sourc
 
         # Assert
         mock_save_sections.assert_called_once()
+        saved_content = mock_save_sections.call_args[0][0]
+        assert "](./" in saved_content or "../" in saved_content
+        assert "tree/" not in saved_content
         assert (
             f"PULL_REQUEST_TEMPLATE.md successfully generated in folder {os.path.dirname(builder.pr_to_save)}"
             in caplog.text

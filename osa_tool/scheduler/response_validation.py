@@ -30,7 +30,10 @@ class PromptConfig(BaseModel):
     )
     organize: bool = Field(
         False,
-        description="Organize the repository by adding 'tests' and 'examples' directories if they do not already exist.",
+        description=(
+            "Reorganize the repository structure when there is a clear payoff: group scattered source files, "
+            "add standard directories when justified, and improve layout coherence without unnecessary churn."
+        ),
     )
     about: bool = Field(False, description="Generate About section for the repository if it is missing.")
 

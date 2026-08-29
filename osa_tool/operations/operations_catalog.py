@@ -4,13 +4,16 @@ from typing import List, Literal
 
 from pydantic import BaseModel, Field
 
+from osa_tool.operations.analysis.notebook_report.report_maker import NotebookReportGenerator
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator
-from osa_tool.operations.analysis.repository_validation.doc_validator import DocValidator
-from osa_tool.operations.analysis.repository_validation.paper_validator import PaperValidator
+from osa_tool.operations.analysis.repository_validation.optional_dependencies import (
+    load_doc_validator,
+    load_paper_validator,
+)
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
 from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
-from osa_tool.operations.codebase.organization.repo_organizer import RepoOrganizer
+from osa_tool.operations.codebase.organization.organize import RepoOrganizer
 from osa_tool.operations.codebase.requirements_generation.requirements_generation import RequirementsGenerator
 from osa_tool.operations.codebase.workflow_generation.workflow_executor import WorkflowsExecutor
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
@@ -20,6 +23,14 @@ from osa_tool.operations.docs.readme_generation.readme_agent import ReadmeAgent
 from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
 from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.utils.utils import osa_project_root
+
+
+def _run_doc_validation(**kwargs):
+    return load_doc_validator()(**kwargs).run()
+
+
+def _run_paper_validation(**kwargs):
+    return load_paper_validator()(**kwargs).run()
 
 
 class GenerateReportOperation(Operation):
@@ -35,6 +46,32 @@ class GenerateReportOperation(Operation):
     executor_dependencies = ["config_manager", "git_agent", "create_fork"]
 
 
+class NotebookReportArgs(BaseModel):
+    notebook_paths: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Optional list of notebook files or directories to analyze. "
+            "If omitted, all notebooks in the repository are analyzed."
+        ),
+    )
+
+
+class GenerateNotebookReportOperation(Operation):
+    name = "generate_notebook_report"
+    description = "Generate a PDF report describing notebook quality and issues."
+
+    supported_intents = ["new_task"]
+    supported_scopes = ["full_repo", "analysis"]
+    priority = 7
+
+    args_schema = NotebookReportArgs
+    args_policy = "auto"
+
+    executor = NotebookReportGenerator
+    executor_method = "run"
+    executor_dependencies = ["config_manager", "git_agent", "create_fork"]
+
+
 class DocValidationOperation(Operation):
     name = "validate_doc"
     description = (
@@ -46,8 +83,8 @@ class DocValidationOperation(Operation):
     supported_scopes = ["full_repo", "analysis"]
     priority = 10
 
-    executor = DocValidator
-    executor_method = "run"
+    executor = staticmethod(_run_doc_validation)
+    executor_method = None
     executor_dependencies = ["config_manager", "git_agent", "create_fork"]
     state_dependencies = ["attachment"]
 
@@ -63,8 +100,8 @@ class PaperValidationOperation(Operation):
     supported_scopes = ["full_repo", "analysis"]
     priority = 15
 
-    executor = PaperValidator
-    executor_method = "run"
+    executor = staticmethod(_run_paper_validation)
+    executor_method = None
     executor_dependencies = ["config_manager", "git_agent", "create_fork"]
     state_dependencies = ["attachment"]
 
@@ -269,8 +306,9 @@ class GenerateWorkflowsOperation(Operation):
 class OrganizeRepositoryOperation(Operation):
     name = "organize"
     description = (
-        "Organize the repository structure by adding standard 'tests' and "
-        "'examples' directories if missing and moving matching files."
+        "Reorganize the repository structure with safe, convention-aware moves: "
+        "group scattered source files, create missing standard directories when helpful, "
+        "and keep the layout coherent without aggressive refactoring."
     )
 
     supported_intents = ["new_task"]
@@ -279,7 +317,7 @@ class OrganizeRepositoryOperation(Operation):
 
     executor = RepoOrganizer
     executor_method = "organize"
-    executor_dependencies = ["config_manager"]
+    executor_dependencies = ["config_manager", "metadata"]
 
 
 def register_all_operations(generate_docs: bool = True):

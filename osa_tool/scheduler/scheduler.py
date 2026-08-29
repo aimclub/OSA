@@ -1,5 +1,3 @@
-import os
-
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
@@ -11,7 +9,7 @@ from osa_tool.ui.plan_editor import PlanEditor
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
 from osa_tool.utils.response_cleaner import JsonProcessor
-from osa_tool.utils.utils import extract_readme_content, parse_folder_name
+from osa_tool.utils.utils import extract_readme_content, resolve_repo_path
 
 
 class ModeScheduler:
@@ -37,7 +35,7 @@ class ModeScheduler:
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
         self.repo_url = self.config_manager.get_git_settings().repository
         self.metadata = metadata
-        self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.base_path = str(resolve_repo_path(self.repo_url))
         self.prompts = self.config_manager.get_prompts()
         self.plan = Plan(self._select_plan())
 

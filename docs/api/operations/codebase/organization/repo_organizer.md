@@ -1,3 +1,3 @@
-# Repository Organizer
+# Repository Organization
 
-::: osa_tool.operations.codebase.organization.repo_organizer
+::: osa_tool.operations.codebase.organization.organize

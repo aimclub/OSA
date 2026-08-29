@@ -1,4 +1,3 @@
-import os
 import re
 from typing import List
 
@@ -8,7 +7,7 @@ from osa_tool.core.llm.llm import ModelHandler, ModelHandlerFactory
 from osa_tool.core.models.event import OperationEvent, EventKind
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
-from osa_tool.utils.utils import extract_readme_content, parse_folder_name
+from osa_tool.utils.utils import extract_readme_content, resolve_repo_path
 
 HOMEPAGE_KEYS = [
     "documentation",
@@ -32,7 +31,7 @@ class AboutGenerator:
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
         self.repo_url = self.config_manager.get_git_settings().repository
         self.metadata = git_agent.metadata
-        self.base_path = os.path.join(os.getcwd(), parse_folder_name(self.repo_url))
+        self.base_path = str(resolve_repo_path(self.repo_url))
         self.readme_content = extract_readme_content(self.base_path)
         self.validate_topics = git_agent.validate_topics
         self._content: dict | None = None

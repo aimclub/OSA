@@ -4,6 +4,15 @@ repository = "https://github.com/aimclub/OSA"
 no_fork = false
 no_pull_request = false
 
+[git.retry]
+max_attempts = 4
+backoff_base = 1.0
+backoff_factor = 2.0
+backoff_max_delay = 30.0
+backoff_total_cap = 120.0
+retry_after_max = 120.0
+request_timeout = 30.0
+
 # Language Model API Settings
 [llm]
 # api = "openai"
@@ -24,6 +33,7 @@ allowed_providers = ["google-vertex", "azure"]
 system_prompt = "You are a helpful assistant for analyzing open-source repositories."
 
 [llm.for_docstring_gen]
+# model = "meta-llama/llama-3.1-8b-instruct"
 [llm.for_readme_gen]
 [llm.for_validation]
 [llm.for_general_tasks]
@@ -44,10 +54,12 @@ community_docs = false
 docstring = false
 report = false
 scorecard = false
+# notebook_report = []
 readme = false
 refine_readme = false
 requirements = false
 organize = false
+skip_health_check = false
 about = false
 validate_paper = false
 validate_doc = false
