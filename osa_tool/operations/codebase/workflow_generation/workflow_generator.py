@@ -696,14 +696,18 @@ class SourceCraftWorkflowGenerator(WorkflowGenerator):
         install_cmd = "uv pip install --system" if use_uv else "pip install"
         bootstrap = ["pip install uv"] if use_uv else []
         return self._cube(
-            "fix-pep8", python_version, bootstrap + [f"{install_cmd} autopep8", f"autopep8 --in-place --recursive {src}"]
+            "fix-pep8",
+            python_version,
+            bootstrap + [f"{install_cmd} autopep8", f"autopep8 --in-place --recursive {src}"],
         )
 
     def generate_ruff(self, python_version: str = "3.11", src: str = ".", use_uv: bool = False) -> dict:
         install_cmd = "uv pip install --system" if use_uv else "pip install"
         bootstrap = ["pip install uv"] if use_uv else []
         return self._cube(
-            "ruff", python_version, bootstrap + [f"{install_cmd} ruff", f"ruff check {src}", f"ruff format --check {src}"]
+            "ruff",
+            python_version,
+            bootstrap + [f"{install_cmd} ruff", f"ruff check {src}", f"ruff format --check {src}"],
         )
 
     def generate_slash_command_dispatch(self) -> None:

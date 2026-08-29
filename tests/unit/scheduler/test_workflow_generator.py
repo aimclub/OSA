@@ -369,9 +369,9 @@ def test_sourcecraft_uv_bootstraps_uv(tmp_path):
     for wf_name in ("lint", "tests"):
         cubes = config["workflows"][wf_name]["tasks"][0]["cubes"]
         for cube in cubes:
-            assert cube["script"][0] == "pip install uv", (
-                f"SourceCraft cube {cube['name']} must bootstrap uv as first script step"
-            )
+            assert (
+                cube["script"][0] == "pip install uv"
+            ), f"SourceCraft cube {cube['name']} must bootstrap uv as first script step"
             assert "uv pip install --system" in cube["script"][1]
 
 
