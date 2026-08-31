@@ -85,9 +85,10 @@ Here is a short video:
    `paper_claims` operation and batch utilities. This pipeline is available as a separate module and is not registered
    in the scheduler yet.
 
-8. **Thesis repository analysis**: The canonical `osa-tool --thesis-analysis` mode composes independently exported
-   repository-quality, typed paper-claim, and batched claim-verification reports into one JSON/text artifact layout.
-   The focused `python -m osa_tool.tools.thesis_analysis` wrapper runs the same pipeline. With `--delete-dir`, both
+8. **Paper repository analysis**: The canonical `osa-tool --paper-analysis` mode extracts or resumes typed paper
+   claims and verifies them against a repository. Formal repository-quality scoring is optional through
+   `--include-repository-quality`; the focused `python -m osa_tool.tools.paper_analysis` wrapper runs the same pipeline.
+   With `--delete-dir`, both
    entry points remove only a remote clone created by that invocation, never a user-supplied local repository.
    
 ---

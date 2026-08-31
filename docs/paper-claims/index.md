@@ -2,8 +2,8 @@
 
 The paper claims pipeline extracts verifiable technical claims from PDF papers. It is a reusable single-document
 operation under `osa_tool.operations.analysis.paper_claims` and is not registered in the legacy scheduler or agent graph.
-Use `osa-tool --thesis-analysis` when those claims must be verified against a repository together with the formal
-repository-quality score.
+Use `osa-tool --paper-analysis` when those claims must be verified against a repository. Add
+`--include-repository-quality` when the same run also needs the formal repository-quality score.
 
 The current flow is:
 
@@ -14,7 +14,7 @@ PDF → physical PDF chunks → Marker Markdown → structured sections → extr
 ## Status
 
 This standalone extraction stage focuses on conversion, section parsing, claim extraction, and
-local evaluation utilities. The `thesis_analysis` CLI supplies the standard repository-specific integration for the
+local evaluation utilities. The `paper_analysis` CLI supplies the standard repository-specific integration for the
 typed result objects.
 
 ## Runtime behavior
