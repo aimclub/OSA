@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from osa_tool.config.settings import PaperAnalysisSettings
+from osa_tool.tools.paper_analysis import __main__ as paper_main
 from osa_tool.tools.paper_analysis import cli
 
 
@@ -81,3 +82,32 @@ def test_shared_runner_clones_once_and_cleans_a_created_remote_clone(monkeypatch
 
     git_agent.clone_repository.assert_called_once_with()
     cleanup.assert_called_once_with(args.repository, git_agent.clone_dir, existed_before_clone=False)
+
+
+def test_focused_cli_prints_only_the_root_json_path(monkeypatch, tmp_path, capsys):
+    args = _args(tmp_path)
+    parser = MagicMock()
+    parser.parse_args.return_value = args
+    result = SimpleNamespace(artifacts=SimpleNamespace(json_path=Path("analysis.json")))
+    monkeypatch.setattr(paper_main, "build_parser", MagicMock(return_value=parser))
+    monkeypatch.setattr(paper_main, "configure_focused_tool_logging", MagicMock())
+    monkeypatch.setattr(paper_main, "run_paper_analysis", MagicMock(return_value=result))
+
+    assert paper_main.main() == 0
+    assert capsys.readouterr().out == "analysis.json\n"
+
+
+def test_main_cli_paper_mode_bypasses_scheduler(monkeypatch, tmp_path, capsys):
+    from osa_tool import run
+
+    args = _args(tmp_path, paper_analysis=True)
+    parser = MagicMock()
+    parser.parse_args.return_value = args
+    result = SimpleNamespace(artifacts=SimpleNamespace(json_path=Path("analysis.json")))
+    monkeypatch.setattr(run, "build_parser_from_yaml", MagicMock(return_value=parser))
+    monkeypatch.setattr("osa_tool.tools.focused_cli.configure_focused_tool_logging", MagicMock())
+    monkeypatch.setattr("osa_tool.tools.paper_analysis.cli.run_paper_analysis", MagicMock(return_value=result))
+    monkeypatch.setattr(run, "ModeScheduler", MagicMock(side_effect=AssertionError("scheduler must not run")))
+
+    assert run.main() == 0
+    assert capsys.readouterr().out == "analysis.json\n"
