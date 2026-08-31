@@ -56,24 +56,24 @@ def main():
 
     # Create a command line argument parser
     parser = build_parser_from_yaml(extra_sections=["settings", "arguments", "workflow"])
-    from osa_tool.tools.thesis_analysis.cli import add_thesis_analysis_arguments
+    from osa_tool.tools.paper_analysis.cli import add_paper_analysis_arguments
 
-    add_thesis_analysis_arguments(parser, main_cli=True)
+    add_paper_analysis_arguments(parser, main_cli=True)
     args = parser.parse_args()
 
-    if args.thesis_analysis:
-        from osa_tool.tools.thesis_analysis.cli import (
-            configure_focused_tool_logging,
-            run_thesis_analysis,
-            validate_thesis_analysis_args,
+    if args.paper_analysis:
+        from osa_tool.tools.focused_cli import configure_focused_tool_logging
+        from osa_tool.tools.paper_analysis.cli import (
+            run_paper_analysis,
+            validate_paper_analysis_args,
         )
 
-        validate_thesis_analysis_args(parser, args)
+        validate_paper_analysis_args(parser, args)
         configure_focused_tool_logging(str(args.repository))
         try:
-            result = run_thesis_analysis(args)
+            result = run_paper_analysis(args)
         except Exception as exc:
-            logger.exception("Thesis analysis failed: %s", exc)
+            logger.exception("Paper analysis failed: %s", exc)
             return 1
         else:
             print(result.artifacts.json_path)

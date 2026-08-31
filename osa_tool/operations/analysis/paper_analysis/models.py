@@ -1,4 +1,4 @@
-"""Public data contracts for thesis repository analysis."""
+"""Public data contracts for paper-to-repository analysis."""
 
 from __future__ import annotations
 
@@ -16,8 +16,8 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class ThesisAnalysisRequest(StrictModel):
-    """Input accepted by :class:`ThesisAnalysisOperation`."""
+class PaperAnalysisRequest(StrictModel):
+    """Input accepted by :class:`PaperAnalysisOperation`."""
 
     repository: str
     output_dir: Path
@@ -27,7 +27,7 @@ class ThesisAnalysisRequest(StrictModel):
     hide_low_confidence: bool = True
 
     @model_validator(mode="after")
-    def require_exactly_one_claim_source(self) -> "ThesisAnalysisRequest":
+    def require_exactly_one_claim_source(self) -> "PaperAnalysisRequest":
         if (self.paper_path is None) == (self.claims_path is None):
             raise ValueError("Provide exactly one of paper_path or claims_path")
         return self
@@ -76,7 +76,7 @@ class PaperClaimsSummary(StrictModel):
     artifacts: dict[str, Path] = Field(default_factory=dict)
 
 
-class ThesisAnalysisArtifacts(StrictModel):
+class PaperAnalysisArtifacts(StrictModel):
     """Files emitted by one operation run."""
 
     json_path: Path
@@ -88,19 +88,19 @@ class ThesisAnalysisArtifacts(StrictModel):
     claim_verification_json_path: Path
 
 
-class ThesisAnalysisMetadata(StrictModel):
+class PaperAnalysisMetadata(StrictModel):
     """Both analysis inputs and actual model use across composed stages."""
 
     source: dict[str, Any]
     models: dict[str, ModelProvenance]
 
 
-class ThesisAnalysisResult(StrictModel):
-    """Versioned canonical artifact for the complete thesis-analysis flow."""
+class PaperAnalysisResult(StrictModel):
+    """Versioned canonical artifact for paper claims and repository verification."""
 
-    schema_version: Literal["1.1"] = "1.1"
-    meta: ThesisAnalysisMetadata
+    schema_version: Literal["1.0"] = "1.0"
+    meta: PaperAnalysisMetadata
     repository_quality: dict[str, Any]
     paper_claims: PaperClaimsSummary
     claim_verification: ClaimVerificationResult
-    artifacts: ThesisAnalysisArtifacts
+    artifacts: PaperAnalysisArtifacts

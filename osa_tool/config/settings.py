@@ -98,10 +98,10 @@ class ModelGroupSettings(BaseModel):
     for_general_tasks: ModelSettings | None = None
     for_repository_quality: ModelSettings | None = None
     for_paper_claims: ModelSettings | None = None
-    for_thesis_verification: ModelSettings | None = None
+    for_paper_verification: ModelSettings | None = None
 
 
-class ThesisMarkerSettings(BaseModel):
+class PaperMarkerSettings(BaseModel):
     """Marker conversion settings used by the typed paper-claims stage."""
 
     extract_images: bool = False
@@ -113,13 +113,13 @@ class ThesisMarkerSettings(BaseModel):
     marker_config: dict[str, Any] = Field(default_factory=dict)
 
 
-class ThesisPaperClaimsSettings(BaseModel):
+class PaperClaimsSettings(BaseModel):
     """Stable execution settings for PDF-to-typed-claims extraction."""
 
     pages_per_chunk: PositiveInt = 5
     max_retries: PositiveInt = 5
     dedup_batch_size: int = Field(default=50, ge=2)
-    marker: ThesisMarkerSettings = Field(default_factory=ThesisMarkerSettings)
+    marker: PaperMarkerSettings = Field(default_factory=PaperMarkerSettings)
 
     def to_pipeline_options(self):
         """Build paper-claims options without making config depend on its implementation at import time."""
@@ -133,7 +133,7 @@ class ThesisPaperClaimsSettings(BaseModel):
         )
 
 
-class ThesisVerificationSettings(BaseModel):
+class PaperVerificationSettings(BaseModel):
     """Bounded repository-context and claim-verification execution settings."""
 
     batch_size: int = Field(default=25, ge=1, le=50)
@@ -143,14 +143,14 @@ class ThesisVerificationSettings(BaseModel):
     csv_file_limit: PositiveInt = 5
 
 
-class ThesisAnalysisSettings(BaseModel):
-    """Policy and execution settings for the composed thesis-analysis operation."""
+class PaperAnalysisSettings(BaseModel):
+    """Policy and execution settings for the composed paper-analysis operation."""
 
-    output_dir: Path = Path("thesis_analysis")
+    output_dir: Path = Path("paper_analysis")
     only_high_medium_verifiability: bool = True
     hide_low_confidence: bool = True
-    paper_claims: ThesisPaperClaimsSettings = Field(default_factory=ThesisPaperClaimsSettings)
-    verification: ThesisVerificationSettings = Field(default_factory=ThesisVerificationSettings)
+    paper_claims: PaperClaimsSettings = Field(default_factory=PaperClaimsSettings)
+    verification: PaperVerificationSettings = Field(default_factory=PaperVerificationSettings)
 
 
 class WorkflowSettings(BaseModel):
@@ -191,7 +191,7 @@ class Settings(BaseModel):
     git: GitSettings
     llm: ModelGroupSettings
     workflows: WorkflowSettings
-    thesis_analysis: ThesisAnalysisSettings = Field(default_factory=ThesisAnalysisSettings)
+    paper_analysis: PaperAnalysisSettings = Field(default_factory=PaperAnalysisSettings)
     prompts: PromptLoader = Field(default_factory=PromptLoader)
 
     model_config = ConfigDict(
@@ -211,7 +211,7 @@ class ConfigManager:
         "general": "for_general_tasks",
         "repository_quality": "for_repository_quality",
         "paper_claims": "for_paper_claims",
-        "thesis_verification": "for_thesis_verification",
+        "paper_verification": "for_paper_verification",
     }
 
     def __init__(self, args: Namespace | None = None):
@@ -295,7 +295,7 @@ class ConfigManager:
             "for_general_tasks": "model_general",
             "for_repository_quality": "model_repository_quality",
             "for_paper_claims": "model_paper_claims",
-            "for_thesis_verification": "model_thesis_verification",
+            "for_paper_verification": "model_paper_verification",
         }
 
         for task_type, arg_name in task_models.items():
@@ -333,8 +333,10 @@ class ConfigManager:
             if "for_validation" in llm_data:
                 raise ValueError(
                     "[llm.for_validation] was removed. Configure [llm.for_repository_quality], "
-                    "[llm.for_paper_claims], or [llm.for_thesis_verification] instead."
+                    "[llm.for_paper_claims], or [llm.for_paper_verification] instead."
                 )
+            if "for_thesis_verification" in llm_data:
+                raise ValueError("[llm.for_thesis_verification] was removed. Use [llm.for_paper_verification] instead.")
 
             default_settings = {}
             task_sections = {}
@@ -346,7 +348,7 @@ class ConfigManager:
                     "for_general_tasks",
                     "for_repository_quality",
                     "for_paper_claims",
-                    "for_thesis_verification",
+                    "for_paper_verification",
                 ]:
                     task_sections[key] = value
                 else:
@@ -369,7 +371,10 @@ class ConfigManager:
             processed["general"] = config_data["general"]
 
         if "thesis_analysis" in config_data:
-            processed["thesis_analysis"] = config_data["thesis_analysis"]
+            raise ValueError("[thesis_analysis] was removed. Use [paper_analysis] instead.")
+
+        if "paper_analysis" in config_data:
+            processed["paper_analysis"] = config_data["paper_analysis"]
 
         return processed
 
@@ -379,7 +384,7 @@ class ConfigManager:
 
         Args:
             task_type: Type of task (docstring, readme, general, repository_quality,
-                paper_claims, thesis_verification)
+                paper_claims, paper_verification)
 
         Returns:
             ModelSettings for the specified task type
@@ -412,9 +417,9 @@ class ConfigManager:
         """
         return self.config.workflows
 
-    def get_thesis_analysis_settings(self) -> ThesisAnalysisSettings:
-        """Return typed policy and execution settings for thesis analysis."""
-        return self.config.thesis_analysis
+    def get_paper_analysis_settings(self) -> PaperAnalysisSettings:
+        """Return typed policy and execution settings for paper analysis."""
+        return self.config.paper_analysis
 
     def get_prompts(self) -> PromptLoader:
         """

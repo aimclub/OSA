@@ -2,8 +2,8 @@
 RepositoryQualityScorer — OSA's formal repository quality scorer.
 
 It reuses OSA's already-cloned repository and produces the existing formal
-0–100 quality-report structure. Thesis paper extraction and claim verification
-belong exclusively to ``thesis_analysis``.
+0–100 quality-report structure. Paper extraction and claim verification belong
+to the composed ``paper_analysis`` operation.
 """
 
 from __future__ import annotations

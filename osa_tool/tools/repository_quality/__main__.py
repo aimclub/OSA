@@ -10,7 +10,7 @@ from osa_tool.operations.analysis.repository_quality import RepositoryQualitySco
 from osa_tool.operations.analysis.repository_quality.scoring_engine import RepositoryQualityScoringEngine
 from osa_tool.run import initialize_git_platform
 from osa_tool.tools.progress import RichStageProgress
-from osa_tool.tools.thesis_analysis.cli import configure_focused_tool_logging
+from osa_tool.tools.focused_cli import configure_focused_tool_logging
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import delete_created_remote_clone

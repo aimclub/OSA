@@ -38,20 +38,20 @@ system_prompt = "You are a helpful assistant for analyzing open-source repositor
 [llm.for_general_tasks]
 [llm.for_repository_quality]
 [llm.for_paper_claims]
-[llm.for_thesis_verification]
+[llm.for_paper_verification]
 
-# Thesis-analysis defaults. Per-run repository and paper/claims inputs stay on the CLI.
-[thesis_analysis]
-output_dir = "thesis_analysis"
+# Paper-analysis defaults. Per-run repository and paper/claims inputs stay on the CLI.
+[paper_analysis]
+output_dir = "paper_analysis"
 only_high_medium_verifiability = true
 hide_low_confidence = true
 
-[thesis_analysis.paper_claims]
+[paper_analysis.paper_claims]
 pages_per_chunk = 5
 max_retries = 5
 dedup_batch_size = 50
 
-[thesis_analysis.paper_claims.marker]
+[paper_analysis.paper_claims.marker]
 extract_images = false
 force_refresh = false
 low_vram = true
@@ -59,7 +59,7 @@ process_isolation = true
 log_cuda_memory = true
 marker_config = {}
 
-[thesis_analysis.verification]
+[paper_analysis.verification]
 batch_size = 25
 candidate_file_limit = 6
 source_snippet_max_lines = 250

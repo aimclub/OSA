@@ -39,7 +39,7 @@ class PlanEditor:
             "model_general",
             "model_repository_quality",
             "model_paper_claims",
-            "model_thesis_verification",
+            "model_paper_verification",
             "branch",
             "output",
             "no_fork",

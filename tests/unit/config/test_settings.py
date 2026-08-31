@@ -9,8 +9,8 @@ from osa_tool.config.settings import (
     ModelGroupSettings,
     ModelSettings,
     Settings,
-    ThesisAnalysisSettings,
-    ThesisVerificationSettings,
+    PaperAnalysisSettings,
+    PaperVerificationSettings,
     WorkflowSettings,
 )
 
@@ -51,20 +51,20 @@ model = "quality-model"
 [llm.for_paper_claims]
 model = "claims-model"
 
-[llm.for_thesis_verification]
+[llm.for_paper_verification]
 model = "verification-model"
 
-[thesis_analysis]
+[paper_analysis]
 output_dir = "configured-analysis"
 only_high_medium_verifiability = false
 hide_low_confidence = false
 
-[thesis_analysis.paper_claims]
+[paper_analysis.paper_claims]
 pages_per_chunk = 7
 max_retries = 4
 dedup_batch_size = 19
 
-[thesis_analysis.verification]
+[paper_analysis.verification]
 batch_size = 20
 candidate_file_limit = 4
 source_snippet_max_lines = 120
@@ -89,7 +89,7 @@ def _make_config_args(config_file: str, **overrides) -> Namespace:
         "model_general": None,
         "model_repository_quality": None,
         "model_paper_claims": None,
-        "model_thesis_verification": None,
+        "model_paper_verification": None,
     }
     args.update(overrides)
     return Namespace(**args)
@@ -119,7 +119,7 @@ def test_config_manager_success(mock_config_manager):
         config.llm.for_general_tasks,
         config.llm.for_repository_quality,
         config.llm.for_paper_claims,
-        config.llm.for_thesis_verification,
+        config.llm.for_paper_verification,
     ]:
         if task_model:
             assert isinstance(task_model, ModelSettings)
@@ -129,7 +129,7 @@ def test_config_manager_success(mock_config_manager):
     assert config.workflows.pep8_tool in ["flake8", "pylint"]
 
     assert config.prompts is not None
-    assert isinstance(config.thesis_analysis, ThesisAnalysisSettings)
+    assert isinstance(config.paper_analysis, PaperAnalysisSettings)
 
 
 def test_config_manager_file_not_found(monkeypatch):
@@ -272,7 +272,7 @@ def test_model_group_settings_partial_tasks():
     assert settings.llm.for_general_tasks is None
     assert settings.llm.for_repository_quality is None
     assert settings.llm.for_paper_claims is None
-    assert settings.llm.for_thesis_verification is None
+    assert settings.llm.for_paper_verification is None
 
 
 def test_config_manager_get_model_settings(mock_config_manager):
@@ -286,7 +286,7 @@ def test_config_manager_get_model_settings(mock_config_manager):
     general_settings = mock_config.get_model_settings("general")
     quality_settings = mock_config.get_model_settings("repository_quality")
     paper_claim_settings = mock_config.get_model_settings("paper_claims")
-    verification_settings = mock_config.get_model_settings("thesis_verification")
+    verification_settings = mock_config.get_model_settings("paper_verification")
 
     # Assert
     assert isinstance(default_settings, ModelSettings)
@@ -309,7 +309,7 @@ def test_config_manager_routes_docstring_to_task_model(tmp_path):
     assert manager.get_model_settings("readme").model == "readme-model"
     assert manager.get_model_settings("repository_quality").model == "quality-model"
     assert manager.get_model_settings("paper_claims").model == "claims-model"
-    assert manager.get_model_settings("thesis_verification").model == "verification-model"
+    assert manager.get_model_settings("paper_verification").model == "verification-model"
 
 
 def test_config_manager_applies_docstring_cli_model_override(tmp_path):
@@ -324,22 +324,22 @@ def test_config_manager_applies_docstring_cli_model_override(tmp_path):
     assert manager.get_model_settings("readme").model == "readme-model"
 
 
-def test_config_manager_applies_thesis_cli_model_override(tmp_path):
+def test_config_manager_applies_paper_cli_model_override(tmp_path):
     manager = ConfigManager(
         _make_config_args(
             _write_task_models_config(tmp_path),
-            model_thesis_verification="cli-verification-model",
+            model_paper_verification="cli-verification-model",
         )
     )
 
-    assert manager.get_model_settings("thesis_verification").model == "cli-verification-model"
+    assert manager.get_model_settings("paper_verification").model == "cli-verification-model"
     assert manager.get_model_settings("paper_claims").model == "claims-model"
 
 
-def test_config_manager_loads_typed_thesis_analysis_settings(tmp_path):
+def test_config_manager_loads_typed_paper_analysis_settings(tmp_path):
     manager = ConfigManager(_make_config_args(_write_task_models_config(tmp_path)))
 
-    settings = manager.get_thesis_analysis_settings()
+    settings = manager.get_paper_analysis_settings()
 
     assert settings.output_dir.name == "configured-analysis"
     assert settings.only_high_medium_verifiability is False
@@ -359,9 +359,9 @@ def test_config_manager_rejects_removed_validation_profile(tmp_path):
         ConfigManager(_make_config_args(config_file))
 
 
-def test_thesis_verification_settings_reject_batch_size_above_external_limit():
+def test_paper_verification_settings_reject_batch_size_above_external_limit():
     with pytest.raises(ValidationError, match="less than or equal to 50"):
-        ThesisVerificationSettings(batch_size=51)
+        PaperVerificationSettings(batch_size=51)
 
 
 def test_config_manager_uses_default_model_when_single_model_is_enabled(tmp_path):

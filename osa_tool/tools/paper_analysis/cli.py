@@ -1,33 +1,33 @@
-"""Shared CLI runner for analysis-only thesis repository assessment."""
+"""Shared CLI runner for analysis-only paper repository assessment."""
 
 from __future__ import annotations
 
 import argparse
-import os
 from pathlib import Path
 from typing import Any, Callable
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.operations.analysis.thesis_analysis import ThesisAnalysisOperation, ThesisAnalysisRequest
+from osa_tool.operations.analysis.paper_analysis import PaperAnalysisOperation, PaperAnalysisRequest
+from osa_tool.tools.focused_cli import configure_focused_tool_logging
 from osa_tool.tools.progress import RichStageProgress
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
-from osa_tool.utils.logger import logger, setup_logging
-from osa_tool.utils.utils import delete_created_remote_clone, osa_project_root, parse_folder_name
+from osa_tool.utils.logger import logger
+from osa_tool.utils.utils import delete_created_remote_clone
 
 
-def add_thesis_analysis_arguments(parser: argparse.ArgumentParser, *, main_cli: bool) -> None:
+def add_paper_analysis_arguments(parser: argparse.ArgumentParser, *, main_cli: bool) -> None:
     """Attach mutually exclusive paper inputs and policy overrides to *parser*."""
-    group = parser.add_argument_group("thesis analysis arguments")
+    group = parser.add_argument_group("paper analysis arguments")
     source = group.add_mutually_exclusive_group(required=False)
     source.add_argument("--paper", type=Path, help="PDF paper to extract through typed paper_claims.")
     source.add_argument("--claims-json", type=Path, help="Typed, legacy, or bare claim JSON to verify.")
     group.add_argument(
-        "--thesis-output-dir" if main_cli else "--output-dir",
-        dest="thesis_output_dir",
+        "--paper-output-dir" if main_cli else "--output-dir",
+        dest="paper_output_dir",
         type=Path,
         default=None,
         help=(
-            "Directory for thesis-analysis artifacts. Configured defaults use a collision-safe clone-name namespace "
+            "Directory for paper-analysis artifacts. Configured defaults use a collision-safe clone-name namespace "
             "outside the repository; paths inside the analyzed repository are rejected."
         ),
     )
@@ -62,14 +62,14 @@ def add_thesis_analysis_arguments(parser: argparse.ArgumentParser, *, main_cli: 
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the focused thesis-analysis parser."""
+    """Build the focused paper-analysis parser."""
     parser = build_parser_from_yaml(extra_sections=["settings"])
-    parser.description = "Analyze a thesis paper and an OSA-supported repository."
-    add_thesis_analysis_arguments(parser, main_cli=False)
+    parser.description = "Analyze a paper and an OSA-supported repository."
+    add_paper_analysis_arguments(parser, main_cli=False)
     return parser
 
 
-def validate_thesis_analysis_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+def validate_paper_analysis_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     """Enforce the source-input contract after a shared parser has run."""
     if not args.repository:
         parser.error("--repository is required")
@@ -82,18 +82,18 @@ def build_request(
     config_manager: ConfigManager,
     *,
     clone_dir: str | Path | None = None,
-) -> ThesisAnalysisRequest:
+) -> PaperAnalysisRequest:
     """Resolve CLI overrides over typed config defaults into the public request contract."""
-    settings = config_manager.get_thesis_analysis_settings()
-    output_dir = args.thesis_output_dir or settings.output_dir
-    if args.thesis_output_dir is None and clone_dir is not None:
+    settings = config_manager.get_paper_analysis_settings()
+    output_dir = args.paper_output_dir or settings.output_dir
+    if args.paper_output_dir is None and clone_dir is not None:
         clone_path = Path(clone_dir).resolve()
         output_base = output_dir if output_dir.is_absolute() else clone_path.parent / output_dir
         candidate = (output_base / clone_path.name).resolve()
         if candidate.is_relative_to(clone_path):
             output_base = clone_path.parent / f"{clone_path.name}.osa-artifacts"
         output_dir = output_base / clone_path.name
-    return ThesisAnalysisRequest(
+    return PaperAnalysisRequest(
         repository=str(args.repository),
         paper_path=args.paper,
         claims_path=args.claims_json,
@@ -109,16 +109,16 @@ def build_request(
     )
 
 
-def run_thesis_analysis(
+def run_paper_analysis(
     args: argparse.Namespace,
     *,
     config_manager_factory: Callable[[argparse.Namespace], ConfigManager] = ConfigManager,
     git_initializer: Callable[[argparse.Namespace, ConfigManager], tuple[Any, Any]] | None = None,
     operation_factory: Callable[
-        [ConfigManager, Any, ThesisAnalysisRequest], ThesisAnalysisOperation
-    ] = ThesisAnalysisOperation,
+        [ConfigManager, Any, PaperAnalysisRequest], PaperAnalysisOperation
+    ] = PaperAnalysisOperation,
 ) -> Any:
-    """Clone once and run the composed thesis-analysis operation without legacy workflows."""
+    """Clone once and run the composed paper-analysis operation without legacy workflows."""
     if git_initializer is None:
         from osa_tool.run import initialize_git_platform
 
@@ -128,11 +128,11 @@ def run_thesis_analysis(
     git_agent, _ = git_initializer(args, config_manager)
     clone_existed_before = Path(git_agent.clone_dir).exists()
     try:
-        with RichStageProgress("Preparing thesis analysis") as progress:
-            logger.info("Thesis analysis stage started: Repository clone")
+        with RichStageProgress("Preparing paper analysis") as progress:
+            logger.info("Paper analysis stage started: Repository clone")
             progress.update("Cloning repository", 0.0)
             git_agent.clone_repository()
-            logger.info("Thesis analysis stage completed: Repository clone")
+            logger.info("Paper analysis stage completed: Repository clone")
             progress.update("Repository cloned", 0.10)
             request = build_request(args, config_manager, clone_dir=git_agent.clone_dir)
             result = operation_factory(config_manager, git_agent, request).run(
@@ -146,9 +146,3 @@ def run_thesis_analysis(
                 git_agent.clone_dir,
                 existed_before_clone=clone_existed_before,
             )
-
-
-def configure_focused_tool_logging(repository: str) -> None:
-    """Configure logs for a focused tool that does not pass through ``osa_tool.run``."""
-    logs_dir = os.path.join(os.path.dirname(osa_project_root()), "logs")
-    setup_logging(parse_folder_name(repository), logs_dir)

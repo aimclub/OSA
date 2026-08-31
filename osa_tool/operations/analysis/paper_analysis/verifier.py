@@ -8,7 +8,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any, Callable
 
-from osa_tool.config.settings import ThesisVerificationSettings
+from osa_tool.config.settings import PaperVerificationSettings
 from osa_tool.operations.analysis.artifacts import StageReportMetadata, model_provenance, write_stage_report
 from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.response_cleaner import JsonProcessor
@@ -46,7 +46,7 @@ class ClaimVerifier:
         self,
         clone_dir: str | Path,
         model_handler: Any,
-        settings: ThesisVerificationSettings | None = None,
+        settings: PaperVerificationSettings | None = None,
         *,
         prompts: PromptLoader | None = None,
     ) -> None:
@@ -54,7 +54,7 @@ class ClaimVerifier:
         self._model_handler = model_handler
         configured_model = getattr(getattr(model_handler, "model_settings", None), "model", None)
         self._configured_model = configured_model if isinstance(configured_model, str) else None
-        self._settings = settings or ThesisVerificationSettings()
+        self._settings = settings or PaperVerificationSettings()
         self._prompts = prompts or PromptLoader()
 
     def verify(
@@ -267,7 +267,7 @@ class ClaimVerifier:
             parsed = self._model_handler.send_and_parse(
                 prompt,
                 partial(self._parse_verification_batch, expected_indices=expected_indices),
-                self._prompts.get("thesis_analysis.verify_system"),
+                self._prompts.get("paper_analysis.verify_system"),
             )
             verification_by_index.update({item["index"]: item for item in parsed})
 

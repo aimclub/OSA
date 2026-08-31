@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from osa_tool.config.settings import ThesisVerificationSettings
-from osa_tool.operations.analysis.thesis_analysis.verifier import ClaimVerifier
+from osa_tool.config.settings import PaperVerificationSettings
+from osa_tool.operations.analysis.paper_analysis.verifier import ClaimVerifier
 
 
 class BatchHandler:
@@ -58,7 +58,7 @@ def test_verifier_filters_before_llm_and_hides_low_confidence(tmp_path):
     assert result.stats.hidden_low_confidence == 1
     assert result.stats.total == result.stats.implemented == 1
     assert result.stats.implementation_rate_pct == 100
-    assert handler.system_prompts[0] == ClaimVerifier(tmp_path, handler)._prompts.get("thesis_analysis.verify_system")
+    assert handler.system_prompts[0] == ClaimVerifier(tmp_path, handler)._prompts.get("paper_analysis.verify_system")
 
 
 def test_verifier_splits_fifty_six_claims_before_the_model_response_limit(tmp_path):
@@ -81,7 +81,7 @@ def test_verifier_splits_fifty_six_claims_before_the_model_response_limit(tmp_pa
 def test_verifier_uses_configured_context_limits_and_batch_size(tmp_path):
     (tmp_path / "main.py").write_text("\n".join(f"line {index}" for index in range(10)), encoding="utf-8")
     handler = BatchHandler()
-    settings = ThesisVerificationSettings(
+    settings = PaperVerificationSettings(
         batch_size=2,
         candidate_file_limit=1,
         source_snippet_max_lines=2,

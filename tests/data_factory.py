@@ -72,7 +72,7 @@ class DataFactory:
             "for_general_tasks": default_settings.copy(),
             "for_repository_quality": default_settings.copy(),
             "for_paper_claims": default_settings.copy(),
-            "for_thesis_verification": default_settings.copy(),
+            "for_paper_verification": default_settings.copy(),
         }
 
     @staticmethod

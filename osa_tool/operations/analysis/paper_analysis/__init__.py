@@ -1,15 +1,15 @@
-"""Canonical thesis-to-repository analysis operation."""
+"""Canonical paper-to-repository analysis operation."""
 
 from .models import (
     ClaimSelection,
     ClaimVerificationResult,
     ClaimVerificationStats,
-    ThesisAnalysisRequest,
-    ThesisAnalysisResult,
-    ThesisAnalysisMetadata,
+    PaperAnalysisRequest,
+    PaperAnalysisResult,
+    PaperAnalysisMetadata,
 )
 from .data_context import CsvAnalyzer
-from .pipeline import ThesisAnalysisOperation
+from .pipeline import PaperAnalysisOperation
 from .verifier import ClaimVerifier
 
 __all__ = [
@@ -18,8 +18,8 @@ __all__ = [
     "ClaimVerificationStats",
     "CsvAnalyzer",
     "ClaimVerifier",
-    "ThesisAnalysisOperation",
-    "ThesisAnalysisMetadata",
-    "ThesisAnalysisRequest",
-    "ThesisAnalysisResult",
+    "PaperAnalysisOperation",
+    "PaperAnalysisMetadata",
+    "PaperAnalysisRequest",
+    "PaperAnalysisResult",
 ]

@@ -18,7 +18,7 @@ EXCLUDED_TASK = {
     "model_general",
     "model_repository_quality",
     "model_paper_claims",
-    "model_thesis_verification",
+    "model_paper_verification",
     "temperature",
     "max_tokens",
     "context_window",
