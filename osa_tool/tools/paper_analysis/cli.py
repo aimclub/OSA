@@ -31,6 +31,20 @@ def add_paper_analysis_arguments(parser: argparse.ArgumentParser, *, main_cli: b
             "outside the repository; paths inside the analyzed repository are rejected."
         ),
     )
+    quality_group = group.add_mutually_exclusive_group()
+    quality_group.add_argument(
+        "--include-repository-quality",
+        dest="include_repository_quality",
+        action="store_true",
+        default=None,
+        help="Calculate and export the formal 0-100 repository-quality score.",
+    )
+    quality_group.add_argument(
+        "--skip-repository-quality",
+        dest="include_repository_quality",
+        action="store_false",
+        help="Skip formal repository-quality scoring for this run.",
+    )
     filter_group = group.add_mutually_exclusive_group()
     filter_group.add_argument(
         "--only-high-medium-verifiability",
@@ -98,6 +112,11 @@ def build_request(
         paper_path=args.paper,
         claims_path=args.claims_json,
         output_dir=output_dir,
+        include_repository_quality=(
+            settings.include_repository_quality
+            if args.include_repository_quality is None
+            else args.include_repository_quality
+        ),
         only_high_medium_verifiability=(
             settings.only_high_medium_verifiability
             if args.only_high_medium_verifiability is None

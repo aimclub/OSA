@@ -12,7 +12,6 @@ from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandlerFactory
 from osa_tool.operations.analysis.paper_claims import LoadedClaimsArtifact, PaperClaimPipeline, PdfChunker
 from osa_tool.operations.analysis.repository_quality.checks import build_file_tree
-from osa_tool.operations.analysis.repository_quality.repository_quality_scorer import RepositoryQualityScorer
 from osa_tool.utils.logger import logger
 
 from .models import (
@@ -56,18 +55,29 @@ class PaperAnalysisOperation:
             self._preflight_claim_input,
             on_progress,
         )
-        quality_scorer = RepositoryQualityScorer(self._config_manager, self._git_agent)
-        quality, quality_json_path, quality_text_path = self._run_stage(
-            "Repository quality scoring",
-            0.05,
-            0.30,
-            lambda: self._score_and_export(quality_scorer, output_dir),
-            on_progress,
-        )
+        quality = None
+        quality_json_path = quality_text_path = None
+        quality_scorer = None
+        if self._request.include_repository_quality:
+            from osa_tool.operations.analysis.repository_quality.repository_quality_scorer import (
+                RepositoryQualityScorer,
+            )
+
+            quality_scorer = RepositoryQualityScorer(self._config_manager, self._git_agent)
+            quality, quality_json_path, quality_text_path = self._run_stage(
+                "Repository quality scoring",
+                0.05,
+                0.30,
+                lambda: self._score_and_export(quality_scorer, output_dir),
+                on_progress,
+            )
+            tree_start, extraction_start, verification_start = 0.30, 0.35, 0.60
+        else:
+            tree_start, extraction_start, verification_start = 0.05, 0.12, 0.52
         flat_paths = self._run_stage(
             "Repository file-tree collection",
-            0.30,
-            0.35,
+            tree_start,
+            extraction_start,
             lambda: build_file_tree(self._git_agent.clone_dir)[0],
             on_progress,
         )
@@ -78,8 +88,8 @@ class PaperAnalysisOperation:
         )
         claims, paper_summary = self._run_stage(
             "Paper-claim extraction" if self._request.paper_path is not None else "Claim-artifact loading",
-            0.35,
-            0.60,
+            extraction_start,
+            verification_start,
             lambda: self._load_claims(output_dir, paper_handler, settings.paper_claims, claim_input),
             on_progress,
         )
@@ -87,13 +97,15 @@ class PaperAnalysisOperation:
         verifier = self._verifier_factory(self._git_agent.clone_dir, verification_handler, settings.verification)
         verification, verification_json_path = self._run_stage(
             "Claim verification",
-            0.60,
+            verification_start,
             0.95,
             lambda: self._verify_and_export(
                 verifier,
                 claims,
                 flat_paths,
                 output_dir,
+                verification_start,
+                0.95,
                 on_progress,
             ),
             on_progress,
@@ -104,11 +116,7 @@ class PaperAnalysisOperation:
         result = PaperAnalysisResult(
             meta=PaperAnalysisMetadata(
                 source=self._source_metadata(),
-                models={
-                    "repository_quality": quality_scorer.get_model_provenance(),
-                    "paper_claims": paper_summary.model,
-                    "paper_verification": verifier.get_model_provenance(),
-                },
+                models=self._model_provenance(quality_scorer, paper_summary, verifier),
             ),
             repository_quality=quality,
             paper_claims=paper_summary,
@@ -134,7 +142,7 @@ class PaperAnalysisOperation:
 
     def _score_and_export(
         self,
-        scorer: RepositoryQualityScorer,
+        scorer: Any,
         output_dir: Path,
     ) -> tuple[dict[str, Any], Path, Path]:
         quality = scorer.get_quality_report()
@@ -151,6 +159,8 @@ class PaperAnalysisOperation:
         claims: list[dict[str, Any]],
         flat_paths: list[str],
         output_dir: Path,
+        start: float,
+        finish: float,
         on_progress: ProgressCallback,
     ) -> tuple[Any, Path]:
         verification = verifier.verify(
@@ -161,7 +171,7 @@ class PaperAnalysisOperation:
             on_progress=lambda message, fraction: self._progress(
                 on_progress,
                 message,
-                0.60 + 0.35 * fraction,
+                start + (finish - start) * fraction,
             ),
         )
         report_path = verifier.export(
@@ -177,6 +187,20 @@ class PaperAnalysisOperation:
         else:
             paper = {"kind": "claims_json", "path": str(self._request.claims_path)}
         return {"repository": self._request.repository, "paper": paper}
+
+    @staticmethod
+    def _model_provenance(
+        quality_scorer: Any | None,
+        paper_summary: PaperClaimsSummary,
+        verifier: ClaimVerifier,
+    ) -> dict[str, Any]:
+        models = {
+            "paper_claims": paper_summary.model,
+            "paper_verification": verifier.get_model_provenance(),
+        }
+        if quality_scorer is not None:
+            models["repository_quality"] = quality_scorer.get_model_provenance()
+        return models
 
     def _load_claims(
         self,
@@ -283,12 +307,16 @@ class PaperAnalysisOperation:
     @staticmethod
     def build_text_report(result: PaperAnalysisResult) -> str:
         """Render a compact stable text summary from the canonical JSON result."""
-        quality = result.repository_quality.get("summary", {})
+        quality = result.repository_quality.get("summary", {}) if result.repository_quality else {}
         stats = result.claim_verification.stats
         return "\n".join(
             [
-                f"Repository: {result.repository_quality.get('repo_url', '')}",
-                f"Repository quality score: {quality.get('score', 'n/a')}/100",
+                f"Repository: {result.repository_quality.get('repo_url', result.meta.source['repository']) if result.repository_quality else result.meta.source['repository']}",
+                (
+                    f"Repository quality score: {quality.get('score', 'n/a')}/100"
+                    if result.repository_quality
+                    else "Repository quality score: not requested"
+                ),
                 f"Claim source: {result.paper_claims.source_kind} ({result.paper_claims.source_path})",
                 f"Source claims: {stats.source_total}",
                 f"Eligible claims: {stats.eligible_total}",

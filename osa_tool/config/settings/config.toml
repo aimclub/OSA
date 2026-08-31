@@ -43,6 +43,7 @@ system_prompt = "You are a helpful assistant for analyzing open-source repositor
 # Paper-analysis defaults. Per-run repository and paper/claims inputs stay on the CLI.
 [paper_analysis]
 output_dir = "paper_analysis"
+include_repository_quality = false
 only_high_medium_verifiability = true
 hide_low_confidence = true
 

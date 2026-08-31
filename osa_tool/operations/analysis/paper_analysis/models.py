@@ -23,6 +23,7 @@ class PaperAnalysisRequest(StrictModel):
     output_dir: Path
     paper_path: Path | None = None
     claims_path: Path | None = None
+    include_repository_quality: bool = False
     only_high_medium_verifiability: bool = True
     hide_low_confidence: bool = True
 
@@ -83,8 +84,8 @@ class PaperAnalysisArtifacts(StrictModel):
     text_path: Path
     paper_claims_report_path: Path
     paper_claims_claims_path: Path
-    repository_quality_json_path: Path
-    repository_quality_text_path: Path
+    repository_quality_json_path: Path | None = None
+    repository_quality_text_path: Path | None = None
     claim_verification_json_path: Path
 
 
@@ -100,7 +101,7 @@ class PaperAnalysisResult(StrictModel):
 
     schema_version: Literal["1.0"] = "1.0"
     meta: PaperAnalysisMetadata
-    repository_quality: dict[str, Any]
+    repository_quality: dict[str, Any] | None = None
     paper_claims: PaperClaimsSummary
     claim_verification: ClaimVerificationResult
     artifacts: PaperAnalysisArtifacts

@@ -147,6 +147,7 @@ class PaperAnalysisSettings(BaseModel):
     """Policy and execution settings for the composed paper-analysis operation."""
 
     output_dir: Path = Path("paper_analysis")
+    include_repository_quality: bool = False
     only_high_medium_verifiability: bool = True
     hide_low_confidence: bool = True
     paper_claims: PaperClaimsSettings = Field(default_factory=PaperClaimsSettings)

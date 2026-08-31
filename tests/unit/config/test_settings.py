@@ -359,6 +359,22 @@ def test_config_manager_rejects_removed_validation_profile(tmp_path):
         ConfigManager(_make_config_args(config_file))
 
 
+@pytest.mark.parametrize(
+    ("section", "migration"),
+    [
+        ('[llm.for_thesis_verification]\nmodel = "obsolete-model"', "for_paper_verification"),
+        ('[thesis_analysis]\noutput_dir = "obsolete"', "paper_analysis"),
+    ],
+)
+def test_config_manager_rejects_removed_thesis_configuration(tmp_path, section, migration):
+    config_file = _write_task_models_config(tmp_path)
+    with open(config_file, "a", encoding="utf-8") as config:
+        config.write(f"\n{section}\n")
+
+    with pytest.raises(ValueError, match=migration):
+        ConfigManager(_make_config_args(config_file))
+
+
 def test_paper_verification_settings_reject_batch_size_above_external_limit():
     with pytest.raises(ValidationError, match="less than or equal to 50"):
         PaperVerificationSettings(batch_size=51)
