@@ -301,6 +301,16 @@ workflow:
     type: flag
     description: "Include PyPI publish workflow."
 
+  include_ruff:
+    aliases: [ "--include-ruff" ]
+    type: flag
+    description: "Include Ruff linter and formatter workflow."
+
+  use_uv:
+    aliases: [ "--use-uv" ]
+    type: flag
+    description: "Use uv instead of pip for dependency installation in workflows."
+
   python_versions:
     aliases: [ "--python-versions" ]
     type: list

@@ -17,8 +17,9 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "${{ matrix.python-version }}"
+{uv_setup_step}
       - name: "Install dependencies"
-        run: "{dependencies_command} && pip install pytest pytest-cov"
+        run: "{install_command}"
       - name: "Run tests"
-        run: "{test_command} --cov=." 
+        run: "{test_command} --cov=."
     {codecov_step}
