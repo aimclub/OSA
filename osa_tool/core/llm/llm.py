@@ -602,7 +602,10 @@ class ProtollmHandler(ModelHandler):
         Returns:
             None
         """
-        dotenv.load_dotenv()
+        # override=True so an updated API key in .env is honoured even when a stale
+        # key is still present in the OS environment (its absence caused confusing
+        # 401 "User not found" errors)
+        dotenv.load_dotenv(override=True)
 
         self.client = create_llm_connector(
             model_url=self._build_model_url(model_name),

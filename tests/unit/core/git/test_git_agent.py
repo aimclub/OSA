@@ -33,6 +33,9 @@ def git_agent_base_setup(temp_clone_dir, mock_repository_metadata, repo_info, mo
     platform, owner, repo_name, repo_url = repo_info
 
     monkeypatch.setenv("GIT_TOKEN", "fake-token-base-setup")
+    # isolate from a real .env on disk: GitAgent calls load_dotenv(override=True), which
+    # would otherwise clobber the fake token above with the developer's real token
+    monkeypatch.setattr("osa_tool.core.git.git_agent.load_dotenv", lambda *a, **k: None)
 
     with patch.object(GitHubMetadataLoader, "load_data", return_value=mock_repository_metadata):
         agent = GitHubAgent(repo_url)
@@ -529,6 +532,9 @@ def test_gitverse_agent_star_repository_already_starred(
 def sourcecraft_agent_instance(temp_clone_dir, mock_repository_metadata, repo_info, monkeypatch):
     platform, owner, repo_name, repo_url = repo_info
     monkeypatch.setenv("SOURCECRAFT_TOKEN", "fixture-token-sourcecraft")
+    # isolate from a real .env on disk (see git_agent_base_setup): load_dotenv(override=True)
+    # would otherwise replace the fixture token with the developer's real one
+    monkeypatch.setattr("osa_tool.core.git.git_agent.load_dotenv", lambda *a, **k: None)
     with patch("osa_tool.core.git.git_agent.SourceCraftMetadataLoader", create=True) as mock_loader:
         mock_loader.load_data.return_value = mock_repository_metadata
         agent = SourceCraftAgent(repo_url)
