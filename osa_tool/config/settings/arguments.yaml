@@ -195,6 +195,18 @@ settings:
     description: "Branch name of the GitHub repository"
     required: false
 
+  article_date:
+    aliases: [ "--article-date" ]
+    type: str
+    description: |
+      Publication date of the article describing the repository.
+      The repository is rolled back to the commit closest to this date,
+      so all the operations are performed on the version of that time.
+      Fork and pull request creation are disabled for such runs.
+      Accepted formats: YYYY-MM-DD, YYYY-MM-DDThh:mm:ss, DD.MM.YYYY.
+    example: "2023-05-17"
+    required: false
+
   api:
     aliases: [ "--api" ]
     type: str

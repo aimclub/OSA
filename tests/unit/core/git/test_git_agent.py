@@ -1,5 +1,6 @@
 import os
 import tempfile
+from datetime import datetime, timezone
 from unittest.mock import Mock, patch, ANY, MagicMock
 
 import pytest
@@ -12,7 +13,7 @@ from osa_tool.core.git.metadata import (
     GitLabMetadataLoader,
     SourceCraftMetadataLoader,
 )
-from osa_tool.utils.utils import parse_folder_name
+from osa_tool.utils.utils import parse_date_argument, parse_folder_name
 
 
 @pytest.fixture
@@ -835,3 +836,120 @@ def test_local_git_agent_with_directory_without_git(tmp_path):
 
     with pytest.raises(InvalidGitRepositoryError):
         LocalGitAgent(str(directory))
+
+
+@pytest.fixture
+def repo_with_dated_commits(tmp_path):
+    """Build a local repository with one commit per year and return it with its commits."""
+    repo_path = tmp_path / "dated_repo"
+    repo_path.mkdir()
+    repo = Repo.init(path=str(repo_path), initial_branch="main")
+    repo.config_writer().set_value("user", "name", "Test User").release()
+    repo.config_writer().set_value("user", "email", "test@example.com").release()
+
+    commits = {}
+    for year in (2020, 2022, 2024):
+        file_path = repo_path / "file.txt"
+        file_path.write_text(f"content of {year}")
+        repo.index.add([str(file_path)])
+        commit_date = datetime(year, 6, 15, 12, 0, tzinfo=timezone.utc)
+        commits[year] = repo.index.commit(f"commit of {year}", author_date=commit_date, commit_date=commit_date)
+
+    return repo_path, repo, commits
+
+
+@pytest.mark.parametrize(
+    "article_date, expected_year",
+    [
+        ("2022-06-14", 2022),  # the closest commit was made the next day
+        ("2021-01-01", 2020),  # the closest commit was made before the article
+        ("2019-01-01", 2020),  # the article is older than the repository itself
+        ("2030-01-01", 2024),  # the article is newer than the last commit
+    ],
+)
+def test_git_agent_find_closest_commit(git_agent_base_setup, repo_with_dated_commits, article_date, expected_year):
+    # Arrange
+    agent, _, _, _ = git_agent_base_setup
+    repo_path, repo, commits = repo_with_dated_commits
+    agent.repo = repo
+    agent.article_date = parse_date_argument(article_date)
+
+    # Act
+    closest_commit = agent._find_closest_commit()
+
+    # Assert
+    assert closest_commit == commits[expected_year].hexsha
+
+
+def test_git_agent_checkout_article_version(git_agent_base_setup, repo_with_dated_commits):
+    # Arrange
+    agent, _, _, _ = git_agent_base_setup
+    repo_path, repo, commits = repo_with_dated_commits
+    agent.repo = repo
+    agent.article_date = parse_date_argument("2022-08-01")
+
+    # Act
+    agent._checkout_article_version()
+
+    # Assert
+    assert repo.head.commit == commits[2022]
+    assert (repo_path / "file.txt").read_text() == "content of 2022"
+
+
+def test_git_agent_checkout_article_version_without_date(git_agent_base_setup, repo_with_dated_commits):
+    # Arrange
+    agent, _, _, _ = git_agent_base_setup
+    repo_path, repo, commits = repo_with_dated_commits
+    agent.repo = repo
+
+    # Act
+    agent._checkout_article_version()
+
+    # Assert
+    assert agent.article_date is None
+    assert repo.head.commit == commits[2024]
+
+
+def test_git_agent_clone_repository_with_article_date_uses_default_branch(git_agent_base_setup):
+    # Arrange
+    agent, _, _, _ = git_agent_base_setup
+    agent.article_date = parse_date_argument("2022-08-01")
+
+    # Act
+    with (
+        patch.object(agent, "_check_branch_existence", return_value=True) as mock_check_branch,
+        patch.object(agent, "_clone_chosen_branch") as mock_clone_chosen_branch,
+        patch.object(agent, "_clone_default_branch") as mock_clone_default_branch,
+        patch.object(agent, "_checkout_article_version") as mock_checkout_article_version,
+    ):
+        agent.clone_repository()
+
+    # Assert
+    mock_clone_default_branch.assert_called_once()
+    mock_clone_chosen_branch.assert_not_called()
+    mock_check_branch.assert_not_called()
+    mock_checkout_article_version.assert_called_once()
+
+
+def test_git_agent_initialization_with_article_date(mock_repository_metadata, repo_info, monkeypatch):
+    # Arrange
+    _, _, _, repo_url = repo_info
+    monkeypatch.setenv("GIT_TOKEN", "fake-token-article-date")
+
+    # Act
+    with patch.object(GitHubMetadataLoader, "load_data", return_value=mock_repository_metadata):
+        agent = GitHubAgent(repo_url, article_date="17.05.2023")
+
+    # Assert
+    assert agent.article_date == datetime(2023, 5, 17, tzinfo=timezone.utc)
+
+
+def test_git_agent_initialization_with_invalid_article_date(mock_repository_metadata, repo_info, monkeypatch):
+    # Arrange
+    _, _, _, repo_url = repo_info
+    monkeypatch.setenv("GIT_TOKEN", "fake-token-article-date")
+
+    # Act & Assert
+    with patch.object(GitHubMetadataLoader, "load_data", return_value=mock_repository_metadata):
+        with pytest.raises(ValueError, match="Cannot parse date"):
+            GitHubAgent(repo_url, article_date="the day before yesterday")

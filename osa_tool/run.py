@@ -87,6 +87,16 @@ def main():
             create_fork = False
             create_pull_request = False
 
+        # A run pinned to an article date analyses a historical version of the repository,
+        # so publishing its outdated tree back to the project has to be suppressed.
+        if git_agent.article_date and (create_fork or create_pull_request):
+            logger.info(
+                f"Repository is analysed as of {git_agent.article_date.date()}; "
+                "fork and pull request creation are disabled for this run."
+            )
+            create_fork = False
+            create_pull_request = False
+
         if create_fork:
             git_agent.star_repository()
             git_agent.create_fork()
@@ -302,26 +312,40 @@ def initialize_git_platform(args, config_manager: ConfigManager) -> tuple[GitAge
     else:
         target_branch = getattr(config_manager.config.git, "osa_branch_name", "osa_tool")
 
+    article_date = getattr(args, "article_date", None)
+
     if os.path.isdir(args.repository):
-        git_agent = LocalGitAgent(args.repository, args.branch, author=args.author)
+        git_agent = LocalGitAgent(args.repository, args.branch, author=args.author, article_date=article_date)
         workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
     elif "github.com" in args.repository:
         git_agent = GitHubAgent(
-            args.repository, repo_branch_name=args.branch, branch_name=target_branch, author=args.author
+            args.repository,
+            repo_branch_name=args.branch,
+            branch_name=target_branch,
+            author=args.author,
+            article_date=article_date,
         )
         workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
     elif "gitlab." in args.repository:
         git_agent = GitLabAgent(
-            args.repository, repo_branch_name=args.branch, branch_name=target_branch, author=args.author
+            args.repository,
+            repo_branch_name=args.branch,
+            branch_name=target_branch,
+            author=args.author,
+            article_date=article_date,
         )
         workflow_manager = GitLabWorkflowManager(args.repository, git_agent.metadata, args)
     elif "gitverse.ru" in args.repository:
         git_agent = GitverseAgent(
-            args.repository, repo_branch_name=args.branch, branch_name=target_branch, author=args.author
+            args.repository,
+            repo_branch_name=args.branch,
+            branch_name=target_branch,
+            author=args.author,
+            article_date=article_date,
         )
         workflow_manager = GitverseWorkflowManager(args.repository, git_agent.metadata, args)
     elif "sourcecraft.dev" in args.repository:
-        git_agent = SourceCraftAgent(args.repository, args.branch, author=args.author)
+        git_agent = SourceCraftAgent(args.repository, args.branch, author=args.author, article_date=article_date)
         workflow_manager = SourceCraftWorkflowManager(args.repository, git_agent.metadata, args)
     else:
         raise ValueError(f"Cannot initialize Git Agent and Workflow Manager for this platform: {args.repository}")

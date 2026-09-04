@@ -181,6 +181,7 @@ documentation, see the [GitHub Action Workflow Generator README](workflow-genera
 |----------------------|-------------------------------------------------------------------------------------|-----------------------------|
 | `-r`, `--repository` | URL of the GitHub/GitLab/Gitverse repository (**Mandatory**)                        |                             |
 | `-b`, `--branch`     | Branch name of the repository                                                       | Default branch              |
+| `--article-date`     | Analyse the repository version closest to the article publication date (no fork/PR) | `None`                      |
 | `-o`, `--output`     | Path to the output directory                                                        | Current working directory   |
 | `--api`              | LLM API service provider                                                            | `itmo`                      |
 | `--base-url`         | URL of the provider compatible with API OpenAI                                      | `https://api.openai.com/v1` |
