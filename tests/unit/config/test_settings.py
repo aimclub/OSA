@@ -1,4 +1,6 @@
+import pathlib
 from argparse import Namespace
+from datetime import date, datetime, timezone
 
 import pytest
 from pydantic import ValidationError
@@ -288,6 +290,58 @@ def test_config_manager_uses_default_model_when_single_model_is_enabled(tmp_path
 
     assert manager.get_model_settings("docstring").model == "default-model"
     assert manager.get_model_settings("readme").model == "default-model"
+
+
+def test_config_manager_applies_based_on_date_cli_override(tmp_path):
+    # Arrange & Act
+    manager = ConfigManager(_make_config_args(_write_task_models_config(tmp_path), based_on_date="17.05.2023"))
+
+    # Assert
+    assert manager.config.git.based_on_date == datetime(2023, 5, 17, tzinfo=timezone.utc)
+
+
+def test_config_manager_reads_based_on_date_from_config_file(tmp_path):
+    # Arrange
+    config_file = _write_task_models_config(tmp_path)
+    content = pathlib.Path(config_file).read_text(encoding="utf-8")
+    pathlib.Path(config_file).write_text(
+        content.replace(
+            '[git]\nrepository = "https://github.com/testuser/testrepo"',
+            '[git]\nrepository = "https://github.com/testuser/testrepo"\nbased_on_date = 2021-01-01',
+        ),
+        encoding="utf-8",
+    )
+
+    # Act
+    manager = ConfigManager(_make_config_args(config_file))
+
+    # Assert
+    assert manager.config.git.based_on_date == datetime(2021, 1, 1, tzinfo=timezone.utc)
+
+
+def test_config_manager_cli_based_on_date_overrides_config_file(tmp_path):
+    # Arrange
+    config_file = _write_task_models_config(tmp_path)
+    content = pathlib.Path(config_file).read_text(encoding="utf-8")
+    pathlib.Path(config_file).write_text(
+        content.replace(
+            '[git]\nrepository = "https://github.com/testuser/testrepo"',
+            '[git]\nrepository = "https://github.com/testuser/testrepo"\nbased_on_date = 2021-01-01',
+        ),
+        encoding="utf-8",
+    )
+
+    # Act
+    manager = ConfigManager(_make_config_args(config_file, based_on_date="2024-03-01"))
+
+    # Assert
+    assert manager.config.git.based_on_date == datetime(2024, 3, 1, tzinfo=timezone.utc)
+
+
+def test_git_settings_invalid_based_on_date():
+    # Act & Assert
+    with pytest.raises(ValidationError, match="Cannot parse date"):
+        GitSettings(repository="https://github.com/testuser/testrepo", based_on_date="the day before yesterday")
 
 
 def test_git_settings_validation():

@@ -39,7 +39,7 @@ class PlanEditor:
             "model_validation",
             "model_general",
             "branch",
-            "article_date",
+            "based_on_date",
             "output",
             "no_fork",
             "no_pull_request",

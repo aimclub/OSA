@@ -195,14 +195,15 @@ settings:
     description: "Branch name of the GitHub repository"
     required: false
 
-  article_date:
-    aliases: [ "--article-date" ]
+  based_on_date:
+    aliases: [ "--based-on-date" ]
     type: str
     description: |
-      Publication date of the article describing the repository.
-      The repository is rolled back to the commit closest to this date,
-      so all the operations are performed on the version of that time.
-      Fork and pull request creation are disabled for such runs.
+      Date the repository has to be analysed as of, for example the publication
+      date of a related article. The repository is rolled back to the commit
+      closest to this date.
+      WARNING: fork and pull request creation (--no-fork, --no-pull-request)
+      are forced for such runs, since the analysed tree is outdated.
       Accepted formats: YYYY-MM-DD, YYYY-MM-DDThh:mm:ss, DD.MM.YYYY.
     example: "2023-05-17"
     required: false

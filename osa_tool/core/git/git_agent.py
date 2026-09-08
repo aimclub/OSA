@@ -2,6 +2,7 @@ import abc
 import os
 import re
 import time
+from datetime import datetime
 from typing import List
 
 import requests
@@ -43,7 +44,7 @@ class GitAgent(abc.ABC):
         fork_url: The URL of the created fork of a Git repository.
         metadata: Git repository metadata.
         base_branch: The name of the repository's branch.
-        article_date: The date the repository has to be rolled back to, if requested.
+        based_on_date: The date the repository has to be rolled back to, if requested.
         pr_report_body: A formatted message for a pull request.
     """
 
@@ -53,7 +54,7 @@ class GitAgent(abc.ABC):
         repo_branch_name: str = None,
         branch_name: str = "osa_tool",
         author: str = None,
-        article_date: str = None,
+        based_on_date: str | datetime = None,
     ):
         """Initializes the agent with repository info.
 
@@ -62,8 +63,9 @@ class GitAgent(abc.ABC):
             repo_branch_name: The name of the repository's branch to be checked out.
             branch_name: The name of the branch to be created. Defaults to "osa_tool".
             author: The name of the author of the pull request.
-            article_date: The publication date of an article. When set, the repository
-                is rolled back to the version closest to that date.
+            based_on_date: The date the repository has to be analysed as of, for example
+                the publication date of a related article. When set, the repository is
+                rolled back to the version closest to that date.
         """
         load_dotenv()
         self.author = author
@@ -75,7 +77,7 @@ class GitAgent(abc.ABC):
         self.fork_url = None
         self.metadata = self._load_metadata(self.repo_url)
         self.base_branch = repo_branch_name or self.metadata.default_branch
-        self.article_date = parse_date_argument(article_date) if article_date else None
+        self.based_on_date = parse_date_argument(based_on_date) if based_on_date else None
         self.pr_report_body = ""
 
     @property
@@ -345,7 +347,7 @@ class GitAgent(abc.ABC):
         2. If the directory exists locally, initializes from existing files.
         3. If cloning is needed, checks for existing 'osa_tool' branch first.
         4. Falls back to cloning the default branch if 'osa_tool' doesn't exist.
-        5. If `article_date` is set, checks out the version closest to that date.
+        5. If `based_on_date` is set, checks out the version closest to that date.
 
         Raises:
             InvalidGitRepositoryError: If the local directory exists but is not a valid Git repository.
@@ -368,7 +370,7 @@ class GitAgent(abc.ABC):
                 logger.error(f"Directory {self.clone_dir} exists but is not a valid Git repository")
                 raise
 
-        elif self.article_date:
+        elif self.based_on_date:
             # A historical version has to be taken from the project's own history,
             # so the 'osa_tool' branch with previously generated changes is skipped.
             self._clone_default_branch()
@@ -377,19 +379,19 @@ class GitAgent(abc.ABC):
         else:
             self._clone_default_branch()
 
-        self._checkout_article_version()
+        self._checkout_version_by_date()
 
     def _find_closest_commit(self) -> str | None:
-        """Finds the commit whose date is the closest one to `article_date`.
+        """Finds the commit whose date is the closest one to `based_on_date`.
 
         Both the latest commit made before the date and the earliest one made after it
-        are considered, so a repository whose history starts after the article was
-        published still resolves to its earliest available version.
+        are considered, so a repository whose history starts after the requested date
+        still resolves to its earliest available version.
 
         Returns:
             The hash of the closest commit, or None if the repository has no commits.
         """
-        target = self.article_date.isoformat()
+        target = self.based_on_date.isoformat()
         candidates = []
 
         latest_before = self.repo.git.rev_list("-1", f"--before={target}", "HEAD").strip()
@@ -403,19 +405,19 @@ class GitAgent(abc.ABC):
         if not candidates:
             return None
 
-        return min(candidates, key=lambda sha: abs(self.repo.commit(sha).committed_datetime - self.article_date))
+        return min(candidates, key=lambda sha: abs(self.repo.commit(sha).committed_datetime - self.based_on_date))
 
-    def _checkout_article_version(self) -> None:
-        """Checks out the repository version closest to `article_date`.
+    def _checkout_version_by_date(self) -> None:
+        """Checks out the repository version closest to `based_on_date`.
 
         The commit is checked out in a detached HEAD state, so every following operation
-        analyses the repository as it was at the moment the article was published.
-        Does nothing when no article date was provided.
+        analyses the repository as it was on the requested date.
+        Does nothing when no date was provided.
 
         Raises:
             Exception: If the commit cannot be looked up or checked out.
         """
-        if not self.article_date or not self.repo:
+        if not self.based_on_date or not self.repo:
             return
 
         try:
@@ -424,19 +426,19 @@ class GitAgent(abc.ABC):
             if not commit_hash:
                 logger.warning(
                     f"No commits found in {self.repo_url}, "
-                    f"the repository cannot be rolled back to {self.article_date.date()}"
+                    f"the repository cannot be rolled back to {self.based_on_date.date()}"
                 )
                 return
 
             commit = self.repo.commit(commit_hash)
             logger.info(
                 f"Checking out commit {commit.hexsha[:7]} ({commit.committed_datetime.date()}) "
-                f"as the version closest to {self.article_date.date()}..."
+                f"as the version closest to {self.based_on_date.date()}..."
             )
             self.repo.git.checkout(commit_hash)
             logger.info(f"Repository is now at commit {commit.hexsha[:7]}")
         except GitCommandError as e:
-            self._handle_git_error(e, f"checking out the version closest to {self.article_date.date()}")
+            self._handle_git_error(e, f"checking out the version closest to {self.based_on_date.date()}")
 
     def get_attachment_branch_files(self, branch: str = "osa_tool_attachments") -> List[str]:
         """Gets list of report files from attachment branch.
@@ -691,11 +693,11 @@ class LocalGitAgent(GitAgent):
         repo_branch_name: str = None,
         branch_name: str = "osa_tool",
         author: str = None,
-        article_date: str = None,
+        based_on_date: str | datetime = None,
     ):
         if is_path(repo_url):
             if os.path.isdir(repo_url):
-                super().__init__(repo_url, repo_branch_name, branch_name, author, article_date)
+                super().__init__(repo_url, repo_branch_name, branch_name, author, based_on_date)
                 self.clone_dir = repo_url
             else:
                 raise ValueError(f"{repo_url} does not exist.")

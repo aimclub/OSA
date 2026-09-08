@@ -859,20 +859,20 @@ def repo_with_dated_commits(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "article_date, expected_year",
+    "based_on_date, expected_year",
     [
         ("2022-06-14", 2022),  # the closest commit was made the next day
-        ("2021-01-01", 2020),  # the closest commit was made before the article
-        ("2019-01-01", 2020),  # the article is older than the repository itself
-        ("2030-01-01", 2024),  # the article is newer than the last commit
+        ("2021-01-01", 2020),  # the closest commit was made before the date
+        ("2019-01-01", 2020),  # the date is older than the repository itself
+        ("2030-01-01", 2024),  # the date is newer than the last commit
     ],
 )
-def test_git_agent_find_closest_commit(git_agent_base_setup, repo_with_dated_commits, article_date, expected_year):
+def test_git_agent_find_closest_commit(git_agent_base_setup, repo_with_dated_commits, based_on_date, expected_year):
     # Arrange
     agent, _, _, _ = git_agent_base_setup
     repo_path, repo, commits = repo_with_dated_commits
     agent.repo = repo
-    agent.article_date = parse_date_argument(article_date)
+    agent.based_on_date = parse_date_argument(based_on_date)
 
     # Act
     closest_commit = agent._find_closest_commit()
@@ -881,46 +881,46 @@ def test_git_agent_find_closest_commit(git_agent_base_setup, repo_with_dated_com
     assert closest_commit == commits[expected_year].hexsha
 
 
-def test_git_agent_checkout_article_version(git_agent_base_setup, repo_with_dated_commits):
+def test_git_agent_checkout_version_by_date(git_agent_base_setup, repo_with_dated_commits):
     # Arrange
     agent, _, _, _ = git_agent_base_setup
     repo_path, repo, commits = repo_with_dated_commits
     agent.repo = repo
-    agent.article_date = parse_date_argument("2022-08-01")
+    agent.based_on_date = parse_date_argument("2022-08-01")
 
     # Act
-    agent._checkout_article_version()
+    agent._checkout_version_by_date()
 
     # Assert
     assert repo.head.commit == commits[2022]
     assert (repo_path / "file.txt").read_text() == "content of 2022"
 
 
-def test_git_agent_checkout_article_version_without_date(git_agent_base_setup, repo_with_dated_commits):
+def test_git_agent_checkout_version_by_date_without_date(git_agent_base_setup, repo_with_dated_commits):
     # Arrange
     agent, _, _, _ = git_agent_base_setup
     repo_path, repo, commits = repo_with_dated_commits
     agent.repo = repo
 
     # Act
-    agent._checkout_article_version()
+    agent._checkout_version_by_date()
 
     # Assert
-    assert agent.article_date is None
+    assert agent.based_on_date is None
     assert repo.head.commit == commits[2024]
 
 
-def test_git_agent_clone_repository_with_article_date_uses_default_branch(git_agent_base_setup):
+def test_git_agent_clone_repository_with_based_on_date_uses_default_branch(git_agent_base_setup):
     # Arrange
     agent, _, _, _ = git_agent_base_setup
-    agent.article_date = parse_date_argument("2022-08-01")
+    agent.based_on_date = parse_date_argument("2022-08-01")
 
     # Act
     with (
         patch.object(agent, "_check_branch_existence", return_value=True) as mock_check_branch,
         patch.object(agent, "_clone_chosen_branch") as mock_clone_chosen_branch,
         patch.object(agent, "_clone_default_branch") as mock_clone_default_branch,
-        patch.object(agent, "_checkout_article_version") as mock_checkout_article_version,
+        patch.object(agent, "_checkout_version_by_date") as mock_checkout_version_by_date,
     ):
         agent.clone_repository()
 
@@ -928,28 +928,28 @@ def test_git_agent_clone_repository_with_article_date_uses_default_branch(git_ag
     mock_clone_default_branch.assert_called_once()
     mock_clone_chosen_branch.assert_not_called()
     mock_check_branch.assert_not_called()
-    mock_checkout_article_version.assert_called_once()
+    mock_checkout_version_by_date.assert_called_once()
 
 
-def test_git_agent_initialization_with_article_date(mock_repository_metadata, repo_info, monkeypatch):
+def test_git_agent_initialization_with_based_on_date(mock_repository_metadata, repo_info, monkeypatch):
     # Arrange
     _, _, _, repo_url = repo_info
-    monkeypatch.setenv("GIT_TOKEN", "fake-token-article-date")
+    monkeypatch.setenv("GIT_TOKEN", "fake-token-based-on-date")
 
     # Act
     with patch.object(GitHubMetadataLoader, "load_data", return_value=mock_repository_metadata):
-        agent = GitHubAgent(repo_url, article_date="17.05.2023")
+        agent = GitHubAgent(repo_url, based_on_date="17.05.2023")
 
     # Assert
-    assert agent.article_date == datetime(2023, 5, 17, tzinfo=timezone.utc)
+    assert agent.based_on_date == datetime(2023, 5, 17, tzinfo=timezone.utc)
 
 
-def test_git_agent_initialization_with_invalid_article_date(mock_repository_metadata, repo_info, monkeypatch):
+def test_git_agent_initialization_with_invalid_based_on_date(mock_repository_metadata, repo_info, monkeypatch):
     # Arrange
     _, _, _, repo_url = repo_info
-    monkeypatch.setenv("GIT_TOKEN", "fake-token-article-date")
+    monkeypatch.setenv("GIT_TOKEN", "fake-token-based-on-date")
 
     # Act & Assert
     with patch.object(GitHubMetadataLoader, "load_data", return_value=mock_repository_metadata):
         with pytest.raises(ValueError, match="Cannot parse date"):
-            GitHubAgent(repo_url, article_date="the day before yesterday")
+            GitHubAgent(repo_url, based_on_date="the day before yesterday")
