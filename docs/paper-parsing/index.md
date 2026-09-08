@@ -238,6 +238,9 @@ Without the flag, OSA falls back to the default plain-text PDF extraction.
 The VLM is called through an OpenAI-compatible API. The key comes from the `vlm_api_key`
 setting if it is present, and otherwise from the `OPENAI_API_KEY` environment variable
 (see [Configuration](#configuration)).
+The VLM is called through an OpenAI-compatible API. The key comes from the `vlm_api_key`
+setting if it is present, and otherwise from the `OPENAI_API_KEY` environment variable
+(see [Configuration](#configuration)).
 
 ---
 
@@ -259,7 +262,7 @@ vlm_base_url = "https://openrouter.ai/api/v1"
 
 # API key for the endpoint above, read straight from the configuration.
 # Prefer the environment variable below unless the key is safe to keep in the file.
-vlm_api_key = "<your_api_key>"
+vlm_api_key = "..."
 
 # Name of the environment variable to read the key from when `vlm_api_key` is unset.
 # `.env` is loaded first. Defaults to "OPENAI_API_KEY".
