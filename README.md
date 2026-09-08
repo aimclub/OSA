@@ -84,6 +84,10 @@ Here is a short video:
 7. **Standalone paper claims pipeline**: Extracts technical claims from PDF papers through the reusable
    `paper_claims` operation and batch utilities. This pipeline is available as a separate module and is not registered
    in the scheduler yet.
+
+8. **Standalone structured paper parsing pipeline**: Turns a PDF paper into layout-aware markdown and a document
+   graph with `StructuredPaperParser` and the `python -m osa_tool.tools.paper_parsing.batch` utility. It also backs
+   the `--structured-paper-parser` flag during paper validation. Needs the optional `paper_parsing` dependency group.
    
 ---
 

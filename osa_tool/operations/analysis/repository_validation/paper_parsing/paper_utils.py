@@ -1,4 +1,5 @@
 import os
+import ast
 import json
 import base64
 import numpy as np
@@ -26,6 +27,26 @@ def process_pdf(doc_path):
         cv2_images.append(cv2_img)
 
     return cv2_images
+
+
+def to_base64_str(raw) -> str:
+    """Normalize a stored crop to a plain base64 ASCII string.
+
+    ``image_bytes`` is produced as a ``bytes`` object, but a report that has been
+    round-tripped through JSON carries it as text — either a plain base64 string
+    or, from the older ``str(b'...')`` serialization, a bytes *repr*. All three
+    reach the VLM request path, so they are normalized in one place instead of
+    each caller guessing.
+    """
+    if isinstance(raw, (bytes, bytearray, memoryview)):
+        return bytes(raw).decode("utf-8")
+    if not isinstance(raw, str):
+        raise TypeError(f"Unsupported image_bytes type: {type(raw)}")
+    if (raw.startswith("b'") and raw.endswith("'")) or (raw.startswith('b"') and raw.endswith('"')):
+        # literal_eval rather than eval: this is data, and it may come from a
+        # layout.json written by another run.
+        return ast.literal_eval(raw).decode("utf-8")
+    return raw
 
 
 def readb64(uri):

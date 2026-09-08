@@ -8,3 +8,7 @@ class LayoutDetectionError(PaperParsingError):
 
 class DescriptionError(PaperParsingError):
     """Raised when every VLM description request fails."""
+
+
+class PageRenderError(PaperParsingError):
+    """Raised when a document's pages cannot be rasterized or read back."""

@@ -118,7 +118,7 @@ class PaperAnalyzer:
         if args and getattr(args, "structured_paper_parser", False):
             logger.info("Extracting content from PDF with layout-aware paper parser ...")
             model_settings = self.__config.config.llm.for_validation or self.__config.get_model_settings("validation")
-            return StructuredPaperParser(path_to_pdf, model_settings).data_extractor()
+            return StructuredPaperParser.from_model_settings(path_to_pdf, model_settings).data_extractor()
 
         logger.info("Extracting text from PDF ...")
         return PdfParser(path_to_pdf).data_extractor()

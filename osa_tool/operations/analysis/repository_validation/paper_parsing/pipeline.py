@@ -12,6 +12,7 @@ from osa_tool.operations.analysis.repository_validation.paper_parsing.exceptions
     LayoutDetectionError,
 )
 from osa_tool.operations.analysis.repository_validation.paper_parsing.graph_utils import save_graph
+from osa_tool.operations.analysis.repository_validation.paper_parsing.layout_io import load_layout, save_layout
 from osa_tool.operations.analysis.repository_validation.paper_parsing.models import (
     PaperParsingOptions,
     PaperParsingResult,
@@ -41,19 +42,83 @@ class PaperParsingPipeline:
         self.api_key = api_key
         self.system_prompt = system_prompt or "You are a technical document specialist."
 
-    async def arun(self, pdf_path: Path | str, options: PaperParsingOptions | None = None) -> PaperParsingResult:
+    @staticmethod
+    def detect_layout(pdf_path: Path | str, options: PaperParsingOptions) -> tuple[LayoutExtractor, list[dict]]:
+        """Run layout detection, returning the still-open extractor and its report.
+
+        The extractor is handed back open because it owns the rendered pages, and
+        the description stage reads full pages out of them for context images. The
+        caller is responsible for closing it.
+        """
+        extractor = LayoutExtractor(device=options.device, save_img=options.save_img)
+        try:
+            report = extractor.get_bboxes(
+                str(pdf_path),
+                conf_threshold=options.conf_threshold,
+                dpi=options.render_dpi,
+                batch_size=options.layout_batch_size,
+            )
+        except Exception:
+            extractor.close()
+            raise
+        if not report:
+            extractor.close()
+            raise LayoutDetectionError(f"Layout detection produced no elements for {pdf_path}")
+        return extractor, report
+
+    def run_layout(
+        self,
+        pdf_path: Path | str,
+        destination: Path | str,
+        options: PaperParsingOptions | None = None,
+    ) -> int:
+        """Stage 1 on its own: detect layout and persist it to ``destination``.
+
+        Synchronous by design. It is CPU-bound work that holds the event loop, so
+        the batch drivers run it to completion for every paper before any VLM
+        request is issued; see :mod:`...paper_parsing.layout_io`.
+        """
         options = options or PaperParsingOptions()
         pdf_path = Path(pdf_path)
-        logger.info("Paper parsing pipeline started for %s", pdf_path)
+        logger.info("Layout stage started for %s", pdf_path)
+        extractor, report = self.detect_layout(pdf_path, options)
+        try:
+            save_layout(
+                report,
+                extractor.pages,
+                destination,
+                source_path=pdf_path,
+                render_dpi=options.render_dpi,
+            )
+        finally:
+            extractor.close()
+        logger.info("Layout stage completed for %s: %s elements", pdf_path, len(report))
+        return len(report)
 
-        logger.info("Stage 1/3: running layout detection")
-        extractor = LayoutExtractor(device=options.device, save_img=options.save_img)
-        report = extractor.get_bboxes(str(pdf_path), conf_threshold=options.conf_threshold)
-        if not report:
-            raise LayoutDetectionError(f"Layout detection produced no elements for {pdf_path}")
-        pages = extractor.pages
-        logger.info("Stage 1/3 completed: detected %s layout elements", len(report))
+    async def arun_describe(
+        self,
+        destination: Path | str,
+        options: PaperParsingOptions | None = None,
+        *,
+        source_path: Path | str | None = None,
+    ) -> PaperParsingResult:
+        """Stages 2 and 3 on their own, reading the layout saved by :meth:`run_layout`."""
+        options = options or PaperParsingOptions()
+        report, pages = load_layout(destination, cache_size=options.layout_batch_size)
+        source = Path(source_path) if source_path else Path(destination)
+        try:
+            return await self._describe_and_build(report, pages, options, source)
+        finally:
+            pages.close()
 
+    async def _describe_and_build(
+        self,
+        report: list[dict],
+        pages,
+        options: PaperParsingOptions,
+        source_path: Path,
+    ) -> PaperParsingResult:
+        """Describe every element with the VLM, then build and linearize the graph."""
         logger.info("Stage 2/3: describing layout elements with VLM %s", self.vlm_model)
         describer = ImageDescription(
             use_async=True,
@@ -63,11 +128,17 @@ class PaperParsingPipeline:
             base_url=self.vlm_base_url,
             api_key=self.api_key,
             device=options.device,
+            max_retries=options.vlm_max_retries,
+            retry_delay=options.vlm_retry_delay,
+            timeout=options.vlm_timeout,
         )
         results = await describer.process_all_bboxes_async(
             sys_prompt=self.system_prompt,
             max_concurrent=options.max_concurrent,
             downsample_factor=options.downsample_factor,
+            # Names the progress bar, so concurrently described papers stay
+            # tellable apart in the batch drivers.
+            desc=source_path.name,
         )
         described = self._merge_descriptions(report, results, describer)
         logger.info("Stage 2/3 completed: described %s of %s elements", described, len(results))
@@ -80,9 +151,36 @@ class PaperParsingPipeline:
             graph["meta"]["total_nodes"],
             graph["meta"]["total_edges"],
         )
+        return PaperParsingResult(
+            source_path=source_path,
+            markdown=markdown,
+            report=report,
+            graph=graph,
+            requested=len(results),
+            described=described,
+        )
+
+    async def arun(self, pdf_path: Path | str, options: PaperParsingOptions | None = None) -> PaperParsingResult:
+        """Both stages back to back, entirely in memory.
+
+        This is the single-document path (paper validation uses it). The batch
+        drivers use :meth:`run_layout` / :meth:`arun_describe` instead, so that no
+        layout detection runs while another paper's VLM requests are in flight.
+        """
+        options = options or PaperParsingOptions()
+        pdf_path = Path(pdf_path)
+        logger.info("Paper parsing pipeline started for %s", pdf_path)
+
+        logger.info("Stage 1/3: running layout detection")
+        extractor, report = self.detect_layout(pdf_path, options)
+        logger.info("Stage 1/3 completed: detected %s layout elements", len(report))
+        try:
+            result = await self._describe_and_build(report, extractor.pages, options, pdf_path)
+        finally:
+            extractor.close()
 
         logger.info("Paper parsing pipeline completed for %s", pdf_path)
-        return PaperParsingResult(source_path=pdf_path, markdown=markdown, report=report, graph=graph)
+        return result
 
     def run(self, pdf_path: Path | str, options: PaperParsingOptions | None = None) -> PaperParsingResult:
         try:

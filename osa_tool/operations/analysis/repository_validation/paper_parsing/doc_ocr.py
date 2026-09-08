@@ -3,12 +3,14 @@ import re
 import cv2
 import json
 import base64
+import random
 import warnings
 import numpy as np
 import asyncio
 from typing import List, Optional
 
 from openai import OpenAI, AsyncOpenAI
+from tqdm import tqdm
 
 from osa_tool.utils.logger import logger
 
@@ -27,6 +29,9 @@ class ImageDescription:
         max_new_tokens: int = 2048,
         base_url: str | None = None,
         api_key: str | None = None,
+        max_retries: int = 3,
+        retry_delay: float = 2.0,
+        timeout: float = 120.0,
     ) -> None:
         """Class for LLM usage over an OpenAI-compatible API: it describes the
         results of doc_layout.
@@ -40,6 +45,10 @@ class ImageDescription:
             in which case the OpenAI client falls back to the ``OPENAI_BASE_URL`` environment variable.
             api_key (str, optional): API key for the OpenAI-compatible API. Defaults to None,
             in which case the OpenAI client falls back to the ``OPENAI_API_KEY`` environment variable.
+            max_retries (int, optional): extra attempts per element after the first. A single
+            transient error used to cost that element its text permanently.
+            retry_delay (float, optional): base seconds for exponential backoff between attempts.
+            timeout (float, optional): per-request timeout in seconds.
         """
 
         self.use_async = use_async
@@ -51,7 +60,13 @@ class ImageDescription:
         # obtained with doc_layout
         self.bbox_json = bbox_json
 
-        client_kwargs = {}
+        self.max_retries = max(0, int(max_retries))
+        self.retry_delay = max(0.0, float(retry_delay))
+
+        # Retrying is done here rather than in the SDK: the SDK only retries the
+        # HTTP statuses it considers transient, and would never retry the empty
+        # response body below, which is one of the ways an element loses its text.
+        client_kwargs = {"max_retries": 0, "timeout": timeout}
         if base_url is not None:
             client_kwargs["base_url"] = base_url
         if api_key is not None:
@@ -154,13 +169,7 @@ class ImageDescription:
     def _prepare_image_data(self, bbox_idx: Optional[int] = None, bounding_box=None) -> str:
         """Prepare base64 encoded image data from bbox_idx or bounding_box"""
         if bbox_idx is not None:
-            cropped_img_byte = self.bbox_json[bbox_idx]["image_bytes"]
-
-            if isinstance(cropped_img_byte, str):
-                cropped_img_byte = eval(cropped_img_byte)
-
-            if isinstance(cropped_img_byte, bytes):
-                cropped_img_byte = cropped_img_byte.decode("utf-8")
+            cropped_img_byte = paper_utils.to_base64_str(self.bbox_json[bbox_idx]["image_bytes"])
 
         elif bounding_box != None:
             x, y, w, h = [int(i) for i in bounding_box]
@@ -255,24 +264,53 @@ class ImageDescription:
 
         messages = self._build_messages(cropped_img_byte, sys_prompt, context_img_byte)
 
-        try:
-            response = await self.model.chat.completions.create(
-                model=self.model_name,
-                messages=messages,
-                max_tokens=self.max_new_tokens,
-                response_format={"type": "json_object"},
-                extra_body={"enable_thinking": False},
-            )
-            choice = response.choices[0]
-            output_text = choice.message.content
-            if not output_text:
-                raise ValueError(
-                    f"Empty LLM content for bbox_idx={bbox_idx}; " f"finish_reason={choice.finish_reason!r}"
+        last_error: Exception | None = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                response = await self.model.chat.completions.create(
+                    model=self.model_name,
+                    messages=messages,
+                    max_tokens=self.max_new_tokens,
+                    response_format={"type": "json_object"},
+                    extra_body={"enable_thinking": False},
                 )
-            return output_text
-        except Exception as e:
-            logger.error(f"Async API call failed for bbox_idx {bbox_idx}: {e}")
-            raise
+                choice = response.choices[0]
+                output_text = choice.message.content
+                if not output_text:
+                    raise ValueError(
+                        f"Empty LLM content for bbox_idx={bbox_idx}; " f"finish_reason={choice.finish_reason!r}"
+                    )
+                if attempt:
+                    logger.info("bbox_idx %s succeeded on attempt %s", bbox_idx, attempt + 1)
+                return output_text
+            except asyncio.CancelledError:
+                raise
+            except Exception as error:
+                last_error = error
+                if attempt >= self.max_retries:
+                    break
+                # Exponential backoff with jitter: elements are described in
+                # parallel, so a shared cause (a rate limit, a stalled loop)
+                # fails many of them at once and a fixed delay would march the
+                # whole wave back into the same wall together.
+                delay = self.retry_delay * (2**attempt) * (0.5 + random.random())
+                logger.warning(
+                    "Async API call failed for bbox_idx %s (attempt %s/%s): %s; retrying in %.1fs",
+                    bbox_idx,
+                    attempt + 1,
+                    self.max_retries + 1,
+                    error,
+                    delay,
+                )
+                await asyncio.sleep(delay)
+
+        logger.error(
+            "Async API call failed for bbox_idx %s after %s attempt(s): %s",
+            bbox_idx,
+            self.max_retries + 1,
+            last_error,
+        )
+        raise last_error
 
     async def batch_inference_async(
         self,
@@ -281,8 +319,17 @@ class ImageDescription:
         sys_prompt="You are a technical document specialist.",
         max_concurrent: int = 10,
         downsample_factor: int = 6,
+        desc: str = None,
     ) -> List[str]:
         """Process multiple bboxes concurrently with rate limiting
+
+        Describing every element of a paper is by far the longest stage, so a
+        progress bar is drawn over the individual requests. It is advanced from
+        inside the worker rather than by consuming completions, which keeps the
+        returned list in task order — callers index results back by ``bbox_idx``,
+        but reordering a public return value for the sake of a progress bar is
+        not worth the surprise. ``leave=False`` keeps the bar from piling up when
+        several papers are being described at once.
 
         Args:
             bbox_indices: List of bbox indices to process
@@ -290,11 +337,18 @@ class ImageDescription:
             sys_prompt: System prompt for the model
             max_concurrent: Maximum concurrent API calls
             downsample_factor: Factor to downsample context images
+            desc: Label for the progress bar, usually the document name
         """
         if bbox_indices is None and bounding_boxes is None:
             raise ValueError("Must provide either bbox_indices or bounding_boxes")
 
         semaphore = asyncio.Semaphore(max_concurrent)
+        progress = tqdm(
+            total=len(bbox_indices if bbox_indices else bounding_boxes),
+            desc=f"describing {desc}" if desc else "describing elements",
+            unit="elem",
+            leave=False,
+        )
 
         async def process_with_semaphore(bbox_idx=None, bounding_box=None):
             async with semaphore:
@@ -308,6 +362,8 @@ class ImageDescription:
                     return {"success": True, "result": result, "bbox_idx": bbox_idx}
                 except Exception as e:
                     return {"success": False, "error": str(e), "bbox_idx": bbox_idx}
+                finally:
+                    progress.update(1)
 
         # Create tasks for async
         tasks = []
@@ -316,7 +372,10 @@ class ImageDescription:
         else:
             tasks = [process_with_semaphore(bounding_box=bbox) for bbox in bounding_boxes]
 
-        results = await asyncio.gather(*tasks, return_exceptions=False)
+        try:
+            results = await asyncio.gather(*tasks, return_exceptions=False)
+        finally:
+            progress.close()
         return results
 
     def inference(
@@ -375,6 +434,7 @@ class ImageDescription:
         max_concurrent=10,
         filter_ignored=True,
         downsample_factor=6,
+        desc: str = None,
     ) -> List[dict]:
         """Process all bboxes in bbox_json asynchronously
 
@@ -383,6 +443,7 @@ class ImageDescription:
             max_concurrent: Maximum concurrent API calls
             filter_ignored: Whether to filter out bboxes marked as ignored
             downsample_factor: Factor to downsample context images
+            desc: Label for the progress bar, usually the document name
         """
         if self.bbox_json is None:
             raise ValueError("bbox_json is not set")
@@ -397,6 +458,7 @@ class ImageDescription:
             sys_prompt=sys_prompt,
             max_concurrent=max_concurrent,
             downsample_factor=downsample_factor,
+            desc=desc,
         )
 
         return results

@@ -247,9 +247,12 @@ class ConfigManager:
                     config_data["llm"][task_type] = {}
                 config_data["llm"][task_type]["model"] = getattr(args, arg_name)
 
-        if "git" not in config_data:
-            config_data["git"] = {}
-        config_data["git"]["repository"] = args.repository
+        # Standalone tools (e.g. the paper-parsing / paper-claims CLIs) pass args that
+        # carry no repository at all; keep the configured value in that case.
+        if getattr(args, "repository", None):
+            if "git" not in config_data:
+                config_data["git"] = {}
+            config_data["git"]["repository"] = args.repository
 
         return config_data
 

@@ -14,7 +14,14 @@ import torch
 from osa_tool.utils.logger import logger
 
 from osa_tool.operations.analysis.repository_validation.paper_parsing import doc_geometry, paper_utils
+from osa_tool.operations.analysis.repository_validation.paper_parsing.doc_pages import (
+    DEFAULT_PAGE_CACHE_SIZE,
+    DEFAULT_RENDER_DPI,
+    PageStore,
+)
 from osa_tool.operations.analysis.repository_validation.paper_parsing.graph_utils import element_node_id
+
+DEFAULT_LAYOUT_BATCH_SIZE = 4
 
 
 class LayoutExtractor:
@@ -61,6 +68,10 @@ class LayoutExtractor:
         }
 
         self.doc_path = None
+        # Set by get_bboxes(): a PageStore for PDFs, left empty for single images
+        # so the description stage skips the full-page context, as before.
+        self.pages = []
+        self.bbox_json = []
 
         # Parts concatenation related
         self.captions = []
@@ -71,19 +82,35 @@ class LayoutExtractor:
         self,
         doc_path: str,
         output_path: str = None,
-        # img_size: int = 1024,
         conf_threshold: float = 0.15,
         concatenate: bool = True,
+        dpi: int = DEFAULT_RENDER_DPI,
+        batch_size: int = DEFAULT_LAYOUT_BATCH_SIZE,
+        max_pages: int = None,
     ) -> list:
         """The main method to call the YOLO model and extract bboxes.
-        It provides self.pages, which collects arrays for every page
-        as an image in the case of a PDF document. It  returns bboxes
-        represented in JSON-like format.
+
+        For a PDF the pages are rasterized into a :class:`PageStore` — kept on
+        disk and decoded on demand — and handed to the model ``batch_size`` pages
+        at a time, each batch converted to report entries and released before the
+        next is predicted. Passing the whole document to ``predict`` in one call
+        instead made peak memory scale with the page count twice over: once for
+        the decoded pages and again for the ``Results`` objects, which each retain
+        a copy of the page they were predicted on.
+
+        ``self.pages`` still indexes by page number, so crop encoding and the
+        full-page context images used by the description stage are unaffected.
+        Call :meth:`close` when done to release the rendered pages.
 
         Args:
             doc_path (str): path to the document to process, it can be image, or pdf.
             output_path (str, optional): path to the file to save returned result. Defaults to None.
             conf_threshold (float, optional): minimum confidence level of YOLO model. Defaults to 0.15.
+            concatenate (bool, optional): merge related layout parts afterwards. Defaults to True.
+            dpi (int, optional): rasterization resolution. Halving it roughly quarters
+                page memory, at the cost of detection and description quality.
+            batch_size (int, optional): pages predicted per model call. Defaults to 4.
+            max_pages (int, optional): stop after this many pages. Defaults to None.
 
         Returns:
             bbox_json: [{'name': str,
@@ -94,17 +121,44 @@ class LayoutExtractor:
                         'x2': float,
                         'y2': float}]
         """
+        self.close()
         self.doc_path = doc_path
-
-        self.pages = []
-        self.bboxes = []
+        self.bbox_json = []
+        self.captions = []
+        self.specific_elems = []
+        self.relevant_pairs = []
 
         if ".pdf" in self.doc_path:
-            self.pages = paper_utils.process_pdf(self.doc_path)
-            self.bboxes = self.model.predict(self.pages, conf=conf_threshold, device=self.device)
+            self.pages = PageStore.from_pdf(
+                doc_path,
+                dpi=dpi,
+                # Never smaller than a batch: the pages of the batch being
+                # predicted are held anyway, so a smaller cache would only force
+                # them to be decoded twice.
+                cache_size=max(DEFAULT_PAGE_CACHE_SIZE, batch_size),
+            )
+            page_count = len(self.pages) if max_pages is None else min(len(self.pages), max_pages)
+            logger.debug("Detecting layout over %s page(s) in batches of %s", page_count, batch_size)
+            for start in tqdm(
+                range(0, page_count, batch_size),
+                desc=f"layout {os.path.basename(self.doc_path)}",
+                unit="batch",
+                leave=False,
+            ):
+                end = min(start + batch_size, page_count)
+                batch = [self.pages[page_num] for page_num in range(start, end)]
+                results = self.model.predict(batch, conf=conf_threshold, device=self.device, verbose=False)
+                self._collect_results(results, page_offset=start, output_path=output_path)
+                del results, batch
+                if self.device == "cuda":
+                    torch.cuda.empty_cache()
         else:
-            bbox_result = self.model.predict(doc_path, conf=conf_threshold, device=self.device)
-            self.bboxes = bbox_result if isinstance(bbox_result, list) else [bbox_result]
+            results = self.model.predict(doc_path, conf=conf_threshold, device=self.device, verbose=False)
+            self._collect_results(
+                results if isinstance(results, list) else [results],
+                page_offset=0,
+                output_path=output_path,
+            )
 
         return self._process_bbox_results(output_path, concatenate=concatenate)
 
@@ -117,56 +171,56 @@ class LayoutExtractor:
         max_pages: int = None,
         concatenate: bool = True,
     ) -> list:
-        """Process large documents in batches to manage CUDA memory"""
+        """Deprecated alias for :meth:`get_bboxes`, which now always batches."""
+        return self.get_bboxes(
+            doc_path,
+            output_path=output_path,
+            conf_threshold=conf_threshold,
+            concatenate=concatenate,
+            batch_size=batch_size,
+            max_pages=max_pages,
+        )
 
-        self.doc_path = doc_path
+    def _collect_results(self, results: list, page_offset: int, output_path: str = None) -> None:
+        """Turn one batch of YOLO results into report entries, then let them go.
+
+        Each ``Results`` object carries its own copy of the page it was predicted
+        on, so converting to JSON here — rather than accumulating the results for
+        the whole document — is what keeps the detection stage flat in memory.
+        """
+        for offset, result in enumerate(results):
+            page_num = page_offset + offset
+
+            if self.save_img and output_path:
+                # Annotate and save the result
+                annotated_frame = result.plot(pil=True, line_width=5, font_size=20)
+                annot_name = os.path.basename(self.doc_path).split(".")[0] + "_layout_" + str(page_num) + ".jpg"
+                cv2.imwrite(os.path.join(os.path.dirname(output_path), annot_name), annotated_frame)
+
+            page_json = self.merge_duplicated(bbox_json=json.loads(result.tojson()), iou_threshold=0.75)
+            for elem in page_json:
+                elem["page_num"] = page_num
+            self.bbox_json.extend(page_json)
+
+    def close(self) -> None:
+        """Release the rendered pages of the last :meth:`get_bboxes` call.
+
+        Safe to call more than once. The description stage reads full pages out
+        of ``self.pages``, so this must not run until it has finished.
+        """
+        pages = getattr(self, "pages", None)
+        if isinstance(pages, PageStore):
+            pages.close()
         self.pages = []
-        self.bboxes = []
 
-        if ".pdf" in self.doc_path:
-            self.pages = paper_utils.process_pdf(self.doc_path)
+    def __enter__(self) -> "LayoutExtractor":
+        return self
 
-            if max_pages:
-                self.pages = self.pages[:max_pages]
-
-            for i in tqdm(range(0, len(self.pages), batch_size)):
-                batch_pages = self.pages[i : i + batch_size]
-
-                batch_bboxes = self.model.predict(batch_pages, conf=conf_threshold, device=self.device, verbose=False)
-                self.bboxes.extend(batch_bboxes)
-
-                if self.device == "cuda":
-                    torch.cuda.empty_cache()
-        else:
-            # Single image processing
-            bbox_result = self.model.predict(doc_path, conf=conf_threshold, device=self.device)
-            self.bboxes = bbox_result if isinstance(bbox_result, list) else [bbox_result]
-
-        return self._process_bbox_results(output_path, concatenate=concatenate)
+    def __exit__(self, *_) -> None:
+        self.close()
 
     def _process_bbox_results(self, output_path: str = None, concatenate: bool = True) -> list:
-        """Process bbox results after prediction (shared logic for both methods)"""
-
-        if self.save_img:
-            # Annotate and save the result
-            for i in range(len(self.bboxes)):
-                annotated_frame = self.bboxes[i].plot(pil=True, line_width=5, font_size=20)
-                annot_name = os.path.basename(self.doc_path).split(".")
-                annot_name = annot_name[0] + "_layout" + "_" + str(i) + ".jpg"
-                if output_path:
-                    cv2.imwrite(
-                        os.path.join(os.path.dirname(output_path), annot_name),
-                        annotated_frame,
-                    )
-
-        self.bbox_json = []
-        for i in tqdm(range(len(self.bboxes))):
-            current_bbox_json = json.loads(self.bboxes[i].tojson())
-            current_bbox_json = self.merge_duplicated(bbox_json=current_bbox_json, iou_threshold=0.75)
-            for j in range(len(current_bbox_json)):
-                current_bbox_json[j]["page_num"] = i
-
-            self.bbox_json.extend(current_bbox_json)
+        """Encode per-element crops and merge related parts (shared post-processing)."""
 
         for i in range(len(self.bbox_json)):
             self.bbox_json[i]["centroid"] = self._get_centoid(bbox_idx=i)
