@@ -100,6 +100,7 @@ def main():
         sourcerank = SourceRank(config_manager)
         scheduler = ModeScheduler(config_manager, sourcerank, args, workflow_manager, git_agent.metadata)
         plan = scheduler.plan
+        artefacts_language = plan.get("artefacts_language")
 
         # Scorecard results are rendered inside the analysis report, so --scorecard
         # has no effect on its own; enable report generation when only it is set.
@@ -118,7 +119,7 @@ def main():
                 plan,
                 "report",
                 lambda: ReportGenerator(
-                    config_manager, git_agent, create_fork, run_scorecard=plan.get("scorecard")
+                    config_manager, git_agent, create_fork, artefacts_language, run_scorecard=plan.get("scorecard")
                 ).run(),
             )
 
@@ -133,6 +134,7 @@ def main():
                     git_agent,
                     create_fork,
                     notebook_report,
+                    target_language=artefacts_language,
                 ).run(),
             )
 
@@ -284,7 +286,7 @@ def main():
 
         if run_report:
             WhatHasBeenDoneReportGenerator(
-                config_manager, git_agent, create_fork, plan, run_scorecard=plan.get("scorecard")
+                config_manager, git_agent, create_fork, plan, artefacts_language, run_scorecard=plan.get("scorecard")
             ).run()
 
         elapsed_time = time.time() - start_time

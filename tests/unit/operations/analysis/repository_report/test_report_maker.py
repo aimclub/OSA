@@ -17,15 +17,20 @@ def mock_git_agent(mock_repository_metadata):
 
 def test_report_generator_init(mock_config_manager, mock_git_agent):
     # Arrange
+    project_root = Path(__file__).parent.parent.parent.parent.parent.parent / "osa_tool"
     expected_metadata = mock_git_agent.metadata
     expected_repo_url = mock_config_manager.config.git.repository
     expected_filename = f"{expected_metadata.name}_report.pdf"
     expected_output_path = Path.cwd() / expected_filename
-    expected_logo_path = Path(".") / "docs" / "images" / "osa_logo.PNG"
+    expected_logo_path = project_root / "docs" / "images" / "osa_logo.PNG"
 
     with (
         patch("osa_tool.operations.analysis.repository_report.report_maker.osa_project_root", return_value="."),
         patch("osa_tool.operations.analysis.repository_report.report_maker.TextGenerator") as mock_text_generator,
+        patch(
+            "osa_tool.operations.analysis.repository_report.report_maker.osa_project_root",
+            return_value=str(project_root),
+        ),
     ):
         # Act
         report_generator = ReportGenerator(mock_config_manager, mock_git_agent, False)
@@ -38,7 +43,7 @@ def test_report_generator_init(mock_config_manager, mock_git_agent):
         assert report_generator.filename == expected_filename
         assert Path(report_generator.output_path) == expected_output_path
         assert Path(report_generator.logo_path) == expected_logo_path
-        mock_text_generator.assert_called_once_with(mock_config_manager, mock_git_agent.metadata)
+        mock_text_generator.assert_called_once_with(mock_config_manager, mock_git_agent.metadata, "English")
 
 
 def test_table_builder_without_coloring():
@@ -105,7 +110,14 @@ def test_draw_images_and_tables(tmp_path, mock_config_manager, monkeypatch, mock
     report_generator = ReportGenerator(mock_config_manager, mock_git_agent, False)
     canvas_mock = MagicMock()
     doc_mock = MagicMock()
-    report_generator.table_generator = MagicMock(return_value=(MagicMock(), MagicMock()))
+
+    mock_table1 = MagicMock()
+    mock_table1.wrap.return_value = (120, 50)
+
+    mock_table2 = MagicMock()
+    mock_table2.wrap.return_value = (160, 80)
+
+    report_generator.table_generator = MagicMock(return_value=(mock_table1, mock_table2))
 
     # Act
     report_generator.draw_images_and_tables(canvas_mock, doc_mock)
