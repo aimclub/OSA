@@ -1,4 +1,4 @@
-"""Run formal repository-quality scoring without thesis claim analysis."""
+"""Run formal repository-quality scoring without paper claim analysis."""
 
 from __future__ import annotations
 

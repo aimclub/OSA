@@ -37,8 +37,6 @@ Models inherit from `[llm]` unless their stage profile supplies an override:
 - `[llm.for_repository_quality]` only when optional quality scoring is enabled.
 
 Use `--model-paper-claims`, `--model-paper-verification`, or `--model-repository-quality` for per-run overrides.
-Legacy `[thesis_analysis]` and `[llm.for_thesis_verification]` configuration sections are rejected with migration
-guidance; `--thesis-analysis` and `--model-thesis-verification` no longer exist.
 
 Configured defaults are namespaced by clone name outside the repository. A relative `paper_analysis` default becomes
 `<clone-parent>/paper_analysis/<clone-name>/`. If this would collide with the clone, OSA uses the sibling

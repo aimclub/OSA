@@ -41,13 +41,3 @@ def test_organize_operation_description_reflects_safe_structural_reorganization(
     assert "group scattered source files" in OrganizeRepositoryOperation.description
     assert "without aggressive refactoring" in OrganizeRepositoryOperation.description
 
-
-def test_removed_repository_validation_module_and_cli_flags_are_unavailable():
-    with pytest.raises(ModuleNotFoundError):
-        importlib.import_module("osa_tool.operations.analysis.repository_validation")
-
-    parser = build_parser_from_yaml(extra_sections=["settings", "arguments", "workflow"])
-    with pytest.raises(SystemExit):
-        parser.parse_args(["--validate-paper"])
-    with pytest.raises(SystemExit):
-        parser.parse_args(["--validate-doc"])

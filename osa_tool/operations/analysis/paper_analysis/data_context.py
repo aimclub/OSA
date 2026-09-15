@@ -1,4 +1,4 @@
-"""Lightweight tabular-data context for thesis claim verification."""
+"""Lightweight tabular-data context for paper claim verification."""
 
 from __future__ import annotations
 

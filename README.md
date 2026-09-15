@@ -79,8 +79,8 @@ Here is a short video:
 
 6. **Repository-quality score**: Evaluates a repository against formal criteria such as a non-empty README and
    license file. Its standalone artifact is a provenance-bearing `report.json`; run it independently with
-   `python -m osa_tool.tools.repository_quality` or as part of thesis analysis.
-   
+   `python -m osa_tool.tools.repository_quality` or as part of paper analysis.
+
 7. **Standalone paper claims pipeline**: Extracts technical claims from PDF papers through the reusable
    `paper_claims` operation and batch utilities. This pipeline is available as a separate module and is not registered
    in the scheduler yet.
@@ -90,7 +90,7 @@ Here is a short video:
    `--include-repository-quality`; the focused `python -m osa_tool.tools.paper_analysis` wrapper runs the same pipeline.
    With `--delete-dir`, both
    entry points remove only a remote clone created by that invocation, never a user-supplied local repository.
-   
+
 ---
 
 ## Installation

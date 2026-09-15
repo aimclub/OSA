@@ -1,1 +1,1 @@
-"""Command-line entry point for canonical thesis repository analysis."""
+"""Command-line entry point for canonical paper repository analysis."""
