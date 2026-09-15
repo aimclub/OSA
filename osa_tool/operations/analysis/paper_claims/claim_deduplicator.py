@@ -27,11 +27,13 @@ class ClaimDeduplicator:
         input_planner: ClaimInputPlanner,
         deduplication_system: str,
         dedup_batch_size: int,
+        show_progress: bool = True,
     ) -> None:
         self._request_validated = request_validated
         self._input_planner = input_planner
         self._deduplication_system = deduplication_system
         self._dedup_batch_size = dedup_batch_size
+        self._show_progress = show_progress
 
     async def deduplicate(self, claims: list[ExtractedClaim]) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
         """Deduplicate claims, retain contradictions, and enrich kept claims."""
@@ -47,10 +49,11 @@ class ClaimDeduplicator:
         batches = self._deduplication_batches(claims)
         filtered: list[ExtractedClaim] = []
         selections: list[DedupSelection] = []
-        for batch_index, batch_claims in track(
-            list(enumerate(batches, start=1)),
-            description="Deduplicating claim batches",
-        ):
+        batch_items = list(enumerate(batches, start=1))
+        progress_items = (
+            track(batch_items, description="Deduplicating claim batches") if self._show_progress else batch_items
+        )
+        for batch_index, batch_claims in progress_items:
             batch_filtered, batch_selections = await self._deduplicate_claim_batch(
                 batch_claims,
                 request_name=f"Claim deduplication batch {batch_index}/{len(batches)}",

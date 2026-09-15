@@ -6,6 +6,7 @@ from osa_tool.operations.analysis.paper_claims.models import (
     DedupSelection,
     ExtractedClaim,
     ExtractionMetadata,
+    MarkerOptions,
     PipelineOptions,
 )
 
@@ -61,3 +62,11 @@ def test_legacy_serialization_can_include_debug_step3_selection():
 def test_pipeline_options_reject_dedup_batch_size_below_two():
     with pytest.raises(ValidationError):
         PipelineOptions(dedup_batch_size=1)
+
+
+def test_pipeline_options_use_the_conservative_pdf_defaults():
+    options = PipelineOptions()
+
+    assert options.pages_per_chunk == 5
+    assert options.dedup_batch_size == 50
+    assert options.marker == MarkerOptions(low_vram=True, process_isolation=True)

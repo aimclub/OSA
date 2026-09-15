@@ -7,6 +7,7 @@ import pytest
 from osa_tool.tools.paper_claims import batch as batch_module
 from osa_tool.tools.paper_claims.batch import build_parser, collect_pdf_inputs
 from osa_tool.tools.paper_claims.evaluate import compute_semantic_matching, load_claims
+from osa_tool.operations.analysis.paper_claims.models import PipelineOptions
 
 
 def test_collect_pdf_inputs_deduplicates_and_reports_invalid(tmp_path):
@@ -29,18 +30,26 @@ def test_batch_keeps_gpt_5_4_mini_as_default_model():
 
 def test_batch_uses_marker_process_isolation_by_default():
     args = build_parser().parse_args(["paper.pdf"])
+    defaults = PipelineOptions()
 
     assert args.marker_process_isolation is True
-    assert args.marker_low_vram is False
+    assert args.marker_low_vram is True
     assert args.marker_log_cuda_memory is True
     assert args.include_debug is False
-    assert args.dedup_batch_size == 100
+    assert args.chunk_pages == defaults.pages_per_chunk
+    assert args.dedup_batch_size == defaults.dedup_batch_size
 
 
 def test_batch_can_disable_marker_process_isolation():
     args = build_parser().parse_args(["paper.pdf", "--no-marker-process-isolation"])
 
     assert args.marker_process_isolation is False
+
+
+def test_batch_can_disable_low_vram_mode():
+    args = build_parser().parse_args(["paper.pdf", "--no-marker-low-vram"])
+
+    assert args.marker_low_vram is False
 
 
 def test_force_marker_refresh_has_help_text():

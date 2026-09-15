@@ -14,10 +14,6 @@ from osa_tool.core.git.git_agent import (
     LocalGitAgent,
 )
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
-from osa_tool.operations.analysis.repository_validation.optional_dependencies import (
-    load_doc_validator,
-    load_paper_validator,
-)
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
 from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
@@ -60,7 +56,28 @@ def main():
 
     # Create a command line argument parser
     parser = build_parser_from_yaml(extra_sections=["settings", "arguments", "workflow"])
+    from osa_tool.tools.paper_analysis.cli import add_paper_analysis_arguments
+
+    add_paper_analysis_arguments(parser, main_cli=True)
     args = parser.parse_args()
+
+    if args.paper_analysis:
+        from osa_tool.tools.focused_cli import configure_focused_tool_logging
+        from osa_tool.tools.paper_analysis.cli import (
+            run_paper_analysis,
+            validate_paper_analysis_args,
+        )
+
+        validate_paper_analysis_args(parser, args)
+        configure_focused_tool_logging(str(args.repository))
+        try:
+            result = run_paper_analysis(args)
+        except Exception as exc:
+            logger.exception("Paper analysis failed: %s", exc)
+            return 1
+        else:
+            print(result.artifacts.json_path)
+            return 0
     create_fork = not args.no_fork
     create_pull_request = not args.no_pull_request
 
@@ -134,24 +151,6 @@ def main():
                     create_fork,
                     notebook_report,
                 ).run(),
-            )
-
-        # NOTE: Must run first - switches GitHub branches
-        if plan.get("validate_doc"):
-            rich_section("Document validation")
-            _run_plan_operation(
-                plan,
-                "validate_doc",
-                lambda: load_doc_validator()(config_manager, git_agent, create_fork, plan.get("attachment")).run(),
-            )
-
-        # NOTE: Must run first - switches GitHub branches
-        if plan.get("validate_paper"):
-            rich_section("Paper validation")
-            _run_plan_operation(
-                plan,
-                "validate_paper",
-                lambda: load_paper_validator()(config_manager, git_agent, create_fork, plan.get("attachment")).run(),
             )
 
         # .ipynb to .py conversion
@@ -351,5 +350,10 @@ def _run_plan_operation(plan: Plan, task_key: str, call: Callable[[], Any]) -> N
             plan.mark_failed(task_key)
 
 
+def _main_entrypoint() -> None:
+    """Exit a module invocation with the status returned by :func:`main`."""
+    raise SystemExit(main())
+
+
 if __name__ == "__main__":
-    main()
+    _main_entrypoint()

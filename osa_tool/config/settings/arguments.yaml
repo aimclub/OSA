@@ -1,4 +1,9 @@
 arguments:
+  paper_analysis:
+    aliases: [ "--paper-analysis" ]
+    type: flag
+    description: "Run the analysis-only paper claim and repository verification pipeline."
+
   attachment:
     aliases: [ "--attachment" ]
     type: str
@@ -117,16 +122,6 @@ arguments:
     type: flag
     description: "Generate About section with tags."
 
-  validate_paper:
-    aliases: [ "--validate-paper" ]
-    type: flag
-    description: "Check whether the experiments proposed in an attached research paper can be reproduced using the selected repository."
-
-  validate_doc:
-    aliases: [ "--validate-doc" ]
-    type: flag
-    description: "Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository."
-
 settings:
   use_single_model:
       aliases: [ "--use-single-model" ]
@@ -225,10 +220,20 @@ settings:
     type: str
     description: "Specific LLM model for README generation tasks."
 
-  model_validation:
-    aliases: [ "--model-validation" ]
+  model_repository_quality:
+    aliases: [ "--model-repository-quality" ]
     type: str
-    description: "Specific LLM model for validation tasks."
+    description: "Specific LLM model for formal repository-quality scoring."
+
+  model_paper_claims:
+    aliases: [ "--model-paper-claims" ]
+    type: str
+    description: "Specific LLM model for typed paper claim extraction."
+
+  model_paper_verification:
+    aliases: [ "--model-paper-verification" ]
+    type: str
+    description: "Specific LLM model for paper claim verification."
 
   model_general:
     aliases: [ "--model-general" ]
