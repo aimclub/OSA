@@ -61,8 +61,6 @@ def main():
     # Create a command line argument parser
     parser = build_parser_from_yaml(extra_sections=["settings", "arguments", "workflow"])
     args = parser.parse_args()
-    create_fork = not args.no_fork
-    create_pull_request = not args.no_pull_request
 
     # Initialize logging
     logs_dir = os.path.join(os.path.dirname(osa_project_root()), "logs")
@@ -83,9 +81,7 @@ def main():
         # Initialize Git agent and Workflow Manager for used platform, perform operations
         git_agent, workflow_manager = initialize_git_platform(args, config_manager)
 
-        if isinstance(git_agent, LocalGitAgent):
-            create_fork = False
-            create_pull_request = False
+        create_fork, create_pull_request = resolve_publishing_options(args, git_agent)
 
         if create_fork:
             git_agent.star_repository()
@@ -296,32 +292,78 @@ def main():
         sys.exit(1)
 
 
+def resolve_publishing_options(args, git_agent: GitAgent) -> tuple[bool, bool]:
+    """Decides whether the results of a run may be published back to the repository.
+
+    Args:
+        args: The parsed command line arguments.
+        git_agent: The Git agent initialized for the processed repository.
+
+    Returns:
+        A tuple of the `create_fork` and `create_pull_request` flags.
+    """
+    create_fork = not args.no_fork
+    create_pull_request = not args.no_pull_request
+
+    if isinstance(git_agent, LocalGitAgent):
+        create_fork = False
+        create_pull_request = False
+
+    # A dated run analyses a historical version of the repository,
+    # so publishing its outdated tree back to the project has to be suppressed.
+    if git_agent.based_on_date and (create_fork or create_pull_request):
+        logger.warning(
+            f"'--based-on-date' is set: the repository is analysed as of "
+            f"{git_agent.based_on_date.date()}, "
+            "NO FORK and NO PULL REQUEST options are forced for this run, "
+            "so none of the results will be published to the repository."
+        )
+        create_fork = False
+        create_pull_request = False
+
+    return create_fork, create_pull_request
+
+
 def initialize_git_platform(args, config_manager: ConfigManager) -> tuple[GitAgent, WorkflowManager]:
     if (os.getenv("GITHUB_ACTIONS") is not None) and (os.getenv("GITHUB_ACTIONS").lower() == "true"):
         target_branch = args.branch
     else:
         target_branch = getattr(config_manager.config.git, "osa_branch_name", "osa_tool")
 
+    based_on_date = config_manager.config.git.based_on_date
+
     if os.path.isdir(args.repository):
-        git_agent = LocalGitAgent(args.repository, args.branch, author=args.author)
+        git_agent = LocalGitAgent(args.repository, args.branch, author=args.author, based_on_date=based_on_date)
         workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
     elif "github.com" in args.repository:
         git_agent = GitHubAgent(
-            args.repository, repo_branch_name=args.branch, branch_name=target_branch, author=args.author
+            args.repository,
+            repo_branch_name=args.branch,
+            branch_name=target_branch,
+            author=args.author,
+            based_on_date=based_on_date,
         )
         workflow_manager = GitHubWorkflowManager(args.repository, git_agent.metadata, args)
     elif "gitlab." in args.repository:
         git_agent = GitLabAgent(
-            args.repository, repo_branch_name=args.branch, branch_name=target_branch, author=args.author
+            args.repository,
+            repo_branch_name=args.branch,
+            branch_name=target_branch,
+            author=args.author,
+            based_on_date=based_on_date,
         )
         workflow_manager = GitLabWorkflowManager(args.repository, git_agent.metadata, args)
     elif "gitverse.ru" in args.repository:
         git_agent = GitverseAgent(
-            args.repository, repo_branch_name=args.branch, branch_name=target_branch, author=args.author
+            args.repository,
+            repo_branch_name=args.branch,
+            branch_name=target_branch,
+            author=args.author,
+            based_on_date=based_on_date,
         )
         workflow_manager = GitverseWorkflowManager(args.repository, git_agent.metadata, args)
     elif "sourcecraft.dev" in args.repository:
-        git_agent = SourceCraftAgent(args.repository, args.branch, author=args.author)
+        git_agent = SourceCraftAgent(args.repository, args.branch, author=args.author, based_on_date=based_on_date)
         workflow_manager = SourceCraftWorkflowManager(args.repository, git_agent.metadata, args)
     else:
         raise ValueError(f"Cannot initialize Git Agent and Workflow Manager for this platform: {args.repository}")

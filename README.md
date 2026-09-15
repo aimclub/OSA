@@ -221,6 +221,7 @@ documentation, see the [Workflow Generator README](./osa_tool/operations/codebas
 |----------------------|-------------------------------------------------------------------------------------|--------------------------------|
 | `-r`, `--repository` | URL of the GitHub/GitLab/Gitverse repository (**Mandatory**)                        |                                |
 | `-b`, `--branch`     | Branch name of the repository                                                       | Default branch                 |
+| `--based-on-date`    | Analyse the repository version closest to the given date (forces no fork / no PR)   | `None`                         |
 | `-o`, `--output`     | Path to the output directory                                                        | Current working directory      |
 | `--api`              | LLM API service provider                                                            | `openai`                       |
 | `--base-url`         | URL of the provider compatible with API OpenAI                                      | `https://openrouter.ai/api/v1` |
