@@ -40,4 +40,3 @@ def test_operation_dependencies_match_executor_signatures():
 def test_organize_operation_description_reflects_safe_structural_reorganization():
     assert "group scattered source files" in OrganizeRepositoryOperation.description
     assert "without aggressive refactoring" in OrganizeRepositoryOperation.description
-
