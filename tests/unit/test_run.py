@@ -4,7 +4,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from osa_tool.run import initialize_git_platform, main
+from osa_tool.core.git.git_agent import LocalGitAgent
+from osa_tool.run import initialize_git_platform, main, resolve_publishing_options
+from osa_tool.run_chat import main as run_chat_main
 from osa_tool.scheduler.plan import Plan
 
 
@@ -103,3 +105,45 @@ def test_initialize_git_platform_passes_based_on_date_from_config(run_args):
 
     # Assert
     assert mock_github_agent.call_args.kwargs["based_on_date"] == datetime(2021, 1, 1, tzinfo=timezone.utc)
+
+
+def test_resolve_publishing_options_enabled_by_default(run_args):
+    # Arrange
+    git_agent = MagicMock()
+    git_agent.based_on_date = None
+
+    # Act
+    create_fork, create_pull_request = resolve_publishing_options(run_args, git_agent)
+
+    # Assert
+    assert create_fork is True
+    assert create_pull_request is True
+
+
+def test_resolve_publishing_options_disabled_for_local_agent(run_args):
+    # Arrange
+    git_agent = MagicMock(spec=LocalGitAgent)
+    git_agent.based_on_date = None
+
+    # Act
+    create_fork, create_pull_request = resolve_publishing_options(run_args, git_agent)
+
+    # Assert
+    assert create_fork is False
+    assert create_pull_request is False
+
+
+def test_resolve_publishing_options_disabled_for_based_on_date(run_args):
+    # Arrange
+    git_agent = MagicMock()
+    git_agent.based_on_date = datetime(2021, 1, 1, tzinfo=timezone.utc)
+
+    # Act
+    with patch("osa_tool.run.logger") as mock_logger:
+        create_fork, create_pull_request = resolve_publishing_options(run_args, git_agent)
+
+    # Assert
+    assert create_fork is False
+    assert create_pull_request is False
+    warnings = [call.args[0] for call in mock_logger.warning.call_args_list]
+    assert any("NO FORK" in message and "NO PULL REQUEST" in message for message in warnings)

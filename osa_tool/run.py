@@ -61,8 +61,6 @@ def main():
     # Create a command line argument parser
     parser = build_parser_from_yaml(extra_sections=["settings", "arguments", "workflow"])
     args = parser.parse_args()
-    create_fork = not args.no_fork
-    create_pull_request = not args.no_pull_request
 
     # Initialize logging
     logs_dir = os.path.join(os.path.dirname(osa_project_root()), "logs")
@@ -83,21 +81,7 @@ def main():
         # Initialize Git agent and Workflow Manager for used platform, perform operations
         git_agent, workflow_manager = initialize_git_platform(args, config_manager)
 
-        if isinstance(git_agent, LocalGitAgent):
-            create_fork = False
-            create_pull_request = False
-
-        # A dated run analyses a historical version of the repository,
-        # so publishing its outdated tree back to the project has to be suppressed.
-        if git_agent.based_on_date:
-            logger.warning(
-                f"'--based-on-date' is set: the repository is analysed as of "
-                f"{git_agent.based_on_date.date()}, "
-                "NO FORK and NO PULL REQUEST options are forced for this run, "
-                "so none of the results will be published to the repository."
-            )
-            create_fork = False
-            create_pull_request = False
+        create_fork, create_pull_request = resolve_publishing_options(args, git_agent)
 
         if create_fork:
             git_agent.star_repository()
@@ -306,6 +290,38 @@ def main():
     except Exception as e:
         logger.error("Error: %s", e, exc_info=False if args.web_mode else True)
         sys.exit(1)
+
+
+def resolve_publishing_options(args, git_agent: GitAgent) -> tuple[bool, bool]:
+    """Decides whether the results of a run may be published back to the repository.
+
+    Args:
+        args: The parsed command line arguments.
+        git_agent: The Git agent initialized for the processed repository.
+
+    Returns:
+        A tuple of the `create_fork` and `create_pull_request` flags.
+    """
+    create_fork = not args.no_fork
+    create_pull_request = not args.no_pull_request
+
+    if isinstance(git_agent, LocalGitAgent):
+        create_fork = False
+        create_pull_request = False
+
+    # A dated run analyses a historical version of the repository,
+    # so publishing its outdated tree back to the project has to be suppressed.
+    if git_agent.based_on_date and (create_fork or create_pull_request):
+        logger.warning(
+            f"'--based-on-date' is set: the repository is analysed as of "
+            f"{git_agent.based_on_date.date()}, "
+            "NO FORK and NO PULL REQUEST options are forced for this run, "
+            "so none of the results will be published to the repository."
+        )
+        create_fork = False
+        create_pull_request = False
+
+    return create_fork, create_pull_request
 
 
 def initialize_git_platform(args, config_manager: ConfigManager) -> tuple[GitAgent, WorkflowManager]:

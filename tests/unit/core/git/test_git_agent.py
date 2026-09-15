@@ -1,6 +1,7 @@
 import os
 import tempfile
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from unittest.mock import Mock, patch, ANY, MagicMock
 
 import pytest
@@ -953,3 +954,75 @@ def test_git_agent_initialization_with_invalid_based_on_date(mock_repository_met
     with patch.object(GitHubMetadataLoader, "load_data", return_value=mock_repository_metadata):
         with pytest.raises(ValueError, match="Cannot parse date"):
             GitHubAgent(repo_url, based_on_date="the day before yesterday")
+
+
+def test_git_agent_find_closest_commit_after_detached_head(git_agent_base_setup, repo_with_dated_commits):
+    """A previous dated run leaves HEAD detached, later dates still have to see the newer commits."""
+    # Arrange
+    agent, _, _, _ = git_agent_base_setup
+    repo_path, repo, commits = repo_with_dated_commits
+    agent.repo = repo
+    agent.base_branch = "main"
+
+    agent.based_on_date = parse_date_argument("2020-06-15")
+    agent._checkout_version_by_date()
+    assert repo.head.is_detached
+
+    # Act
+    agent.based_on_date = parse_date_argument("2024-06-15")
+    closest_commit = agent._find_closest_commit()
+
+    # Assert
+    assert closest_commit == commits[2024].hexsha
+
+
+def test_git_agent_resolve_history_ref_fetches_configured_branch(git_agent_base_setup):
+    # Arrange
+    agent, _, _, _ = git_agent_base_setup
+    agent.repo = MagicMock()
+    agent.repo.remotes = [SimpleNamespace(name="origin")]
+    agent.based_on_date = parse_date_argument("2022-08-01")
+
+    # Act
+    history_ref = agent._resolve_history_ref()
+
+    # Assert
+    agent.repo.git.fetch.assert_called_once_with("origin", agent.base_branch)
+    assert history_ref == "FETCH_HEAD"
+
+
+def test_git_agent_resolve_history_ref_falls_back_when_fetch_fails(git_agent_base_setup):
+    # Arrange
+    agent, _, _, _ = git_agent_base_setup
+    agent.repo = MagicMock()
+    agent.repo.remotes = [SimpleNamespace(name="origin")]
+    agent.repo.git.fetch.side_effect = GitCommandError("fetch", 1)
+
+    def rev_parse(ref):
+        if ref != f"origin/{agent.base_branch}":
+            raise ValueError(f"unknown revision: {ref}")
+        return ref
+
+    agent.repo.rev_parse.side_effect = rev_parse
+    agent.based_on_date = parse_date_argument("2022-08-01")
+
+    # Act
+    history_ref = agent._resolve_history_ref()
+
+    # Assert
+    assert history_ref == f"origin/{agent.base_branch}"
+
+
+def test_git_agent_checkout_version_by_date_keeps_dirty_local_repository(repo_with_dated_commits):
+    # Arrange
+    repo_path, repo, commits = repo_with_dated_commits
+    agent = LocalGitAgent(str(repo_path), based_on_date="2020-06-15")
+    agent.repo = repo
+    (repo_path / "file.txt").write_text("work in progress")
+
+    # Act & Assert
+    with pytest.raises(ValueError, match="uncommitted changes"):
+        agent._checkout_version_by_date()
+
+    assert repo.head.commit == commits[2024]
+    assert (repo_path / "file.txt").read_text() == "work in progress"

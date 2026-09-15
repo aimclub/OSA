@@ -7,7 +7,7 @@ from osa_tool.core.models.agent_status import AgentStatus
 from osa_tool.osa_agent.context import AgentContext
 from osa_tool.osa_agent.graph import build_graph
 from osa_tool.osa_agent.state import OSAState
-from osa_tool.run import initialize_git_platform
+from osa_tool.run import initialize_git_platform, resolve_publishing_options
 from osa_tool.ui.input_for_chat import InitialChatInput, collect_user_input
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.logger import setup_logging, logger
@@ -42,12 +42,14 @@ def main():
     config_manager = ConfigManager(args)
     git_agent, workflow_manager = initialize_git_platform(args, config_manager)
 
+    create_fork, create_pull_request = resolve_publishing_options(args, git_agent)
+
     agent_config = OSAConfig(
         config_manager=config_manager,
         git_agent=git_agent,
         workflow_manager=workflow_manager,
-        create_fork=not args.no_fork,
-        create_pull_request=not args.no_pull_request,
+        create_fork=create_fork,
+        create_pull_request=create_pull_request,
         delete_dir=args.delete_dir,
         enable_replanning=True,
         enable_memory=True,
