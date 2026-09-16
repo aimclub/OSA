@@ -476,11 +476,11 @@ class GitAgent(abc.ABC):
             self._handle_git_error(e, f"pushing to {branch}")
             logger.error(
                 f"""Push failed: Branch '{branch}' already exists in the fork.
-                 To resolve this, please either:
-                   1. Choose a different branch name that doesn't exist in the fork
-                      by modifying the `branch_name` parameter.
-                   2. Delete the existing branch from forked repository.
-                   3. Delete the fork entirely."""
+                    To resolve this, please either:
+                    1. Choose a different branch name that doesn't exist in the fork
+                        by modifying the `branch_name` parameter.
+                    2. Delete the existing branch from forked repository.
+                    3. Delete the fork entirely."""
             )
             return False
 
