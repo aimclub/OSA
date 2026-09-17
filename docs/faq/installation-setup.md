@@ -36,7 +36,6 @@ Install an optional feature set when required:
 
 ```bash
 pip install "osa_tool[paper-claims]"
-pip install "osa_tool[repository-validation]"
 ```
 
 **Complete Installation Steps:**
@@ -136,7 +135,7 @@ pip install -r requirements.txt
 # Option B: Using poetry (recommended for development)
 poetry install
 
-# Include optional paper-claims and repository-validation features
+# Include the optional paper-claims feature
 poetry install --all-extras
 
 # Step 4: Run tests

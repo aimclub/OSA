@@ -69,9 +69,6 @@ Install optional features when needed:
 ```sh
 # PDF-to-claims extraction and evaluation utilities
 pip install "osa_tool[paper-claims]"
-
-# Legacy graph-based document and paper validation
-pip install "osa_tool[repository-validation]"
 ```
 
 **Build from source:**

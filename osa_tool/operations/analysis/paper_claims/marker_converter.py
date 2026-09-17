@@ -352,7 +352,13 @@ class MarkerDocumentConverter:
             options=options,
         )
 
-    def convert(self, chunks: list[PdfChunk], options: MarkerOptions | None = None) -> ConvertedDocument:
+    def convert(
+        self,
+        chunks: list[PdfChunk],
+        options: MarkerOptions | None = None,
+        *,
+        show_progress: bool = True,
+    ) -> ConvertedDocument:
         if not chunks:
             raise PdfConversionError("At least one PDF chunk is required")
         self._validate_chunk_sources(chunks)
@@ -392,7 +398,10 @@ class MarkerDocumentConverter:
         converted_chunks: list[ConvertedChunk] = []
         try:
             ordered_chunks = sorted(chunks, key=lambda item: item.index)
-            for chunk in track(ordered_chunks, description="Converting PDF chunks"):
+            progress_items = (
+                track(ordered_chunks, description="Converting PDF chunks") if show_progress else ordered_chunks
+            )
+            for chunk in progress_items:
                 logger.info(
                     "Converting chunk %s/%s with Marker: pages %s-%s",
                     chunk.index,

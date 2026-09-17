@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt
 
@@ -24,8 +24,8 @@ class MarkerOptions(StrictModel):
     extract_images: bool = False
     cache_root: Path | None = None
     force_refresh: bool = False
-    low_vram: bool = False
-    process_isolation: bool = False
+    low_vram: bool = True
+    process_isolation: bool = True
     log_cuda_memory: bool = True
     marker_config: dict[str, Any] = Field(default_factory=dict)
 
@@ -99,6 +99,8 @@ class DedupSelection(StrictModel):
 class ExtractionMetadata(StrictModel):
     source: str | None = None
     model: str | None = None
+    configured_model: str | None = None
+    models_used: list[str] = Field(default_factory=list)
     steps: int = 3
     filtered_claims: int = 0
     step3_input_count: int = 0
@@ -128,10 +130,10 @@ class ClaimExtractionResult(StrictModel):
 
 
 class PipelineOptions(StrictModel):
-    pages_per_chunk: PositiveInt = 10
+    pages_per_chunk: PositiveInt = 5
     marker: MarkerOptions = Field(default_factory=MarkerOptions)
     max_retries: PositiveInt = 5
-    dedup_batch_size: int = Field(default=100, ge=2)
+    dedup_batch_size: int = Field(default=50, ge=2)
 
 
 class PipelineResult(StrictModel):
@@ -141,3 +143,12 @@ class PipelineResult(StrictModel):
 
     def to_legacy_dict(self, *, include_debug: bool = False) -> dict[str, Any]:
         return self.extraction.to_legacy_dict(include_debug=include_debug)
+
+
+class LoadedClaimsArtifact(StrictModel):
+    """Claims accepted for a resumed verification stage."""
+
+    claims: list[dict[str, Any]]
+    source_path: Path
+    source_format: Literal["typed", "legacy", "bare"]
+    upstream_meta: dict[str, Any] = Field(default_factory=dict)

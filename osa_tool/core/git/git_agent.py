@@ -15,6 +15,7 @@ from osa_tool.core.git.metadata import (
     GitverseMetadataLoader,
     LocalMetadataLoader,
     RepositoryMetadata,
+    SourceCraftMetadataLoader,
 )
 from osa_tool.core.git.request_utils import request_with_retry
 from osa_tool.utils.logger import logger

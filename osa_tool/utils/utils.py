@@ -369,6 +369,39 @@ def delete_repository(repo_url: str) -> None:
         logger.error(f"Failed to delete directory {repo_path}: {e}")
 
 
+def delete_created_remote_clone(
+    repo_url: str | Path,
+    clone_dir: str | Path,
+    *,
+    existed_before_clone: bool,
+) -> bool:
+    """Delete only a remote clone created by the current focused-tool run.
+
+    ``--delete-dir`` must never remove a user-supplied local repository or a
+    remote checkout that existed before the command started.  The clone-path
+    check also keeps this helper tied to the location that
+    :class:`~osa_tool.core.git.git_agent.GitAgent` would use for the URL.
+    """
+    source_path = Path(repo_url).expanduser()
+    if source_path.is_dir():
+        logger.info("Skipping repository cleanup because the input is a local directory: %s", source_path)
+        return False
+    if existed_before_clone:
+        logger.info("Skipping repository cleanup because the remote clone already existed: %s", clone_dir)
+        return False
+
+    expected_clone_dir = resolve_repo_path(repo_url)
+    if Path(clone_dir).resolve() != expected_clone_dir:
+        logger.warning(
+            "Skipping repository cleanup because clone directory does not match the remote repository path: %s",
+            clone_dir,
+        )
+        return False
+
+    delete_repository(str(repo_url))
+    return True
+
+
 def parse_git_url(repo_url: str) -> tuple[str, str, str, str]:
     """
     Parse repository URL and return host, full name, and project name.

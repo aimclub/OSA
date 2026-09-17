@@ -122,7 +122,9 @@ to the repository.
 | model                | `--model`                | str  | Specific LLM model to use. See [available providers and models](https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors) | `gpt-3.5-turbo`                  | —                           |
 | model_docstring | `--model-docstring` | str | Specific LLM model for docstring generation tasks | Temprorary inherited from default model| —
 | model_readme | `--model-readme` | str | Specific LLM model for README generation tasks | Temprorary inherited from default model| —
-| model_validation | `--model-validation` | str | Specific LLM model for validation tasks | Temprorary inherited from default model| —
+| model_repository_quality | `--model-repository-quality` | str | Specific LLM model for formal repository-quality scoring | Inherited from default model | —
+| model_paper_claims | `--model-paper-claims` | str | Specific LLM model for typed paper claim extraction | Inherited from default model | —
+| model_paper_verification | `--model-paper-verification` | str | Specific LLM model for paper claim verification | Inherited from default model | —
 | model_general | `--model-general` | str | Specific LLM model for general tasks | Temprorary inherited from default model| —
 | top_p                | `--top_p`                | str  | Nucleus sampling probability                                                                                                       | `0.95`                           | —                           |
 | temperature          | `--temperature`          | str  | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).                                                  | `0.05`                           | —                           |
@@ -158,5 +160,3 @@ to the repository.
 | branches             | `--branches`             | list | Branches to trigger workflows on                                                                                                   | `[]`                             | —                           |
 | codecov_token        | `--codecov-token`        | flag | Use Codecov token for coverage upload                                                                                              | `false`                          | —                           |
 | include_codecov      | `--include-codecov`      | flag | Include Codecov coverage step in unit tests workflow                                                                               | `true`                           | —                           |
-| validate_paper       | `--validate-paper`       | flag | Check whether the experiments proposed in an attached research paper can be reproduced using the selected repository               | `false`                          | —                           |
-| validate_doc         | `--validate-doc`         | flag | Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository           | `false`                          | —                           |
