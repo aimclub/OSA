@@ -24,6 +24,20 @@ class PaperParsingOptions(StrictModel):
     downsample_factor: PositiveInt = 6
     save_img: bool = False
 
+    # Peak memory of the detection stage is driven by these two. Pages are
+    # rasterized at render_dpi and predicted layout_batch_size at a time, so on a
+    # memory-tight machine lowering the DPI (quadratic) is the bigger lever and
+    # shrinking the batch the safer one. Kept as literals rather than imported
+    # from doc_pages so this module stays free of the optional layout stack.
+    render_dpi: PositiveInt = 200
+    layout_batch_size: PositiveInt = 4
+
+    # Retries per element. Every VLM call used to be one-shot, so a single
+    # transient error cost that element its text for good.
+    vlm_max_retries: int = Field(default=15, ge=0)
+    vlm_retry_delay: float = Field(default=2.0, ge=0.0)
+    vlm_timeout: float = Field(default=120.0, gt=0.0)
+
 
 class PaperParsingResult(StrictModel):
     """Output of the paper-parsing pipeline.
@@ -41,3 +55,9 @@ class PaperParsingResult(StrictModel):
     markdown: str
     report: list[dict[str, Any]] = Field(default_factory=list)
     graph: dict[str, Any] = Field(default_factory=dict)
+
+    # How much of the document actually got described. A run where most requests
+    # failed still produces a graph, just an empty-looking one, so the ratio has
+    # to be reported rather than inferred from the artifacts.
+    requested: int = 0
+    described: int = 0

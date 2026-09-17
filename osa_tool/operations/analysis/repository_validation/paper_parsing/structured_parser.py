@@ -27,8 +27,6 @@ from pathlib import Path
 
 import dotenv
 
-import dotenv
-
 from osa_tool.config.settings import ModelSettings
 from osa_tool.operations.analysis.repository_validation.paper_parsing.models import (
     PaperParsingOptions,
@@ -105,13 +103,11 @@ class StructuredPaperParser:
         """
         extras = model_settings.model_extra or {}
         dotenv.load_dotenv()
-        dotenv.load_dotenv()
         return cls(
             pdf_path,
             vlm_model=vlm_model or extras.get("vlm_model") or model_settings.model,
             vlm_base_url=vlm_base_url or extras.get("vlm_base_url") or model_settings.base_url,
-            api_key=extras.get("vlm_api_key")
-            or api_key
+            api_key=api_key
             or extras.get("vlm_api_key")
             or os.getenv(extras.get("vlm_api_key_env") or DEFAULT_API_KEY_ENV),
             system_prompt=model_settings.system_prompt,
