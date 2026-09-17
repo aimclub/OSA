@@ -23,6 +23,7 @@ def run_args():
         ignore_list=None,
         incremental=False,
         target_files=None,
+        paper_analysis=False,
     )
 
 
