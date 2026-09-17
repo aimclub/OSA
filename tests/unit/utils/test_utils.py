@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import mock_open, patch
 
@@ -10,6 +11,7 @@ from osa_tool.utils.utils import (
     extract_readme_content,
     get_base_repo_url,
     osa_project_root,
+    parse_date_argument,
     parse_folder_name,
     parse_git_url,
     prepare_local_output_repository,
@@ -335,3 +337,44 @@ def test_prepare_local_output_repository_refresh_uses_safe_delete(tmp_path):
     assert result == target_repo
     mock_remove_tree.assert_called_once_with(target_repo)
     mock_copytree.assert_called_once_with(source_repo.resolve(), target_repo)
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("2023-05-17", datetime(2023, 5, 17, tzinfo=timezone.utc)),
+        ("2023-05-17T14:30:00", datetime(2023, 5, 17, 14, 30, tzinfo=timezone.utc)),
+        ("2023-05-17T14:30:00Z", datetime(2023, 5, 17, 14, 30, tzinfo=timezone.utc)),
+        ("  17.05.2023  ", datetime(2023, 5, 17, tzinfo=timezone.utc)),
+        ("2023/05/17", datetime(2023, 5, 17, tzinfo=timezone.utc)),
+        (
+            "2023-05-17T14:30:00+03:00",
+            datetime(2023, 5, 17, 14, 30, tzinfo=timezone(timedelta(hours=3))),
+        ),
+    ],
+)
+def test_parse_date_argument_supported_formats(value, expected):
+    # Act
+    parsed = parse_date_argument(value)
+
+    # Assert
+    assert parsed == expected
+    assert parsed.tzinfo is not None
+
+
+def test_parse_date_argument_accepts_datetime():
+    # Arrange
+    value = datetime(2023, 5, 17, 14, 30)
+
+    # Act
+    parsed = parse_date_argument(value)
+
+    # Assert
+    assert parsed == datetime(2023, 5, 17, 14, 30, tzinfo=timezone.utc)
+
+
+@pytest.mark.parametrize("value", ["not-a-date", "2023-13-45", "17/05/2023 broken", ""])
+def test_parse_date_argument_invalid_value(value):
+    # Act & Assert
+    with pytest.raises(ValueError, match="Cannot parse date"):
+        parse_date_argument(value)

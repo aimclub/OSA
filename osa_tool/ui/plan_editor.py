@@ -41,6 +41,7 @@ class PlanEditor:
             "model_paper_claims",
             "model_paper_verification",
             "branch",
+            "based_on_date",
             "output",
             "no_fork",
             "no_pull_request",

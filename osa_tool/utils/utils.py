@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import stat
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -24,6 +25,9 @@ KNOWN_FILE_NAMES = {
     "dockerfile",
     "jenkinsfile",
 }
+
+# Non ISO 8601 date formats accepted from the command line.
+EXTRA_DATE_FORMATS = ("%d.%m.%Y", "%Y/%m/%d")
 
 
 def rich_section(title: str):
@@ -628,6 +632,48 @@ def format_time(seconds: float) -> str:
     hours, remainder = divmod(int(seconds), 3600)
     minutes, secs = divmod(remainder, 60)
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+def parse_date_argument(value: str | datetime) -> datetime:
+    """
+    Parse a user-supplied date into a timezone-aware datetime.
+
+    Accepts ISO 8601 values (``2023-05-17``, ``2023-05-17T14:30:00``,
+    ``2023-05-17T14:30:00Z``) as well as the ``17.05.2023`` and ``2023/05/17``
+    formats. Values without an explicit UTC offset are treated as UTC.
+
+    Args:
+        value: The date to parse.
+
+    Returns:
+        datetime: The parsed date as a timezone-aware datetime.
+
+    Raises:
+        ValueError: If the value does not match any of the supported formats.
+    """
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        text = str(value).strip()
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            parsed = None
+            for date_format in EXTRA_DATE_FORMATS:
+                try:
+                    parsed = datetime.strptime(text, date_format)
+                    break
+                except ValueError:
+                    continue
+        if parsed is None:
+            raise ValueError(
+                f"Cannot parse date '{value}'. Expected an ISO 8601 date (e.g. 2023-05-17) "
+                f"or one of the following formats: {', '.join(EXTRA_DATE_FORMATS)}."
+            )
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
 
 
 def read_ipynb_file(file_path: str) -> str:

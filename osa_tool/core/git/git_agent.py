@@ -2,6 +2,7 @@ import abc
 import os
 import re
 import time
+from datetime import datetime
 from typing import List
 
 import requests
@@ -21,6 +22,7 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import (
     get_base_repo_url,
     is_path,
+    parse_date_argument,
     parse_folder_name,
     resolve_repo_path,
 )
@@ -43,6 +45,7 @@ class GitAgent(abc.ABC):
         fork_url: The URL of the created fork of a Git repository.
         metadata: Git repository metadata.
         base_branch: The name of the repository's branch.
+        based_on_date: The date the repository has to be rolled back to, if requested.
         pr_report_body: A formatted message for a pull request.
     """
 
@@ -52,6 +55,7 @@ class GitAgent(abc.ABC):
         repo_branch_name: str = None,
         branch_name: str = "osa_tool",
         author: str = None,
+        based_on_date: str | datetime = None,
     ):
         """Initializes the agent with repository info.
 
@@ -60,6 +64,9 @@ class GitAgent(abc.ABC):
             repo_branch_name: The name of the repository's branch to be checked out.
             branch_name: The name of the branch to be created. Defaults to "osa_tool".
             author: The name of the author of the pull request.
+            based_on_date: The date the repository has to be analysed as of, for example
+                the publication date of a related article. When set, the repository is
+                rolled back to the version closest to that date.
         """
         load_dotenv()
         self.author = author
@@ -71,6 +78,7 @@ class GitAgent(abc.ABC):
         self.fork_url = None
         self.metadata = self._load_metadata(self.repo_url)
         self.base_branch = repo_branch_name or self.metadata.default_branch
+        self.based_on_date = parse_date_argument(based_on_date) if based_on_date else None
         self.pr_report_body = ""
 
     @property
@@ -340,6 +348,7 @@ class GitAgent(abc.ABC):
         2. If the directory exists locally, initializes from existing files.
         3. If cloning is needed, checks for existing 'osa_tool' branch first.
         4. Falls back to cloning the default branch if 'osa_tool' doesn't exist.
+        5. If `based_on_date` is set, checks out the version closest to that date.
 
         Raises:
             InvalidGitRepositoryError: If the local directory exists but is not a valid Git repository.
@@ -362,10 +371,151 @@ class GitAgent(abc.ABC):
                 logger.error(f"Directory {self.clone_dir} exists but is not a valid Git repository")
                 raise
 
+        elif self.based_on_date:
+            # A historical version has to be taken from the project's own history,
+            # so the 'osa_tool' branch with previously generated changes is skipped.
+            self._clone_default_branch()
         elif self._check_branch_existence(None):
             self._clone_chosen_branch(None)
         else:
             self._clone_default_branch()
+
+        self._checkout_version_by_date()
+
+    @property
+    def _is_managed_clone(self) -> bool:
+        """Whether `clone_dir` holds a clone created by OSA rather than a user's own repository.
+
+        Only managed clones may be reset to a pristine state, since a user's local
+        repository can hold work that OSA must not throw away.
+        """
+        return not is_path(self.repo_url)
+
+    def _resolve_history_ref(self) -> str:
+        """Resolves the ref whose history is searched for the dated snapshot.
+
+        `HEAD` cannot be used: a previous dated run leaves it detached at a historical
+        commit, and the commits made after that one are then unreachable. The configured
+        `base_branch` is fetched first, so the search always sees the full branch history.
+
+        Returns:
+            The name of a ref that can be traversed, falling back to `HEAD` when the
+            configured branch cannot be resolved.
+        """
+        candidates = []
+
+        if "origin" in [remote.name for remote in self.repo.remotes]:
+            try:
+                self.repo.git.fetch("origin", self.base_branch)
+                candidates.append("FETCH_HEAD")
+            except GitCommandError as e:
+                logger.warning(f"Could not fetch branch '{self.base_branch}' from origin: {e}")
+            candidates.append(f"origin/{self.base_branch}")
+
+        candidates.extend([self.base_branch, "HEAD"])
+
+        for ref in candidates:
+            try:
+                self.repo.rev_parse(ref)
+                logger.debug(f"Traversing '{ref}' to find the version closest to {self.based_on_date.date()}")
+                return ref
+            except Exception:
+                continue
+
+        return "HEAD"
+
+    def _find_closest_commit(self) -> str | None:
+        """Finds the commit whose date is the closest one to `based_on_date`.
+
+        Both the latest commit made before the date and the earliest one made after it
+        are considered, so a repository whose history starts after the requested date
+        still resolves to its earliest available version.
+
+        Returns:
+            The hash of the closest commit, or None if the repository has no commits.
+        """
+        target = self.based_on_date.isoformat()
+        history_ref = self._resolve_history_ref()
+        candidates = []
+
+        latest_before = self.repo.git.rev_list("-1", f"--before={target}", history_ref).strip()
+        if latest_before:
+            candidates.append(latest_before)
+
+        commits_after = self.repo.git.rev_list("--reverse", f"--after={target}", history_ref).strip()
+        if commits_after:
+            candidates.append(commits_after.splitlines()[0].strip())
+
+        if not candidates:
+            return None
+
+        return min(candidates, key=lambda sha: abs(self.repo.commit(sha).committed_datetime - self.based_on_date))
+
+    def _ensure_clean_worktree(self) -> None:
+        """Makes sure the working tree holds nothing but the repository's own content.
+
+        A reused clone directory can still hold the files generated by a previous run,
+        both tracked modifications and untracked artifacts. Analysing the historical
+        snapshot together with them would report results the requested version never had,
+        so a clone managed by OSA is reset, while a user's own repository is only checked.
+
+        Raises:
+            ValueError: If a user's local repository has uncommitted changes.
+        """
+        if not self.repo.is_dirty(untracked_files=True):
+            return
+
+        if not self._is_managed_clone:
+            raise ValueError(
+                f"Cannot analyse {self.clone_dir} as of {self.based_on_date.date()}: "
+                "the local repository has uncommitted changes that would be mixed into "
+                "the historical version. Commit or stash them, or run OSA on the "
+                "repository URL instead, so that a separate clone is used."
+            )
+
+        logger.info(f"Resetting the managed clone at {self.clone_dir} to a pristine state...")
+        self.repo.git.reset("--hard")
+        self.repo.git.clean("-fdx")
+
+    def _checkout_version_by_date(self) -> None:
+        """Checks out the repository version closest to `based_on_date`.
+
+        The commit is checked out in a detached HEAD state, so every following operation
+        analyses the repository as it was on the requested date.
+        Does nothing when no date was provided.
+
+        Raises:
+            ValueError: If a user's local repository has uncommitted changes.
+            Exception: If the commit cannot be looked up or checked out.
+        """
+        if not self.based_on_date or not self.repo:
+            return
+
+        try:
+            self._ensure_clean_worktree()
+            commit_hash = self._find_closest_commit()
+
+            if not commit_hash:
+                logger.warning(
+                    f"No commits found in {self.repo_url}, "
+                    f"the repository cannot be rolled back to {self.based_on_date.date()}"
+                )
+                return
+
+            commit = self.repo.commit(commit_hash)
+            logger.info(
+                f"Checking out commit {commit.hexsha[:7]} ({commit.committed_datetime.date()}) "
+                f"as the version closest to {self.based_on_date.date()}..."
+            )
+            if not self._is_managed_clone and not self.repo.head.is_detached:
+                logger.warning(
+                    f"{self.clone_dir} is left at a detached HEAD, "
+                    f"run 'git checkout {self.repo.active_branch.name}' to return to its current version."
+                )
+            self.repo.git.checkout(commit_hash)
+            logger.info(f"Repository is now at commit {commit.hexsha[:7]}")
+        except GitCommandError as e:
+            self._handle_git_error(e, f"checking out the version closest to {self.based_on_date.date()}")
 
     def get_attachment_branch_files(self, branch: str = "osa_tool_attachments") -> List[str]:
         """Gets list of report files from attachment branch.
@@ -620,10 +770,11 @@ class LocalGitAgent(GitAgent):
         repo_branch_name: str = None,
         branch_name: str = "osa_tool",
         author: str = None,
+        based_on_date: str | datetime = None,
     ):
         if is_path(repo_url):
             if os.path.isdir(repo_url):
-                super().__init__(repo_url, repo_branch_name, branch_name, author)
+                super().__init__(repo_url, repo_branch_name, branch_name, author, based_on_date)
                 self.clone_dir = repo_url
             else:
                 raise ValueError(f"{repo_url} does not exist.")

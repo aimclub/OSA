@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os.path
 from argparse import Namespace
+from datetime import datetime
 from pathlib import Path
 from typing import Any, List, Literal
 
@@ -15,6 +16,7 @@ from pydantic import (
     Field,
     NonNegativeFloat,
     PositiveInt,
+    field_validator,
     model_validator,
 )
 
@@ -23,6 +25,7 @@ from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.utils import (
     build_config_path,
     detect_provider_from_url,
+    parse_date_argument,
     parse_git_url,
     is_path,
 )
@@ -39,7 +42,16 @@ class GitSettings(BaseModel):
     host: str | None = None
     name: str = ""
     osa_branch_name: str = "osa_tool"
+    based_on_date: datetime | None = None
     retry: RetryConfig = Field(default_factory=RetryConfig)
+
+    @field_validator("based_on_date", mode="before")
+    @classmethod
+    def normalize_based_on_date(cls, value: Any) -> datetime | None:
+        """Accept CLI strings and native TOML dates, storing them as an aware datetime."""
+        if value is None or value == "":
+            return None
+        return parse_date_argument(value)
 
     @model_validator(mode="after")
     def set_git_attributes(self):
@@ -310,6 +322,9 @@ class ConfigManager:
         if "git" not in config_data:
             config_data["git"] = {}
         config_data["git"]["repository"] = args.repository
+
+        if getattr(args, "based_on_date", None):
+            config_data["git"]["based_on_date"] = args.based_on_date
 
         return config_data
 
