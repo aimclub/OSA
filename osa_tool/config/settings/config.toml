@@ -3,6 +3,8 @@
 repository = "https://github.com/aimclub/OSA"
 no_fork = false
 no_pull_request = false
+# Analyse the repository as of this date; forces no_fork and no_pull_request.
+# based_on_date = 2023-05-17
 
 [git.retry]
 max_attempts = 4

@@ -10,6 +10,7 @@ EXCLUDED_TASK = {
     "web_mode",
     "output",
     "branch",
+    "based_on_date",
     "api",
     "base_url",
     "model",
