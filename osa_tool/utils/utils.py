@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import stat
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -24,6 +25,9 @@ KNOWN_FILE_NAMES = {
     "dockerfile",
     "jenkinsfile",
 }
+
+# Non ISO 8601 date formats accepted from the command line.
+EXTRA_DATE_FORMATS = ("%d.%m.%Y", "%Y/%m/%d")
 
 
 def rich_section(title: str):
@@ -365,6 +369,39 @@ def delete_repository(repo_url: str) -> None:
         logger.error(f"Failed to delete directory {repo_path}: {e}")
 
 
+def delete_created_remote_clone(
+    repo_url: str | Path,
+    clone_dir: str | Path,
+    *,
+    existed_before_clone: bool,
+) -> bool:
+    """Delete only a remote clone created by the current focused-tool run.
+
+    ``--delete-dir`` must never remove a user-supplied local repository or a
+    remote checkout that existed before the command started.  The clone-path
+    check also keeps this helper tied to the location that
+    :class:`~osa_tool.core.git.git_agent.GitAgent` would use for the URL.
+    """
+    source_path = Path(repo_url).expanduser()
+    if source_path.is_dir():
+        logger.info("Skipping repository cleanup because the input is a local directory: %s", source_path)
+        return False
+    if existed_before_clone:
+        logger.info("Skipping repository cleanup because the remote clone already existed: %s", clone_dir)
+        return False
+
+    expected_clone_dir = resolve_repo_path(repo_url)
+    if Path(clone_dir).resolve() != expected_clone_dir:
+        logger.warning(
+            "Skipping repository cleanup because clone directory does not match the remote repository path: %s",
+            clone_dir,
+        )
+        return False
+
+    delete_repository(str(repo_url))
+    return True
+
+
 def parse_git_url(repo_url: str) -> tuple[str, str, str, str]:
     """
     Parse repository URL and return host, full name, and project name.
@@ -595,6 +632,48 @@ def format_time(seconds: float) -> str:
     hours, remainder = divmod(int(seconds), 3600)
     minutes, secs = divmod(remainder, 60)
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+def parse_date_argument(value: str | datetime) -> datetime:
+    """
+    Parse a user-supplied date into a timezone-aware datetime.
+
+    Accepts ISO 8601 values (``2023-05-17``, ``2023-05-17T14:30:00``,
+    ``2023-05-17T14:30:00Z``) as well as the ``17.05.2023`` and ``2023/05/17``
+    formats. Values without an explicit UTC offset are treated as UTC.
+
+    Args:
+        value: The date to parse.
+
+    Returns:
+        datetime: The parsed date as a timezone-aware datetime.
+
+    Raises:
+        ValueError: If the value does not match any of the supported formats.
+    """
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        text = str(value).strip()
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            parsed = None
+            for date_format in EXTRA_DATE_FORMATS:
+                try:
+                    parsed = datetime.strptime(text, date_format)
+                    break
+                except ValueError:
+                    continue
+        if parsed is None:
+            raise ValueError(
+                f"Cannot parse date '{value}'. Expected an ISO 8601 date (e.g. 2023-05-17) "
+                f"or one of the following formats: {', '.join(EXTRA_DATE_FORMATS)}."
+            )
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
 
 
 def read_ipynb_file(file_path: str) -> str:

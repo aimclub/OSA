@@ -209,7 +209,19 @@ class ProtollmHandler(ModelHandler):
         self._original_primary_model = model_settings.model
         self.max_retries = model_settings.max_retries
         self.last_successful_model: str | None = None
+        self.successful_models: list[str] = []
         self._configure_api(model_name=model_settings.model)
+
+    def _record_successful_model(self, model: str) -> None:
+        """Keep ordered per-handler model provenance without duplicating repeated calls."""
+        self.last_successful_model = model
+        if model not in self.successful_models:
+            self.successful_models.append(model)
+
+    def reset_model_provenance(self) -> None:
+        """Clear model-use history before starting an independent analysis document."""
+        self.last_successful_model = None
+        self.successful_models.clear()
 
     def reset_to_primary_model(self) -> None:
         """Explicitly restore primary model configuration."""
@@ -306,7 +318,7 @@ class ProtollmHandler(ModelHandler):
                 messages = self._prepare_messages(prompt, system_message)
                 response = self.client.invoke(messages)
                 content = response.content
-                self.last_successful_model = model
+                self._record_successful_model(model)
                 logger.info("Synchronous LLM request completed with model %s", model)
                 self._log_response_debug(content, "Synchronous")
                 return content
@@ -393,7 +405,7 @@ class ProtollmHandler(ModelHandler):
                 logger.debug("Async LLM request messages:\n%s", messages)
                 response = await self.client.ainvoke(messages)
                 content = response.content
-                self.last_successful_model = model
+                self._record_successful_model(model)
                 logger.info("Asynchronous LLM request completed with model %s", model)
                 self._log_response_debug(content, "Asynchronous")
                 return content
@@ -602,7 +614,10 @@ class ProtollmHandler(ModelHandler):
         Returns:
             None
         """
-        dotenv.load_dotenv()
+        # override=True so an updated API key in .env is honoured even when a stale
+        # key is still present in the OS environment (its absence caused confusing
+        # 401 "User not found" errors)
+        dotenv.load_dotenv(override=True)
 
         self.client = create_llm_connector(
             model_url=self._build_model_url(model_name),

@@ -2,6 +2,8 @@
 
 The paper claims pipeline extracts verifiable technical claims from PDF papers. It is a reusable single-document
 operation under `osa_tool.operations.analysis.paper_claims` and is not registered in the legacy scheduler or agent graph.
+Use `osa-tool --paper-analysis` when those claims must be verified against a repository. Add
+`--include-repository-quality` when the same run also needs the formal repository-quality score.
 
 The current flow is:
 
@@ -11,14 +13,14 @@ PDF → physical PDF chunks → Marker Markdown → structured sections → extr
 
 ## Status
 
-This is the first half of the paper-claims workflow. It focuses on conversion, section parsing, claim extraction, and
-local evaluation utilities. Downstream comparison or repository-specific integration can be built on top of the typed
-result objects.
+This standalone extraction stage focuses on conversion, section parsing, claim extraction, and
+local evaluation utilities. The `paper_analysis` CLI supplies the standard repository-specific integration for the
+typed result objects.
 
 ## Runtime behavior
 
 - PDFs are split with `pypdf` into physical chunks before Marker conversion.
-- The default chunk size is ten pages and can be changed per run.
+- The default chunk size is five pages and can be changed per run.
 - Temporary chunk PDFs are deleted after conversion.
 - Marker Markdown is cached under the system temporary directory.
 - Section parsing and LLM claim extraction are intentionally rerun every time.
@@ -36,7 +38,7 @@ from pathlib import Path
 from osa_tool.operations.analysis.paper_claims import PaperClaimPipeline, PipelineOptions
 
 pipeline = PaperClaimPipeline(model_handler)
-result = await pipeline.arun(Path("paper.pdf"), PipelineOptions(pages_per_chunk=10))
+result = await pipeline.arun(Path("paper.pdf"), PipelineOptions(pages_per_chunk=5))
 ```
 
 The synchronous wrapper is available for scripts:
@@ -67,6 +69,7 @@ The main public objects are:
 | `sections.json` | Parsed sections with heading metadata. |
 | `claims.json` | Typed extraction schema when `legacy=False`. |
 | `claims_legacy.json` | MVP-compatible claim JSON when `legacy=True`. |
+| `report.json` | Canonical stage report with paper source, configured model, actual successful models, and typed extraction result. |
 
 Legacy JSON excludes debug-only `step3_selection` by default:
 
@@ -103,13 +106,14 @@ Useful options:
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `--chunk-pages` | `10` | Number of PDF pages per physical chunk. |
+| `--chunk-pages` | `5` | Number of PDF pages per physical chunk. |
 | `--max-retries` | `5` | LLM response validation and repair attempts. |
+| `--dedup-batch-size` | `50` | Maximum extracted claims sent in one deduplication request. |
 | `--model` | `openai/gpt-5.4-mini` | Model name passed through the normal OSA validation model settings. |
 | `--include-debug` | `false` | Include debug-only data such as `debug.step3_selection` in `claims_legacy.json`. |
 | `--force-marker-refresh` | `false` | Ignore cached Marker Markdown and reconvert PDFs. LLM extraction is still rerun. |
 | `--marker-process-isolation` / `--no-marker-process-isolation` | `true` | Run each Marker chunk in a separate Python process to release CUDA memory between chunks. |
-| `--marker-low-vram` | `false` | Use conservative Marker batch sizes for low-VRAM GPUs. |
+| `--marker-low-vram` / `--no-marker-low-vram` | `true` | Use conservative Marker batch sizes for low-VRAM GPUs. |
 | `--marker-log-cuda-memory` / `--no-marker-log-cuda-memory` | `true` | Log CUDA memory before and after each Marker chunk when CUDA is available. |
 
 Example for a low-VRAM GPU:
