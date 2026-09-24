@@ -6,10 +6,6 @@ from pydantic import BaseModel, Field
 
 from osa_tool.operations.analysis.notebook_report.report_maker import NotebookReportGenerator
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator
-from osa_tool.operations.analysis.repository_validation.optional_dependencies import (
-    load_doc_validator,
-    load_paper_validator,
-)
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
 from osa_tool.operations.codebase.notebook_conversion.notebook_converter import NotebookConverter
@@ -23,14 +19,6 @@ from osa_tool.operations.docs.readme_generation.readme_agent import ReadmeAgent
 from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
 from osa_tool.operations.registry import Operation, OperationRegistry
 from osa_tool.utils.utils import osa_project_root
-
-
-def _run_doc_validation(**kwargs):
-    return load_doc_validator()(**kwargs).run()
-
-
-def _run_paper_validation(**kwargs):
-    return load_paper_validator()(**kwargs).run()
 
 
 class GenerateReportOperation(Operation):
@@ -70,40 +58,6 @@ class GenerateNotebookReportOperation(Operation):
     executor = NotebookReportGenerator
     executor_method = "run"
     executor_dependencies = ["config_manager", "git_agent", "create_fork"]
-
-
-class DocValidationOperation(Operation):
-    name = "validate_doc"
-    description = (
-        "Check if the procedures or workflows from the attached technical documentation "
-        "can be reproduced using the selected repository."
-    )
-
-    supported_intents = ["new_task"]
-    supported_scopes = ["full_repo", "analysis"]
-    priority = 10
-
-    executor = staticmethod(_run_doc_validation)
-    executor_method = None
-    executor_dependencies = ["config_manager", "git_agent", "create_fork"]
-    state_dependencies = ["attachment"]
-
-
-class PaperValidationOperation(Operation):
-    name = "validate_paper"
-    description = (
-        "Check if the experiments and methodology from the attached research paper "
-        "can be reproduced using the selected repository."
-    )
-
-    supported_intents = ["new_task"]
-    supported_scopes = ["full_repo", "analysis"]
-    priority = 15
-
-    executor = staticmethod(_run_paper_validation)
-    executor_method = None
-    executor_dependencies = ["config_manager", "git_agent", "create_fork"]
-    state_dependencies = ["attachment"]
 
 
 class ConvertNotebooksArgs(BaseModel):
@@ -274,6 +228,8 @@ class GenerateWorkflowsArgs(BaseModel):
     include_autopep8: bool = Field(False, description="Generate autopep8 auto-fix workflow.")
     include_fix_pep8: bool = Field(False, description="Generate fix-pep8 slash-command workflow.")
     include_pypi: bool = Field(False, description="Generate PyPI publish workflow.")
+    include_ruff: bool = Field(False, description="Generate Ruff linter and formatter workflow.")
+    use_uv: bool = Field(False, description="Use uv instead of pip for dependency installation.")
     pep8_tool: Literal["flake8", "pylint"] = Field("flake8", description="Tool for PEP 8 checking.")
     use_poetry: bool = Field(False, description="Use Poetry for PyPI packaging.")
     include_codecov: bool = Field(True, description="Include Codecov coverage upload step.")

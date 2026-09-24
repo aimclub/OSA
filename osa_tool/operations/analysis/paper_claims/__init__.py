@@ -3,6 +3,7 @@ from osa_tool.operations.analysis.paper_claims.marker_converter import MarkerDoc
 from osa_tool.operations.analysis.paper_claims.models import (
     ClaimExtractionResult,
     ConvertedDocument,
+    LoadedClaimsArtifact,
     PaperSection,
     PipelineOptions,
     PipelineResult,
@@ -15,6 +16,7 @@ __all__ = [
     "ClaimExtractor",
     "ClaimExtractionResult",
     "ConvertedDocument",
+    "LoadedClaimsArtifact",
     "MarkerDocumentConverter",
     "MarkdownSectionParser",
     "PaperClaimPipeline",

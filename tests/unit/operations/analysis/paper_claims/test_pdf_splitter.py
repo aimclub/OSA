@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from reportlab.pdfgen.canvas import Canvas
 
-from osa_tool.operations.analysis.paper_claims.exceptions import PdfInputError
+from osa_tool.operations.analysis.paper_claims.exceptions import PdfConversionError, PdfInputError
 from osa_tool.operations.analysis.paper_claims.pdf_splitter import PdfChunker
 
 
@@ -35,3 +35,11 @@ def test_split_rejects_non_pdf_signature(tmp_path):
 
     with pytest.raises(PdfInputError, match="signature"):
         PdfChunker().split(path)
+
+
+def test_validate_readable_rejects_a_corrupt_pdf_before_splitting(tmp_path):
+    path = tmp_path / "corrupt.pdf"
+    path.write_bytes(b"%PDF-not-a-valid-document")
+
+    with pytest.raises(PdfConversionError, match="Cannot read PDF"):
+        PdfChunker.validate_readable(path)

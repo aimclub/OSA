@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os.path
 from argparse import Namespace
+from datetime import datetime
 from pathlib import Path
 from typing import Any, List, Literal
 
@@ -15,6 +16,7 @@ from pydantic import (
     Field,
     NonNegativeFloat,
     PositiveInt,
+    field_validator,
     model_validator,
 )
 
@@ -23,6 +25,7 @@ from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.utils import (
     build_config_path,
     detect_provider_from_url,
+    parse_date_argument,
     parse_git_url,
     is_path,
 )
@@ -39,7 +42,16 @@ class GitSettings(BaseModel):
     host: str | None = None
     name: str = ""
     osa_branch_name: str = "osa_tool"
+    based_on_date: datetime | None = None
     retry: RetryConfig = Field(default_factory=RetryConfig)
+
+    @field_validator("based_on_date", mode="before")
+    @classmethod
+    def normalize_based_on_date(cls, value: Any) -> datetime | None:
+        """Accept CLI strings and native TOML dates, storing them as an aware datetime."""
+        if value is None or value == "":
+            return None
+        return parse_date_argument(value)
 
     @model_validator(mode="after")
     def set_git_attributes(self):
@@ -95,8 +107,63 @@ class ModelGroupSettings(BaseModel):
     default: ModelSettings
     for_docstring_gen: ModelSettings | None = None
     for_readme_gen: ModelSettings | None = None
-    for_validation: ModelSettings | None = None
     for_general_tasks: ModelSettings | None = None
+    for_repository_quality: ModelSettings | None = None
+    for_paper_claims: ModelSettings | None = None
+    for_paper_verification: ModelSettings | None = None
+
+
+class PaperMarkerSettings(BaseModel):
+    """Marker conversion settings used by the typed paper-claims stage."""
+
+    extract_images: bool = False
+    cache_root: Path | None = None
+    force_refresh: bool = False
+    low_vram: bool = True
+    process_isolation: bool = True
+    log_cuda_memory: bool = True
+    marker_config: dict[str, Any] = Field(default_factory=dict)
+
+
+class PaperClaimsSettings(BaseModel):
+    """Stable execution settings for PDF-to-typed-claims extraction."""
+
+    pages_per_chunk: PositiveInt = 5
+    max_retries: PositiveInt = 5
+    dedup_batch_size: int = Field(default=50, ge=2)
+    marker: PaperMarkerSettings = Field(default_factory=PaperMarkerSettings)
+
+    def to_pipeline_options(self):
+        """Build paper-claims options without making config depend on its implementation at import time."""
+        from osa_tool.operations.analysis.paper_claims.models import MarkerOptions, PipelineOptions
+
+        return PipelineOptions(
+            pages_per_chunk=self.pages_per_chunk,
+            max_retries=self.max_retries,
+            dedup_batch_size=self.dedup_batch_size,
+            marker=MarkerOptions(**self.marker.model_dump()),
+        )
+
+
+class PaperVerificationSettings(BaseModel):
+    """Bounded repository-context and claim-verification execution settings."""
+
+    batch_size: int = Field(default=25, ge=1, le=50)
+    candidate_file_limit: PositiveInt = 6
+    source_snippet_max_lines: PositiveInt = 250
+    repository_tree_max_paths: PositiveInt = 300
+    csv_file_limit: PositiveInt = 5
+
+
+class PaperAnalysisSettings(BaseModel):
+    """Policy and execution settings for the composed paper-analysis operation."""
+
+    output_dir: Path = Path("paper_analysis")
+    include_repository_quality: bool = False
+    only_high_medium_verifiability: bool = True
+    hide_low_confidence: bool = True
+    paper_claims: PaperClaimsSettings = Field(default_factory=PaperClaimsSettings)
+    verification: PaperVerificationSettings = Field(default_factory=PaperVerificationSettings)
 
 
 class WorkflowSettings(BaseModel):
@@ -112,6 +179,8 @@ class WorkflowSettings(BaseModel):
     include_autopep8: bool = Field(default=False, description="Include autopep8 formatter workflow.")
     include_fix_pep8: bool = Field(default=False, description="Include fix-pep8 command workflow.")
     include_pypi: bool = Field(default=False, description="Include PyPI publish workflow.")
+    include_ruff: bool = Field(default=False, description="Include Ruff linter and formatter workflow.")
+    use_uv: bool = Field(default=False, description="Use uv instead of pip for dependency installation in workflows.")
     python_versions: List[str] = Field(
         default_factory=lambda: ["3.9", "3.10"],
         description="Python versions for workflows.",
@@ -137,6 +206,7 @@ class Settings(BaseModel):
     git: GitSettings
     llm: ModelGroupSettings
     workflows: WorkflowSettings
+    paper_analysis: PaperAnalysisSettings = Field(default_factory=PaperAnalysisSettings)
     prompts: PromptLoader = Field(default_factory=PromptLoader)
 
     model_config = ConfigDict(
@@ -153,8 +223,10 @@ class ConfigManager:
     TASK_MODEL_MAP = {
         "docstring": "for_docstring_gen",
         "readme": "for_readme_gen",
-        "validation": "for_validation",
         "general": "for_general_tasks",
+        "repository_quality": "for_repository_quality",
+        "paper_claims": "for_paper_claims",
+        "paper_verification": "for_paper_verification",
     }
 
     def __init__(self, args: Namespace | None = None):
@@ -235,8 +307,10 @@ class ConfigManager:
         task_models = {
             "for_docstring_gen": "model_docstring",
             "for_readme_gen": "model_readme",
-            "for_validation": "model_validation",
             "for_general_tasks": "model_general",
+            "for_repository_quality": "model_repository_quality",
+            "for_paper_claims": "model_paper_claims",
+            "for_paper_verification": "model_paper_verification",
         }
 
         for task_type, arg_name in task_models.items():
@@ -250,6 +324,9 @@ class ConfigManager:
         if "git" not in config_data:
             config_data["git"] = {}
         config_data["git"]["repository"] = args.repository
+
+        if getattr(args, "based_on_date", None):
+            config_data["git"]["based_on_date"] = args.based_on_date
 
         return config_data
 
@@ -271,12 +348,26 @@ class ConfigManager:
 
         if "llm" in config_data:
             llm_data = config_data["llm"]
+            if "for_validation" in llm_data:
+                raise ValueError(
+                    "[llm.for_validation] was removed. Configure [llm.for_repository_quality], "
+                    "[llm.for_paper_claims], or [llm.for_paper_verification] instead."
+                )
+            if "for_thesis_verification" in llm_data:
+                raise ValueError("[llm.for_thesis_verification] was removed. Use [llm.for_paper_verification] instead.")
 
             default_settings = {}
             task_sections = {}
 
             for key, value in llm_data.items():
-                if key in ["for_docstring_gen", "for_readme_gen", "for_validation", "for_general_tasks"]:
+                if key in [
+                    "for_docstring_gen",
+                    "for_readme_gen",
+                    "for_general_tasks",
+                    "for_repository_quality",
+                    "for_paper_claims",
+                    "for_paper_verification",
+                ]:
                     task_sections[key] = value
                 else:
                     default_settings[key] = value
@@ -297,6 +388,12 @@ class ConfigManager:
         if "general" in config_data:
             processed["general"] = config_data["general"]
 
+        if "thesis_analysis" in config_data:
+            raise ValueError("[thesis_analysis] was removed. Use [paper_analysis] instead.")
+
+        if "paper_analysis" in config_data:
+            processed["paper_analysis"] = config_data["paper_analysis"]
+
         return processed
 
     def get_model_settings(self, task_type: str) -> ModelSettings:
@@ -304,7 +401,8 @@ class ConfigManager:
         Get model settings for specific task type.
 
         Args:
-            task_type: Type of task (docstring, readme, validation, general)
+            task_type: Type of task (docstring, readme, general, repository_quality,
+                paper_claims, paper_verification)
 
         Returns:
             ModelSettings for the specified task type
@@ -336,6 +434,10 @@ class ConfigManager:
             WorkflowSettings: Workflow configuration
         """
         return self.config.workflows
+
+    def get_paper_analysis_settings(self) -> PaperAnalysisSettings:
+        """Return typed policy and execution settings for paper analysis."""
+        return self.config.paper_analysis
 
     def get_prompts(self) -> PromptLoader:
         """

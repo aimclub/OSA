@@ -49,7 +49,7 @@ def test_converter_reuses_one_instance_and_then_uses_cache(tmp_path):
         converter = FakeConverter()
         return converter, lambda rendered: rendered, "test"
 
-    options = MarkerOptions(cache_root=tmp_path / "cache")
+    options = MarkerOptions(cache_root=tmp_path / "cache", process_isolation=False)
     converter = MarkerDocumentConverter(factory, marker_version="test")
     chunks = make_chunks(tmp_path)
 
@@ -92,7 +92,7 @@ def test_custom_converter_factory_version_must_match_cache_key_version(tmp_path)
     )
 
     with pytest.raises(PdfConversionError, match="used for the cache key"):
-        converter.convert(make_chunks(tmp_path), MarkerOptions(cache_root=tmp_path / "cache"))
+        converter.convert(make_chunks(tmp_path), MarkerOptions(cache_root=tmp_path / "cache", process_isolation=False))
 
 
 def test_custom_converter_version_changes_do_not_reuse_stale_cache(tmp_path):
@@ -104,7 +104,7 @@ def test_custom_converter_version_changes_do_not_reuse_stale_cache(tmp_path):
         return lambda _options: (FakeConverter(), lambda rendered: rendered, version)
 
     chunks = make_chunks(tmp_path)
-    options = MarkerOptions(cache_root=tmp_path / "cache")
+    options = MarkerOptions(cache_root=tmp_path / "cache", process_isolation=False)
 
     first = MarkerDocumentConverter(factory("custom-v1"), marker_version="custom-v1").convert(chunks, options)
     second = MarkerDocumentConverter(factory("custom-v2"), marker_version="custom-v2").convert(chunks, options)
@@ -123,7 +123,7 @@ def test_converter_does_not_accept_partial_empty_output(tmp_path):
         lambda _: (FakeConverter(), lambda rendered: rendered, "test"), marker_version="test"
     )
     with pytest.raises(PdfConversionError, match="empty output"):
-        converter.convert(make_chunks(tmp_path), MarkerOptions(cache_root=tmp_path / "cache"))
+        converter.convert(make_chunks(tmp_path), MarkerOptions(cache_root=tmp_path / "cache", process_isolation=False))
 
 
 def test_incomplete_cache_and_force_refresh_reconvert(tmp_path):
@@ -139,7 +139,7 @@ def test_incomplete_cache_and_force_refresh_reconvert(tmp_path):
         lambda _: (FakeConverter(), lambda rendered: rendered, "test"), marker_version="test"
     )
     chunks = make_chunks(tmp_path)
-    options = MarkerOptions(cache_root=tmp_path / "cache")
+    options = MarkerOptions(cache_root=tmp_path / "cache", process_isolation=False)
     first = converter.convert(chunks, options)
     (first.cache_dir / "COMPLETE").unlink()
 

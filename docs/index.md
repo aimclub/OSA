@@ -69,9 +69,6 @@ Install optional features when needed:
 ```sh
 # PDF-to-claims extraction and evaluation utilities
 pip install "osa_tool[paper-claims]"
-
-# Legacy graph-based document and paper validation
-pip install "osa_tool[repository-validation]"
 ```
 
 **Build from source:**
@@ -181,6 +178,7 @@ documentation, see the [GitHub Action Workflow Generator README](workflow-genera
 |------------------------|-------------------------------------------------------------------------------------|-----------------------------|
 | `-r`, `--repository`   | URL of the GitHub/GitLab/Gitverse repository (**Mandatory**)                        |                             |
 | `-b`, `--branch`       | Branch name of the repository                                                       | Default branch              |
+| `--based-on-date`      | Analyse the repository version closest to the given date (forces no fork / no PR)   | `None`                      |
 | `-o`, `--output`       | Path to the output directory                                                        | Current working directory   |
 | `--api`                | LLM API service provider                                                            | `itmo`                      |
 | `--base-url`           | URL of the provider compatible with API OpenAI                                      | `https://api.openai.com/v1` |

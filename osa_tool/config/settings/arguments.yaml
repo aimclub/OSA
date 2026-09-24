@@ -1,4 +1,9 @@
 arguments:
+  paper_analysis:
+    aliases: [ "--paper-analysis" ]
+    type: flag
+    description: "Run the analysis-only paper claim and repository verification pipeline."
+
   attachment:
     aliases: [ "--attachment" ]
     type: str
@@ -117,16 +122,6 @@ arguments:
     type: flag
     description: "Generate About section with tags."
 
-  validate_paper:
-    aliases: [ "--validate-paper" ]
-    type: flag
-    description: "Check whether the experiments proposed in an attached research paper can be reproduced using the selected repository."
-
-  validate_doc:
-    aliases: [ "--validate-doc" ]
-    type: flag
-    description: "Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository."
-
 settings:
   use_single_model:
     aliases: [ "--use-single-model" ]
@@ -200,6 +195,19 @@ settings:
     description: "Branch name of the GitHub repository"
     required: false
 
+  based_on_date:
+    aliases: [ "--based-on-date" ]
+    type: str
+    description: |
+      Date the repository has to be analysed as of, for example the publication
+      date of a related article. The repository is rolled back to the commit
+      closest to this date.
+      WARNING: fork and pull request creation (--no-fork, --no-pull-request)
+      are forced for such runs, since the analysed tree is outdated.
+      Accepted formats: YYYY-MM-DD, YYYY-MM-DDThh:mm:ss, DD.MM.YYYY.
+    example: "2023-05-17"
+    required: false
+
   api:
     aliases: [ "--api" ]
     type: str
@@ -230,10 +238,20 @@ settings:
     type: str
     description: "Specific LLM model for README generation tasks."
 
-  model_validation:
-    aliases: [ "--model-validation" ]
+  model_repository_quality:
+    aliases: [ "--model-repository-quality" ]
     type: str
-    description: "Specific LLM model for validation tasks."
+    description: "Specific LLM model for formal repository-quality scoring."
+
+  model_paper_claims:
+    aliases: [ "--model-paper-claims" ]
+    type: str
+    description: "Specific LLM model for typed paper claim extraction."
+
+  model_paper_verification:
+    aliases: [ "--model-paper-verification" ]
+    type: str
+    description: "Specific LLM model for paper claim verification."
 
   model_general:
     aliases: [ "--model-general" ]
@@ -305,6 +323,16 @@ workflow:
     aliases: [ "--include-pypi" ]
     type: flag
     description: "Include PyPI publish workflow."
+
+  include_ruff:
+    aliases: [ "--include-ruff" ]
+    type: flag
+    description: "Include Ruff linter and formatter workflow."
+
+  use_uv:
+    aliases: [ "--use-uv" ]
+    type: flag
+    description: "Use uv instead of pip for dependency installation in workflows."
 
   python_versions:
     aliases: [ "--python-versions" ]

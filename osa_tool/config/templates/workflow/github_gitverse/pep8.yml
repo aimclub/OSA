@@ -12,7 +12,8 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: {python_version}
+{uv_setup_step}
       - name: "Install dependencies"
-        run: "pip install {tool}"
+        run: "{install_command}"
       - name: "Run {tool}"
         run: {tool_command}

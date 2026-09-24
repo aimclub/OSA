@@ -41,7 +41,28 @@ class PdfChunker:
                 raise PdfInputError(f"File does not have a PDF signature: {path}")
         return path
 
-    def split(self, pdf_path: Path, pages_per_chunk: int = 10) -> list[PdfChunk]:
+    @classmethod
+    def validate_readable(cls, pdf_path: Path) -> Path:
+        """Validate that a PDF can be parsed without producing split artifacts."""
+        path = cls.validate(pdf_path)
+        try:
+            from pypdf import PdfReader
+        except ImportError as exc:
+            raise PdfConversionError(
+                'PDF validation requires the paper-claims extra. Install it with: pip install "osa_tool[paper-claims]".'
+            ) from exc
+
+        try:
+            reader = PdfReader(str(path))
+            if len(reader.pages) == 0:
+                raise PdfInputError(f"PDF contains no pages: {path}")
+        except PdfInputError:
+            raise
+        except Exception as exc:
+            raise PdfConversionError(f"Cannot read PDF {path}: {exc}") from exc
+        return path
+
+    def split(self, pdf_path: Path, pages_per_chunk: int = 10, *, show_progress: bool = True) -> list[PdfChunk]:
         if pages_per_chunk <= 0:
             raise ValueError("pages_per_chunk must be greater than zero")
         path = self.validate(pdf_path)
@@ -70,7 +91,8 @@ class PdfChunker:
         source_hash = hash_file(path)
         chunks: list[PdfChunk] = []
         chunk_starts = range(0, page_count, pages_per_chunk)
-        for index, start in enumerate(track(chunk_starts, description="Splitting PDF"), start=1):
+        progress_items = track(chunk_starts, description="Splitting PDF") if show_progress else chunk_starts
+        for index, start in enumerate(progress_items, start=1):
             end = min(start + pages_per_chunk, page_count)
             chunk_path = self.work_dir / f"{path.stem}__p{start + 1:04d}-{end:04d}.pdf"
             writer = PdfWriter()

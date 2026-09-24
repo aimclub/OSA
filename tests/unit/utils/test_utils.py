@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import mock_open, patch
 
@@ -5,10 +6,12 @@ import pytest
 
 from osa_tool.utils.utils import (
     build_repo_browse_url,
+    delete_created_remote_clone,
     detect_provider_from_url,
     extract_readme_content,
     get_base_repo_url,
     osa_project_root,
+    parse_date_argument,
     parse_folder_name,
     parse_git_url,
     prepare_local_output_repository,
@@ -24,6 +27,43 @@ def test_parse_folder_name_github():
 
     # Assert
     assert folder_name == "repo-name"
+
+
+def test_delete_created_remote_clone_deletes_only_a_new_matching_remote_clone(monkeypatch, tmp_path):
+    from osa_tool.utils import utils
+
+    repo_url = "https://github.com/example/repository"
+    clone_dir = tmp_path / "repository"
+    delete_repository = patch.object(utils, "delete_repository")
+    monkeypatch.setattr(utils, "resolve_repo_path", lambda _url: clone_dir)
+
+    with delete_repository as delete:
+        assert delete_created_remote_clone(repo_url, clone_dir, existed_before_clone=False) is True
+
+    delete.assert_called_once_with(repo_url)
+
+
+def test_delete_created_remote_clone_never_deletes_local_or_preexisting_repositories(monkeypatch, tmp_path):
+    from osa_tool.utils import utils
+
+    local_repository = tmp_path / "local-repository"
+    local_repository.mkdir()
+    remote_clone = tmp_path / "remote-repository"
+    delete_repository = patch.object(utils, "delete_repository")
+    monkeypatch.setattr(utils, "resolve_repo_path", lambda _url: remote_clone)
+
+    with delete_repository as delete:
+        assert delete_created_remote_clone(local_repository, local_repository, existed_before_clone=False) is False
+        assert (
+            delete_created_remote_clone(
+                "https://github.com/example/repository",
+                remote_clone,
+                existed_before_clone=True,
+            )
+            is False
+        )
+
+    delete.assert_not_called()
 
 
 def test_parse_folder_name_gitlab():
@@ -297,3 +337,44 @@ def test_prepare_local_output_repository_refresh_uses_safe_delete(tmp_path):
     assert result == target_repo
     mock_remove_tree.assert_called_once_with(target_repo)
     mock_copytree.assert_called_once_with(source_repo.resolve(), target_repo)
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("2023-05-17", datetime(2023, 5, 17, tzinfo=timezone.utc)),
+        ("2023-05-17T14:30:00", datetime(2023, 5, 17, 14, 30, tzinfo=timezone.utc)),
+        ("2023-05-17T14:30:00Z", datetime(2023, 5, 17, 14, 30, tzinfo=timezone.utc)),
+        ("  17.05.2023  ", datetime(2023, 5, 17, tzinfo=timezone.utc)),
+        ("2023/05/17", datetime(2023, 5, 17, tzinfo=timezone.utc)),
+        (
+            "2023-05-17T14:30:00+03:00",
+            datetime(2023, 5, 17, 14, 30, tzinfo=timezone(timedelta(hours=3))),
+        ),
+    ],
+)
+def test_parse_date_argument_supported_formats(value, expected):
+    # Act
+    parsed = parse_date_argument(value)
+
+    # Assert
+    assert parsed == expected
+    assert parsed.tzinfo is not None
+
+
+def test_parse_date_argument_accepts_datetime():
+    # Arrange
+    value = datetime(2023, 5, 17, 14, 30)
+
+    # Act
+    parsed = parse_date_argument(value)
+
+    # Assert
+    assert parsed == datetime(2023, 5, 17, 14, 30, tzinfo=timezone.utc)
+
+
+@pytest.mark.parametrize("value", ["not-a-date", "2023-13-45", "17/05/2023 broken", ""])
+def test_parse_date_argument_invalid_value(value):
+    # Act & Assert
+    with pytest.raises(ValueError, match="Cannot parse date"):
+        parse_date_argument(value)

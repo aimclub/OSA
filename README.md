@@ -77,14 +77,20 @@ Here is a short video:
 5. **Workflow Generator**: Automatically generates customizable CI/CD workflows for Python repositories,
    including unit tests, code formatting, PEP 8 compliance checks, and PyPI publication.
 
-6. **Thesis (VKR) check**: Evaluates a repository against a set of formal criteria (
-   non-empty README, license file, etc.).  It also extracts claims (unique entities such as preprocessing type, model
-   architecture, etc.) from the thesis (VKR) text and matches them against the repository's code.
-   
+6. **Repository-quality score**: Evaluates a repository against formal criteria such as a non-empty README and
+   license file. Its standalone artifact is a provenance-bearing `report.json`; run it independently with
+   `python -m osa_tool.tools.repository_quality` or as part of paper analysis.
+
 7. **Standalone paper claims pipeline**: Extracts technical claims from PDF papers through the reusable
    `paper_claims` operation and batch utilities. This pipeline is available as a separate module and is not registered
    in the scheduler yet.
-   
+
+8. **Paper repository analysis**: The canonical `osa-tool --paper-analysis` mode extracts or resumes typed paper
+   claims and verifies them against a repository. Formal repository-quality scoring is optional through
+   `--include-repository-quality`; the focused `python -m osa_tool.tools.paper_analysis` wrapper runs the same pipeline.
+   With `--delete-dir`, both
+   entry points remove only a remote clone created by that invocation, never a user-supplied local repository.
+
 ---
 
 ## Installation
@@ -102,9 +108,6 @@ Install optional features when needed:
 ```sh
 # PDF-to-claims extraction and evaluation utilities
 pip install "osa_tool[paper-claims]"
-
-# Legacy graph-based document and paper validation
-pip install "osa_tool[repository-validation]"
 ```
 
 The core package supports Python 3.11 and later. The `paper-claims` PDF conversion workflow currently requires
@@ -221,6 +224,7 @@ documentation, see the [Workflow Generator README](./osa_tool/operations/codebas
 |------------------------|-------------------------------------------------------------------------------------|--------------------------------|
 | `-r`, `--repository`   | URL of the GitHub/GitLab/Gitverse repository (**Mandatory**)                        |                                |
 | `-b`, `--branch`       | Branch name of the repository                                                       | Default branch                 |
+| `--based-on-date`      | Analyse the repository version closest to the given date (forces no fork / no PR)   | `None`                         |
 | `-o`, `--output`       | Path to the output directory                                                        | Current working directory      |
 | `--api`                | LLM API service provider                                                            | `openai`                       |
 | `--base-url`           | URL of the provider compatible with API OpenAI                                      | `https://openrouter.ai/api/v1` |

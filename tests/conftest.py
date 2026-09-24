@@ -50,8 +50,10 @@ def mock_config_manager(data_factory, request):
             default=model_settings,
             for_docstring_gen=model_settings,
             for_readme_gen=model_settings,
-            for_validation=model_settings,
             for_general_tasks=model_settings,
+            for_repository_quality=model_settings,
+            for_paper_claims=model_settings,
+            for_paper_verification=model_settings,
         )
     else:
         model_settings = ModelSettings(**test_settings["llm"])
@@ -59,8 +61,10 @@ def mock_config_manager(data_factory, request):
             default=model_settings,
             for_docstring_gen=model_settings,
             for_readme_gen=model_settings,
-            for_validation=model_settings,
             for_general_tasks=model_settings,
+            for_repository_quality=model_settings,
+            for_paper_claims=model_settings,
+            for_paper_verification=model_settings,
         )
 
     settings = Settings(
@@ -75,6 +79,7 @@ def mock_config_manager(data_factory, request):
     mock_manager.get_model_settings = Mock(return_value=model_settings)
     mock_manager.get_git_settings = Mock(return_value=settings.git)
     mock_manager.get_workflow_settings = Mock(return_value=settings.workflows)
+    mock_manager.get_paper_analysis_settings = Mock(return_value=settings.paper_analysis)
     mock_manager.get_prompts = Mock(return_value=settings.prompts)
 
     os.environ["OPENAI_API_KEY"] = "fake-key-for-tests"
@@ -97,7 +102,14 @@ def config_manager_with_updates(mock_config_manager):
                         default_dict = current_llm.default.model_dump()
                         default_dict.update(values["default"])
                         current_llm.default = ModelSettings(**default_dict)
-                    for task in ["for_docstring_gen", "for_readme_gen", "for_validation", "for_general_tasks"]:
+                    for task in [
+                        "for_docstring_gen",
+                        "for_readme_gen",
+                        "for_general_tasks",
+                        "for_repository_quality",
+                        "for_paper_claims",
+                        "for_paper_verification",
+                    ]:
                         if task in values and getattr(current_llm, task):
                             task_dict = getattr(current_llm, task).dict()
                             task_dict.update(values[task])

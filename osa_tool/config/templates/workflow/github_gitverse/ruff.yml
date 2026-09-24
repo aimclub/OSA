@@ -1,0 +1,18 @@
+name: {name}
+on:
+{on_section}
+jobs:
+  ruff:
+    name: "Ruff Lint & Format"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repo"
+        uses: actions/checkout@v4
+      - name: "Run Ruff linter"
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: "check {src}"
+      - name: "Run Ruff formatter"
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: "format --check {src}"
