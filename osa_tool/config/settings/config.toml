@@ -94,6 +94,7 @@ skip_health_check = false
 about = false
 incremental = false
 target_files = []
+artefacts_language = "English"
 
 #Workflow Settings
 [workflows]

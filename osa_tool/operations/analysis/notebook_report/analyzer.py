@@ -227,6 +227,7 @@ class NotebookReportAnalyzer:
                     description=f"Notebook contains more than {_MAX_CELLS_IN_NOTEBOOK} cells.",
                     recommendation="Split this notebook into two or more notebooks.",
                     details=f"Detected {stats.number_of_cells} cells.",
+                    details_kwargs={"count": stats.number_of_cells},
                 )
             )
         if is_python and self._imports_beyond_first_code_cell(code_cells):
@@ -275,6 +276,7 @@ class NotebookReportAnalyzer:
                     description="Notebook contains too few markdown cells relative to code cells.",
                     recommendation="Describe the steps of your computation by adding " "a few more Markdown cells.",
                     details=f"Markdown/code ratio is {ratio:.2f}.",
+                    details_kwargs={"ratio": ratio},
                 )
             )
         if has_invalid_python_syntax:
@@ -302,6 +304,7 @@ class NotebookReportAnalyzer:
                     description="Notebook contains non-executed code cells.",
                     recommendation="Re-run your notebook top to bottom to ensure that all cells " "are executed.",
                     details=f"{stats.number_of_non_executed_code_cells} code cell(s) are non-executed.",
+                    details_kwargs={"count": stats.number_of_non_executed_code_cells},
                 )
             )
         if stats.number_of_empty_code_cells:
@@ -311,6 +314,7 @@ class NotebookReportAnalyzer:
                     description="Notebook contains empty code cells.",
                     recommendation="Keep your notebook clean by deleting unused cells.",
                     details=f"{stats.number_of_empty_code_cells} empty code cell(s) detected.",
+                    details_kwargs={"count": stats.number_of_empty_code_cells},
                 )
             )
 
@@ -323,6 +327,7 @@ class NotebookReportAnalyzer:
                     recommendation="For improved notebook readability, prefer using Markdown "
                     "formatted text to long multiline Python comments.",
                     details=f"{long_comment_cells} code cell(s) contain long comment blocks.",
+                    details_kwargs={"count": long_comment_cells},
                 )
             )
 
@@ -336,6 +341,7 @@ class NotebookReportAnalyzer:
                     "by moving utility functions to a structured and tested codebase.\n"
                     "Use notebooks to display results, not to compute them.",
                     details=f"{long_code_cells} code cell(s) exceed {_MAX_LINES_IN_CODE_CELL} lines.",
+                    details_kwargs={"count": long_code_cells, "limit": _MAX_LINES_IN_CODE_CELL},
                 )
             )
 
