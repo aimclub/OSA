@@ -179,6 +179,8 @@ class WorkflowSettings(BaseModel):
     include_autopep8: bool = Field(default=False, description="Include autopep8 formatter workflow.")
     include_fix_pep8: bool = Field(default=False, description="Include fix-pep8 command workflow.")
     include_pypi: bool = Field(default=False, description="Include PyPI publish workflow.")
+    include_ruff: bool = Field(default=False, description="Include Ruff linter and formatter workflow.")
+    use_uv: bool = Field(default=False, description="Use uv instead of pip for dependency installation in workflows.")
     python_versions: List[str] = Field(
         default_factory=lambda: ["3.9", "3.10"],
         description="Python versions for workflows.",

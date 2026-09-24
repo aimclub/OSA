@@ -228,6 +228,8 @@ class GenerateWorkflowsArgs(BaseModel):
     include_autopep8: bool = Field(False, description="Generate autopep8 auto-fix workflow.")
     include_fix_pep8: bool = Field(False, description="Generate fix-pep8 slash-command workflow.")
     include_pypi: bool = Field(False, description="Generate PyPI publish workflow.")
+    include_ruff: bool = Field(False, description="Generate Ruff linter and formatter workflow.")
+    use_uv: bool = Field(False, description="Use uv instead of pip for dependency installation.")
     pep8_tool: Literal["flake8", "pylint"] = Field("flake8", description="Tool for PEP 8 checking.")
     use_poetry: bool = Field(False, description="Use Poetry for PyPI packaging.")
     include_codecov: bool = Field(True, description="Include Codecov coverage upload step.")
