@@ -8,12 +8,15 @@ forks, pull requests, repository mutation, Streamlit, leaderboard logic, or PDF 
 
 ```text
 repository clone ──> source context ──> filtered, batched claim verification ──> canonical JSON + text
-paper PDF ──> paper_claims ────────────^
-claims JSON ───────────────────────────^
+paper PDF ───────> paper_claims ───────^
+sections JSON ─> paper_claims ───────^
+claims JSON ─────────────────────────^
                        └─ optional formal repository-quality score
 ```
 
 - PDF input uses the typed `paper_claims` operation. Install `osa_tool[paper-claims]` for this path.
+- Parsed section input uses generic `PaperSection` JSON via `--sections-json`, skipping PDF splitting, Marker, and
+  Markdown parsing. Install `osa_tool[paper-claims-lite]` for parsed-section claim extraction without the PDF stack.
 - Existing `claims.json`, `claims_legacy.json`, and bare claim arrays can start directly at verification.
 - Only high- and medium-verifiability claims are verified by default. Low-confidence results are hidden and excluded
   from the implementation rate unless the corresponding CLI policy override is used.
@@ -37,6 +40,8 @@ Models inherit from `[llm]` unless their stage profile supplies an override:
 - `[llm.for_repository_quality]` only when optional quality scoring is enabled.
 
 Use `--model-paper-claims`, `--model-paper-verification`, or `--model-repository-quality` for per-run overrides.
+`--paper-claims-prompts-dir` can point at a directory of TOML prompt overrides using the same `[prompts]` keys as
+the built-in prompt files; only keys present in that directory are replaced.
 
 Configured defaults are namespaced by clone name outside the repository. A relative `paper_analysis` default becomes
 `<clone-parent>/paper_analysis/<clone-name>/`. If this would collide with the clone, OSA uses the sibling
@@ -51,6 +56,18 @@ osa-tool --paper-analysis \
   --paper ./paper.pdf \
   --paper-output-dir ./analysis
 ```
+
+Use already parsed generic sections and optional paper-claim prompt overrides:
+
+```bash
+osa-tool --paper-analysis \
+  --repository https://github.com/example/project \
+  --sections-json ./sections.json \
+  --paper-claims-prompts-dir ./prompt-overrides \
+  --paper-output-dir ./analysis
+```
+
+`sections.json` may be either a bare list of `PaperSection` objects or an object shaped as `{"sections": [...]}`.
 
 Include the formal repository score in the same artifact tree:
 
@@ -84,8 +101,8 @@ analysis/
   paper_claims/
     report.json
     claims.json
-    document.md            # PDF input
-    sections.json          # PDF input
+    document.md            # PDF input only
+    sections.json          # PDF or sections JSON input
   claim_verification/
     report.json
   repository_quality/      # only with --include-repository-quality
@@ -95,4 +112,5 @@ analysis/
 
 `paper_analysis.json` uses schema version `1.0`. It always contains `repository_quality`; the value and quality
 artifact paths are `null` when scoring is disabled. Model provenance only lists stages that ran. Every stage report
-contains source metadata and configured/successful model provenance.
+contains source metadata and configured/successful model provenance. Claim source metadata uses `kind` values
+`pdf`, `sections_json`, or `claims_json`.

@@ -172,5 +172,5 @@ def test_fuzzy_validation_explains_how_to_install_missing_rapidfuzz(monkeypatch)
 
     monkeypatch.setattr(builtins, "__import__", raise_for_rapidfuzz)
 
-    with pytest.raises(ClaimExtractionError, match=r'pip install "osa_tool\[paper-claims\]"'):
+    with pytest.raises(ClaimExtractionError, match=r"paper-claims-lite"):
         claim_validation._load_rapidfuzz()

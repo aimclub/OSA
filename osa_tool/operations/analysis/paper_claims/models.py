@@ -152,3 +152,12 @@ class LoadedClaimsArtifact(StrictModel):
     source_path: Path
     source_format: Literal["typed", "legacy", "bare"]
     upstream_meta: dict[str, Any] = Field(default_factory=dict)
+
+
+class LoadedSectionsArtifact(StrictModel):
+    """Parsed sections accepted as a reusable claim-extraction input."""
+
+    sections: list[PaperSection]
+    source_path: Path
+    source_format: Literal["bare", "envelope"]
+    upstream_meta: dict[str, Any] = Field(default_factory=dict)

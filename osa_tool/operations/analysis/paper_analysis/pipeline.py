@@ -10,9 +10,18 @@ from typing import Any, Callable
 from osa_tool.config.settings import ConfigManager, PaperClaimsSettings, PaperVerificationSettings
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.llm.llm import ModelHandlerFactory
-from osa_tool.operations.analysis.paper_claims import LoadedClaimsArtifact, PaperClaimPipeline, PdfChunker
+from osa_tool.operations.analysis.paper_claims.io import (
+    export_loaded_claims,
+    export_section_extraction,
+    load_claims_json,
+    load_sections_json,
+    model_provenance_for_loaded,
+)
+from osa_tool.operations.analysis.paper_claims.models import LoadedClaimsArtifact, LoadedSectionsArtifact
+from osa_tool.operations.analysis.paper_claims.section_extractor import run_claim_extraction_from_sections
 from osa_tool.operations.analysis.repository_quality.checks import build_file_tree
 from osa_tool.utils.logger import logger
+from osa_tool.utils.prompts_builder import PromptLoader
 
 from .models import (
     PaperClaimsSummary,
@@ -35,7 +44,7 @@ class PaperAnalysisOperation:
         git_agent: GitAgent,
         request: PaperAnalysisRequest,
         *,
-        paper_pipeline_factory: Callable[[Any], PaperClaimPipeline] = PaperClaimPipeline,
+        paper_pipeline_factory: Callable[[Any], Any] | None = None,
         verifier_factory: Callable[[str | Path, Any, PaperVerificationSettings], ClaimVerifier] = ClaimVerifier,
     ) -> None:
         self._config_manager = config_manager
@@ -83,11 +92,11 @@ class PaperAnalysisOperation:
         )
         paper_handler = (
             ModelHandlerFactory.build(self._config_manager.get_model_settings("paper_claims"))
-            if self._request.paper_path is not None
+            if self._request.paper_path is not None or self._request.sections_path is not None
             else None
         )
         claims, paper_summary = self._run_stage(
-            "Paper-claim extraction" if self._request.paper_path is not None else "Claim-artifact loading",
+            self._claim_stage_name(),
             extraction_start,
             verification_start,
             lambda: self._load_claims(output_dir, paper_handler, settings.paper_claims, claim_input),
@@ -184,9 +193,21 @@ class PaperAnalysisOperation:
     def _source_metadata(self) -> dict[str, Any]:
         if self._request.paper_path is not None:
             paper = {"kind": "pdf", "path": str(self._request.paper_path)}
+        elif self._request.sections_path is not None:
+            paper = {"kind": "sections_json", "path": str(self._request.sections_path)}
         else:
             paper = {"kind": "claims_json", "path": str(self._request.claims_path)}
         return {"repository": self._request.repository, "paper": paper}
+
+    def _claim_stage_name(self) -> str:
+        if self._request.claims_path is not None:
+            return "Claim-artifact loading"
+        return "Paper-claim extraction"
+
+    def _paper_claim_prompts(self) -> PromptLoader | None:
+        if self._request.paper_claims_prompts_dir is None:
+            return None
+        return PromptLoader(override_dirs=[self._request.paper_claims_prompts_dir])
 
     @staticmethod
     def _model_provenance(
@@ -207,28 +228,69 @@ class PaperAnalysisOperation:
         output_dir: Path,
         handler: Any | None,
         paper_claim_settings: PaperClaimsSettings,
-        claim_input: LoadedClaimsArtifact | Path,
+        claim_input: LoadedClaimsArtifact | LoadedSectionsArtifact | Path,
     ) -> tuple[list[dict[str, Any]], PaperClaimsSummary]:
         paper_output_dir = output_dir / "paper_claims"
         if self._request.claims_path is not None:
             assert isinstance(claim_input, LoadedClaimsArtifact)
             loaded = claim_input
-            claims_path = PaperClaimPipeline.export_loaded_claims(loaded, paper_output_dir)
+            claims_path = export_loaded_claims(loaded, paper_output_dir)
             return loaded.claims, PaperClaimsSummary(
                 source_kind="claims_json",
                 source_path=self._request.claims_path,
                 claim_count=len(loaded.claims),
-                model=PaperClaimPipeline.model_provenance_for_loaded(loaded),
+                model=model_provenance_for_loaded(loaded),
                 artifacts={
                     "claims_json": claims_path,
                     "report_json": paper_output_dir / "report.json",
                 },
             )
 
-        assert self._request.paper_path is not None
         assert handler is not None
+        if self._request.sections_path is not None:
+            assert isinstance(claim_input, LoadedSectionsArtifact)
+            loaded_sections = claim_input
+            extraction = run_claim_extraction_from_sections(
+                handler,
+                loaded_sections.sections,
+                paper_claim_settings.to_pipeline_options(),
+                source=str(loaded_sections.source_path),
+                prompts=self._paper_claim_prompts(),
+                show_progress=False,
+            )
+            from osa_tool.operations.analysis.artifacts import model_provenance
+
+            provenance = model_provenance(handler, configured=extraction.meta.configured_model)
+            claims_path = export_section_extraction(
+                extraction,
+                loaded_sections.sections,
+                paper_output_dir,
+                source_kind="sections_json",
+                source_path=loaded_sections.source_path,
+                model=provenance,
+                upstream_meta=loaded_sections.upstream_meta,
+            )
+            claims = [claim.model_dump(mode="json") for claim in extraction.claims]
+            return claims, PaperClaimsSummary(
+                source_kind="sections_json",
+                source_path=self._request.sections_path,
+                claim_count=len(claims),
+                model=provenance,
+                artifacts={
+                    "claims_json": claims_path,
+                    "report_json": paper_output_dir / "report.json",
+                    "sections_json": paper_output_dir / "sections.json",
+                },
+            )
+
+        assert self._request.paper_path is not None
         assert isinstance(claim_input, Path)
-        pipeline = self._paper_pipeline_factory(handler)
+        if self._paper_pipeline_factory is None:
+            from osa_tool.operations.analysis.paper_claims.pipeline import PaperClaimPipeline
+
+            pipeline = PaperClaimPipeline(handler, prompts=self._paper_claim_prompts())
+        else:
+            pipeline = self._paper_pipeline_factory(handler)
         pipeline_result = pipeline.run(
             claim_input,
             paper_claim_settings.to_pipeline_options(),
@@ -240,7 +302,7 @@ class PaperAnalysisOperation:
             source_kind="pdf",
             source_path=self._request.paper_path,
             claim_count=len(claims),
-            model=PaperClaimPipeline.model_provenance_for_extraction(pipeline_result),
+            model=pipeline.model_provenance_for_extraction(pipeline_result),
             artifacts={
                 "claims_json": claims_path,
                 "report_json": paper_output_dir / "report.json",
@@ -249,17 +311,26 @@ class PaperAnalysisOperation:
             },
         )
 
-    def _preflight_claim_input(self) -> LoadedClaimsArtifact | Path:
+    def _preflight_claim_input(self) -> LoadedClaimsArtifact | LoadedSectionsArtifact | Path:
         """Validate the selected claim source before repository-quality model calls."""
         if self._request.claims_path is not None:
-            return PaperClaimPipeline.load_claims_json(self._request.claims_path)
+            return load_claims_json(self._request.claims_path)
+        if self._request.sections_path is not None:
+            return load_sections_json(self._request.sections_path)
         assert self._request.paper_path is not None
+        from osa_tool.operations.analysis.paper_claims.pdf_splitter import PdfChunker
+
         return PdfChunker.validate_readable(self._request.paper_path)
 
     @staticmethod
     def load_claims_json(path: Path) -> list[dict[str, Any]]:
         """Compatibility wrapper; claim-artifact parsing is owned by ``paper_claims``."""
-        return PaperClaimPipeline.load_claims_json(path).claims
+        return load_claims_json(path).claims
+
+    @staticmethod
+    def load_sections_json(path: Path) -> list[dict[str, Any]]:
+        """Compatibility wrapper for parsed PaperSection inputs."""
+        return [section.model_dump(mode="json") for section in load_sections_json(path).sections]
 
     @staticmethod
     def _write_artifacts(result: PaperAnalysisResult) -> None:

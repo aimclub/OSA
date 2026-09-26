@@ -5,11 +5,14 @@ operation under `osa_tool.operations.analysis.paper_claims` and is not registere
 Use `osa-tool --paper-analysis` when those claims must be verified against a repository. Add
 `--include-repository-quality` when the same run also needs the formal repository-quality score.
 
-The current flow is:
+The current PDF flow is:
 
 ```text
 PDF → physical PDF chunks → Marker Markdown → structured sections → extracted claims
 ```
+
+Callers that already have structured `PaperSection` data can start at claim extraction and avoid the PDF, Marker,
+and Markdown parsing stages.
 
 ## Status
 
@@ -47,6 +50,30 @@ The synchronous wrapper is available for scripts:
 result = pipeline.run(Path("paper.pdf"))
 ```
 
+Parsed-section inputs use the lighter helper API:
+
+```python
+from osa_tool.operations.analysis.artifacts import ModelProvenance
+from osa_tool.operations.analysis.paper_claims import (
+    export_section_extraction,
+    load_sections_json,
+    run_claim_extraction_from_sections,
+)
+
+loaded = load_sections_json(Path("sections.json"))
+extraction = run_claim_extraction_from_sections(model_handler, loaded.sections)
+export_section_extraction(
+    extraction,
+    loaded.sections,
+    Path("paper_claims"),
+    source_kind="sections_json",
+    source_path=loaded.source_path,
+    model=ModelProvenance(configured="paper-claim-model", used=["paper-claim-model"]),
+)
+```
+
+`load_sections_json` accepts either a bare list of `PaperSection` objects or `{ "sections": [...] }`.
+
 The main public objects are:
 
 | Object | Purpose |
@@ -55,13 +82,16 @@ The main public objects are:
 | `MarkerDocumentConverter` | Converts PDF chunks through Marker and caches successful Markdown output. |
 | `MarkdownSectionParser` | Parses merged Markdown into ordered `PaperSection` objects. |
 | `ClaimExtractor` | Runs section selection, per-section claim extraction, and deduplication. |
-| `PaperClaimPipeline` | Composes the single-document pipeline. |
+| `load_sections_json` | Loads and validates parsed generic `PaperSection` JSON. |
+| `run_claim_extraction_from_sections` | Extracts claims from parsed sections without PDF conversion or Markdown parsing. |
+| `export_section_extraction` | Writes `claims.json`, `sections.json`, and `report.json` for parsed-section extraction. |
+| `PaperClaimPipeline` | Composes the single-document PDF pipeline. |
 | `PipelineResult` | Holds converted Markdown, sections, and typed extraction results. |
 | `clear_marker_cache` | Deletes Marker cache entries. |
 
 ## Exported artifacts
 
-`PaperClaimPipeline.export(...)` writes:
+`PaperClaimPipeline.export(...)` writes the full PDF-path artifacts:
 
 | File | Description |
 | --- | --- |
@@ -70,6 +100,9 @@ The main public objects are:
 | `claims.json` | Typed extraction schema when `legacy=False`. |
 | `claims_legacy.json` | MVP-compatible claim JSON when `legacy=True`. |
 | `report.json` | Canonical stage report with paper source, configured model, actual successful models, and typed extraction result. |
+
+For parsed-section inputs, `export_section_extraction(...)` writes the same `claims.json`, `sections.json`, and
+`report.json` artifacts without `document.md`.
 
 Legacy JSON excludes debug-only `step3_selection` by default:
 
@@ -149,10 +182,16 @@ clear_marker_cache()
 
 ## Evaluation utilities
 
-Install the paper-claims extra before running the conversion or evaluation utilities:
+Install the full paper-claims extra before running PDF conversion or evaluation utilities:
 
 ```bash
 pip install "osa_tool[paper-claims]"
+```
+
+For parsed-section claim extraction without Marker/PDF conversion dependencies, install the lightweight extra:
+
+```bash
+pip install "osa_tool[paper-claims-lite]"
 ```
 
 > **Python compatibility:** core OSA supports Python 3.11 and later, but the PDF-to-claims conversion workflow
@@ -177,10 +216,13 @@ python -m osa_tool.tools.paper_claims.aggregate ./evaluations --output aggregate
 
 ## Dependencies
 
-The `paper-claims` extra provides `pypdf`, `markdown-it-py`, `rapidfuzz`, `marker-pdf`, `numpy`, `scipy`, and
-`sentence-transformers`. Pandas remains part of OSA's core dependencies and is used by the aggregate utility.
+The `paper-claims-lite` extra provides `rapidfuzz` for parsed-section extraction validation. The full
+`paper-claims` extra keeps the previous PDF-capable dependency set: `pypdf`, `markdown-it-py`, `rapidfuzz`,
+`marker-pdf`, `numpy`, `scipy`, and `sentence-transformers`. Pandas remains part of OSA's core dependencies and
+is used by the aggregate utility.
 
-Marker, Markdown parsing, and RapidFuzz validation are loaded lazily when their corresponding pipeline stage runs.
+Marker, Markdown parsing, PDF splitting, and RapidFuzz validation are loaded lazily when their corresponding stage
+runs.
 OSA does not enable Marker's LLM processors.
 
 ## Module layout
@@ -196,6 +238,8 @@ Important modules:
 | Module | Responsibility |
 | --- | --- |
 | `models.py` | Pydantic data contracts and legacy serialization. |
+| `io.py` | Generic claims/sections JSON loading and stage-artifact export helpers. |
+| `section_extractor.py` | Claim extraction from already parsed sections. |
 | `pdf_splitter.py` | PDF validation and physical chunk creation. |
 | `marker_converter.py` | Marker conversion, cache handling, and low-VRAM/process-isolated execution. |
 | `section_parser.py` | Markdown-to-section parsing. |
