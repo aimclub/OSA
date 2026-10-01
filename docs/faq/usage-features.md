@@ -24,6 +24,8 @@ docker run --env-file .env osa_tool:latest \
   -r https://github.com/username/repository
 ```
 
+Docker runs default to `--api openai`; use `OPENAI_API_KEY` in `.env`, or pass `--api host` only when a host command or bridge is available inside the container.
+
 ## 4.2 What command-line arguments are available?
 
 OSA provides extensive CLI arguments for customization. Here's the complete reference:

@@ -15,6 +15,8 @@ import dotenv
 
 from osa_tool.config.settings import ModelSettings
 from osa_tool.core.llm.llm import ModelHandler, _parse_llm_response
+from osa_tool.utils.logger import logger
+from osa_tool.utils.token_counter import count_tokens, truncate_to_tokens
 
 DEFAULT_HOST_LLM_MODEL = "gpt-5.6-luna"
 
@@ -104,27 +106,38 @@ def host_provider_status(*, force: bool = False) -> dict[str, Any]:
         }
 
 
-def _prompt(system_prompt: str, user_message: str) -> str:
+def _toml_string(value: str) -> str:
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _developer_instructions(system_prompt: str) -> str:
     return (
         "You are an LLM inference worker inside OSA. "
         "Do not inspect local files, run shell commands, browse, or ask follow-up questions. "
-        "Use only the supplied text. Follow the system instruction and answer the user message directly.\n\n"
-        "<system_instruction>\n"
-        f"{system_prompt.strip()}\n"
-        "</system_instruction>\n\n"
-        "<user_message>\n"
-        f"{user_message.strip()}\n"
-        "</user_message>"
+        "Use only the supplied user message. Follow these task instructions and answer directly.\n\n"
+        f"{system_prompt.strip()}"
     )
 
 
-def _command(executable: str, model: str, output_path: Path, workspace: Path) -> list[str]:
+def _user_prompt(user_message: str) -> str:
+    return user_message.strip()
+
+
+def _command(
+    executable: str,
+    model: str,
+    output_path: Path,
+    workspace: Path,
+    developer_instructions: str,
+) -> list[str]:
     return [
         executable,
         "exec",
         "--ephemeral",
         "--skip-git-repo-check",
         "--ignore-user-config",
+        "-c",
+        f"developer_instructions={_toml_string(developer_instructions)}",
         "--sandbox",
         "read-only",
         "--color",
@@ -169,11 +182,20 @@ def _run_host_bridge_sync(
     request_id = f"osa-{uuid.uuid4().hex}"
     request_path = requests_dir / f"{request_id}.json"
     response_path = responses_dir / f"{request_id}.json"
+    developer_instructions = _developer_instructions(system_prompt)
+    safe_user_message = _user_prompt(user_message)
     request = {
         "request_id": request_id,
         "agent_name": "osa_host_llm_worker",
         "model": normalize_host_model(model),
-        "prompt": _prompt(system_prompt, user_message),
+        "developer_instructions": developer_instructions,
+        "system_prompt": system_prompt.strip(),
+        "user_message": safe_user_message,
+        "prompt": safe_user_message,
+        "messages": [
+            {"role": "developer", "content": developer_instructions},
+            {"role": "user", "content": safe_user_message},
+        ],
         "response_path": str(response_path.resolve()),
         "created_at": time.time(),
     }
@@ -182,9 +204,24 @@ def _run_host_bridge_sync(
     os.replace(temporary_path, request_path)
     print(f"HOST_LLM_BRIDGE_REQUEST {request_path.resolve()}", flush=True)
 
+    response = None
+    last_json_error: BaseException | None = None
     started = time.monotonic()
-    while not response_path.exists():
+    while response is None:
+        if response_path.exists():
+            try:
+                response = json.loads(response_path.read_text(encoding="utf-8"))
+                break
+            except Exception as exc:
+                last_json_error = exc
         if time.monotonic() - started > timeout_seconds:
+            if last_json_error is not None:
+                raise HostLlmError(
+                    f"Host bridge response did not become valid JSON within {timeout_seconds} seconds: "
+                    f"{last_json_error}",
+                    status=502,
+                    provider_code="host_bridge_invalid_response",
+                ) from last_json_error
             raise HostLlmError(
                 f"Host bridge did not return a response within {timeout_seconds} seconds.",
                 status=504,
@@ -192,14 +229,6 @@ def _run_host_bridge_sync(
             )
         time.sleep(0.25)
 
-    try:
-        response = json.loads(response_path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        raise HostLlmError(
-            f"Host bridge returned invalid JSON: {exc}",
-            status=502,
-            provider_code="host_bridge_invalid_response",
-        ) from exc
     if response.get("request_id") != request_id:
         raise HostLlmError(
             "Host bridge returned a response for a different request_id.",
@@ -261,10 +290,12 @@ def run_host_llm_sync(
     with tempfile.TemporaryDirectory(prefix="osa-host-") as raw_workspace:
         workspace = Path(raw_workspace)
         output_path = workspace / "last-message.txt"
+        developer_instructions = _developer_instructions(system_prompt)
+        safe_user_message = _user_prompt(user_message)
         try:
             completed = subprocess.run(
-                _command(executable, model, output_path, workspace),
-                input=_prompt(system_prompt, user_message),
+                _command(executable, model, output_path, workspace, developer_instructions),
+                input=safe_user_message,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -333,6 +364,63 @@ class HostLlmHandler(ModelHandler):
     def _system(self, system_message: str | None) -> str:
         return system_message or self.model_settings.system_prompt
 
+    def _limit_tokens(
+        self,
+        text: str,
+        safety_buffer: int = 100,
+        mode: str = "middle-out",
+        reserved_tokens: int = 0,
+    ) -> str:
+        max_input_tokens = (
+            self.model_settings.context_window - self.model_settings.max_tokens - safety_buffer - reserved_tokens
+        )
+        if max_input_tokens <= 0:
+            raise ValueError(
+                "Invalid LLM token budget: context_window "
+                f"({self.model_settings.context_window}) must exceed max_tokens "
+                f"({self.model_settings.max_tokens}) + system tokens ({reserved_tokens}) "
+                f"+ safety buffer ({safety_buffer}). Reduce max_tokens or increase context_window."
+            )
+
+        input_tokens = count_tokens(text, self.model_settings.encoder)
+        if input_tokens <= max_input_tokens:
+            return text
+
+        logger.warning(
+            "Host LLM user prompt exceeds the input budget and will be truncated: "
+            "input_tokens=%s, available_input_tokens=%s, strategy=%s, model=%s",
+            input_tokens,
+            max_input_tokens,
+            mode,
+            self.model_settings.model,
+        )
+        return truncate_to_tokens(
+            text,
+            max_input_tokens,
+            self.model_settings.encoder,
+            mode=mode,
+        )
+
+    def _prepare_user_message(self, prompt: str, system_message: str | None) -> str:
+        effective_system_message = self._system(system_message)
+        developer_instructions = _developer_instructions(effective_system_message)
+        system_tokens = count_tokens(developer_instructions, self.model_settings.encoder)
+        original_user_tokens = count_tokens(prompt, self.model_settings.encoder)
+        safe_prompt = self._limit_tokens(prompt, reserved_tokens=system_tokens)
+        sent_user_tokens = count_tokens(safe_prompt, self.model_settings.encoder)
+        logger.debug(
+            "Host LLM token budget: model=%s, context_window=%s, max_output_tokens=%s, "
+            "system_tokens=%s, user_tokens=%s, sent_user_tokens=%s, truncated=%s",
+            self.model_settings.model,
+            self.model_settings.context_window,
+            self.model_settings.max_tokens,
+            system_tokens,
+            original_user_tokens,
+            sent_user_tokens,
+            sent_user_tokens < original_user_tokens,
+        )
+        return safe_prompt
+
     def _record_successful_model(self, model: str) -> None:
         normalized = normalize_host_model(model)
         self.last_successful_model = normalized
@@ -349,20 +437,22 @@ class HostLlmHandler(ModelHandler):
 
     def send_request(self, prompt: str, system_message: str = None, retry_delay: float = 1) -> str:
         model = self.model_settings.model
+        safe_prompt = self._prepare_user_message(prompt, system_message)
         raw = run_host_llm_sync(
             model=model,
             system_prompt=self._system(system_message),
-            user_message=prompt,
+            user_message=safe_prompt,
         )
         self._record_successful_model(model)
         return raw
 
     async def async_request(self, prompt: str, system_message: str = None, retry_delay: float = 1) -> str:
         model = self.model_settings.model
+        safe_prompt = self._prepare_user_message(prompt, system_message)
         raw = await run_host_llm(
             model=model,
             system_prompt=self._system(system_message),
-            user_message=prompt,
+            user_message=safe_prompt,
         )
         self._record_successful_model(model)
         return raw
@@ -399,13 +489,21 @@ class HostLlmHandler(ModelHandler):
         raise last_error
 
     async def generate_concurrently(self, prompts: list[str], system_message: str = None) -> list[str]:
-        return [await self.async_request(prompt, system_message) for prompt in prompts]
+        return await asyncio.gather(*(self.async_request(prompt, system_message) for prompt in prompts))
 
     def run_chain(self, prompt: str, parser: Any, system_message: str = None, retry_delay: float = 0.5) -> Any:
-        raw = self.send_request(prompt, system_message)
-        if hasattr(parser, "parse"):
-            return parser.parse(raw)
-        return _parse_llm_response(raw, parser)
+        last_error: BaseException | None = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                raw = self.send_request(prompt, system_message)
+                if hasattr(parser, "parse"):
+                    return parser.parse(raw)
+                return _parse_llm_response(raw, parser)
+            except Exception as exc:
+                last_error = exc
+                if attempt < self.max_retries:
+                    time.sleep(retry_delay)
+        raise last_error
 
     async def async_run_chain(
         self,
@@ -414,7 +512,15 @@ class HostLlmHandler(ModelHandler):
         system_message: str = None,
         retry_delay: float = 0.5,
     ) -> Any:
-        raw = await self.async_request(prompt, system_message)
-        if hasattr(parser, "parse"):
-            return parser.parse(raw)
-        return _parse_llm_response(raw, parser)
+        last_error: BaseException | None = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                raw = await self.async_request(prompt, system_message)
+                if hasattr(parser, "parse"):
+                    return parser.parse(raw)
+                return _parse_llm_response(raw, parser)
+            except Exception as exc:
+                last_error = exc
+                if attempt < self.max_retries:
+                    await asyncio.sleep(retry_delay)
+        raise last_error

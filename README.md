@@ -208,6 +208,8 @@ python -m osa_tool.run -r {repository} [--api {api}] [--base-url {base_url}] [--
 docker run --env-file .env {image-name} -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--attachment {article}] [--convert-notebooks {notebook_paths}]
 ```
 
+Docker runs default to the OpenAI-compatible API-key provider because the container cannot inherit a logged-in host command from the user's machine. Pass `--api host` only when the container has access to a host command or bridge.
+
 The --attachment option enables you to choose a README template for a repository based on an article. You can provide
 either a link to a PDF file of the article or a path to a local PDF file after the --attachment option. If you are using
 Docker, ensure that you upload the PDF file to the OSA folder before building the image, then, specify the path as
