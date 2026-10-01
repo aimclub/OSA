@@ -236,6 +236,16 @@ def test_parser_choices_enforced(mock_yaml_file, mock_toml_file):
         parser.parse_args(["-p", "invalid_platform"])
 
 
+def test_real_settings_parser_accepts_host_api():
+    parser = build_parser_from_yaml(extra_sections=["settings"])
+
+    args = parser.parse_args(["--api", "host"])
+
+    assert args.api == "host"
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--api", "invalid"])
+
+
 def test_unsupported_type_raises_error(mock_toml_file):
     # Arrange
     invalid_yaml = """

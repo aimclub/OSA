@@ -314,6 +314,28 @@ def test_config_manager_routes_docstring_to_task_model(tmp_path):
     assert manager.get_model_settings("paper_verification").model == "verification-model"
 
 
+def test_default_config_uses_host_luna():
+    manager = ConfigManager()
+
+    assert manager.config.llm.default.api == "host"
+    assert manager.config.llm.default.model == "gpt-5.6-luna"
+
+
+def test_config_manager_applies_default_cli_model_and_api_override(tmp_path):
+    manager = ConfigManager(
+        _make_config_args(
+            _write_task_models_config(tmp_path),
+            api="host",
+            model="gpt-5.6-luna",
+        )
+    )
+
+    assert manager.config.llm.default.api == "host"
+    assert manager.config.llm.default.model == "gpt-5.6-luna"
+    assert manager.get_model_settings("general").model == "gpt-5.6-luna"
+    assert manager.get_model_settings("paper_claims").model == "claims-model"
+
+
 def test_config_manager_applies_docstring_cli_model_override(tmp_path):
     manager = ConfigManager(
         _make_config_args(

@@ -122,27 +122,27 @@ docker build --build-arg GIT_USER_NAME="your-user-name" --build-arg GIT_USER_EMA
 
 OSA requires Python 3.11 or higher.
 
-File `.env` is required to specify GitHub/GitLab/Gitverse token (GIT_TOKEN) and LLM API key (OPENAI_API_KEY or
-AUTHORIZATION_KEY)
-
-When running `osa-tool` from CLI, you need to set the GIT_TOKEN and API key first:
+OSA can be configured in two common ways:
 
 ```sh
-# Linux / macOS (bash/zsh)
-export OPENAI_API_KEY=<your_api_key>
+# Subscription-backed Host LLM provider (api = "host")
+export HOST_LLM_COMMAND=codex
 export GIT_TOKEN=<your_git_token>
 
-# Windows (PowerShell)
-setx OPENAI_API_KEY "<your_api_key>"
-setx GIT_TOKEN "<your_git_token>"
+# OpenAI-compatible API provider (--api openai)
+export OPENAI_API_KEY=<your_api_key>
+export GIT_TOKEN=<your_git_token>
 ```
+
+`AUTHORIZATION_KEY` is only needed when using Gigachat.
 
 ### Tokens
 
 | Token name          | Description                                                                                                                                                                          | Mandatory |
 |---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
 | `GIT_TOKEN`         | Personal GitHub/GitLab/Gitverse token used to clone private repositories, access metadata, and interact with its API.                                                                | Yes       |
-| `OPENAI_API_KEY`    | API key for accessing [OpenAI](https://platform.openai.com/docs/api-reference/introduction), [vsegpt](https://vsegpt.ru/Docs/API) and [openrouter](https://openrouter.ai/) providers | No        |
+| `HOST_LLM_COMMAND`  | Logged-in host command used by the subscription-backed `api = "host"` provider, for example `codex`.                                                                        | No        |
+| `OPENAI_API_KEY`    | API key for accessing [OpenAI](https://platform.openai.com/docs/api-reference/introduction), [vsegpt](https://vsegpt.ru/Docs/API), and [openrouter](https://openrouter.ai/) providers through `--api openai`. | No        |
 | `AUTHORIZATION_KEY` | API key for [gigachat](https://developers.sber.ru/portal/products/gigachat-api) provider                                                                                             | No        |
 | `X-API-Key`         | API key for the [pepy.tech](https://pepy.tech/pepy-api) REST API, used to fetch Python package download statistics                                                                   | No        |
 
@@ -180,9 +180,9 @@ documentation, see the [GitHub Action Workflow Generator README](workflow-genera
 | `-b`, `--branch`       | Branch name of the repository                                                       | Default branch              |
 | `--based-on-date`      | Analyse the repository version closest to the given date (forces no fork / no PR)   | `None`                      |
 | `-o`, `--output`       | Path to the output directory                                                        | Current working directory   |
-| `--api`                | LLM API service provider                                                            | `itmo`                      |
-| `--base-url`           | URL of the provider compatible with API OpenAI                                      | `https://api.openai.com/v1` |
-| `--model`              | Specific LLM model to use                                                           | `gpt-3.5-turbo`             |
+| `--api`                | LLM API service provider                                                            | `host`                      |
+| `--base-url`           | URL for OpenAI-compatible, ITMO, or Ollama providers; ignored by `host`             | `https://openrouter.ai/api/v1` |
+| `--model`              | Specific LLM model to use                                                           | `gpt-5.6-luna`             |
 | `--top_p`              | Nucleus sampling probability                                                        | `0.95`                      |
 | `--temperature`        | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).   | `0.05`                      |
 | `--max_tokens`         | Maximum number of output tokens the model can generate in a single response         | `4096`                      |
@@ -206,9 +206,23 @@ Examples of generated README files are available in [examples](https://github.co
 URL of the GitHub/GitLab/Gitverse repository, LLM API service provider (*optional*) and Specific LLM model to use
 (*optional*) are required to use the generator.
 
-Supported LLM providers are available as part of the [ProtoLLM](https://github.com/aimclub/ProtoLLM/)
-ecosystem. See the [connectors directory](https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors) for the
-full list.
+OSA supports the subscription-backed Host LLM provider directly. Other LLM providers are available as part of the
+[ProtoLLM](https://github.com/aimclub/ProtoLLM/) ecosystem. See the
+[connectors directory](https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors) for the full list.
+
+Subscription-backed Host LLM:
+
+```sh
+export HOST_LLM_COMMAND=codex
+python -m osa_tool.run -r https://github.com/aimclub/OSA --api host
+```
+
+OpenAI-compatible API key:
+
+```sh
+export OPENAI_API_KEY=<your_api_key>
+python -m osa_tool.run -r https://github.com/aimclub/OSA --api openai --base-url https://api.openai.com/v1 --model gpt-4o
+```
 
 Local ITMO model:
 

@@ -139,7 +139,7 @@ python -m osa_tool.run \
   -r https://github.com/username/repo \
   --model-docstring codellama:13b \
   --model-readme gpt-4o \
-  --model-validation llama3.1:8b \
+  --model-repository-quality gpt-5.6-luna \
   --model-general gpt-4o
 ```
 
@@ -157,7 +157,7 @@ use_single_model = false
 [models]
 docstring = "codellama:13b"
 readme = "gpt-4o"
-validation = "gpt-3.5-turbo"
+repository_quality = "gpt-5.6-luna"
 general = "gpt-4o"
 ```
 
@@ -167,15 +167,15 @@ general = "gpt-4o"
 |------|---------|-------------------|
 | `--model-docstring` | Docstring generation | Codellama 13B, GPT-4o |
 | `--model-readme` | README generation | GPT-4o, Claude 3.5 |
-| `--model-validation` | Code validation | Llama 3.1 8B, GPT-3.5 |
+| `--model-repository-quality` | Repository quality scoring | GPT-5.6 Luna, GPT-4o |
 | `--model-general` | General tasks | GPT-4o, ITMO Research |
 
 **Why Use Different Models?**
 
 | Benefit | Description | Example |
 |---------|-------------|---------|
-| **Cost Optimization** | Use cheaper models for simple tasks | GPT-3.5 for validation, GPT-4o for README |
-| **Performance** | Faster models for quick tasks | Llama 3.1 8B for validation |
+| **Cost Optimization** | Use cheaper models for simple tasks | Smaller local/API models for quality scoring, GPT-4o for README |
+| **Performance** | Faster models for quick tasks | Smaller local/API models for repository quality scoring |
 | **Quality** | Best model for critical tasks | GPT-4o for README and docs |
 | **Specialization** | Code models for code tasks | Codellama for docstrings |
 

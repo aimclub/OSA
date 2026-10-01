@@ -680,7 +680,7 @@ class ModelHandlerFactory:
     """
 
     @classmethod
-    def build(cls, model_settings: ModelSettings) -> ProtollmHandler:
+    def build(cls, model_settings: ModelSettings) -> ModelHandler:
         """
         Builds and returns a handler based on the configuration of the class.
 
@@ -694,4 +694,8 @@ class ModelHandlerFactory:
         Returns:
             ModelHandler: An instance of the appropriate model handler.
         """
+        if model_settings.api == "host":
+            from osa_tool.core.llm.host import HostLlmHandler
+
+            return HostLlmHandler(model_settings)
         return ProtollmHandler(model_settings)
