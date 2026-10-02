@@ -141,7 +141,7 @@ export GIT_TOKEN=<your_git_token>
 | Token name          | Description                                                                                                                                                                          | Mandatory |
 |---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
 | `GIT_TOKEN`         | Personal GitHub/GitLab/Gitverse token used to clone private repositories, access metadata, and interact with its API.                                                                | Yes       |
-| `HOST_LLM_COMMAND`  | Logged-in host command used by the subscription-backed `api = "host"` provider, for example `codex`.                                                                        | No        |
+| `HOST_LLM_COMMAND`  | Logged-in Codex CLI command used by the subscription-backed `api = "host"` provider (`codex`).                                                                        | No        |
 | `OPENAI_API_KEY`    | API key for accessing [OpenAI](https://platform.openai.com/docs/api-reference/introduction), [vsegpt](https://vsegpt.ru/Docs/API), and [openrouter](https://openrouter.ai/) providers through `--api openai`. | No        |
 | `AUTHORIZATION_KEY` | API key for [gigachat](https://developers.sber.ru/portal/products/gigachat-api) provider                                                                                             | No        |
 | `X-API-Key`         | API key for the [pepy.tech](https://pepy.tech/pepy-api) REST API, used to fetch Python package download statistics                                                                   | No        |
@@ -208,7 +208,7 @@ Examples of generated README files are available in [examples](https://github.co
 URL of the GitHub/GitLab/Gitverse repository, LLM API service provider (*optional*) and Specific LLM model to use
 (*optional*) are required to use the generator.
 
-OSA supports the subscription-backed Host LLM provider directly. Other LLM providers are available as part of the
+OSA supports the subscription-backed Host LLM provider directly. `HOST_LLM_COMMAND` currently expects the Codex CLI protocol; use the bridge or an API-backed provider when custom generation controls are required. Other LLM providers are available as part of the
 [ProtoLLM](https://github.com/aimclub/ProtoLLM/) ecosystem. See the
 [connectors directory](https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors) for the full list.
 

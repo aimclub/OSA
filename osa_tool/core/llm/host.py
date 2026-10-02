@@ -19,6 +19,31 @@ from osa_tool.utils.logger import logger
 from osa_tool.utils.token_counter import count_tokens, truncate_to_tokens
 
 DEFAULT_HOST_LLM_MODEL = "gpt-5.6-luna"
+DEFAULT_HOST_MAX_TOKENS = 4096
+DEFAULT_HOST_TEMPERATURE = 0.05
+DEFAULT_HOST_TOP_P = 0.95
+HOST_COMMAND_NAME = "codex"
+_HOST_ENV_ALLOWLIST = {
+    "CODEX_HOME",
+    "HOME",
+    "XDG_CACHE_HOME",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    "PATH",
+    "USER",
+    "LOGNAME",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "TZ",
+    "TMPDIR",
+    "TEMP",
+    "TMP",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+    "REQUESTS_CA_BUNDLE",
+    "CURL_CA_BUNDLE",
+}
 
 
 class HostLlmError(RuntimeError):
@@ -48,6 +73,10 @@ def host_command() -> str | None:
     return shutil.which(configured) if configured else None
 
 
+def _is_supported_host_command(executable: str) -> bool:
+    return Path(executable).name == HOST_COMMAND_NAME
+
+
 def host_bridge_dir() -> Path | None:
     configured = os.getenv("HOST_LLM_BRIDGE_DIR", "").strip()
     return Path(configured).resolve() if configured else None
@@ -74,6 +103,14 @@ def host_provider_status(*, force: bool = False) -> dict[str, Any]:
             "path": None,
             "detail": "HOST_LLM_COMMAND is not set or is not available on PATH.",
         }
+    if not _is_supported_host_command(executable):
+        return {
+            "installed": False,
+            "authenticated": False,
+            "path": executable,
+            "detail": "HOST_LLM_COMMAND must point to the Codex CLI executable named `codex`.",
+            "transport": "host_command",
+        }
 
     try:
         completed = subprocess.run(
@@ -86,6 +123,7 @@ def host_provider_status(*, force: bool = False) -> dict[str, Any]:
             errors="replace",
             timeout=10,
             check=False,
+            env=_clean_env(),
         )
         detail = (completed.stdout or "").strip()
         authenticated = completed.returncode == 0 and "not logged in" not in detail.lower()
@@ -153,11 +191,71 @@ def _command(
 
 
 def _clean_env() -> dict[str, str]:
-    env = os.environ.copy()
-    env.pop("OPENAI_API_KEY", None)
+    env = {key: value for key, value in os.environ.items() if key in _HOST_ENV_ALLOWLIST}
+    env.setdefault("PATH", os.defpath)
     env.setdefault("NO_COLOR", "1")
     env.setdefault("FORCE_COLOR", "0")
     return env
+
+
+def _cleanup_bridge_payloads(*paths: Path) -> None:
+    for path in paths:
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            continue
+        except OSError as exc:  # pragma: no cover - cleanup best effort
+            logger.warning("Could not remove Host LLM bridge payload %s: %s", path, exc)
+
+
+def _generation_options(
+    *,
+    max_tokens: int | None,
+    temperature: float | None,
+    top_p: float | None,
+) -> dict[str, int | float]:
+    options: dict[str, int | float] = {}
+    if max_tokens is not None:
+        options["max_tokens"] = int(max_tokens)
+    if temperature is not None:
+        options["temperature"] = float(temperature)
+    if top_p is not None:
+        options["top_p"] = float(top_p)
+    return options
+
+
+def _uses_default_command_generation_controls(
+    *,
+    max_tokens: int | None,
+    temperature: float | None,
+    top_p: float | None,
+) -> bool:
+    return (
+        max_tokens in {None, DEFAULT_HOST_MAX_TOKENS}
+        and (temperature is None or float(temperature) == DEFAULT_HOST_TEMPERATURE)
+        and (top_p is None or float(top_p) == DEFAULT_HOST_TOP_P)
+    )
+
+
+def _validate_command_generation_controls(
+    *,
+    max_tokens: int | None,
+    temperature: float | None,
+    top_p: float | None,
+) -> None:
+    if _uses_default_command_generation_controls(
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+    ):
+        return
+    raise HostLlmError(
+        "HOST_LLM_COMMAND uses the Codex CLI protocol, which does not expose max_tokens, "
+        "temperature, or top_p controls. Use HOST_LLM_BRIDGE_DIR or an API-backed provider for custom "
+        "generation parameters.",
+        status=400,
+        provider_code="host_command_generation_controls_unsupported",
+    )
 
 
 def _run_host_bridge_sync(
@@ -166,6 +264,9 @@ def _run_host_bridge_sync(
     system_prompt: str,
     user_message: str,
     timeout_seconds: int,
+    max_tokens: int | None,
+    temperature: float | None,
+    top_p: float | None,
 ) -> str:
     bridge_dir = host_bridge_dir()
     if bridge_dir is None:
@@ -184,6 +285,7 @@ def _run_host_bridge_sync(
     response_path = responses_dir / f"{request_id}.json"
     developer_instructions = _developer_instructions(system_prompt)
     safe_user_message = _user_prompt(user_message)
+    generation = _generation_options(max_tokens=max_tokens, temperature=temperature, top_p=top_p)
     request = {
         "request_id": request_id,
         "agent_name": "osa_host_llm_worker",
@@ -196,67 +298,74 @@ def _run_host_bridge_sync(
             {"role": "developer", "content": developer_instructions},
             {"role": "user", "content": safe_user_message},
         ],
+        "max_tokens": generation.get("max_tokens"),
+        "temperature": generation.get("temperature"),
+        "top_p": generation.get("top_p"),
+        "generation": generation,
         "response_path": str(response_path.resolve()),
         "created_at": time.time(),
     }
     temporary_path = requests_dir / f".{request_id}.tmp"
-    temporary_path.write_text(json.dumps(request, ensure_ascii=False, indent=2), encoding="utf-8")
-    os.replace(temporary_path, request_path)
-    print(f"HOST_LLM_BRIDGE_REQUEST {request_path.resolve()}", flush=True)
+    try:
+        temporary_path.write_text(json.dumps(request, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(temporary_path, request_path)
+        print(f"HOST_LLM_BRIDGE_REQUEST {request_path.resolve()}", flush=True)
 
-    response = None
-    last_json_error: BaseException | None = None
-    started = time.monotonic()
-    while response is None:
-        if response_path.exists():
-            try:
-                response = json.loads(response_path.read_text(encoding="utf-8"))
-                break
-            except Exception as exc:
-                last_json_error = exc
-        if time.monotonic() - started > timeout_seconds:
-            if last_json_error is not None:
+        response = None
+        last_json_error: BaseException | None = None
+        started = time.monotonic()
+        while response is None:
+            if response_path.exists():
+                try:
+                    response = json.loads(response_path.read_text(encoding="utf-8"))
+                    break
+                except Exception as exc:
+                    last_json_error = exc
+            if time.monotonic() - started > timeout_seconds:
+                if last_json_error is not None:
+                    raise HostLlmError(
+                        f"Host bridge response did not become valid JSON within {timeout_seconds} seconds: "
+                        f"{last_json_error}",
+                        status=502,
+                        provider_code="host_bridge_invalid_response",
+                    ) from last_json_error
                 raise HostLlmError(
-                    f"Host bridge response did not become valid JSON within {timeout_seconds} seconds: "
-                    f"{last_json_error}",
-                    status=502,
-                    provider_code="host_bridge_invalid_response",
-                ) from last_json_error
-            raise HostLlmError(
-                f"Host bridge did not return a response within {timeout_seconds} seconds.",
-                status=504,
-                provider_code="host_bridge_timeout",
-            )
-        time.sleep(0.25)
+                    f"Host bridge did not return a response within {timeout_seconds} seconds.",
+                    status=504,
+                    provider_code="host_bridge_timeout",
+                )
+            time.sleep(0.25)
 
-    if response.get("request_id") != request_id:
-        raise HostLlmError(
-            "Host bridge returned a response for a different request_id.",
-            status=502,
-            provider_code="host_bridge_id_mismatch",
-        )
-    if response.get("error"):
-        raise HostLlmError(
-            str(response["error"]),
-            status=502,
-            provider_code="host_bridge_worker_error",
-        )
-    requested_model = normalize_host_model(model)
-    response_model = str(response.get("model") or requested_model)
-    if response_model != requested_model:
-        raise HostLlmError(
-            f"Host bridge used {response_model} instead of {requested_model}.",
-            status=502,
-            provider_code="host_bridge_model_mismatch",
-        )
-    text = str(response.get("text") or "").strip()
-    if not text:
-        raise HostLlmError(
-            "Host bridge returned an empty response.",
-            status=502,
-            provider_code="host_bridge_empty_response",
-        )
-    return text
+        if response.get("request_id") != request_id:
+            raise HostLlmError(
+                "Host bridge returned a response for a different request_id.",
+                status=502,
+                provider_code="host_bridge_id_mismatch",
+            )
+        if response.get("error"):
+            raise HostLlmError(
+                str(response["error"]),
+                status=502,
+                provider_code="host_bridge_worker_error",
+            )
+        requested_model = normalize_host_model(model)
+        response_model = str(response.get("model") or requested_model)
+        if response_model != requested_model:
+            raise HostLlmError(
+                f"Host bridge used {response_model} instead of {requested_model}.",
+                status=502,
+                provider_code="host_bridge_model_mismatch",
+            )
+        text = str(response.get("text") or "").strip()
+        if not text:
+            raise HostLlmError(
+                "Host bridge returned an empty response.",
+                status=502,
+                provider_code="host_bridge_empty_response",
+            )
+        return text
+    finally:
+        _cleanup_bridge_payloads(temporary_path, request_path, response_path)
 
 
 def run_host_llm_sync(
@@ -265,6 +374,9 @@ def run_host_llm_sync(
     system_prompt: str,
     user_message: str,
     timeout_seconds: int | None = None,
+    max_tokens: int | None = None,
+    temperature: float | None = None,
+    top_p: float | None = None,
 ) -> str:
     dotenv.load_dotenv(override=True)
     timeout = timeout_seconds or max(30, int(os.getenv("HOST_LLM_REQUEST_TIMEOUT_SECONDS", "600")))
@@ -274,8 +386,16 @@ def run_host_llm_sync(
             system_prompt=system_prompt,
             user_message=user_message,
             timeout_seconds=timeout,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
         )
 
+    _validate_command_generation_controls(
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+    )
     status = host_provider_status()
     if not status["installed"]:
         raise HostLlmError(str(status["detail"]), status=503, provider_code="host_unavailable")
@@ -340,6 +460,9 @@ async def run_host_llm(
     system_prompt: str,
     user_message: str,
     timeout_seconds: int | None = None,
+    max_tokens: int | None = None,
+    temperature: float | None = None,
+    top_p: float | None = None,
 ) -> str:
     return await asyncio.to_thread(
         run_host_llm_sync,
@@ -347,6 +470,9 @@ async def run_host_llm(
         system_prompt=system_prompt,
         user_message=user_message,
         timeout_seconds=timeout_seconds,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
     )
 
 
@@ -442,6 +568,9 @@ class HostLlmHandler(ModelHandler):
             model=model,
             system_prompt=self._system(system_message),
             user_message=safe_prompt,
+            max_tokens=self.model_settings.max_tokens,
+            temperature=self.model_settings.temperature,
+            top_p=self.model_settings.top_p,
         )
         self._record_successful_model(model)
         return raw
@@ -453,6 +582,9 @@ class HostLlmHandler(ModelHandler):
             model=model,
             system_prompt=self._system(system_message),
             user_message=safe_prompt,
+            max_tokens=self.model_settings.max_tokens,
+            temperature=self.model_settings.temperature,
+            top_p=self.model_settings.top_p,
         )
         self._record_successful_model(model)
         return raw
@@ -461,8 +593,8 @@ class HostLlmHandler(ModelHandler):
         last_error: BaseException | None = None
         last_raw: str | None = None
         for attempt in range(1, self.max_retries + 1):
-            last_raw = self.send_request(prompt, system_message)
             try:
+                last_raw = self.send_request(prompt, system_message)
                 return _parse_llm_response(last_raw, parser)
             except Exception as exc:
                 last_error = exc
@@ -479,8 +611,8 @@ class HostLlmHandler(ModelHandler):
     ):
         last_error: BaseException | None = None
         for attempt in range(1, self.max_retries + 1):
-            raw = await self.async_request(prompt, system_message)
             try:
+                raw = await self.async_request(prompt, system_message)
                 return _parse_llm_response(raw, parser)
             except Exception as exc:
                 last_error = exc

@@ -9,7 +9,7 @@ OSA requires different tokens depending on your use case. Here's a complete over
 | Token Name | Description | Mandatory | When Required |
 |------------|-------------|-----------|---------------|
 | **`GIT_TOKEN`** | Personal GitHub/GitLab/Gitverse token for cloning repos, accessing metadata, and creating PRs | ✅ Yes* | Always, unless using `--no-fork` with public repos |
-| **`HOST_LLM_COMMAND`** | Logged-in host command for the default subscription-backed provider, for example `codex` | ❌ No | When using default `--api host` command transport |
+| **`HOST_LLM_COMMAND`** | Logged-in Codex CLI command for the default subscription-backed provider (`codex`) | ❌ No | When using default `--api host` command transport |
 | **`HOST_LLM_BRIDGE_DIR`** | Directory for Host LLM request/response JSON files | ❌ No | When using default `--api host` bridge transport |
 | **`HOST_LLM_REQUEST_TIMEOUT_SECONDS`** | Host LLM request timeout | ❌ No | Optional for long host-backed runs |
 | **`OPENAI_API_KEY`** | API key for OpenAI, VseGPT, OpenRouter providers | ❌ No | When using `--api openai` or compatible providers |
@@ -180,7 +180,7 @@ Manual configuration varies slightly by provider. Here are complete examples for
 **Host LLM (Default):**
 
 ```bash
-# Use a logged-in host command, for example Codex
+# Use the logged-in Codex CLI command
 export HOST_LLM_COMMAND=codex
 
 python -m osa_tool.run \
@@ -193,7 +193,7 @@ python -m osa_tool.run \
   --model gpt-5.6-luna
 ```
 
-For bridge-based host execution, set `HOST_LLM_BRIDGE_DIR` instead of `HOST_LLM_COMMAND`.
+For bridge-based host execution, set `HOST_LLM_BRIDGE_DIR` instead of `HOST_LLM_COMMAND`. The bridge request includes `max_tokens`, `temperature`, and `top_p`; the Codex command transport rejects custom generation controls because that CLI protocol does not expose them.
 
 **OpenAI:**
 
