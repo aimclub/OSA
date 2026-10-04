@@ -227,6 +227,15 @@ def test_parser_overrides_toml_defaults(mock_yaml_file, mock_toml_file):
     assert args.tags == ["tag1", "tag2"]
 
 
+def test_parser_tracks_explicit_cli_args(mock_yaml_file, mock_toml_file):
+    parser = build_parser_from_yaml()
+
+    args = parser.parse_args(["-r", "https://github.com/test/repo", "-v", "--tags", "tag1"])
+
+    assert args._explicit_cli_args == {"repository", "verbose", "tags"}
+    assert "timeout" not in args._explicit_cli_args
+
+
 def test_parser_choices_enforced(mock_yaml_file, mock_toml_file):
     # Arrange
     parser = build_parser_from_yaml()

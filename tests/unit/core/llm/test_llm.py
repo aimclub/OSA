@@ -469,6 +469,33 @@ def test_host_provider_status_rejects_non_codex_command(monkeypatch):
     assert "Codex CLI" in status["detail"]
 
 
+@pytest.mark.parametrize(
+    "executable",
+    [
+        "/usr/bin/codex",
+        "/usr/bin/codex.exe",
+        r"C:\Tools\codex.cmd",
+        r"C:\Tools\codex.bat",
+    ],
+)
+def test_host_provider_status_accepts_codex_launchers(monkeypatch, executable):
+    monkeypatch.delenv("HOST_LLM_BRIDGE_DIR", raising=False)
+    monkeypatch.setenv("HOST_LLM_COMMAND", "codex")
+    monkeypatch.setattr("osa_tool.core.llm.host.shutil.which", lambda _command: executable)
+
+    def fake_run(command, **_kwargs):
+        assert command[:3] == [executable, "login", "status"]
+        return SimpleNamespace(returncode=0, stdout="Logged in", stderr="")
+
+    monkeypatch.setattr("osa_tool.core.llm.host.subprocess.run", fake_run)
+
+    status = host_provider_status()
+
+    assert status["installed"] is True
+    assert status["authenticated"] is True
+    assert status["path"] == executable
+
+
 def test_host_provider_status_strips_secrets_from_status_probe(monkeypatch):
     captured = {}
     monkeypatch.delenv("HOST_LLM_BRIDGE_DIR", raising=False)

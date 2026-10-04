@@ -289,6 +289,11 @@ class ConfigManager:
         Returns:
             dict: Updated configuration data with CLI arguments applied
         """
+        explicit_cli_args = getattr(args, "_explicit_cli_args", None)
+
+        def should_apply_cli_arg(name: str) -> bool:
+            return explicit_cli_args is None or name in explicit_cli_args
+
         model_params = [
             "api",
             "base_url",
@@ -301,7 +306,7 @@ class ConfigManager:
         ]
 
         for param in model_params:
-            if hasattr(args, param) and getattr(args, param) is not None:
+            if hasattr(args, param) and getattr(args, param) is not None and should_apply_cli_arg(param):
                 config_data["llm"][param] = getattr(args, param)
 
         task_models = {
@@ -314,7 +319,7 @@ class ConfigManager:
         }
 
         for task_type, arg_name in task_models.items():
-            if hasattr(args, arg_name) and getattr(args, arg_name):
+            if hasattr(args, arg_name) and getattr(args, arg_name) and should_apply_cli_arg(arg_name):
                 if "llm" not in config_data:
                     config_data["llm"] = {}
                 if task_type not in config_data["llm"]:
@@ -323,9 +328,10 @@ class ConfigManager:
 
         if "git" not in config_data:
             config_data["git"] = {}
-        config_data["git"]["repository"] = args.repository
+        if hasattr(args, "repository") and getattr(args, "repository", None) and should_apply_cli_arg("repository"):
+            config_data["git"]["repository"] = args.repository
 
-        if getattr(args, "based_on_date", None):
+        if getattr(args, "based_on_date", None) and should_apply_cli_arg("based_on_date"):
             config_data["git"]["based_on_date"] = args.based_on_date
 
         return config_data

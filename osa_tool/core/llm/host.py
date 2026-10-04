@@ -74,7 +74,8 @@ def host_command() -> str | None:
 
 
 def _is_supported_host_command(executable: str) -> bool:
-    return Path(executable).name == HOST_COMMAND_NAME
+    executable_name = executable.replace("\\", "/").rsplit("/", 1)[-1]
+    return Path(executable_name).stem.lower() == HOST_COMMAND_NAME
 
 
 def host_bridge_dir() -> Path | None:
@@ -108,7 +109,7 @@ def host_provider_status(*, force: bool = False) -> dict[str, Any]:
             "installed": False,
             "authenticated": False,
             "path": executable,
-            "detail": "HOST_LLM_COMMAND must point to the Codex CLI executable named `codex`.",
+            "detail": "HOST_LLM_COMMAND must point to a Codex CLI launcher such as `codex`, `codex.exe`, `codex.cmd`, or `codex.bat`.",
             "transport": "host_command",
         }
 
