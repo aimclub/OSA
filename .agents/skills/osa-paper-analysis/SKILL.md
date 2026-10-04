@@ -19,7 +19,7 @@ Ask only for whichever required input is missing. If the user already has extrac
 ## Defaults
 
 - Use the focused entry point: `poetry run python -m osa_tool.tools.paper_analysis` from this checkout. It runs the canonical `PaperAnalysisOperation` without the scheduler workflow. Use `osa-tool --paper-analysis` only when the installed command is the practical entry point.
-- Let OSA choose its configured output directory unless the user requests a destination. For the focused entry point, the override is `--output-dir PATH`.
+- Let OSA choose its configured output directory unless the user requests a destination. The focused entry point uses `--output-dir PATH`; the main `osa-tool --paper-analysis` entry point uses `--paper-output-dir PATH`.
 - Keep formal repository-quality scoring off unless requested; enable it with `--include-repository-quality`.
 - Keep the configured conservative verification policy: verify high- and medium-verifiability claims, and hide low-confidence results. Do not add policy flags unless the user asks for broader coverage.
 - Do not ask about chunk sizes, batch sizes, Marker settings, or model profiles for an ordinary run. OSA's configuration owns those details.
@@ -42,7 +42,7 @@ poetry run python -m osa_tool.tools.paper_analysis \
   --claims-json ./claims.json
 ```
 
-When a custom artifact location is requested, add `--output-dir ./analysis`. The command prints the root `paper_analysis.json` path on success. Read that JSON and its accompanying `paper_analysis.txt`; use stage reports under `paper_claims/`, `claim_verification/`, and optionally `repository_quality/` to explain results. If a stage fails, inspect its own `report.json`; earlier completed stage reports may still be useful.
+When a custom artifact location is requested with the focused command, add `--output-dir ./analysis`; with the main `osa-tool --paper-analysis` command, use `--paper-output-dir ./analysis`. A successful run prints the root `paper_analysis.json` path. Read that JSON and its accompanying `paper_analysis.txt`; use exported stage reports under `paper_claims/`, `claim_verification/`, and optionally `repository_quality/` to explain completed stages. A failing stage normally has no report of its own because reports are exported only after that stage succeeds. Inspect OSA's logs for the failure details; reports from earlier completed stages may still be available.
 
 For PDF extraction, check that the optional paper-claims dependencies are installed (`poetry install --all-extras` for this checkout, or the package's `paper-claims` extra). Do not install dependencies without an explicit request. If the focused command is unavailable, report the concrete setup issue and give the matching invocation rather than silently switching to the broad scheduler CLI.
 

@@ -38,9 +38,9 @@ Common repository selectors are `--repository URL`, `--branch NAME`, `--output P
 - Use `--no-fork --no-pull-request` for a local-only run. With neither flag, the main CLI may create a fork, push a branch, and open a pull request.
 - `--mode auto|basic|advanced` selects task planning behavior described above.
 - `--api` currently accepts the providers listed in `osa_tool/config/settings/arguments.yaml`; use `--base-url` for a compatible endpoint and `--model` for a model choice.
-- By default, task model profiles inherit the configured default. Use `--use-single-model` or task-specific model flags only when the user asks for model separation. Current task profiles include README, docstrings, general tasks, paper claims, paper verification, and repository quality.
+- By default, task model profiles inherit the configured default. Use task-specific model flags when the user asks for different models by task. Use `--use-single-model` only when the user explicitly wants every task forced to the shared `[llm]` model; when set, it takes precedence over task-specific model profiles and overrides. Current task profiles include README, docstrings, general tasks, paper claims, paper verification, and repository quality.
 - `--config-file TOML` selects a custom settings file. Avoid creating or editing one just to run a normal task.
-- `--delete-dir` removes OSA's downloaded repository directory after processing. Leave it off unless the user explicitly asks to clean up that clone.
+- `--delete-dir` removes the repository directory after processing. For a remote URL, that is OSA's downloaded clone. For a local repository path without `--output`, OSA uses the supplied directory itself, so this flag can recursively delete the user's source checkout. Avoid it for local inputs; use it only for a remote clone when cleanup is explicitly requested.
 
 Do not ask about temperature, top-p, token limit, or context window unless the request depends on them. The checked-in config owns those values. To see accepted options for this checkout, use `--help` rather than relying on the older README/FAQ flag tables.
 
