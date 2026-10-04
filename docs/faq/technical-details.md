@@ -121,45 +121,49 @@ Model parameters control the behavior, creativity, and output length of LLM resp
 | Parameter | Type | Range | Default | Description |
 |-----------|------|-------|---------|-------------|
 | `--temperature` | Float | 0.0 - 2.0 | 0.05 | Controls randomness/creativity |
-| `--top_p` | Float | 0.0 - 1.0 | 0.95 | Nucleus sampling probability |
-| `--max_tokens` | Integer | 1 - model max | 4096 | Maximum output tokens |
-| `--context_window` | Integer | 1 - model max | 16385 | Total input + output context |
+| `--top-p` | Float | 0.0 - 1.0 | 0.95 | Nucleus sampling probability |
+| `--max-tokens` | Integer | 1 - model max | 4096 | Maximum output tokens |
+| `--context-window` | Integer | 1 - model max | 16385 | Total input + output context |
 
 ## 7.5 Can I use different models for different tasks?
 
 **Yes!** OSA supports task-specific model configuration for optimized performance and cost.
 
-**Multi-Model Configuration:**
+**Task-Specific Model Configuration:**
 
-By default, OSA uses a single model for all tasks (`--use-single-model`). To use different models:
+The shared `[llm]` settings provide defaults. Task-specific settings under `[llm.for_*]` override those defaults when
+configured. The `--use-single-model` flag forces all tasks to use the shared settings; omit it to allow task profiles.
+For example, set models for README and docstring tasks with:
 
 ```bash
-# Disable single model mode
+# Task-specific model overrides; do not pass --use-single-model
 python -m osa_tool.run \
   -r https://github.com/username/repo \
   --model-docstring codellama:13b \
   --model-readme gpt-4o \
-  --model-validation llama3.1:8b \
   --model-general gpt-4o
 ```
 
 **TOML Configuration for Multi-Model:**
 
 ```toml
-# config.toml
-[general]
-repository = "https://github.com/username/repo"
-mode = "auto"
-
 [llm]
-use_single_model = false
+model = "gpt-3.5-turbo"
 
-[models]
-docstring = "codellama:13b"
-readme = "gpt-4o"
-validation = "gpt-3.5-turbo"
-general = "gpt-4o"
+[llm.for_docstring_gen]
+model = "codellama:13b"
+
+[llm.for_readme_gen]
+model = "gpt-4o"
+
+[llm.for_general_tasks]
+model = "gpt-4o"
 ```
+
+The CLI model flags are `--model-docstring`, `--model-readme`, `--model-general`, `--model-repository-quality`,
+`--model-paper-claims`, and `--model-paper-verification`. The former `--model-validation` flag and
+`[llm.for_validation]` profile are removed; use the repository-quality, paper-claims, or paper-verification profile
+for those current OSA tasks.
 
 **Task-Specific Model Flags:**
 
@@ -167,8 +171,10 @@ general = "gpt-4o"
 |------|---------|-------------------|
 | `--model-docstring` | Docstring generation | Codellama 13B, GPT-4o |
 | `--model-readme` | README generation | GPT-4o, Claude 3.5 |
-| `--model-validation` | Code validation | Llama 3.1 8B, GPT-3.5 |
 | `--model-general` | General tasks | GPT-4o, ITMO Research |
+| `--model-repository-quality` | Formal repository-quality scoring | Configured model |
+| `--model-paper-claims` | Paper claim extraction | Configured model |
+| `--model-paper-verification` | Paper claim verification | Configured model |
 
 **Why Use Different Models?**
 
