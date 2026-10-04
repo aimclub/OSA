@@ -16,7 +16,7 @@ Choose only flags that match the user's request:
 | Goal | Flags |
 | --- | --- |
 | Repository report | `--report`; optionally `--scorecard` to add OpenSSF Scorecard results to the report |
-| README | `--readme`; `--refine-readme` requests the additional refinement stage |
+| README | `--readme` |
 | Community docs | `--community-docs` |
 | Requirements file | `--requirements` |
 | Python docstrings | `--docstring`; optionally `--incremental` and `--target-files PATH...` |
@@ -31,11 +31,13 @@ Choose only flags that match the user's request:
 
 For docstring generation, `--ignore-list PATH...` excludes named directories/files; without it, OSA skips `__init__.py`. `--skip-health-check` disables the pre/post checks for repository organization and should be used only when requested.
 
+Although `--refine-readme` appears in the argument configuration, the current execution path does not use it to select a different README operation. Do not present it as an available refinement stage.
+
 Common repository selectors are `--repository URL`, `--branch NAME`, `--output PATH`, and `--based-on-date DATE`. The date option selects the closest repository revision and forces fork/PR creation off. `--artefacts-language LANG` controls generated report language.
 
 ## Repository and model options
 
-- Use `--no-fork --no-pull-request` for a local-only run. With neither flag, the main CLI may create a fork, push a branch, and open a pull request.
+- Use `--no-fork --no-pull-request` for a local-only run. With neither flag, the main CLI stars the remote repository and creates a fork before it clones the repository; if pull-request creation is also enabled, it later pushes a branch and opens a pull request.
 - `--mode auto|basic|advanced` selects task planning behavior described above.
 - `--api` currently accepts the providers listed in `osa_tool/config/settings/arguments.yaml`; use `--base-url` for a compatible endpoint and `--model` for a model choice.
 - By default, task model profiles inherit the configured default. Use task-specific model flags when the user asks for different models by task. Use `--use-single-model` only when the user explicitly wants every task forced to the shared `[llm]` model; when set, it takes precedence over task-specific model profiles and overrides. Current task profiles include README, docstrings, general tasks, paper claims, paper verification, and repository quality.

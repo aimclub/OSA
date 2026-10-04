@@ -17,8 +17,8 @@ Use this skill for OSA's interactive repository workflows. Translate the request
 - Use the current checkout's CLI with `poetry run python -m osa_tool.run`. Use `poetry run osa-tool` only if the console entry point is installed and works in this environment.
 - Prefer the task's direct mode and a small set of relevant flags. Do not reproduce the entire README option table in prompts or ask the user to choose every model setting.
 - For general repository work, OSA's default `auto` mode proposes a plan. Review that plan and its inactive actions before continuing. `basic` selects a fixed group of actions; `advanced` allows explicit task flags and interactive editing.
-- The general CLI defaults to creating a fork and pull request. For work that should stay local, include both `--no-fork` and `--no-pull-request`. Keep fork/PR behavior only when the user explicitly requests that delivery path.
-- Never infer a request to publish a workflow, open-source a package, or create a pull request from a request to analyze or improve a repository. Make the intended remote effects clear before running a command that enables them.
+- The general CLI defaults to creating a fork and pull request. When fork creation is enabled, OSA also stars the remote repository before cloning it. For work that should stay local, include both `--no-fork` and `--no-pull-request`.
+- Do not infer a request to publish a workflow, open-source a package, or create a pull request from a request to analyze or improve a repository. Before running a command that enables fork creation, tell the user that OSA will star the repository as well as create a fork; get agreement to that extra account action if they have not already approved it.
 - Do not install dependencies or change credentials/configuration unless requested. If required credentials or optional extras are missing, report the exact requirement and continue with any independent local inspection.
 - Report which OSA mode ran, its output path or generated files, and any failed stage. Do not claim completion based only on a command being constructed.
 

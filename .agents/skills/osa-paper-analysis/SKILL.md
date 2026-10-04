@@ -14,6 +14,8 @@ The required inputs are:
 - A local repository path or supported remote repository URL.
 - Exactly one of a paper PDF or an existing claims JSON file.
 
+For historical analysis with `--based-on-date`, use a remote repository URL. Do not run that option against the user's local checkout: OSA checks out the closest commit there and leaves the checkout at detached HEAD. If only a local repository is available, use an isolated disposable copy including its Git history, or ask for a remote URL.
+
 Ask only for whichever required input is missing. If the user already has extracted claims, use that JSON directly and avoid PDF conversion. If they provide a PDF, use it as the source and let OSA extract claims before verification.
 
 ## Defaults
@@ -49,6 +51,8 @@ For PDF extraction, check that the optional paper-claims dependencies are instal
 ## Boundaries
 
 This mode clones or reads the target repository and writes analysis artifacts. It does not generate or edit repository files, create forks or pull requests, or run the scheduler. Do not switch to the general `osa-tool` workflow for a paper-analysis request.
+
+The no-edit boundary assumes no `--based-on-date` run against a user-supplied local path; that option changes the local Git checkout as described above.
 
 For README, report, documentation, notebook, workflow, or other general repository tasks, use the broader `osa-tool` skill.
 
