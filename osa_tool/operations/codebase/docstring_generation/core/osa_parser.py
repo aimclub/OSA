@@ -31,7 +31,7 @@ class OSA_TreeSitter:
             for f in self.target_files:
                 p = Path(os.path.join(self.cwd, f)).resolve()
 
-                if p.exists() and p.suffix in exts:
+                if p.exists() and p.suffix in exts and not self._is_ignored(p) and p.name not in self.ignore_list:
                     script_files.append(str(p))
 
             return script_files, 0
@@ -39,12 +39,25 @@ class OSA_TreeSitter:
         if os.path.isdir(path):
             for root, _, files in os.walk(path):
                 for f in files:
-                    if f.endswith(exts):
+                    p = Path(os.path.join(root, f)).resolve()
+                    if f.endswith(exts) and not self._is_ignored(p) and p.name not in self.ignore_list:
                         script_files.append(os.path.join(root, f))
 
             return script_files, 0
 
         return [], 0
+
+    def _is_ignored(self, path: Path) -> bool:
+        """Return True if `path` lives under any ignore_list entry (treated as a path
+        relative to cwd), e.g. an ignored directory."""
+        for entry in self.ignore_list:
+            ignore_path = Path(os.path.join(self.cwd, entry)).resolve()
+            try:
+                path.relative_to(ignore_path)
+                return True
+            except ValueError:
+                continue
+        return False
 
     def _get_adapter(self, filename):
         for adapter in self.ADAPTERS:
@@ -142,14 +155,19 @@ class OSA_TreeSitter:
                     for m in item["methods"]:
                         full = f"{item['name']}." f"{m['method_name']}"
 
+                        # keep the owning class name on each method entry: the context
+                        # extractor rebuilds the `file:Class.method` node id from it, so
+                        # dropping it silently loses method-helper context in prompts
                         index[full] = {
                             **m,
                             "file": file,
+                            "class": item["name"],
                         }
 
                         index[m["method_name"]] = {
                             **m,
                             "file": file,
+                            "class": item["name"],
                         }
                 else:
                     d = item["details"]
