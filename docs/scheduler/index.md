@@ -116,7 +116,7 @@ to the repository.
 | based_on_date        | `--based-on-date`        | str  | Date to analyse the repository as of. It is rolled back to the closest commit, fork and PR creation are disabled                    | `null`                           | —                           |
 | output               | `-o`, `--output`         | str  | Path to the output directory                                                                                                       | `null`                           | —                           |
 | config_file          | `--config-file`          | str  | Path to custom configuration file (TOML format) | `null` | —
-| use_single_model     | `--use-single-model`     | flag | Use the same model for all tasks (if disabled, use specific models for each task type) | `true` | —
+| use_single_model     | `--use-single-model`     | flag | Force all tasks to use the shared `[llm]` model settings; omit the flag to allow configured task-specific profiles | `false` (not set) | —
 | api                  | `--api`                  | str  | LLM API service provider                                                                                                           | `openai`                           | `itmo`, `openai`, `ollama`  |
 | base_url             | `--base-url`             | str  | URL of the service provider. See [available urls](https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors)               | `https://openrouter.ai/api/v1`      | —                           |
 | model                | `--model`                | str  | Specific LLM model to use. See [available providers and models](https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors) | `gpt-3.5-turbo`                  | —                           |
@@ -126,10 +126,10 @@ to the repository.
 | model_paper_claims | `--model-paper-claims` | str | Specific LLM model for typed paper claim extraction | Inherited from default model | —
 | model_paper_verification | `--model-paper-verification` | str | Specific LLM model for paper claim verification | Inherited from default model | —
 | model_general | `--model-general` | str | Specific LLM model for general tasks | Temprorary inherited from default model| —
-| top_p                | `--top_p`                | str  | Nucleus sampling probability                                                                                                       | `0.95`                           | —                           |
-| temperature          | `--temperature`          | str  | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).                                                  | `0.05`                           | —                           |
-| max_tokens           | `--max_tokens`           | str  | Maximum number of tokens the model can generate in a single response                                                               | `4096`                           | —                           |
-| context_window       | `--context_window`       | str  | Total number of model context (Input + Output)                                                                                     | `16385`                          | —                           |
+| top_p                | `--top-p`                | float | Nucleus sampling probability                                                                                                      | `0.95`                           | —                           |
+| temperature          | `--temperature`          | float | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).                                                  | `0.05`                           | —                           |
+| max_tokens           | `--max-tokens`           | int  | Maximum number of tokens the model can generate in a single response                                                               | `4096`                           | —                           |
+| context_window       | `--context-window`       | int  | Total number of model context (Input + Output)                                                                                     | `16385`                          | —                           |
 | attachment           | `--attachment`           | str  | Path to a local PDF or .docx file, or a URL to a PDF resource                                                                      | `null`                           | —                           |
 | translate_dirs       | `--translate-dirs`       | flag | Enable automatic translation of directory names into English                                                                       | `false`                          | —                           |
 | convert_notebooks    | `--convert-notebooks`    | list | Convert Jupyter notebooks to `.py` format. Provide paths, or leave empty for repo directory                                        | —                                | —                           |
@@ -147,7 +147,6 @@ to the repository.
 | organize             | `--organize`             | flag | Organize the repository with LLM's decision                                                            | `false`                          | —                           |
 | about                | `--about`                | flag | Generate About section with tags                                                                                                   | `false`                          | —                           |
 | generate_workflows   | `--generate-workflows`   | flag | Generate GitHub Action workflows for the repository                                                                                | `false`                          | —                           |
-| workflows_output_dir | `--workflows-output-dir` | str  | Directory where workflow files will be saved                                                                                       | `.github/workflows`              | —                           |
 | include_tests        | `--include-tests`        | flag | Include unit tests workflow                                                                                                        | `true`                           | —                           |
 | include_black        | `--include-black`        | flag | Include Black formatter workflow                                                                                                   | `true`                           | —                           |
 | include_pep8         | `--include-pep8`         | flag | Include PEP 8 compliance workflow                                                                                                  | `true`                           | —                           |
@@ -164,3 +163,7 @@ to the repository.
 | include_codecov      | `--include-codecov`      | flag | Include Codecov coverage step in unit tests workflow                                                                               | `true`                           | —                           |
 
 **Note:** Enabling both `--include-ruff` and `--include-black` generates CI jobs that may produce conflicting formatting results, since Ruff's formatter and Black apply different style rules. Prefer one formatter per project.
+
+OSA chooses the workflow output path from the repository platform; the current CLI does not provide a
+`--workflows-output-dir` option. GitHub workflows go under `.github/workflows`, GitLab uses `.gitlab-ci.yml` at the
+repository root, and other supported platforms use their configured workflow locations.

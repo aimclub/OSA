@@ -183,16 +183,22 @@ documentation, see the [GitHub Action Workflow Generator README](workflow-genera
 | `--api`                | LLM API service provider                                                            | `itmo`                      |
 | `--base-url`           | URL of the provider compatible with API OpenAI                                      | `https://api.openai.com/v1` |
 | `--model`              | Specific LLM model to use                                                           | `gpt-3.5-turbo`             |
-| `--top_p`              | Nucleus sampling probability                                                        | `0.95`                      |
+| `--top-p`              | Nucleus sampling probability                                                        | `0.95`                      |
 | `--temperature`        | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).   | `0.05`                      |
-| `--max_tokens`         | Maximum number of output tokens the model can generate in a single response         | `4096`                      |
-| `--context_window`     | Total number of model context (Input + Output)                                      | `16385`                     |
+| `--max-tokens`         | Maximum number of output tokens the model can generate in a single response         | `4096`                      |
+| `--context-window`     | Total number of model context (Input + Output)                                      | `16385`                     |
 | `--attachment`         | Path to a local PDF or .docx file, or a URL to a PDF resource                       | `None`                      |
 | `-m`, `--mode`         | Operation mode for repository processing: `basic`, `auto` (default), or `advanced`. | `auto`                      |
 | `--delete-dir`         | Enable deleting the downloaded repository after processing                          | `disabled`                  |
 | `--no-fork`            | Avoid create fork for target repository                                             | `False`                     |
 | `--no-pull-request`    | Avoid create pull request for target repository                                     | `False`                     |
 | `--artefacts-language` | Language for reports generation                                                     | `English`                   |
+
+OSA uses the shared `[llm]` model settings unless a task-specific profile is configured. Task profiles fall back to the
+shared settings when they do not override a value. The `--use-single-model` flag forces all tasks to use the shared
+`[llm]` settings; omit it to allow task-specific profiles and model flags. Supported task model flags include
+`--model-docstring`, `--model-readme`, `--model-general`, `--model-repository-quality`, `--model-paper-claims`, and
+`--model-paper-verification`. There is no `--model-validation` option in the current CLI.
 
 To learn how to work with the interactive CLI and view descriptions of all available keys, visit
 the [CLI usage guide](scheduler/index.md).

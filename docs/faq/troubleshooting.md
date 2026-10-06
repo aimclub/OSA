@@ -100,36 +100,36 @@ LLM response length issues can cause truncation or incomplete outputs.
 
 | Symptom | Cause | Solution |
 |---------|-------|----------|
-| Response cut off mid-sentence | `max_tokens` too low | Increase `--max_tokens` |
+| Response cut off mid-sentence | `max_tokens` too low | Increase `--max-tokens` |
 | Very brief responses | `max_tokens` too low or temperature too low | Increase both parameters |
 | Repetitive content | Temperature too low | Increase `--temperature` |
 | Incoherent responses | Temperature too high | Decrease `--temperature` |
-| Context window exceeded | Repository too large | Use `--context_window` or split analysis |
+| Context window exceeded | Repository too large | Use `--context-window` or split analysis |
 
 **Adjusting Token Limits:**
 
 ```bash
 # Default settings (may be insufficient for large repos)
 python -m osa_tool.run -r <repo>
-# --max_tokens 4096 (default)
-# --context_window 16385 (default)
+# --max-tokens 4096 (default)
+# --context-window 16385 (default)
 
 # For large repositories
 python -m osa_tool.run \
   -r https://github.com/username/large-repo \
-  --max_tokens 8192 \
-  --context_window 32768
+  --max-tokens 8192 \
+  --context-window 32768
 
 # For small, focused repos (faster, cheaper)
 python -m osa_tool.run \
   -r https://github.com/username/small-repo \
-  --max_tokens 2048 \
-  --context_window 8192
+  --max-tokens 2048 \
+  --context-window 8192
 ```
 
 **Token Limit Reference by Model:**
 
-| Model | Max Output Tokens | Max Context Window | Recommended `--max_tokens` |
+| Model | Max Output Tokens | Max Context Window | Recommended `--max-tokens` |
 |-------|------------------|-------------------|---------------------------|
 | GPT-3.5-turbo | 4096 | 16385 | 2048-4096 |
 | GPT-4 | 4096 | 8192 | 2048-4096 |
@@ -142,24 +142,24 @@ python -m osa_tool.run \
 
 | Task | Recommended Settings |
 |------|---------------------|
-| **README Generation** | `--max_tokens 4096`, `--temperature 0.1` |
-| **Docstring Generation** | `--max_tokens 2048`, `--temperature 0.05` |
-| **Code Analysis** | `--max_tokens 4096`, `--temperature 0.1` |
-| **Creative Suggestions** | `--max_tokens 2048`, `--temperature 0.3` |
-| **Large Repository** | `--max_tokens 8192`, `--context_window 32768` |
+| **README Generation** | `--max-tokens 4096`, `--temperature 0.1` |
+| **Docstring Generation** | `--max-tokens 2048`, `--temperature 0.05` |
+| **Code Analysis** | `--max-tokens 4096`, `--temperature 0.1` |
+| **Creative Suggestions** | `--max-tokens 2048`, `--temperature 0.3` |
+| **Large Repository** | `--max-tokens 8192`, `--context-window 32768` |
 
 ```bash
 # If repository exceeds context window:
 # Option 1: Increase context window (if model supports it)
 python -m osa_tool.run \
   -r https://github.com/username/repo \
-  --context_window 32768
+  --context-window 32768
 
 # Option 2: Use model with larger context
 python -m osa_tool.run \
   -r https://github.com/username/repo \
   --model gpt-4o-128k \
-  --context_window 128000
+  --context-window 128000
 ```
 
 ## 5.6 How do I adjust temperature and sampling parameters?
