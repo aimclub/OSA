@@ -1,4 +1,6 @@
 import os
+from collections.abc import Iterable
+from pathlib import Path
 
 import tomli
 
@@ -36,7 +38,7 @@ class PromptBuilder:
 
 class PromptLoader:
     """
-    Loads all prompt TOML files inside: osa_tool/config/prompts/
+    Loads TOML prompt files from OSA's prompt directory plus optional overrides.
 
     Allows accessing prompts using keys like:
         "readme.translate"
@@ -44,28 +46,41 @@ class PromptLoader:
         "readme.system_messages.base"
     """
 
-    def __init__(self):
-        self.prompts_dir = os.path.join(osa_project_root(), "config", "prompts")
+    def __init__(
+        self,
+        prompts_dir: str | os.PathLike[str] | None = None,
+        override_dirs: Iterable[str | os.PathLike[str]] | None = None,
+    ):
+        self.prompts_dir = (
+            Path(prompts_dir) if prompts_dir is not None else Path(osa_project_root()) / "config" / "prompts"
+        )
         self.cache: dict[str, dict[str, str]] = {}
-        self._load_all()
+        self._load_all(self.prompts_dir)
+        for override_dir in override_dirs or []:
+            self._load_all(Path(override_dir), override=True)
 
-    def _load_all(self):
+    def _load_all(self, prompts_dir: str | os.PathLike[str] | None = None, *, override: bool = False):
         """Load all TOML prompt files (including nested directories) into memory."""
-        if not os.path.exists(self.prompts_dir):
-            raise PromptLoadError(f"Prompts directory not found: {self.prompts_dir}")
+        root_dir = Path(prompts_dir) if prompts_dir is not None else self.prompts_dir
+        if not root_dir.exists():
+            label = "Prompt override directory" if override else "Prompts directory"
+            raise PromptLoadError(f"{label} not found: {root_dir}")
+        if not root_dir.is_dir():
+            label = "Prompt override path" if override else "Prompts path"
+            raise PromptLoadError(f"{label} is not a directory: {root_dir}")
 
-        for root, _, files in os.walk(self.prompts_dir):
+        for root, _, files in os.walk(root_dir):
             for filename in files:
                 if not filename.endswith(".toml"):
                     continue
 
-                path = os.path.join(root, filename)
-                rel_path = os.path.relpath(path, self.prompts_dir)
+                path = Path(root) / filename
+                rel_path = path.relative_to(root_dir)
                 # Example: "readme/system_messages.toml" -> "readme.system_messages"
-                section_name = os.path.splitext(rel_path)[0].replace(os.sep, ".")
+                section_name = rel_path.with_suffix("").as_posix().replace("/", ".")
 
                 try:
-                    with open(path, "rb") as f:
+                    with path.open("rb") as f:
                         data = tomli.load(f)
                 except Exception as e:
                     raise PromptLoadError(f"Failed to parse {rel_path}: {e}") from e
@@ -73,7 +88,11 @@ class PromptLoader:
                 if "prompts" not in data:
                     raise PromptLoadError(f"No [prompts] section in {rel_path}")
 
-                self.cache[section_name] = data["prompts"]
+                prompts = data["prompts"]
+                if override:
+                    self.cache.setdefault(section_name, {}).update(prompts)
+                else:
+                    self.cache[section_name] = prompts
 
     def get(self, key: str) -> str:
         """

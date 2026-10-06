@@ -67,6 +67,9 @@ pip install osa_tool
 Install optional features when needed:
 
 ```sh
+# Parsed-section claim extraction without PDF conversion dependencies
+pip install "osa_tool[paper-claims-lite]"
+
 # PDF-to-claims extraction and evaluation utilities
 pip install "osa_tool[paper-claims]"
 ```

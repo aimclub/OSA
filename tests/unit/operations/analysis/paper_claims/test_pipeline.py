@@ -5,14 +5,25 @@ from pathlib import Path
 import pytest
 from reportlab.pdfgen.canvas import Canvas
 
+from osa_tool.operations.analysis.artifacts import ModelProvenance
+from osa_tool.operations.analysis.paper_claims import (
+    export_section_extraction,
+    extract_claims_from_sections,
+    load_sections_json,
+)
 from osa_tool.operations.analysis.paper_claims.models import (
     ClaimExtractionResult,
+    DedupSelection,
     ConvertedChunk,
     ConvertedDocument,
+    ExtractedClaim,
     ExtractionMetadata,
+    HeadingMeta,
+    PaperSection,
     PipelineOptions,
 )
 from osa_tool.operations.analysis.paper_claims.pipeline import PaperClaimPipeline
+from osa_tool.utils.prompts_builder import PromptLoader
 
 
 class FakeHandler:
@@ -22,6 +33,8 @@ class FakeHandler:
         self.successful_models = ["stale-model"]
         self.last_successful_model = "stale-model"
         self.provenance_reset_count = 0
+        self.prompts: list[str] = []
+        self.system_messages: list[str | None] = []
         self.responses = iter(
             [
                 '[{"section_id":"s001"}]',
@@ -35,6 +48,8 @@ class FakeHandler:
         self.last_successful_model = None
 
     async def async_request(self, prompt, system_message=None, retry_delay=1):
+        self.prompts.append(prompt)
+        self.system_messages.append(system_message)
         self.last_successful_model = self.model_settings.model
         if self.last_successful_model not in self.successful_models:
             self.successful_models.append(self.last_successful_model)
@@ -100,7 +115,7 @@ async def test_pipeline_composes_stages_and_removes_pdf_chunks(tmp_path, caplog)
 
 @pytest.mark.asyncio
 async def test_pipeline_clears_stale_provenance_when_a_document_needs_no_model_calls(tmp_path, monkeypatch):
-    from osa_tool.operations.analysis.paper_claims import pipeline as pipeline_module
+    from osa_tool.operations.analysis.paper_claims import section_extractor
 
     first_pdf = tmp_path / "first.pdf"
     second_pdf = tmp_path / "second.pdf"
@@ -119,7 +134,7 @@ async def test_pipeline_clears_stale_provenance_when_a_document_needs_no_model_c
             meta=ExtractionMetadata(source=source, model=None),
         )
 
-    monkeypatch.setattr(pipeline_module.ClaimExtractor, "extract", no_model_calls)
+    monkeypatch.setattr(section_extractor.ClaimExtractor, "extract", no_model_calls)
 
     result = await pipeline.arun(second_pdf, PipelineOptions())
 
@@ -178,3 +193,120 @@ def test_loaded_claims_are_normalized_and_exported_with_provenance(tmp_path, pay
     report = json.loads((tmp_path / "output" / "report.json").read_text(encoding="utf-8"))
     assert report["meta"]["source"]["paper"] == {"kind": "claims_json", "path": str(input_path)}
     assert report["result"] == normalized
+
+
+def _section() -> PaperSection:
+    return PaperSection(
+        section_id="s001",
+        name="Method",
+        text="The model uses BERT-base.",
+        heading_meta=HeadingMeta(raw="2. Method", level=1, numbering="2"),
+    )
+
+
+def _extraction() -> ClaimExtractionResult:
+    return ClaimExtractionResult(
+        claims=[
+            ExtractedClaim(
+                claim_id="c0001",
+                claim="The model uses BERT-base.",
+                original_text="The model uses BERT-base.",
+                category="model_architecture",
+                value="BERT-base",
+                verifiability="high",
+                section_id="s001",
+                section_name="Method",
+                section_heading_raw="2. Method",
+            )
+        ],
+        deduplication=[
+            DedupSelection(
+                claim_id="c0001",
+                claim="The model uses BERT-base.",
+                contradiction=False,
+            )
+        ],
+        selected_section_ids=["s001"],
+        meta=ExtractionMetadata(
+            source="sections.json",
+            model="fake-model",
+            configured_model="fake-model",
+            models_used=["fake-model"],
+            filtered_claims=1,
+            step3_input_count=1,
+            step3_output_count=1,
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("payload", "source_format"),
+    [
+        (lambda section: [section.model_dump(mode="json")], "bare"),
+        (lambda section: {"sections": [section.model_dump(mode="json")], "meta": {"producer": "fixture"}}, "envelope"),
+    ],
+)
+def test_sections_json_are_loaded_from_bare_list_or_envelope(tmp_path, payload, source_format):
+    input_path = tmp_path / "sections.json"
+    input_path.write_text(json.dumps(payload(_section()), ensure_ascii=False), encoding="utf-8")
+
+    loaded = load_sections_json(input_path)
+
+    assert loaded.source_format == source_format
+    assert loaded.sections == [_section()]
+    if source_format == "envelope":
+        assert loaded.upstream_meta == {"producer": "fixture"}
+
+
+def test_sections_json_schema_errors_are_clear(tmp_path):
+    input_path = tmp_path / "sections.json"
+    input_path.write_text(json.dumps({"sections": [{"section_id": "s001"}]}), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="PaperSection schema"):
+        load_sections_json(input_path)
+
+
+def test_section_extraction_export_writes_claims_sections_and_report(tmp_path):
+    claims_path = export_section_extraction(
+        _extraction(),
+        [_section()],
+        tmp_path / "output",
+        source_kind="sections_json",
+        source_path=tmp_path / "sections.json",
+        model=ModelProvenance(configured="fake-model", used=["fake-model"]),
+        upstream_meta={"producer": "fixture"},
+    )
+
+    assert claims_path == tmp_path / "output" / "claims.json"
+    assert claims_path.is_file()
+    assert (tmp_path / "output" / "sections.json").is_file()
+    report = json.loads((tmp_path / "output" / "report.json").read_text(encoding="utf-8"))
+    assert report["meta"]["source"]["paper"] == {
+        "kind": "sections_json",
+        "path": str(tmp_path / "sections.json"),
+    }
+    assert report["meta"]["source"]["upstream"] == {"producer": "fixture"}
+    assert report["result"]["claims"][0]["claim"] == "The model uses BERT-base."
+
+
+@pytest.mark.asyncio
+async def test_extract_claims_from_sections_uses_prompt_overrides(tmp_path):
+    override_dir = tmp_path / "prompts"
+    override_dir.mkdir()
+    (override_dir / "paper_claims.toml").write_text(
+        '[prompts]\nsection_filter_system = "custom section filter system"\n',
+        encoding="utf-8",
+    )
+    handler = FakeHandler()
+
+    result = await extract_claims_from_sections(
+        handler,
+        [_section()],
+        PipelineOptions(),
+        prompts=PromptLoader(override_dirs=[override_dir]),
+        show_progress=False,
+    )
+
+    assert result.selected_section_ids == ["s001"]
+    assert handler.system_messages[0] == "custom section filter system"
+    assert handler.provenance_reset_count == 1

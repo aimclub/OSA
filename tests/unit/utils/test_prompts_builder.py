@@ -73,3 +73,20 @@ def test_prompt_builder_format_real_template():
     assert isinstance(rendered, str)
     assert len(rendered) > 0
     assert "Based on the repository file tree and README" in rendered
+
+
+def test_prompt_loader_overrides_only_provided_prompt_keys(tmp_path):
+    override_dir = tmp_path / "prompts"
+    override_dir.mkdir()
+    (override_dir / "paper_claims.toml").write_text(
+        '[prompts]\nsection_filter_system = "custom section filter"\n',
+        encoding="utf-8",
+    )
+
+    default_loader = PromptLoader()
+    loader = PromptLoader(override_dirs=[override_dir])
+
+    assert loader.get("paper_claims.section_filter_system") == "custom section filter"
+    assert loader.get("paper_claims.claim_extraction_system") == default_loader.get(
+        "paper_claims.claim_extraction_system"
+    )

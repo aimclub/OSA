@@ -20,7 +20,14 @@ def add_paper_analysis_arguments(parser: argparse.ArgumentParser, *, main_cli: b
     group = parser.add_argument_group("paper analysis arguments")
     source = group.add_mutually_exclusive_group(required=False)
     source.add_argument("--paper", type=Path, help="PDF paper to extract through typed paper_claims.")
+    source.add_argument("--sections-json", type=Path, help="Parsed PaperSection JSON to extract and verify.")
     source.add_argument("--claims-json", type=Path, help="Typed, legacy, or bare claim JSON to verify.")
+    group.add_argument(
+        "--paper-claims-prompts-dir",
+        type=Path,
+        default=None,
+        help="Directory of TOML prompt overrides for paper-claim extraction.",
+    )
     group.add_argument(
         "--paper-output-dir" if main_cli else "--output-dir",
         dest="paper_output_dir",
@@ -87,8 +94,9 @@ def validate_paper_analysis_args(parser: argparse.ArgumentParser, args: argparse
     """Enforce the source-input contract after a shared parser has run."""
     if not args.repository:
         parser.error("--repository is required")
-    if (args.paper is None) == (args.claims_json is None):
-        parser.error("Provide exactly one of --paper or --claims-json")
+    provided = sum(item is not None for item in (args.paper, args.sections_json, args.claims_json))
+    if provided != 1:
+        parser.error("Provide exactly one of --paper, --sections-json, or --claims-json")
 
 
 def build_request(
@@ -110,7 +118,9 @@ def build_request(
     return PaperAnalysisRequest(
         repository=str(args.repository),
         paper_path=args.paper,
+        sections_path=args.sections_json,
         claims_path=args.claims_json,
+        paper_claims_prompts_dir=args.paper_claims_prompts_dir,
         output_dir=output_dir,
         include_repository_quality=(
             settings.include_repository_quality

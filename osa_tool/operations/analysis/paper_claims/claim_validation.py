@@ -44,7 +44,7 @@ def _load_rapidfuzz() -> tuple[Any, Any, Any]:
         from rapidfuzz.distance import Levenshtein
     except ImportError as exc:
         raise ClaimExtractionError(
-            'Claim validation requires the paper-claims extra. Install it with: pip install "osa_tool[paper-claims]".'
+            'Claim validation requires RapidFuzz. Install it with: pip install "osa_tool[paper-claims-lite]" or pip install "osa_tool[paper-claims]".'
         ) from exc
     return fuzz, process, Levenshtein
 

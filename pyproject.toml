@@ -17,6 +17,9 @@ Documentation = "https://itmo-nss-team.github.io/Open-Source-Advisor/"
 Issues = "https://github.com/aimclub/OSA/issues"
 
 [project.optional-dependencies]
+paper-claims-lite = [
+    "rapidfuzz>=3.14.0",
+]
 paper-claims = [
     # Marker 1.x's transitive dependency stack has no compatible Python 3.15 distribution yet.
     "marker-pdf>=1.10.2,<2.0.0; python_version < '3.15'",
