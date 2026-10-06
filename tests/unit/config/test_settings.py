@@ -314,6 +314,67 @@ def test_config_manager_routes_docstring_to_task_model(tmp_path):
     assert manager.get_model_settings("paper_verification").model == "verification-model"
 
 
+def test_default_config_uses_host_luna():
+    manager = ConfigManager()
+
+    assert manager.config.llm.default.api == "host"
+    assert manager.config.llm.default.model == "gpt-5.6-luna"
+
+
+def test_config_manager_applies_default_cli_model_and_api_override(tmp_path):
+    manager = ConfigManager(
+        _make_config_args(
+            _write_task_models_config(tmp_path),
+            api="host",
+            model="gpt-5.6-luna",
+        )
+    )
+
+    assert manager.config.llm.default.api == "host"
+    assert manager.config.llm.default.model == "gpt-5.6-luna"
+    assert manager.get_model_settings("general").model == "gpt-5.6-luna"
+    assert manager.get_model_settings("paper_claims").model == "claims-model"
+
+
+def test_config_manager_preserves_custom_config_provider_when_cli_values_are_defaults(tmp_path):
+    config_file = _write_task_models_config(tmp_path)
+    content = pathlib.Path(config_file).read_text(encoding="utf-8")
+    pathlib.Path(config_file).write_text(
+        content.replace("[llm]\n", '[llm]\napi = "ollama"\nmodel = "custom-config-model"\n', 1).replace(
+            'model = "default-model"\n',
+            "",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    args = _make_config_args(
+        config_file,
+        api="host",
+        model="gpt-5.6-luna",
+        base_url="https://openrouter.ai/api/v1",
+        _explicit_cli_args={"config_file"},
+    )
+
+    manager = ConfigManager(args)
+
+    assert manager.config.llm.default.api == "ollama"
+    assert manager.config.llm.default.model == "custom-config-model"
+
+
+def test_config_manager_applies_explicit_cli_provider_override_with_custom_config(tmp_path):
+    args = _make_config_args(
+        _write_task_models_config(tmp_path),
+        api="host",
+        model="gpt-5.6-luna",
+        _explicit_cli_args={"config_file", "api", "model"},
+    )
+
+    manager = ConfigManager(args)
+
+    assert manager.config.llm.default.api == "host"
+    assert manager.config.llm.default.model == "gpt-5.6-luna"
+
+
 def test_config_manager_applies_docstring_cli_model_override(tmp_path):
     manager = ConfigManager(
         _make_config_args(

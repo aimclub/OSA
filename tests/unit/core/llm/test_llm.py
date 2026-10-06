@@ -1,14 +1,23 @@
+import asyncio
+import json
 import logging
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from pydantic import BaseModel
 
+from osa_tool.core.llm.host import HostLlmError, HostLlmHandler, host_provider_status, run_host_llm_sync
 from osa_tool.core.llm.llm import ModelHandlerFactory, PayloadFactory, ProtollmHandler, _parse_llm_response
 from tests.utils.fixtures.models import DummyLLMClient
 
 
 class SampleOutput(BaseModel):
     items: list[str] = []
+
+
+class RequiredSampleOutput(BaseModel):
+    items: list[str]
 
 
 def test_parse_llm_response_returns_pydantic_model() -> None:
@@ -273,6 +282,393 @@ def test_model_handler_factory_builds_correct_type(mock_config_manager):
 
     # Assert
     assert isinstance(handler, ProtollmHandler)
+
+
+def test_model_handler_factory_builds_host_handler(mock_config_manager):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.api = "host"
+
+    handler = ModelHandlerFactory.build(model_settings)
+
+    assert isinstance(handler, HostLlmHandler)
+
+
+def test_host_handler_command_transport_normalizes_model(monkeypatch, mock_config_manager):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.api = "host"
+    model_settings.model = "openai/gpt-5.6-luna"
+    model_settings.max_tokens = 4096
+    model_settings.temperature = 0.05
+    model_settings.top_p = 0.95
+    handler = HostLlmHandler(model_settings)
+    captured = {}
+
+    monkeypatch.delenv("HOST_LLM_BRIDGE_DIR", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "api-key-should-not-leak")
+    monkeypatch.setenv("GIT_TOKEN", "git-token-should-not-leak")
+    monkeypatch.setenv("VSE_GPT_KEY", "vsegpt-key-should-not-leak")
+    monkeypatch.setenv("X-API-Key", "pepy-key-should-not-leak")
+    monkeypatch.setenv("CODEX_HOME", "/tmp/codex-home")
+    monkeypatch.setattr(
+        "osa_tool.core.llm.host.host_provider_status",
+        lambda: {
+            "installed": True,
+            "authenticated": True,
+            "path": "/usr/bin/codex",
+            "detail": "ready",
+            "transport": "host_command",
+        },
+    )
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+        captured["input"] = kwargs["input"]
+        captured["env"] = kwargs["env"]
+        output_path = Path(command[command.index("--output-last-message") + 1])
+        output_path.write_text("host response", encoding="utf-8")
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr("osa_tool.core.llm.host.subprocess.run", fake_run)
+
+    result = handler.send_request("hello", system_message="system")
+
+    assert result == "host response"
+    assert captured["command"][captured["command"].index("--model") + 1] == "gpt-5.6-luna"
+    developer_config = captured["command"][captured["command"].index("-c") + 1]
+    assert developer_config.startswith("developer_instructions=")
+    assert "system" in developer_config
+    assert captured["input"] == "hello"
+    assert "OPENAI_API_KEY" not in captured["env"]
+    assert "GIT_TOKEN" not in captured["env"]
+    assert "VSE_GPT_KEY" not in captured["env"]
+    assert "X-API-Key" not in captured["env"]
+    assert captured["env"]["CODEX_HOME"] == "/tmp/codex-home"
+    assert handler.successful_models == ["gpt-5.6-luna"]
+    assert handler.last_successful_model == "gpt-5.6-luna"
+
+
+def test_run_host_llm_sync_bridge_transport_writes_request(monkeypatch, tmp_path):
+    bridge_dir = tmp_path / "host-bridge"
+    created_requests = []
+    monkeypatch.setenv("HOST_LLM_BRIDGE_DIR", str(bridge_dir))
+
+    def fake_sleep(_seconds):
+        if created_requests:
+            return
+        request_paths = list((bridge_dir / "requests").glob("osa-*.json"))
+        if not request_paths:
+            return
+        request = json.loads(request_paths[0].read_text(encoding="utf-8"))
+        created_requests.append(request)
+        response_path = Path(request["response_path"])
+        response_path.write_text(
+            json.dumps(
+                {
+                    "request_id": request["request_id"],
+                    "model": request["model"],
+                    "text": "bridge response",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    monkeypatch.setattr("osa_tool.core.llm.host.time.sleep", fake_sleep)
+
+    result = run_host_llm_sync(
+        model="openai/gpt-5.6-luna",
+        system_prompt="system",
+        user_message="hello",
+        timeout_seconds=1,
+        max_tokens=123,
+        temperature=0.2,
+        top_p=0.8,
+    )
+
+    assert result == "bridge response"
+    assert created_requests[0]["model"] == "gpt-5.6-luna"
+    assert created_requests[0]["system_prompt"] == "system"
+    assert created_requests[0]["user_message"] == "hello"
+    assert created_requests[0]["prompt"] == "hello"
+    assert created_requests[0]["max_tokens"] == 123
+    assert created_requests[0]["temperature"] == 0.2
+    assert created_requests[0]["top_p"] == 0.8
+    assert created_requests[0]["generation"] == {"max_tokens": 123, "temperature": 0.2, "top_p": 0.8}
+    assert not list((bridge_dir / "requests").glob("osa-*.json"))
+    assert not list((bridge_dir / "responses").glob("osa-*.json"))
+    assert created_requests[0]["messages"][0]["role"] == "developer"
+    assert "system" in created_requests[0]["messages"][0]["content"]
+    assert created_requests[0]["messages"][1] == {"role": "user", "content": "hello"}
+
+
+def test_run_host_llm_sync_bridge_transport_waits_for_complete_json(monkeypatch, tmp_path):
+    bridge_dir = tmp_path / "host-bridge"
+    created_requests = []
+    sleep_calls = 0
+    monkeypatch.setenv("HOST_LLM_BRIDGE_DIR", str(bridge_dir))
+
+    def fake_sleep(_seconds):
+        nonlocal sleep_calls
+        request_paths = list((bridge_dir / "requests").glob("osa-*.json"))
+        if not request_paths:
+            return
+        request = json.loads(request_paths[0].read_text(encoding="utf-8"))
+        if not created_requests:
+            created_requests.append(request)
+        response_path = Path(request["response_path"])
+        sleep_calls += 1
+        if sleep_calls == 1:
+            response_path.write_text("{", encoding="utf-8")
+            return
+        response_path.write_text(
+            json.dumps(
+                {
+                    "request_id": request["request_id"],
+                    "model": request["model"],
+                    "text": "complete bridge response",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    monkeypatch.setattr("osa_tool.core.llm.host.time.sleep", fake_sleep)
+
+    result = run_host_llm_sync(
+        model="gpt-5.6-luna",
+        system_prompt="system",
+        user_message="hello",
+        timeout_seconds=1,
+    )
+
+    assert result == "complete bridge response"
+    assert sleep_calls >= 2
+    assert not list((bridge_dir / "requests").glob("osa-*.json"))
+    assert not list((bridge_dir / "responses").glob("osa-*.json"))
+
+
+def test_run_host_llm_sync_command_rejects_custom_generation_controls(monkeypatch):
+    monkeypatch.delenv("HOST_LLM_BRIDGE_DIR", raising=False)
+
+    with pytest.raises(HostLlmError, match="does not expose max_tokens"):
+        run_host_llm_sync(
+            model="gpt-5.6-luna",
+            system_prompt="system",
+            user_message="hello",
+            max_tokens=128,
+        )
+
+
+def test_host_provider_status_rejects_non_codex_command(monkeypatch):
+    monkeypatch.delenv("HOST_LLM_BRIDGE_DIR", raising=False)
+    monkeypatch.setenv("HOST_LLM_COMMAND", "other-llm")
+    monkeypatch.setattr("osa_tool.core.llm.host.shutil.which", lambda _command: "/usr/bin/other-llm")
+
+    status = host_provider_status()
+
+    assert status["installed"] is False
+    assert status["path"] == "/usr/bin/other-llm"
+    assert "Codex CLI" in status["detail"]
+
+
+@pytest.mark.parametrize(
+    "executable",
+    [
+        "/usr/bin/codex",
+        "/usr/bin/codex.exe",
+        r"C:\Tools\codex.cmd",
+        r"C:\Tools\codex.bat",
+    ],
+)
+def test_host_provider_status_accepts_codex_launchers(monkeypatch, executable):
+    monkeypatch.delenv("HOST_LLM_BRIDGE_DIR", raising=False)
+    monkeypatch.setenv("HOST_LLM_COMMAND", "codex")
+    monkeypatch.setattr("osa_tool.core.llm.host.shutil.which", lambda _command: executable)
+
+    def fake_run(command, **_kwargs):
+        assert command[:3] == [executable, "login", "status"]
+        return SimpleNamespace(returncode=0, stdout="Logged in", stderr="")
+
+    monkeypatch.setattr("osa_tool.core.llm.host.subprocess.run", fake_run)
+
+    status = host_provider_status()
+
+    assert status["installed"] is True
+    assert status["authenticated"] is True
+    assert status["path"] == executable
+
+
+def test_host_provider_status_strips_secrets_from_status_probe(monkeypatch):
+    captured = {}
+    monkeypatch.delenv("HOST_LLM_BRIDGE_DIR", raising=False)
+    monkeypatch.setenv("HOST_LLM_COMMAND", "codex")
+    monkeypatch.setenv("OPENAI_API_KEY", "api-key-should-not-leak")
+    monkeypatch.setenv("GIT_TOKEN", "git-token-should-not-leak")
+    monkeypatch.setenv("CODEX_HOME", "/tmp/codex-home")
+    monkeypatch.setattr("osa_tool.core.llm.host.shutil.which", lambda _command: "/usr/bin/codex")
+
+    def fake_run(*args, **kwargs):
+        captured["env"] = kwargs["env"]
+        return SimpleNamespace(returncode=0, stdout="Logged in", stderr="")
+
+    monkeypatch.setattr("osa_tool.core.llm.host.subprocess.run", fake_run)
+
+    status = host_provider_status()
+
+    assert status["installed"] is True
+    assert status["authenticated"] is True
+    assert "OPENAI_API_KEY" not in captured["env"]
+    assert "GIT_TOKEN" not in captured["env"]
+    assert captured["env"]["CODEX_HOME"] == "/tmp/codex-home"
+
+
+def test_host_handler_limits_prompt_before_request(monkeypatch, mock_config_manager):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.api = "host"
+    model_settings.model = "gpt-5.6-luna"
+    model_settings.context_window = 220
+    model_settings.max_tokens = 10
+    handler = HostLlmHandler(model_settings)
+    captured = {}
+
+    def fake_run_host_llm_sync(**kwargs):
+        captured.update(kwargs)
+        return "host response"
+
+    monkeypatch.setattr("osa_tool.core.llm.host.run_host_llm_sync", fake_run_host_llm_sync)
+    long_prompt = " ".join(f"token-{index}" for index in range(200))
+
+    result = handler.send_request(long_prompt, system_message="system")
+
+    assert result == "host response"
+    assert captured["system_prompt"] == "system"
+    assert captured["user_message"] != long_prompt
+    assert len(captured["user_message"]) < len(long_prompt)
+
+
+@pytest.mark.asyncio
+async def test_host_handler_generate_concurrently_starts_all_requests(mock_config_manager, monkeypatch):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.api = "host"
+    handler = HostLlmHandler(model_settings)
+    order = []
+
+    async def fake_async_request(prompt, system_message=None):
+        order.append(f"start:{prompt}")
+        await asyncio.sleep(0)
+        order.append(f"end:{prompt}")
+        return f"response:{prompt}"
+
+    monkeypatch.setattr(handler, "async_request", fake_async_request)
+
+    result = await handler.generate_concurrently(["a", "b"], system_message="system")
+
+    assert result == ["response:a", "response:b"]
+    assert order[:2] == ["start:a", "start:b"]
+
+
+def test_host_handler_run_chain_retries_parse_failures(monkeypatch, mock_config_manager):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.api = "host"
+    model_settings.max_retries = 2
+    handler = HostLlmHandler(model_settings)
+    responses = iter(["bad", "good"])
+    monkeypatch.setattr(handler, "send_request", lambda *args, **kwargs: next(responses))
+
+    class FlakyParser:
+        def __init__(self):
+            self.calls = 0
+
+        def parse(self, raw):
+            self.calls += 1
+            if self.calls == 1:
+                raise ValueError("not parseable")
+            return {"raw": raw}
+
+    parser = FlakyParser()
+
+    result = handler.run_chain("prompt", parser=parser, retry_delay=0)
+
+    assert result == {"raw": "good"}
+    assert parser.calls == 2
+
+
+def test_host_handler_send_and_parse_retries_invalid_response(monkeypatch, mock_config_manager):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.api = "host"
+    model_settings.max_retries = 2
+    handler = HostLlmHandler(model_settings)
+    responses = iter(['{"wrong": ["bad"]}', '{"items": ["ok"]}'])
+    monkeypatch.setattr(handler, "send_request", lambda *args, **kwargs: next(responses))
+
+    result = handler.send_and_parse("prompt", parser=RequiredSampleOutput, retry_delay=0)
+
+    assert result.items == ["ok"]
+
+
+@pytest.mark.asyncio
+async def test_host_handler_async_request_records_success(monkeypatch, mock_config_manager):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.api = "host"
+    model_settings.model = "gpt-5.6-luna"
+    handler = HostLlmHandler(model_settings)
+    captured = {}
+
+    async def fake_run_host_llm(**kwargs):
+        captured.update(kwargs)
+        return "async host response"
+
+    monkeypatch.setattr("osa_tool.core.llm.host.run_host_llm", fake_run_host_llm)
+
+    result = await handler.async_request("hello", system_message="system")
+
+    assert result == "async host response"
+    assert captured["model"] == "gpt-5.6-luna"
+    assert captured["system_prompt"] == "system"
+    assert captured["user_message"] == "hello"
+    assert captured["max_tokens"] == model_settings.max_tokens
+    assert captured["temperature"] == model_settings.temperature
+    assert captured["top_p"] == model_settings.top_p
+    assert handler.successful_models == ["gpt-5.6-luna"]
+
+
+def test_host_handler_send_and_parse_retries_request_failures(monkeypatch, mock_config_manager):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.api = "host"
+    model_settings.max_retries = 2
+    handler = HostLlmHandler(model_settings)
+    responses = iter([HostLlmError("temporary"), '{"items": ["ok"]}'])
+
+    def flaky_send_request(*args, **kwargs):
+        response = next(responses)
+        if isinstance(response, BaseException):
+            raise response
+        return response
+
+    monkeypatch.setattr(handler, "send_request", flaky_send_request)
+
+    result = handler.send_and_parse("prompt", parser=RequiredSampleOutput, retry_delay=0)
+
+    assert result.items == ["ok"]
+
+
+@pytest.mark.asyncio
+async def test_host_handler_async_send_and_parse_retries_request_failures(monkeypatch, mock_config_manager):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.api = "host"
+    model_settings.max_retries = 2
+    handler = HostLlmHandler(model_settings)
+    responses = iter([HostLlmError("temporary"), '{"items": ["ok"]}'])
+
+    async def flaky_async_request(*args, **kwargs):
+        response = next(responses)
+        if isinstance(response, BaseException):
+            raise response
+        return response
+
+    monkeypatch.setattr(handler, "async_request", flaky_async_request)
+
+    result = await handler.async_send_and_parse("prompt", parser=RequiredSampleOutput, retry_delay=0)
+
+    assert result.items == ["ok"]
 
 
 def test_configure_api_loads_dotenv_with_override(mock_config_manager, patch_llm_connector, mocker):

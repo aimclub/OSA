@@ -345,31 +345,31 @@ class AbstractReportGenerator(ABC):
             ],
             [
                 Paragraph(self.translator.get("readme_presence"), cell_left_style),
-                Paragraph("✓" if self.sourcerank.readme_presence() else "✗", cell_center_style),
+                Paragraph("✓" if self.sourcerank.readme_presence() else "×", cell_center_style),
             ],
             [
                 Paragraph(self.translator.get("license_presence"), cell_left_style),
-                Paragraph("✓" if self.sourcerank.license_presence() else "✗", cell_center_style),
+                Paragraph("✓" if self.sourcerank.license_presence() else "×", cell_center_style),
             ],
             [
                 Paragraph(self.translator.get("documentation_presence"), cell_left_style),
-                Paragraph("✓" if self.sourcerank.docs_presence() else "✗", cell_center_style),
+                Paragraph("✓" if self.sourcerank.docs_presence() else "×", cell_center_style),
             ],
             [
                 Paragraph(self.translator.get("examples_presence"), cell_left_style),
-                Paragraph("✓" if self.sourcerank.examples_presence() else "✗", cell_center_style),
+                Paragraph("✓" if self.sourcerank.examples_presence() else "×", cell_center_style),
             ],
             [
                 Paragraph(self.translator.get("requirements_presence"), cell_left_style),
-                Paragraph("✓" if self.sourcerank.requirements_presence() else "✗", cell_center_style),
+                Paragraph("✓" if self.sourcerank.requirements_presence() else "×", cell_center_style),
             ],
             [
                 Paragraph(self.translator.get("tests_presence"), cell_left_style),
-                Paragraph("✓" if self.sourcerank.tests_presence() else "✗", cell_center_style),
+                Paragraph("✓" if self.sourcerank.tests_presence() else "×", cell_center_style),
             ],
             [
                 Paragraph(self.translator.get("description_presence"), cell_left_style),
-                Paragraph("✓" if self.metadata.description else "✗", cell_center_style),
+                Paragraph("✓" if self.metadata.description else "×", cell_center_style),
             ],
         ]
 
