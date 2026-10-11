@@ -28,6 +28,7 @@ def build_parser_from_yaml(extra_sections: list[str] | None = None) -> argparse.
         formatter_class=argparse.RawTextHelpFormatter,
     )
     option_dest_by_alias: dict[str, str] = {}
+    default_by_dest: dict[str, Any] = {}
 
     def add_arguments(group, args_dict):
         for key, options in args_dict.items():
@@ -36,6 +37,7 @@ def build_parser_from_yaml(extra_sections: list[str] | None = None) -> argparse.
             description = options.get("description", "")
             choices = options.get("choices")
             default = get_default_from_config(config_toml, key)
+            default_by_dest[key] = default
             kwargs = {"help": description}
 
             if arg_type == "flag":
@@ -77,11 +79,15 @@ def build_parser_from_yaml(extra_sections: list[str] | None = None) -> argparse.
             arg_group = parser.add_argument_group(f"{group_name} arguments")
             add_arguments(arg_group, group_args)
 
-    _attach_explicit_cli_args_tracking(parser, option_dest_by_alias)
+    _attach_explicit_cli_args_tracking(parser, option_dest_by_alias, default_by_dest)
     return parser
 
 
-def _attach_explicit_cli_args_tracking(parser: argparse.ArgumentParser, option_dest_by_alias: dict[str, str]) -> None:
+def _attach_explicit_cli_args_tracking(
+    parser: argparse.ArgumentParser,
+    option_dest_by_alias: dict[str, str],
+    default_by_dest: dict[str, Any],
+) -> None:
     original_parse_args = parser.parse_args
 
     def parse_args(args=None, namespace=None):
@@ -93,6 +99,7 @@ def _attach_explicit_cli_args_tracking(parser: argparse.ArgumentParser, option_d
             if option in option_dest_by_alias:
                 explicit_cli_args.add(option_dest_by_alias[option])
         setattr(parsed, "_explicit_cli_args", explicit_cli_args)
+        setattr(parsed, "_cli_defaults", default_by_dest.copy())
         return parsed
 
     parser.parse_args = parse_args

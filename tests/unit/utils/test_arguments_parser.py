@@ -234,6 +234,8 @@ def test_parser_tracks_explicit_cli_args(mock_yaml_file, mock_toml_file):
 
     assert args._explicit_cli_args == {"repository", "verbose", "tags"}
     assert "timeout" not in args._explicit_cli_args
+    assert args._cli_defaults["repository"] == "https://github.com/example/repo"
+    assert args._cli_defaults["timeout"] == 30
 
 
 def test_parser_choices_enforced(mock_yaml_file, mock_toml_file):

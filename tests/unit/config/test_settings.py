@@ -375,6 +375,77 @@ def test_config_manager_applies_explicit_cli_provider_override_with_custom_confi
     assert manager.config.llm.default.model == "gpt-5.6-luna"
 
 
+def test_config_manager_preserves_custom_repository_when_parser_default_is_unchanged(tmp_path):
+    config_file = _write_task_models_config(tmp_path)
+    content = pathlib.Path(config_file).read_text(encoding="utf-8")
+    pathlib.Path(config_file).write_text(
+        content.replace(
+            'repository = "https://github.com/testuser/testrepo"',
+            'repository = "https://github.com/custom/config-repo"',
+            1,
+        ),
+        encoding="utf-8",
+    )
+    args = _make_config_args(
+        config_file,
+        repository="https://github.com/aimclub/OSA",
+        _explicit_cli_args={"config_file"},
+        _cli_defaults={"repository": "https://github.com/aimclub/OSA"},
+    )
+
+    manager = ConfigManager(args)
+
+    assert manager.config.git.repository == "https://github.com/custom/config-repo"
+
+
+def test_config_manager_applies_programmatic_repository_after_parsing(tmp_path):
+    args = _make_config_args(
+        _write_task_models_config(tmp_path),
+        repository="https://github.com/runtime/selected-repo",
+        _explicit_cli_args={"config_file"},
+        _cli_defaults={"repository": "https://github.com/aimclub/OSA"},
+    )
+
+    manager = ConfigManager(args)
+
+    assert manager.config.git.repository == "https://github.com/runtime/selected-repo"
+
+
+def test_config_manager_infers_provider_when_base_url_is_explicit(tmp_path):
+    args = _make_config_args(
+        _write_task_models_config(tmp_path),
+        api="host",
+        base_url="https://osa.nsslab.onti.actcognitive.org/api/v1",
+        _explicit_cli_args={"config_file", "base_url"},
+        _cli_defaults={
+            "api": "host",
+            "base_url": "https://openrouter.ai/api/v1",
+        },
+    )
+
+    manager = ConfigManager(args)
+
+    assert manager.config.llm.default.api == "itmo"
+    assert manager.config.llm.default.base_url == "https://osa.nsslab.onti.actcognitive.org/api/v1"
+
+
+def test_config_manager_keeps_explicit_api_when_base_url_is_explicit(tmp_path):
+    args = _make_config_args(
+        _write_task_models_config(tmp_path),
+        api="host",
+        base_url="https://osa.nsslab.onti.actcognitive.org/api/v1",
+        _explicit_cli_args={"config_file", "api", "base_url"},
+        _cli_defaults={
+            "api": "host",
+            "base_url": "https://openrouter.ai/api/v1",
+        },
+    )
+
+    manager = ConfigManager(args)
+
+    assert manager.config.llm.default.api == "host"
+
+
 def test_config_manager_applies_docstring_cli_model_override(tmp_path):
     manager = ConfigManager(
         _make_config_args(

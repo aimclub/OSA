@@ -290,9 +290,18 @@ class ConfigManager:
             dict: Updated configuration data with CLI arguments applied
         """
         explicit_cli_args = getattr(args, "_explicit_cli_args", None)
+        cli_defaults = getattr(args, "_cli_defaults", None)
+
+        def value_differs_from_parser_default(name: str) -> bool:
+            return (
+                cli_defaults is not None
+                and name in cli_defaults
+                and hasattr(args, name)
+                and getattr(args, name) != cli_defaults[name]
+            )
 
         def should_apply_cli_arg(name: str) -> bool:
-            return explicit_cli_args is None or name in explicit_cli_args
+            return explicit_cli_args is None or name in explicit_cli_args or value_differs_from_parser_default(name)
 
         model_params = [
             "api",
@@ -308,6 +317,14 @@ class ConfigManager:
         for param in model_params:
             if hasattr(args, param) and getattr(args, param) is not None and should_apply_cli_arg(param):
                 config_data["llm"][param] = getattr(args, param)
+
+        if (
+            hasattr(args, "base_url")
+            and getattr(args, "base_url", None) is not None
+            and should_apply_cli_arg("base_url")
+            and not should_apply_cli_arg("api")
+        ):
+            config_data["llm"]["api"] = detect_provider_from_url(args.base_url)
 
         task_models = {
             "for_docstring_gen": "model_docstring",

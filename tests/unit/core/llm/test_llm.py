@@ -503,6 +503,9 @@ def test_host_provider_status_strips_secrets_from_status_probe(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "api-key-should-not-leak")
     monkeypatch.setenv("GIT_TOKEN", "git-token-should-not-leak")
     monkeypatch.setenv("CODEX_HOME", "/tmp/codex-home")
+    monkeypatch.setenv("HTTPS_PROXY", "http://proxy.example:8080")
+    monkeypatch.setenv("NO_PROXY", "localhost,127.0.0.1")
+    monkeypatch.setenv("http_proxy", "http://lower-proxy.example:8080")
     monkeypatch.setattr("osa_tool.core.llm.host.shutil.which", lambda _command: "/usr/bin/codex")
 
     def fake_run(*args, **kwargs):
@@ -518,6 +521,9 @@ def test_host_provider_status_strips_secrets_from_status_probe(monkeypatch):
     assert "OPENAI_API_KEY" not in captured["env"]
     assert "GIT_TOKEN" not in captured["env"]
     assert captured["env"]["CODEX_HOME"] == "/tmp/codex-home"
+    assert captured["env"]["HTTPS_PROXY"] == "http://proxy.example:8080"
+    assert captured["env"]["NO_PROXY"] == "localhost,127.0.0.1"
+    assert captured["env"]["http_proxy"] == "http://lower-proxy.example:8080"
 
 
 def test_host_handler_limits_prompt_before_request(monkeypatch, mock_config_manager):
