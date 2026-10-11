@@ -129,6 +129,7 @@ class PaperClaimsSettings(BaseModel):
     """Stable execution settings for PDF-to-typed-claims extraction."""
 
     pages_per_chunk: PositiveInt = 5
+    pdf_parser: Literal["marker", "mistral-ocr", "cloudflare-ai"] = "mistral-ocr"
     max_retries: PositiveInt = 5
     dedup_batch_size: int = Field(default=50, ge=2)
     marker: PaperMarkerSettings = Field(default_factory=PaperMarkerSettings)
@@ -139,6 +140,7 @@ class PaperClaimsSettings(BaseModel):
 
         return PipelineOptions(
             pages_per_chunk=self.pages_per_chunk,
+            pdf_parser=self.pdf_parser,
             max_retries=self.max_retries,
             dedup_batch_size=self.dedup_batch_size,
             marker=MarkerOptions(**self.marker.model_dump()),

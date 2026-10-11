@@ -23,6 +23,19 @@ def add_paper_analysis_arguments(parser: argparse.ArgumentParser, *, main_cli: b
     source.add_argument("--sections-json", type=Path, help="Parsed PaperSection JSON to extract and verify.")
     source.add_argument("--claims-json", type=Path, help="Typed, legacy, or bare claim JSON to verify.")
     group.add_argument(
+        "--pdf-parser",
+        choices=("mistral-ocr", "cloudflare-ai", "marker"),
+        default=None,
+        help="PDF parser for --paper. Defaults to the [paper_analysis.paper_claims] configuration.",
+    )
+    group.add_argument(
+        "--force-parser-refresh",
+        "--force-marker-refresh",
+        dest="force_parser_refresh",
+        action="store_true",
+        help="Ignore cached PDF parser output for this run; claim extraction still runs normally.",
+    )
+    group.add_argument(
         "--paper-claims-prompts-dir",
         type=Path,
         default=None,
@@ -121,6 +134,8 @@ def build_request(
         sections_path=args.sections_json,
         claims_path=args.claims_json,
         paper_claims_prompts_dir=args.paper_claims_prompts_dir,
+        pdf_parser=getattr(args, "pdf_parser", None),
+        force_parser_refresh=getattr(args, "force_parser_refresh", False),
         output_dir=output_dir,
         include_repository_quality=(
             settings.include_repository_quality

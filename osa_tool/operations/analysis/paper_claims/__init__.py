@@ -11,6 +11,7 @@ from osa_tool.operations.analysis.paper_claims.models import (
     LoadedClaimsArtifact,
     LoadedSectionsArtifact,
     PaperSection,
+    PdfParserName,
     PipelineOptions,
     PipelineResult,
 )
@@ -30,8 +31,10 @@ __all__ = [
     "PaperClaimPipeline",
     "PaperSection",
     "PdfChunker",
+    "PdfParserName",
     "PipelineOptions",
     "PipelineResult",
+    "OpenRouterDocumentConverter",
     "clear_marker_cache",
     "export_loaded_claims",
     "export_section_extraction",
@@ -51,6 +54,10 @@ def __getattr__(name: str):
         )
 
         return {"MarkerDocumentConverter": MarkerDocumentConverter, "clear_marker_cache": clear_marker_cache}[name]
+    if name == "OpenRouterDocumentConverter":
+        from osa_tool.operations.analysis.paper_claims.openrouter_converter import OpenRouterDocumentConverter
+
+        return OpenRouterDocumentConverter
     if name == "MarkdownSectionParser":
         from osa_tool.operations.analysis.paper_claims.section_parser import MarkdownSectionParser
 

@@ -285,6 +285,13 @@ class PaperAnalysisOperation:
 
         assert self._request.paper_path is not None
         assert isinstance(claim_input, Path)
+        pipeline_options = paper_claim_settings.to_pipeline_options()
+        pipeline_option_updates: dict[str, Any] = {
+            "force_parser_refresh": self._request.force_parser_refresh,
+        }
+        if self._request.pdf_parser is not None:
+            pipeline_option_updates["pdf_parser"] = self._request.pdf_parser
+        pipeline_options = pipeline_options.model_copy(update=pipeline_option_updates)
         if self._paper_pipeline_factory is None:
             from osa_tool.operations.analysis.paper_claims.pipeline import PaperClaimPipeline
 
@@ -293,7 +300,7 @@ class PaperAnalysisOperation:
             pipeline = self._paper_pipeline_factory(handler)
         pipeline_result = pipeline.run(
             claim_input,
-            paper_claim_settings.to_pipeline_options(),
+            pipeline_options,
             show_progress=False,
         )
         claims_path = pipeline.export(pipeline_result, paper_output_dir, legacy=False)

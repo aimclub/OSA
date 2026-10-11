@@ -5,13 +5,15 @@ from __future__ import annotations
 import builtins
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
 
-from osa_tool.config.settings import PaperAnalysisSettings
+from osa_tool.config.settings import PaperAnalysisSettings, PaperClaimsSettings
 from osa_tool.operations.analysis.artifacts import ModelProvenance
+from osa_tool.operations.analysis.paper_claims.models import ClaimExtractionResult, ExtractionMetadata
 from osa_tool.operations.analysis.paper_analysis import (
     ClaimVerificationResult,
     PaperAnalysisOperation,
@@ -286,6 +288,7 @@ def test_sections_path_analysis_exports_claims_and_never_imports_pdf_stack(monke
     blocked_modules = {
         "osa_tool.operations.analysis.paper_claims.pdf_splitter",
         "osa_tool.operations.analysis.paper_claims.marker_converter",
+        "osa_tool.operations.analysis.paper_claims.openrouter_converter",
         "osa_tool.operations.analysis.paper_claims.section_parser",
     }
 
@@ -329,3 +332,62 @@ def test_sections_path_analysis_exports_claims_and_never_imports_pdf_stack(monke
     assert handler.system_messages[0] == "custom section filter system"
     assert handler.provenance_reset_count == 1
     assert model_factory.call_count == 2
+
+
+@pytest.mark.parametrize(
+    ("configured_parser", "request_parser", "expected_parser"),
+    [
+        ("cloudflare-ai", None, "cloudflare-ai"),
+        ("marker", "mistral-ocr", "mistral-ocr"),
+    ],
+)
+def test_pdf_parser_config_and_request_override_reach_paper_pipeline(
+    tmp_path, configured_parser, request_parser, expected_parser
+):
+    pdf = tmp_path / "paper.pdf"
+    pdf.write_bytes(b"%PDF-test")
+    extraction = ClaimExtractionResult(
+        claims=[],
+        deduplication=[],
+        selected_section_ids=[],
+        meta=ExtractionMetadata(configured_model="claim-model"),
+    )
+    pipeline_result = SimpleNamespace(extraction=extraction)
+    observed = {}
+
+    class FakePipeline:
+        def run(self, _paper_path, options, *, show_progress):
+            observed["options"] = options
+            assert show_progress is False
+            return pipeline_result
+
+        def export(self, _result, _output_dir, *, legacy):
+            assert legacy is False
+            return tmp_path / "claims.json"
+
+        @staticmethod
+        def model_provenance_for_extraction(_result):
+            return ModelProvenance(configured="claim-model", used=[])
+
+    request = PaperAnalysisRequest(
+        repository="https://github.com/example/project",
+        paper_path=pdf,
+        pdf_parser=request_parser,
+        force_parser_refresh=True,
+        output_dir=tmp_path / "analysis",
+    )
+    operation = PaperAnalysisOperation(
+        MagicMock(),
+        MagicMock(clone_dir=str(tmp_path / "repository")),
+        request,
+        paper_pipeline_factory=lambda _handler: FakePipeline(),
+    )
+    operation._load_claims(
+        tmp_path / "analysis",
+        MagicMock(),
+        PaperClaimsSettings(pdf_parser=configured_parser),
+        pdf,
+    )
+
+    assert observed["options"].pdf_parser == expected_parser
+    assert observed["options"].force_parser_refresh is True

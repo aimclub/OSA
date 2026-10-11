@@ -1,9 +1,13 @@
 import asyncio
+import base64
+import json
 import logging
 import os
 import time
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 from uuid import uuid4
 
 import dotenv
@@ -329,6 +333,69 @@ class ProtollmHandler(ModelHandler):
 
         logger.error(f"All models failed. Last error: {last_error}")
         raise last_error
+
+    async def async_request_pdf(self, pdf_path: Path, parser: str, retry_delay: float = 1) -> dict[str, Any]:
+        """Ask OpenRouter to parse one PDF and return its raw chat-completion response.
+
+        The raw response is required because OpenRouter's file annotations are a
+        provider extension to the standard OpenAI chat-completion schema.
+        """
+        if parser not in {"mistral-ocr", "cloudflare-ai"}:
+            raise ValueError(f"Unsupported OpenRouter PDF parser: {parser}")
+
+        hostname = urlparse(self.model_settings.base_url).hostname or ""
+        if hostname != "openrouter.ai" and not hostname.endswith(".openrouter.ai"):
+            raise ValueError(
+                f"The {parser} PDF parser requires an OpenRouter base URL; "
+                f"configured base URL is {self.model_settings.base_url!r}."
+            )
+
+        path = Path(pdf_path)
+        file_data = base64.b64encode(path.read_bytes()).decode("ascii")
+        message = {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": (
+                        "Parse the attached PDF with the configured file parser. "
+                        "Reply only with OK; the caller reads document text from the file annotation."
+                    ),
+                },
+                {
+                    "type": "file",
+                    "file": {
+                        "filename": path.name,
+                        "file_data": f"data:application/pdf;base64,{file_data}",
+                    },
+                },
+            ],
+        }
+        last_error: Exception | None = None
+        for model in self._iter_configured_models():
+            try:
+                raw_response = await self.client.root_async_client.chat.completions.with_raw_response.create(
+                    model=model,
+                    messages=[message],
+                    max_tokens=8,
+                    extra_body={
+                        "providers": {"only": self.model_settings.allowed_providers},
+                        "plugins": [{"id": "file-parser", "pdf": {"engine": parser}}],
+                    },
+                )
+                response = json.loads(await raw_response.text())
+                if not isinstance(response, dict):
+                    raise ValueError("OpenRouter returned a non-object response for PDF parsing")
+                self._record_successful_model(model)
+                return response
+            except Exception as exc:
+                last_error = exc
+                logger.debug("OpenRouter PDF parsing request failed with model %s: %r", model, exc)
+                await asyncio.sleep(retry_delay)
+
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("No paper-claims model was configured for OpenRouter PDF parsing")
 
     def send_and_parse(self, prompt: str, parser: Any, system_message: str = None, retry_delay: float = 0.5):
         """

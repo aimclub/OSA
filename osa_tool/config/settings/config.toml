@@ -51,6 +51,7 @@ hide_low_confidence = true
 
 [paper_analysis.paper_claims]
 pages_per_chunk = 5
+pdf_parser = "mistral-ocr"
 max_retries = 5
 dedup_batch_size = 50
 

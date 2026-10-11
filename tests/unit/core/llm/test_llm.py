@@ -3,6 +3,7 @@ import json
 import logging
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 from pydantic import BaseModel
@@ -188,6 +189,52 @@ async def test_async_request_calls_llm(mock_config_manager, patch_llm_connector,
     assert "Asynchronous LLM response: tokens=" in caplog.text
     assert handler.last_successful_model == model_settings.model
     assert f"completed with model {model_settings.model}" in caplog.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("parser", ["mistral-ocr", "cloudflare-ai"])
+async def test_async_request_pdf_sends_openrouter_file_parser_plugin(
+    tmp_path, parser, mock_config_manager, patch_llm_connector
+):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.base_url = "https://openrouter.ai/api/v1"
+    handler = ProtollmHandler(model_settings)
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_bytes(b"%PDF-test")
+    raw_response = SimpleNamespace(text=AsyncMock(return_value=json.dumps({"choices": [{"message": {}}]})))
+    create = AsyncMock(return_value=raw_response)
+    handler.client = SimpleNamespace(
+        root_async_client=SimpleNamespace(
+            chat=SimpleNamespace(
+                completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create)),
+            ),
+        ),
+    )
+
+    response = await handler.async_request_pdf(pdf_path, parser, retry_delay=0)
+
+    assert response == {"choices": [{"message": {}}]}
+    request = create.await_args.kwargs
+    assert request["model"] == model_settings.model
+    assert request["max_tokens"] == 8
+    assert request["extra_body"]["plugins"] == [{"id": "file-parser", "pdf": {"engine": parser}}]
+    file_part = request["messages"][0]["content"][1]
+    assert file_part["type"] == "file"
+    assert file_part["file"]["filename"] == "paper.pdf"
+    assert file_part["file"]["file_data"].startswith("data:application/pdf;base64,")
+    assert handler.successful_models == [model_settings.model]
+
+
+@pytest.mark.asyncio
+async def test_async_request_pdf_rejects_non_openrouter_endpoint(tmp_path, mock_config_manager, patch_llm_connector):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.base_url = "https://api.openai.com/v1"
+    handler = ProtollmHandler(model_settings)
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_bytes(b"%PDF-test")
+
+    with pytest.raises(ValueError, match="requires an OpenRouter base URL"):
+        await handler.async_request_pdf(pdf_path, "mistral-ocr", retry_delay=0)
 
 
 def test_prepare_messages_rejects_invalid_token_budget(mock_config_manager):

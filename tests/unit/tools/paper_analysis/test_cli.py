@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 
-from osa_tool.config.settings import PaperAnalysisSettings
+from osa_tool.config.settings import PaperAnalysisSettings, PaperClaimsSettings
 from osa_tool.tools.paper_analysis import __main__ as paper_main
 from osa_tool.tools.paper_analysis import cli
 
@@ -138,6 +139,41 @@ def test_request_accepts_sections_json_and_prompt_overrides(tmp_path):
     assert request.sections_path == sections_path
     assert request.claims_path is None
     assert request.paper_claims_prompts_dir == prompts_dir
+
+
+@pytest.mark.parametrize("pdf_parser", ["marker", "mistral-ocr", "cloudflare-ai"])
+def test_pdf_parser_config_and_cli_override(tmp_path, pdf_parser):
+    config_manager = MagicMock()
+    config_manager.get_paper_analysis_settings.return_value = PaperAnalysisSettings(
+        output_dir=tmp_path / "output",
+        paper_claims=PaperClaimsSettings(pdf_parser=pdf_parser),
+    )
+
+    configured = cli.build_request(
+        _args(tmp_path, paper=tmp_path / "paper.pdf"),
+        config_manager,
+        clone_dir=tmp_path / "repository",
+    )
+    overridden = cli.build_request(
+        _args(tmp_path, paper=tmp_path / "paper.pdf", pdf_parser="cloudflare-ai", force_parser_refresh=True),
+        config_manager,
+        clone_dir=tmp_path / "repository",
+    )
+
+    assert configured.pdf_parser is None
+    assert overridden.pdf_parser == "cloudflare-ai"
+    assert overridden.force_parser_refresh is True
+
+
+@pytest.mark.parametrize("pdf_parser", ["marker", "mistral-ocr", "cloudflare-ai"])
+def test_pdf_parser_cli_choices(pdf_parser):
+    parser = argparse.ArgumentParser()
+    cli.add_paper_analysis_arguments(parser, main_cli=False)
+
+    args = parser.parse_args(["--pdf-parser", pdf_parser, "--force-parser-refresh"])
+
+    assert args.pdf_parser == pdf_parser
+    assert args.force_parser_refresh is True
 
 
 @pytest.mark.parametrize(

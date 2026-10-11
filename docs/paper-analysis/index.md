@@ -14,7 +14,12 @@ claims JSON ──────────────────────�
                        └─ optional formal repository-quality score
 ```
 
-- PDF input uses the typed `paper_claims` operation. Install `osa_tool[paper-claims]` for this path.
+- PDF input uses the typed `paper_claims` operation and defaults to OpenRouter Mistral OCR. Install
+  `osa_tool[paper-claims]` for this path. Select Cloudflare AI or Marker with `--pdf-parser` or
+  `[paper_analysis.paper_claims].pdf_parser`; cloud parsers require an OpenRouter model profile.
+- OpenRouter parser calls also invoke the configured paper-claims model for each PDF chunk. Cloudflare AI parsing is
+  free; normal model usage charges may still apply.
+- Marker is an optional local parser. Install `osa_tool[paper-claims,paper-claims-marker]` to use it.
 - Parsed section input uses generic `PaperSection` JSON via `--sections-json`, skipping PDF splitting, Marker, and
   Markdown parsing. Install `osa_tool[paper-claims-lite]` for parsed-section claim extraction without the PDF stack.
 - Existing `claims.json`, `claims_legacy.json`, and bare claim arrays can start directly at verification.
@@ -54,8 +59,12 @@ rejected.
 osa-tool --paper-analysis \
   --repository https://github.com/example/project \
   --paper ./paper.pdf \
+  --pdf-parser mistral-ocr \
   --paper-output-dir ./analysis
 ```
+
+Use `--pdf-parser cloudflare-ai` for OpenRouter's free Cloudflare parser or `--pdf-parser marker` for local Marker.
+The parser setting defaults to `mistral-ocr`. `--force-parser-refresh` bypasses cached parser output for one run.
 
 Use already parsed generic sections and optional paper-claim prompt overrides:
 
