@@ -14,7 +14,7 @@ The required inputs are:
 - A local repository path or supported remote repository URL.
 - Exactly one of a paper PDF or an existing claims JSON file.
 
-For historical analysis with `--based-on-date`, use a remote repository URL. Do not run that option against the user's local checkout: OSA checks out the closest commit there and leaves the checkout at detached HEAD. If only a local repository is available, use an isolated disposable copy including its Git history, or ask for a remote URL.
+For historical analysis with `--based-on-date`, use a remote repository URL from a dedicated, empty working directory. OSA clones into a directory named after the repository; if that path already exists, OSA may reuse it and reset tracked changes and delete untracked files before checking out the historical commit. Confirm the resolved clone path does not exist before running. Do not run the date option against the user's local checkout: OSA checks out the closest commit there and leaves the checkout at detached HEAD. If only a local repository is available, use an isolated disposable copy including its Git history, or ask for a remote URL.
 
 Ask only for whichever required input is missing. If the user already has extracted claims, use that JSON directly and avoid PDF conversion. If they provide a PDF, use it as the source and let OSA extract claims before verification.
 

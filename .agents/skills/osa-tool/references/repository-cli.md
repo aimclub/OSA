@@ -9,6 +9,8 @@ poetry run python -m osa_tool.run --repository https://github.com/OWNER/REPO --m
 
 The repository and requested action are the main inputs. OSA defaults to `auto`, which analyzes the repository and presents a proposed task plan for confirmation or interactive editing. `basic` runs a fixed set of actions (About section, community docs, organization, README, and report). `advanced` starts from explicit flags and lets the interactive plan editor refine them. Review the plan before allowing execution.
 
+When a requested action must run because its task flag was supplied, pair that flag with `--mode advanced` and confirm it in the plan. In `auto` mode, the generated plan can replace explicit task-flag values; if staying in `auto`, inspect the plan and enable the requested action there.
+
 ## Common task flags
 
 Choose only flags that match the user's request:
@@ -49,6 +51,8 @@ Do not ask about temperature, top-p, token limit, or context window unless the r
 ## Workflow generation
 
 Add `--generate-workflows` for CI workflow files. Documented controls include `--include-tests`, `--include-black`, `--include-pep8`, `--include-autopep8`, `--include-fix-pep8`, `--include-pypi`, `--include-ruff`, `--python-versions VERSIONS...`, `--pep8-tool flake8|pylint`, `--use-uv`, `--use-poetry`, `--branches BRANCHES...`, and `--include-codecov`.
+
+For GitHub, Gitverse, and GitLab workflows, `--include-fix-pep8` is generated only when `--include-autopep8` is also enabled. SourceCraft can generate the fix job independently.
 
 The defaults already cover a common tests, Black, and PEP 8 setup. Add optional components only when asked. Avoid enabling both Black and Ruff formatting because their formatters can conflict. Verify every workflow flag with this checkout's `--help`; some options shown in workflow documentation may not be registered in the main CLI parser.
 
