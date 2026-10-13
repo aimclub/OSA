@@ -91,8 +91,8 @@ INPUT DATA:
 2. URLs: {urls}
 
 TASK:
-Analyze input URLs and return a comma-separated list of valid homepages/documentation sources ranked by relevance excluding any git url. 
-Return empty string if none qualify with no commentary or explanations.
+Analyze input URLs and return a comma-separated list of valid homepages/documentation sources ranked by relevance excluding any git url.
+If none qualify, return exactly NO_HOMEPAGE with no commentary or explanations.
 
 RULES:
 1. Include:

@@ -117,9 +117,9 @@ to the repository.
 | output               | `-o`, `--output`         | str  | Path to the output directory                                                                                                       | `null`                           | —                           |
 | config_file          | `--config-file`          | str  | Path to custom configuration file (TOML format) | `null` | —
 | use_single_model     | `--use-single-model`     | flag | Use the same model for all tasks (if disabled, use specific models for each task type) | `true` | —
-| api                  | `--api`                  | str  | LLM API service provider                                                                                                           | `openai`                           | `itmo`, `openai`, `ollama`  |
+| api                  | `--api`                  | str  | LLM API service provider                                                                                                           | `host`                             | `host`, `itmo`, `openai`, `ollama` |
 | base_url             | `--base-url`             | str  | URL of the service provider. See [available urls](https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors)               | `https://openrouter.ai/api/v1`      | —                           |
-| model                | `--model`                | str  | Specific LLM model to use. See [available providers and models](https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors) | `gpt-3.5-turbo`                  | —                           |
+| model                | `--model`                | str  | Specific LLM model to use. See [available providers and models](https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors) | `gpt-5.6-luna`                  | —                           |
 | model_docstring | `--model-docstring` | str | Specific LLM model for docstring generation tasks | Temprorary inherited from default model| —
 | model_readme | `--model-readme` | str | Specific LLM model for README generation tasks | Temprorary inherited from default model| —
 | model_repository_quality | `--model-repository-quality` | str | Specific LLM model for formal repository-quality scoring | Inherited from default model | —

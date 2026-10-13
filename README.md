@@ -164,31 +164,29 @@ docker build --build-arg GIT_USER_NAME="your-user-name" --build-arg GIT_USER_EMA
 
 OSA requires Python 3.11 or higher.
 
-The .env file is required to specify the LLM API key (OPENAI_API_KEY or AUTHORIZATION_KEY) and optionally a Git token.
-The Git token (GIT_TOKEN) may be omitted if you plan to work with a public repository without creating a fork (using the
---no-fork option).
-
-Alternatively, instead of GIT_TOKEN, you can use GITHUB_TOKEN, GITLAB_TOKEN, or GITVERSE_TOKEN for GitHub, GitLab, and
-Gitverse respectively.
-
-When running `osa-tool` from CLI, you need to set the GIT_TOKEN and API key first:
+OSA can be configured in two common ways:
 
 ```sh
-# Linux / macOS (bash/zsh)
-export OPENAI_API_KEY=<your_api_key>
+# Subscription-backed Host LLM provider (api = "host")
+export HOST_LLM_COMMAND=codex
 export GIT_TOKEN=<your_git_token>
 
-# Windows (PowerShell)
-setx OPENAI_API_KEY "<your_api_key>"
-setx GIT_TOKEN "<your_git_token>"
+# OpenAI-compatible API provider (--api openai)
+export OPENAI_API_KEY=<your_api_key>
+export GIT_TOKEN=<your_git_token>
 ```
+
+The Git token (GIT_TOKEN) may be omitted if you plan to work with a public repository without creating a fork (using the
+--no-fork option). Instead of GIT_TOKEN, you can use GITHUB_TOKEN, GITLAB_TOKEN, or GITVERSE_TOKEN for GitHub, GitLab,
+and Gitverse respectively. `AUTHORIZATION_KEY` is only needed when using Gigachat.
 
 ### Tokens
 
 | Token name          | Description                                                                                                                                                                          | Mandatory |
 |---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
 | `GIT_TOKEN`         | Personal GitHub/GitLab/Gitverse token used to clone private repositories, access metadata, and interact with its API.                                                                | Yes       |
-| `OPENAI_API_KEY`    | API key for accessing [OpenAI](https://platform.openai.com/docs/api-reference/introduction), [vsegpt](https://vsegpt.ru/Docs/API) and [openrouter](https://openrouter.ai/) providers | No        |
+| `HOST_LLM_COMMAND`  | Logged-in Codex CLI command used by the subscription-backed `api = "host"` provider (`codex`).                                                                        | No        |
+| `OPENAI_API_KEY`    | API key for accessing [OpenAI](https://platform.openai.com/docs/api-reference/introduction), [vsegpt](https://vsegpt.ru/Docs/API), and [openrouter](https://openrouter.ai/) providers through `--api openai`. | No        |
 | `AUTHORIZATION_KEY` | API key for [gigachat](https://developers.sber.ru/portal/products/gigachat-api) provider                                                                                             | No        |
 | `X-API-Key`         | API key for the [pepy.tech](https://pepy.tech/pepy-api) REST API, used to fetch Python package download statistics                                                                   | No        |
 
@@ -210,6 +208,8 @@ python -m osa_tool.run -r {repository} [--api {api}] [--base-url {base_url}] [--
 docker run --env-file .env {image-name} -r {repository} [--api {api}] [--base-url {base_url}] [--model {model_name}] [--attachment {article}] [--convert-notebooks {notebook_paths}]
 ```
 
+Docker runs default to the OpenAI-compatible API-key provider because the container cannot inherit a logged-in host command from the user's machine. Pass `--api host` only when the container has access to a host command or bridge.
+
 The --attachment option enables you to choose a README template for a repository based on an article. You can provide
 either a link to a PDF file of the article or a path to a local PDF file after the --attachment option. If you are using
 Docker, ensure that you upload the PDF file to the OSA folder before building the image, then, specify the path as
@@ -226,9 +226,9 @@ documentation, see the [Workflow Generator README](./osa_tool/operations/codebas
 | `-b`, `--branch`       | Branch name of the repository                                                       | Default branch                 |
 | `--based-on-date`      | Analyse the repository version closest to the given date (forces no fork / no PR)   | `None`                         |
 | `-o`, `--output`       | Path to the output directory                                                        | Current working directory      |
-| `--api`                | LLM API service provider                                                            | `openai`                       |
-| `--base-url`           | URL of the provider compatible with API OpenAI                                      | `https://openrouter.ai/api/v1` |
-| `--model`              | Specific LLM model to use                                                           | `gpt-3.5-turbo`                |
+| `--api`                | LLM API service provider                                                            | `host`                         |
+| `--base-url`           | URL for OpenAI-compatible, ITMO, or Ollama providers; ignored by `host`             | `https://openrouter.ai/api/v1` |
+| `--model`              | Specific LLM model to use                                                           | `gpt-5.6-luna`                 |
 | `--top_p`              | Nucleus sampling probability                                                        | `0.95`                         |
 | `--temperature`        | Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative).   | `0.05`                         |
 | `--max_tokens`         | Maximum number of output tokens the model can generate in a single response         | `4096`                         |
@@ -245,7 +245,8 @@ configuration file. If no custom configuration file is provided, OSA will use th
 
 By default, OSA uses a single model for all tasks (specified via `--model`). If you want to use different models for
 different types of tasks, disable the `--use-single-model` flag and specify models for each task type (
-`--model-docstring`, `--model-readme`, `--model-validation`, `--model-general`).
+`--model-docstring`, `--model-readme`, `--model-general`, `--model-repository-quality`, `--model-paper-claims`,
+`--model-paper-verification`).
 
 To learn how to work with the interactive CLI and view descriptions of all available keys, visit
 the [CLI usage guide](./docs/scheduler/index.md).
@@ -259,9 +260,23 @@ Examples of generated README files are available in [examples](./examples).
 URL of the GitHub/GitLab/Gitverse repository, LLM API service provider (*optional*) and Specific LLM model to use
 (*optional*) are required to use the generator.
 
-Supported LLM providers are available as part of the [ProtoLLM](https://github.com/aimclub/ProtoLLM/)
-ecosystem. See the [connectors directory](https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors) for the
-full list.
+OSA supports the subscription-backed Host LLM provider directly. `HOST_LLM_COMMAND` currently expects the Codex CLI protocol; use the bridge or an API-backed provider when custom generation controls are required. Other LLM providers are available as part of the
+[ProtoLLM](https://github.com/aimclub/ProtoLLM/) ecosystem. See the
+[connectors directory](https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors) for the full list.
+
+Subscription-backed Host LLM:
+
+```sh
+export HOST_LLM_COMMAND=codex
+python -m osa_tool.run -r https://github.com/aimclub/OSA --api host
+```
+
+OpenAI-compatible API key:
+
+```sh
+export OPENAI_API_KEY=<your_api_key>
+python -m osa_tool.run -r https://github.com/aimclub/OSA --api openai --base-url https://api.openai.com/v1 --model gpt-4o
+```
 
 Local ITMO model:
 

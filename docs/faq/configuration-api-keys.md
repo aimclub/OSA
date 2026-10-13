@@ -9,6 +9,9 @@ OSA requires different tokens depending on your use case. Here's a complete over
 | Token Name | Description | Mandatory | When Required |
 |------------|-------------|-----------|---------------|
 | **`GIT_TOKEN`** | Personal GitHub/GitLab/Gitverse token for cloning repos, accessing metadata, and creating PRs | ✅ Yes* | Always, unless using `--no-fork` with public repos |
+| **`HOST_LLM_COMMAND`** | Logged-in Codex CLI command for the default subscription-backed provider (`codex`) | ❌ No | When using default `--api host` command transport |
+| **`HOST_LLM_BRIDGE_DIR`** | Directory for Host LLM request/response JSON files | ❌ No | When using default `--api host` bridge transport |
+| **`HOST_LLM_REQUEST_TIMEOUT_SECONDS`** | Host LLM request timeout | ❌ No | Optional for long host-backed runs |
 | **`OPENAI_API_KEY`** | API key for OpenAI, VseGPT, OpenRouter providers | ❌ No | When using `--api openai` or compatible providers |
 | **`ITMO_MODEL_URL`** | URL for ITMO-hosted LLM endpoint | ❌ No | When using ITMO's internal model |
 
@@ -26,9 +29,9 @@ GITVERSE_TOKEN=<your_gitverse_token> # For Gitverse
 **Minimum Setup for Testing:**
 
 ```bash
-# For public repos with ITMO model (no API key needed):
+# Default Host LLM provider; no OpenAI-compatible API key needed:
+export HOST_LLM_COMMAND=codex
 export GIT_TOKEN=your_token
-# That's it! OSA will use default ITMO endpoint
 ```
 
 ## 3.2 How do I set up OPENAI_API_KEY?
@@ -154,12 +157,13 @@ export GITVERSE_TOKEN="gv_..."
 
 ## 3.4 Which LLM providers are supported?
 
-OSA supports multiple LLM providers through the [ProtoLLM](https://github.com/aimclub/ProtoLLM/) ecosystem.
+OSA supports the subscription-backed Host LLM provider directly and multiple API providers through the [ProtoLLM](https://github.com/aimclub/ProtoLLM/) ecosystem.
 
 **Supported Providers and Configuration:**
 
 | Provider | API Type | Models Available | Cost | Best For | --api Value | --base-url | Auth Variable | Example Model |
 |----------|----------|-----------------|------|----------|---------------|--------------|---------------|---------------|
+| **Host LLM** | Subscription-backed host command or bridge | GPT-5.6 Luna and compatible subscription models | Subscription | Default OSA runs without an API key | host | Ignored | HOST_LLM_COMMAND or HOST_LLM_BRIDGE_DIR | gpt-5.6-luna |
 | **OpenAI** | OpenAI-compatible | gpt-4, gpt-3.5-turbo, gpt-4o | 💰 Paid | High-quality, reliable results | openai | <https://api.openai.com/v1> | OPENAI_API_KEY | gpt-4o |
 | **OpenRouter** | OpenAI-compatible | 100+ models (Claude, Llama, Mistral) | 💰/🆓 Mixed | Flexibility, cost optimization | openai | <https://openrouter.ai/api/v1> | OPENAI_API_KEY | qwen/qwen3-30b |
 | **VseGPT** | OpenAI-compatible | OpenAI models via Russian proxy | 💰 Paid | Users in Russia/CIS region | openai | <https://api.vsegpt.ru/v1> | OPENAI_API_KEY | openai/gpt-3.5-turbo |
@@ -173,7 +177,25 @@ OSA autodetects provider from base url, but you can manually configure it with t
 
 Manual configuration varies slightly by provider. Here are complete examples for each:
 
-**OpenAI (Default):**
+**Host LLM (Default):**
+
+```bash
+# Use the logged-in Codex CLI command
+export HOST_LLM_COMMAND=codex
+
+python -m osa_tool.run \
+  -r https://github.com/username/repo
+
+# Or choose the provider/model explicitly
+python -m osa_tool.run \
+  -r https://github.com/username/repo \
+  --api host \
+  --model gpt-5.6-luna
+```
+
+For bridge-based host execution, set `HOST_LLM_BRIDGE_DIR` instead of `HOST_LLM_COMMAND`. The bridge request includes `max_tokens`, `temperature`, and `top_p`; the Codex command transport rejects custom generation controls because that CLI protocol does not expose them.
+
+**OpenAI:**
 
 ```bash
 # Set environment variables
@@ -262,6 +284,6 @@ python -m osa_tool.run --config-file config.toml
 # Override specific values via CLI (CLI takes precedence)
 python -m osa_tool.run \
   --config-file config.toml \
-  --model gpt-4o-mini \  # Overrides [llm].model
+  --model gpt-5.6-luna \  # Overrides [llm].model
   --temperature 0.2      # Overrides [llm].temperature
 ```

@@ -11,7 +11,7 @@ Running OSA is straightforward once you have it installed and configured. Here's
 ```bash
 # Set your environment variables first
 export GIT_TOKEN="ghp_..."
-export OPENAI_API_KEY="sk-..."  # If using OpenAI
+export HOST_LLM_COMMAND=codex  # Default host provider; use OPENAI_API_KEY only with --api openai
 
 # Run OSA with repository URL
 python -m osa_tool.run -r https://github.com/username/repository
@@ -23,6 +23,8 @@ python -m osa_tool.run -r https://github.com/username/repository
 docker run --env-file .env osa_tool:latest \
   -r https://github.com/username/repository
 ```
+
+Docker runs default to `--api openai`; use `OPENAI_API_KEY` in `.env`, or pass `--api host` only when a host command or bridge is available inside the container.
 
 ## 4.2 What command-line arguments are available?
 
@@ -47,9 +49,9 @@ OSA provides extensive CLI arguments for customization. Here's the complete refe
 
 | Flag | Description | Default | Example |
 |------|-------------|---------|---------|
-| `--api` | LLM provider | `openai` | `--api ollama` |
-| `--base-url` | API endpoint URL | `https://openrouter.ai/api/v1` | `--base-url http://localhost:11434` |
-| `--model` | LLM model name | `gpt-3.5-turbo` | `--model llama3.2:3b` |
+| `--api` | LLM provider | `host` | `--api openai` |
+| `--base-url` | API endpoint URL; ignored by `host` | `https://openrouter.ai/api/v1` | `--base-url http://localhost:11434` |
+| `--model` | LLM model name | `gpt-5.6-luna` | `--model llama3.2:3b` |
 | `--temperature` | Sampling temperature (0-1) | `0.05` | `--temperature 0.3` |
 | `--top_p` | Nucleus sampling probability | `0.95` | `--top_p 0.9` |
 | `--max_tokens` | Max output tokens | `4096` | `--max_tokens 2048` |
@@ -61,7 +63,7 @@ OSA provides extensive CLI arguments for customization. Here's the complete refe
 |------|---------|---------|
 | `--model-docstring` | Model for docstring generation | `--model-docstring codellama:13b` |
 | `--model-readme` | Model for README generation | `--model-readme gpt-4o` |
-| `--model-validation` | Model for code validation | `--model-validation llama3.1:8b` |
+| `--model-repository-quality` | Model for repository quality scoring | `--model-repository-quality gpt-5.6-luna` |
 | `--model-general` | Model for general tasks | `--model-general gemma3:27b` |
 
 **Repository Interaction:**

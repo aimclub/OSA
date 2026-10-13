@@ -210,6 +210,8 @@ docker run \
   -r https://github.com/username/repository
 ```
 
+Docker runs default to the OpenAI-compatible API-key provider. Use `OPENAI_API_KEY` in `.env`, or pass `--api host` only when the container can access a host command or bridge.
+
 **Docker Run Options:**
 
 | Option | Description | Example |

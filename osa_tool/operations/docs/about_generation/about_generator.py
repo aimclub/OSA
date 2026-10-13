@@ -273,7 +273,7 @@ class AboutGenerator:
             self.prompts.get("about_section.analyze_urls"), project_url=self.repo_url, urls=", ".join(urls)
         )
         response = self.model_handler.send_request(prompt)
-        if not response:
+        if not response or response.strip().casefold() == "no_homepage":
             return []
 
         return [url.strip() for url in response.split(",")]
