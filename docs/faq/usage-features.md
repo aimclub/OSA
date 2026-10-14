@@ -53,18 +53,24 @@ OSA provides extensive CLI arguments for customization. Here's the complete refe
 | `--base-url` | API endpoint URL; ignored by `host` | `https://openrouter.ai/api/v1` | `--base-url http://localhost:11434` |
 | `--model` | LLM model name | `gpt-5.6-luna` | `--model llama3.2:3b` |
 | `--temperature` | Sampling temperature (0-1) | `0.05` | `--temperature 0.3` |
-| `--top_p` | Nucleus sampling probability | `0.95` | `--top_p 0.9` |
-| `--max_tokens` | Max output tokens | `4096` | `--max_tokens 2048` |
-| `--context_window` | Total context window | `16385` | `--context_window 8192` |
+| `--top-p` | Nucleus sampling probability | `0.95` | `--top-p 0.9` |
+| `--max-tokens` | Max output tokens | `4096` | `--max-tokens 2048` |
+| `--context-window` | Total context window | `16385` | `--context-window 8192` |
 
-**Task-Specific Models** (when `--use-single-model=false`):
+**Task-Specific Model Overrides** (omit `--use-single-model` to allow task profiles):
 
 | Flag | Purpose | Example |
 |------|---------|---------|
 | `--model-docstring` | Model for docstring generation | `--model-docstring codellama:13b` |
 | `--model-readme` | Model for README generation | `--model-readme gpt-4o` |
-| `--model-repository-quality` | Model for repository quality scoring | `--model-repository-quality gpt-5.6-luna` |
 | `--model-general` | Model for general tasks | `--model-general gemma3:27b` |
+| `--model-repository-quality` | Model for formal repository-quality scoring | `--model-repository-quality gpt-4o` |
+| `--model-paper-claims` | Model for paper claim extraction | `--model-paper-claims gpt-4o` |
+| `--model-paper-verification` | Model for paper claim verification | `--model-paper-verification gpt-4o` |
+
+The CLI flag `--use-single-model` forces all tasks to use the shared `[llm]` settings. When it is omitted, OSA uses a
+configured task profile when present and falls back to the shared settings otherwise. It is a flag, so forms such as
+`--use-single-model=false` are not accepted.
 
 **Repository Interaction:**
 
