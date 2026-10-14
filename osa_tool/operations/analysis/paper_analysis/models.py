@@ -22,15 +22,18 @@ class PaperAnalysisRequest(StrictModel):
     repository: str
     output_dir: Path
     paper_path: Path | None = None
+    sections_path: Path | None = None
     claims_path: Path | None = None
+    paper_claims_prompts_dir: Path | None = None
     include_repository_quality: bool = False
     only_high_medium_verifiability: bool = True
     hide_low_confidence: bool = True
 
     @model_validator(mode="after")
     def require_exactly_one_claim_source(self) -> "PaperAnalysisRequest":
-        if (self.paper_path is None) == (self.claims_path is None):
-            raise ValueError("Provide exactly one of paper_path or claims_path")
+        provided = sum(item is not None for item in (self.paper_path, self.sections_path, self.claims_path))
+        if provided != 1:
+            raise ValueError("Provide exactly one of paper_path, sections_path, or claims_path")
         return self
 
 
@@ -70,7 +73,7 @@ class ClaimVerificationResult(StrictModel):
 class PaperClaimsSummary(StrictModel):
     """Provenance for the claim input consumed by the verifier."""
 
-    source_kind: Literal["pdf", "claims_json"]
+    source_kind: Literal["pdf", "sections_json", "claims_json"]
     source_path: Path
     claim_count: int
     model: ModelProvenance = Field(default_factory=ModelProvenance)

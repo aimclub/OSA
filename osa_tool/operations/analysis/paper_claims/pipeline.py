@@ -8,15 +8,30 @@ from typing import Any
 from osa_tool.operations.analysis.artifacts import (
     ModelProvenance,
     StageReportMetadata,
-    model_provenance,
     write_stage_report,
 )
-from osa_tool.operations.analysis.paper_claims.claim_extractor import AsyncModelHandler, ClaimExtractor
+from osa_tool.operations.analysis.paper_claims.claim_extractor import AsyncModelHandler
+from osa_tool.operations.analysis.paper_claims.io import (
+    export_loaded_claims,
+    export_section_extraction,
+    load_claims_json,
+    load_sections_json,
+    model_provenance_for_loaded,
+)
 from osa_tool.operations.analysis.paper_claims.marker_converter import MarkerDocumentConverter
-from osa_tool.operations.analysis.paper_claims.models import LoadedClaimsArtifact, PipelineOptions, PipelineResult
+from osa_tool.operations.analysis.paper_claims.models import (
+    ClaimExtractionResult,
+    LoadedClaimsArtifact,
+    LoadedSectionsArtifact,
+    PaperSection,
+    PipelineOptions,
+    PipelineResult,
+)
 from osa_tool.operations.analysis.paper_claims.pdf_splitter import PdfChunker
+from osa_tool.operations.analysis.paper_claims.section_extractor import extract_claims_from_sections
 from osa_tool.operations.analysis.paper_claims.section_parser import MarkdownSectionParser
 from osa_tool.utils.logger import logger
+from osa_tool.utils.prompts_builder import PromptLoader
 
 
 class PaperClaimPipeline:
@@ -26,10 +41,12 @@ class PaperClaimPipeline:
         *,
         converter: MarkerDocumentConverter | None = None,
         section_parser: MarkdownSectionParser | None = None,
+        prompts: PromptLoader | None = None,
     ) -> None:
         self.handler = handler
         self.converter = converter or MarkerDocumentConverter()
         self.section_parser = section_parser or MarkdownSectionParser()
+        self.prompts = prompts
 
     async def arun(
         self,
@@ -40,9 +57,6 @@ class PaperClaimPipeline:
     ) -> PipelineResult:
         options = options or PipelineOptions()
         pdf_path = Path(pdf_path)
-        reset_provenance = getattr(self.handler, "reset_model_provenance", None)
-        if callable(reset_provenance):
-            reset_provenance()
         logger.info("Paper claims pipeline started for %s", pdf_path)
         logger.info("Stage 1/4: starting PDF splitting")
         with PdfChunker() as chunker:
@@ -64,17 +78,12 @@ class PaperClaimPipeline:
         model_settings = getattr(self.handler, "model_settings", None)
         configured_model = getattr(model_settings, "model", None)
         logger.info("Stage 4/4: starting claim extraction with model %s", configured_model or "unknown")
-        extraction = await ClaimExtractor(
-            self.handler,
-            max_retries=options.max_retries,
-            dedup_batch_size=options.dedup_batch_size,
+        extraction = await self.extract_from_sections(
+            sections,
+            options,
+            source=str(converted.source_path),
             show_progress=show_progress,
-        ).extract(sections, source=str(converted.source_path), model=configured_model)
-        provenance = model_provenance(self.handler, configured=configured_model)
-        extraction.meta.configured_model = provenance.configured
-        extraction.meta.models_used = provenance.used or ([extraction.meta.model] if extraction.meta.model else [])
-        if extraction.meta.models_used:
-            extraction.meta.model = extraction.meta.models_used[-1]
+        )
         logger.info(
             "Stage 4/4 completed: model=%s; selected_sections=%s; extracted_before_dedup=%s; final_claims=%s",
             extraction.meta.model or "unknown",
@@ -84,6 +93,24 @@ class PaperClaimPipeline:
         )
         logger.info("Paper claims pipeline completed for %s", pdf_path)
         return PipelineResult(converted_document=converted, sections=sections, extraction=extraction)
+
+    async def extract_from_sections(
+        self,
+        sections: list[PaperSection],
+        options: PipelineOptions | None = None,
+        *,
+        source: str | None = None,
+        show_progress: bool = True,
+    ) -> ClaimExtractionResult:
+        """Run claim extraction from parsed sections with this pipeline's handler and prompts."""
+        return await extract_claims_from_sections(
+            self.handler,
+            sections,
+            options,
+            source=source,
+            prompts=self.prompts,
+            show_progress=show_progress,
+        )
 
     def run(
         self,
@@ -134,63 +161,39 @@ class PaperClaimPipeline:
     @staticmethod
     def load_claims_json(path: Path) -> LoadedClaimsArtifact:
         """Accept typed ``claims.json``, legacy ``claims_legacy.json``, or a bare list."""
-        source_path = Path(path)
-        payload = json.loads(source_path.read_text(encoding="utf-8"))
-        if isinstance(payload, list):
-            claims, source_format, upstream_meta = payload, "bare", {}
-        elif isinstance(payload, dict):
-            if "claims" in payload:
-                claims, source_format = payload["claims"], "typed"
-            else:
-                claims, source_format = payload.get("result"), "legacy"
-            upstream_meta = payload.get("meta", {})
-            if not isinstance(upstream_meta, dict):
-                upstream_meta = {}
-        else:
-            claims, source_format, upstream_meta = None, "bare", {}
-        if not isinstance(claims, list) or any(not isinstance(item, dict) for item in claims):
-            raise ValueError("Claims JSON must contain a list under 'claims' or 'result', or be a list itself")
-        return LoadedClaimsArtifact(
-            claims=claims,
-            source_path=source_path,
-            source_format=source_format,
-            upstream_meta=upstream_meta,
-        )
+        return load_claims_json(path)
 
     @staticmethod
     def export_loaded_claims(loaded: LoadedClaimsArtifact, output_dir: Path) -> Path:
         """Materialize imported claims as a resumable artifact and canonical stage report."""
-        destination = Path(output_dir)
-        destination.mkdir(parents=True, exist_ok=True)
-        provenance = PaperClaimPipeline.model_provenance_for_loaded(loaded)
-        upstream_model = loaded.upstream_meta.get("model")
-        payload: dict[str, Any] = {
-            "claims": loaded.claims,
-            "meta": {
-                "source": str(loaded.source_path),
-                "model": upstream_model if isinstance(upstream_model, str) else None,
-                "configured_model": provenance.configured,
-                "models_used": provenance.used,
-                "imported": True,
-                "input_format": loaded.source_format,
-                "upstream_meta": loaded.upstream_meta,
-            },
-        }
-        claims_path = destination / "claims.json"
-        claims_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        write_stage_report(
-            destination,
-            meta=StageReportMetadata(
-                source={
-                    "paper": {"kind": "claims_json", "path": str(loaded.source_path)},
-                    "upstream": loaded.upstream_meta,
-                },
-                model=provenance,
-            ),
-            result=payload,
+        return export_loaded_claims(loaded, output_dir)
+
+    @staticmethod
+    def load_sections_json(path: Path) -> LoadedSectionsArtifact:
+        """Accept parsed PaperSection JSON as a bare list or a ``sections`` envelope."""
+        return load_sections_json(path)
+
+    @staticmethod
+    def export_section_extraction(
+        extraction: ClaimExtractionResult,
+        sections: list[PaperSection],
+        output_dir: Path,
+        *,
+        source_kind: str,
+        source_path: Path,
+        model: ModelProvenance,
+        upstream_meta: dict[str, Any] | None = None,
+    ) -> Path:
+        """Export claims extracted from parsed sections."""
+        return export_section_extraction(
+            extraction,
+            sections,
+            output_dir,
+            source_kind=source_kind,
+            source_path=source_path,
+            model=model,
+            upstream_meta=upstream_meta,
         )
-        logger.info("Imported paper claims export completed: %s", claims_path)
-        return claims_path
 
     @staticmethod
     def model_provenance_for_extraction(result: PipelineResult) -> ModelProvenance:
@@ -211,14 +214,4 @@ class PaperClaimPipeline:
     @staticmethod
     def model_provenance_for_loaded(loaded: LoadedClaimsArtifact) -> ModelProvenance:
         """Keep model provenance from an imported typed claim artifact when present."""
-        configured = loaded.upstream_meta.get("configured_model")
-        if not isinstance(configured, str):
-            configured = None
-        upstream_model = loaded.upstream_meta.get("model")
-        upstream_models = loaded.upstream_meta.get("models_used")
-        used = (
-            [model for model in upstream_models if isinstance(model, str) and model]
-            if isinstance(upstream_models, list)
-            else ([upstream_model] if isinstance(upstream_model, str) and upstream_model else [])
-        )
-        return ModelProvenance(configured=configured, used=list(dict.fromkeys(used)))
+        return model_provenance_for_loaded(loaded)
