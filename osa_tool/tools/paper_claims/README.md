@@ -5,10 +5,17 @@ this directory are thin utilities around that single-document pipeline.
 
 Full documentation is available in [`docs/paper-claims/index.md`](../../../docs/paper-claims/index.md).
 
-Install the optional feature set before using these utilities:
+Install the full optional feature set before using the PDF batch utilities:
 
 ```bash
 pip install "osa_tool[paper-claims]"
+```
+
+For parsed-section claim extraction through the Python API or `paper_analysis --sections-json`, the lightweight
+extra avoids Marker/PDF dependencies:
+
+```bash
+pip install "osa_tool[paper-claims-lite]"
 ```
 
 ## Quickstart
@@ -53,7 +60,7 @@ contains `debug.step3_selection`.
 
 ## Evaluation
 
-Evaluation dependencies are included in the `paper-claims` extra:
+Evaluation dependencies are included in the full `paper-claims` extra:
 
 ```bash
 python -m osa_tool.tools.paper_claims.evaluate --help

@@ -154,7 +154,7 @@ model = "gpt-3.5-turbo"
 model = "codellama:13b"
 
 [llm.for_readme_gen]
-model = "gpt-4o"
+model = "gpt-5.6-luna""
 
 [llm.for_general_tasks]
 model = "gpt-4o"
@@ -180,8 +180,8 @@ for those current OSA tasks.
 
 | Benefit | Description | Example |
 |---------|-------------|---------|
-| **Cost Optimization** | Use cheaper models for simple tasks | GPT-3.5 for validation, GPT-4o for README |
-| **Performance** | Faster models for quick tasks | Llama 3.1 8B for validation |
+| **Cost Optimization** | Use cheaper models for simple tasks | Smaller local/API models for quality scoring, GPT-4o for README |
+| **Performance** | Faster models for quick tasks | Smaller local/API models for repository quality scoring |
 | **Quality** | Best model for critical tasks | GPT-4o for README and docs |
 | **Specialization** | Code models for code tasks | Codellama for docstrings |
 

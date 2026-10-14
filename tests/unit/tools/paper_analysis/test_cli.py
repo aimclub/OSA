@@ -6,6 +6,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
+
 from osa_tool.config.settings import PaperAnalysisSettings
 from osa_tool.tools.paper_analysis import __main__ as paper_main
 from osa_tool.tools.paper_analysis import cli
@@ -15,7 +17,9 @@ def _args(tmp_path, **overrides):
     values = {
         "repository": "https://github.com/example/project",
         "paper": tmp_path / "paper.pdf",
+        "sections_json": None,
         "claims_json": None,
+        "paper_claims_prompts_dir": None,
         "paper_output_dir": None,
         "include_repository_quality": None,
         "only_high_medium_verifiability": None,
@@ -111,3 +115,61 @@ def test_main_cli_paper_mode_bypasses_scheduler(monkeypatch, tmp_path, capsys):
 
     assert run.main() == 0
     assert capsys.readouterr().out == "analysis.json\n"
+
+
+def test_request_accepts_sections_json_and_prompt_overrides(tmp_path):
+    config_manager = MagicMock()
+    config_manager.get_paper_analysis_settings.return_value = PaperAnalysisSettings(output_dir=tmp_path / "output")
+    sections_path = tmp_path / "sections.json"
+    prompts_dir = tmp_path / "prompts"
+
+    request = cli.build_request(
+        _args(
+            tmp_path,
+            paper=None,
+            sections_json=sections_path,
+            paper_claims_prompts_dir=prompts_dir,
+        ),
+        config_manager,
+        clone_dir=tmp_path / "repository",
+    )
+
+    assert request.paper_path is None
+    assert request.sections_path == sections_path
+    assert request.claims_path is None
+    assert request.paper_claims_prompts_dir == prompts_dir
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"paper": Path("paper.pdf"), "sections_json": None, "claims_json": None},
+        {"paper": None, "sections_json": Path("sections.json"), "claims_json": None},
+        {"paper": None, "sections_json": None, "claims_json": Path("claims.json")},
+    ],
+)
+def test_validate_accepts_each_claim_source(tmp_path, overrides):
+    parser = MagicMock()
+    args = _args(tmp_path, **overrides)
+
+    cli.validate_paper_analysis_args(parser, args)
+
+    parser.error.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"paper": None, "sections_json": None, "claims_json": None},
+        {"paper": Path("paper.pdf"), "sections_json": Path("sections.json"), "claims_json": None},
+    ],
+)
+def test_validate_requires_exactly_one_claim_source(tmp_path, overrides):
+    parser = MagicMock()
+    parser.error.side_effect = RuntimeError("parser error")
+    args = _args(tmp_path, **overrides)
+
+    with pytest.raises(RuntimeError, match="parser error"):
+        cli.validate_paper_analysis_args(parser, args)
+
+    parser.error.assert_called_once_with("Provide exactly one of --paper, --sections-json, or --claims-json")

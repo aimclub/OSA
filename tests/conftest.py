@@ -19,7 +19,6 @@ pytest_plugins = [
     "tests.utils.fixtures.analytics_sourcerank",
     "tests.utils.fixtures.models",
     "tests.utils.fixtures.osa_arguments_parser",
-    "tests.utils.fixtures.osatreesitter",
     "tests.utils.fixtures.readmegen_context_article",
     "tests.utils.fixtures.readmegen_llm_service",
     "tests.utils.fixtures.readmegen_markdown_builder",

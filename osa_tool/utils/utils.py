@@ -603,6 +603,10 @@ def detect_provider_from_url(url) -> str | None:
         return None
 
     providers = {
+        "itmo": [
+            r".*osa\.nsslab\.onti\.actcognitive\.org.*",
+            r".*itmo.*",
+        ],
         "openai": [
             r".*openai\.com.*",
             r".*api\.openai\.com.*",
@@ -620,7 +624,7 @@ def detect_provider_from_url(url) -> str | None:
 
     for provider, patterns in providers.items():
         for pattern in patterns:
-            if re.search(pattern, url):
+            if re.search(pattern, url, re.IGNORECASE):
                 logger.debug(f"Detected provider '{provider}' from URL '{url}'")
                 return provider
 

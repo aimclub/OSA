@@ -212,7 +212,7 @@ settings:
     aliases: [ "--api" ]
     type: str
     description: "LLM API service provider"
-    choices: [ "itmo", "openai", "ollama" ]
+    choices: [ "host", "itmo", "openai", "ollama" ]
 
   base_url:
     aliases: [ "--base-url" ]

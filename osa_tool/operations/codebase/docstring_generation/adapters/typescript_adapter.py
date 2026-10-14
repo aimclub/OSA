@@ -28,10 +28,15 @@ class TypeScriptAdapter(LanguageAdapter):
         if n:
             return sv.text(n)
 
-        # arrow functions / function expressions have no name field;
-        # the name usually sits on the enclosing declarator (const foo = () => ...)
+        # arrow functions / function expressions have no name field; the name usually
+        # sits on the enclosing declarator (const foo = () => ...) or, for a class field
+        # arrow (foo = () => ...), on the surrounding field definition.
         parent = node.parent
-        if parent and parent.type == "variable_declarator":
+        if parent and parent.type in (
+            "variable_declarator",
+            "public_field_definition",
+            "field_definition",
+        ):
             declared = parent.child_by_field_name("name")
             if declared:
                 return sv.text(declared)

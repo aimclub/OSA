@@ -17,13 +17,13 @@ request_timeout = 30.0
 
 # Language Model API Settings
 [llm]
-# api = "openai"
+api = "host"
 rate_limit = 10
 base_url = "https://openrouter.ai/api/v1"
 encoder = "cl100k_base"
 host_name = "https://openrouter.ai/api/v1"
 localhost = "http://localhost:11434/"
-model = "gpt-3.5-turbo"
+model = "gpt-5.6-luna"
 path = "chat/completions"
 temperature = 0.05
 max_tokens = 4096

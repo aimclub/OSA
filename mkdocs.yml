@@ -60,7 +60,7 @@ nav:
               - Docstring Generation:
                   - Docgen: api/operations/codebase/docstring_generation/docgen.md
                   - Docstring Generation: api/operations/codebase/docstring_generation/docstring_generation.md
-                  - OSA Tree Sitter: api/operations/codebase/docstring_generation/osa_treesitter.md
+                  - OSA Parser: api/operations/codebase/docstring_generation/osa_parser.md
                   - Topology: api/operations/codebase/docstring_generation/topology.md
               - Notebook Conversion: api/operations/codebase/notebook_conversion/notebook_converter.md
               - Organization: api/operations/codebase/organization/repo_organizer.md

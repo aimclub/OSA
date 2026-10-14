@@ -249,6 +249,17 @@ def test_detect_model_ollama_provider(base_url, api):
 @pytest.mark.parametrize(
     "base_url,api",
     [
+        ("https://osa.nsslab.onti.actcognitive.org/api/v1", "itmo"),
+        ("https://models.itmo.example/api/v1", "itmo"),
+    ],
+)
+def test_detect_model_itmo_provider(base_url, api):
+    assert detect_provider_from_url(base_url) == api
+
+
+@pytest.mark.parametrize(
+    "base_url,api",
+    [
         ("https://llama.yourcompany.com/v1/completions", "llama"),
     ],
 )
