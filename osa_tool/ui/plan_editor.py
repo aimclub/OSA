@@ -52,6 +52,19 @@ class PlanEditor:
             "max_retries",
         ]
         self.special_keys = ["convert_notebooks", "notebook_report"]
+        self.paper_analysis_keys = [
+            "paper_analysis",
+            "paper",
+            "sections_json",
+            "claims_json",
+            "pdf_parser",
+            "force_parser_refresh",
+            "paper_claims_prompts_dir",
+            "paper_output_dir",
+            "include_repository_quality",
+            "only_high_medium_verifiability",
+            "hide_low_confidence",
+        ]
         self.arguments_metadata = read_arguments_file_flat(build_arguments_path())
         self.modified_keys = set()
 
@@ -94,7 +107,7 @@ class PlanEditor:
         """
         console.print("\n[bold magenta]Manual plan editing mode[/bold magenta]")
 
-        editable_keys = [k for k in plan.keys() if k not in self.info_keys]
+        editable_keys = [k for k in plan.keys() if k not in self.info_keys and not k.startswith("_")]
         bool_keys = [k for k in editable_keys if isinstance(plan.get(k), bool)]
 
         console.print(f"\nAvailable keys for editing: [cyan]{', '.join(editable_keys)}[/cyan]\n")
@@ -252,7 +265,12 @@ class PlanEditor:
         actions_table.add_column("Value")
 
         for key, value in plan.items():
-            if key in self.info_keys or key in self.workflow_keys:
+            if (
+                key.startswith("_")
+                or key in self.info_keys
+                or key in self.workflow_keys
+                or key in self.paper_analysis_keys
+            ):
                 continue
 
             if key in self.special_keys and value in [[]]:
@@ -265,6 +283,7 @@ class PlanEditor:
                 actions_table.add_row(label, str(value))
 
         self._append_workflow_section(actions_table, plan, active=True)
+        self._append_paper_analysis_section(actions_table, plan, active=True)
         console.print(actions_table)
 
         # Inactive actions in console output
@@ -274,7 +293,12 @@ class PlanEditor:
         inactive_table.add_column("Value")
 
         for key, value in plan.items():
-            if key in self.info_keys or key in self.workflow_keys:
+            if (
+                key.startswith("_")
+                or key in self.info_keys
+                or key in self.workflow_keys
+                or key in self.paper_analysis_keys
+            ):
                 continue
 
             if key in self.special_keys and value is None:
@@ -287,7 +311,27 @@ class PlanEditor:
                 inactive_table.add_row(label, str(value))
 
         self._append_workflow_section(inactive_table, plan, active=False)
+        self._append_paper_analysis_section(inactive_table, plan, active=False)
         console.print(inactive_table)
+
+    def _append_paper_analysis_section(self, table: Table, plan: dict, active: bool) -> None:
+        """Display paper-analysis inputs and overrides as a separate plan section."""
+        rows = []
+        for key in self.paper_analysis_keys:
+            if key not in plan:
+                continue
+            value = plan[key]
+            is_active = bool(value) and value not in [None, [], ""]
+            if is_active == active:
+                rows.append((key, value))
+        if (active and not rows) or (not active and not any(key in plan for key in self.paper_analysis_keys)):
+            return
+
+        table.add_row("", "")
+        table.add_row("[bold]Paper-analysis configuration[/bold]", "")
+        for key, value in rows:
+            label = self._format_key_label(key)
+            table.add_row(label, str(value))
 
     def _append_workflow_section(self, table: Table, plan: dict, active: bool) -> None:
         """
