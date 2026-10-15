@@ -10,6 +10,7 @@ from osa_tool.operations.analysis.paper_claims.models import (
     MarkerOptions,
     PipelineOptions,
 )
+from osa_tool.operations.analysis.paper_claims.exceptions import PdfConversionError
 from osa_tool.operations.analysis.paper_claims.pipeline import PaperClaimPipeline
 from osa_tool.utils.logger import logger, setup_logging
 
@@ -132,6 +133,15 @@ def main() -> int:
             log_cuda_memory=args.marker_log_cuda_memory,
         ),
     )
+    from osa_tool.operations.analysis.paper_claims.openrouter_converter import (
+        validate_openrouter_parser_configuration,
+    )
+
+    try:
+        validate_openrouter_parser_configuration(options.pdf_parser, handler.model_settings)
+    except PdfConversionError:
+        return 1
+
     for pdf in track(pdfs, description="Processing PDF documents"):
         logger.info("Starting document %s", pdf)
         try:

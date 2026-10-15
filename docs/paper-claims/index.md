@@ -12,8 +12,10 @@ PDF → physical PDF chunks → selected parser Markdown → structured sections
 ```
 
 Mistral OCR through OpenRouter is the default parser. Cloudflare AI through OpenRouter and local Marker are selectable
-with `pdf_parser` in `[paper_analysis.paper_claims]` or `--pdf-parser`. OpenRouter parsing requires an OpenRouter
-paper-claims model and runs a small chat completion to return parsed text in file annotations. Mistral OCR has a
+with `pdf_parser` in `[paper_analysis.paper_claims]` or `--pdf-parser`. Cloud parsers require the paper-claims model
+profile to use `api = "openai"` with `base_url = "https://openrouter.ai/api/v1"`; `api = "host"` uses Codex and
+ignores `base_url`, so the pipeline warns and stops before parsing. OpenRouter parsing runs a small chat completion to
+return parsed text in file annotations. Mistral OCR has a
 per-page parsing fee; Cloudflare AI parsing is free, though the accompanying model completion may incur normal model
 charges. See [OpenRouter's PDF documentation](https://openrouter.ai/docs/guides/overview/multimodal/pdfs) for current
 engine pricing and request details.
@@ -148,7 +150,7 @@ Useful options:
 | Option | Default | Description |
 | --- | --- | --- |
 | `--chunk-pages` | `5` | Number of PDF pages per physical chunk. |
-| `--pdf-parser` | `mistral-ocr` | Select `mistral-ocr`, `cloudflare-ai`, or `marker`. Cloud parsers require OpenRouter. |
+| `--pdf-parser` | `mistral-ocr` | Select `mistral-ocr`, `cloudflare-ai`, or `marker`. Cloud parsers require `api = "openai"` and an OpenRouter base URL. |
 | `--max-retries` | `5` | LLM response validation and repair attempts. |
 | `--dedup-batch-size` | `50` | Maximum extracted claims sent in one deduplication request. |
 | `--model` | `openai/gpt-5.4-mini` | Model name passed through the normal OSA validation model settings. |

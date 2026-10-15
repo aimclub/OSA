@@ -193,15 +193,18 @@ async def test_async_request_calls_llm(mock_config_manager, patch_llm_connector,
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("parser", ["mistral-ocr", "cloudflare-ai"])
+@pytest.mark.parametrize("text_shape", ["property", "async_method"])
 async def test_async_request_pdf_sends_openrouter_file_parser_plugin(
-    tmp_path, parser, mock_config_manager, patch_llm_connector
+    tmp_path, parser, text_shape, mock_config_manager, patch_llm_connector
 ):
     model_settings = mock_config_manager.get_model_settings("general")
     model_settings.base_url = "https://openrouter.ai/api/v1"
     handler = ProtollmHandler(model_settings)
     pdf_path = tmp_path / "paper.pdf"
     pdf_path.write_bytes(b"%PDF-test")
-    raw_response = SimpleNamespace(text=AsyncMock(return_value=json.dumps({"choices": [{"message": {}}]})))
+    response_text = json.dumps({"choices": [{"message": {}}]})
+    raw_text = response_text if text_shape == "property" else AsyncMock(return_value=response_text)
+    raw_response = SimpleNamespace(text=raw_text)
     create = AsyncMock(return_value=raw_response)
     handler.client = SimpleNamespace(
         root_async_client=SimpleNamespace(
@@ -223,6 +226,31 @@ async def test_async_request_pdf_sends_openrouter_file_parser_plugin(
     assert file_part["file"]["filename"] == "paper.pdf"
     assert file_part["file"]["file_data"].startswith("data:application/pdf;base64,")
     assert handler.successful_models == [model_settings.model]
+
+
+@pytest.mark.asyncio
+async def test_async_request_pdf_does_not_retry_models_when_response_body_is_invalid(
+    tmp_path, mock_config_manager, patch_llm_connector
+):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.base_url = "https://openrouter.ai/api/v1"
+    model_settings.fallback_models = ["fallback-model"]
+    handler = ProtollmHandler(model_settings)
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_bytes(b"%PDF-test")
+    create = AsyncMock(return_value=SimpleNamespace(text="not-json"))
+    handler.client = SimpleNamespace(
+        root_async_client=SimpleNamespace(
+            chat=SimpleNamespace(
+                completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create)),
+            ),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="returned invalid JSON"):
+        await handler.async_request_pdf(pdf_path, "mistral-ocr", retry_delay=0)
+
+    create.assert_awaited_once()
 
 
 @pytest.mark.asyncio

@@ -169,6 +169,17 @@ def run_paper_analysis(
         git_initializer = initialize_git_platform
 
     config_manager = config_manager_factory(args)
+    if getattr(args, "paper", None) is not None:
+        from osa_tool.operations.analysis.paper_claims.openrouter_converter import (
+            validate_openrouter_parser_configuration,
+        )
+
+        paper_claim_settings = config_manager.get_paper_analysis_settings().paper_claims
+        parser = args.pdf_parser or paper_claim_settings.pdf_parser
+        validate_openrouter_parser_configuration(
+            parser,
+            config_manager.get_model_settings("paper_claims"),
+        )
     git_agent, _ = git_initializer(args, config_manager)
     clone_existed_before = Path(git_agent.clone_dir).exists()
     try:

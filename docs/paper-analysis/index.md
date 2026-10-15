@@ -16,7 +16,8 @@ claims JSON ──────────────────────�
 
 - PDF input uses the typed `paper_claims` operation and defaults to OpenRouter Mistral OCR. Install
   `osa_tool[paper-claims]` for this path. Select Cloudflare AI or Marker with `--pdf-parser` or
-  `[paper_analysis.paper_claims].pdf_parser`; cloud parsers require an OpenRouter model profile.
+  `[paper_analysis.paper_claims].pdf_parser`; cloud parsers require `api = "openai"` and an OpenRouter base URL in
+  the paper-claims model profile. The `host` API uses Codex and ignores `base_url`, so cloud parser runs warn and stop.
 - OpenRouter parser calls also invoke the configured paper-claims model for each PDF chunk. Cloudflare AI parsing is
   free; normal model usage charges may still apply.
 - Marker is an optional local parser. Install `osa_tool[paper-claims,paper-claims-marker]` to use it.

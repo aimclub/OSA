@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import inspect
 import json
 import logging
 import os
@@ -344,11 +345,19 @@ class ProtollmHandler(ModelHandler):
             raise ValueError(f"Unsupported OpenRouter PDF parser: {parser}")
 
         hostname = urlparse(self.model_settings.base_url).hostname or ""
-        if hostname != "openrouter.ai" and not hostname.endswith(".openrouter.ai"):
-            raise ValueError(
-                f"The {parser} PDF parser requires an OpenRouter base URL; "
-                f"configured base URL is {self.model_settings.base_url!r}."
+        api = getattr(self.model_settings, "api", None)
+        if api not in {None, "openai"} or (
+            hostname != "openrouter.ai" and not hostname.endswith(".openrouter.ai")
+        ):
+            message = (
+                f"The {parser} PDF parser requires an OpenRouter base URL and api='openai'; "
+                f"configured api={api!r}, base_url={self.model_settings.base_url!r}."
             )
+            if api == "host":
+                message += " The host provider uses Codex and ignores base_url."
+            message += " Configure the OpenRouter API or select the Marker parser."
+            logger.warning("PDF parsing stopped: %s", message)
+            raise ValueError(message)
 
         path = Path(pdf_path)
         file_data = base64.b64encode(path.read_bytes()).decode("ascii")
@@ -383,15 +392,30 @@ class ProtollmHandler(ModelHandler):
                         "plugins": [{"id": "file-parser", "pdf": {"engine": parser}}],
                     },
                 )
-                response = json.loads(await raw_response.text())
-                if not isinstance(response, dict):
-                    raise ValueError("OpenRouter returned a non-object response for PDF parsing")
-                self._record_successful_model(model)
-                return response
             except Exception as exc:
                 last_error = exc
                 logger.debug("OpenRouter PDF parsing request failed with model %s: %r", model, exc)
                 await asyncio.sleep(retry_delay)
+                continue
+
+            # OpenAI response wrappers expose ``text`` as an async method, while
+            # other compatible wrappers expose the already-decoded string as a
+            # property. Support both forms without retrying a successful request.
+            response_text = getattr(raw_response, "text", None)
+            if callable(response_text):
+                response_text = response_text()
+            if inspect.isawaitable(response_text):
+                response_text = await response_text
+            if not isinstance(response_text, str):
+                raise ValueError("OpenRouter returned no text body for PDF parsing")
+            try:
+                response = json.loads(response_text)
+            except json.JSONDecodeError as exc:
+                raise ValueError("OpenRouter returned invalid JSON for PDF parsing") from exc
+            if not isinstance(response, dict):
+                raise ValueError("OpenRouter returned a non-object response for PDF parsing")
+            self._record_successful_model(model)
+            return response
 
         if last_error is not None:
             raise last_error

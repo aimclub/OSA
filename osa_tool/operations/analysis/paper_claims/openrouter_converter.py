@@ -24,6 +24,26 @@ def _is_openrouter_url(base_url: str | None) -> bool:
     return hostname == "openrouter.ai" or hostname.endswith(".openrouter.ai")
 
 
+def validate_openrouter_parser_configuration(parser: str, model_settings: Any) -> None:
+    """Reject remote PDF parsers when the paper-claims handler will not call OpenRouter."""
+    if parser not in {"mistral-ocr", "cloudflare-ai"}:
+        return
+
+    api = getattr(model_settings, "api", None)
+    base_url = getattr(model_settings, "base_url", None)
+    if (api not in {None, "openai"}) or not _is_openrouter_url(base_url):
+        api_detail = f"api={api!r}, base_url={base_url!r}"
+        host_detail = " The host provider uses Codex and ignores base_url." if api == "host" else ""
+        message = (
+            f"The {parser} PDF parser requires an OpenRouter base URL and api='openai'; "
+            f"configured paper-claims settings: {api_detail}."
+            f"{host_detail} Set the paper-claims API to openai with base URL "
+            "https://openrouter.ai/api/v1, or select --pdf-parser marker."
+        )
+        logger.warning("PDF parsing stopped: %s", message)
+        raise PdfConversionError(message)
+
+
 def extract_annotation_text(response: dict[str, Any]) -> str:
     """Read parsed PDF text from OpenRouter's chat-completion file annotations."""
     choices = response.get("choices")
@@ -61,12 +81,7 @@ class OpenRouterDocumentConverter:
     def __init__(self, handler: Any, parser: str, cache_root: Path | None = None) -> None:
         if parser not in {"mistral-ocr", "cloudflare-ai"}:
             raise ValueError(f"Unsupported OpenRouter PDF parser: {parser}")
-        base_url = getattr(getattr(handler, "model_settings", None), "base_url", None)
-        if not _is_openrouter_url(base_url):
-            raise PdfConversionError(
-                f"The {parser} PDF parser requires an OpenRouter base URL; "
-                f"configured base URL is {base_url!r}. Select Marker or configure OpenRouter for paper claims."
-            )
+        validate_openrouter_parser_configuration(parser, getattr(handler, "model_settings", None))
         self.handler = handler
         self.parser = parser
         self.cache_root = Path(cache_root) if cache_root else DEFAULT_OPENROUTER_CACHE / parser

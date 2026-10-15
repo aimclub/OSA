@@ -6,7 +6,9 @@ this directory are thin utilities around that single-document pipeline.
 Full documentation is available in [`docs/paper-claims/index.md`](../../../docs/paper-claims/index.md).
 
 PDF parsing defaults to Mistral OCR through OpenRouter. Cloudflare AI can be selected with `--pdf-parser cloudflare-ai`;
-its parser is free, while the configured model completion may still incur normal model usage charges.
+its parser is free, while the configured model completion may still incur normal model usage charges. Both remote
+parsers require the paper-claims model profile to use `api = "openai"` and an OpenRouter base URL. The `host` API uses
+Codex and ignores `base_url`, so remote parser runs warn and stop before parsing.
 
 Install the full optional feature set before using the PDF batch utilities:
 

@@ -325,6 +325,16 @@ class PaperAnalysisOperation:
         if self._request.sections_path is not None:
             return load_sections_json(self._request.sections_path)
         assert self._request.paper_path is not None
+        paper_claim_settings = self._config_manager.get_paper_analysis_settings().paper_claims
+        parser = self._request.pdf_parser or paper_claim_settings.pdf_parser
+        from osa_tool.operations.analysis.paper_claims.openrouter_converter import (
+            validate_openrouter_parser_configuration,
+        )
+
+        validate_openrouter_parser_configuration(
+            parser,
+            self._config_manager.get_model_settings("paper_claims"),
+        )
         from osa_tool.operations.analysis.paper_claims.pdf_splitter import PdfChunker
 
         return PdfChunker.validate_readable(self._request.paper_path)
