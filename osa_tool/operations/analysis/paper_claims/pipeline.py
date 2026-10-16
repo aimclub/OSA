@@ -88,7 +88,7 @@ class PaperClaimPipeline:
                     force_refresh=options.force_parser_refresh,
                     show_progress=show_progress,
                 )
-            if self.converter is None:
+            if converted.parser is None:
                 converted = converted.model_copy(update={"parser": options.pdf_parser})
             converter_name = converted.parser or (
                 "injected converter" if self.converter is not None else options.pdf_parser

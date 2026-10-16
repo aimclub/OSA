@@ -57,9 +57,10 @@ class FakeHandler:
 
 
 class FakeConverter:
-    def __init__(self):
+    def __init__(self, parser: str | None = None):
         self.chunk_paths: list[Path] = []
         self.show_progress: bool | None = None
+        self.parser = parser
 
     def convert(self, chunks, options, *, show_progress=True):
         self.chunk_paths = [item.path for item in chunks]
@@ -69,6 +70,7 @@ class FakeConverter:
             source_hash=chunks[0].source_hash,
             chunks=[ConvertedChunk(index=1, start_page=1, end_page=1, markdown="# Method\nBody")],
             markdown="# Method\nBody",
+            parser=self.parser,
         )
 
 
@@ -111,6 +113,20 @@ async def test_pipeline_composes_stages_and_removes_pdf_chunks(tmp_path, caplog)
     debug_path = PaperClaimPipeline.export(result, tmp_path / "export-debug", legacy=True, include_debug=True)
     debug_payload = json.loads(debug_path.read_text())
     assert debug_payload["debug"]["step3_selection"] == []
+
+
+@pytest.mark.asyncio
+async def test_pipeline_preserves_parser_reported_by_injected_converter(tmp_path):
+    pdf = tmp_path / "paper.pdf"
+    create_pdf(pdf)
+    pipeline = PaperClaimPipeline(FakeHandler(), converter=FakeConverter(parser="marker"))
+
+    result = await pipeline.arun(pdf, PipelineOptions())
+    PaperClaimPipeline.export(result, tmp_path / "export")
+
+    report = json.loads((tmp_path / "export" / "report.json").read_text(encoding="utf-8"))
+    assert result.converted_document.parser == "marker"
+    assert report["meta"]["source"]["paper"]["parser"] == "marker"
 
 
 @pytest.mark.asyncio
