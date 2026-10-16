@@ -78,18 +78,12 @@ Here is a short video:
    including unit tests, code formatting, PEP 8 compliance checks, and PyPI publication.
 
 6. **Repository-quality score**: Evaluates a repository against formal criteria such as a non-empty README and
-   license file. Its standalone artifact is a provenance-bearing `report.json`; run it independently with
-   `python -m osa_tool.tools.repository_quality` or as part of paper analysis.
+   license file. The score is available as part of paper analysis with `--include-repository-quality`.
 
-7. **Standalone paper claims pipeline**: Extracts technical claims from PDF papers through the reusable
-   `paper_claims` operation and batch utilities. This pipeline is available as a separate module and is not registered
-   in the scheduler yet.
-
-8. **Paper repository analysis**: The canonical `osa-tool --paper-analysis` mode extracts or resumes typed paper
+7. **Paper repository analysis**: The canonical `osa-tool --paper-analysis` mode extracts or resumes typed paper
    claims and verifies them against a repository. Formal repository-quality scoring is optional through
-   `--include-repository-quality`; the focused `python -m osa_tool.tools.paper_analysis` wrapper runs the same pipeline.
-   With `--delete-dir`, both
-   entry points remove only a remote clone created by that invocation, never a user-supplied local repository.
+   `--include-repository-quality`. With `--delete-dir`, the command removes only a remote clone created by that
+   invocation, never a user-supplied local repository.
 
 ---
 

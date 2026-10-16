@@ -137,7 +137,13 @@ The debug payload is stored under:
 }
 ```
 
-## Batch CLI
+## Developer-only command-line utilities
+
+The batch and evaluation commands in this section support development and research workflows. They are not part of the
+supported `osa-tool` command-line interface. For normal repository-backed paper analysis, use
+[`osa-tool --paper-analysis`](../paper-analysis/index.md).
+
+### Batch utility
 
 The batch utility processes one or more PDF files or directories through the single-document pipeline:
 
@@ -198,7 +204,7 @@ from osa_tool.operations.analysis.paper_claims import clear_marker_cache
 clear_marker_cache()
 ```
 
-## Evaluation utilities
+### Evaluation utilities
 
 Install the paper-claims extra before running PDF conversion or evaluation utilities. It includes remote parser support
 and does not install Marker:
@@ -273,8 +279,4 @@ Important modules:
 | `claim_extractor.py` | LLM request/repair loop and three-step extraction orchestration. |
 | `pipeline.py` | Single-document pipeline composition and artifact export. |
 
-Supporting command-line tools live in:
-
-```text
-osa_tool/tools/paper_claims/
-```
+The developer-only command implementations are maintained separately from the reusable paper-claims operation.

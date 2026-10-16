@@ -14,6 +14,7 @@ from rich import box
 from rich.console import Console
 from rich.prompt import Prompt
 from rich.table import Table
+from rich.text import Text
 
 from osa_tool.utils.arguments_parser import read_arguments_file_flat
 from osa_tool.utils.logger import logger
@@ -123,7 +124,9 @@ class PlanEditor:
             "only_high_medium_verifiability",
             "hide_low_confidence",
         ]
-        self.arguments_metadata = read_arguments_file_flat(build_arguments_path())
+        self.arguments_metadata = read_arguments_file_flat(
+            build_arguments_path(), include_metadata_only=True
+        )
         self.modified_keys = set()
 
     def confirm_action(self, plan: dict) -> dict:
@@ -310,6 +313,9 @@ class PlanEditor:
         info_table = Table(show_header=True, header_style="bold magenta", box=box.SIMPLE)
         info_table.add_column("Key")
         info_table.add_column("Value")
+        info_table.add_column(
+            "Description", max_width=50, no_wrap=True, overflow="ellipsis"
+        )
 
         has_info_group = False
         for group_name, keys in self.info_groups.items():
@@ -317,10 +323,10 @@ class PlanEditor:
             if not rows:
                 continue
             if has_info_group:
-                info_table.add_row("", "")
-            info_table.add_row(f"[bold]{group_name}[/bold]", "")
+                info_table.add_row("", "", "")
+            info_table.add_row(f"[bold]{group_name}[/bold]", "", "")
             for key, value in rows:
-                info_table.add_row(key, str(value))
+                info_table.add_row(key, str(value), self._description_for_key(key))
             has_info_group = True
         console.print(info_table)
 
@@ -329,6 +335,9 @@ class PlanEditor:
         actions_table = Table(show_header=True, header_style="bold green", box=box.SIMPLE)
         actions_table.add_column("Key")
         actions_table.add_column("Value")
+        actions_table.add_column(
+            "Description", max_width=50, no_wrap=True, overflow="ellipsis"
+        )
 
         for key, value in sorted(plan.items()):
             if (
@@ -353,6 +362,9 @@ class PlanEditor:
         inactive_table = Table(show_header=True, header_style="bold red", box=box.SIMPLE)
         inactive_table.add_column("Key")
         inactive_table.add_column("Value")
+        inactive_table.add_column(
+            "Description", max_width=50, no_wrap=True, overflow="ellipsis"
+        )
 
         for key, value in sorted(plan.items()):
             if (
@@ -385,8 +397,8 @@ class PlanEditor:
                 continue
 
             if table.rows:
-                table.add_row("", "")
-            table.add_row(f"[bold]{group_name}[/bold]", "")
+                table.add_row("", "", "")
+            table.add_row(f"[bold]{group_name}[/bold]", "", "")
             for key, value in rows:
                 self._add_action_row(table, key, value)
 
@@ -400,7 +412,17 @@ class PlanEditor:
         """Add an action row, preserving the empty-list shorthand for repository-wide searches."""
         label = self._format_key_label(key)
         display_value = "Search inside repository" if key in self.special_keys and value == [] else str(value)
-        table.add_row(label, display_value)
+        table.add_row(label, display_value, self._description_for_key(key))
+
+    def _description_for_key(self, key: str) -> Text:
+        """Return a display-safe YAML description for a plan key."""
+        metadata = self.arguments_metadata.get(key, {})
+        description = metadata.get("cli_description") or metadata.get("description")
+        if not description:
+            return Text("—", style="dim")
+        # YAML block descriptions contain intentional line breaks for --help;
+        # the compact plan table should display them as a single sentence.
+        return Text(" ".join(str(description).split()))
 
     def _append_paper_analysis_section(self, table: Table, plan: dict, active: bool) -> None:
         """Display paper-analysis inputs and overrides as a separate plan section."""
@@ -416,11 +438,11 @@ class PlanEditor:
             return
 
         if table.rows:
-            table.add_row("", "")
-        table.add_row("[bold]Paper-analysis configuration[/bold]", "")
+            table.add_row("", "", "")
+        table.add_row("[bold]Paper-analysis configuration[/bold]", "", "")
         for key, value in rows:
             label = self._format_key_label(key)
-            table.add_row(label, str(value))
+            table.add_row(label, str(value), self._description_for_key(key))
 
     def _append_workflow_section(self, table: Table, plan: dict, active: bool) -> None:
         """
@@ -444,19 +466,19 @@ class PlanEditor:
                 return
 
             if table.rows:
-                table.add_row("", "")
-            table.add_row("[bold]Workflows actions[/bold]", "")
+                table.add_row("", "", "")
+            table.add_row("[bold]Workflows actions[/bold]", "", "")
 
             for key in sorted(self.workflow_keys):
                 value = plan.get(key)
                 if active:
                     if value and value not in [None, [], ""]:
                         label = self._format_key_label(key)
-                        table.add_row(label, str(value))
+                        table.add_row(label, str(value), self._description_for_key(key))
                 else:
                     if not value or value in [None, [], ""]:
                         label = self._format_key_label(key)
-                        table.add_row(label, str(value))
+                        table.add_row(label, str(value), self._description_for_key(key))
         else:
             if active:
                 return
@@ -465,13 +487,13 @@ class PlanEditor:
                 return
 
             if table.rows:
-                table.add_row("", "")
-            table.add_row("[bold]Workflows actions[/bold]", "")
+                table.add_row("", "", "")
+            table.add_row("[bold]Workflows actions[/bold]", "", "")
 
             for key in sorted(self.workflow_keys):
                 value = plan.get(key)
                 label = self._format_key_label(key)
-                table.add_row(label, str(value))
+                table.add_row(label, str(value), self._description_for_key(key))
 
     def _print_help(self) -> None:
         """Display help grouped by argument 'group' with descriptions, types, editability and choices."""
