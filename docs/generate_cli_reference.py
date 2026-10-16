@@ -42,9 +42,7 @@ def _render_section(name: str, options: dict) -> str:
         required = "yes" if metadata.get("required", False) else "—"
         description = _markdown_cell(metadata.get("description", ""))
         choices = ", ".join(f"`{choice}`" for choice in metadata.get("choices", [])) or "—"
-        rows.append(
-            f"| `{key}` | {aliases} | {arg_type} | {required} | {description} | {choices} |"
-        )
+        rows.append(f"| `{key}` | {aliases} | {arg_type} | {required} | {description} | {choices} |")
     return f"### {name}\n\n" + "\n".join(rows)
 
 

@@ -108,9 +108,7 @@ class PlanEditor:
             ],
             "Reports and analysis": ["attachment", "notebook_report", "report", "scorecard"],
         }
-        self.action_group_keys = {
-            key for keys in self.action_groups.values() for key in keys
-        }
+        self.action_group_keys = {key for keys in self.action_groups.values() for key in keys}
         self.paper_analysis_keys = [
             "paper_analysis",
             "paper",
@@ -124,9 +122,7 @@ class PlanEditor:
             "only_high_medium_verifiability",
             "hide_low_confidence",
         ]
-        self.arguments_metadata = read_arguments_file_flat(
-            build_arguments_path(), include_metadata_only=True
-        )
+        self.arguments_metadata = read_arguments_file_flat(build_arguments_path(), include_metadata_only=True)
         self.modified_keys = set()
 
     def confirm_action(self, plan: dict) -> dict:
@@ -313,9 +309,7 @@ class PlanEditor:
         info_table = Table(show_header=True, header_style="bold magenta", box=box.SIMPLE)
         info_table.add_column("Key")
         info_table.add_column("Value")
-        info_table.add_column(
-            "Description", max_width=50, no_wrap=True, overflow="ellipsis"
-        )
+        info_table.add_column("Description", max_width=50, no_wrap=True, overflow="ellipsis")
 
         has_info_group = False
         for group_name, keys in self.info_groups.items():
@@ -335,9 +329,7 @@ class PlanEditor:
         actions_table = Table(show_header=True, header_style="bold green", box=box.SIMPLE)
         actions_table.add_column("Key")
         actions_table.add_column("Value")
-        actions_table.add_column(
-            "Description", max_width=50, no_wrap=True, overflow="ellipsis"
-        )
+        actions_table.add_column("Description", max_width=50, no_wrap=True, overflow="ellipsis")
 
         for key, value in sorted(plan.items()):
             if (
@@ -362,9 +354,7 @@ class PlanEditor:
         inactive_table = Table(show_header=True, header_style="bold red", box=box.SIMPLE)
         inactive_table.add_column("Key")
         inactive_table.add_column("Value")
-        inactive_table.add_column(
-            "Description", max_width=50, no_wrap=True, overflow="ellipsis"
-        )
+        inactive_table.add_column("Description", max_width=50, no_wrap=True, overflow="ellipsis")
 
         for key, value in sorted(plan.items()):
             if (
@@ -388,11 +378,7 @@ class PlanEditor:
         """Append grouped task options to the active or inactive actions table."""
         for group_name, keys in self.action_groups.items():
             available_keys = sorted(key for key in keys if key in plan)
-            rows = [
-                (key, plan[key])
-                for key in available_keys
-                if self._is_action_active(key, plan[key]) == active
-            ]
+            rows = [(key, plan[key])for key in available_keys if self._is_action_active(key, plan[key]) == active]
             if not available_keys or (active and not rows):
                 continue
 

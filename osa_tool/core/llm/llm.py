@@ -346,9 +346,7 @@ class ProtollmHandler(ModelHandler):
 
         hostname = urlparse(self.model_settings.base_url).hostname or ""
         api = getattr(self.model_settings, "api", None)
-        if api not in {None, "openai"} or (
-            hostname != "openrouter.ai" and not hostname.endswith(".openrouter.ai")
-        ):
+        if api not in {None, "openai"} or (hostname != "openrouter.ai" and not hostname.endswith(".openrouter.ai")):
             message = (
                 f"The {parser} PDF parser requires an OpenRouter base URL and api='openai'; "
                 f"configured api={api!r}, base_url={self.model_settings.base_url!r}."
