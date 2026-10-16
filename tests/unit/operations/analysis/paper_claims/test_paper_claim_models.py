@@ -68,5 +68,7 @@ def test_pipeline_options_use_the_conservative_pdf_defaults():
     options = PipelineOptions()
 
     assert options.pages_per_chunk == 5
+    assert options.pdf_parser == "mistral-ocr"
+    assert options.force_parser_refresh is False
     assert options.dedup_batch_size == 50
     assert options.marker == MarkerOptions(low_vram=True, process_isolation=True)

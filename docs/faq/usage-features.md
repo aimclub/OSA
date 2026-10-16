@@ -28,72 +28,9 @@ Docker runs default to `--api openai`; use `OPENAI_API_KEY` in `.env`, or pass `
 
 ## 4.2 What command-line arguments are available?
 
-OSA provides extensive CLI arguments for customization. Here's the complete reference:
-
-**Required Arguments:**
-
-| Flag | Description | Example | Mandatory |
-|------|-------------|---------|-----------|
-| `-r, --repository` | URL of GitHub/GitLab/Gitverse repository | `-r https://github.com/aimclub/OSA` | ✅ Yes |
-
-**Core Configuration:**
-
-| Flag | Description | Default | Example |
-|------|-------------|---------|---------|
-| `-b, --branch` | Target branch name | Default branch | `-b develop` |
-| `-o, --output` | Output directory path | Current directory | `-o ./results` |
-| `-m, --mode` | Operation mode | `auto` | `--mode basic` |
-| `--config-file` | Path to TOML configuration | None | `--config-file config.toml` |
-
-**LLM Configuration:**
-
-| Flag | Description | Default | Example |
-|------|-------------|---------|---------|
-| `--api` | LLM provider | `host` | `--api openai` |
-| `--base-url` | API endpoint URL; ignored by `host` | `https://openrouter.ai/api/v1` | `--base-url http://localhost:11434` |
-| `--model` | LLM model name | `gpt-5.6-luna` | `--model llama3.2:3b` |
-| `--temperature` | Sampling temperature (0-1) | `0.05` | `--temperature 0.3` |
-| `--top-p` | Nucleus sampling probability | `0.95` | `--top-p 0.9` |
-| `--max-tokens` | Max output tokens | `4096` | `--max-tokens 2048` |
-| `--context-window` | Total context window | `16385` | `--context-window 8192` |
-
-**Task-Specific Model Overrides** (omit `--use-single-model` to allow task profiles):
-
-| Flag | Purpose | Example |
-|------|---------|---------|
-| `--model-docstring` | Model for docstring generation | `--model-docstring codellama:13b` |
-| `--model-readme` | Model for README generation | `--model-readme gpt-4o` |
-| `--model-general` | Model for general tasks | `--model-general gemma3:27b` |
-| `--model-repository-quality` | Model for formal repository-quality scoring | `--model-repository-quality gpt-4o` |
-| `--model-paper-claims` | Model for paper claim extraction | `--model-paper-claims gpt-4o` |
-| `--model-paper-verification` | Model for paper claim verification | `--model-paper-verification gpt-4o` |
-
-The CLI flag `--use-single-model` forces all tasks to use the shared `[llm]` settings. When it is omitted, OSA uses a
-configured task profile when present and falls back to the shared settings otherwise. It is a flag, so forms such as
-`--use-single-model=false` are not accepted.
-
-**Repository Interaction:**
-
-| Flag | Description | Default | Example |
-|------|-------------|---------|---------|
-| `--no-fork` | Skip creating fork | `False` | `--no-fork` |
-| `--no-pull-request` | Skip creating PR | `False` | `--no-pull-request` |
-| `--delete-dir` | Delete cloned repo after processing | `disabled` | `--delete-dir` |
-
-**Special Features:**
-
-| Flag | Description | Example |
-|------|-------------|---------|
-| `--attachment` | Path/URL to PDF/.docx paper | `--attachment ./paper.pdf` |
-| `--convert-notebooks` | Convert Jupyter notebooks | `--convert-notebooks ./notebooks/` |
-| `--generate-workflows` | Generate CI/CD pipelines | `--generate-workflows` |
-
-**Help:**
-
-```bash
-# View all available arguments
-python -m osa_tool.run --help
-```
+Run `osa-tool --help` for the descriptions shown by the CLI. The complete option reference is generated from the same
+metadata and is available in the [interactive CLI guide](../scheduler/index.md#table-of-available-keys). Runtime
+defaults come from the bundled or selected configuration file.
 
 ## 4.3 How does README generation work?
 

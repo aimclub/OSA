@@ -55,6 +55,9 @@ jobs:
         run: |
           pip install mkdocs mkdocs-material mkdocstrings[python]
 
+      - name: Check generated CLI reference
+        run: python docs/generate_cli_reference.py --check
+
       - name: Build docs (verify only)
         run: mkdocs build --strict
 

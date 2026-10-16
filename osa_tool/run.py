@@ -34,7 +34,7 @@ from osa_tool.scheduler.workflow_manager import (
     SourceCraftWorkflowManager,
     WorkflowManager,
 )
-from osa_tool.utils.arguments_parser import build_parser_from_yaml
+from osa_tool.utils.arguments_parser import apply_argument_descriptions_from_yaml, build_parser_from_yaml
 from osa_tool.utils.logger import logger, setup_logging
 from osa_tool.utils.utils import (
     delete_repository,
@@ -59,6 +59,8 @@ def main():
     from osa_tool.tools.paper_analysis.cli import add_paper_analysis_arguments
 
     add_paper_analysis_arguments(parser, main_cli=True)
+    # Keep public help text in the shared argument metadata.
+    apply_argument_descriptions_from_yaml(parser, ["paper_analysis_cli"])
     args = parser.parse_args()
 
     if args.paper_analysis:

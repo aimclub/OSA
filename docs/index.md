@@ -72,6 +72,9 @@ pip install "osa_tool[paper-claims-lite]"
 
 # PDF-to-claims extraction and evaluation utilities
 pip install "osa_tool[paper-claims]"
+
+# Add the optional local Marker parser
+pip install "osa_tool[paper-claims,paper-claims-marker]"
 ```
 
 **Build from source:**
