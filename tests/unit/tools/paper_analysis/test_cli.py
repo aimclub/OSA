@@ -20,6 +20,7 @@ def _args(tmp_path, **overrides):
         "paper": tmp_path / "paper.pdf",
         "sections_json": None,
         "claims_json": None,
+        "pdf_parser": None,
         "paper_claims_prompts_dir": None,
         "paper_output_dir": None,
         "include_repository_quality": None,
@@ -54,6 +55,10 @@ def test_shared_runner_clones_once_and_cleans_a_created_remote_clone(monkeypatch
     args = _args(tmp_path, delete_dir=True)
     config_manager = MagicMock()
     config_manager.get_paper_analysis_settings.return_value = PaperAnalysisSettings(output_dir=tmp_path / "output")
+    config_manager.get_model_settings.return_value = SimpleNamespace(
+        api="openai",
+        base_url="https://openrouter.ai/api/v1",
+    )
     git_agent = MagicMock(clone_dir=str(tmp_path / "clone"))
     operation = MagicMock()
     operation.run.return_value = "result"

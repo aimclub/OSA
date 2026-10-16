@@ -175,7 +175,7 @@ def run_paper_analysis(
         )
 
         paper_claim_settings = config_manager.get_paper_analysis_settings().paper_claims
-        parser = args.pdf_parser or paper_claim_settings.pdf_parser
+        parser = getattr(args, "pdf_parser", None) or paper_claim_settings.pdf_parser
         validate_openrouter_parser_configuration(
             parser,
             config_manager.get_model_settings("paper_claims"),

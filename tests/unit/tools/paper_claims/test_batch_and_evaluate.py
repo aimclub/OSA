@@ -107,7 +107,11 @@ def test_batch_resets_primary_model_before_each_document(tmp_path, monkeypatch):
 
     class FakeHandler:
         def __init__(self):
-            self.model_settings = SimpleNamespace(model="primary")
+            self.model_settings = SimpleNamespace(
+                model="primary",
+                api="openai",
+                base_url="https://openrouter.ai/api/v1",
+            )
             self.reset_count = 0
 
         def reset_to_primary_model(self):
