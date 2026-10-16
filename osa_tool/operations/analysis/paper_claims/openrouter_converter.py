@@ -46,32 +46,39 @@ def validate_openrouter_parser_configuration(parser: str, model_settings: Any) -
 
 def extract_annotation_text(response: dict[str, Any]) -> str:
     """Read parsed PDF text from OpenRouter's chat-completion file annotations."""
+    annotations: list[Any] = []
     choices = response.get("choices")
-    if not isinstance(choices, list):
-        return ""
+    if isinstance(choices, list):
+        for choice in choices:
+            if not isinstance(choice, dict):
+                continue
+            message = choice.get("message")
+            if not isinstance(message, dict):
+                continue
+            message_annotations = message.get("annotations")
+            if isinstance(message_annotations, list):
+                annotations.extend(message_annotations)
+
+    if not annotations:
+        error = response.get("error")
+        metadata = error.get("metadata") if isinstance(error, dict) else None
+        error_annotations = metadata.get("file_annotations") if isinstance(metadata, dict) else None
+        if isinstance(error_annotations, list):
+            annotations.extend(error_annotations)
 
     text_blocks: list[str] = []
-    for choice in choices:
-        if not isinstance(choice, dict):
+    for annotation in annotations:
+        if not isinstance(annotation, dict) or annotation.get("type") != "file":
             continue
-        message = choice.get("message")
-        if not isinstance(message, dict):
+        file_data = annotation.get("file")
+        content = file_data.get("content") if isinstance(file_data, dict) else None
+        if not isinstance(content, list):
             continue
-        annotations = message.get("annotations")
-        if not isinstance(annotations, list):
-            continue
-        for annotation in annotations:
-            if not isinstance(annotation, dict) or annotation.get("type") != "file":
-                continue
-            file_data = annotation.get("file")
-            content = file_data.get("content") if isinstance(file_data, dict) else None
-            if not isinstance(content, list):
-                continue
-            for part in content:
-                if isinstance(part, dict) and part.get("type") == "text":
-                    text = part.get("text")
-                    if isinstance(text, str) and text.strip():
-                        text_blocks.append(text.strip())
+        for part in content:
+            if isinstance(part, dict) and part.get("type") == "text":
+                text = part.get("text")
+                if isinstance(text, str) and text.strip():
+                    text_blocks.append(text.strip())
     return "\n\n".join(text_blocks).strip()
 
 

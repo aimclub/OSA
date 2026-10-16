@@ -71,7 +71,7 @@ class PaperClaimPipeline:
                 show_progress=show_progress,
             )
             logger.info("Stage 1/4 completed: PDF split into %s chunks", len(chunks))
-            logger.info("Stage 2/4: starting %s conversion", options.pdf_parser)
+            logger.info("Stage 2/4: starting PDF conversion")
             if self.converter is not None:
                 converted = self.converter.convert(chunks, options.marker, show_progress=show_progress)
             elif options.pdf_parser == "marker":
@@ -88,10 +88,14 @@ class PaperClaimPipeline:
                     force_refresh=options.force_parser_refresh,
                     show_progress=show_progress,
                 )
-            converted = converted.model_copy(update={"parser": options.pdf_parser})
+            if self.converter is None:
+                converted = converted.model_copy(update={"parser": options.pdf_parser})
+            converter_name = converted.parser or (
+                "injected converter" if self.converter is not None else options.pdf_parser
+            )
             logger.info(
                 "Stage 2/4 completed: %s conversion finished (cache_hit=%s)",
-                options.pdf_parser,
+                converter_name,
                 converted.cache_hit,
             )
         logger.info("Stage 3/4: parsing converted Markdown into sections")

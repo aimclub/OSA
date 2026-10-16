@@ -386,11 +386,30 @@ class ProtollmHandler(ModelHandler):
                     messages=[message],
                     max_tokens=8,
                     extra_body={
-                        "providers": {"only": self.model_settings.allowed_providers},
+                        "provider": {"only": self.model_settings.allowed_providers},
                         "plugins": [{"id": "file-parser", "pdf": {"engine": parser}}],
                     },
                 )
             except Exception as exc:
+                error_body = getattr(exc, "body", None)
+                if not isinstance(error_body, dict):
+                    response = getattr(exc, "response", None)
+                    response_json = getattr(response, "json", None)
+                    if callable(response_json):
+                        try:
+                            error_body = response_json()
+                        except Exception:
+                            error_body = None
+                error = error_body.get("error") if isinstance(error_body, dict) else None
+                metadata = error.get("metadata") if isinstance(error, dict) else None
+                annotations = metadata.get("file_annotations") if isinstance(metadata, dict) else None
+                if isinstance(annotations, list) and annotations:
+                    logger.info(
+                        "OpenRouter parsed the PDF for model %s but completion failed; reusing its file annotations",
+                        model,
+                    )
+                    return error_body
+
                 last_error = exc
                 logger.debug("OpenRouter PDF parsing request failed with model %s: %r", model, exc)
                 await asyncio.sleep(retry_delay)

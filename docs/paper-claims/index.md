@@ -25,9 +25,8 @@ PDF splitting, and Markdown parsing stages.
 
 ## Status
 
-This standalone extraction stage focuses on conversion, section parsing, claim extraction, and
-local evaluation utilities. The `paper_analysis` CLI supplies the standard repository-specific integration for the
-typed result objects.
+This standalone extraction stage focuses on conversion, section parsing, and claim extraction. The `paper_analysis` CLI
+supplies the standard repository-specific integration for the typed result objects.
 
 ## Runtime behavior
 
@@ -137,56 +136,21 @@ The debug payload is stored under:
 }
 ```
 
-## Developer-only command-line utilities
+## Run through the supported CLI
 
-The batch and evaluation commands in this section support development and research workflows. They are not part of the
-supported `osa-tool` command-line interface. For normal repository-backed paper analysis, use
-[`osa-tool --paper-analysis`](../paper-analysis/index.md).
-
-### Batch utility
-
-The batch utility processes one or more PDF files or directories through the single-document pipeline:
+For repository-backed paper analysis, use [`osa-tool --paper-analysis`](../paper-analysis/index.md). Select a remote
+parser or local Marker with `--pdf-parser`:
 
 ```bash
-python -m osa_tool.tools.paper_claims.batch ./paper.pdf --output-dir paper_claim_results
+osa-tool --paper-analysis \
+  --repository https://github.com/example/project \
+  --paper ./paper.pdf \
+  --pdf-parser cloudflare-ai \
+  --paper-output-dir ./analysis
 ```
 
-Useful options:
-
-| Option | Default | Description |
-| --- | --- | --- |
-| `--chunk-pages` | `5` | Number of PDF pages per physical chunk. |
-| `--pdf-parser` | `mistral-ocr` | Select `mistral-ocr`, `cloudflare-ai`, or `marker`. Cloud parsers require `api = "openai"` and an OpenRouter base URL. |
-| `--max-retries` | `5` | LLM response validation and repair attempts. |
-| `--dedup-batch-size` | `50` | Maximum extracted claims sent in one deduplication request. |
-| `--model` | `openai/gpt-5.4-mini` | Model name passed through the normal OSA validation model settings. |
-| `--include-debug` | `false` | Include debug-only data such as `debug.step3_selection` in `claims_legacy.json`. |
-| `--force-parser-refresh` (`--force-marker-refresh`) | `false` | Ignore cached parser output for this run. LLM extraction is still rerun. |
-| `--marker-process-isolation` / `--no-marker-process-isolation` | `true` | Run each Marker chunk in a separate Python process to release CUDA memory between chunks. |
-| `--marker-low-vram` / `--no-marker-low-vram` | `true` | Use conservative Marker batch sizes for low-VRAM GPUs. |
-| `--marker-log-cuda-memory` / `--no-marker-log-cuda-memory` | `true` | Log CUDA memory before and after each Marker chunk when CUDA is available. |
-
-Example using the local Marker parser:
-
-```bash
-python -m osa_tool.tools.paper_claims.batch ./papers \
-  --pdf-parser marker \
-  --chunk-pages 5 \
-  --marker-low-vram \
-  --marker-process-isolation
-```
-
-Example using Cloudflare AI through OpenRouter:
-
-```bash
-python -m osa_tool.tools.paper_claims.batch ./papers --pdf-parser cloudflare-ai
-```
-
-Example with debug selection output:
-
-```bash
-python -m osa_tool.tools.paper_claims.batch ./paper.pdf --include-debug
-```
+Use `--pdf-parser marker` to select the optional local parser. Parser configuration, dependencies, and the supported
+CLI options are documented in the [paper-analysis guide](../paper-analysis/index.md).
 
 ## Parser cache
 
@@ -204,10 +168,10 @@ from osa_tool.operations.analysis.paper_claims import clear_marker_cache
 clear_marker_cache()
 ```
 
-### Evaluation utilities
+## Optional dependencies
 
-Install the paper-claims extra before running PDF conversion or evaluation utilities. It includes remote parser support
-and does not install Marker:
+Install the paper-claims extra for PDF conversion through the supported CLI. It includes remote parser support and does
+not install Marker:
 
 ```bash
 pip install "osa_tool[paper-claims]"
@@ -228,27 +192,11 @@ pip install "osa_tool[paper-claims-lite]"
 > **Python compatibility:** core OSA and the remote PDF parsers support Python 3.11 and later. The optional Marker
 > parser currently requires Python 3.11--3.14 because its dependency stack is not available for Python 3.15+.
 
-Run semantic matching:
-
-```bash
-python -m osa_tool.tools.paper_claims.evaluate \
-  --llm paper_claim_results/paper/claims_legacy.json \
-  --human annotations.json \
-  --output evaluation.json
-```
-
-Aggregate evaluation outputs:
-
-```bash
-python -m osa_tool.tools.paper_claims.aggregate ./evaluations --output aggregate.csv
-```
-
 ## Dependencies
 
 The `paper-claims-lite` extra provides `rapidfuzz` for parsed-section extraction validation. The `paper-claims` extra
 provides PDF splitting and extraction dependencies: `pypdf`, `markdown-it-py`, `rapidfuzz`, `numpy`, `scipy`, and
-`sentence-transformers`. The separate `paper-claims-marker` extra installs `marker-pdf`. Pandas remains part of OSA's
-core dependencies and is used by the aggregate utility.
+`sentence-transformers`. The separate `paper-claims-marker` extra installs `marker-pdf`.
 
 Marker, Markdown parsing, PDF splitting, and RapidFuzz validation are loaded lazily when their corresponding stage
 runs.
@@ -278,5 +226,3 @@ Important modules:
 | `claim_deduplicator.py` | Token-bounded, fail-safe LLM claim deduplication. |
 | `claim_extractor.py` | LLM request/repair loop and three-step extraction orchestration. |
 | `pipeline.py` | Single-document pipeline composition and artifact export. |
-
-The developer-only command implementations are maintained separately from the reusable paper-claims operation.
