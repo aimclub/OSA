@@ -378,7 +378,7 @@ class PlanEditor:
         """Append grouped task options to the active or inactive actions table."""
         for group_name, keys in self.action_groups.items():
             available_keys = sorted(key for key in keys if key in plan)
-            rows = [(key, plan[key])for key in available_keys if self._is_action_active(key, plan[key]) == active]
+            rows = [(key, plan[key]) for key in available_keys if self._is_action_active(key, plan[key]) == active]
             if not available_keys or (active and not rows):
                 continue
 

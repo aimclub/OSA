@@ -154,7 +154,7 @@ def read_arguments_file_flat(yaml_path: str, *, include_metadata_only: bool = Fa
         if isinstance(value, dict) and value.get("metadata_only", False):
             if not include_metadata_only:
                 continue
-            value = { subkey: subvalue for subkey, subvalue in value.items() if subkey != "metadata_only" }
+            value = {subkey: subvalue for subkey, subvalue in value.items() if subkey != "metadata_only"}
         if isinstance(value, dict) and all(isinstance(v, dict) for v in value.values()):
             for subkey, subvalue in value.items():
                 flat_data[subkey] = subvalue
