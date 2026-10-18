@@ -14,6 +14,7 @@ from rich import box
 from rich.console import Console
 from rich.prompt import Prompt
 from rich.table import Table
+from rich.text import Text
 
 from osa_tool.utils.arguments_parser import read_arguments_file_flat
 from osa_tool.utils.logger import logger
@@ -50,9 +51,78 @@ class PlanEditor:
             "context_window",
             "top_p",
             "max_retries",
+            "artefacts_language",
+            "author",
         ]
         self.special_keys = ["convert_notebooks", "notebook_report"]
-        self.arguments_metadata = read_arguments_file_flat(build_arguments_path())
+        self.info_groups = {
+            "Repository": ["repository", "branch", "based_on_date"],
+            "Run settings": [
+                "mode",
+                "no_fork",
+                "no_pull_request",
+                "web_mode",
+                "output",
+                "artefacts_language",
+                "author",
+            ],
+            "LLM settings": [
+                "api",
+                "base_url",
+                "config_file",
+                "use_single_model",
+                "model",
+                "model_docstring",
+                "model_readme",
+                "model_general",
+                "model_repository_quality",
+                "model_paper_claims",
+                "model_paper_verification",
+                "temperature",
+                "max_tokens",
+                "context_window",
+                "top_p",
+                "max_retries",
+            ],
+        }
+        self.action_groups = {
+            "Documentation actions": [
+                "about",
+                "community_docs",
+                "ensure_license",
+                "readme",
+                "refine_readme",
+                "translate_dirs",
+                "translate_readme",
+            ],
+            "Repository maintenance": [
+                "convert_notebooks",
+                "delete_dir",
+                "docstring",
+                "ignore_list",
+                "incremental",
+                "organize",
+                "requirements",
+                "skip_health_check",
+                "target_files",
+            ],
+            "Reports and analysis": ["attachment", "notebook_report", "report", "scorecard"],
+        }
+        self.action_group_keys = {key for keys in self.action_groups.values() for key in keys}
+        self.paper_analysis_keys = [
+            "paper_analysis",
+            "paper",
+            "sections_json",
+            "claims_json",
+            "pdf_parser",
+            "force_parser_refresh",
+            "paper_claims_prompts_dir",
+            "paper_output_dir",
+            "include_repository_quality",
+            "only_high_medium_verifiability",
+            "hide_low_confidence",
+        ]
+        self.arguments_metadata = read_arguments_file_flat(build_arguments_path(), include_metadata_only=True)
         self.modified_keys = set()
 
     def confirm_action(self, plan: dict) -> dict:
@@ -94,7 +164,7 @@ class PlanEditor:
         """
         console.print("\n[bold magenta]Manual plan editing mode[/bold magenta]")
 
-        editable_keys = [k for k in plan.keys() if k not in self.info_keys]
+        editable_keys = sorted(k for k in plan if k not in self.info_keys and not k.startswith("_"))
         bool_keys = [k for k in editable_keys if isinstance(plan.get(k), bool)]
 
         console.print(f"\nAvailable keys for editing: [cyan]{', '.join(editable_keys)}[/cyan]\n")
@@ -239,10 +309,19 @@ class PlanEditor:
         info_table = Table(show_header=True, header_style="bold magenta", box=box.SIMPLE)
         info_table.add_column("Key")
         info_table.add_column("Value")
+        info_table.add_column("Description", max_width=50, no_wrap=True, overflow="ellipsis")
 
-        for key in self.info_keys:
-            if key in plan:
-                info_table.add_row(key, str(plan[key]))
+        has_info_group = False
+        for group_name, keys in self.info_groups.items():
+            rows = [(key, plan[key]) for key in sorted(keys) if key in plan]
+            if not rows:
+                continue
+            if has_info_group:
+                info_table.add_row("", "", "")
+            info_table.add_row(f"[bold]{group_name}[/bold]", "", "")
+            for key, value in rows:
+                info_table.add_row(key, str(value), self._description_for_key(key))
+            has_info_group = True
         console.print(info_table)
 
         # Active actions in console output
@@ -250,21 +329,24 @@ class PlanEditor:
         actions_table = Table(show_header=True, header_style="bold green", box=box.SIMPLE)
         actions_table.add_column("Key")
         actions_table.add_column("Value")
+        actions_table.add_column("Description", max_width=50, no_wrap=True, overflow="ellipsis")
 
-        for key, value in plan.items():
-            if key in self.info_keys or key in self.workflow_keys:
-                continue
-
-            if key in self.special_keys and value in [[]]:
-                label = self._format_key_label(key)
-                actions_table.add_row(label, "Search inside repository")
+        for key, value in sorted(plan.items()):
+            if (
+                key.startswith("_")
+                or key in self.info_keys
+                or key in self.workflow_keys
+                or key in self.action_group_keys
+                or key in self.paper_analysis_keys
+            ):
                 continue
 
             if value and value not in [None, [], ""]:
-                label = self._format_key_label(key)
-                actions_table.add_row(label, str(value))
+                self._add_action_row(actions_table, key, value)
 
+        self._append_action_groups(actions_table, plan, active=True)
         self._append_workflow_section(actions_table, plan, active=True)
+        self._append_paper_analysis_section(actions_table, plan, active=True)
         console.print(actions_table)
 
         # Inactive actions in console output
@@ -272,22 +354,81 @@ class PlanEditor:
         inactive_table = Table(show_header=True, header_style="bold red", box=box.SIMPLE)
         inactive_table.add_column("Key")
         inactive_table.add_column("Value")
+        inactive_table.add_column("Description", max_width=50, no_wrap=True, overflow="ellipsis")
 
-        for key, value in plan.items():
-            if key in self.info_keys or key in self.workflow_keys:
-                continue
-
-            if key in self.special_keys and value is None:
-                label = self._format_key_label(key)
-                inactive_table.add_row(label, str(value))
+        for key, value in sorted(plan.items()):
+            if (
+                key.startswith("_")
+                or key in self.info_keys
+                or key in self.workflow_keys
+                or key in self.action_group_keys
+                or key in self.paper_analysis_keys
+            ):
                 continue
 
             if not value or value == []:
-                label = self._format_key_label(key)
-                inactive_table.add_row(label, str(value))
+                self._add_action_row(inactive_table, key, value)
 
+        self._append_action_groups(inactive_table, plan, active=False)
         self._append_workflow_section(inactive_table, plan, active=False)
+        self._append_paper_analysis_section(inactive_table, plan, active=False)
         console.print(inactive_table)
+
+    def _append_action_groups(self, table: Table, plan: dict, active: bool) -> None:
+        """Append grouped task options to the active or inactive actions table."""
+        for group_name, keys in self.action_groups.items():
+            available_keys = sorted(key for key in keys if key in plan)
+            rows = [(key, plan[key]) for key in available_keys if self._is_action_active(key, plan[key]) == active]
+            if not available_keys or (active and not rows):
+                continue
+
+            if table.rows:
+                table.add_row("", "", "")
+            table.add_row(f"[bold]{group_name}[/bold]", "", "")
+            for key, value in rows:
+                self._add_action_row(table, key, value)
+
+    def _is_action_active(self, key: str, value) -> bool:
+        """Return whether a plan value enables its action."""
+        if key in self.special_keys:
+            return value is not None
+        return bool(value) and value not in [None, [], ""]
+
+    def _add_action_row(self, table: Table, key: str, value) -> None:
+        """Add an action row, preserving the empty-list shorthand for repository-wide searches."""
+        label = self._format_key_label(key)
+        display_value = "Search inside repository" if key in self.special_keys and value == [] else str(value)
+        table.add_row(label, display_value, self._description_for_key(key))
+
+    def _description_for_key(self, key: str) -> Text:
+        """Return a display-safe YAML description for a plan key."""
+        metadata = self.arguments_metadata.get(key, {})
+        description = metadata.get("cli_description") or metadata.get("description")
+        if not description:
+            return Text("—", style="dim")
+        # YAML block descriptions contain intentional line breaks for --help;
+        # the compact plan table should display them as a single sentence.
+        return Text(" ".join(str(description).split()))
+
+    def _append_paper_analysis_section(self, table: Table, plan: dict, active: bool) -> None:
+        """Display paper-analysis inputs and overrides as a separate plan section."""
+        rows = []
+        for key in sorted(self.paper_analysis_keys):
+            if key not in plan:
+                continue
+            value = plan[key]
+            is_active = bool(value) and value not in [None, [], ""]
+            if is_active == active:
+                rows.append((key, value))
+        if (active and not rows) or (not active and not any(key in plan for key in self.paper_analysis_keys)):
+            return
+
+        if table.rows:
+            table.add_row("", "", "")
+        table.add_row("[bold]Paper-analysis configuration[/bold]", "", "")
+        for key, value in rows:
+            label = self._format_key_label(key)
+            table.add_row(label, str(value), self._description_for_key(key))
 
     def _append_workflow_section(self, table: Table, plan: dict, active: bool) -> None:
         """
@@ -310,19 +451,20 @@ class PlanEditor:
             if not has_items:
                 return
 
-            table.add_row("", "")
-            table.add_row("[bold]Workflows actions[/bold]", "")
+            if table.rows:
+                table.add_row("", "", "")
+            table.add_row("[bold]Workflows actions[/bold]", "", "")
 
-            for key in self.workflow_keys:
+            for key in sorted(self.workflow_keys):
                 value = plan.get(key)
                 if active:
                     if value and value not in [None, [], ""]:
                         label = self._format_key_label(key)
-                        table.add_row(label, str(value))
+                        table.add_row(label, str(value), self._description_for_key(key))
                 else:
                     if not value or value in [None, [], ""]:
                         label = self._format_key_label(key)
-                        table.add_row(label, str(value))
+                        table.add_row(label, str(value), self._description_for_key(key))
         else:
             if active:
                 return
@@ -330,13 +472,14 @@ class PlanEditor:
             if not self.workflow_keys:
                 return
 
-            table.add_row("", "")
-            table.add_row("[bold]Workflows actions[/bold]", "")
+            if table.rows:
+                table.add_row("", "", "")
+            table.add_row("[bold]Workflows actions[/bold]", "", "")
 
-            for key in self.workflow_keys:
+            for key in sorted(self.workflow_keys):
                 value = plan.get(key)
                 label = self._format_key_label(key)
-                table.add_row(label, str(value))
+                table.add_row(label, str(value), self._description_for_key(key))
 
     def _print_help(self) -> None:
         """Display help grouped by argument 'group' with descriptions, types, editability and choices."""

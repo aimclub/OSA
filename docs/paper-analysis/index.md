@@ -14,7 +14,13 @@ claims JSON ──────────────────────�
                        └─ optional formal repository-quality score
 ```
 
-- PDF input uses the typed `paper_claims` operation. Install `osa_tool[paper-claims]` for this path.
+- PDF input uses the typed `paper_claims` operation and defaults to OpenRouter Mistral OCR. Install
+  `osa_tool[paper-claims]` for this path. Select Cloudflare AI or Marker with `--pdf-parser` or
+  `[paper_analysis.paper_claims].pdf_parser`; cloud parsers require `api = "openai"` and an OpenRouter base URL in
+  the paper-claims model profile. The `host` API uses Codex and ignores `base_url`, so cloud parser runs warn and stop.
+- OpenRouter parser calls also invoke the configured paper-claims model for each PDF chunk. Cloudflare AI parsing is
+  free; normal model usage charges may still apply.
+- Marker is an optional local parser. Install `osa_tool[paper-claims,paper-claims-marker]` to use it.
 - Parsed section input uses generic `PaperSection` JSON via `--sections-json`, skipping PDF splitting, Marker, and
   Markdown parsing. Install `osa_tool[paper-claims-lite]` for parsed-section claim extraction without the PDF stack.
 - Existing `claims.json`, `claims_legacy.json`, and bare claim arrays can start directly at verification.
@@ -54,8 +60,35 @@ rejected.
 osa-tool --paper-analysis \
   --repository https://github.com/example/project \
   --paper ./paper.pdf \
+  --pdf-parser mistral-ocr \
   --paper-output-dir ./analysis
 ```
+
+The option reference below is generated from the same metadata used by `osa-tool --help`.
+
+<!-- BEGIN GENERATED: paper-analysis-options -->
+
+### Paper-analysis options
+
+| Parameter | CLI options | Type | Required | Description | Choices |
+|:--|:--|:--|:--:|:--|:--|
+| `claims_json` | `--claims-json` | path | — | Typed, legacy, or bare claim JSON to verify. | — |
+| `force_parser_refresh` | `--force-parser-refresh`<br>`--force-marker-refresh` | flag | — | Ignore cached PDF parser output for this run; claim extraction still runs normally. | — |
+| `hide_low_confidence` | `--hide-low-confidence` | flag | — | Hide low-confidence verification results from the reported rate. | — |
+| `include_low_confidence` | `--include-low-confidence` | flag | — | Keep low-confidence verification results in the report and rate. | — |
+| `include_low_verifiability` | `--include-low-verifiability` | flag | — | Also verify low or missing-verifiability claims. | — |
+| `include_repository_quality` | `--include-repository-quality` | flag | — | Calculate and export the formal 0-100 repository-quality score. | — |
+| `only_high_medium_verifiability` | `--only-high-medium-verifiability` | flag | — | Verify only high- and medium-verifiability claims. | — |
+| `paper` | `--paper` | path | — | PDF paper to extract through typed paper_claims. | — |
+| `paper_claims_prompts_dir` | `--paper-claims-prompts-dir` | path | — | Directory of TOML prompt overrides for paper-claim extraction. | — |
+| `paper_output_dir` | `--paper-output-dir` | path | — | Directory for paper-analysis artifacts. Configured defaults use a collision-safe clone-name namespace outside the repository; paths inside the analyzed repository are rejected. | — |
+| `pdf_parser` | `--pdf-parser` | str | — | PDF parser for --paper. Defaults to the [paper_analysis.paper_claims] configuration. | `mistral-ocr`, `cloudflare-ai`, `marker` |
+| `sections_json` | `--sections-json` | path | — | Parsed PaperSection JSON to extract and verify. | — |
+| `skip_repository_quality` | `--skip-repository-quality` | flag | — | Skip formal repository-quality scoring for this run. | — |
+
+<!-- END GENERATED: paper-analysis-options -->
+
+Parser behavior, configuration, and caching are described in the [paper claims pipeline guide](../paper-claims/index.md).
 
 Use already parsed generic sections and optional paper-claim prompt overrides:
 
@@ -77,15 +110,6 @@ osa-tool --paper-analysis \
   --claims-json ./paper_claims/claims.json \
   --include-repository-quality \
   --paper-output-dir ./analysis
-```
-
-The focused wrapper uses the same pipeline and calls its output option `--output-dir`:
-
-```bash
-python -m osa_tool.tools.paper_analysis \
-  --repository ./project \
-  --claims-json ./paper_claims/claims.json \
-  --output-dir ./analysis
 ```
 
 Rich progress is sent to stderr and stdout contains only the final root JSON path. For remote repositories,

@@ -6,6 +6,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt
 
+PdfParserName = Literal["marker", "mistral-ocr", "cloudflare-ai"]
+
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -45,6 +47,7 @@ class ConvertedDocument(StrictModel):
     markdown: str
     cache_hit: bool = False
     cache_dir: Path | None = None
+    parser: PdfParserName | None = None
 
 
 class HeadingMeta(StrictModel):
@@ -131,6 +134,8 @@ class ClaimExtractionResult(StrictModel):
 
 class PipelineOptions(StrictModel):
     pages_per_chunk: PositiveInt = 5
+    pdf_parser: PdfParserName = "mistral-ocr"
+    force_parser_refresh: bool = False
     marker: MarkerOptions = Field(default_factory=MarkerOptions)
     max_retries: PositiveInt = 5
     dedup_batch_size: int = Field(default=50, ge=2)

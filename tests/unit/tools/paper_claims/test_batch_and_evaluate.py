@@ -28,6 +28,14 @@ def test_batch_keeps_gpt_5_4_mini_as_default_model():
     assert args.model == "openai/gpt-5.4-mini"
 
 
+def test_batch_defaults_to_mistral_parser_and_accepts_parser_override():
+    default = build_parser().parse_args(["paper.pdf"])
+    overridden = build_parser().parse_args(["paper.pdf", "--pdf-parser", "marker"])
+
+    assert default.pdf_parser is None
+    assert overridden.pdf_parser == "marker"
+
+
 def test_batch_uses_marker_process_isolation_by_default():
     args = build_parser().parse_args(["paper.pdf"])
     defaults = PipelineOptions()
@@ -56,7 +64,8 @@ def test_force_marker_refresh_has_help_text():
     help_text = build_parser().format_help()
 
     assert "--force-marker-refresh" in help_text
-    assert "Ignore existing cached Marker Markdown" in help_text
+    assert "--force-parser-refresh" in help_text
+    assert "Ignore cached parser output" in help_text
 
 
 def test_batch_can_include_debug_payload():
@@ -93,9 +102,16 @@ def test_batch_resets_primary_model_before_each_document(tmp_path, monkeypatch):
         def get_model_settings(self, _name):
             return SimpleNamespace(model="primary")
 
+        def get_paper_analysis_settings(self):
+            return SimpleNamespace(paper_claims=SimpleNamespace(pdf_parser="mistral-ocr"))
+
     class FakeHandler:
         def __init__(self):
-            self.model_settings = SimpleNamespace(model="primary")
+            self.model_settings = SimpleNamespace(
+                model="primary",
+                api="openai",
+                base_url="https://openrouter.ai/api/v1",
+            )
             self.reset_count = 0
 
         def reset_to_primary_model(self):

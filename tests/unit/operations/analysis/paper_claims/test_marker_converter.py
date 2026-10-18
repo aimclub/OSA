@@ -202,7 +202,10 @@ def test_default_converter_factory_explains_how_to_install_missing_marker(monkey
 
     monkeypatch.setattr(builtins, "__import__", raise_for_marker)
 
-    with pytest.raises(PdfConversionError, match=r'pip install "osa_tool\[paper-claims\]"'):
+    with pytest.raises(
+        PdfConversionError,
+        match=r'pip install "osa_tool\[paper-claims,paper-claims-marker\]"',
+    ):
         _default_converter_factory(MarkerOptions())
 
 

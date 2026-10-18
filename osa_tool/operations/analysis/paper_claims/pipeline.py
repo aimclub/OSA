@@ -18,7 +18,6 @@ from osa_tool.operations.analysis.paper_claims.io import (
     load_sections_json,
     model_provenance_for_loaded,
 )
-from osa_tool.operations.analysis.paper_claims.marker_converter import MarkerDocumentConverter
 from osa_tool.operations.analysis.paper_claims.models import (
     ClaimExtractionResult,
     LoadedClaimsArtifact,
@@ -39,12 +38,12 @@ class PaperClaimPipeline:
         self,
         handler: AsyncModelHandler,
         *,
-        converter: MarkerDocumentConverter | None = None,
+        converter: Any | None = None,
         section_parser: MarkdownSectionParser | None = None,
         prompts: PromptLoader | None = None,
     ) -> None:
         self.handler = handler
-        self.converter = converter or MarkerDocumentConverter()
+        self.converter = converter
         self.section_parser = section_parser or MarkdownSectionParser()
         self.prompts = prompts
 
@@ -58,6 +57,12 @@ class PaperClaimPipeline:
         options = options or PipelineOptions()
         pdf_path = Path(pdf_path)
         logger.info("Paper claims pipeline started for %s", pdf_path)
+        openrouter_converter = None
+        if self.converter is None and options.pdf_parser != "marker":
+            from osa_tool.operations.analysis.paper_claims.openrouter_converter import OpenRouterDocumentConverter
+
+            # Validate provider configuration before reading/splitting the PDF.
+            openrouter_converter = OpenRouterDocumentConverter(self.handler, options.pdf_parser)
         logger.info("Stage 1/4: starting PDF splitting")
         with PdfChunker() as chunker:
             chunks = chunker.split(
@@ -66,10 +71,31 @@ class PaperClaimPipeline:
                 show_progress=show_progress,
             )
             logger.info("Stage 1/4 completed: PDF split into %s chunks", len(chunks))
-            logger.info("Stage 2/4: starting Marker conversion")
-            converted = self.converter.convert(chunks, options.marker, show_progress=show_progress)
+            logger.info("Stage 2/4: starting PDF conversion")
+            if self.converter is not None:
+                converted = self.converter.convert(chunks, options.marker, show_progress=show_progress)
+            elif options.pdf_parser == "marker":
+                from osa_tool.operations.analysis.paper_claims.marker_converter import MarkerDocumentConverter
+
+                marker_options = options.marker.model_copy(
+                    update={"force_refresh": options.marker.force_refresh or options.force_parser_refresh}
+                )
+                converted = MarkerDocumentConverter().convert(chunks, marker_options, show_progress=show_progress)
+            else:
+                assert openrouter_converter is not None
+                converted = await openrouter_converter.convert(
+                    chunks,
+                    force_refresh=options.force_parser_refresh,
+                    show_progress=show_progress,
+                )
+            if converted.parser is None:
+                converted = converted.model_copy(update={"parser": options.pdf_parser})
+            converter_name = converted.parser or (
+                "injected converter" if self.converter is not None else options.pdf_parser
+            )
             logger.info(
-                "Stage 2/4 completed: Marker conversion finished (cache_hit=%s)",
+                "Stage 2/4 completed: %s conversion finished (cache_hit=%s)",
+                converter_name,
                 converted.cache_hit,
             )
         logger.info("Stage 3/4: parsing converted Markdown into sections")
@@ -150,7 +176,13 @@ class PaperClaimPipeline:
         write_stage_report(
             destination,
             meta=StageReportMetadata(
-                source={"paper": {"kind": "pdf", "path": str(result.converted_document.source_path)}},
+                source={
+                    "paper": {
+                        "kind": "pdf",
+                        "path": str(result.converted_document.source_path),
+                        "parser": result.converted_document.parser,
+                    }
+                },
                 model=PaperClaimPipeline.model_provenance_for_extraction(result),
             ),
             result=extraction.model_dump(mode="json"),

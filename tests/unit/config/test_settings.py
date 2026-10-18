@@ -479,9 +479,20 @@ def test_config_manager_loads_typed_paper_analysis_settings(tmp_path):
     assert settings.only_high_medium_verifiability is False
     assert settings.hide_low_confidence is False
     assert settings.paper_claims.pages_per_chunk == 7
+    assert settings.paper_claims.pdf_parser == "mistral-ocr"
+    assert settings.paper_claims.to_pipeline_options().pdf_parser == "mistral-ocr"
     assert settings.paper_claims.dedup_batch_size == 19
     assert settings.verification.batch_size == 20
     assert settings.verification.candidate_file_limit == 4
+
+
+@pytest.mark.parametrize("parser", ["marker", "mistral-ocr", "cloudflare-ai"])
+def test_paper_claims_parser_setting_is_preserved(parser):
+    from osa_tool.config.settings import PaperClaimsSettings
+
+    settings = PaperClaimsSettings(pdf_parser=parser)
+
+    assert settings.to_pipeline_options().pdf_parser == parser
 
 
 def test_paper_verification_settings_reject_batch_size_above_external_limit():

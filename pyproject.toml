@@ -1,6 +1,6 @@
 [project]
 name = "osa_tool"
-version = "0.3.1"
+version = "0.3.2"
 description = "Tool that just makes your open source project better!"
 requires-python = ">=3.11,<4.0"
 authors = [
@@ -21,14 +21,16 @@ paper-claims-lite = [
     "rapidfuzz>=3.14.0",
 ]
 paper-claims = [
-    # Marker 1.x's transitive dependency stack has no compatible Python 3.15 distribution yet.
-    "marker-pdf>=1.10.2,<2.0.0; python_version < '3.15'",
     "markdown-it-py>=3.0.0",
     "numpy>=1.26.0,<3.0.0",
     "pypdf>=5.0.0",
     "rapidfuzz>=3.14.0",
     "scipy>=1.13.0,<2.0.0",
     "sentence-transformers>=3.0.0,<6.0.0",
+]
+paper-claims-marker = [
+    # Marker 1.x's transitive dependency stack has no compatible Python 3.15 distribution yet.
+    "marker-pdf>=1.10.2,<2.0.0; python_version < '3.15'",
 ]
 [tool.poetry.dependencies]
 aiofiles = ">=24.1.0"

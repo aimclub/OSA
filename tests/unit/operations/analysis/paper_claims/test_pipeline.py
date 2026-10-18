@@ -57,9 +57,10 @@ class FakeHandler:
 
 
 class FakeConverter:
-    def __init__(self):
+    def __init__(self, parser: str | None = None):
         self.chunk_paths: list[Path] = []
         self.show_progress: bool | None = None
+        self.parser = parser
 
     def convert(self, chunks, options, *, show_progress=True):
         self.chunk_paths = [item.path for item in chunks]
@@ -69,6 +70,7 @@ class FakeConverter:
             source_hash=chunks[0].source_hash,
             chunks=[ConvertedChunk(index=1, start_page=1, end_page=1, markdown="# Method\nBody")],
             markdown="# Method\nBody",
+            parser=self.parser,
         )
 
 
@@ -103,7 +105,7 @@ async def test_pipeline_composes_stages_and_removes_pdf_chunks(tmp_path, caplog)
     assert "debug" not in default_payload
     report_payload = json.loads((tmp_path / "export-default" / "report.json").read_text())
     assert report_payload["meta"] == {
-        "source": {"paper": {"kind": "pdf", "path": str(pdf)}},
+        "source": {"paper": {"kind": "pdf", "path": str(pdf), "parser": "mistral-ocr"}},
         "model": {"configured": "fake-model", "used": ["fake-model"]},
     }
     assert report_payload["result"]["meta"]["models_used"] == ["fake-model"]
@@ -111,6 +113,20 @@ async def test_pipeline_composes_stages_and_removes_pdf_chunks(tmp_path, caplog)
     debug_path = PaperClaimPipeline.export(result, tmp_path / "export-debug", legacy=True, include_debug=True)
     debug_payload = json.loads(debug_path.read_text())
     assert debug_payload["debug"]["step3_selection"] == []
+
+
+@pytest.mark.asyncio
+async def test_pipeline_preserves_parser_reported_by_injected_converter(tmp_path):
+    pdf = tmp_path / "paper.pdf"
+    create_pdf(pdf)
+    pipeline = PaperClaimPipeline(FakeHandler(), converter=FakeConverter(parser="marker"))
+
+    result = await pipeline.arun(pdf, PipelineOptions())
+    PaperClaimPipeline.export(result, tmp_path / "export")
+
+    report = json.loads((tmp_path / "export" / "report.json").read_text(encoding="utf-8"))
+    assert result.converted_document.parser == "marker"
+    assert report["meta"]["source"]["paper"]["parser"] == "marker"
 
 
 @pytest.mark.asyncio
@@ -169,6 +185,59 @@ async def test_pipeline_can_disable_nested_progress(tmp_path, monkeypatch):
     )
 
     assert converter.show_progress is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("parser", ["marker", "mistral-ocr", "cloudflare-ai"])
+async def test_pipeline_dispatches_selected_parser_and_exports_its_name(tmp_path, monkeypatch, parser):
+    from osa_tool.operations.analysis.paper_claims import marker_converter, openrouter_converter
+
+    pdf = tmp_path / "paper.pdf"
+    create_pdf(pdf)
+    calls = []
+
+    class FakeParser:
+        def __init__(self, *_args):
+            pass
+
+        def convert(self, chunks, marker_options, *, show_progress=True):
+            calls.append(("marker", marker_options.force_refresh))
+            return ConvertedDocument(
+                source_path=chunks[0].source_path,
+                source_hash=chunks[0].source_hash,
+                chunks=[ConvertedChunk(index=1, start_page=1, end_page=1, markdown="# Method\nBody")],
+                markdown="# Method\nBody",
+            )
+
+    class FakeRemoteParser:
+        def __init__(self, _handler, selected_parser):
+            assert selected_parser == parser
+
+        async def convert(self, chunks, *, force_refresh=False, show_progress=True):
+            calls.append((parser, force_refresh))
+            return ConvertedDocument(
+                source_path=chunks[0].source_path,
+                source_hash=chunks[0].source_hash,
+                chunks=[ConvertedChunk(index=1, start_page=1, end_page=1, markdown="# Method\nBody")],
+                markdown="# Method\nBody",
+            )
+
+    monkeypatch.setattr(marker_converter, "MarkerDocumentConverter", FakeParser)
+    monkeypatch.setattr(openrouter_converter, "OpenRouterDocumentConverter", FakeRemoteParser)
+    result = await PaperClaimPipeline(FakeHandler()).arun(
+        pdf,
+        PipelineOptions(pdf_parser=parser, force_parser_refresh=True),
+        show_progress=False,
+    )
+
+    PaperClaimPipeline.export(result, tmp_path / "export")
+    report = json.loads((tmp_path / "export" / "report.json").read_text(encoding="utf-8"))
+    assert calls == [(parser, True)]
+    assert result.converted_document.parser == parser
+    assert report["meta"]["source"]["paper"]["parser"] == parser
+    assert (tmp_path / "export" / "document.md").is_file()
+    assert (tmp_path / "export" / "sections.json").is_file()
+    assert (tmp_path / "export" / "claims.json").is_file()
 
 
 @pytest.mark.parametrize(

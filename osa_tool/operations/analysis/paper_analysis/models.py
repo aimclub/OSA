@@ -8,6 +8,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from osa_tool.operations.analysis.artifacts import ModelProvenance
+from osa_tool.operations.analysis.paper_claims.models import PdfParserName
 
 
 class StrictModel(BaseModel):
@@ -25,6 +26,8 @@ class PaperAnalysisRequest(StrictModel):
     sections_path: Path | None = None
     claims_path: Path | None = None
     paper_claims_prompts_dir: Path | None = None
+    pdf_parser: PdfParserName | None = None
+    force_parser_refresh: bool = False
     include_repository_quality: bool = False
     only_high_medium_verifiability: bool = True
     hide_low_confidence: bool = True

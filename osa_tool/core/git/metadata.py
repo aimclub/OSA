@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Counter
 
+import requests
 from dotenv import load_dotenv
 from git import Repo
 from requests import HTTPError
