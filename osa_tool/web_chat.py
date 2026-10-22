@@ -161,10 +161,7 @@ def _artifact_paths(state: OSAState, output_dir: Path | None) -> list[str]:
 
 
 def _task_results(state: OSAState) -> list[dict[str, Any]]:
-    return [
-        {"id": task.id, "status": task.status.value, "result": task.result}
-        for task in state.plan
-    ]
+    return [{"id": task.id, "status": task.status.value, "result": task.result} for task in state.plan]
 
 
 def _artifact_events(state: OSAState) -> list[dict[str, str]]:

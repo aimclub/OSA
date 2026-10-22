@@ -82,10 +82,13 @@ def test_rejected_last_review_cycle_stops_without_approval():
         reviewer_summary="Needs changes",
     )
     agent = ReviewerAgent(SimpleNamespace())
-    with patch(
-        "osa_tool.osa_agent.agents.reviewer.agent.wait_for_user_clarification",
-        side_effect=[{"accept": "no"}, {"feedback": "Improve the output"}],
-    ), patch.object(agent, "_analyze_feedback_with_llm", return_value=decision):
+    with (
+        patch(
+            "osa_tool.osa_agent.agents.reviewer.agent.wait_for_user_clarification",
+            side_effect=[{"accept": "no"}, {"feedback": "Improve the output"}],
+        ),
+        patch.object(agent, "_analyze_feedback_with_llm", return_value=decision),
+    ):
         result = agent.run(state)
     assert result.review_cycles_exhausted is True
     assert result.approval is False
@@ -135,7 +138,5 @@ def test_web_run_emits_structured_completion_without_terminal_input():
     events = [json.loads(line) for line in sink.getvalue().splitlines()]
     assert [event["type"] for event in events] == ["started", "progress", "completed"]
     assert events[-1]["summary"] == "README updated"
-    assert events[-1]["tasks"] == [
-        {"id": "generate_readme", "status": "completed", "result": {"files": ["README.md"]}}
-    ]
+    assert events[-1]["tasks"] == [{"id": "generate_readme", "status": "completed", "result": {"files": ["README.md"]}}]
     assert events[-1]["pull_request_url"] is None
