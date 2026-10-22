@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 
 from osa_tool.config.osa_config import OSAConfig
@@ -22,7 +23,14 @@ from osa_tool.utils.utils import (
 def main():
     # Create a command line argument parser
     parser = build_parser_from_yaml(extra_sections=["settings"])
+    parser.add_argument("--web-chat", action="store_true", help="Use the JSON-lines web chat protocol.")
+    parser.add_argument("--log-dir", help="Directory for OSA log files.")
     args = parser.parse_args()
+
+    if args.web_chat:
+        from osa_tool.web_chat import run_web_chat
+
+        return run_web_chat(args)
 
     # Collecting user parameters
     user_input: InitialChatInput = collect_user_input()
@@ -76,4 +84,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

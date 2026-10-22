@@ -45,6 +45,7 @@ class FinalizerAgent(BaseAgent):
 
         events = self._collect_events(state)
         summary = self._summarize_events(state, events) if events else ""
+        state.final_summary = summary
 
         # PR or logs
         if create_fork and create_pr:
@@ -56,7 +57,7 @@ class FinalizerAgent(BaseAgent):
             if about_message:
                 pr_body += "\n\n---\n\n" + about_message
 
-            self.context.git_agent.create_pull_request(
+            state.pull_request_url = self.context.git_agent.create_pull_request(
                 body=pr_body,
                 changes=changes,
             )

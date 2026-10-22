@@ -54,7 +54,9 @@ class PlannerAgent(BaseAgent):
 
         state.status = AgentStatus.ANALYZING
         logger.info("Planner started")
-        register_all_operations()
+        # Installed wheels do not contain the source checkout's docs tree.
+        # Runtime registration must not attempt to regenerate developer docs.
+        register_all_operations(generate_docs=False)
 
         # Maintain plan history when re-planning after review: append last plan or clear for new request
         if state.active_request_source == "reviewer" and state.plan:

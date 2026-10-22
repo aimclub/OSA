@@ -348,6 +348,30 @@ def test_get_llm_params_filters_none(mock_config_manager, patch_llm_connector):
     assert all(v is not None for v in params.values())
 
 
+@pytest.mark.parametrize("model_name", ["gpt-6-luna", "gpt-6-sol", "gpt-6.1-sol"])
+def test_direct_openai_gpt6_omits_unsupported_sampling_and_provider_fields(
+    monkeypatch, mock_config_manager, model_name
+):
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.api = "openai"
+    model_settings.base_url = "https://api.openai.com/v1"
+    model_settings.model = model_name
+    captured = {}
+
+    def fake_connector(**kwargs):
+        captured.update(kwargs)
+        return DummyLLMClient()
+
+    monkeypatch.setattr("osa_tool.core.llm.llm.create_llm_connector", fake_connector)
+    ProtollmHandler(model_settings)
+
+    assert captured["model_url"] == f"https://api.openai.com/v1;{model_name}"
+    assert "temperature" not in captured
+    assert "top_p" not in captured
+    assert "extra_body" not in captured
+    assert captured["max_tokens"] == model_settings.max_tokens
+
+
 def test_model_handler_factory_builds_correct_type(mock_config_manager):
     # Arrange
     model_settings = mock_config_manager.get_model_settings("general")

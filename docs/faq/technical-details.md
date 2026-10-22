@@ -43,6 +43,8 @@ Multi-agent script can be run with the following command:
 python -m osa_tool.run_chat
 ```
 
+Web clients can use `python -m osa_tool.run_chat --web-chat` with the [JSON-lines web chat protocol](../web-chat-protocol.md). This mode supports browser questions and review while retaining the terminal command above.
+
 | Agent | Responsibility | Status |
 |-------|----------------|--------|
 | **Repository Analyzer** | Scans repo structure, identifies key files | ✅ Stable |
