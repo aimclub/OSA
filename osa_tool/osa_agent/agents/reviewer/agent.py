@@ -90,9 +90,9 @@ class ReviewerAgent(BaseAgent):
         if state.review_cycle_count >= state.max_review_cycles:
             self._reset_clarification(state)
             state.review_cycles_exhausted = True
-            state.approval = True
+            state.status = AgentStatus.STOPPED
             logger.warning(
-                "Max review cycles reached (%s/%s); routing to finalizer",
+                "Max review cycles reached (%s/%s); ending without finalization",
                 state.review_cycle_count,
                 state.max_review_cycles,
             )

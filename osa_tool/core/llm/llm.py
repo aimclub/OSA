@@ -641,7 +641,7 @@ class ProtollmHandler(ModelHandler):
                     time.sleep(retry_delay)
 
         logger.debug(repr(last_error))
-        raise
+        raise last_error
 
     async def async_run_chain(
         self, prompt: str, parser: PydanticOutputParser, system_message: str = None, retry_delay: float = 0.5
@@ -702,15 +702,23 @@ class ProtollmHandler(ModelHandler):
         }
         return url_templates.get(self.model_settings.api, f"{self.model_settings.base_url};{model_name}")
 
-    def _get_llm_params(self):
+    def _get_llm_params(self, model_name: str | None = None):
         """Extract LLM parameters from config"""
         llm_params = ["temperature", "max_tokens", "top_p"]
 
-        return {
+        params = {
             name: getattr(self.model_settings, name)
             for name in llm_params
             if getattr(self.model_settings, name, None) is not None
         }
+        if (
+            self.model_settings.api == "openai"
+            and urlparse(self.model_settings.base_url).hostname == "api.openai.com"
+            and (model_name or self.model_settings.model).startswith(("gpt-6-", "gpt-6."))
+        ):
+            params.pop("temperature", None)
+            params.pop("top_p", None)
+        return params
 
     def _configure_api(self, model_name: str) -> None:
         """
@@ -727,10 +735,12 @@ class ProtollmHandler(ModelHandler):
         # 401 "User not found" errors)
         dotenv.load_dotenv(override=True)
 
+        params = self._get_llm_params(model_name)
+        if urlparse(self.model_settings.base_url).hostname != "api.openai.com":
+            params["extra_body"] = {"providers": {"only": self.model_settings.allowed_providers}}
         self.client = create_llm_connector(
             model_url=self._build_model_url(model_name),
-            extra_body={"providers": {"only": self.model_settings.allowed_providers}},
-            **self._get_llm_params(),
+            **params,
         )
 
     def _limit_tokens(

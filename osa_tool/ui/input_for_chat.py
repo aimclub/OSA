@@ -1,4 +1,5 @@
-from typing import Optional
+from contextvars import ContextVar
+from typing import Callable, Optional
 
 from pydantic import BaseModel
 from rich.console import Console
@@ -6,6 +7,9 @@ from rich.console import Console
 from osa_tool.osa_agent.state import OSAState
 
 console = Console()
+_web_question_handler: ContextVar[Callable[["OSAState"], dict] | None] = ContextVar(
+    "web_question_handler", default=None
+)
 
 
 class InitialChatInput(BaseModel):
@@ -56,6 +60,10 @@ def wait_for_user_clarification(state: OSAState) -> dict:
 
     if not state.clarification_required:
         raise RuntimeError("wait_for_user_clarification called but no clarification was requested")
+
+    web_handler = _web_question_handler.get()
+    if web_handler is not None:
+        return web_handler(state)
 
     payload = state.clarification_payload or {}
     question = payload.get("question", "Additional information required:")

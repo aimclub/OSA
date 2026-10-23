@@ -904,7 +904,7 @@ class GitHubAgent(GitAgent):
         else:
             logger.error(f"Failed to post a comment to PR #{pr_number}: {response.status_code} - {response.text}")
 
-    def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
+    def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> str | None:
         """Creates or updates a pull request on GitHub.
 
         This method implements intelligent PR management:
@@ -975,6 +975,7 @@ class GitHubAgent(GitAgent):
                         f"updating PR #{pr_number}",
                         raise_exception=False,
                     )
+            return existing_pr.get("html_url")
         elif changes:
             report_files = self.get_attachment_branch_files()
             report_branch = "osa_tool_attachments"
@@ -997,7 +998,9 @@ class GitHubAgent(GitAgent):
 
             response = request_with_retry("post", url, json=pr_data, headers=headers)
             if response.status_code == 201:
-                logger.info(f"GitHub pull request created successfully: {response.json()['html_url']}")
+                pr_url = response.json()["html_url"]
+                logger.info(f"GitHub pull request created successfully: {pr_url}")
+                return pr_url
             else:
                 self._handle_api_error(response, "creating pull request", raise_exception=True)
 
