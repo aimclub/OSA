@@ -896,6 +896,28 @@ def test_generate_documentation_mkdocs(mock_root, mock_copy, mock_write_text, mo
     mock_copy.assert_called_once()
 
 
+def test_generate_documentation_mkdocs_uses_repo_relative_paths(mock_config_manager, tmp_path):
+    # Arrange
+    # analysis results carry absolute paths whenever OSA runs with --output
+    docgen = DocGen(mock_config_manager)
+    repo = tmp_path / "demo-repo"
+    (repo / "pkg").mkdir(parents=True)
+    (repo / "pkg" / "module.py").write_text("def f():\n    pass\n", encoding="utf-8")
+
+    files_info = {str(repo / "pkg" / "module.py"): {"structure": True}}
+    modules_info = {str(repo / "pkg"): "Package documentation"}
+
+    # Act
+    docgen.generate_documentation_mkdocs(str(repo), files_info, modules_info)
+
+    # Assert
+    docs = repo / "osa_docs"
+    assert sorted(p.name for p in docs.iterdir()) == ["pkg"], "osa_docs must mirror only the in-repo tree"
+    assert (docs / "pkg" / "module.md").is_file()
+    assert (docs / "pkg" / "index.md").is_file()
+    assert (docs / "pkg" / "module.md").read_text(encoding="utf-8").rstrip().endswith("::: pkg.module")
+
+
 def test_sanitize_name_basic(mock_config_manager):
     # Arrange
     docgen = DocGen(mock_config_manager)
