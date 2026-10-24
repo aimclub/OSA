@@ -64,6 +64,10 @@ class GitSettings(BaseModel):
             else:
                 raise ValueError(f"{self.repository} does not exist.")
         else:
+            # A URL copied from a browser often carries a trailing slash, and the
+            # remote helpers append ".git" to this value verbatim, which would make
+            # "owner/repo/" into "owner/repo/.git" and fail the clone.
+            self.repository = str(self.repository).rstrip("/")
             self.host_domain, self.host, self.name, self.full_name = parse_git_url(str(self.repository))
         return self
 

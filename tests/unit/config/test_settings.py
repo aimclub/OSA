@@ -573,6 +573,20 @@ def test_git_settings_validation():
     assert git_settings.full_name == "testuser/testrepo"
 
 
+def test_git_settings_strips_trailing_slash():
+    # Arrange
+    # browsers hand out this form, and the remote helpers append ".git" verbatim
+    repo_url = "https://github.com/testuser/testrepo/"
+
+    # Act
+    git_settings = GitSettings(repository=repo_url)
+
+    # Assert
+    assert git_settings.repository == "https://github.com/testuser/testrepo"
+    assert git_settings.name == "testrepo"
+    assert git_settings.full_name == "testuser/testrepo"
+
+
 def test_git_settings_invalid_url():
     # Arrange
     invalid_url = "htttp://not-a-valid-url"
