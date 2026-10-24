@@ -1522,6 +1522,30 @@ class DocGen(object):
         dot_path = ".".join(processed_parts)
         return f"::: {dot_path}"
 
+    @staticmethod
+    def _path_inside_repo(target: str | Path, repo_path: Path) -> Path:
+        """
+        Returns a path relative to the repository root.
+
+        Analysis results carry absolute paths whenever OSA runs with --output.
+        Dropping only the leading component then leaves the rest of the filesystem
+        prefix in place, which nests osa_docs under the machine's own directory
+        tree and, on Windows, pushes the result past the path length limit.
+
+        Args:
+            target: The analysed file or directory path.
+            repo_path: The resolved root of the analysed repository.
+
+        Returns:
+            Path: The target expressed relative to the repository root.
+        """
+        candidate = Path(target)
+        try:
+            return candidate.resolve().relative_to(repo_path)
+        except ValueError:
+            # callers may pass a path that merely starts with the repository directory
+            return Path(*candidate.parts[1:])
+
     def generate_documentation_mkdocs(self, path: str, files_info, modules_info) -> None:
         """
         Generates MkDocs documentation for a Python project based on provided path.
@@ -1547,8 +1571,8 @@ class DocGen(object):
                 continue
             parent_dir = Path(file).parent
             file_name = Path(file).name
-            relative_path = Path(*Path(file).parts[1::])
-            new_path = Path(init_doc_path, Path(*Path(parent_dir).parts[1::]))
+            relative_path = self._path_inside_repo(file, repo_path)
+            new_path = Path(init_doc_path, self._path_inside_repo(parent_dir, repo_path))
             new_path.mkdir(parents=True, exist_ok=True)
             text = (
                 f"# {file_name.strip('.py').replace('_', ' ').title()}\n\n"
@@ -1559,7 +1583,7 @@ class DocGen(object):
             new_file.write_text(text)
 
         for module in modules_info:
-            new_file = Path(init_doc_path, Path(*Path(module).parts[1::]))
+            new_file = Path(init_doc_path, self._path_inside_repo(module, repo_path))
             new_file.mkdir(parents=True, exist_ok=True)
             text = modules_info[module]
             Path(new_file, "index.md").write_text(text)
