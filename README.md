@@ -239,6 +239,9 @@ documentation, see the [Workflow Generator README](./osa_tool/operations/codebas
 
 Also OSA supports custom configuration via TOML files. Use the `--config-file` option to specify a path to custom
 configuration file. If no custom configuration file is provided, OSA will use the default configuration.
+A custom file only needs the keys you want to change: it is merged over the default configuration section by section,
+and list values replace the defaults instead of being appended. Explicit CLI flags take precedence over the custom
+file, which takes precedence over the defaults.
 
 OSA uses the shared `[llm]` model settings unless a task-specific profile is configured. Task profiles fall back to the
 shared settings when they do not override a value. The `--use-single-model` flag forces all tasks to use the shared

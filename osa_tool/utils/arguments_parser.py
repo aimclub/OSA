@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 from typing import Any
 
@@ -115,20 +116,40 @@ def _attach_explicit_cli_args_tracking(
     default_by_dest: dict[str, Any],
 ) -> None:
     original_parse_args = parser.parse_args
+    config_file_aliases = [alias for alias, dest in option_dest_by_alias.items() if dest == "config_file"]
 
     def parse_args(args=None, namespace=None):
-        parsed = original_parse_args(args, namespace)
         raw_args = sys.argv[1:] if args is None else list(args)
+        defaults = default_by_dest.copy()
+
+        # The custom config file is only known at parse time, so its values replace the packaged defaults here.
+        config_file = _find_config_file_arg(raw_args, config_file_aliases)
+        if config_file and os.path.exists(config_file):
+            config_data = load_config_data(config_file)
+            defaults = {dest: get_default_from_config(config_data, dest) for dest in default_by_dest}
+        parser.set_defaults(**defaults)
+
+        parsed = original_parse_args(args, namespace)
         explicit_cli_args = set()
         for token in raw_args:
             option = token.split("=", 1)[0]
             if option in option_dest_by_alias:
                 explicit_cli_args.add(option_dest_by_alias[option])
         setattr(parsed, "_explicit_cli_args", explicit_cli_args)
-        setattr(parsed, "_cli_defaults", default_by_dest.copy())
+        setattr(parsed, "_cli_defaults", defaults)
         return parsed
 
     parser.parse_args = parse_args
+
+
+def _find_config_file_arg(raw_args: list[str], aliases: list[str]) -> str | None:
+    """Extract the --config-file value from raw CLI tokens without running the full parser."""
+    if not aliases:
+        return None
+    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser.add_argument(*aliases, dest="config_file", type=str, default=None)
+    known, _ = pre_parser.parse_known_args(raw_args)
+    return known.config_file
 
 
 def get_keys_from_group_in_yaml(group_name: str) -> list:
@@ -185,3 +206,35 @@ def read_config_file(toml_path: str) -> dict[str, Any]:
     with open(toml_path, "rb") as f:
         data = tomli.load(f)
     return {k.lower(): v for k, v in data.items()}
+
+
+def deep_merge_dicts(base: dict, override: dict) -> dict:
+    """
+    Recursively merge two dicts into a new one.
+
+    Nested dicts are merged key by key; any other value from override (including lists) replaces the base value.
+    """
+    merged = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = deep_merge_dicts(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def load_config_data(custom_path: str | None = None, default_path: str | None = None) -> dict[str, Any]:
+    """
+    Load the packaged config.toml, deep-merged with an optional custom config file on top.
+
+    Args:
+        custom_path (str | None): Path to a user TOML file that only needs the keys it overrides.
+        default_path (str | None): Base config path; defaults to the packaged config.toml.
+
+    Returns:
+        dict[str, Any]: Merged configuration data.
+    """
+    config_data = read_config_file(default_path or build_config_path())
+    if custom_path:
+        config_data = deep_merge_dicts(config_data, read_config_file(custom_path))
+    return config_data
