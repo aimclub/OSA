@@ -275,6 +275,21 @@ OSA supports custom configuration via TOML files for complex setups and reproduc
 
 You can find the actual config file [config.toml](https://github.com/aimclub/OSA/blob/main/osa_tool/config/settings/config.toml).
 
+A custom file only needs the keys you want to change. It is merged over the default `config.toml` section by
+section, so any key you leave out keeps its default value. List values (for example `translate_readme`) replace the
+default list instead of being appended to it:
+
+```toml
+[general]
+translate_readme = ["Russian"]
+artefacts_language = "Russian"
+
+[llm]
+model = "gpt-5.6-luna"
+```
+
+Precedence: explicit CLI flags > custom `--config-file` > default `config.toml`.
+
 **Using the Configuration File:**
 
 ```bash

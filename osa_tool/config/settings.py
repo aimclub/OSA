@@ -8,7 +8,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, List, Literal
 
-import tomli
 from pydantic import (
     AnyHttpUrl,
     BaseModel,
@@ -21,6 +20,7 @@ from pydantic import (
 )
 
 from osa_tool.core.git.request_utils import RetryConfig
+from osa_tool.utils.arguments_parser import load_config_data
 from osa_tool.utils.prompts_builder import PromptLoader
 from osa_tool.utils.utils import (
     build_config_path,
@@ -244,10 +244,8 @@ class ConfigManager:
         """
         self.args = args
 
-        config_path = self._get_config_path()
-
-        with open(config_path, "rb") as file:
-            config_data = tomli.load(file)
+        default_path, custom_path = self._get_config_paths()
+        config_data = load_config_data(custom_path, default_path=default_path)
 
         if args:
             config_data = self._apply_cli_args_to_config_data(config_data, args)
@@ -260,28 +258,29 @@ class ConfigManager:
 
         request_utils.DEFAULT_RETRY_CONFIG = request_utils.RetryConfig(**self.config.git.retry.model_dump())
 
-    def _get_config_path(self) -> str:
+    def _get_config_paths(self) -> tuple[str, str | None]:
         """
-        Determine config file path from args or use default.
+        Determine the default config path and the optional custom config path from args.
+
+        The custom file is a partial override deep-merged over the default config.
 
         Returns:
-            str: Path to configuration file
+            tuple[str, str | None]: Default config path and custom config path (None if not given)
 
         Raises:
-            FileNotFoundError: If specified config file doesn't exist
+            FileNotFoundError: If the specified custom or the default config file doesn't exist
         """
+        custom_path = None
         if self.args and hasattr(self.args, "config_file") and self.args.config_file:
-            config_path = self.args.config_file
-            if os.path.exists(config_path):
-                return config_path
-            else:
-                raise FileNotFoundError(f"Custom configuration file not found: {config_path}")
+            custom_path = self.args.config_file
+            if not os.path.exists(custom_path):
+                raise FileNotFoundError(f"Custom configuration file not found: {custom_path}")
 
-        config_path = build_config_path()
-        if not os.path.exists(config_path):
-            raise FileNotFoundError(f"Default configuration file not found: {config_path}")
+        default_path = build_config_path()
+        if not os.path.exists(default_path):
+            raise FileNotFoundError(f"Default configuration file not found: {default_path}")
 
-        return config_path
+        return default_path, custom_path
 
     @staticmethod
     def _apply_cli_args_to_config_data(config_data: dict, args: Namespace) -> dict:
