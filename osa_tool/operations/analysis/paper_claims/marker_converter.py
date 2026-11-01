@@ -109,7 +109,7 @@ def _require_supported_default_marker_python() -> None:
         raise PdfConversionError(
             "Paper-claims PDF conversion with the default Marker converter is currently supported only on Python "
             "3.11 through 3.14. Use Python 3.14 or earlier and install it with: "
-            'pip install "osa_tool[paper-claims]".'
+            'pip install "osa_tool[paper-claims,paper-claims-marker]".'
         )
 
 
@@ -122,7 +122,8 @@ def _default_converter_factory(options: MarkerOptions) -> tuple[Any, Callable[[A
         from marker.output import text_from_rendered
     except ImportError as exc:
         raise PdfConversionError(
-            'Marker conversion requires the paper-claims extra. Install it with: pip install "osa_tool[paper-claims]".'
+            "Marker conversion requires the optional Marker extra. Install PDF support and Marker with: "
+            'pip install "osa_tool[paper-claims,paper-claims-marker]".'
         ) from exc
 
     config_values = {
@@ -230,6 +231,7 @@ class MarkerDocumentConverter:
             markdown=merged,
             cache_hit=True,
             cache_dir=cache_dir,
+            parser="marker",
         )
 
     def _convert_chunk_with_reused_converter(
@@ -352,7 +354,13 @@ class MarkerDocumentConverter:
             options=options,
         )
 
-    def convert(self, chunks: list[PdfChunk], options: MarkerOptions | None = None) -> ConvertedDocument:
+    def convert(
+        self,
+        chunks: list[PdfChunk],
+        options: MarkerOptions | None = None,
+        *,
+        show_progress: bool = True,
+    ) -> ConvertedDocument:
         if not chunks:
             raise PdfConversionError("At least one PDF chunk is required")
         self._validate_chunk_sources(chunks)
@@ -392,7 +400,10 @@ class MarkerDocumentConverter:
         converted_chunks: list[ConvertedChunk] = []
         try:
             ordered_chunks = sorted(chunks, key=lambda item: item.index)
-            for chunk in track(ordered_chunks, description="Converting PDF chunks"):
+            progress_items = (
+                track(ordered_chunks, description="Converting PDF chunks") if show_progress else ordered_chunks
+            )
+            for chunk in progress_items:
                 logger.info(
                     "Converting chunk %s/%s with Marker: pages %s-%s",
                     chunk.index,
@@ -462,6 +473,7 @@ class MarkerDocumentConverter:
             markdown=merged,
             cache_hit=False,
             cache_dir=cache_dir,
+            parser="marker",
         )
 
 

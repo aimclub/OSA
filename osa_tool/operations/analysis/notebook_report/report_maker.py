@@ -24,6 +24,7 @@ class NotebookReportGenerator(AbstractReportGenerator):
         git_agent: GitAgent,
         create_fork: bool,
         notebook_paths: list[str] | None = None,
+        target_language: str = "English",
     ) -> None:
         """Initialize PDF report generation for a repository's notebooks.
 
@@ -33,12 +34,13 @@ class NotebookReportGenerator(AbstractReportGenerator):
             create_fork: Whether the generated report should be uploaded.
             notebook_paths: Optional paths to limit analysis; an empty list scans
                 the complete repository.
+            target_language: Language to render the report's static labels in.
         """
-        super().__init__(config_manager, git_agent)
+        super().__init__(config_manager, git_agent, target_language)
         self.filename = f"{self.metadata.name}_notebook_report.pdf"
         self.output_path = os.path.join(os.getcwd(), self.filename)
         self.start_log = f"Starting notebook analysis for repository {self.metadata.full_name}"
-        self.report_header = "Notebook Analysis Report"
+        self.report_header = self.translator.get("notebook_report_header")
         self.create_fork = create_fork
         self.notebook_paths = notebook_paths or []
         self.analyzer = NotebookReportAnalyzer(
@@ -75,34 +77,37 @@ class NotebookReportGenerator(AbstractReportGenerator):
 
         combined_data = [
             [
-                Paragraph("<b>Notebook Summary</b>", label_style),
-                Paragraph("<b>Value</b>", value_style),
-                Paragraph("<b>Quality Signals</b>", label_style),
-                Paragraph("<b>Value</b>", value_style),
+                Paragraph(f"<b>{self.translator.get('notebook_summary')}</b>", label_style),
+                Paragraph(f"<b>{self.translator.get('value')}</b>", value_style),
+                Paragraph(f"<b>{self.translator.get('quality_signals')}</b>", label_style),
+                Paragraph(f"<b>{self.translator.get('value')}</b>", value_style),
             ],
             [
-                Paragraph("Total notebooks scanned", label_style),
+                Paragraph(self.translator.get("total_notebooks_scanned"), label_style),
                 Paragraph(str(summary.total_notebooks), value_style),
-                Paragraph("Total findings", label_style),
+                Paragraph(self.translator.get("total_findings"), label_style),
                 Paragraph(str(summary.total_issues), value_style),
             ],
             [
-                Paragraph("Successfully analyzed", label_style),
+                Paragraph(self.translator.get("successfully_analyzed"), label_style),
                 Paragraph(str(summary.analyzed_notebooks), value_style),
-                Paragraph("Invalid syntax notebooks", label_style),
+                Paragraph(self.translator.get("invalid_syntax_notebooks"), label_style),
                 Paragraph(str(summary.invalid_syntax_notebooks), value_style),
             ],
             [
-                Paragraph("Read or parse failures", label_style),
+                Paragraph(self.translator.get("read_or_parse_failures"), label_style),
                 Paragraph(str(summary.failed_notebooks), value_style),
-                Paragraph("Fully non-executed notebooks", label_style),
+                Paragraph(self.translator.get("fully_non_executed_notebooks"), label_style),
                 Paragraph(str(summary.non_executed_notebooks), value_style),
             ],
             [
-                Paragraph("Notebooks with findings", label_style),
+                Paragraph(self.translator.get("notebooks_with_findings"), label_style),
                 Paragraph(str(summary.notebooks_with_issues), value_style),
-                Paragraph("Analysis scope", label_style),
-                Paragraph(str(len(self.notebook_paths)) if self.notebook_paths else "Repository-wide", value_style),
+                Paragraph(self.translator.get("analysis_scope"), label_style),
+                Paragraph(
+                    str(len(self.notebook_paths)) if self.notebook_paths else self.translator.get("repository_wide"),
+                    value_style,
+                ),
             ],
         ]
         return self._build_combined_summary_table(combined_data), Table([[""]], colWidths=[0], rowHeights=[0])
@@ -114,12 +119,12 @@ class NotebookReportGenerator(AbstractReportGenerator):
         story: list[Flowable] = []
         summary = bundle.summary
 
-        story.append(Paragraph("<b>Overview</b>", custom_style))
+        story.append(Paragraph(f"<b>{self.translator.get('overview')}</b>", custom_style))
         story.append(
             Paragraph(
-                (
-                    f"This report reviewed <b>{summary.total_notebooks}</b> notebook(s) and recorded "
-                    f"<b>{summary.total_issues}</b> finding(s) across structure, execution, and readability."
+                self.translator.get("notebook_overview_text").format(
+                    total_notebooks=summary.total_notebooks,
+                    total_issues=summary.total_issues,
                 ),
                 normal_style,
             )
@@ -127,45 +132,49 @@ class NotebookReportGenerator(AbstractReportGenerator):
         if self.notebook_paths:
             story.append(
                 Paragraph(
-                    f"Selected targets were provided explicitly: <b>{len(self.notebook_paths)}</b> path(s).",
+                    self.translator.get("notebook_explicit_targets").format(count=len(self.notebook_paths)),
                     subtle_style,
                 )
             )
         else:
-            story.append(Paragraph("Scope: full repository notebook scan.", subtle_style))
+            story.append(Paragraph(self.translator.get("notebook_full_scan"), subtle_style))
 
         if summary.issue_frequencies:
-            story.append(Paragraph("<b>Most Frequent Findings</b>", custom_style))
+            story.append(Paragraph(f"<b>{self.translator.get('most_frequent_findings')}</b>", custom_style))
             for slug, count in list(summary.issue_frequencies.items())[:7]:
-                story.append(Paragraph(f"• {self._humanize_slug(slug)}: {count}", normal_style))
+                label = self.translator.get(f"notebook_issue_{slug}_label") or self._humanize_slug(slug)
+                story.append(Paragraph(f"• {label}: {count}", normal_style))
 
-        story.append(Paragraph("<b>Notebook Details</b>", custom_style))
+        story.append(Paragraph(f"<b>{self.translator.get('notebook_details')}</b>", custom_style))
         for notebook in bundle.notebooks:
             story.append(Paragraph(f"<b>{escape(notebook.relative_path)}</b>", custom_style))
             stats = notebook.statistics
             status_parts = []
             if notebook.analysis_errors:
-                status_parts.append("analysis errors present")
+                status_parts.append(self.translator.get("analysis_errors_present"))
             elif notebook.issues:
-                status_parts.append(f"{len(notebook.issues)} finding(s)")
+                status_parts.append(self.translator.get("finding_count").format(count=len(notebook.issues)))
             else:
-                status_parts.append("no findings detected")
-            story.append(Paragraph(f"Status: {', '.join(status_parts)}.", subtle_style))
+                status_parts.append(self.translator.get("no_findings_detected"))
+            story.append(Paragraph(f"{self.translator.get('status_label')}: {', '.join(status_parts)}.", subtle_style))
             story.append(
                 Paragraph(
-                    (
-                        f"Cells: total <b>{stats.number_of_cells}</b>, code {stats.number_of_code_cells}, "
-                        f"markdown {stats.number_of_markdown_cells}, raw {stats.number_of_raw_cells}"
+                    self.translator.get("cells_line").format(
+                        total=stats.number_of_cells,
+                        code=stats.number_of_code_cells,
+                        markdown=stats.number_of_markdown_cells,
+                        raw=stats.number_of_raw_cells,
                     ),
                     normal_style,
                 )
             )
             story.append(
                 Paragraph(
-                    (
-                        f"Markdown lines {stats.number_of_markdown_lines}, titles {stats.number_of_markdown_titles}, "
-                        f"functions {self._display_optional(stats.number_of_functions)}, "
-                        f"classes {self._display_optional(stats.number_of_classes)}"
+                    self.translator.get("markdown_line").format(
+                        lines=stats.number_of_markdown_lines,
+                        titles=stats.number_of_markdown_titles,
+                        functions=self._display_optional(stats.number_of_functions),
+                        classes=self._display_optional(stats.number_of_classes),
                     ),
                     subtle_style,
                 )
@@ -173,17 +182,40 @@ class NotebookReportGenerator(AbstractReportGenerator):
 
             if notebook.analysis_errors:
                 for error in notebook.analysis_errors:
-                    story.append(Paragraph(f"• Analysis error: {escape(error)}", normal_style))
+                    story.append(
+                        Paragraph(
+                            f"• {self.translator.get('analysis_error_line').format(error=escape(error))}",
+                            normal_style,
+                        )
+                    )
 
             if not notebook.issues:
-                story.append(Paragraph("• No notebook issues detected.", normal_style))
+                story.append(Paragraph(f"• {self.translator.get('no_notebook_issues')}", normal_style))
             else:
                 for issue in notebook.issues:
-                    line = f"• {issue.description}"
-                    if issue.details:
-                        line += f" <font color='#555555'>({issue.details})</font>"
+                    # NotebookReportAnalyzer is a plain rule engine and stays language-agnostic; it only
+                    # emits a stable `slug` per issue. Translated text is looked up here by that slug,
+                    # falling back to the analyzer's own English text for any slug without a translation
+                    # yet (e.g. a newly added check).
+                    description = self.translator.get(f"notebook_issue_{issue.slug}_description") or issue.description
+                    recommendation = (
+                        self.translator.get(f"notebook_issue_{issue.slug}_recommendation") or issue.recommendation
+                    )
+                    # details_kwargs holds the raw numbers/ratios behind `details`; format them through a
+                    # translated template when one exists, otherwise fall back to the analyzer's English text.
+                    details_template = self.translator.get(f"notebook_issue_{issue.slug}_details")
+                    details_text = (
+                        details_template.format(**issue.details_kwargs)
+                        if details_template and issue.details_kwargs is not None
+                        else issue.details
+                    )
+                    line = f"• {description}"
+                    if details_text:
+                        line += f" <font color='#555555'>({details_text})</font>"
                     story.append(Paragraph(line, normal_style))
-                    story.append(Paragraph(f"Recommendation: {issue.recommendation}", subtle_style))
+                    story.append(
+                        Paragraph(f"{self.translator.get('recommendation_label')}: {recommendation}", subtle_style)
+                    )
 
             story.append(Spacer(0, 10))
 
@@ -252,6 +284,7 @@ class NotebookReportGenerator(AbstractReportGenerator):
                     ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
                     ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#FFCCFF")),
                     ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("FONTNAME", (0, 0), (-1, -1), "notosanssc"),
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                     ("ALIGN", (0, 0), (0, -1), "LEFT"),
                     ("ALIGN", (1, 0), (1, -1), "CENTER"),
@@ -274,6 +307,7 @@ class NotebookReportGenerator(AbstractReportGenerator):
                     ("BACKGROUND", (2, 0), (3, 0), colors.lightgrey),
                     ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#FFCCFF")),
                     ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("FONTNAME", (0, 0), (-1, -1), "notosanssc"),
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                     ("ALIGN", (0, 0), (0, -1), "LEFT"),
                     ("ALIGN", (2, 0), (2, -1), "LEFT"),
@@ -292,9 +326,12 @@ class NotebookReportGenerator(AbstractReportGenerator):
     @staticmethod
     def _table_cell_styles() -> tuple[ParagraphStyle, ParagraphStyle]:
         styles = getSampleStyleSheet()
+        # notosanssc carries Latin + Cyrillic + CJK glyphs; the default BodyText font
+        # (Helvetica) has no Cyrillic, so translated labels would render as tofu boxes.
         label_style = ParagraphStyle(
             name="NotebookTableLabel",
             parent=styles["BodyText"],
+            fontName="notosanssc",
             fontSize=9.5,
             leading=11,
             alignment=0,
@@ -302,6 +339,7 @@ class NotebookReportGenerator(AbstractReportGenerator):
         value_style = ParagraphStyle(
             name="NotebookTableValue",
             parent=styles["BodyText"],
+            fontName="notosanssc",
             fontSize=9.5,
             leading=11,
             alignment=1,

@@ -1,15 +1,25 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 from pathlib import Path
 
-from osa_tool.config.settings import ConfigManager
-from osa_tool.core.llm.llm import ModelHandlerFactory
+from rich.progress import track
+
 from osa_tool.operations.analysis.paper_claims.models import (
     MarkerOptions,
     PipelineOptions,
 )
+from osa_tool.operations.analysis.paper_claims.exceptions import PdfConversionError
 from osa_tool.operations.analysis.paper_claims.pipeline import PaperClaimPipeline
+from osa_tool.utils.logger import logger, setup_logging
+
+
+def _dedup_batch_size(value: str) -> int:
+    size = int(value)
+    if size < 2:
+        raise argparse.ArgumentTypeError("--dedup-batch-size must be at least 2")
+    return size
 
 
 def collect_pdf_inputs(paths: list[Path]) -> tuple[list[Path], list[str]]:
@@ -30,24 +40,56 @@ def collect_pdf_inputs(paths: list[Path]) -> tuple[list[Path], list[str]]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    defaults = PipelineOptions()
+    marker_defaults = defaults.marker
     parser = argparse.ArgumentParser(description="Run claim extraction for multiple PDF documents.")
     parser.add_argument("pdfs", nargs="+", type=Path)
     parser.add_argument("--output-dir", type=Path, default=Path("paper_claim_results"))
-    # parser.add_argument("--repository", default="https://github.com/ai-chem/DiMag")
-    parser.add_argument("--model", default=None)
+    parser.add_argument("--repository", default="https://github.com/ai-chem/DiMag")
+    parser.add_argument("--model", default="openai/gpt-5.4-mini")
     parser.add_argument("--config-file", default=None)
-    parser.add_argument("--chunk-pages", type=int, default=10)
+    parser.add_argument("--chunk-pages", type=int, default=defaults.pages_per_chunk)
+    parser.add_argument(
+        "--pdf-parser",
+        choices=("mistral-ocr", "cloudflare-ai", "marker"),
+        default=None,
+        help="PDF parser to use. Defaults to the [paper_analysis.paper_claims] configuration.",
+    )
     parser.add_argument("--max-retries", type=int, default=5)
-    parser.add_argument("--force-marker-refresh", action="store_true")
+    parser.add_argument(
+        "--dedup-batch-size",
+        type=_dedup_batch_size,
+        default=defaults.dedup_batch_size,
+        help=(
+            "Maximum number of extracted claims to send in one deduplication request. "
+            "Smaller values reduce LLM context/output pressure. Minimum: 2."
+        ),
+    )
+    parser.add_argument(
+        "--include-debug",
+        action="store_true",
+        help="Include debug-only intermediate data, such as legacy debug.step3_selection, in exported JSON.",
+    )
+    parser.add_argument(
+        "--force-parser-refresh",
+        "--force-marker-refresh",
+        dest="force_parser_refresh",
+        action="store_true",
+        help=(
+            "Ignore cached parser output for this run and reconvert PDFs. "
+            "LLM claim extraction still runs normally and is not cached."
+        ),
+    )
     parser.add_argument(
         "--marker-process-isolation",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=marker_defaults.process_isolation,
         help="Convert each PDF chunk in a separate Python process to release CUDA memory between chunks.",
     )
     parser.add_argument(
         "--marker-low-vram",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=marker_defaults.low_vram,
         help="Use conservative Marker batch sizes for low-VRAM GPUs.",
     )
     parser.add_argument(
@@ -61,39 +103,79 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
+    setup_logging("paper_claims_batch", str(Path.cwd() / "logs"))
+    logger.info("Paper claims batch started")
     pdfs, failures = collect_pdf_inputs(args.pdfs)
     if not pdfs:
         for failure in failures:
-            print(f"ERROR: {failure}")
+            logger.info("Input rejected: %s", failure)
         return 1
     logger.info("Collected %s PDF documents for processing", len(pdfs))
+    stem_counts = {pdf.stem: sum(other.stem == pdf.stem for other in pdfs) for pdf in pdfs}
+    # NOTE: heavy LLM imports inside main() so parser/help can load without importing the full LLM stack
+    from osa_tool.config.settings import ConfigManager
+    from osa_tool.core.llm.llm import ModelHandlerFactory
 
     config = ConfigManager(args)
-    handler = ModelHandlerFactory.build(config.get_model_settings("validation"))
+    handler = ModelHandlerFactory.build(config.get_model_settings("paper_claims"))
     pipeline = PaperClaimPipeline(handler)
+    paper_claim_settings = config.get_paper_analysis_settings().paper_claims
     options = PipelineOptions(
         pages_per_chunk=args.chunk_pages,
+        pdf_parser=args.pdf_parser or paper_claim_settings.pdf_parser,
+        force_parser_refresh=args.force_parser_refresh,
         max_retries=args.max_retries,
+        dedup_batch_size=args.dedup_batch_size,
         marker=MarkerOptions(
-            force_refresh=args.force_marker_refresh,
+            force_refresh=args.force_parser_refresh,
             low_vram=args.marker_low_vram,
             process_isolation=args.marker_process_isolation,
             log_cuda_memory=args.marker_log_cuda_memory,
         ),
     )
-    for pdf in pdfs:
+    from osa_tool.operations.analysis.paper_claims.openrouter_converter import (
+        validate_openrouter_parser_configuration,
+    )
+
+    try:
+        validate_openrouter_parser_configuration(options.pdf_parser, handler.model_settings)
+    except PdfConversionError:
+        return 1
+
+    for pdf in track(pdfs, description="Processing PDF documents"):
+        logger.info("Starting document %s", pdf)
         try:
+            reset_to_primary = getattr(handler, "reset_to_primary_model", None)
+            if callable(reset_to_primary):
+                reset_to_primary()
             result = pipeline.run(pdf, options)
-            pipeline.export(result, args.output_dir / pdf.stem, legacy=True)
-            print(f"OK: {pdf}")
+            output_name = pdf.stem
+            if stem_counts[pdf.stem] > 1:
+                digest = hashlib.sha256(str(pdf).encode()).hexdigest()[:10]
+                output_name = f"{pdf.stem}-{digest}"
+            output_path = pipeline.export(
+                result,
+                args.output_dir / output_name,
+                legacy=True,
+                include_debug=args.include_debug,
+            )
+            logger.info(
+                "Document completed: %s; parsed_sections=%s; selected_sections=%s; final_claims=%s; output=%s",
+                pdf,
+                len(result.sections),
+                len(result.extraction.selected_section_ids),
+                len(result.extraction.claims),
+                output_path,
+            )
         except Exception as exc:
             failures.append(f"{pdf}: {exc}")
-            print(f"ERROR: {pdf}: {exc}")
+            logger.info("Document failed: %s; reason=%s", pdf, exc)
     if failures:
-        print("Failures:")
+        logger.info("Paper claims batch completed with %s failures", len(failures))
         for failure in failures:
-            print(f"- {failure}")
+            logger.info("Failure: %s", failure)
         return 1
+    logger.info("Paper claims batch completed successfully: %s documents", len(pdfs))
     return 0
 
 

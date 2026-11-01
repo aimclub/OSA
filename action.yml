@@ -64,6 +64,13 @@ runs:
 
         # Base command
         CMD="python -m osa_tool.run -r https://github.com/${{ github.repository }} -b ${{ github.head_ref || github.ref_name }} --web-mode --no-fork --no-pull-request --docstring --incremental --target-files ${{ steps.changed-files.outputs.all_changed_files }}"
+
+        # The default repository config uses the subscription-backed host provider,
+        # but this composite action only provisions API-key transport.
+        if [ -z "${{ inputs.api }}" ] && [ -z "${{ inputs.base_url }}" ]; then
+          CMD="$CMD --api openai --base-url https://api.openai.com/v1"
+          if [ -z "${{ inputs.model }}" ]; then CMD="$CMD --model gpt-4o"; fi
+        fi
         
         # Dynamic argument adding (if they are added by user)
         if [ -n "${{ inputs.mode }}" ]; then CMD="$CMD --mode ${{ inputs.mode }}"; fi

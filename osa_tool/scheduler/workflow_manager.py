@@ -38,6 +38,7 @@ class WorkflowManager(ABC):
         "include_pep8": ["lint", "Lint", "pep8_check"],
         "include_autopep8": ["autopep8"],
         "include_fix_pep8": ["fix_pep8_command", "fix-pep8"],
+        "include_ruff": ["ruff", "ruff-lint", "ruff-format"],
         "slash-command-dispatch": ["slash_command_dispatch", "slashCommandDispatch"],
         "pypi-publish": ["pypi_publish", "pypi-publish", "publish"],
     }
@@ -146,7 +147,13 @@ class WorkflowManager(ABC):
                 result_plan[key] = default_value and has_tests and not job_exists
             elif key == "include_pep8":
                 result_plan[key] = default_value and not job_exists
-            elif key in ["include_autopep8", "include_fix_pep8", "slash-command-dispatch", "pypi-publish"]:
+            elif key in [
+                "include_autopep8",
+                "include_fix_pep8",
+                "include_ruff",
+                "slash-command-dispatch",
+                "pypi-publish",
+            ]:
                 result_plan[key] = default_value and not job_exists
             else:
                 result_plan[key] = default_value

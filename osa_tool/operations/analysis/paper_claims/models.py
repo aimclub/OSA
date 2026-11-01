@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt
+
+PdfParserName = Literal["marker", "mistral-ocr", "cloudflare-ai"]
 
 
 class StrictModel(BaseModel):
@@ -24,8 +26,8 @@ class MarkerOptions(StrictModel):
     extract_images: bool = False
     cache_root: Path | None = None
     force_refresh: bool = False
-    low_vram: bool = False
-    process_isolation: bool = False
+    low_vram: bool = True
+    process_isolation: bool = True
     log_cuda_memory: bool = True
     marker_config: dict[str, Any] = Field(default_factory=dict)
 
@@ -45,6 +47,7 @@ class ConvertedDocument(StrictModel):
     markdown: str
     cache_hit: bool = False
     cache_dir: Path | None = None
+    parser: PdfParserName | None = None
 
 
 class HeadingMeta(StrictModel):
@@ -99,6 +102,8 @@ class DedupSelection(StrictModel):
 class ExtractionMetadata(StrictModel):
     source: str | None = None
     model: str | None = None
+    configured_model: str | None = None
+    models_used: list[str] = Field(default_factory=list)
     steps: int = 3
     filtered_claims: int = 0
     step3_input_count: int = 0
@@ -111,22 +116,29 @@ class ClaimExtractionResult(StrictModel):
     selected_section_ids: list[str]
     meta: ExtractionMetadata
 
-    def to_legacy_dict(self) -> dict[str, Any]:
+    def to_legacy_dict(self, *, include_debug: bool = False) -> dict[str, Any]:
         claims = []
         for claim in self.claims:
             item = claim.model_dump(mode="json", exclude={"section_id"})
             claims.append(item)
-        return {
+        payload: dict[str, Any] = {
             "result": claims,
-            "step3_selection": [item.model_dump(mode="json") for item in self.deduplication],
             "meta": self.meta.model_dump(mode="json"),
         }
+        if include_debug:
+            payload["debug"] = {
+                "step3_selection": [item.model_dump(mode="json") for item in self.deduplication],
+            }
+        return payload
 
 
 class PipelineOptions(StrictModel):
-    pages_per_chunk: PositiveInt = 10
+    pages_per_chunk: PositiveInt = 5
+    pdf_parser: PdfParserName = "mistral-ocr"
+    force_parser_refresh: bool = False
     marker: MarkerOptions = Field(default_factory=MarkerOptions)
     max_retries: PositiveInt = 5
+    dedup_batch_size: int = Field(default=50, ge=2)
 
 
 class PipelineResult(StrictModel):
@@ -134,5 +146,23 @@ class PipelineResult(StrictModel):
     sections: list[PaperSection]
     extraction: ClaimExtractionResult
 
-    def to_legacy_dict(self) -> dict[str, Any]:
-        return self.extraction.to_legacy_dict()
+    def to_legacy_dict(self, *, include_debug: bool = False) -> dict[str, Any]:
+        return self.extraction.to_legacy_dict(include_debug=include_debug)
+
+
+class LoadedClaimsArtifact(StrictModel):
+    """Claims accepted for a resumed verification stage."""
+
+    claims: list[dict[str, Any]]
+    source_path: Path
+    source_format: Literal["typed", "legacy", "bare"]
+    upstream_meta: dict[str, Any] = Field(default_factory=dict)
+
+
+class LoadedSectionsArtifact(StrictModel):
+    """Parsed sections accepted as a reusable claim-extraction input."""
+
+    sections: list[PaperSection]
+    source_path: Path
+    source_format: Literal["bare", "envelope"]
+    upstream_meta: dict[str, Any] = Field(default_factory=dict)

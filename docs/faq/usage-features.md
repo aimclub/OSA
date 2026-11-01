@@ -11,7 +11,7 @@ Running OSA is straightforward once you have it installed and configured. Here's
 ```bash
 # Set your environment variables first
 export GIT_TOKEN="ghp_..."
-export OPENAI_API_KEY="sk-..."  # If using OpenAI
+export HOST_LLM_COMMAND=codex  # Default host provider; use OPENAI_API_KEY only with --api openai
 
 # Run OSA with repository URL
 python -m osa_tool.run -r https://github.com/username/repository
@@ -24,69 +24,13 @@ docker run --env-file .env osa_tool:latest \
   -r https://github.com/username/repository
 ```
 
+Docker runs default to `--api openai`; use `OPENAI_API_KEY` in `.env`, or pass `--api host` only when a host command or bridge is available inside the container.
+
 ## 4.2 What command-line arguments are available?
 
-OSA provides extensive CLI arguments for customization. Here's the complete reference:
-
-**Required Arguments:**
-
-| Flag | Description | Example | Mandatory |
-|------|-------------|---------|-----------|
-| `-r, --repository` | URL of GitHub/GitLab/Gitverse repository | `-r https://github.com/aimclub/OSA` | ✅ Yes |
-
-**Core Configuration:**
-
-| Flag | Description | Default | Example |
-|------|-------------|---------|---------|
-| `-b, --branch` | Target branch name | Default branch | `-b develop` |
-| `-o, --output` | Output directory path | Current directory | `-o ./results` |
-| `-m, --mode` | Operation mode | `auto` | `--mode basic` |
-| `--config-file` | Path to TOML configuration | None | `--config-file config.toml` |
-
-**LLM Configuration:**
-
-| Flag | Description | Default | Example |
-|------|-------------|---------|---------|
-| `--api` | LLM provider | `openai` | `--api ollama` |
-| `--base-url` | API endpoint URL | `https://openrouter.ai/api/v1` | `--base-url http://localhost:11434` |
-| `--model` | LLM model name | `gpt-3.5-turbo` | `--model llama3.2:3b` |
-| `--temperature` | Sampling temperature (0-1) | `0.05` | `--temperature 0.3` |
-| `--top_p` | Nucleus sampling probability | `0.95` | `--top_p 0.9` |
-| `--max_tokens` | Max output tokens | `4096` | `--max_tokens 2048` |
-| `--context_window` | Total context window | `16385` | `--context_window 8192` |
-
-**Task-Specific Models** (when `--use-single-model=false`):
-
-| Flag | Purpose | Example |
-|------|---------|---------|
-| `--model-docstring` | Model for docstring generation | `--model-docstring codellama:13b` |
-| `--model-readme` | Model for README generation | `--model-readme gpt-4o` |
-| `--model-validation` | Model for code validation | `--model-validation llama3.1:8b` |
-| `--model-general` | Model for general tasks | `--model-general gemma3:27b` |
-
-**Repository Interaction:**
-
-| Flag | Description | Default | Example |
-|------|-------------|---------|---------|
-| `--no-fork` | Skip creating fork | `False` | `--no-fork` |
-| `--no-pull-request` | Skip creating PR | `False` | `--no-pull-request` |
-| `--delete-dir` | Delete cloned repo after processing | `disabled` | `--delete-dir` |
-
-**Special Features:**
-
-| Flag | Description | Example |
-|------|-------------|---------|
-| `--attachment` | Path/URL to PDF/.docx paper | `--attachment ./paper.pdf` |
-| `--convert-notebooks` | Convert Jupyter notebooks | `--convert-notebooks ./notebooks/` |
-| `--generate-workflows` | Generate CI/CD pipelines | `--generate-workflows` |
-| `--structured-paper-parser` | Layout-aware VLM parsing of PDF papers| `--structured-paper-parser` |
-
-**Help:**
-
-```bash
-# View all available arguments
-python -m osa_tool.run --help
-```
+Run `osa-tool --help` for the descriptions shown by the CLI. The complete option reference is generated from the same
+metadata and is available in the [interactive CLI guide](../scheduler/index.md#table-of-available-keys). Runtime
+defaults come from the bundled or selected configuration file.
 
 ## 4.3 How does README generation work?
 

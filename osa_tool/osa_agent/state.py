@@ -67,6 +67,8 @@ class OSAState(BaseModel):
     max_review_cycles: int = 3
     review_cycle_count: int = 0
     review_cycles_exhausted: bool = False
+    final_summary: Optional[str] = None
+    pull_request_url: Optional[str] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 

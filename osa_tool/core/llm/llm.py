@@ -1,9 +1,14 @@
 import asyncio
+import base64
+import inspect
+import json
 import logging
 import os
 import time
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 from uuid import uuid4
 
 import dotenv
@@ -209,7 +214,19 @@ class ProtollmHandler(ModelHandler):
         self._original_primary_model = model_settings.model
         self.max_retries = model_settings.max_retries
         self.last_successful_model: str | None = None
+        self.successful_models: list[str] = []
         self._configure_api(model_name=model_settings.model)
+
+    def _record_successful_model(self, model: str) -> None:
+        """Keep ordered per-handler model provenance without duplicating repeated calls."""
+        self.last_successful_model = model
+        if model not in self.successful_models:
+            self.successful_models.append(model)
+
+    def reset_model_provenance(self) -> None:
+        """Clear model-use history before starting an independent analysis document."""
+        self.last_successful_model = None
+        self.successful_models.clear()
 
     def reset_to_primary_model(self) -> None:
         """Explicitly restore primary model configuration."""
@@ -306,7 +323,7 @@ class ProtollmHandler(ModelHandler):
                 messages = self._prepare_messages(prompt, system_message)
                 response = self.client.invoke(messages)
                 content = response.content
-                self.last_successful_model = model
+                self._record_successful_model(model)
                 logger.info("Synchronous LLM request completed with model %s", model)
                 self._log_response_debug(content, "Synchronous")
                 return content
@@ -317,6 +334,109 @@ class ProtollmHandler(ModelHandler):
 
         logger.error(f"All models failed. Last error: {last_error}")
         raise last_error
+
+    async def async_request_pdf(self, pdf_path: Path, parser: str, retry_delay: float = 1) -> dict[str, Any]:
+        """Ask OpenRouter to parse one PDF and return its raw chat-completion response.
+
+        The raw response is required because OpenRouter's file annotations are a
+        provider extension to the standard OpenAI chat-completion schema.
+        """
+        if parser not in {"mistral-ocr", "cloudflare-ai"}:
+            raise ValueError(f"Unsupported OpenRouter PDF parser: {parser}")
+
+        hostname = urlparse(self.model_settings.base_url).hostname or ""
+        api = getattr(self.model_settings, "api", None)
+        if api not in {None, "openai"} or (hostname != "openrouter.ai" and not hostname.endswith(".openrouter.ai")):
+            message = (
+                f"The {parser} PDF parser requires an OpenRouter base URL and api='openai'; "
+                f"configured api={api!r}, base_url={self.model_settings.base_url!r}."
+            )
+            if api == "host":
+                message += " The host provider uses Codex and ignores base_url."
+            message += " Configure the OpenRouter API or select the Marker parser."
+            logger.warning("PDF parsing stopped: %s", message)
+            raise ValueError(message)
+
+        path = Path(pdf_path)
+        file_data = base64.b64encode(path.read_bytes()).decode("ascii")
+        message = {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": (
+                        "Parse the attached PDF with the configured file parser. "
+                        "Reply only with OK; the caller reads document text from the file annotation."
+                    ),
+                },
+                {
+                    "type": "file",
+                    "file": {
+                        "filename": path.name,
+                        "file_data": f"data:application/pdf;base64,{file_data}",
+                    },
+                },
+            ],
+        }
+        last_error: Exception | None = None
+        for model in self._iter_configured_models():
+            try:
+                raw_response = await self.client.root_async_client.chat.completions.with_raw_response.create(
+                    model=model,
+                    messages=[message],
+                    max_tokens=8,
+                    extra_body={
+                        "provider": {"only": self.model_settings.allowed_providers},
+                        "plugins": [{"id": "file-parser", "pdf": {"engine": parser}}],
+                    },
+                )
+            except Exception as exc:
+                error_body = getattr(exc, "body", None)
+                if not isinstance(error_body, dict):
+                    response = getattr(exc, "response", None)
+                    response_json = getattr(response, "json", None)
+                    if callable(response_json):
+                        try:
+                            error_body = response_json()
+                        except Exception:
+                            error_body = None
+                error = error_body.get("error") if isinstance(error_body, dict) else None
+                metadata = error.get("metadata") if isinstance(error, dict) else None
+                annotations = metadata.get("file_annotations") if isinstance(metadata, dict) else None
+                if isinstance(annotations, list) and annotations:
+                    logger.info(
+                        "OpenRouter parsed the PDF for model %s but completion failed; reusing its file annotations",
+                        model,
+                    )
+                    return error_body
+
+                last_error = exc
+                logger.debug("OpenRouter PDF parsing request failed with model %s: %r", model, exc)
+                await asyncio.sleep(retry_delay)
+                continue
+
+            # OpenAI response wrappers expose ``text`` as an async method, while
+            # other compatible wrappers expose the already-decoded string as a
+            # property. Support both forms without retrying a successful request.
+            response_text = getattr(raw_response, "text", None)
+            if callable(response_text):
+                response_text = response_text()
+            if inspect.isawaitable(response_text):
+                response_text = await response_text
+            if not isinstance(response_text, str):
+                raise ValueError("OpenRouter returned no text body for PDF parsing")
+            try:
+                response = json.loads(response_text)
+            except json.JSONDecodeError as exc:
+                raise ValueError("OpenRouter returned invalid JSON for PDF parsing") from exc
+            if not isinstance(response, dict):
+                raise ValueError("OpenRouter returned a non-object response for PDF parsing")
+            self._record_successful_model(model)
+            return response
+
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("No paper-claims model was configured for OpenRouter PDF parsing")
 
     def send_and_parse(self, prompt: str, parser: Any, system_message: str = None, retry_delay: float = 0.5):
         """
@@ -393,7 +513,7 @@ class ProtollmHandler(ModelHandler):
                 logger.debug("Async LLM request messages:\n%s", messages)
                 response = await self.client.ainvoke(messages)
                 content = response.content
-                self.last_successful_model = model
+                self._record_successful_model(model)
                 logger.info("Asynchronous LLM request completed with model %s", model)
                 self._log_response_debug(content, "Asynchronous")
                 return content
@@ -521,7 +641,7 @@ class ProtollmHandler(ModelHandler):
                     time.sleep(retry_delay)
 
         logger.debug(repr(last_error))
-        raise
+        raise last_error
 
     async def async_run_chain(
         self, prompt: str, parser: PydanticOutputParser, system_message: str = None, retry_delay: float = 0.5
@@ -582,15 +702,23 @@ class ProtollmHandler(ModelHandler):
         }
         return url_templates.get(self.model_settings.api, f"{self.model_settings.base_url};{model_name}")
 
-    def _get_llm_params(self):
+    def _get_llm_params(self, model_name: str | None = None):
         """Extract LLM parameters from config"""
         llm_params = ["temperature", "max_tokens", "top_p"]
 
-        return {
+        params = {
             name: getattr(self.model_settings, name)
             for name in llm_params
             if getattr(self.model_settings, name, None) is not None
         }
+        if (
+            self.model_settings.api == "openai"
+            and urlparse(self.model_settings.base_url).hostname == "api.openai.com"
+            and (model_name or self.model_settings.model).startswith(("gpt-6-", "gpt-6."))
+        ):
+            params.pop("temperature", None)
+            params.pop("top_p", None)
+        return params
 
     def _configure_api(self, model_name: str) -> None:
         """
@@ -602,12 +730,17 @@ class ProtollmHandler(ModelHandler):
         Returns:
             None
         """
-        dotenv.load_dotenv()
+        # override=True so an updated API key in .env is honoured even when a stale
+        # key is still present in the OS environment (its absence caused confusing
+        # 401 "User not found" errors)
+        dotenv.load_dotenv(override=True)
 
+        params = self._get_llm_params(model_name)
+        if urlparse(self.model_settings.base_url).hostname != "api.openai.com":
+            params["extra_body"] = {"providers": {"only": self.model_settings.allowed_providers}}
         self.client = create_llm_connector(
             model_url=self._build_model_url(model_name),
-            extra_body={"providers": {"only": self.model_settings.allowed_providers}},
-            **self._get_llm_params(),
+            **params,
         )
 
     def _limit_tokens(
@@ -665,7 +798,7 @@ class ModelHandlerFactory:
     """
 
     @classmethod
-    def build(cls, model_settings: ModelSettings) -> ProtollmHandler:
+    def build(cls, model_settings: ModelSettings) -> ModelHandler:
         """
         Builds and returns a handler based on the configuration of the class.
 
@@ -679,4 +812,8 @@ class ModelHandlerFactory:
         Returns:
             ModelHandler: An instance of the appropriate model handler.
         """
+        if model_settings.api == "host":
+            from osa_tool.core.llm.host import HostLlmHandler
+
+            return HostLlmHandler(model_settings)
         return ProtollmHandler(model_settings)

@@ -1,7 +1,15 @@
+# Optional cli_description is used in compact plan tables; description remains
+# the full text for CLI help and generated documentation.
 arguments:
+  paper_analysis:
+    aliases: [ "--paper-analysis" ]
+    type: flag
+    description: "Run the analysis-only paper claim and repository verification pipeline."
+
   attachment:
     aliases: [ "--attachment" ]
     type: str
+    cli_description: "Local PDF or DOCX file, or a public PDF URL."
     description: |
       Path to a local PDF file (for articles) or .docx file (for documents). 
       Alternatively, accept a publicly accessible HTTP/HTTPS URL pointing to a PDF resource.
@@ -17,6 +25,7 @@ arguments:
     aliases: [ "--convert-notebooks" ]
     type: list
     allow_empty: true
+    cli_description: "Convert selected notebooks or all notebooks."
     description: |
       Convert Jupyter notebooks from .ipynb to .py format.
       Provide one or multiple paths, or leave empty for repo directory.
@@ -25,6 +34,7 @@ arguments:
   translate_readme:
     aliases: [ "--translate-readme" ]
     type: list
+    cli_description: "Translate the main README into selected languages."
     description: |
       List of target languages to translate the project's main README into.
       Each language should be specified by its name (e.g., "Russian", "Chinese").
@@ -52,6 +62,7 @@ arguments:
   ignore_list:
     aliases: [ "--ignore-list" ]
     type: list
+    cli_description: "Paths to exclude from docstring generation."
     description: | 
       Space-separated list of the directories and boilerplate files to be ignored while docstring generation.
       Directories should be listed relatively to the project root.
@@ -117,26 +128,11 @@ arguments:
     type: flag
     description: "Generate About section with tags."
 
-  validate_paper:
-    aliases: [ "--validate-paper" ]
-    type: flag
-    description: "Check whether the experiments proposed in an attached research paper can be reproduced using the selected repository."
-
-  validate_doc:
-    aliases: [ "--validate-doc" ]
-    type: flag
-    description: "Check whether the experiments proposed in an attached documentation file can be reproduced using the selected repository."
-
 settings:
   use_single_model:
-      aliases: [ "--use-single-model" ]
-      type: flag
-      description: "Use the same model for all tasks (from default configuration)."
-
-  structured_paper_parser:
-      aliases: [ "--structured-paper-parser" ]
-      type: flag
-      description: "Use layout-aware VLM parsing for PDF papers (paper_parsing) instead of plain-text extraction during paper validation."
+    aliases: [ "--use-single-model" ]
+    type: flag
+    description: "Use the same model for all tasks (from default configuration)."
 
   config_file:
     aliases: [ "--config-file" ]
@@ -167,6 +163,7 @@ settings:
   mode:
     aliases: [ "-m", "--mode" ]
     type: str
+    cli_description: "Choose basic, auto, or advanced processing."
     description: |
       Select the operation mode for repository processing:
         basic           — run a minimal predefined set of tasks.
@@ -174,15 +171,22 @@ settings:
         advanced        — run all enabled features based on provided flags.
     choices: [ "basic", "auto", "advanced" ]
 
+  artefacts_language:
+    aliases: [ "--artefacts-language" ]
+    type: str
+    description: "Generate reports on selected language"
+
   author:
     aliases: [ "--author" ]
     type: str
+    cli_description: "Author name for the pull request."
     description: |
       Primarily used for web interface. When set, the tool will add Author to the Pull Request body.
 
   web_mode:
     aliases: [ "--web-mode" ]
     type: flag
+    cli_description: "Create a plan without the interactive CLI editor."
     description: |
       Enable web interface mode. When set, the tool will generate the task plan
       without launching the interactive CLI editor.
@@ -200,15 +204,30 @@ settings:
     description: "Branch name of the GitHub repository"
     required: false
 
+  based_on_date:
+    aliases: [ "--based-on-date" ]
+    type: str
+    cli_description: "Use the repository commit closest to this date."
+    description: |
+      Date the repository has to be analysed as of, for example the publication
+      date of a related article. The repository is rolled back to the commit
+      closest to this date.
+      WARNING: fork and pull request creation (--no-fork, --no-pull-request)
+      are forced for such runs, since the analysed tree is outdated.
+      Accepted formats: YYYY-MM-DD, YYYY-MM-DDThh:mm:ss, DD.MM.YYYY.
+    example: "2023-05-17"
+    required: false
+
   api:
     aliases: [ "--api" ]
     type: str
     description: "LLM API service provider"
-    choices: [ "itmo", "openai", "ollama" ]
+    choices: [ "host", "itmo", "openai", "ollama" ]
 
   base_url:
     aliases: [ "--base-url" ]
     type: str
+    cli_description: "Service URL for the selected API provider."
     description: |
       URL of the service provider.
       See: https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors
@@ -216,6 +235,7 @@ settings:
   model:
     aliases: [ "--model" ]
     type: str
+    cli_description: "Default LLM model for repository tasks."
     description: |
       Specific LLM model to use. See available providers and models:
       https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors
@@ -230,10 +250,20 @@ settings:
     type: str
     description: "Specific LLM model for README generation tasks."
 
-  model_validation:
-    aliases: [ "--model-validation" ]
+  model_repository_quality:
+    aliases: [ "--model-repository-quality" ]
     type: str
-    description: "Specific LLM model for validation tasks."
+    description: "Specific LLM model for formal repository-quality scoring."
+
+  model_paper_claims:
+    aliases: [ "--model-paper-claims" ]
+    type: str
+    description: "Specific LLM model for typed paper claim extraction."
+
+  model_paper_verification:
+    aliases: [ "--model-paper-verification" ]
+    type: str
+    description: "Specific LLM model for paper claim verification."
 
   model_general:
     aliases: [ "--model-general" ]
@@ -306,6 +336,16 @@ workflow:
     type: flag
     description: "Include PyPI publish workflow."
 
+  include_ruff:
+    aliases: [ "--include-ruff" ]
+    type: flag
+    description: "Include Ruff linter and formatter workflow."
+
+  use_uv:
+    aliases: [ "--use-uv" ]
+    type: flag
+    description: "Use uv instead of pip for dependency installation in workflows."
+
   python_versions:
     aliases: [ "--python-versions" ]
     type: list
@@ -344,3 +384,78 @@ multi-run:
     aliases: [ "--table-path" ]
     type: str
     description: "Path to an Excel (.xlsx) or CSV file containing tabular data."
+
+# Descriptions for paper-analysis options exposed by the normal `osa-tool` CLI.
+# The parser implementation and validation are shared internally, while this
+# section remains metadata and is not loaded as a second parser argument group.
+paper_analysis_cli:
+  metadata_only: true
+
+  paper:
+    aliases: [ "--paper" ]
+    type: path
+    description: "PDF paper to extract through typed paper_claims."
+
+  sections_json:
+    aliases: [ "--sections-json" ]
+    type: path
+    description: "Parsed PaperSection JSON to extract and verify."
+
+  claims_json:
+    aliases: [ "--claims-json" ]
+    type: path
+    description: "Typed, legacy, or bare claim JSON to verify."
+
+  pdf_parser:
+    aliases: [ "--pdf-parser" ]
+    type: str
+    choices: [ "mistral-ocr", "cloudflare-ai", "marker" ]
+    description: "PDF parser for --paper. Defaults to the [paper_analysis.paper_claims] configuration."
+
+  force_parser_refresh:
+    aliases: [ "--force-parser-refresh", "--force-marker-refresh" ]
+    type: flag
+    description: "Ignore cached PDF parser output for this run; claim extraction still runs normally."
+
+  paper_claims_prompts_dir:
+    aliases: [ "--paper-claims-prompts-dir" ]
+    type: path
+    description: "Directory of TOML prompt overrides for paper-claim extraction."
+
+  paper_output_dir:
+    aliases: [ "--paper-output-dir" ]
+    type: path
+    cli_description: "Directory for paper-analysis artifacts."
+    description: >-
+      Directory for paper-analysis artifacts. Configured defaults use a collision-safe clone-name namespace outside
+      the repository; paths inside the analyzed repository are rejected.
+
+  include_repository_quality:
+    aliases: [ "--include-repository-quality" ]
+    type: flag
+    description: "Calculate and export the formal 0-100 repository-quality score."
+
+  skip_repository_quality:
+    aliases: [ "--skip-repository-quality" ]
+    type: flag
+    description: "Skip formal repository-quality scoring for this run."
+
+  only_high_medium_verifiability:
+    aliases: [ "--only-high-medium-verifiability" ]
+    type: flag
+    description: "Verify only high- and medium-verifiability claims."
+
+  include_low_verifiability:
+    aliases: [ "--include-low-verifiability" ]
+    type: flag
+    description: "Also verify low or missing-verifiability claims."
+
+  hide_low_confidence:
+    aliases: [ "--hide-low-confidence" ]
+    type: flag
+    description: "Hide low-confidence verification results from the reported rate."
+
+  include_low_confidence:
+    aliases: [ "--include-low-confidence" ]
+    type: flag
+    description: "Keep low-confidence verification results in the report and rate."

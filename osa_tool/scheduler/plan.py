@@ -10,13 +10,16 @@ EXCLUDED_TASK = {
     "web_mode",
     "output",
     "branch",
+    "based_on_date",
     "api",
     "base_url",
     "model",
     "model_docstring",
     "model_readme",
-    "model_validation",
     "model_general",
+    "model_repository_quality",
+    "model_paper_claims",
+    "model_paper_verification",
     "temperature",
     "max_tokens",
     "context_window",
@@ -28,6 +31,7 @@ EXCLUDED_TASK = {
     "branches",
     "codecov_token",
     "max_retries",
+    "artefacts_language",
     "scorecard",
 }
 
@@ -58,8 +62,7 @@ class Plan:
 
     def record_result(self, task: str, result: Any) -> None:
         """Store normalized result for a task, keyed by its human‑readable name."""
-        display_name = self._format_task_name(task)
-        self.results[display_name] = self._normalize_result(result)
+        self.results[task] = self._normalize_result(result)
 
     def get(self, task: str) -> Optional[Any]:
         return self.generated_plan.get(task, None)
@@ -78,8 +81,7 @@ class Plan:
         tasks = []
         for task in self.tasks.keys():
             if task not in EXCLUDED_TASK:
-                display_name = self._format_task_name(task)
-                tasks.append((display_name, self.tasks[task] == TaskStatus.COMPLETED))
+                tasks.append((task, self.tasks[task] == TaskStatus.COMPLETED))
         return tasks
 
     @staticmethod

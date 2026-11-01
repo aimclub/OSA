@@ -36,7 +36,6 @@ Install an optional feature set when required:
 
 ```bash
 pip install "osa_tool[paper-claims]"
-pip install "osa_tool[repository-validation]"
 ```
 
 **Complete Installation Steps:**
@@ -136,7 +135,7 @@ pip install -r requirements.txt
 # Option B: Using poetry (recommended for development)
 poetry install
 
-# Include optional paper-claims and repository-validation features
+# Include the optional paper-claims feature
 poetry install --all-extras
 
 # Step 4: Run tests
@@ -210,6 +209,8 @@ docker run \
   osa_tool:latest \
   -r https://github.com/username/repository
 ```
+
+Docker runs default to the OpenAI-compatible API-key provider. Use `OPENAI_API_KEY` in `.env`, or pass `--api host` only when the container can access a host command or bridge.
 
 **Docker Run Options:**
 

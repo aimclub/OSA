@@ -70,7 +70,7 @@ def build_graph(context: AgentContext) -> Any:
     # reviewer → finalizer | planner
     graph.add_conditional_edges(
         "reviewer",
-        lambda state: ("finalizer" if state.approval else "planner"),
+        lambda state: (END if state.review_cycles_exhausted else "finalizer" if state.approval else "planner"),
     )
 
     graph.add_edge("finalizer", END)

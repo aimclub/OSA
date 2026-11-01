@@ -1,5 +1,20 @@
-from osa_tool.operations.docs.readme_generation.sections.header import HeaderBuilder
+import json
+import os
+import re
+
+from osa_tool.operations.docs.readme_generation.sections.header import BADGE_STYLE, HeaderBuilder
+from osa_tool.utils.utils import osa_project_root
 from tests.utils.mocks.repo_trees import get_mock_repo_tree
+
+ICONS_PATH = os.path.join(
+    osa_project_root(),
+    "operations",
+    "docs",
+    "readme_generation",
+    "sections",
+    "icons",
+    "shieldsio_icons.json",
+)
 
 
 def test_header_builder_initialization(mock_header_builder):
@@ -172,6 +187,36 @@ def test_generate_tech_badges_respects_max_limit(mock_header_builder):
 
     # Assert
     assert isinstance(badges, str)
+
+
+def test_generate_tech_badges_substitutes_style_placeholder(mock_header_builder):
+    # Arrange
+    builder = mock_header_builder
+    builder.techs = {"numpy", "scipy", "pytest"}
+
+    # Act
+    badges = builder.generate_tech_badges()
+
+    # Assert
+    # every shields.io URL ships a "{0}" placeholder; leaving it unsubstituted
+    # put a literal "style={0}" into generated READMEs
+    assert "{0}" not in badges
+    assert badges.count(f"style={BADGE_STYLE}") == 3
+
+
+def test_shipped_icon_urls_are_format_safe():
+    # Arrange
+    with open(ICONS_PATH, "r", encoding="utf-8") as f:
+        icons = json.load(f)
+
+    # Assert
+    # a stray brace would make str.format raise during README generation
+    assert icons
+    for tech, entry in icons.items():
+        url = entry[0]
+        assert url.count("{0}") == 1, f"{tech}: expected exactly one style placeholder"
+        assert not re.search(r"\{(?!0\})", url), f"{tech}: unexpected brace in {url}"
+        assert "{0}" not in url.format(BADGE_STYLE)
 
 
 def test_header_builder_with_minimal_repo_tree(

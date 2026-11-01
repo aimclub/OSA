@@ -12,10 +12,6 @@ _OPTIONAL_MODULES = {
     "scipy",
     "sentence_transformers",
     "torch",
-    "torch_geometric",
-    "transformers",
-    "networkx",
-    "matplotlib",
 }
 
 

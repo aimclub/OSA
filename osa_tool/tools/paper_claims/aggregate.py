@@ -31,8 +31,8 @@ def main() -> int:
         import pandas as pd
     except ImportError as exc:
         raise RuntimeError(
-            "Aggregation dependencies are missing; install the project dependencies from pyproject.toml "
-            "or requirements.txt."
+            "Claim aggregation requires pandas, which is included with the core OSA installation. "
+            "Install the project dependencies from pyproject.toml or requirements.txt."
         ) from exc
     frame = pd.DataFrame(rows).sort_values("paper").reset_index(drop=True)
     args.output.parent.mkdir(parents=True, exist_ok=True)

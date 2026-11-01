@@ -8,3 +8,4 @@ class AgentStatus(str, Enum):
     WAITING_FOR_USER = "waiting_for_user"
     ERROR = "error"
     COMPLETED = "completed"
+    STOPPED = "stopped"

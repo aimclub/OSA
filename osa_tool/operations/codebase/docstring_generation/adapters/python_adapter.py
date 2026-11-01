@@ -93,7 +93,13 @@ class PythonAdapter(LanguageAdapter):
             if not os.path.exists(module_path):
                 return import_mapping
 
-            for entity in (e.strip() for e in import_part.split(",")):
+            # a grouped import `from x import (a, b)` (possibly multi-line) keeps the
+            # parentheses/newlines in the raw text; strip them so the names stay clean
+            import_part = import_part.strip().strip("()").replace("\\", " ")
+
+            for entity in (e.strip().strip("()") for e in import_part.split(",")):
+                if not entity or entity == "*":
+                    continue
                 if " as " in entity:
                     imported_name, alias_name = (e.strip() for e in entity.split(" as ", 1))
                 else:

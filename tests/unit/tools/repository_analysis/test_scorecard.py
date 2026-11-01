@@ -1,12 +1,19 @@
+import io
 import json
 from unittest.mock import MagicMock, patch
 
 from osa_tool.tools.repository_analysis.scorecard import (
+    _SCORECARD_REPO,
+    _SCORECARD_VERSION,
+    _SCORECARD_WINDOWS_REPO,
+    _SCORECARD_WINDOWS_VERSION,
     ScorecardCheck,
     ScorecardResult,
     ScorecardRunner,
     _download_scorecard,
+    _local_binary_path,
     _resolve_scorecard_binary,
+    _scorecard_source,
 )
 
 SAMPLE_JSON = json.dumps(
@@ -202,10 +209,77 @@ def test_download_scorecard_skips_on_cache_mkdir_error(tmp_path):
     assert result is None
 
 
-def test_resolve_binary_skips_on_windows():
+SYSTEM = "osa_tool.tools.repository_analysis.scorecard.platform.system"
+
+
+def test_scorecard_source_uses_checksum_pinned_fork_on_windows():
     # Act
-    with patch("osa_tool.tools.repository_analysis.scorecard.platform.system", return_value="Windows"):
+    with patch(SYSTEM, return_value="Windows"):
+        repo, version, sha256 = _scorecard_source()
+
+    # Assert
+    assert repo == _SCORECARD_WINDOWS_REPO
+    assert version == _SCORECARD_WINDOWS_VERSION
+    # a non-upstream artifact must never be installed unverified
+    assert sha256 and len(sha256) == 64
+
+
+def test_scorecard_source_uses_upstream_off_windows():
+    # Act
+    with patch(SYSTEM, return_value="Linux"):
+        repo, version, sha256 = _scorecard_source()
+
+    # Assert
+    assert repo == _SCORECARD_REPO
+    assert version == _SCORECARD_VERSION
+    assert sha256 is None
+
+
+def test_cached_binary_name_distinguishes_fork_from_upstream():
+    # Act
+    with patch(SYSTEM, return_value="Windows"):
+        windows_name = _local_binary_path().name
+    with patch(SYSTEM, return_value="Linux"):
+        linux_name = _local_binary_path().name
+
+    # Assert: a previously cached upstream build must not be reused as the fork one
+    assert windows_name != linux_name
+    assert _SCORECARD_WINDOWS_VERSION in windows_name
+
+
+def test_resolve_binary_on_windows_bypasses_path(tmp_path):
+    # Arrange: a scorecard on PATH is almost certainly a stock build, which scores
+    # most checks -1 on Windows, so it must lose to our verified fork build.
+    cached = tmp_path / "scorecard-fork.exe"
+    cached.write_text("binary")
+
+    # Act
+    with (
+        patch(SYSTEM, return_value="Windows"),
+        patch("shutil.which", return_value="C:\stock\scorecard.exe") as which,
+        patch("osa_tool.tools.repository_analysis.scorecard._local_binary_path", return_value=cached),
+    ):
         result = _resolve_scorecard_binary()
 
     # Assert
+    assert result == str(cached)
+    which.assert_not_called()
+
+
+def test_download_scorecard_rejects_checksum_mismatch(tmp_path):
+    # Arrange
+    dest = tmp_path / "scorecard-fork.exe"
+
+    # Act
+    with (
+        patch(
+            "osa_tool.tools.repository_analysis.scorecard._scorecard_source",
+            return_value=("someone/scorecard", "9.9.9", "0" * 64),
+        ),
+        patch("urllib.request.urlopen", return_value=io.BytesIO(b"tampered archive")),
+    ):
+        result = _download_scorecard(dest)
+
+    # Assert: a mismatching artifact is discarded, never installed
     assert result is None
+    assert not dest.exists()

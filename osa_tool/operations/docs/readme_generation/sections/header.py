@@ -15,6 +15,10 @@ from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import osa_project_root, resolve_repo_path, resolve_repo_web_identity
 
+# Shields.io badge style applied to the tech icons. Every URL in shieldsio_icons.json
+# carries a single "{0}" placeholder for it; "flat" matches the license badge above them.
+BADGE_STYLE = "flat"
+
 
 class HeaderBuilder:
     """Produce the top-of-README header with project name, info badges, and tech badges."""
@@ -129,7 +133,7 @@ class HeaderBuilder:
         badges: list[str] = ["Built with:\n"]
         for tech in sorted(self.techs):
             if tech in icons:
-                badges.append(f"![{tech}]({icons[tech][0]})")
+                badges.append(f"![{tech}]({icons[tech][0].format(BADGE_STYLE)})")
             if len(badges) >= self.max_tech_badges + 1:
                 break
         if len(badges) <= 3:

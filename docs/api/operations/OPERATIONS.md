@@ -7,8 +7,7 @@ This document is auto-generated. Do not edit manually.
 | Name | Priority | Intents | Scopes | Args Schema | Executor | Method |
 |------|----------|---------|--------|-------------|----------|--------|
 | `generate_report` | 5 | new_task | full_repo, analysis | — | `ReportGenerator` | `run` |
-| `validate_doc` | 10 | new_task | full_repo, analysis | — | `DocValidator` | `run` |
-| `validate_paper` | 15 | new_task | full_repo, analysis | — | `PaperValidator` | `run` |
+| `generate_notebook_report` | 7 | new_task | full_repo, analysis | NotebookReportArgs | `NotebookReportGenerator` | `run` |
 | `convert_notebooks` | 30 | new_task | full_repo, codebase | ConvertNotebooksArgs | `NotebookConverter` | `convert_notebooks` |
 | `translate_dirs` | 40 | new_task | full_repo, codebase | — | `RepositoryStructureTranslator` | `rename_directories_and_files` |
 | `generate_docstrings` | 50 | new_task, feedback | full_repo, codebase | GenerateDocstringsArgs | `DocstringsGenerator` | `run` |

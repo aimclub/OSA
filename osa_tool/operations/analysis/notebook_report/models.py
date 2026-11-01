@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass
@@ -9,6 +10,10 @@ class NotebookIssue:
     description: str
     recommendation: str
     details: str | None = None
+    # Raw values behind `details` (e.g. {"count": 5}), keyed to match a
+    # "notebook_issue_<slug>_details" locale template. Lets the report renderer
+    # produce a translated details fragment instead of the English `details` text.
+    details_kwargs: dict[str, Any] | None = None
 
 
 @dataclass

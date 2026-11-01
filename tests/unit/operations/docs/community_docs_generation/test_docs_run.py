@@ -9,16 +9,19 @@ def test_generate_documentation_calls_builders_methods(mock_config_manager, mock
             "osa_tool.operations.docs.community_docs_generation.docs_run.CommunityTemplateBuilder"
         ) as mock_community_cls,
         patch("osa_tool.operations.docs.community_docs_generation.docs_run.ContributingBuilder") as mock_contrib_cls,
+        patch("osa_tool.operations.docs.community_docs_generation.docs_run.CodeMetaGenerator") as mock_codemeta_cls,
     ):
         # Arrange
         mock_contributing_instance = MagicMock()
         mock_community_instance = MagicMock()
         mock_community_instance.host = "github"
+        mock_codemeta_instance = MagicMock()
         call_order = []
 
         mock_contrib_cls.side_effect = lambda *_: call_order.append("contributing_init") or mock_contributing_instance
         mock_contributing_instance.build = MagicMock(side_effect=lambda: call_order.append("contributing_build"))
         mock_community_cls.side_effect = lambda *_: call_order.append("community_init") or mock_community_instance
+        mock_codemeta_cls.return_value = mock_codemeta_instance
         mock_community_instance.build_code_of_conduct = MagicMock()
         mock_community_instance.build_security = MagicMock()
         mock_community_instance.build_pull_request = MagicMock()
@@ -31,7 +34,7 @@ def test_generate_documentation_calls_builders_methods(mock_config_manager, mock
         caplog.set_level("INFO")
 
         # Act
-        generate_documentation(mock_config_manager, mock_repository_metadata)
+        result = generate_documentation(mock_config_manager, mock_repository_metadata)
 
         # Assert
         assert "Starting generating additional documentation." in caplog.text
@@ -41,6 +44,8 @@ def test_generate_documentation_calls_builders_methods(mock_config_manager, mock
         mock_contributing_instance.build.assert_called_once()
         mock_community_instance.build_code_of_conduct.assert_called_once()
         mock_community_instance.build_security.assert_called_once()
+        mock_codemeta_instance.generate.assert_called_once()
+        assert "codemeta.json" in result["result"]["generated"]
         mock_community_instance.build_pull_request.assert_called_once()
         mock_community_instance.build_bug_issue.assert_called_once()
         mock_community_instance.build_documentation_issue.assert_called_once()

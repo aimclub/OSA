@@ -58,7 +58,9 @@ class ModeScheduler:
         Returns:
             dict: Prepared plan dictionary.
         """
-        plan = dict(vars(self.args))
+        # Argument parsing metadata is used by ConfigManager to preserve CLI
+        # precedence; it is not part of the user-facing action plan.
+        plan = {key: value for key, value in vars(self.args).items() if not key.startswith("_")}
 
         if self.mode == "basic":
             logger.info("Basic mode selected for task scheduler.")

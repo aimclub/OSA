@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 
 from osa_tool.config.osa_config import OSAConfig
@@ -7,7 +8,7 @@ from osa_tool.core.models.agent_status import AgentStatus
 from osa_tool.osa_agent.context import AgentContext
 from osa_tool.osa_agent.graph import build_graph
 from osa_tool.osa_agent.state import OSAState
-from osa_tool.run import initialize_git_platform
+from osa_tool.run import initialize_git_platform, resolve_publishing_options
 from osa_tool.ui.input_for_chat import InitialChatInput, collect_user_input
 from osa_tool.utils.arguments_parser import build_parser_from_yaml
 from osa_tool.utils.logger import setup_logging, logger
@@ -22,7 +23,14 @@ from osa_tool.utils.utils import (
 def main():
     # Create a command line argument parser
     parser = build_parser_from_yaml(extra_sections=["settings"])
+    parser.add_argument("--web-chat", action="store_true", help="Use the JSON-lines web chat protocol.")
+    parser.add_argument("--log-dir", help="Directory for OSA log files.")
     args = parser.parse_args()
+
+    if args.web_chat:
+        from osa_tool.web_chat import run_web_chat
+
+        return run_web_chat(args)
 
     # Collecting user parameters
     user_input: InitialChatInput = collect_user_input()
@@ -42,12 +50,14 @@ def main():
     config_manager = ConfigManager(args)
     git_agent, workflow_manager = initialize_git_platform(args, config_manager)
 
+    create_fork, create_pull_request = resolve_publishing_options(args, git_agent)
+
     agent_config = OSAConfig(
         config_manager=config_manager,
         git_agent=git_agent,
         workflow_manager=workflow_manager,
-        create_fork=not args.no_fork,
-        create_pull_request=not args.no_pull_request,
+        create_fork=create_fork,
+        create_pull_request=create_pull_request,
         delete_dir=args.delete_dir,
         enable_replanning=True,
         enable_memory=True,
@@ -74,4 +84,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

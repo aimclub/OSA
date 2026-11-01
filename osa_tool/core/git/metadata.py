@@ -13,7 +13,15 @@ from osa_tool.core.git.request_utils import request_with_retry
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import get_base_repo_url
 
-load_dotenv()
+# override=True so .env takes precedence over a stale OS-environment variable
+load_dotenv(override=True)
+
+
+def _normalize_issues_url(url: str | None) -> str | None:
+    """Strip GitHub/Gitverse URI-template suffixes like `{/number}` from issues URLs."""
+    if not url:
+        return url
+    return re.sub(r"\{.*\}$", "", url)
 
 
 def _normalize_issues_url(url: str | None) -> str | None:

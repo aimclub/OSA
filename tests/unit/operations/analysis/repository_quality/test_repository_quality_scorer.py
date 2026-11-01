@@ -1,0 +1,53 @@
+"""Regression tests for the quality-only repository scorer boundary."""
+
+from __future__ import annotations
+
+import inspect
+import json
+from pathlib import Path
+from unittest.mock import MagicMock
+
+from osa_tool.operations.analysis.repository_quality.repository_quality_scorer import RepositoryQualityScorer
+
+
+def test_repository_quality_scorer_is_quality_only_and_preserves_quality_report(monkeypatch, tmp_path):
+    config_manager = MagicMock()
+    config_manager.config.git.repository = "https://github.com/example/thesis"
+    config_manager.get_model_settings.return_value = MagicMock(model="quality-primary")
+    git_agent = MagicMock(clone_dir=str(tmp_path), repo=MagicMock())
+    model_handler = MagicMock(successful_models=["quality-primary", "quality-fallback"])
+
+    checker = MagicMock()
+    checker.run_all.return_value = {
+        "repo_type": {"value": "app"},
+        "readme": {"present": True, "meaningful": True},
+    }
+    monkeypatch.setattr(
+        "osa_tool.operations.analysis.repository_quality.repository_quality_scorer.ModelHandlerFactory.build",
+        MagicMock(return_value=model_handler),
+    )
+    monkeypatch.setattr(
+        "osa_tool.operations.analysis.repository_quality.repository_quality_scorer.build_file_tree",
+        MagicMock(return_value=(["README.md"], ["README.md"])),
+    )
+    monkeypatch.setattr(
+        "osa_tool.operations.analysis.repository_quality.repository_quality_scorer.RepositoryQualityChecker",
+        MagicMock(return_value=checker),
+    )
+
+    assert "paper_path" not in inspect.signature(RepositoryQualityScorer).parameters
+    scorer = RepositoryQualityScorer(config_manager, git_agent, output_dir=str(tmp_path / "out"))
+
+    quality = scorer.get_quality_report()
+    run_result = scorer.run()
+
+    assert quality["summary"]["score"] == 25
+    assert "claims_analysis" not in quality
+    saved_report = json.loads(Path(run_result["result"]["json_path"]).read_text(encoding="utf-8"))
+    assert saved_report["meta"] == {
+        "source": {"repository": "https://github.com/example/thesis"},
+        "model": {"configured": "quality-primary", "used": ["quality-primary", "quality-fallback"]},
+    }
+    assert saved_report["result"]["checks"] == quality["checks"]
+    assert saved_report["result"]["summary"] == quality["summary"]
+    assert "claims_analysis" not in saved_report["result"]

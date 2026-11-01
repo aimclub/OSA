@@ -1,4 +1,5 @@
 import argparse
+import sys
 from typing import Any
 
 import tomli
@@ -26,6 +27,8 @@ def build_parser_from_yaml(extra_sections: list[str] | None = None) -> argparse.
         description="Generated CLI parser from YAML configuration",
         formatter_class=argparse.RawTextHelpFormatter,
     )
+    option_dest_by_alias: dict[str, str] = {}
+    default_by_dest: dict[str, Any] = {}
 
     def add_arguments(group, args_dict):
         for key, options in args_dict.items():
@@ -34,6 +37,7 @@ def build_parser_from_yaml(extra_sections: list[str] | None = None) -> argparse.
             description = options.get("description", "")
             choices = options.get("choices")
             default = get_default_from_config(config_toml, key)
+            default_by_dest[key] = default
             kwargs = {"help": description}
 
             if arg_type == "flag":
@@ -61,18 +65,70 @@ def build_parser_from_yaml(extra_sections: list[str] | None = None) -> argparse.
                 raise ValueError(f"Unsupported type '{arg_type}' for argument '{key}'")
 
             group.add_argument(*aliases, **kwargs)
+            for alias in aliases:
+                if alias.startswith("-"):
+                    option_dest_by_alias[alias] = key
 
     core_args = {k: v for k, v in config_yaml.items() if not isinstance(v, dict) or "type" in v}
     add_arguments(parser, core_args)
 
     for group_name, group_args in config_yaml.items():
         if isinstance(group_args, dict) and "type" not in group_args:
+            if group_args.get("metadata_only", False):
+                continue
             if extra_sections and group_name not in extra_sections:
                 continue
             arg_group = parser.add_argument_group(f"{group_name} arguments")
             add_arguments(arg_group, group_args)
 
+    _attach_explicit_cli_args_tracking(parser, option_dest_by_alias, default_by_dest)
     return parser
+
+
+def apply_argument_descriptions_from_yaml(parser: argparse.ArgumentParser, sections: list[str]) -> None:
+    """Override argument help text from YAML metadata for options added by custom parser wiring."""
+    config_yaml = read_arguments_file(build_arguments_path())
+    description_by_alias = {}
+    for section_name in sections:
+        section = config_yaml.get(section_name, {})
+        if not isinstance(section, dict):
+            continue
+        for key, options in section.items():
+            if key == "metadata_only" or not isinstance(options, dict):
+                continue
+            description = options.get("description")
+            if description is None:
+                continue
+            for alias in options.get("aliases", []):
+                description_by_alias[alias] = description
+
+    for action in parser._actions:
+        for option_string in action.option_strings:
+            if option_string in description_by_alias:
+                action.help = description_by_alias[option_string]
+                break
+
+
+def _attach_explicit_cli_args_tracking(
+    parser: argparse.ArgumentParser,
+    option_dest_by_alias: dict[str, str],
+    default_by_dest: dict[str, Any],
+) -> None:
+    original_parse_args = parser.parse_args
+
+    def parse_args(args=None, namespace=None):
+        parsed = original_parse_args(args, namespace)
+        raw_args = sys.argv[1:] if args is None else list(args)
+        explicit_cli_args = set()
+        for token in raw_args:
+            option = token.split("=", 1)[0]
+            if option in option_dest_by_alias:
+                explicit_cli_args.add(option_dest_by_alias[option])
+        setattr(parsed, "_explicit_cli_args", explicit_cli_args)
+        setattr(parsed, "_cli_defaults", default_by_dest.copy())
+        return parsed
+
+    parser.parse_args = parse_args
 
 
 def get_keys_from_group_in_yaml(group_name: str) -> list:
@@ -84,14 +140,21 @@ def get_keys_from_group_in_yaml(group_name: str) -> list:
     return keys
 
 
-def read_arguments_file_flat(yaml_path: str) -> dict:
+def read_arguments_file_flat(yaml_path: str, *, include_metadata_only: bool = False) -> dict:
     """
     Read YAML arguments file and flatten nested groups into a single dict.
+
+    Metadata-only groups are excluded by default because they do not define
+    parser arguments. Callers that need their descriptions can opt in.
     """
     data = read_arguments_file(yaml_path)
     flat_data = {}
 
     for key, value in data.items():
+        if isinstance(value, dict) and value.get("metadata_only", False):
+            if not include_metadata_only:
+                continue
+            value = {subkey: subvalue for subkey, subvalue in value.items() if subkey != "metadata_only"}
         if isinstance(value, dict) and all(isinstance(v, dict) for v in value.values()):
             for subkey, subvalue in value.items():
                 flat_data[subkey] = subvalue
