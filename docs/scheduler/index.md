@@ -144,7 +144,7 @@ The tables below are generated from the metadata used by the `osa-tool` command-
 | `api` | `--api` | str | — | LLM API service provider | `host`, `itmo`, `openai`, `ollama` |
 | `artefacts_language` | `--artefacts-language` | str | — | Generate reports on selected language | — |
 | `author` | `--author` | str | — | Primarily used for web interface. When set, the tool will add Author to the Pull Request body. | — |
-| `base_url` | `--base-url` | str | — | URL of the service provider. Any OpenAI-compatible endpoint works,<br>for example https://api.openai.com/v1 or https://openrouter.ai/api/v1. | — |
+| `base_url` | `--base-url` | str | — | URL of the service provider. Any OpenAI-compatible endpoint works,<br>for example https://api.openai.com/v1 or https://openrouter.ai/api/v1,<br>as does an Ollama server such as http://localhost:11434. | — |
 | `based_on_date` | `--based-on-date` | str | — | Date the repository has to be analysed as of, for example the publication<br>date of a related article. The repository is rolled back to the commit<br>closest to this date.<br>WARNING: fork and pull request creation (--no-fork, --no-pull-request)<br>are forced for such runs, since the analysed tree is outdated.<br>Accepted formats: YYYY-MM-DD, YYYY-MM-DDThh:mm:ss, DD.MM.YYYY. | — |
 | `branch` | `-b`<br>`--branch` | str | — | Branch name of the GitHub repository | — |
 | `config_file` | `--config-file` | str | — | Path to custom configuration file (TOML format). | — |

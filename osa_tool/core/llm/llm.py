@@ -22,6 +22,7 @@ from osa_tool.config.settings import ModelSettings
 from osa_tool.core.llm.connectors import create_llm_connector
 from osa_tool.utils.logger import logger
 from osa_tool.utils.response_cleaner import JsonParseError
+from osa_tool.utils.utils import detect_provider_from_url
 from osa_tool.utils.token_counter import count_tokens, truncate_to_tokens
 
 
@@ -695,10 +696,20 @@ class LangChainHandler(ModelHandler):
         raise
 
     def _resolve_base_url(self) -> str:
-        """Returns the endpoint to call for the configured LLM API type."""
+        """
+        Returns the endpoint to call for the configured LLM API type.
+
+        Ollama takes its endpoint from base_url when one was given for it, and
+        otherwise from the localhost setting, which has no command line flag.
+
+        Returns:
+            str: The endpoint to call.
+        """
         if self.model_settings.api == "itmo":
             return os.getenv("ITMO_MODEL_URL", self.model_settings.base_url)
         if self.model_settings.api == "ollama":
+            if detect_provider_from_url(self.model_settings.base_url) == "ollama":
+                return self.model_settings.base_url
             # localhost is an AnyHttpUrl; the chat model requires a plain string
             return str(self.model_settings.localhost)
         return self.model_settings.base_url
