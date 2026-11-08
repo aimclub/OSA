@@ -19,7 +19,7 @@ import yaml
 from pydantic import TypeAdapter, ValidationError
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.core.llm.llm import ModelHandlerFactory, ProtollmHandler
+from osa_tool.core.llm.llm import LangChainHandler, ModelHandlerFactory
 from osa_tool.operations.codebase.docstring_generation.docstring_transformer import (
     DocstringTransformer,
 )
@@ -75,8 +75,8 @@ class DocGen(object):
         """
         self.config_manager = config_manager
         self.model_settings = self.config_manager.get_model_settings("docstring")
-        self.model_handler: ProtollmHandler = ModelHandlerFactory.build(self.model_settings)
-        self.readme_model_handler: ProtollmHandler = ModelHandlerFactory.build(
+        self.model_handler: LangChainHandler = ModelHandlerFactory.build(self.model_settings)
+        self.readme_model_handler: LangChainHandler = ModelHandlerFactory.build(
             self.config_manager.get_model_settings("readme")
         )
         self.main_idea = None

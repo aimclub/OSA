@@ -16,10 +16,10 @@ from json_repair import repair_json
 from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from protollm.connectors import create_llm_connector
 from pydantic import BaseModel, ValidationError
 
 from osa_tool.config.settings import ModelSettings
+from osa_tool.core.llm.connectors import create_llm_connector
 from osa_tool.utils.logger import logger
 from osa_tool.utils.response_cleaner import JsonParseError
 from osa_tool.utils.token_counter import count_tokens, truncate_to_tokens
@@ -176,9 +176,9 @@ class PayloadFactory:
         }
 
 
-class ProtollmHandler(ModelHandler):
+class LangChainHandler(ModelHandler):
     """
-    This class is designed to handle interactions with the different LLMs using ProtoLLM connector.
+    This class is designed to handle interactions with the different LLMs using the LangChain connector.
     It is initialized with configuration settings and can send requests to the API.
 
     Methods:
@@ -197,7 +197,7 @@ class ProtollmHandler(ModelHandler):
         _configure_api:
             Configures the API for the instance based on the provided API name.
             This method loads environment variables, sets the URL and API key based on the provided API name,
-            and initializes the ProtoLLM connector with the set URL and API key.
+            and initializes the LangChain connector with the set URL and API key.
     """
 
     def __init__(self, model_settings: ModelSettings):
@@ -694,13 +694,14 @@ class ProtollmHandler(ModelHandler):
         logger.debug(repr(last_error))
         raise
 
-    def _build_model_url(self, model_name: str) -> str:
-        """Builds the model URL based on the LLM API type."""
-        url_templates = {
-            "itmo": f"self_hosted;{os.getenv('ITMO_MODEL_URL', self.model_settings.base_url)};{model_name}",
-            "ollama": f"ollama;{self.model_settings.localhost};{model_name}",
-        }
-        return url_templates.get(self.model_settings.api, f"{self.model_settings.base_url};{model_name}")
+    def _resolve_base_url(self) -> str:
+        """Returns the endpoint to call for the configured LLM API type."""
+        if self.model_settings.api == "itmo":
+            return os.getenv("ITMO_MODEL_URL", self.model_settings.base_url)
+        if self.model_settings.api == "ollama":
+            # localhost is an AnyHttpUrl; the chat model requires a plain string
+            return str(self.model_settings.localhost)
+        return self.model_settings.base_url
 
     def _get_llm_params(self, model_name: str | None = None):
         """Extract LLM parameters from config"""
@@ -739,7 +740,9 @@ class ProtollmHandler(ModelHandler):
         if urlparse(self.model_settings.base_url).hostname != "api.openai.com":
             params["extra_body"] = {"providers": {"only": self.model_settings.allowed_providers}}
         self.client = create_llm_connector(
-            model_url=self._build_model_url(model_name),
+            api=self.model_settings.api,
+            base_url=self._resolve_base_url(),
+            model=model_name,
             **params,
         )
 
@@ -816,4 +819,4 @@ class ModelHandlerFactory:
             from osa_tool.core.llm.host import HostLlmHandler
 
             return HostLlmHandler(model_settings)
-        return ProtollmHandler(model_settings)
+        return LangChainHandler(model_settings)

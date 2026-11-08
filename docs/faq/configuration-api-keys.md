@@ -157,7 +157,7 @@ export GITVERSE_TOKEN="gv_..."
 
 ## 3.4 Which LLM providers are supported?
 
-OSA supports the subscription-backed Host LLM provider directly and multiple API providers through the [ProtoLLM](https://github.com/aimclub/ProtoLLM/) ecosystem.
+OSA supports the subscription-backed Host LLM provider directly, any OpenAI-compatible API, GigaChat, a local Ollama server, and a self-hosted REST endpoint.
 
 **Supported Providers and Configuration:**
 
@@ -169,7 +169,7 @@ OSA supports the subscription-backed Host LLM provider directly and multiple API
 | **VseGPT** | OpenAI-compatible | OpenAI models via Russian proxy | 💰 Paid | Users in Russia/CIS region | openai | <https://api.vsegpt.ru/v1> | OPENAI_API_KEY | openai/gpt-3.5-turbo |
 | **Ollama** | Local/Ollama API | Llama 3, Gemma, Mistral, custom | 🆓 Free | Privacy, offline use, customization | ollama | <http://localhost:11434> | None | gemma3:27b |
 | **ITMO Hosted** | OpenAI-compatible | ITMO fine-tuned models | 🆓 Free* | Research, testing, ITMO community | openai | <https://osa.nsslab.onti.actcognitive.org/api/v1> | None (or ITMO_API_KEY) | itmo-research |
-| **Gigachat** | Native API | GigaChat models by Sber | 💰 Paid | Russian language, local compliance | gigachat | (auto) | AUTHORIZATION_KEY | GigaChat |
+| **Gigachat** | Native API | GigaChat models by Sber | 💰 Paid | Russian language, local compliance | openai | <https://gigachat.devices.sberbank.ru/api/v1> | AUTHORIZATION_KEY | GigaChat |
 
 ## 3.5 How do I configure different LLM providers?
 

@@ -11,7 +11,7 @@ OSA is built on a modern technology stack designed for flexibility, performance,
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | **🐍 Python** | 3.11+ | Main programming language |
-| **🤖 ProtoLLM** | Latest | LLM abstraction layer for multiple providers |
+| **🤖 LangChain** | Latest | LLM abstraction layer for multiple providers |
 | **🌐 AIOHTTP** | Latest | Async HTTP client for API calls |
 | **✅ Pydantic** | Latest | Data validation and settings management |
 | **🌳 TreeSitter** | Latest | Code parsing for documentation generation |
