@@ -9,7 +9,7 @@ import pytest
 from pydantic import BaseModel
 
 from osa_tool.core.llm.host import HostLlmError, HostLlmHandler, host_provider_status, run_host_llm_sync
-from osa_tool.core.llm.llm import ModelHandlerFactory, PayloadFactory, ProtollmHandler, _parse_llm_response
+from osa_tool.core.llm.llm import LangChainHandler, ModelHandlerFactory, PayloadFactory, _parse_llm_response
 from tests.utils.fixtures.models import DummyLLMClient
 
 
@@ -49,7 +49,7 @@ def test_parse_llm_response_calls_callable_parser() -> None:
 def test_send_and_parse_returns_pydantic_model(monkeypatch, mock_config_manager, patch_llm_connector):
     # Arrange
     model_settings = mock_config_manager.get_model_settings("general")
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
     monkeypatch.setattr(handler, "send_request", lambda *args, **kwargs: '{"items": ["README.md"]}')
 
     # Act
@@ -78,7 +78,7 @@ def test_payload_factory_generates_expected_structure(mock_config_manager):
 def test_initialize_payload_sets_payload(mock_config_manager):
     # Arrange
     model_settings = mock_config_manager.get_model_settings("general")
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
     handler.client = DummyLLMClient()
 
     # Act
@@ -92,7 +92,7 @@ def test_initialize_payload_sets_payload(mock_config_manager):
 def test_send_request_calls_llm(monkeypatch, mock_config_manager, patch_llm_connector):
     # Arrange
     model_settings = mock_config_manager.get_model_settings("general")
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
 
     # Act
     result = handler.send_request("hello world")
@@ -107,7 +107,7 @@ def test_successful_models_tracks_primary_and_fallback_in_order(mock_config_mana
     primary_model = model_settings.model
     fallback_model = "fallback-model"
     model_settings.fallback_models = [fallback_model]
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
 
     assert handler.send_request("primary", retry_delay=0) == "sync response"
 
@@ -124,7 +124,7 @@ def test_successful_models_tracks_primary_and_fallback_in_order(mock_config_mana
 
 def test_reset_model_provenance_preserves_active_model(mock_config_manager, patch_llm_connector):
     model_settings = mock_config_manager.get_model_settings("general")
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
     handler.successful_models = ["primary", "fallback"]
     handler.last_successful_model = "fallback"
     active_model = handler.model_settings.model
@@ -140,7 +140,7 @@ def test_response_debug_token_counting_is_best_effort_for_special_tokens(
     mock_config_manager, patch_llm_connector, caplog
 ):
     model_settings = mock_config_manager.get_model_settings("general")
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
 
     with caplog.at_level(logging.DEBUG, logger="rich"):
         handler._log_response_debug("completed <|endoftext|> response", "Synchronous")
@@ -154,7 +154,7 @@ def test_response_debug_logging_skips_token_counting_when_debug_disabled(
     monkeypatch, mock_config_manager, patch_llm_connector, caplog
 ):
     model_settings = mock_config_manager.get_model_settings("general")
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
     was_called = False
 
     def fail_count_tokens(*args, **kwargs):
@@ -174,7 +174,7 @@ def test_response_debug_logging_skips_token_counting_when_debug_disabled(
 async def test_async_request_calls_llm(mock_config_manager, patch_llm_connector, caplog):
     # Arrange
     model_settings = mock_config_manager.get_model_settings("general")
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
 
     # Act
     with caplog.at_level(logging.DEBUG, logger="rich"):
@@ -199,7 +199,7 @@ async def test_async_request_pdf_sends_openrouter_file_parser_plugin(
 ):
     model_settings = mock_config_manager.get_model_settings("general")
     model_settings.base_url = "https://openrouter.ai/api/v1"
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
     pdf_path = tmp_path / "paper.pdf"
     pdf_path.write_bytes(b"%PDF-test")
     response_text = json.dumps({"choices": [{"message": {}}]})
@@ -235,7 +235,7 @@ async def test_async_request_pdf_does_not_retry_models_when_response_body_is_inv
     model_settings = mock_config_manager.get_model_settings("general")
     model_settings.base_url = "https://openrouter.ai/api/v1"
     model_settings.fallback_models = ["fallback-model"]
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
     pdf_path = tmp_path / "paper.pdf"
     pdf_path.write_bytes(b"%PDF-test")
     create = AsyncMock(return_value=SimpleNamespace(text="not-json"))
@@ -257,7 +257,7 @@ async def test_async_request_pdf_does_not_retry_models_when_response_body_is_inv
 async def test_async_request_pdf_rejects_non_openrouter_endpoint(tmp_path, mock_config_manager, patch_llm_connector):
     model_settings = mock_config_manager.get_model_settings("general")
     model_settings.base_url = "https://api.openai.com/v1"
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
     pdf_path = tmp_path / "paper.pdf"
     pdf_path.write_bytes(b"%PDF-test")
 
@@ -269,7 +269,7 @@ def test_prepare_messages_rejects_invalid_token_budget(mock_config_manager):
     model_settings = mock_config_manager.get_model_settings("general")
     model_settings.context_window = 100
     model_settings.max_tokens = 100
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
 
     with pytest.raises(ValueError, match="Invalid LLM token budget"):
         handler._prepare_messages("must not disappear", "system")
@@ -277,7 +277,7 @@ def test_prepare_messages_rejects_invalid_token_budget(mock_config_manager):
 
 def test_limit_tokens_returns_short_prompt_without_truncating(mock_config_manager, mocker):
     model_settings = mock_config_manager.get_model_settings("general")
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
     truncator = mocker.patch("osa_tool.core.llm.llm.truncate_to_tokens")
 
     result = handler._limit_tokens("short prompt")
@@ -290,7 +290,7 @@ def test_limit_tokens_warns_when_prompt_is_truncated(mock_config_manager, caplog
     model_settings = mock_config_manager.get_model_settings("general")
     model_settings.context_window = 110
     model_settings.max_tokens = 5
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
 
     with caplog.at_level(logging.WARNING, logger="rich"):
         result = handler._limit_tokens("This prompt contains considerably more than five tokens.")
@@ -304,7 +304,7 @@ def test_limit_tokens_warns_when_prompt_is_truncated(mock_config_manager, caplog
 async def test_generate_concurrently_orders_results(mock_config_manager, patch_llm_connector):
     # Arrange
     model_settings = mock_config_manager.get_model_settings("general")
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
     prompts = ["p1", "p2", "p3"]
 
     # Act
@@ -314,31 +314,32 @@ async def test_generate_concurrently_orders_results(mock_config_manager, patch_l
     assert results == ["async response"] * len(prompts)
 
 
-@pytest.mark.parametrize(
-    "api,expected_prefix",
-    [
-        ("itmo", "self_hosted;"),
-        ("ollama", "ollama;"),
-        ("other", ""),
-    ],
-)
-def test_build_model_url_varies_with_api(mock_config_manager, patch_llm_connector, api, expected_prefix):
+@pytest.mark.parametrize("api", ["itmo", "ollama", "other"])
+def test_resolve_base_url_varies_with_api(monkeypatch, mock_config_manager, patch_llm_connector, api):
     # Arrange
+    monkeypatch.setenv("ITMO_MODEL_URL", "https://self-hosted.example/api/v1")
     model_settings = mock_config_manager.get_model_settings("general")
     model_settings.api = api
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
+
+    expected = {
+        "itmo": "https://self-hosted.example/api/v1",
+        "ollama": str(model_settings.localhost),
+        "other": model_settings.base_url,
+    }[api]
 
     # Act
-    url = handler._build_model_url(model_settings.model)
+    base_url = handler._resolve_base_url()
 
     # Assert
-    assert url.startswith(expected_prefix) or expected_prefix == ""
+    assert base_url == expected
+    assert isinstance(base_url, str)
 
 
 def test_get_llm_params_filters_none(mock_config_manager, patch_llm_connector):
     # Arrange
     model_settings = mock_config_manager.get_model_settings("general")
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
 
     # Act
     params = handler._get_llm_params()
@@ -363,9 +364,11 @@ def test_direct_openai_gpt6_omits_unsupported_sampling_and_provider_fields(
         return DummyLLMClient()
 
     monkeypatch.setattr("osa_tool.core.llm.llm.create_llm_connector", fake_connector)
-    ProtollmHandler(model_settings)
+    LangChainHandler(model_settings)
 
-    assert captured["model_url"] == f"https://api.openai.com/v1;{model_name}"
+    assert captured["api"] == "openai"
+    assert captured["base_url"] == "https://api.openai.com/v1"
+    assert captured["model"] == model_name
     assert "temperature" not in captured
     assert "top_p" not in captured
     assert "extra_body" not in captured
@@ -380,7 +383,7 @@ def test_model_handler_factory_builds_correct_type(mock_config_manager):
     handler = ModelHandlerFactory.build(model_settings)
 
     # Assert
-    assert isinstance(handler, ProtollmHandler)
+    assert isinstance(handler, LangChainHandler)
 
 
 def test_model_handler_factory_builds_host_handler(mock_config_manager):
@@ -782,7 +785,7 @@ def test_configure_api_loads_dotenv_with_override(mock_config_manager, patch_llm
     model_settings = mock_config_manager.get_model_settings("general")
 
     # Act
-    ProtollmHandler(model_settings)
+    LangChainHandler(model_settings)
 
     # Assert: .env must take precedence over a stale key already in the OS environment
     # (a stale OPENAI key otherwise shadows the updated .env value -> 401 "User not found")
@@ -791,12 +794,12 @@ def test_configure_api_loads_dotenv_with_override(mock_config_manager, patch_llm
         assert call.kwargs.get("override") is True
 
 
-def test_protollm_handler_init(mock_config_manager):
+def test_langchain_handler_init(mock_config_manager):
     # Arrange
     model_settings = mock_config_manager.get_model_settings("general")
 
     # Act
-    handler = ProtollmHandler(model_settings)
+    handler = LangChainHandler(model_settings)
 
     # Assert
     assert handler.model_settings == model_settings
