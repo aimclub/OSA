@@ -336,6 +336,30 @@ def test_resolve_base_url_varies_with_api(monkeypatch, mock_config_manager, patc
     assert isinstance(base_url, str)
 
 
+@pytest.mark.parametrize(
+    "base_url,expected_is_base_url",
+    [
+        ("http://10.0.0.5:11434", True),
+        ("http://ollama.internal:11434", True),
+        ("https://openrouter.ai/api/v1", False),
+    ],
+)
+def test_ollama_prefers_a_base_url_given_for_it(
+    mock_config_manager, patch_llm_connector, base_url, expected_is_base_url
+):
+    # Arrange
+    model_settings = mock_config_manager.get_model_settings("general")
+    model_settings.api = "ollama"
+    model_settings.base_url = base_url
+    handler = LangChainHandler(model_settings)
+
+    # Act
+    resolved = handler._resolve_base_url()
+
+    # Assert
+    assert resolved == (base_url if expected_is_base_url else str(model_settings.localhost))
+
+
 def test_get_llm_params_filters_none(mock_config_manager, patch_llm_connector):
     # Arrange
     model_settings = mock_config_manager.get_model_settings("general")
