@@ -229,16 +229,16 @@ settings:
     type: str
     cli_description: "Service URL for the selected API provider."
     description: |
-      URL of the service provider.
-      See: https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors
+      URL of the service provider. Any OpenAI-compatible endpoint works,
+      for example https://api.openai.com/v1 or https://openrouter.ai/api/v1.
 
   model:
     aliases: [ "--model" ]
     type: str
     cli_description: "Default LLM model for repository tasks."
     description: |
-      Specific LLM model to use. See available providers and models:
-      https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors
+      Specific LLM model to use, named as the selected provider names it,
+      for example gpt-4o or openai/gpt-4o on OpenRouter.
 
   model_docstring:
     aliases: [ "--model-docstring" ]

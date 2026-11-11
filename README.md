@@ -258,9 +258,10 @@ Examples of generated README files are available in [examples](./examples).
 URL of the GitHub/GitLab/Gitverse repository, LLM API service provider (*optional*) and Specific LLM model to use
 (*optional*) are required to use the generator.
 
-OSA supports the subscription-backed Host LLM provider directly. `HOST_LLM_COMMAND` currently expects the Codex CLI protocol; use the bridge or an API-backed provider when custom generation controls are required. Other LLM providers are available as part of the
-[ProtoLLM](https://github.com/aimclub/ProtoLLM/) ecosystem. See the
-[connectors directory](https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors) for the full list.
+OSA supports the subscription-backed Host LLM provider directly. `HOST_LLM_COMMAND` currently expects the Codex CLI protocol; use the bridge or an API-backed provider when custom generation controls are required. Other providers are reached through
+`--base-url` and `--api`: any OpenAI-compatible endpoint, GigaChat, a local Ollama server, or a
+self-hosted REST endpoint. The provider is autodetected from the base URL, so `--api` is only needed
+to override that.
 
 Subscription-backed Host LLM:
 
@@ -307,6 +308,18 @@ Ollama:
 ```sh
 python -m osa_tool.run -r https://github.com/aimclub/OSA --api ollama --base-url http://[YOUR_OLLAMA_IP]:11434 --model gemma3:27b
 ```
+
+GigaChat:
+
+```sh
+export AUTHORIZATION_KEY=<your_authorisation_key>
+python -m osa_tool.run -r https://github.com/aimclub/OSA --base-url https://gigachat.devices.sberbank.ru/api/v1 --model GigaChat
+```
+
+GigaChat is selected by the base URL, and its client carries its own endpoint. Sber signs its
+certificates with the Russian Trusted Root CA, so install those certificates first or the token
+exchange fails with an SSL error. See
+[the GigaChat certificate guide](https://developers.sber.ru/docs/ru/gigachat/certificates).
 
 ---
 

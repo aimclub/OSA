@@ -157,7 +157,7 @@ The tables below are generated from the metadata used by the `osa-tool` command-
 | `api` | `--api` | str | — | LLM API service provider | `host`, `itmo`, `openai`, `ollama` |
 | `artefacts_language` | `--artefacts-language` | str | — | Generate reports on selected language | — |
 | `author` | `--author` | str | — | Primarily used for web interface. When set, the tool will add Author to the Pull Request body. | — |
-| `base_url` | `--base-url` | str | — | URL of the service provider.<br>See: https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors | — |
+| `base_url` | `--base-url` | str | — | URL of the service provider. Any OpenAI-compatible endpoint works,<br>for example https://api.openai.com/v1 or https://openrouter.ai/api/v1. | — |
 | `based_on_date` | `--based-on-date` | str | — | Date the repository has to be analysed as of, for example the publication<br>date of a related article. The repository is rolled back to the commit<br>closest to this date.<br>WARNING: fork and pull request creation (--no-fork, --no-pull-request)<br>are forced for such runs, since the analysed tree is outdated.<br>Accepted formats: YYYY-MM-DD, YYYY-MM-DDThh:mm:ss, DD.MM.YYYY. | — |
 | `branch` | `-b`<br>`--branch` | str | — | Branch name of the GitHub repository | — |
 | `config_file` | `--config-file` | str | — | Path to custom configuration file (TOML format). | — |
@@ -166,7 +166,7 @@ The tables below are generated from the metadata used by the `osa-tool` command-
 | `max_retries` | `--max-retries` | int | — | Maximum retry attempts for LLM API calls | — |
 | `max_tokens` | `--max-tokens` | int | — | Maximum number of output tokens the model can generate in a single response. | — |
 | `mode` | `-m`<br>`--mode` | str | — | Select the operation mode for repository processing:<br>basic           — run a minimal predefined set of tasks.<br>auto (default)  — automatically determine necessary actions based on repository analysis.<br>advanced        — run all enabled features based on provided flags. | `basic`, `auto`, `advanced` |
-| `model` | `--model` | str | — | Specific LLM model to use. See available providers and models:<br>https://github.com/aimclub/ProtoLLM/tree/main/protollm/connectors | — |
+| `model` | `--model` | str | — | Specific LLM model to use, named as the selected provider names it,<br>for example gpt-4o or openai/gpt-4o on OpenRouter. | — |
 | `model_docstring` | `--model-docstring` | str | — | Specific LLM model for docstring generation tasks. | — |
 | `model_general` | `--model-general` | str | — | Specific LLM model for general tasks such as About section generation or reorganization. | — |
 | `model_paper_claims` | `--model-paper-claims` | str | — | Specific LLM model for typed paper claim extraction. | — |
