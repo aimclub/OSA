@@ -7,7 +7,6 @@ from pathlib import Path
 
 import yaml
 
-
 ROOT = Path(__file__).resolve().parents[1]
 ARGUMENTS_PATH = ROOT / "osa_tool" / "config" / "settings" / "arguments.yaml"
 REFERENCE_SECTIONS = {

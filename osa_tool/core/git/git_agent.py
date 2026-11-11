@@ -667,14 +667,12 @@ class GitAgent(abc.ABC):
             return True
         except GitCommandError as e:
             self._handle_git_error(e, f"pushing to {branch}")
-            logger.error(
-                f"""Push failed: Branch '{branch}' already exists in the fork.
+            logger.error(f"""Push failed: Branch '{branch}' already exists in the fork.
                     To resolve this, please either:
                     1. Choose a different branch name that doesn't exist in the fork
                         by modifying the `branch_name` parameter.
                     2. Delete the existing branch from forked repository.
-                    3. Delete the fork entirely."""
-            )
+                    3. Delete the fork entirely.""")
             return False
 
     @contextmanager
@@ -1372,7 +1370,9 @@ class GitLabAgent(GitAgent):
             def update_reports() -> None:
                 update_url = f"{gitlab_instance}{self.PROJECTS_API_PATH}/{target_project_id}/merge_requests/{mr_iid}"
                 description = self._merge_report_links(existing_mr.get("description") or "")
-                update_response = request_with_retry("put", update_url, json={"description": description}, headers=headers)
+                update_response = request_with_retry(
+                    "put", update_url, json={"description": description}, headers=headers
+                )
                 if update_response.status_code == 200:
                     logger.info(f"Successfully updated MR !{mr_iid} with new reports.")
                 else:
