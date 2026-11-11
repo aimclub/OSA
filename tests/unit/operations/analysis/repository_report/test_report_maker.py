@@ -4,7 +4,9 @@ from unittest.mock import patch, MagicMock
 import pytest
 from reportlab.platypus import Table, Paragraph, ListFlowable, Flowable
 
-from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator
+from osa_tool.core.models.event import EventKind
+from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
+from osa_tool.scheduler.plan import Plan
 
 
 @pytest.fixture
@@ -190,3 +192,62 @@ def test_build_pdf_creates_output_file(
     assert output_path.exists()
     assert output_path.name == f"{report_generator.metadata.name}_report.pdf"
     assert output_path.stat().st_size > 0
+
+
+def test_summary_contains_outcomes_when_llm_and_scorecard_fail(
+    tmp_path, mock_config_manager, mock_git_agent, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    plan = Plan({"docstring": True, "readme": True, "web_mode": True})
+    plan.complete_operation("docstring", {"result": {"error": "403 Key limit <exceeded>"}})
+    plan.complete_operation("readme", None)
+    summary = WhatHasBeenDoneReportGenerator(mock_config_manager, mock_git_agent, False, plan, run_scorecard=True)
+    rendered_rows = []
+    build_body = summary.body_second_part
+
+    def capture_story():
+        story = build_body()
+        table = next(flowable for flowable in story if isinstance(flowable, Table))
+        rendered_rows.extend([cell.getPlainText() for cell in row] for row in table._cellvalues)
+        return story
+
+    with (
+        patch.object(summary, "body_second_part", side_effect=capture_story),
+        patch(
+            "osa_tool.operations.analysis.repository_report.report_maker.AfterReportTextGenerator",
+            side_effect=RuntimeError("LLM unavailable"),
+        ),
+        patch(
+            "osa_tool.operations.analysis.repository_report.report_maker.ScorecardRunner",
+            side_effect=RuntimeError("Scorecard unavailable"),
+        ),
+    ):
+        outcome = summary.run()
+
+    assert Path(outcome["result"]["path"]).read_bytes().startswith(b"%PDF")
+    assert [event.kind for event in outcome["events"]] == [EventKind.FAILED, EventKind.GENERATED]
+    assert rendered_rows[1:] == [
+        ["Docstring", "Failed", "403 Key limit <exceeded>"],
+        ["Readme", "Completed", ""],
+        ["OpenSSF Scorecard", "Failed", "Scorecard unavailable"],
+    ]
+
+
+def test_failed_pdf_build_neither_overwrites_nor_uploads_old_summary(
+    tmp_path, mock_config_manager, mock_git_agent, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    summary = WhatHasBeenDoneReportGenerator(mock_config_manager, mock_git_agent, True, Plan({}))
+    old_output = Path(summary.output_path)
+    old_output.write_bytes(b"previous summary")
+    with patch(
+        "osa_tool.operations.analysis.repository_report.report_maker.SimpleDocTemplate.build",
+        side_effect=OSError("Disk write failed"),
+    ):
+        outcome = summary.run()
+
+    assert outcome["result"] == {"error": "Disk write failed"}
+    assert [event.kind for event in outcome["events"]] == [EventKind.FAILED]
+    assert old_output.read_bytes() == b"previous summary"
+    assert list(tmp_path.iterdir()) == [old_output]
+    mock_git_agent.upload_report.assert_not_called()

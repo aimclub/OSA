@@ -1,7 +1,9 @@
 import os
-import sys
 from abc import ABC, abstractmethod
 from datetime import datetime
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from xml.sax.saxutils import escape
 
 import qrcode
 from reportlab.lib import colors
@@ -25,11 +27,11 @@ from reportlab.platypus import (
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.git.git_agent import GitAgent
 from osa_tool.core.models.event import OperationEvent, EventKind
+from osa_tool.core.models.task import TaskStatus
 from osa_tool.operations.analysis.repository_report.report_generator import (
     TextGenerator,
     AfterReportTextGenerator,
 )
-from osa_tool.operations.analysis.repository_report.report_generator import TextGenerator, AfterReportTextGenerator
 from osa_tool.operations.analysis.repository_report.report_localization import ReportTranslationManager
 from osa_tool.scheduler.plan import Plan
 from osa_tool.tools.repository_analysis.scorecard import (
@@ -42,6 +44,9 @@ from osa_tool.utils.utils import osa_project_root
 
 
 class AbstractReportGenerator(ABC):
+    _header_spacer = 40
+    _first_page_body_spacer = 130
+
     def __init__(
         self, config_manager: ConfigManager, git_agent: GitAgent, target_language: str, run_scorecard: bool = False
     ):
@@ -460,24 +465,13 @@ class AbstractReportGenerator(ABC):
         pass
 
     def build_pdf(self) -> None:
-        """
-        Generates and builds the PDF report for the repository analysis.
-
-        This method initializes the PDF document, adds the header, body content (first and second parts),
-        and then generates the PDF file. The `draw_images_and_tables` method is used to draw images and tables
-        on the first page of the document.
-
-        Returns:
-            None
-
-        Raises:
-            Exception: If there is an error during the PDF creation process.
-        """
+        """Render to a temporary file and publish it only after a successful build."""
         logger.info(self.start_log)
-
-        try:
+        output_path = Path(self.output_path)
+        with TemporaryDirectory(dir=output_path.parent) as tmp_dir:
+            temporary_pdf = Path(tmp_dir) / output_path.name
             doc = SimpleDocTemplate(
-                self.output_path,
+                str(temporary_pdf),
                 pagesize=A4,
                 topMargin=50,
                 bottomMargin=40,
@@ -486,18 +480,37 @@ class AbstractReportGenerator(ABC):
             doc.build(
                 [
                     *self.header(),
-                    Spacer(0, 40),
+                    Spacer(0, self._header_spacer),
                     self.body_first_part(),
-                    Spacer(0, 130),
+                    Spacer(0, self._first_page_body_spacer),
                     *scorecard_elements,
                     *([] if not scorecard_elements else [Spacer(0, 10)]),
                     *self.body_second_part(),
                 ],
                 onFirstPage=self.draw_images_and_tables,
             )
-            logger.info(f"PDF report successfully created in {self.output_path}")
-        except Exception as e:
-            logger.error("Error while building PDF report, %s", e, exc_info=True)
+            if not temporary_pdf.is_file() or not temporary_pdf.stat().st_size:
+                raise RuntimeError(f"PDF report was not created: {output_path}")
+            temporary_pdf.replace(output_path)
+        logger.info("PDF report successfully created in %s", output_path)
+
+    def _collect_scorecard(self, events: list[OperationEvent]) -> None:
+        if not self.run_scorecard:
+            return
+        try:
+            self.scorecard_result = ScorecardRunner(self.repo_path).run()
+            if self.scorecard_result is None:
+                raise RuntimeError("No Scorecard result was returned")
+        except Exception as exc:
+            events.append(OperationEvent(kind=EventKind.FAILED, target="OpenSSF Scorecard", data={"error": str(exc)}))
+
+    def _write_report(self, events: list[OperationEvent], create_fork: bool) -> dict:
+        self.build_pdf()
+        events.append(OperationEvent(kind=EventKind.GENERATED, target=self.filename))
+        if create_fork:
+            self.git_agent.upload_report(self.filename, self.output_path)
+            events.append(OperationEvent(kind=EventKind.UPLOADED, target=self.filename))
+        return {"report": self.filename, "path": self.output_path}
 
 
 class ReportGenerator(AbstractReportGenerator):
@@ -517,19 +530,14 @@ class ReportGenerator(AbstractReportGenerator):
 
     def run(self) -> dict:
         try:
-            if self.run_scorecard:
-                self.scorecard_result = ScorecardRunner(self.repo_path).run()
-            self.build_pdf()
-            self.events.append(OperationEvent(kind=EventKind.GENERATED, target=f"{self.filename}"))
-            if self.create_fork and os.path.exists(self.output_path):
-                self.git_agent.upload_report(self.filename, self.output_path)
-                self.events.append(OperationEvent(kind=EventKind.UPLOADED, target=f"{self.filename}"))
-            scorecard_dict = self.scorecard_result.to_dict() if self.scorecard_result else None
+            self._collect_scorecard(self.events)
+            result = self._write_report(self.events, self.create_fork)
+            result["scorecard"] = self.scorecard_result.to_dict() if self.scorecard_result else None
             return {
-                "result": {"report": self.filename, "scorecard": scorecard_dict},
+                "result": result,
                 "events": self.events,
             }
-        except ValueError as e:
+        except Exception as e:
             self.events.append(
                 OperationEvent(
                     kind=EventKind.FAILED,
@@ -627,16 +635,13 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         self.filename = f"{self.metadata.name}_work_summary.pdf"
         self.create_fork = create_fork
         self.output_path = os.path.join(os.getcwd(), self.filename)
-        self.completed_tasks = plan.list_for_report
-        self.task_results = plan.results or {}
-        self.text_generator = AfterReportTextGenerator(
-            config_manager, self.completed_tasks, self.task_results, target_language
-        )
+        self.plan = plan
+        self.config_manager = config_manager
         self.start_log = "Starting creating summary for OSA work"
         self.report_header = self.translator.get("summary_header")
         self.events: list[OperationEvent] = []
 
-        report_result = (self.task_results.get("report") or {}).get("result") or {}
+        report_result = (plan.results.get("report") or {}).get("result") or {}
         before_dict = report_result.get("scorecard")
         self.before_scorecard: ScorecardResult | None = ScorecardResult.from_dict(before_dict) if before_dict else None
 
@@ -649,15 +654,9 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         - each generated report is tracked as an OperationEvent
         """
         try:
-            if self.run_scorecard:
-                self.scorecard_result = ScorecardRunner(self.repo_path).run()
-            self.build_pdf()
-            self.events.append(OperationEvent(kind=EventKind.GENERATED, target=self.filename))
-            if self.create_fork and os.path.exists(self.output_path):
-                self.git_agent.upload_report(self.filename, self.output_path)
-                self.events.append(OperationEvent(kind=EventKind.UPLOADED, target=f"{self.filename}"))
-            return {"result": {"report": self.filename}, "events": self.events}
-        except ValueError as e:
+            self._collect_scorecard(self.events)
+            return {"result": self._write_report(self.events, self.create_fork), "events": self.events}
+        except Exception as e:
             self.events.append(
                 OperationEvent(
                     kind=EventKind.FAILED,
@@ -761,21 +760,42 @@ class WhatHasBeenDoneReportGenerator(AbstractReportGenerator):
         Returns:
             list: A list of Paragraph objects for the PDF report.
         """
-        response = self.text_generator.make_request()
         normal_style, custom_style = self.get_styles()
-        story = []
-        story.append(Paragraph(f"<b>{self.translator.get('what_have_been_done')}:</b>", custom_style))
-        story.append(Paragraph(response.summary, normal_style))
-        story.append(Paragraph(f"<b>{self.translator.get('report_by_tasks')}:</b>", custom_style))
-        for block in response.blocks:
-            story.append(Paragraph(f"<b>{block.name}</b>", custom_style))
-            story.append(Paragraph(block.description, normal_style))
-            for task, was_do in block.tasks:
-                task_result = self.translator.get("yes") if was_do else self.translator.get("no")
-                story.append(
-                    Paragraph(
-                        f"• {self.translator.get(task)}: {task_result}",
-                        normal_style,
-                    )
+        rows = list(self.plan.operation_rows())
+        for event in self.events:
+            if event.kind == EventKind.FAILED:
+                rows.append((event.target, TaskStatus.FAILED, [Plan.brief_reason(event.data["error"])]))
+        story = [Paragraph(f"<b>{self.translator.get('report_by_tasks')}</b>", custom_style)]
+        if rows:
+            cell_style = ParagraphStyle("OperationOutcome", parent=normal_style, leftIndent=0, rightIndent=0)
+            data = [
+                [
+                    Paragraph(f"<b>{self.translator.get(key)}</b>", cell_style)
+                    for key in ("operation_label", "status_label", "failure_reason_label")
+                ]
+            ]
+            for task, status, reasons in rows:
+                label = self.translator.get(task) or task.replace("_", " ")
+                status_label = self.translator.get(f"operation_status_{status.value}") or status.value
+                for index, reason in enumerate(reasons or [""]):
+                    values = (label if index == 0 else "", status_label if index == 0 else "", reason)
+                    data.append([Paragraph(escape(value), cell_style) for value in values])
+            table = Table(data, colWidths=[130, 86, 216], repeatRows=1)
+            table.setStyle(
+                TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LINEBELOW", (0, 0), (-1, 0), 0.5, colors.grey)])
+            )
+            story.append(table)
+        try:
+            if rows:
+                generator = AfterReportTextGenerator(
+                    self.config_manager,
+                    [(task, status == TaskStatus.COMPLETED) for task, status, _ in rows],
+                    {task: {**self.plan.results.get(task, {}), "status": status.value} for task, status, _ in rows},
+                    self.target_language,
                 )
+                response = generator.make_request(include_blocks=False)
+                story.append(Paragraph(f"<b>{self.translator.get('what_have_been_done')}</b>", custom_style))
+                story.append(Paragraph(escape(response.summary), normal_style))
+        except Exception as exc:
+            logger.warning("Using the recorded results without an LLM summary: %s", Plan.brief_reason(str(exc)))
         return story

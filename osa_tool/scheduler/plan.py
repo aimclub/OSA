@@ -1,6 +1,20 @@
-from typing import Optional, Any
+import re
+from typing import Any, Optional
 
+from osa_tool.core.models.event import EventKind
 from osa_tool.core.models.task import TaskStatus
+
+FAILURE_STATUSES = {TaskStatus.FAILED, TaskStatus.PARTIAL}
+_PRODUCTIVE_EVENTS = {
+    EventKind.CREATED,
+    EventKind.GENERATED,
+    EventKind.SET,
+    EventKind.REFINED,
+    EventKind.UPDATED,
+    EventKind.MOVED,
+    EventKind.WRITTEN,
+    EventKind.UPLOADED,
+}
 
 EXCLUDED_TASK = {
     "use_single_model",
@@ -63,6 +77,55 @@ class Plan:
     def record_result(self, task: str, result: Any) -> None:
         """Store normalized result for a task, keyed by its human‑readable name."""
         self.results[task] = self._normalize_result(result)
+
+    @staticmethod
+    def _event_field(event: Any, field: str) -> Any:
+        return event.get(field) if isinstance(event, dict) else getattr(event, field, None)
+
+    def complete_operation(self, task: str, raw_result: Any) -> TaskStatus:
+        """Record a terminal outcome for an operation that actually ran."""
+        self.record_result(task, raw_result)
+        outcome = self.results[task]
+        events = outcome["events"] or []
+        kinds = {self._event_field(event, "kind") for event in events}
+        explicit_status = raw_result.get("status") if isinstance(raw_result, dict) else None
+        if explicit_status is not None:
+            status = TaskStatus(explicit_status)
+        elif self.failure_reasons(task):
+            status = TaskStatus.PARTIAL if kinds & _PRODUCTIVE_EVENTS else TaskStatus.FAILED
+        elif kinds & {EventKind.SKIPPED, EventKind.EXISTS} and not kinds & _PRODUCTIVE_EVENTS:
+            status = TaskStatus.SKIPPED
+        else:
+            status = TaskStatus.COMPLETED
+        self.tasks[task] = status
+        return status
+
+    def failure_reasons(self, task: str) -> list[str]:
+        outcome = self.results[task]
+        payload = outcome["result"]
+        reasons = []
+        for event in outcome["events"] or []:
+            if self._event_field(event, "kind") != EventKind.FAILED:
+                continue
+            data = self._event_field(event, "data") or {}
+            if data.get("recovered"):
+                continue
+            detail = data.get("error") or data.get("stderr") or data.get("reason") or "Operation failed"
+            target = self._event_field(event, "target")
+            reasons.append(f"{target}: {detail}" if target else str(detail))
+        if not reasons and isinstance(payload, dict) and "error" in payload:
+            reasons.append(str(payload["error"]))
+        return list(dict.fromkeys(self.brief_reason(reason) for reason in reasons))
+
+    @staticmethod
+    def brief_reason(reason: str) -> str:
+        reason = re.sub(r"(https?://)[^/\s@]+@", r"\1***@", reason)
+        return " ".join(reason.split())[:500]
+
+    def operation_rows(self):
+        """Yield recorded operation outcomes in execution order."""
+        for task in self.results:
+            yield task, self.tasks[task], self.failure_reasons(task)
 
     def get(self, task: str) -> Optional[Any]:
         return self.generated_plan.get(task, None)

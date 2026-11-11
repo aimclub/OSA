@@ -2,6 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from osa_tool.core.models.event import EventKind
 from osa_tool.operations.docs.about_generation.about_generator import AboutGenerator
 from osa_tool.utils.prompts_builder import PromptBuilder
 
@@ -277,6 +278,26 @@ def test_generate_about_content_once_only(
     # Assert
     assert first_result == second_result
     assert "About section content already generated. Skipping generation." in caplog.text
+
+
+@pytest.mark.parametrize(("response", "new_topic_count"), [("beta, alpha, beta", 0), ("alpha, gamma", 1)])
+def test_about_reports_only_changes_to_topics(
+    mock_config_manager, mock_model_handler_aboutgen, mock_git_agent, response, new_topic_count
+):
+    mock_git_agent.metadata.description = "Existing description"
+    mock_git_agent.metadata.homepage_url = "https://example.com"
+    mock_git_agent.metadata.topics = ["alpha", "beta"]
+    mock_git_agent.validate_topics.side_effect = lambda topics: topics
+    mock_model_handler_aboutgen.send_request.return_value = response
+
+    outcome = AboutGenerator(mock_config_manager, mock_git_agent).generate_about_content()
+
+    generated = [event for event in outcome["events"] if event.kind == EventKind.GENERATED]
+    if new_topic_count:
+        assert generated[0].data == {"description": False, "homepage": False, "topics_count": new_topic_count}
+    else:
+        assert not generated
+        assert any(event.kind == EventKind.SKIPPED and event.target == "about" for event in outcome["events"])
 
 
 def test_get_about_content_triggers_generation_if_missing(

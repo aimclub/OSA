@@ -191,42 +191,74 @@ def test_git_agent_commit_and_push_changes_nothing_to_commit(git_agent_base_setu
         assert result is False
 
 
-def test_git_agent_upload_report(git_agent_base_setup, mock_repo, temp_clone_dir):
-    # Arrange
+@pytest.mark.parametrize("reject_one_upload", [False, True])
+def test_git_agent_upload_report_isolates_attachments(git_agent_base_setup, tmp_path, monkeypatch, reject_one_upload):
     agent, _, _, _ = git_agent_base_setup
-    agent.repo = mock_repo
-    report_filename = "report.pdf"
-    report_content = b"fake pdf content"
-    report_filepath = os.path.join(temp_clone_dir, report_filename)
-    report_branch = "attachments"
-
-    with open(report_filepath, "wb") as f:
-        f.write(report_content)
-
-    mock_repo.heads = ["osa_tool", report_branch]
-    mock_repo.git.checkout.return_value = None
-    mock_repo.git.add.return_value = None
-    mock_repo.git.commit.return_value = None
-    mock_repo.git.push.return_value = None
-    mock_repo.git.remote.return_value = None
-
-    expected_report_path = os.path.join(agent.clone_dir, report_filename)
-    os.makedirs(agent.clone_dir, exist_ok=True)
-    agent.fork_url = "https://github.com/user/test-repo.git"
-
-    # Act
-    with patch.object(
-        agent, "_build_report_url", return_value=f"https://fork_url/blob/{report_branch}/{report_filename}"
+    source_path = tmp_path / "source"
+    fork_path = tmp_path / "fork"
+    with (
+        Repo.init(source_path, initial_branch="main") as source,
+        Repo.init(fork_path, bare=True, initial_branch="main") as fork,
     ):
-        agent.upload_report(report_filename, report_filepath, report_branch=report_branch)
+        with source.config_writer() as config:
+            config.set_value("user", "name", "Test User")
+            config.set_value("user", "email", "test@example.com")
+        (source_path / "tracked.txt").write_text("base", encoding="utf-8")
+        source.git.add("tracked.txt")
+        source.git.commit("-m", "Base")
+        source.git.push(str(fork_path), "main")
+        source.git.checkout("-b", "osa_tool")
+        (source_path / "tracked.txt").write_text("staged update", encoding="utf-8")
+        source.git.add("tracked.txt")
+        (source_path / "untracked.txt").write_text("local only", encoding="utf-8")
+        original_status = source.git.status("--porcelain")
+        agent.repo = source
+        agent.clone_dir = str(source_path)
+        agent.fork_url = "https://github.com/user/fork"
+        monkeypatch.setattr(agent, "_get_auth_url", lambda _: str(fork_path))
 
-        # Assert
-        assert mock_repo.git.checkout.call_count >= 2
-        assert os.path.exists(expected_report_path)
-        mock_repo.git.add.assert_called()
-        mock_repo.git.commit.assert_called()
-        mock_repo.git.push.assert_called()
-        assert report_filename in agent.pr_report_body
+        report = tmp_path / "example_report.pdf"
+        report.write_text("report", encoding="utf-8")
+        summary = tmp_path / "example_work_summary.pdf"
+        summary.write_text("summary", encoding="utf-8")
+        checkouts = []
+        init = Repo.init
+
+        def init_checkout(path):
+            checkout = init(path)
+            checkout.git = MagicMock(wraps=checkout.git)
+            checkouts.append((path, checkout.git))
+            return checkout
+
+        with patch.object(Repo, "init", side_effect=init_checkout), agent.report_upload_session():
+            assert not checkouts
+            agent.upload_report(report.name, str(report), report_branch="attachments")
+            first_report_commit = fork.commit("attachments").hexsha
+            if reject_one_upload:
+                rejected = tmp_path / "rejected.pdf"
+                rejected.write_text("unpublished", encoding="utf-8")
+                checkouts[0][1].push.side_effect = GitCommandError("push", 1, "rejected")
+                with pytest.raises(GitCommandError):
+                    agent.upload_report(rejected.name, str(rejected), report_branch="attachments")
+                assert not os.path.exists(checkouts[0][0])
+                assert rejected.name not in agent.pr_report_body
+
+            agent.upload_report(summary.name, str(summary), report_branch="attachments")
+            summary_commit = fork.commit("attachments").hexsha
+            agent.upload_report(summary.name, str(summary), report_branch="attachments")
+
+        assert len(checkouts) == (2 if reject_one_upload else 1)
+        for path, git in checkouts:
+            git.fetch.assert_called_once()
+            git.checkout.assert_called_once()
+            assert not os.path.exists(path)
+
+        assert source.active_branch.name == "osa_tool"
+        assert source.git.status("--porcelain") == original_status
+        assert fork.git.diff("main", "attachments", "--name-only").splitlines() == [report.name, summary.name]
+        assert fork.commit("attachments").parents[0].hexsha == first_report_commit
+        assert fork.commit("attachments").hexsha == summary_commit
+        assert report.name in agent.pr_report_body
 
 
 @pytest.fixture
@@ -365,6 +397,145 @@ def test_github_agent_create_pull_request_update_reports(
     assert old_report in sent_body
     assert new_report in sent_body
     assert github_agent_instance.agent_signature in sent_body
+
+
+def test_github_reports_api_failure_in_strict_mode(github_agent_instance, mock_requests_response_factory):
+    github_agent_instance.fork_url = "https://github.com/user/fork"
+    github_agent_instance.repo = MagicMock()
+    forbidden = mock_requests_response_factory(status_code=403, json_data={"message": "Forbidden"})
+    with patch("osa_tool.core.git.git_agent.request_with_retry", return_value=forbidden):
+        with pytest.raises(ValueError, match="checking existing pull requests.*403"):
+            github_agent_instance.create_pull_request(strict=True)
+
+
+@pytest.mark.parametrize("update_status", [200, 403])
+def test_github_updates_report_links_after_about_comment_fails(
+    github_agent_instance, mock_requests_response_factory, update_status
+):
+    agent = github_agent_instance
+    agent.fork_url = "https://github.com/user/fork"
+    agent.repo = MagicMock()
+    report_link = "Generated report - [new.pdf](https://example.com/new.pdf)"
+    agent.pr_report_body = report_link
+    responses = [
+        mock_requests_response_factory(status_code=200, json_data=[{"number": 42, "body": "Existing PR"}]),
+        mock_requests_response_factory(status_code=422, json_data={"message": "Unprocessable"}),
+        mock_requests_response_factory(status_code=update_status, json_data={}),
+    ]
+    with patch("osa_tool.core.git.git_agent.request_with_retry", side_effect=responses) as request:
+        with pytest.raises(ValueError, match="posting a comment to PR #42.*422") as failure:
+            agent.create_pull_request(body="About details", strict=True)
+
+    assert [call.args[0] for call in request.call_args_list] == ["get", "post", "patch"]
+    assert report_link in request.call_args.kwargs["json"]["body"]
+    if update_status == 403:
+        assert "updating PR #42' failed with status 403" in str(failure.value)
+
+
+@pytest.mark.parametrize("fork_status", [200, 403])
+def test_github_only_requires_about_update_on_fork(github_agent_instance, mock_requests_response_factory, fork_status):
+    agent = github_agent_instance
+    agent.fork_url = "https://github.com/fork-owner/fork"
+    content = {"description": "Description", "homepage": "", "topics": ["topic"]}
+
+    def respond(method, url, **kwargs):
+        status = fork_status if "/repos/fork-owner/fork" in url else 403
+        return mock_requests_response_factory(status_code=status, json_data={})
+
+    with patch("osa_tool.core.git.git_agent.request_with_retry", side_effect=respond) as request:
+        if fork_status == 403:
+            with pytest.raises(ValueError, match="fork-owner/fork.*403"):
+                agent.update_about_section(content, strict=True)
+        else:
+            agent.update_about_section(content, strict=True)
+
+    assert request.call_args_list[2].args[1].endswith("/repos/fork-owner/fork")
+    if fork_status == 200:
+        assert request.call_args.args[1].endswith("/repos/fork-owner/fork/topics")
+
+
+@pytest.mark.parametrize("topics_status", [200, 403])
+def test_github_updates_topics_after_description_fails(
+    github_agent_instance, mock_requests_response_factory, topics_status
+):
+    agent = github_agent_instance
+    agent.fork_url = "https://github.com/fork-owner/fork"
+    content = {"description": "Description", "homepage": "", "topics": ["topic"]}
+    responses = [
+        mock_requests_response_factory(status_code=status, json_data={}) for status in [200, 200, 422, topics_status]
+    ]
+    with patch("osa_tool.core.git.git_agent.request_with_retry", side_effect=responses) as request:
+        with pytest.raises(ValueError, match="updating description for 'fork-owner/fork'.*422") as failure:
+            agent.update_about_section(content, strict=True)
+
+    assert [call.args[0] for call in request.call_args_list] == ["patch", "put", "patch", "put"]
+    assert request.call_args.args[1].endswith("/repos/fork-owner/fork/topics")
+    assert request.call_args.kwargs["json"] == {"names": ["topic"]}
+    if topics_status == 403:
+        assert "updating topics for 'fork-owner/fork'" in str(failure.value)
+        assert "failed with status 403" in str(failure.value)
+
+
+@pytest.mark.usefixtures("mock_config_manager")
+@pytest.mark.parametrize(
+    ("mock_config_manager", "agent_fixture", "lookup_responses", "update_method"),
+    [
+        ("gitlab", "gitlab_agent_instance", [{"id": 456}, [{"iid": 7, "description": "MR"}]], "put"),
+        (
+            "sourcecraft",
+            "sourcecraft_agent_instance",
+            [{"username": "bot"}, {"pull_requests": [{"slug": "pr-42", "description": "PR"}]}],
+            "patch",
+        ),
+    ],
+    indirect=["mock_config_manager"],
+)
+def test_report_links_are_updated_when_comment_fails(
+    request, agent_fixture, lookup_responses, update_method, mock_requests_response_factory
+):
+    agent = request.getfixturevalue(agent_fixture)
+    agent.fork_url = agent.repo_url
+    agent.repo = MagicMock()
+    report_link = "Generated report - [new.pdf](https://example.com/new.pdf)"
+    agent.pr_report_body = report_link
+    responses = [mock_requests_response_factory(status_code=200, json_data=data) for data in lookup_responses]
+    responses.extend(
+        [
+            mock_requests_response_factory(status_code=422, json_data={"message": "Unprocessable"}),
+            mock_requests_response_factory(status_code=200, json_data={}),
+        ]
+    )
+    with patch("osa_tool.core.git.git_agent.request_with_retry", side_effect=responses) as send:
+        with pytest.raises(ValueError, match="posting.*422"):
+            agent.create_pull_request(body="About details", strict=True)
+
+    assert [call.args[0] for call in send.call_args_list][-2:] == ["post", update_method]
+    assert report_link in send.call_args.kwargs["json"]["description"]
+
+
+@pytest.mark.usefixtures("mock_config_manager")
+@pytest.mark.parametrize(
+    ("mock_config_manager", "agent_fixture", "lookup_responses"),
+    [
+        ("github", "github_agent_instance", [[]]),
+        ("gitlab", "gitlab_agent_instance", [{"id": 456}, []]),
+        ("gitverse", "gitverse_agent_instance", [[]]),
+        ("sourcecraft", "sourcecraft_agent_instance", [{"username": "bot"}, {"pull_requests": []}]),
+    ],
+    indirect=["mock_config_manager"],
+)
+def test_clean_fork_without_open_pull_request_is_skipped(
+    request, agent_fixture, lookup_responses, mock_requests_response_factory
+):
+    agent = request.getfixturevalue(agent_fixture)
+    agent.fork_url = agent.repo_url
+    agent.repo = MagicMock()
+    agent.pr_report_body = "Generated report - [new.pdf](https://example.com/new.pdf)"
+    responses = [mock_requests_response_factory(status_code=200, json_data=data) for data in lookup_responses]
+    with patch("osa_tool.core.git.git_agent.request_with_retry", side_effect=responses) as send:
+        assert agent.create_pull_request(changes=False, strict=True) is False
+
+    assert [call.args[0] for call in send.call_args_list] == ["get"] * len(responses)
 
 
 @pytest.fixture

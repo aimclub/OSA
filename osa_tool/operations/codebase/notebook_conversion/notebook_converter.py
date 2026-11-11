@@ -32,12 +32,16 @@ class NotebookConverter:
 
     def convert_notebooks(self) -> dict:
         """Converts Jupyter notebooks to Python scripts based on provided paths."""
+        self.events = []
         try:
             if len(self.notebook_paths) == 0:
                 self._process_path(self.repo_path)
             else:
                 for path in self.notebook_paths:
                     self._process_path(path)
+            if not self.events:
+                self._emit(EventKind.SKIPPED, "notebooks", {"reason": "no_notebooks_found"})
+                return {"result": None, "events": self.events}
             return {"result": "Notebook conversion completed", "events": self.events}
         except Exception as e:
             logger.error("Error while converting notebooks: %s", repr(e), exc_info=True)
@@ -83,11 +87,9 @@ class NotebookConverter:
             self._emit(EventKind.ANALYZED, notebook_path)
 
             body, _ = self.exporter.from_notebook_node(nb_node)
-            self._emit(EventKind.GENERATED, notebook_path, {"source": "notebook_export"})
 
             notebook_name = os.path.splitext(os.path.basename(notebook_path))[0]
             body = self._process_code(notebook_name, body)
-            self._emit(EventKind.REFINED, notebook_path)
 
             if not self._is_syntax_correct(body):
                 logger.error("Converted notebook has invalid syntax: %s", notebook_path)
@@ -98,6 +100,8 @@ class NotebookConverter:
             with open(script_path, "w") as script_file:
                 script_file.write(body)
 
+            self._emit(EventKind.GENERATED, notebook_path, {"source": "notebook_export"})
+            self._emit(EventKind.REFINED, notebook_path)
             self._emit(EventKind.WRITTEN, script_path)
 
         except Exception as e:

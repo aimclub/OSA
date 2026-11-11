@@ -106,6 +106,19 @@ This interactive loop continues until the user explicitly confirms or cancels th
 This mode allows for precise control over which improvements, documentation, or workflow-related actions will be applied
 to the repository.
 
+## Run summary and exit codes
+
+OSA prints the outcome of each operation and the reasons for failures. `--report` and `--scorecard` also write a local `<repo>_work_summary.pdf`.
+
+| Code | Outcome |
+| --- | --- |
+| `0` | The selected operations succeeded or were skipped as expected. |
+| `1` | Setup failed, or the run failed without a successful result from a selected operation. |
+| `2` | The command-line arguments were invalid. |
+| `3` | A failure occurred and at least one selected operation produced a complete or partial result. |
+
+After a failure, OSA continues independent operations and keeps the working copy, even with `--delete-dir`. A failed or partially successful repository change also prevents automatic publication of the changes and reports.
+
 ## Table of Available Keys
 
 The tables below are generated from the metadata used by the `osa-tool` command-line help. Edit `osa_tool/config/settings/arguments.yaml`, then run `python docs/generate_cli_reference.py`.
@@ -149,7 +162,7 @@ The tables below are generated from the metadata used by the `osa-tool` command-
 | `branch` | `-b`<br>`--branch` | str | — | Branch name of the GitHub repository | — |
 | `config_file` | `--config-file` | str | — | Path to custom configuration file (TOML format). | — |
 | `context_window` | `--context-window` | int | — | Total number of model context (Input + Output). | — |
-| `delete_dir` | `--delete-dir` | flag | — | Enable deleting the downloaded repository after processing. | — |
+| `delete_dir` | `--delete-dir` | flag | — | Delete the repository copy downloaded by this run after successful processing. | — |
 | `max_retries` | `--max-retries` | int | — | Maximum retry attempts for LLM API calls | — |
 | `max_tokens` | `--max-tokens` | int | — | Maximum number of output tokens the model can generate in a single response. | — |
 | `mode` | `-m`<br>`--mode` | str | — | Select the operation mode for repository processing:<br>basic           — run a minimal predefined set of tasks.<br>auto (default)  — automatically determine necessary actions based on repository analysis.<br>advanced        — run all enabled features based on provided flags. | `basic`, `auto`, `advanced` |

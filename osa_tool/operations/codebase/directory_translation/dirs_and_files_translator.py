@@ -37,6 +37,7 @@ class RepositoryStructureTranslator:
         """
         The complete process of translating directories and files in the repository.
         """
+        self.events = []
         try:
             dirs_renamed = self.rename_directories()
             files_renamed = self.rename_files()
@@ -52,7 +53,7 @@ class RepositoryStructureTranslator:
                         },
                     )
                 )
-            else:
+            elif not any(event.kind == EventKind.FAILED for event in self.events):
                 self.events.append(
                     OperationEvent(
                         kind=EventKind.SKIPPED,
@@ -90,20 +91,15 @@ class RepositoryStructureTranslator:
 
         self._cycle_update_code(rename_map)
 
-        # Rename directories
-        try:
-            for old_path in reversed(all_dirs):
-                old_name = os.path.basename(old_path)
-                if old_name in rename_map:
-                    new_name = rename_map[old_name]
-                    new_path = os.path.join(os.path.dirname(old_path), new_name)
-                    os.rename(old_path, new_path)
-                    renamed += 1
-                    logger.info(f'Renamed: "{old_name}" → "{new_name}"')
-        except Exception as e:
-            logger.error("Error while renaming directories: %s", e, exc_info=True)
-
-        logger.info("Directory renaming completed successfully")
+        for old_path in reversed(all_dirs):
+            old_name = os.path.basename(old_path)
+            if old_name in rename_map:
+                new_path = os.path.join(os.path.dirname(old_path), rename_map[old_name])
+                if not self._rename_path(old_path, new_path):
+                    break
+                renamed += 1
+        else:
+            logger.info("Directory renaming completed successfully")
         return renamed
 
     def rename_files(self) -> int:
@@ -116,18 +112,24 @@ class RepositoryStructureTranslator:
         rename_map, rename_map_code = self.translate_files(all_files)
         self._cycle_update_code(rename_map_code)
 
-        try:
-            for old_path, new_path in rename_map.items():
-                os.rename(old_path, new_path)
-                renamed += 1
-                _, old_name = os.path.split(os.path.basename(old_path))
-                _, new_name = os.path.split(os.path.basename(new_path))
-                logger.info(f'Renamed: "{old_name}" → "{new_name}"')
-        except Exception as e:
-            logger.error("Error while renaming files: %s", e, exc_info=True)
-
-        logger.info("Files renaming completed successfully")
+        for old_path, new_path in rename_map.items():
+            if not self._rename_path(old_path, new_path):
+                break
+            renamed += 1
+        else:
+            logger.info("Files renaming completed successfully")
         return renamed
+
+    def _rename_path(self, old_path: str, new_path: str) -> bool:
+        try:
+            os.rename(old_path, new_path)
+        except OSError as exc:
+            error = f"Could not rename to {new_path}: {exc}"
+            logger.error("%s: %s", old_path, error, exc_info=True)
+            self.events.append(OperationEvent(kind=EventKind.FAILED, target=str(old_path), data={"error": error}))
+            return False
+        logger.info('Renamed: "%s" → "%s"', os.path.basename(old_path), os.path.basename(new_path))
+        return True
 
     def translate_directories(self, all_dirs) -> dict:
         rename_map = {}

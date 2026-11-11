@@ -4,7 +4,6 @@ import os
 from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import Flowable, Paragraph, Spacer, Table, SimpleDocTemplate, TableStyle
@@ -18,6 +17,9 @@ from osa_tool.operations.analysis.repository_report.report_maker import Abstract
 
 
 class NotebookReportGenerator(AbstractReportGenerator):
+    _header_spacer = 34
+    _first_page_body_spacer = 148
+
     def __init__(
         self,
         config_manager: ConfigManager,
@@ -50,19 +52,13 @@ class NotebookReportGenerator(AbstractReportGenerator):
         )
         self.bundle: NotebookAnalysisBundle | None = None
         self.events: list[OperationEvent] = []
-        self._first_page_body_spacer = 148
 
     def run(self) -> dict:
         """Analyze notebooks, build the PDF report, and return operation events."""
         try:
             self.bundle = self.analyzer.analyze()
             self.events.extend(self.analyzer.events)
-            self.build_pdf()
-            self.events.append(OperationEvent(kind=EventKind.GENERATED, target=self.filename))
-            if self.create_fork and os.path.exists(self.output_path):
-                self.git_agent.upload_report(self.filename, self.output_path)
-                self.events.append(OperationEvent(kind=EventKind.UPLOADED, target=self.filename))
-            return {"result": {"report": self.filename}, "events": self.events}
+            return {"result": self._write_report(self.events, self.create_fork), "events": self.events}
         except Exception as exc:
             self.events.append(
                 OperationEvent(kind=EventKind.FAILED, target="Notebook report generation", data={"error": str(exc)})
@@ -220,39 +216,6 @@ class NotebookReportGenerator(AbstractReportGenerator):
             story.append(Spacer(0, 10))
 
         return story
-
-    def build_pdf(self) -> None:
-        """Render the configured notebook analysis bundle to a PDF file.
-
-        Raises:
-            RuntimeError: If ReportLab fails or no output file is produced.
-        """
-        from osa_tool.utils.logger import logger
-
-        logger.info(self.start_log)
-        try:
-            doc = SimpleDocTemplate(
-                self.output_path,
-                pagesize=A4,
-                topMargin=50,
-                bottomMargin=40,
-            )
-            doc.build(
-                [
-                    *self.header(),
-                    Spacer(0, 34),
-                    self.body_first_part(),
-                    Spacer(0, self._first_page_body_spacer),
-                    *self.body_second_part(),
-                ],
-                onFirstPage=self.draw_images_and_tables,
-            )
-        except Exception as exc:
-            logger.error("Error while building notebook PDF report, %s", exc, exc_info=True)
-            raise RuntimeError(f"Failed to build notebook PDF report: {exc}") from exc
-        if not os.path.isfile(self.output_path):
-            raise RuntimeError(f"Notebook PDF report was not created: {self.output_path}")
-        logger.info("PDF report successfully created in %s", self.output_path)
 
     def draw_images_and_tables(self, canvas_obj: Canvas, doc: SimpleDocTemplate) -> None:
         # Logo OSA
