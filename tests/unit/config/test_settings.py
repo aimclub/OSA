@@ -702,3 +702,79 @@ def test_model_settings_invalid_temperature():
         ModelSettings(**model_data)
 
     assert "temperature" in str(exc_info.value)
+
+
+def _write_partial_config(tmp_path, content: str) -> str:
+    config_file = tmp_path / "partial.toml"
+    config_file.write_text(content, encoding="utf-8")
+    return str(config_file)
+
+
+def test_config_manager_merges_partial_config_file_over_defaults(tmp_path):
+    # Arrange
+    config_file = _write_partial_config(
+        tmp_path,
+        '[general]\ntranslate_readme = ["Russian"]\n\n[llm]\nmodel = "gpt-4o"\nbase_url = "https://openrouter.ai/api/v1"\n',
+    )
+    default_manager = ConfigManager()
+
+    # Act
+    manager = ConfigManager(_make_config_args(config_file))
+
+    # Assert
+    default_llm = default_manager.config.llm.default
+    llm = manager.config.llm.default
+    assert llm.model == "gpt-4o"
+    assert llm.rate_limit == default_llm.rate_limit
+    assert llm.encoder == default_llm.encoder
+    assert llm.fallback_models == default_llm.fallback_models
+    assert llm.system_prompt == default_llm.system_prompt
+    assert manager.get_model_settings("docstring").model == "gpt-4o"
+
+
+def test_config_manager_partial_config_without_git_and_workflows(tmp_path):
+    # Arrange
+    config_file = _write_partial_config(tmp_path, '[llm]\nmodel = "gpt-4o"\n')
+    default_manager = ConfigManager()
+
+    # Act
+    manager = ConfigManager(_make_config_args(config_file))
+
+    # Assert
+    assert manager.config.workflows == default_manager.config.workflows
+    assert manager.config.git.repository == "https://github.com/testuser/testrepo"
+
+
+def test_config_manager_partial_config_rejects_removed_section(tmp_path):
+    # Arrange
+    config_file = _write_partial_config(tmp_path, '[llm.for_validation]\nmodel = "old"\n')
+
+    # Act & Assert
+    with pytest.raises(ValueError, match=r"\[llm.for_validation\] was removed"):
+        ConfigManager(_make_config_args(config_file))
+
+
+def test_partial_config_file_reaches_parser_settings_and_plan(tmp_path):
+    # Arrange
+    from osa_tool.scheduler.scheduler import ModeScheduler
+    from osa_tool.utils.arguments_parser import build_parser_from_yaml
+
+    config_file = _write_partial_config(
+        tmp_path,
+        '[general]\ntranslate_readme = ["Russian"]\nartefacts_language = "Russian"\nmode = "advanced"\n\n'
+        '[llm]\nmodel = "gpt-4o"\n',
+    )
+    parser = build_parser_from_yaml(extra_sections=["settings", "arguments", "workflow"])
+
+    # Act
+    args = parser.parse_args(["-r", "https://github.com/a/b", "--config-file", config_file, "--web-mode"])
+    manager = ConfigManager(args)
+    scheduler = ModeScheduler.__new__(ModeScheduler)
+    scheduler.mode = args.mode
+    scheduler.args = args
+    plan = scheduler._select_plan()
+
+    # Assert
+    assert manager.config.llm.default.model == "gpt-4o"
+    assert plan["translate_readme"] == ["Russian"]
+    assert plan["artefacts_language"] == "Russian"

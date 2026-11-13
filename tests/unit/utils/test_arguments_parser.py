@@ -5,11 +5,20 @@ import pytest
 
 from osa_tool.utils.arguments_parser import (
     build_parser_from_yaml,
+    deep_merge_dicts,
     get_keys_from_group_in_yaml,
     read_arguments_file_flat,
     read_arguments_file,
     get_default_from_config,
 )
+
+MAIN_CLI_SECTIONS = ["settings", "arguments", "workflow"]
+
+
+def _write_partial_config(tmp_path, content: str) -> str:
+    config_file = tmp_path / "custom.toml"
+    config_file.write_text(content, encoding="utf-8")
+    return str(config_file)
 
 
 def test_read_arguments_file(mock_yaml_file, yaml_file_path):
@@ -270,3 +279,93 @@ invalid_arg:
     with patch("builtins.open", mock_open(read_data=invalid_yaml)):
         with pytest.raises(ValueError, match="Unsupported type 'unsupported_type'"):
             build_parser_from_yaml()
+
+
+def test_deep_merge_dicts_merges_nested_and_replaces_lists():
+    # Arrange
+    base = {"general": {"mode": "auto", "translate_readme": []}, "llm": {"model": "a", "rate_limit": 10}}
+    override = {"general": {"translate_readme": ["Russian"]}, "llm": {"model": "b"}}
+
+    # Act
+    merged = deep_merge_dicts(base, override)
+
+    # Assert
+    assert merged == {
+        "general": {"mode": "auto", "translate_readme": ["Russian"]},
+        "llm": {"model": "b", "rate_limit": 10},
+    }
+    assert base["general"]["translate_readme"] == []
+    assert base["llm"]["model"] == "a"
+
+
+@pytest.mark.parametrize("use_equals_form", [False, True])
+def test_config_file_overrides_packaged_defaults(tmp_path, use_equals_form):
+    # Arrange
+    config_file = _write_partial_config(
+        tmp_path, '[general]\ntranslate_readme = ["Russian"]\nartefacts_language = "Russian"\n'
+    )
+    config_args = [f"--config-file={config_file}"] if use_equals_form else ["--config-file", config_file]
+    parser = build_parser_from_yaml(extra_sections=MAIN_CLI_SECTIONS)
+
+    # Act
+    args = parser.parse_args(["-r", "https://github.com/a/b", *config_args])
+
+    # Assert
+    assert args.translate_readme == ["Russian"]
+    assert args.artefacts_language == "Russian"
+    assert args._cli_defaults["artefacts_language"] == "Russian"
+    assert "artefacts_language" not in args._explicit_cli_args
+
+
+def test_explicit_cli_arg_beats_config_file(tmp_path):
+    # Arrange
+    config_file = _write_partial_config(tmp_path, '[general]\nartefacts_language = "Russian"\n')
+    parser = build_parser_from_yaml(extra_sections=MAIN_CLI_SECTIONS)
+
+    # Act
+    args = parser.parse_args(["--config-file", config_file, "--artefacts-language", "German"])
+
+    # Assert
+    assert args.artefacts_language == "German"
+
+
+def test_partial_config_file_keeps_packaged_defaults(tmp_path):
+    # Arrange
+    config_file = _write_partial_config(tmp_path, '[general]\nartefacts_language = "Russian"\n')
+    parser = build_parser_from_yaml(extra_sections=MAIN_CLI_SECTIONS)
+    packaged = parser.parse_args([])
+
+    # Act
+    args = parser.parse_args(["--config-file", config_file])
+
+    # Assert
+    assert args.mode == packaged.mode
+    assert args.translate_readme == packaged.translate_readme
+    assert args.model == packaged.model
+
+
+def test_config_file_defaults_do_not_leak_between_parses(tmp_path):
+    # Arrange
+    config_file = _write_partial_config(tmp_path, '[general]\nartefacts_language = "Russian"\n')
+    parser = build_parser_from_yaml(extra_sections=MAIN_CLI_SECTIONS)
+    packaged_language = parser.parse_args([]).artefacts_language
+
+    # Act
+    parser.parse_args(["--config-file", config_file])
+    args = parser.parse_args([])
+
+    # Assert
+    assert args.artefacts_language == packaged_language
+    assert args._cli_defaults["artefacts_language"] == packaged_language
+
+
+def test_missing_config_file_keeps_packaged_defaults(tmp_path):
+    # Arrange
+    parser = build_parser_from_yaml(extra_sections=MAIN_CLI_SECTIONS)
+    packaged_language = parser.parse_args([]).artefacts_language
+
+    # Act
+    args = parser.parse_args(["--config-file", str(tmp_path / "missing.toml")])
+
+    # Assert
+    assert args.artefacts_language == packaged_language
