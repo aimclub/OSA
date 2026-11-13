@@ -2,9 +2,69 @@ import asyncio
 from pathlib import Path
 from unittest.mock import patch, MagicMock, AsyncMock
 
+import httpx
 import pytest
+from openai import PermissionDeniedError
 
+from osa_tool.core.models.event import EventKind
+from osa_tool.core.models.task import TaskStatus
 from osa_tool.operations.codebase.docstring_generation.docgen import ClassDocumentationDetails, DocGen
+from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
+
+
+@pytest.mark.parametrize(
+    ("status", "has_targets", "one_succeeds"),
+    [(TaskStatus.FAILED, True, False), (TaskStatus.PARTIAL, True, True), (TaskStatus.SKIPPED, False, False)],
+)
+def test_incremental_docstrings_record_real_writes_and_request_failures(
+    tmp_path, mock_config_manager, monkeypatch, status, has_targets, one_succeeds
+):
+    source = tmp_path / "example.py"
+    original = "def success():\n    return 1\n\nclass Example:\n    def method(self):\n        return 2\n"
+    if not has_targets:
+        original = "# No code to document\n"
+    source.write_text(original, encoding="utf-8")
+    mock_config_manager.get_git_settings().repository = str(tmp_path)
+    generator = DocstringsGenerator(mock_config_manager, ignore_list=[], incremental=True)
+    generator.dg.classify_model_size = AsyncMock()
+    request = httpx.Request("POST", "https://example.invalid/chat/completions")
+    denied = PermissionDeniedError("Key limit exceeded", response=httpx.Response(403, request=request), body=None)
+
+    async def generate_method(metadata, *_args, **_kwargs):
+        if one_succeeds and metadata["method_name"] == "success":
+            return "Return the example value."
+        raise denied
+
+    generator.dg.generate_method_documentation = AsyncMock(side_effect=generate_method)
+    generator.dg.generate_class_documentation = AsyncMock(side_effect=denied)
+    monkeypatch.setattr(
+        generator.dg,
+        "_run_in_executor",
+        lambda structure, source_code, generated, workers: [
+            DocGen._perform_code_augmentations((file, source_code[file], generated[file]))
+            for file in structure
+            if structure[file].get("structure")
+        ],
+    )
+
+    outcome = generator.run()
+
+    assert outcome["status"] == status
+    failures = [event for event in outcome["events"] if event.kind == EventKind.FAILED]
+    writes = [event for event in outcome["events"] if event.kind == EventKind.WRITTEN]
+    if one_succeeds:
+        assert [event.target for event in writes] == [str(source)]
+        assert "Return the example value." in source.read_text(encoding="utf-8")
+    else:
+        assert not writes
+        assert source.read_text(encoding="utf-8") == original
+    if has_targets:
+        assert len(failures) == (2 if one_succeeds else 3)
+        assert {event.target for event in failures} == {str(source)}
+        assert any(event.data["symbol"] == "Example" for event in failures)
+        assert all("Key limit exceeded" in event.data["error"] for event in failures)
+    else:
+        assert not failures
 
 
 def test_format_class(mock_config_manager):

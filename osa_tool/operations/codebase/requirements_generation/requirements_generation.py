@@ -56,11 +56,13 @@ class RequirementsGenerator:
         except subprocess.CalledProcessError as e:
             logger.warning("Standard scan failed. Retrying without notebooks...")
             self._add_event(EventKind.FAILED, mode="scan-notebooks", data={"stderr": e.stderr})
+            first_attempt = self.events[-1]
 
             # Scan without notebooks
             logger.info("Retrying requirements generation WITHOUT notebooks...")
             try:
                 self._run_pipreqs(scan_notebooks=False)
+                first_attempt.data["recovered"] = True
                 logger.info("Requirements generated successfully (excluding notebooks)")
                 self._add_event(EventKind.GENERATED, mode="no-notebooks")
 

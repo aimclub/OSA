@@ -3,12 +3,15 @@ from unittest.mock import patch, mock_open, MagicMock
 import pytest
 import yaml
 
+from osa_tool.config.settings import WorkflowSettings
+from osa_tool.operations.codebase.workflow_generation.workflow_generator import GitHubWorkflowGenerator
 from osa_tool.scheduler.plan import Plan
 from osa_tool.scheduler.workflow_manager import (
     GitHubWorkflowManager,
     GitLabWorkflowManager,
     GitverseWorkflowManager,
     SourceCraftWorkflowManager,
+    WorkflowGenerationError,
 )
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 
@@ -118,6 +121,20 @@ def test_update_workflow_config(mock_config_manager, mock_repository_metadata, m
     assert updated.include_tests is True
     assert updated.include_black is False
     assert updated.python_versions == ["3.10"]
+
+
+def test_workflow_generation_error_preserves_written_files(
+    mock_config_manager, mock_repository_metadata, mock_args, tmp_path, monkeypatch
+):
+    manager = GitHubWorkflowManager(str(tmp_path), mock_repository_metadata, mock_args)
+    mock_config_manager.get_workflow_settings.return_value = WorkflowSettings(include_black=True, include_tests=True)
+    monkeypatch.setattr(GitHubWorkflowGenerator, "generate_unit_test", MagicMock(side_effect=OSError("Disk full")))
+
+    with pytest.raises(WorkflowGenerationError, match="Disk full") as failure:
+        manager.generate_workflow_files(mock_config_manager)
+
+    assert failure.value.files == [str(path) for path in (tmp_path / ".github/workflows").iterdir()]
+    assert len(failure.value.files) == 1
 
 
 def test_github_locate_workflow_path_exists(mock_config_manager, mock_repository_metadata, mock_args):

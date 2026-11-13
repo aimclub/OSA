@@ -1,6 +1,8 @@
 import os
 import sys
 import time
+from contextlib import nullcontext
+from pathlib import Path
 from typing import Any, Callable
 
 from osa_tool.config.settings import ConfigManager
@@ -13,6 +15,7 @@ from osa_tool.core.git.git_agent import (
     GitAgent,
     LocalGitAgent,
 )
+from osa_tool.core.models.task import TaskStatus
 from osa_tool.operations.analysis.repository_report.report_maker import ReportGenerator, WhatHasBeenDoneReportGenerator
 from osa_tool.operations.codebase.directory_translation.dirs_and_files_translator import RepositoryStructureTranslator
 from osa_tool.operations.codebase.docstring_generation.docstring_generation import DocstringsGenerator
@@ -24,7 +27,7 @@ from osa_tool.operations.docs.community_docs_generation.docs_run import generate
 from osa_tool.operations.docs.community_docs_generation.license_generation import LicenseCompiler
 from osa_tool.operations.docs.readme_generation.readme_agent import ReadmeAgent
 from osa_tool.operations.docs.readme_translation.readme_translator import ReadmeTranslator
-from osa_tool.scheduler.plan import Plan
+from osa_tool.scheduler.plan import FAILURE_STATUSES, Plan
 from osa_tool.scheduler.scheduler import ModeScheduler
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.scheduler.workflow_manager import (
@@ -32,12 +35,13 @@ from osa_tool.scheduler.workflow_manager import (
     GitLabWorkflowManager,
     GitverseWorkflowManager,
     SourceCraftWorkflowManager,
+    WorkflowGenerationError,
     WorkflowManager,
 )
 from osa_tool.utils.arguments_parser import apply_argument_descriptions_from_yaml, build_parser_from_yaml
 from osa_tool.utils.logger import logger, setup_logging
 from osa_tool.utils.utils import (
-    delete_repository,
+    delete_created_remote_clone,
     prepare_local_output_repository,
     osa_project_root,
     parse_folder_name,
@@ -80,16 +84,12 @@ def main():
         else:
             print(result.artifacts.json_path)
             return 0
-    create_fork = not args.no_fork
-    create_pull_request = not args.no_pull_request
-
-    # Initialize logging
-    logs_dir = os.path.join(os.path.dirname(osa_project_root()), "logs")
-    repo_name = parse_folder_name(args.repository)
-    setup_logging(repo_name, logs_dir)
-
     start_time = time.time()
+    plan = None
+    clone_dir = None
     try:
+        logs_dir = os.path.join(os.path.dirname(osa_project_root()), "logs")
+        setup_logging(parse_folder_name(args.repository), logs_dir)
         # Switch to output directory if present
         if args.output:
             output_path = switch_to_output_directory(args.output)
@@ -107,6 +107,8 @@ def main():
         if create_fork:
             git_agent.star_repository()
             git_agent.create_fork()
+        clone_dir = Path(git_agent.clone_dir)
+        existed_before_clone = clone_dir.exists() or clone_dir.is_symlink()
         git_agent.clone_repository()
         # Refresh CI/CD state from the freshly cloned repo.
         # WorkflowManager.__init__ already ran before clone, so it may have read
@@ -129,14 +131,14 @@ def main():
             git_agent.create_and_checkout_branch()
 
         # Repository Analysis Report generation
-        # NOTE: Must run first - switches GitHub branches
+        # Measure the repository before applying any changes.
         if run_report:
             rich_section("Report generation")
             _run_plan_operation(
                 plan,
                 "report",
                 lambda: ReportGenerator(
-                    config_manager, git_agent, create_fork, artefacts_language, run_scorecard=plan.get("scorecard")
+                    config_manager, git_agent, False, artefacts_language, run_scorecard=plan.get("scorecard")
                 ).run(),
             )
 
@@ -149,7 +151,7 @@ def main():
                 lambda: NotebookReportGenerator(
                     config_manager,
                     git_agent,
-                    create_fork,
+                    False,
                     notebook_report,
                     target_language=artefacts_language,
                 ).run(),
@@ -235,29 +237,20 @@ def main():
             )
 
         # About section generation
-        about_gen = None
         if plan.get("about"):
             rich_section("About Section generation")
-            about_gen = AboutGenerator(config_manager, git_agent)
             _run_plan_operation(
                 plan,
                 "about",
-                lambda: about_gen.generate_about_content(),
+                lambda: _generate_about(config_manager, git_agent),
             )
-            if create_fork:
-                git_agent.update_about_section(about_gen.get_about_content())
-            if not create_pull_request:
-                logger.info("About section:\n" + about_gen.get_about_section_message())
 
         # Generate platform-specified CI/CD files
         if plan.get("generate_workflows"):
             rich_section("Workflows generation")
-            plan.mark_started("generate_workflows")
-            workflow_manager.update_workflow_config(config_manager, plan)
-            if workflow_manager.generate_workflow(config_manager):
-                plan.mark_done("generate_workflows")
-            else:
-                plan.mark_failed("generate_workflows")
+            _run_plan_operation(
+                plan, "generate_workflows", lambda: _generate_workflows(config_manager, workflow_manager, plan)
+            )
 
         # Organize repository by adding 'tests' and 'examples' directories if they aren't exist
         if plan.get("organize"):
@@ -268,33 +261,52 @@ def main():
                 lambda: RepoOrganizer(config_manager, git_agent.metadata).organize(),
             )
 
-        if create_fork and create_pull_request:
-            rich_section("Publishing changes")
-            changes = git_agent.commit_and_push_changes(force=True)
-            git_agent.create_pull_request(
-                body=about_gen.get_about_section_message() if about_gen else "", changes=changes
-            )
+        operation_keys = tuple(plan.results)
+        has_output = any(plan.tasks[key] in {TaskStatus.COMPLETED, TaskStatus.PARTIAL} for key in operation_keys)
+        allow_publish = create_fork and not any(
+            plan.tasks[key] in FAILURE_STATUSES for key in operation_keys if key not in {"report", "notebook_report"}
+        )
+        about = (plan.results.get("about") or {}).get("result") or {}
+        if (message := about.get("message")) and (not allow_publish or not create_pull_request):
+            logger.info("About section:\n%s", message)
+        with git_agent.report_upload_session() if allow_publish else nullcontext():
+            if allow_publish:
+                _publish_changes(plan, git_agent, create_pull_request, about)
+            elif create_fork:
+                plan.complete_operation("publish", {"status": TaskStatus.SKIPPED})
+                logger.warning("Skipping publication because an operation that changes the repository failed.")
+
+            if run_report:
+                _run_plan_operation(
+                    plan,
+                    "work_summary",
+                    lambda: WhatHasBeenDoneReportGenerator(
+                        config_manager, git_agent, False, plan, artefacts_language, run_scorecard=plan.get("scorecard")
+                    ).run(),
+                )
+                if allow_publish:
+                    _upload_generated_report(plan, git_agent, "work_summary")
 
         if plan.get("delete_dir"):
-            rich_section("Repository deletion")
-            _run_plan_operation(
-                plan,
-                "delete_dir",
-                lambda: delete_repository(args.repository),
-            )
+            if _has_failures(plan):
+                plan.complete_operation("delete_dir", {"status": TaskStatus.SKIPPED})
+            else:
+                _run_plan_operation(
+                    plan, "delete_dir", lambda: _clean_clone(args.repository, clone_dir, existed_before_clone)
+                )
 
-        if run_report:
-            WhatHasBeenDoneReportGenerator(
-                config_manager, git_agent, create_fork, plan, artefacts_language, run_scorecard=plan.get("scorecard")
-            ).run()
-
-        elapsed_time = time.time() - start_time
-        rich_section(f"All operations completed successfully in total time: {format_time(elapsed_time)}")
-        sys.exit(0)
-
+        exit_code = (3 if has_output else 1) if _has_failures(plan) else 0
     except Exception as e:
-        logger.error("Error: %s", e, exc_info=False if args.web_mode else True)
-        sys.exit(1)
+        if plan is None:
+            plan = Plan({})
+        plan.complete_operation("run", {"result": {"error": str(e)}})
+        logger.error("Run failed: %s", Plan.brief_reason(str(e)), exc_info=not args.web_mode)
+        exit_code = 1
+
+    _print_run_summary(plan, exit_code, start_time)
+    if exit_code and clone_dir is not None and clone_dir.exists():
+        logger.info("Working copy retained at %s", clone_dir)
+    sys.exit(exit_code)
 
 
 def resolve_publishing_options(args, git_agent: GitAgent) -> tuple[bool, bool]:
@@ -376,26 +388,101 @@ def initialize_git_platform(args, config_manager: ConfigManager) -> tuple[GitAge
     return git_agent, workflow_manager
 
 
-def _run_plan_operation(plan: Plan, task_key: str, call: Callable[[], Any]) -> None:
-    """
-    Execute a single legacy plan operation and record its result.
-
-    - marks task as IN_PROGRESS/COMPLETED/FAILED in Plan
-    - normalizes and stores {"result", "events"} in plan.results
-    """
-    if task_key in plan.tasks:
-        plan.mark_started(task_key)
-
+def _run_plan_operation(plan: Plan, task_key: str, call: Callable[[], Any]) -> TaskStatus:
+    """Isolate an operation, including executor initialization and result handling."""
+    plan.mark_started(task_key)
     try:
-        raw_result: Any = call()
-        plan.record_result(task_key, raw_result)
-        if task_key in plan.tasks:
-            plan.mark_done(task_key)
+        return plan.complete_operation(task_key, call())
     except Exception as e:
-        logger.error(e)
-        plan.record_result(task_key, {"result": {"error": str(e)}, "events": []})
-        if task_key in plan.tasks:
-            plan.mark_failed(task_key)
+        return plan.complete_operation(task_key, {"result": {"error": Plan.brief_reason(str(e)) or type(e).__name__}})
+
+
+def _generate_about(config_manager: ConfigManager, git_agent: GitAgent) -> dict:
+    generator = AboutGenerator(config_manager, git_agent)
+    outcome = generator.generate_about_content()
+    content = outcome.get("result")
+    if content and any(content.values()):
+        outcome["result"] = {"content": content, "message": generator.get_about_section_message()}
+    else:
+        outcome["result"] = None
+    return outcome
+
+
+def _generate_workflows(config_manager: ConfigManager, workflow_manager: WorkflowManager, plan: Plan) -> dict:
+    workflow_manager.update_workflow_config(config_manager, plan)
+    try:
+        files = workflow_manager.generate_workflow_files(config_manager)
+    except WorkflowGenerationError as exc:
+        return {"status": TaskStatus.PARTIAL, "result": {"error": str(exc), "files": exc.files}}
+    if not files:
+        return {"status": TaskStatus.SKIPPED}
+    return {"result": {"files": files}}
+
+
+def _upload_generated_report(plan: Plan, git_agent: GitAgent, task: str) -> None:
+    report = (plan.results.get(task) or {}).get("result")
+    if isinstance(report, dict) and report.get("path"):
+        _run_plan_operation(plan, f"upload_{task}", lambda: git_agent.upload_report(report["report"], report["path"]))
+
+
+def _publish_changes(plan: Plan, git_agent: GitAgent, create_pull_request: bool, about: dict) -> None:
+    rich_section("Publishing changes")
+    if "content" in about:
+
+        def publish_about() -> dict:
+            if git_agent.update_about_section(about["content"], strict=True) is False:
+                return {"status": TaskStatus.SKIPPED}
+            return {"status": TaskStatus.COMPLETED}
+
+        _run_plan_operation(plan, "publish_about", publish_about)
+
+    def push_changes() -> dict:
+        if git_agent.commit_and_push_changes(force=True):
+            return {"result": True}
+        return {"status": TaskStatus.SKIPPED, "result": False}
+
+    def publish_pull_request() -> dict:
+        result = git_agent.create_pull_request(
+            body=about.get("message", ""), changes=plan.results["publish_push"]["result"], strict=True
+        )
+        if result is False:
+            return {"status": TaskStatus.SKIPPED}
+        return {"result": result}
+
+    if create_pull_request:
+        _run_plan_operation(plan, "publish_push", push_changes)
+    for task in ("report", "notebook_report"):
+        _upload_generated_report(plan, git_agent, task)
+    if create_pull_request:
+        if plan.tasks["publish_push"] in FAILURE_STATUSES:
+            plan.complete_operation("publish_pr", {"status": TaskStatus.SKIPPED})
+        else:
+            _run_plan_operation(plan, "publish_pr", publish_pull_request)
+
+
+def _clean_clone(repository: str, clone_dir: Path, existed_before_clone: bool) -> dict:
+    if clone_dir.is_symlink() or not delete_created_remote_clone(
+        repository, clone_dir, existed_before_clone=existed_before_clone
+    ):
+        return {"status": TaskStatus.SKIPPED}
+    if clone_dir.exists():
+        raise OSError(f"Could not remove the working copy at {clone_dir}")
+    return {"status": TaskStatus.COMPLETED}
+
+
+def _has_failures(plan: Plan) -> bool:
+    return any(plan.tasks[task] in FAILURE_STATUSES for task in plan.results)
+
+
+def _print_run_summary(plan: Plan, exit_code: int, start_time: float) -> None:
+    rich_section("Run summary")
+    for task, status, reasons in plan.operation_rows():
+        log = logger.error if status in FAILURE_STATUSES else logger.info
+        log("%s: %s", task, status.value)
+        for reason in reasons:
+            log("  %s", reason)
+    message = {0: "Run completed successfully", 1: "Run failed", 3: "Run completed with partial results"}[exit_code]
+    rich_section(f"{message} in {format_time(time.time() - start_time)}")
 
 
 def _main_entrypoint() -> None:

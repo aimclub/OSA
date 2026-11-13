@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 import yaml
 
-from osa_tool.config.settings import ConfigManager
+from osa_tool.config.settings import ConfigManager, WorkflowSettings
 from osa_tool.core.git.metadata import RepositoryMetadata
 from osa_tool.operations.codebase.workflow_generation.workflow_generator import (
     GitHubWorkflowGenerator,
@@ -17,6 +17,12 @@ from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.arguments_parser import get_keys_from_group_in_yaml
 from osa_tool.utils.logger import logger
 from osa_tool.utils.utils import resolve_repo_path
+
+
+class WorkflowGenerationError(RuntimeError):
+    def __init__(self, error: Exception, files: list[str]):
+        super().__init__(str(error) or type(error).__name__)
+        self.files = files
 
 
 class WorkflowManager(ABC):
@@ -202,22 +208,31 @@ class WorkflowManager(ABC):
             Logs error on failure but does not raise.
         """
         try:
-            logger.info("Generating CI/CD files...")
-
-            output_dir = self._get_output_dir()
-            workflow_settings = config_manager.get_workflow_settings()
-            created_files = self._generate_files(workflow_settings, output_dir)
-
-            if created_files:
-                files_list = "\n".join(f" - {f}" for f in created_files)
-                logger.info("Successfully generated the following CI/CD files:\n%s", files_list)
-            else:
-                logger.info("No CI/CD files were generated.")
-                return False
+            return bool(self.generate_workflow_files(config_manager))
         except Exception as e:
             logger.error("Error while generating CI/CD files: %s", repr(e), exc_info=True)
             return False
-        return True
+
+    def generate_workflow_files(self, config_manager: ConfigManager) -> list[str]:
+        """Return the files written by CI/CD generation, or raise on failure."""
+        logger.info("Generating CI/CD files...")
+        created_files = self._generate_files(config_manager.get_workflow_settings(), self._get_output_dir())
+        if created_files:
+            files_list = "\n".join(f" - {f}" for f in created_files)
+            logger.info("Successfully generated the following CI/CD files:\n%s", files_list)
+        else:
+            logger.info("No CI/CD files were generated.")
+        return created_files
+
+    def _generate_github_files(self, settings: WorkflowSettings, output_dir: str) -> list[str]:
+        generator = GitHubWorkflowGenerator(output_dir)
+        files: list[str] = []
+        try:
+            return generator.generate_selected_jobs(settings, self.plan, generated_files=files)
+        except Exception as exc:
+            if not files:
+                raise
+            raise WorkflowGenerationError(exc, files) from exc
 
     @abstractmethod
     def _get_output_dir(self) -> str:
@@ -278,8 +293,7 @@ class GitHubWorkflowManager(WorkflowManager):
         return os.path.join(self.base_path, ".github", "workflows")
 
     def _generate_files(self, workflow_settings, output_dir) -> list[str]:
-        generator = GitHubWorkflowGenerator(output_dir)
-        return generator.generate_selected_jobs(workflow_settings, self.plan)
+        return self._generate_github_files(workflow_settings, output_dir)
 
 
 class GitLabWorkflowManager(WorkflowManager):
@@ -382,8 +396,7 @@ class GitverseWorkflowManager(WorkflowManager):
         return out_dir
 
     def _generate_files(self, workflow_settings, output_dir) -> list[str]:
-        generator = GitHubWorkflowGenerator(output_dir)
-        return generator.generate_selected_jobs(workflow_settings, self.plan)
+        return self._generate_github_files(workflow_settings, output_dir)
 
 
 class SourceCraftWorkflowManager(WorkflowManager):

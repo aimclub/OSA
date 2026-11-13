@@ -1,9 +1,13 @@
 import abc
 import os
 import re
+import shutil
 import time
+from contextlib import ExitStack, contextmanager
 from datetime import datetime
-from typing import List
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import Callable, Iterator, List, Literal
 
 import requests
 from dotenv import load_dotenv
@@ -83,6 +87,8 @@ class GitAgent(abc.ABC):
         self.base_branch = repo_branch_name or self.metadata.default_branch
         self.based_on_date = parse_date_argument(based_on_date) if based_on_date else None
         self.pr_report_body = ""
+        self._report_upload_stack: ExitStack | None = None
+        self._report_checkout: tuple[str, str, Repo] | None = None
 
     @property
     def agent_signature(self) -> str:
@@ -120,14 +126,48 @@ class GitAgent(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def create_pull_request(self, title: str = None, body: str = None) -> None:
+    def create_pull_request(
+        self, title: str = None, body: str = None, changes: bool = False, *, strict: bool = False
+    ) -> str | Literal[False] | None:
         """Create a pull request / merge request on the platform.
 
         Args:
             title: The title of the PR. If None, the commit message will be used.
             body: The body/description of the PR. If None, the commit message with agent signature will be used.
+            strict: Surface publication errors and return False when no request exists and there are no changes.
         """
         pass
+
+    def _update_existing_request(
+        self, body: str | None, post_comment: Callable[[str], None], update_reports: Callable[[], None]
+    ) -> None:
+        actions = []
+        if body and body.strip():
+            actions.append(lambda: post_comment(body))
+        if self.pr_report_body.strip():
+            actions.append(update_reports)
+        self._run_independent_actions(*actions)
+
+    @staticmethod
+    def _run_independent_actions(*actions: Callable[[], None]) -> None:
+        errors = []
+        for action in actions:
+            try:
+                action()
+            except Exception as exc:
+                errors.append(exc)
+        if len(errors) == 1:
+            raise errors[0]
+        if errors:
+            raise ValueError(" | ".join(str(error) for error in errors)) from errors[0]
+
+    def _merge_report_links(self, body: str) -> str:
+        pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
+        reports = sorted(set(pattern.findall(body) + pattern.findall(self.pr_report_body)))
+        updated_body = pattern.sub("", body).replace(self.agent_signature, "").strip()
+        if reports:
+            updated_body += "\n\n" + "\n".join(reports)
+        return updated_body + self.agent_signature
 
     @staticmethod
     def _handle_git_error(error: GitCommandError, action: str, raise_exception: bool = True) -> None:
@@ -637,6 +677,20 @@ class GitAgent(abc.ABC):
             )
             return False
 
+    @contextmanager
+    def report_upload_session(self) -> Iterator[ExitStack]:
+        """Keep one isolated attachment checkout open for the duration of publication."""
+        if self._report_upload_stack is not None:
+            yield self._report_upload_stack
+            return
+        with ExitStack() as stack:
+            self._report_upload_stack = stack
+            try:
+                yield stack
+            finally:
+                self._report_checkout = None
+                self._report_upload_stack = None
+
     def upload_report(
         self,
         report_filename: str,
@@ -652,21 +706,54 @@ class GitAgent(abc.ABC):
             report_branch: Name of the branch for storing reports. Defaults to "osa_tool_attachments".
             commit_message: Commit message for the report upload. Defaults to "upload pdf report".
         """
-        logger.info("Uploading report...")
+        if not self.fork_url:
+            raise ValueError("Fork URL is required to upload a report.")
+        if Path(report_filename).name != report_filename or report_filename in {"", ".", "..", ".git"}:
+            raise ValueError("Report filename must be a plain filename.")
 
-        with open(report_filepath, "rb") as f:
-            report_content = f.read()
-        self.create_and_checkout_branch(report_branch)
-
-        with open(os.path.join(self.clone_dir, report_filename), "wb") as f:
-            f.write(report_content)
-        self.commit_and_push_changes(branch=report_branch, commit_message=commit_message, force=True)
-
-        self.create_and_checkout_branch(self.branch_name)
+        logger.info("Uploading report %s", report_filename)
+        auth_url = self._get_auth_url(self.fork_url)
+        remote_ref = f"refs/heads/{report_branch}"
+        with self.report_upload_session() as stack:
+            try:
+                cached = self._report_checkout
+                if cached is not None and cached[:2] == (auth_url, remote_ref):
+                    attachment_repo = cached[2]
+                    branch_exists = True
+                else:
+                    stack.close()
+                    tmp_dir = stack.enter_context(TemporaryDirectory(prefix="osa-report-"))
+                    attachment_repo = stack.enter_context(Repo.init(tmp_dir))
+                    git = attachment_repo.git
+                    branch_exists = bool(git.ls_remote("--heads", auth_url, remote_ref).strip())
+                    git.fetch("--depth=1", auth_url, remote_ref if branch_exists else "HEAD")
+                    git.checkout("--detach", "FETCH_HEAD")
+                git = attachment_repo.git
+                target = Path(attachment_repo.working_tree_dir) / report_filename
+                if target.is_symlink():
+                    target.unlink()
+                shutil.copyfile(report_filepath, target)
+                git.add("--force", "--", report_filename)
+                changed = bool(git.diff("--cached", "--name-only", "--", report_filename))
+                if changed:
+                    with self.repo.config_reader() as source_config, attachment_repo.config_writer() as config:
+                        for key in ("name", "email"):
+                            if value := source_config.get_value("user", key, ""):
+                                config.set_value("user", key, value)
+                    git.commit("-m", commit_message)
+                if changed or not branch_exists:
+                    git.push(auth_url, f"HEAD:{remote_ref}")
+            except BaseException:
+                # A failed push can leave a local commit that must not ride along with the next report.
+                self._report_checkout = None
+                stack.close()
+                raise
+            self._report_checkout = (auth_url, remote_ref, attachment_repo)
 
         report_url = self._build_report_url(report_branch, report_filename)
         report_link = f"\nGenerated report - [{report_filename}]({report_url})\n"
-        self.pr_report_body += report_link
+        if report_link not in self.pr_report_body:
+            self.pr_report_body += report_link
 
     @abc.abstractmethod
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
@@ -678,7 +765,7 @@ class GitAgent(abc.ABC):
         """
         pass
 
-    def update_about_section(self, about_content: dict) -> None:
+    def update_about_section(self, about_content: dict, *, strict: bool = False) -> Literal[False] | None:
         """Tries to update the 'About' section of the base and fork repository with the provided content.
 
         Args:
@@ -692,21 +779,33 @@ class GitAgent(abc.ABC):
         if not self.fork_url:
             raise ValueError("Fork URL is not set. Please create a fork first.")
 
-        base_repo = get_base_repo_url(self.repo_url)
-        logger.info(f"Updating 'About' section for base repository - {self.repo_url}")
-        self._update_about_section(base_repo, about_content)
+        return self._update_about_targets(
+            get_base_repo_url(self.repo_url), get_base_repo_url(self.fork_url), about_content, strict
+        )
 
-        fork_repo = get_base_repo_url(self.fork_url)
-        logger.info(f"Updating 'About' section for the fork - {self.fork_url}")
-        self._update_about_section(fork_repo, about_content)
+    def _update_about_targets(
+        self, base_repo: str, fork_repo: str, about_content: dict, strict: bool
+    ) -> Literal[False] | None:
+        logger.info("Trying to update 'About' section for %s", base_repo)
+        try:
+            self._update_about_section(base_repo, about_content, strict=False)
+        except Exception as exc:
+            logger.warning("Could not update 'About' section for %s: %s", base_repo, exc)
+        logger.info("Updating 'About' section for %s", fork_repo)
+        return self._update_about_section(fork_repo, about_content, strict=strict)
 
     @abc.abstractmethod
-    def _update_about_section(self, repo_path: str, about_content: dict) -> None:
+    def _update_about_section(
+        self, repo_path: str, about_content: dict, *, strict: bool = False
+    ) -> Literal[False] | None:
         """A platform-specific helper method for updating the About section of a repository.
 
         Args:
             repo_path: The base repository path (e.g., 'username/repo-name').
             about_content: Dictionary containing the metadata to update about section.
+
+        Returns:
+            False if the platform does not support About updates.
         """
         pass
 
@@ -796,13 +895,15 @@ class LocalGitAgent(GitAgent):
     def star_repository(self) -> None:
         pass
 
-    def create_pull_request(self, title: str = None, body: str = None) -> None:
-        pass
+    def create_pull_request(
+        self, title: str = None, body: str = None, changes: bool = False, *, strict: bool = False
+    ) -> Literal[False] | None:
+        return False if strict else None
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
         return ""
 
-    def _update_about_section(self, repo_path: str, about_content: dict) -> None:
+    def _update_about_section(self, repo_path: str, about_content: dict, *, strict: bool = False) -> None:
         pass
 
     def _build_auth_url(self, repo_url: str) -> str:
@@ -890,7 +991,7 @@ class GitHubAgent(GitAgent):
             logger.warning(f"Failed to check GitHub branch: {e}")
             return False
 
-    def post_comment(self, pr_number: int, comment_body: str):
+    def post_comment(self, pr_number: int, comment_body: str, *, strict: bool = False):
         base_repo = get_base_repo_url(self.repo_url)
         url = f"{self.REPOS_API_BASE}/{base_repo}/issues/{pr_number}/comments"
         headers = {
@@ -902,9 +1003,11 @@ class GitHubAgent(GitAgent):
         if response.status_code == 201:
             logger.info(f"Successfully posted a comment to PR #{pr_number}.")
         else:
-            logger.error(f"Failed to post a comment to PR #{pr_number}: {response.status_code} - {response.text}")
+            self._handle_api_error(response, f"posting a comment to PR #{pr_number}", raise_exception=strict)
 
-    def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> str | None:
+    def create_pull_request(
+        self, title: str = None, body: str = None, changes: bool = False, *, strict: bool = False
+    ) -> str | Literal[False] | None:
         """Creates or updates a pull request on GitHub.
 
         This method implements intelligent PR management:
@@ -937,7 +1040,7 @@ class GitHubAgent(GitAgent):
         response = request_with_retry("get", url, headers=headers, params=params)
 
         if response.status_code != 200:
-            self._handle_api_error(response, "checking existing pull requests", False)
+            self._handle_api_error(response, "checking existing pull requests", raise_exception=strict)
 
         prs = response.json() if response.status_code == 200 else []
         if prs:
@@ -945,36 +1048,11 @@ class GitHubAgent(GitAgent):
             pr_number = existing_pr["number"]
             logger.info(f"Pull request #{pr_number} already exists.")
 
-            if body and body.strip():
-                self.post_comment(pr_number, body)
-
-            if self.pr_report_body.strip():
-                old_pr_body = existing_pr.get("body", "") or ""
-
-                report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
-                old_reports = report_pattern.findall(old_pr_body)
-                new_reports = report_pattern.findall(self.pr_report_body)
-                all_reports = sorted(list(set(old_reports + new_reports)))
-
-                clean_body = report_pattern.sub("", old_pr_body).replace(self.agent_signature, "").strip()
-
-                updated_body = clean_body
-                if all_reports:
-                    updated_body += "\n\n" + "\n".join(all_reports)
-                updated_body += self.agent_signature
-
-                update_url = f"{url}/{pr_number}"
-                update_data = {"body": updated_body}
-
-                update_response = request_with_retry("patch", update_url, json=update_data, headers=headers)
-                if update_response.status_code == 200:
-                    logger.info(f"Successfully updated PR #{pr_number} with new reports.")
-                else:
-                    self._handle_api_error(
-                        update_response,
-                        f"updating PR #{pr_number}",
-                        raise_exception=False,
-                    )
+            self._update_existing_request(
+                body,
+                lambda comment: self.post_comment(pr_number, comment, strict=strict),
+                lambda: self._update_pull_request_reports(url, headers, existing_pr, strict=strict),
+            )
             return existing_pr.get("html_url")
         elif changes:
             report_files = self.get_attachment_branch_files()
@@ -1003,8 +1081,19 @@ class GitHubAgent(GitAgent):
                 return pr_url
             else:
                 self._handle_api_error(response, "creating pull request", raise_exception=True)
+        else:
+            return False if strict else None
 
-    def _update_about_section(self, repo_path: str, about_content: dict) -> None:
+    def _update_pull_request_reports(self, url: str, headers: dict, existing_pr: dict, *, strict: bool) -> None:
+        pr_number = existing_pr["number"]
+        updated_body = self._merge_report_links(existing_pr.get("body") or "")
+        response = request_with_retry("patch", f"{url}/{pr_number}", json={"body": updated_body}, headers=headers)
+        if response.status_code == 200:
+            logger.info(f"Successfully updated PR #{pr_number} with new reports.")
+        else:
+            self._handle_api_error(response, f"updating PR #{pr_number}", raise_exception=strict)
+
+    def _update_about_section(self, repo_path: str, about_content: dict, *, strict: bool = False) -> None:
         url = f"{self.REPOS_API_BASE}/{repo_path}"
         headers = {
             "Accept": "application/vnd.github+json",
@@ -1012,27 +1101,24 @@ class GitHubAgent(GitAgent):
             "X-GitHub-Api-Version": "2022-11-28",
             "Content-Type": "application/json",
         }
-        about_data = {
-            "description": about_content["description"],
-            "homepage": about_content["homepage"],
-        }
-        response = request_with_retry("patch", url, headers=headers, json=about_data)
-        if response.status_code in {200, 201}:
-            logger.info(f"Successfully updated GitHub repository description and homepage for '{repo_path}'.")
-        else:
-            self._handle_api_error(
-                response,
-                f"updating description for '{repo_path}'",
-                raise_exception=False,
-            )
 
-        url = f"{self.REPOS_API_BASE}/{repo_path}/topics"
-        topics_data = {"names": about_content["topics"]}
-        response = request_with_retry("put", url, headers=headers, json=topics_data)
-        if response.status_code in {200, 201}:
-            logger.info(f"Successfully updated GitHub repository topics for '{repo_path}'")
-        else:
-            self._handle_api_error(response, f"updating topics for '{repo_path}'", raise_exception=False)
+        def update_description() -> None:
+            about_data = {"description": about_content["description"], "homepage": about_content["homepage"]}
+            response = request_with_retry("patch", url, headers=headers, json=about_data)
+            if response.status_code in {200, 201}:
+                logger.info(f"Successfully updated GitHub repository description and homepage for '{repo_path}'.")
+            else:
+                self._handle_api_error(response, f"updating description for '{repo_path}'", raise_exception=strict)
+
+        def update_topics() -> None:
+            topics_data = {"names": about_content["topics"]}
+            response = request_with_retry("put", f"{url}/topics", headers=headers, json=topics_data)
+            if response.status_code in {200, 201}:
+                logger.info(f"Successfully updated GitHub repository topics for '{repo_path}'")
+            else:
+                self._handle_api_error(response, f"updating topics for '{repo_path}'", raise_exception=strict)
+
+        self._run_independent_actions(update_description, update_topics)
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
         return f"{self.fork_url}/blob/{report_branch}/{report_filename}"
@@ -1213,7 +1299,7 @@ class GitLabAgent(GitAgent):
             logger.warning(f"Failed to check GitLab branch: {e}")
             return False
 
-    def post_note(self, project_id: int, mr_iid: int, note_body: str):
+    def post_note(self, project_id: int, mr_iid: int, note_body: str, *, strict: bool = False):
         gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
         url = f"{gitlab_instance}{self.PROJECTS_API_PATH}/{project_id}/merge_requests/{mr_iid}/notes"
         headers = {
@@ -1225,9 +1311,11 @@ class GitLabAgent(GitAgent):
         if response.status_code == 201:
             logger.info(f"Successfully posted a note to MR !{mr_iid}.")
         else:
-            logger.error(f"Failed to post a note to MR !{mr_iid}: {response.status_code} - {response.text}")
+            self._handle_api_error(response, f"posting a note to MR !{mr_iid}", raise_exception=strict)
 
-    def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
+    def create_pull_request(
+        self, title: str = None, body: str = None, changes: bool = False, *, strict: bool = False
+    ) -> Literal[False] | None:
         """Creates or updates a merge request on GitLab.
 
         This method implements intelligent MR management:
@@ -1272,6 +1360,8 @@ class GitLabAgent(GitAgent):
             "target_project_id": target_project_id,
         }
         response = request_with_retry("get", mr_url, headers=headers, params=params)
+        if strict and response.status_code != 200:
+            self._handle_api_error(response, "checking existing merge requests")
         mrs = response.json() if response.status_code == 200 else []
 
         if mrs:
@@ -1279,34 +1369,22 @@ class GitLabAgent(GitAgent):
             mr_iid = existing_mr.get("iid") or existing_mr.get("id")
             logger.info(f"Merge request !{mr_iid} already exists.")
 
-            if new_body_content:
-                self.post_note(target_project_id, mr_iid, new_body_content)
-
-            if self.pr_report_body.strip():
-                old_mr_body = existing_mr.get("description", "") or ""
-
-                report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
-                old_reports = report_pattern.findall(old_mr_body)
-                new_reports = report_pattern.findall(self.pr_report_body)
-                all_reports = sorted(list(set(old_reports + new_reports)))
-
-                clean_body = report_pattern.sub("", old_mr_body).replace(self.agent_signature, "").strip()
-
-                updated_body = clean_body
-                if all_reports:
-                    updated_body += "\n\n" + "\n".join(all_reports)
-                updated_body += self.agent_signature
-
+            def update_reports() -> None:
                 update_url = f"{gitlab_instance}{self.PROJECTS_API_PATH}/{target_project_id}/merge_requests/{mr_iid}"
-                update_data = {"description": updated_body}
-
-                update_response = request_with_retry("put", update_url, json=update_data, headers=headers)
+                description = self._merge_report_links(existing_mr.get("description") or "")
+                update_response = request_with_retry(
+                    "put", update_url, json={"description": description}, headers=headers
+                )
                 if update_response.status_code == 200:
                     logger.info(f"Successfully updated MR !{mr_iid} with new reports.")
                 else:
-                    logger.error(
-                        f"Failed to update MR !{mr_iid} description: {update_response.status_code} - {update_response.text}"
-                    )
+                    self._handle_api_error(update_response, f"updating MR !{mr_iid}", raise_exception=strict)
+
+            self._update_existing_request(
+                new_body_content,
+                lambda comment: self.post_note(target_project_id, mr_iid, comment, strict=strict),
+                update_reports,
+            )
         elif changes:
             report_files = self.get_attachment_branch_files()
             report_branch = "osa_tool_attachments"
@@ -1335,8 +1413,10 @@ class GitLabAgent(GitAgent):
                 logger.error(f"Failed to create merge request: {response.status_code} - {response.text}")
                 if "merge request already exists" not in response.text:
                     raise ValueError("Failed to create merge request.")
+        else:
+            return False if strict else None
 
-    def _update_about_section(self, repo_path: str, about_content: dict) -> None:
+    def _update_about_section(self, repo_path: str, about_content: dict, *, strict: bool = False) -> None:
         gitlab_instance = re.match(r"(https?://[^/]*gitlab[^/]*)", self.repo_url).group(1)
         project_path = repo_path.replace("/", "%2F")
 
@@ -1353,7 +1433,7 @@ class GitLabAgent(GitAgent):
         if response.status_code in {200, 201}:
             logger.info(f"Successfully updated GitLab repository description and topics.")
         else:
-            logger.error(f"{response.status_code} - Failed to update GitLab repository metadata.")
+            self._handle_api_error(response, f"updating metadata for '{repo_path}'", raise_exception=strict)
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
         return f"{self.fork_url}/-/blob/{report_branch}/{report_filename}"
@@ -1507,7 +1587,9 @@ class GitverseAgent(GitAgent):
             logger.warning(f"Failed to check Gitverse branch: {e}")
             return False
 
-    def create_pull_request(self, title: str = None, body: str = None, changes: bool = False) -> None:
+    def create_pull_request(
+        self, title: str = None, body: str = None, changes: bool = False, *, strict: bool = False
+    ) -> Literal[False] | None:
         """Creates or updates a pull request on Gitverse.
 
         This method implements intelligent PR management:
@@ -1568,6 +1650,8 @@ class GitverseAgent(GitAgent):
 
         params = {"state": "open", "head": self.branch_name, "base": self.base_branch}
         response = request_with_retry("get", url, headers=headers, params=params)
+        if strict and response.status_code != 200:
+            self._handle_api_error(response, "checking existing pull requests")
         prs = response.json() if response.status_code == 200 else []
 
         if prs:
@@ -1594,7 +1678,7 @@ class GitverseAgent(GitAgent):
             if update_response.status_code == 200:
                 logger.info(f"Pull request #{pr_number} updated successfully.")
             else:
-                logger.error(f"Failed to update pull request: {update_response.status_code} - {update_response.text}")
+                self._handle_api_error(update_response, f"updating PR #{pr_number}", raise_exception=strict)
 
         elif changes:
             report_files = self.get_attachment_branch_files()
@@ -1624,11 +1708,14 @@ class GitverseAgent(GitAgent):
                 logger.error(f"Failed to create pull request: {response.status_code} - {response.text}")
                 if "pull request already exists" not in response.text:
                     raise ValueError("Failed to create pull request.")
+        else:
+            return False if strict else None
 
-    def _update_about_section(self, repo_path: str, about_content: dict) -> None:
+    def _update_about_section(self, repo_path: str, about_content: dict, *, strict: bool = False) -> Literal[False]:
         logger.warning(
             "Updating repository 'About' section via API is not yet supported for Gitverse. You can see suggestions in PR."
         )
+        return False
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:
         return f"{self.fork_url}/content/{report_branch}/{report_filename}"
@@ -1708,14 +1795,14 @@ class SourceCraftAgent(GitAgent):
     def star_repository(self) -> None:
         logger.warning("Starring repositories is not supported via SourceCraft public API yet.")
 
-    def post_comment(self, pr_slug: str, comment_body: str) -> None:
+    def post_comment(self, pr_slug: str, comment_body: str, *, strict: bool = False) -> None:
         org_slug, repo_slug = self._extract_slugs()
         url = f"{self.REPOS_API_BASE}/{org_slug}/{repo_slug}/pulls/{pr_slug}/comments"
         response = request_with_retry("post", url, headers=self._get_headers(), json={"body": comment_body})
         if response.status_code == 201:
             logger.info(f"Successfully posted a comment to PR {pr_slug}.")
         else:
-            self._handle_api_error(response, f"posting comment to PR {pr_slug}", raise_exception=False)
+            self._handle_api_error(response, f"posting comment to PR {pr_slug}", raise_exception=strict)
 
     def create_pull_request(
         self,
@@ -1723,7 +1810,9 @@ class SourceCraftAgent(GitAgent):
         body: str = None,
         changes: bool = False,
         target_branch: str = None,
-    ) -> None:
+        *,
+        strict: bool = False,
+    ) -> Literal[False] | None:
         if not self.token:
             raise ValueError("SourceCraft token is required to create a pull request.")
 
@@ -1741,6 +1830,8 @@ class SourceCraftAgent(GitAgent):
         params = {"filter": ql_filter}
 
         list_response = request_with_retry("get", url, headers=headers, params=params)
+        if strict and list_response.status_code != 200:
+            self._handle_api_error(list_response, "checking existing pull requests")
         prs = list_response.json().get("pull_requests", []) if list_response.status_code == 200 else []
 
         if prs:
@@ -1748,36 +1839,23 @@ class SourceCraftAgent(GitAgent):
             pr_slug = existing_pr.get("slug")
             logger.info(f"Pull request {pr_slug} already exists.")
 
-            if body and body.strip():
-                self.post_comment(pr_slug, body)
-
-            if self.pr_report_body.strip():
-                old_description = existing_pr.get("description", "") or ""
-
-                report_pattern = re.compile(r"Generated report - \[.*?\]\(.*?\)")
-                old_reports = report_pattern.findall(old_description)
-                new_reports = report_pattern.findall(self.pr_report_body)
-                all_reports = sorted(list(set(old_reports + new_reports)))
-
-                clean_body = report_pattern.sub("", old_description).replace(self.agent_signature, "").strip()
-
-                updated_body = clean_body
-                if all_reports:
-                    updated_body += "\n\n" + "\n".join(all_reports)
-                updated_body += self.agent_signature
-
-                update_url = f"{url}/{pr_slug}"
+            def update_reports() -> None:
+                description = self._merge_report_links(existing_pr.get("description") or "")
                 update_res = request_with_retry(
                     "patch",
-                    update_url,
+                    f"{url}/{pr_slug}",
                     headers=headers,
-                    json={"description": updated_body.strip()},
+                    json={"description": description.strip()},
                 )
 
                 if update_res.status_code == 200:
                     logger.info(f"Successfully updated PR {pr_slug} with new reports.")
                 else:
-                    self._handle_api_error(update_res, f"updating PR {pr_slug}", raise_exception=False)
+                    self._handle_api_error(update_res, f"updating PR {pr_slug}", raise_exception=strict)
+
+            self._update_existing_request(
+                body, lambda comment: self.post_comment(pr_slug, comment, strict=strict), update_reports
+            )
 
         elif changes:
             report_files = self.get_attachment_branch_files()
@@ -1808,24 +1886,22 @@ class SourceCraftAgent(GitAgent):
                 logger.info(f"SourceCraft pull request created successfully: {pr_slug}")
             else:
                 self._handle_api_error(response, "creating pull request", raise_exception=True)
+        else:
+            return False if strict else None
 
-    def update_about_section(self, about_content: dict) -> None:
+    def update_about_section(self, about_content: dict, *, strict: bool = False) -> Literal[False] | None:
         if not self.token:
             raise ValueError("Git-platform token is required to fill repository's 'About' section.")
         if not self.fork_url:
             raise ValueError("Fork URL is not set. Please create a fork first.")
 
         org_slug, repo_slug = self._extract_slugs()
-        logger.info(f"Updating 'About' section for base repository - {self.repo_url}")
-        self._update_about_section(f"{org_slug}/{repo_slug}", about_content)
-
         clean_fork = self.fork_url[:-4] if self.fork_url.endswith(".git") else self.fork_url
         fork_parts = clean_fork.strip("/").split("/")
         fork_path = f"{fork_parts[-2]}/{fork_parts[-1]}"
-        logger.info(f"Updating 'About' section for the fork - {self.fork_url}")
-        self._update_about_section(fork_path, about_content)
+        return self._update_about_targets(f"{org_slug}/{repo_slug}", fork_path, about_content, strict)
 
-    def _update_about_section(self, repo_path: str, about_content: dict) -> None:
+    def _update_about_section(self, repo_path: str, about_content: dict, *, strict: bool = False) -> None:
         parts = repo_path.strip("/").split("/")
         org_slug, repo_slug = parts[-2], parts[-1]
 
@@ -1839,7 +1915,7 @@ class SourceCraftAgent(GitAgent):
             self._handle_api_error(
                 response,
                 f"updating description for '{repo_path}'",
-                raise_exception=False,
+                raise_exception=strict,
             )
 
     def _build_report_url(self, report_branch: str, report_filename: str) -> str:

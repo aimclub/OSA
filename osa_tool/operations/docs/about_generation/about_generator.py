@@ -55,8 +55,8 @@ class AboutGenerator:
         if self._content is None:
             logger.info("Generating 'About' section...")
 
-            description = self._generate_description()
-            homepage = self._detect_homepage()
+            description = self._generate_description().strip()
+            homepage = self._detect_homepage().strip()
             topics = self._generate_topics()
 
             self._content = {
@@ -65,17 +65,26 @@ class AboutGenerator:
                 "topics": topics,
             }
 
-            self.events.append(
-                OperationEvent(
-                    kind=EventKind.GENERATED,
-                    target="about",
-                    data={
-                        "description": bool(description),
-                        "homepage": bool(homepage),
-                        "topics_count": len(topics),
-                    },
+            description_changed = description != (getattr(self.metadata, "description", None) or "").strip()
+            homepage_changed = homepage != (getattr(self.metadata, "homepage_url", None) or "").strip()
+            original_topics = set(getattr(self.metadata, "topics", None) or [])
+            result_topics = set(topics)
+            if description_changed or homepage_changed or result_topics != original_topics:
+                self.events.append(
+                    OperationEvent(
+                        kind=EventKind.GENERATED,
+                        target="about",
+                        data={
+                            "description": description_changed,
+                            "homepage": homepage_changed,
+                            "topics_count": len(result_topics - original_topics),
+                        },
+                    )
                 )
-            )
+            elif not any(event.kind == EventKind.FAILED for event in self.events):
+                self.events.append(
+                    OperationEvent(kind=EventKind.SKIPPED, target="about", data={"reason": "no_changes_required"})
+                )
 
         return {
             "result": self._content,

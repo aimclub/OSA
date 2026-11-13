@@ -19,6 +19,7 @@ import yaml
 from pydantic import TypeAdapter, ValidationError
 
 from osa_tool.config.settings import ConfigManager
+from osa_tool.core.models.event import EventKind, OperationEvent
 from osa_tool.core.llm.llm import LangChainHandler, ModelHandlerFactory
 from osa_tool.operations.codebase.docstring_generation.docstring_transformer import (
     DocstringTransformer,
@@ -80,6 +81,7 @@ class DocGen(object):
             self.config_manager.get_model_settings("readme")
         )
         self.main_idea = None
+        self.events: list[OperationEvent] = []
         self._function_index_cache = None
         self.is_small_model = self._is_small_model_name(self.model_settings.model)
 
@@ -982,7 +984,7 @@ class DocGen(object):
 
         logger.info(f"Augmenting code for the file: {file}")
 
-        if not docstrings:
+        if not any(docstrings.values()):
             return {file: source_code}
 
         augmentor = AugmentorFactory.create(file)
@@ -1080,7 +1082,9 @@ class DocGen(object):
         return {file: code for file, code in result}
 
     @staticmethod
-    async def _write_augmented_code(parsed_structure: dict, augmented_code: list[dict], sem: asyncio.Semaphore) -> None:
+    async def _write_augmented_code(
+        parsed_structure: dict, augmented_code: list[dict], sem: asyncio.Semaphore, *, source_code: dict | None = None
+    ) -> list[tuple[str, Exception | None]]:
         """
         Writes given code after docstrings insertion in necessary files concurrently
 
@@ -1090,7 +1094,7 @@ class DocGen(object):
             sem: Synchronous primitive for preventing the overload of file-system.
 
         Returns:
-            None
+            One outcome per changed file, in source order.
         """
 
         structure = [k for k, v in parsed_structure.items() if v.get("structure")]
@@ -1101,8 +1105,22 @@ class DocGen(object):
                 async with aiofiles.open(file, mode="w", encoding="utf-8") as f:
                     await f.write(code)
 
-        # executing coroutines concurrently
-        await asyncio.gather(*[_write_code(f, augmented_code[i][f]) for i, f in enumerate(structure)])
+        changes = [
+            (file, augmented[file])
+            for file, augmented in zip(structure, augmented_code, strict=True)
+            if source_code is None or source_code[file] != augmented[file]
+        ]
+        outcomes = await asyncio.gather(*[_write_code(file, code) for file, code in changes], return_exceptions=True)
+        for outcome in outcomes:
+            if isinstance(outcome, BaseException) and not isinstance(outcome, Exception):
+                raise outcome
+        return [(file, outcome) for (file, _), outcome in zip(changes, outcomes)]
+
+    def _record_request_failure(self, file: str, symbol: str, error: Exception) -> None:
+        logger.error("Error generating docstring for %s in %s: %s", symbol, file, error)
+        self.events.append(
+            OperationEvent(kind=EventKind.FAILED, target=file, data={"error": f"{symbol}: {error}", "symbol": symbol})
+        )
 
     async def _generate_node(
         self,
@@ -1154,23 +1172,17 @@ class DocGen(object):
         context = self.context_extractor(metadata, parsed_structure, function_index, generated_docstrings)
         language = self._lang_of(file_path)
 
-        try:
-            if self.main_idea:
-                if node_type == "method":
-                    class_name = node_info.get("class", "")
-                    docstring = await self.update_method_documentation(
-                        metadata, semaphore, context, class_name, language
-                    )
-                else:
-                    docstring = await self.update_method_documentation(metadata, semaphore, context, language=language)
+        if self.main_idea:
+            if node_type == "method":
+                class_name = node_info.get("class", "")
+                docstring = await self.update_method_documentation(metadata, semaphore, context, class_name, language)
             else:
-                docstring = await self.generate_method_documentation(metadata, semaphore, context, language=language)
-
-            return (node_id, node_type, file_path, docstring, metadata) if docstring else None
-
-        except Exception as e:
-            logger.error(f"Error generating docstring for {node_id}: {e}")
-            return None
+                docstring = await self.update_method_documentation(metadata, semaphore, context, language=language)
+        else:
+            docstring = await self.generate_method_documentation(metadata, semaphore, context, language=language)
+        if not docstring:
+            raise ValueError("Model returned an empty docstring")
+        return node_id, node_type, file_path, docstring, metadata
 
     async def _fetch_docstrings(
         self,
@@ -1269,7 +1281,8 @@ class DocGen(object):
                             results[file_path]["functions"].append((docstring, metadata))
 
                 except Exception as e:
-                    logger.error(f"Task failed for {completed_node_id}: {e}")
+                    node = dep_graph.get_node_metadata(completed_node_id)
+                    self._record_request_failure(node["file"], completed_node_id, e)
 
                 for dependent_id in dep_graph.reverse_graph.get(completed_node_id, set()):
                     deps = dep_graph.get_dependencies(dependent_id)
@@ -1376,10 +1389,18 @@ class DocGen(object):
                         # just add new coroutine and class name to a task list
                         _coroutines.append((class_name, request_coroutine))
 
-        fetched_docstrings = await asyncio.gather(*[task[1] for task in _coroutines])
-        structure_names = [name[0] for name in _coroutines]
-
-        return {"classes": [pair for pair in zip(fetched_docstrings, structure_names) if pair[0]]}
+        fetched_docstrings = await asyncio.gather(*(request for _, request in _coroutines), return_exceptions=True)
+        classes = []
+        for (class_name, _), docstring in zip(_coroutines, fetched_docstrings):
+            if isinstance(docstring, Exception):
+                self._record_request_failure(file, class_name, docstring)
+            elif isinstance(docstring, BaseException):
+                raise docstring
+            elif docstring:
+                classes.append((docstring, class_name))
+            else:
+                self._record_request_failure(file, class_name, ValueError("Model returned an empty docstring"))
+        return {"classes": classes}
 
     async def generate_the_main_idea(self, parsed_structure: dict, top_n: int = 5) -> None:
 

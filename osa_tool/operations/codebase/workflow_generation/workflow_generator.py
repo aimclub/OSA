@@ -557,18 +557,22 @@ class GitHubWorkflowGenerator(WorkflowGenerator):
 
         return file_path
 
-    def generate_selected_jobs(self, settings: WorkflowSettings, plan: Plan) -> List[str]:
+    def generate_selected_jobs(
+        self, settings: WorkflowSettings, plan: Plan, *, generated_files: list[str] | None = None
+    ) -> List[str]:
         """
         Generate a complete set of workflows.
 
         Args:
             settings: An object containing all workflow generation settings.
+            generated_files: Optional list populated as each workflow is written.
 
         Returns:
             List[str]: List of paths to generated files.
         """
         self._ensure_output_dir()
-        generated_files = []
+        if generated_files is None:
+            generated_files = []
 
         if settings.include_ruff and settings.include_black:
             logger.warning(

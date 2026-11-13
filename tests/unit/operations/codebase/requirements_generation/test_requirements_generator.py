@@ -161,6 +161,7 @@ def test_generate_retry_logic(mock_run_pipreqs, generator):
     assert len(generator.events) == 2
     assert generator.events[0].kind == EventKind.FAILED
     assert generator.events[0].data["mode"] == "scan-notebooks"
+    assert generator.events[0].data["recovered"] is True
     assert generator.events[1].kind == EventKind.GENERATED
     assert generator.events[1].data["mode"] == "no-notebooks"
 

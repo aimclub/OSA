@@ -418,8 +418,7 @@ class RepoOrganizer:
 
         logger.info("PHASE 2: Creating project snapshot")
         if not self.snapshot.create_snapshot():
-            logger.error("Failed to create snapshot, aborting.")
-            return
+            return {"result": {"error": "Failed to create a reorganization snapshot"}}
 
         try:
             logger.info("PHASE 3: Generating reorganization plan")
@@ -455,7 +454,7 @@ class RepoOrganizer:
             if not valid:
                 logger.error("Plan validation failed after %d attempts. Rolling back...", max_attempts)
                 self.snapshot.rollback()
-                return
+                return {"result": {"error": "Reorganization plan validation failed"}}
 
             logger.info("Plan validation passed")
 
@@ -471,7 +470,7 @@ class RepoOrganizer:
             self._clean_pycache()
             if not self._commit_temp_branch_changes("OSA Tool: reorganization changes"):
                 self.snapshot.rollback()
-                return
+                return {"result": {"error": "Failed to commit reorganization changes locally"}}
 
             post_health_ok = self._run_health_phase("PHASE 6: Post-reorganization health check")
             if not post_health_ok and not self.skip_health_check:
@@ -480,7 +479,7 @@ class RepoOrganizer:
                     logger.info("Rollback successful.")
                 else:
                     logger.error("Rollback failed. Manual intervention required.")
-                return
+                return {"result": {"error": "Health checks failed after reorganization"}}
             if not self.skip_health_check:
                 logger.info("Project is healthy after reorganization.")
 
@@ -488,11 +487,10 @@ class RepoOrganizer:
             self._clean_pycache()
             if not self._commit_temp_branch_changes("OSA Tool: post-health fixes"):
                 self.snapshot.rollback()
-                return
+                return {"result": {"error": "Failed to commit post-health fixes locally"}}
 
             if not self.snapshot.transfer_changes():
-                logger.error("Failed to transfer changes back to original branch.")
-                return
+                return {"result": {"error": "Failed to transfer changes back to the original branch"}}
 
             logger.info("Reorganization completed successfully.")
 

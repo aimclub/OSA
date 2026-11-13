@@ -152,7 +152,7 @@ settings:
   delete_dir:
     aliases: [ "--delete-dir" ]
     type: flag
-    description: "Enable deleting the downloaded repository after processing."
+    description: "Delete the repository copy downloaded by this run after successful processing."
 
   repository:
     aliases: [ "-r", "--repository" ]

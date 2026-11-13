@@ -18,6 +18,7 @@ from osa_tool.operations.analysis.repository_report.response_validation import (
     AfterReportSummary,
     AfterReportBlocksPlan,
 )
+from osa_tool.scheduler.plan import Plan
 from osa_tool.tools.repository_analysis.sourcerank import SourceRank
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder
@@ -112,7 +113,7 @@ class AfterReportTextGenerator:
         self.model_handler: ModelHandler = ModelHandlerFactory.build(self.model_settings)
         self.target_language = target_language
 
-    def make_request(self) -> AfterReport:
+    def make_request(self, *, include_blocks: bool = True) -> AfterReport:
         """
         Sends a request to the model handler to generate the OSA work summary.
 
@@ -136,6 +137,8 @@ class AfterReportTextGenerator:
                 parser=summary_parser,
                 system_message=summary_system,
             )
+            if not include_blocks:
+                return AfterReport(summary=summary_obj.summary, blocks=[])
 
             # Blocks (structured JSON -> AfterReportBlocksPlan)
             blocks_parser = PydanticOutputParser(pydantic_object=AfterReportBlocksPlan)
@@ -171,7 +174,7 @@ class AfterReportTextGenerator:
             data = getattr(e, "data", None) or {}
             if data:
                 line += " (%s)" % ", ".join("%s=%s" % (k, v) for k, v in data.items())
-            lines.append(line)
+            lines.append(Plan.brief_reason(line))
         return "\n".join(lines)
 
     def _operations_to_text(self, completed_tasks: list[tuple[str, bool]], task_results: dict[str, dict]) -> str:
@@ -181,25 +184,24 @@ class AfterReportTextGenerator:
             details = task_results.get(name) or {}
             result = details.get("result")
             events = details.get("events") or []
+            status = details.get("status")
 
             # Result (truncate)
             result_text = "None"
             if result is not None:
-                result_text = str(result)
-                if len(result_text) > 600:
-                    result_text = result_text[:600] + "..."
+                result_text = Plan.brief_reason(str(result))
 
             # Events text
             try:
                 events_text = self._events_to_text(events)
             except Exception:
-                events_text = "\n".join("- %s" % str(e) for e in events) if events else ""
+                events_text = "\n".join(f"- {Plan.brief_reason(str(e))}" for e in events)
 
             parts.append(
                 "\n".join(
                     [
                         f"Operation: {name}",
-                        f"Performed: {'Yes' if done else 'No'}",
+                        f"Status: {status}" if status else f"Performed: {'Yes' if done else 'No'}",
                         f"Result: {result_text}",
                         "Events:",
                         events_text or "- (none)",

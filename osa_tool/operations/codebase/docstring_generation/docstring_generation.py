@@ -3,6 +3,7 @@ import multiprocessing
 
 from osa_tool.config.settings import ConfigManager
 from osa_tool.core.models.event import OperationEvent, EventKind
+from osa_tool.core.models.task import TaskStatus
 from osa_tool.operations.codebase.docstring_generation.docgen import DocGen
 from osa_tool.operations.codebase.docstring_generation.core.osa_parser import OSA_TreeSitter
 from osa_tool.utils.logger import logger
@@ -34,7 +35,7 @@ class DocstringsGenerator:
             self.ignore_list,
             target_files=self.target_files,
         )
-        self.events: list[OperationEvent] = []
+        self.events = self.dg.events
 
     def run(self) -> dict:
         """
@@ -54,11 +55,12 @@ class DocstringsGenerator:
 
     async def _run_async(self) -> dict:
         try:
-            rate_limit = self.config_manager.get_model_settings("docstring").rate_limit
-            await self.dg.classify_model_size()
-
             res = self.ts.analyze_directory(self.ts.cwd)
             self._emit(EventKind.ANALYZED, target="codebase_analysis")
+            if not any(file.get("structure") for file in res.values()):
+                return self._outcome()
+            rate_limit = self.config_manager.get_model_settings("docstring").rate_limit
+            await self.dg.classify_model_size()
 
             # getting the project source code and start generating docstrings
             source_code = await self.dg._get_project_source_code(res, self.sem)
@@ -70,18 +72,8 @@ class DocstringsGenerator:
                 docstring_type=("functions", "methods"),
                 rate_limit=rate_limit,
             )
-            self._emit(EventKind.GENERATED, target="functions", data={"type": "docstrings"})
-            self._emit(EventKind.GENERATED, target="methods", data={"type": "docstrings"})
-
-            fn_augmented = self.dg._run_in_executor(
-                res,
-                source_code,
-                generated_docstrings=fn_generated,
-                n_workers=self.workers,
-            )
-
-            await self.dg._write_augmented_code(res, fn_augmented, self.sem)
-            self._emit(EventKind.WRITTEN, target="functions_methods_docstrings")
+            if not await self._persist(res, source_code, fn_generated):
+                return self._outcome()
 
             # re-analyze project after docstrings writing
             res = self.ts.analyze_directory(self.ts.cwd)
@@ -93,24 +85,15 @@ class DocstringsGenerator:
                 docstring_type="classes",
                 rate_limit=rate_limit,
             )
-            self._emit(EventKind.GENERATED, target="classes", data={"type": "docstrings"})
-
-            cl_augmented = self.dg._run_in_executor(
-                res,
-                source_code,
-                generated_docstrings=cl_generated,
-                n_workers=self.workers,
-            )
-
-            await self.dg._write_augmented_code(res, cl_augmented, self.sem)
-            self._emit(EventKind.WRITTEN, target="classes_docstrings")
+            if not await self._persist(res, source_code, cl_generated):
+                return self._outcome()
 
             if self.incremental:
                 logger.info("Incremental mode active. Skipping main idea generation and full codebase update.")
-                return {
-                    "result": "Docstrings successfully generated (incremental)",
-                    "events": self.events,
-                }
+                return self._outcome("Docstrings successfully generated (incremental)")
+
+            if any(event.kind == EventKind.FAILED for event in self.events) and not self._has_written_docstrings():
+                return self._outcome()
 
             # generate the main idea
             await self.dg.generate_the_main_idea(res)
@@ -126,22 +109,8 @@ class DocstringsGenerator:
                 docstring_type=("functions", "methods", "classes"),
                 rate_limit=rate_limit,
             )
-            self._emit(EventKind.UPDATED, target="all_docstrings", data={"source": "main_idea"})
-
-            # augment the source code and persist it
-            augmented_after_idea = self.dg._run_in_executor(
-                res,
-                source_code,
-                generated_after_idea,
-                self.workers,
-            )
-
-            await self.dg._write_augmented_code(
-                res,
-                augmented_after_idea,
-                self.sem,
-            )
-            self._emit(EventKind.WRITTEN, target="all_docstrings_after_main_idea")
+            if not await self._persist(res, source_code, generated_after_idea):
+                return self._outcome()
 
             modules_summaries = await self.dg.summarize_submodules(res, rate_limit)
             self.dg.generate_documentation_mkdocs(
@@ -155,23 +124,52 @@ class DocstringsGenerator:
                 self.repo_path,
             )
             self._emit(EventKind.SET, target="mkdocs_workflow")
-            return {
-                "result": "Docstrings successfully generated",
-                "events": self.events,
-            }
+            return self._outcome("Docstrings successfully generated")
         except Exception as e:
-            self.dg._purge_temp_files(self.repo_path)
             logger.error(
                 "Error while generating codebase documentation: %s",
                 repr(e),
                 exc_info=True,
             )
             self._emit(EventKind.FAILED, target="docstrings", data={"error": repr(e)})
+            try:
+                self.dg._purge_temp_files(self.repo_path)
+            except Exception as cleanup_error:
+                self._emit(EventKind.FAILED, target="docstrings cleanup", data={"error": str(cleanup_error)})
+            return self._outcome()
 
-            return {
-                "result": None,
-                "events": self.events,
-            }
+    async def _persist(self, structure: dict, source_code: dict, generated: dict) -> bool:
+        if not any(any(items.values()) for items in generated.values()):
+            return True
+
+        augmented = self.dg._run_in_executor(structure, source_code, generated, self.workers)
+        writes = await self.dg._write_augmented_code(structure, augmented, self.sem, source_code=source_code)
+        for file, error in writes:
+            if error is None:
+                self._emit(EventKind.WRITTEN, target=file)
+            else:
+                self._emit(EventKind.FAILED, target=file, data={"error": str(error)})
+        return all(error is None for _, error in writes)
+
+    def _has_written_docstrings(self) -> bool:
+        return any(event.kind == EventKind.WRITTEN for event in self.events)
+
+    def _outcome(self, success_message: str | None = None) -> dict:
+        has_output = self._has_written_docstrings() or any(
+            event.kind == EventKind.SET and event.target == "mkdocs" for event in self.events
+        )
+        failures = [event for event in self.events if event.kind == EventKind.FAILED]
+        if failures:
+            status = TaskStatus.PARTIAL if has_output else TaskStatus.FAILED
+            result = "Some docstring outputs were saved" if has_output else {"error": failures[0].data["error"]}
+        elif has_output:
+            status = TaskStatus.COMPLETED
+            result = success_message
+        else:
+            status = TaskStatus.SKIPPED
+            self._emit(EventKind.SKIPPED, target="docstrings", data={"reason": "no_changes_required"})
+            result = None
+        return {"status": status, "result": result, "events": self.events}
 
     def _emit(self, kind: EventKind, target: str, data: dict = None):
         event = OperationEvent(kind=kind, target=target, data=data or {})
