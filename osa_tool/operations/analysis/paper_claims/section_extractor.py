@@ -5,6 +5,7 @@ import asyncio
 from osa_tool.operations.analysis.artifacts import model_provenance
 from osa_tool.operations.analysis.paper_claims.claim_extractor import AsyncModelHandler, ClaimExtractor
 from osa_tool.operations.analysis.paper_claims.models import ClaimExtractionResult, PaperSection, PipelineOptions
+from osa_tool.operations.analysis.paper_claims.repository_context import repository_lookup
 from osa_tool.utils.prompts_builder import PromptLoader
 
 
@@ -30,6 +31,8 @@ async def extract_claims_from_sections(
         max_retries=options.max_retries,
         dedup_batch_size=options.dedup_batch_size,
         check_contradictions=options.check_contradictions,
+        repository_lookup=repository_lookup(options.contradiction_repository)
+        if options.check_contradictions and options.contradiction_repository else None,
         show_progress=show_progress,
     ).extract(sections, source=source, model=configured_model)
     provenance = model_provenance(handler, configured=configured_model)

@@ -41,6 +41,7 @@ class ClaimExtractor:
         max_retries: int = 5,
         dedup_batch_size: int = 100,
         check_contradictions: bool = False,
+        repository_lookup=None,
         show_progress: bool = True,
     ) -> None:
         if max_retries <= 0:
@@ -52,6 +53,7 @@ class ClaimExtractor:
         self.max_retries = max_retries
         self.dedup_batch_size = dedup_batch_size
         self.check_contradictions = check_contradictions
+        self.repository_lookup = repository_lookup
         self.show_progress = show_progress
         self._input_planner = ClaimInputPlanner(lambda: getattr(self.handler, "model_settings", None))
         self._deduplicator = ClaimDeduplicator(
@@ -393,7 +395,7 @@ class ClaimExtractor:
         filtered_claims, selections = await self._step_3_deduplicate_claims(extracted_claims)
         analysis = {}
         if self.check_contradictions:
-            filtered_claims, analysis = await self.review_contradictions(filtered_claims)
+            filtered_claims, analysis = await self.review_contradictions(filtered_claims, repository_lookup=self.repository_lookup)
         logger.info("Three-step claim extraction completed: final_claims=%s", len(filtered_claims))
 
         return ClaimExtractionResult(

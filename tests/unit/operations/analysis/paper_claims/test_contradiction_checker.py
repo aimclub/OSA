@@ -1,4 +1,5 @@
 import json
+import subprocess
 
 import pytest
 
@@ -16,6 +17,38 @@ def checker(handler):
 def claims():
     return [make_extracted_claim("a", "The model achieves 90 percent accuracy on validation.", original_text="Accuracy was 90."),
             make_extracted_claim("b", "The model achieves 95 percent accuracy on validation.", original_text="Accuracy was 95.")]
+
+
+@pytest.mark.asyncio
+async def test_section_pipeline_sends_pinned_source_to_pair_reviewer(tmp_path, monkeypatch):
+    from unittest.mock import AsyncMock
+    from osa_tool.operations.analysis.paper_claims.models import PipelineOptions
+    from osa_tool.operations.analysis.paper_claims.section_extractor import extract_claims_from_sections
+
+    def git(*args):
+        return subprocess.check_output(["git", "-C", str(tmp_path), *args], text=True).strip()
+
+    git("init", "-q")
+    source = tmp_path / "evaluation.py"
+    source.write_text("accuracy = 0.90\n", encoding="utf8")
+    git("add", "evaluation.py")
+    git("-c", "user.name=Test", "-c", "user.email=test@example.org", "commit", "-qm", "fixture")
+    revision = git("rev-parse", "HEAD")
+    source.write_text("accuracy = 0.12\n", encoding="utf8")
+    monkeypatch.setattr(ClaimExtractor, "_step_1_select_sections", AsyncMock(return_value=["s001"]))
+    monkeypatch.setattr(ClaimExtractor, "_step_2_extract_claims", AsyncMock(return_value=claims()))
+    monkeypatch.setattr(ClaimExtractor, "_step_3_deduplicate_claims", AsyncMock(return_value=(claims(), [])))
+    evidence_id = f"{revision}:evaluation.py:1"
+    decision = dict(pair_id="p0000", status="contradiction", issue_type="numerical", reason="Same conditions.",
+                    evidence_ids=["a#source0", "b#source0", evidence_id], left_claim_quote="90 percent",
+                    right_claim_quote="95 percent")
+    handler = FakeAsyncHandler([json.dumps([decision])])
+    result = await extract_claims_from_sections(handler, [make_paper_section()],
+                    PipelineOptions(check_contradictions=True, contradiction_repository=tmp_path))
+    pair = result.contradiction_analysis["candidate_pairs"][0]
+    assert pair["repository_context"][0]["snippet"] == "accuracy = 0.90"
+    assert pair["repository_context"][0]["evidence_id"] == evidence_id
+    assert result.claims[0].contradicts_claim_ids == ["b"]
 
 
 def test_source_component_links_connect_calls_without_shared_words():

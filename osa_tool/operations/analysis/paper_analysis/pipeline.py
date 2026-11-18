@@ -247,13 +247,16 @@ class PaperAnalysisOperation:
             )
 
         assert handler is not None
+        pipeline_options = paper_claim_settings.to_pipeline_options()
+        if pipeline_options.check_contradictions and paper_claim_settings.contradiction_code_context:
+            pipeline_options.contradiction_repository = Path(self._git_agent.clone_dir)
         if self._request.sections_path is not None:
             assert isinstance(claim_input, LoadedSectionsArtifact)
             loaded_sections = claim_input
             extraction = run_claim_extraction_from_sections(
                 handler,
                 loaded_sections.sections,
-                paper_claim_settings.to_pipeline_options(),
+                pipeline_options,
                 source=str(loaded_sections.source_path),
                 prompts=self._paper_claim_prompts(),
                 show_progress=False,
@@ -285,7 +288,6 @@ class PaperAnalysisOperation:
 
         assert self._request.paper_path is not None
         assert isinstance(claim_input, Path)
-        pipeline_options = paper_claim_settings.to_pipeline_options()
         pipeline_option_updates: dict[str, Any] = {
             "force_parser_refresh": self._request.force_parser_refresh,
         }

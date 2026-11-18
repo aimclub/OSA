@@ -143,9 +143,14 @@ To review surviving claims for contradictions, enable the check in the OSA confi
 ```toml
 [paper_analysis.paper_claims]
 check_contradictions = true
+contradiction_code_context = true
 ```
 
 The extraction writes reciprocal `contradicts_claim_ids` to the typed and legacy JSON.
+For PDF and section inputs, repository-backed analysis includes matching source lines
+from the analyzed Git commit in each pair's `repository_context`. Each snippet carries
+its path, line number, and commit. Set `contradiction_code_context = false` to review
+the same paper using only its claims and quotes.
 Each ID refers to another claim in the same document. The optional
 `contradiction_analysis` records candidate pairs, quoted evidence, decisions and failed
 batches. An empty partner list means that the check confirmed no partner for that claim.

@@ -138,6 +138,7 @@ class ClaimExtractionResult(StrictModel):
 
 class PipelineOptions(StrictModel):
     check_contradictions: bool = False
+    contradiction_repository: Path | None = Field(default=None, exclude=True)
     pages_per_chunk: PositiveInt = 5
     pdf_parser: PdfParserName = "mistral-ocr"
     force_parser_refresh: bool = False

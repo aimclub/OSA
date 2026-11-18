@@ -137,6 +137,7 @@ class PaperClaimsSettings(BaseModel):
     max_retries: PositiveInt = 5
     dedup_batch_size: int = Field(default=50, ge=2)
     check_contradictions: bool = False
+    contradiction_code_context: bool = True
     marker: PaperMarkerSettings = Field(default_factory=PaperMarkerSettings)
 
     def to_pipeline_options(self):
