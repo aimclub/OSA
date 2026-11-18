@@ -40,6 +40,7 @@ class ClaimExtractor:
         prompts: PromptLoader | None = None,
         max_retries: int = 5,
         dedup_batch_size: int = 100,
+        check_contradictions: bool = False,
         show_progress: bool = True,
     ) -> None:
         if max_retries <= 0:
@@ -50,6 +51,7 @@ class ClaimExtractor:
         self.prompts = prompts or PromptLoader()
         self.max_retries = max_retries
         self.dedup_batch_size = dedup_batch_size
+        self.check_contradictions = check_contradictions
         self.show_progress = show_progress
         self._input_planner = ClaimInputPlanner(lambda: getattr(self.handler, "model_settings", None))
         self._deduplicator = ClaimDeduplicator(
@@ -365,6 +367,14 @@ class ClaimExtractor:
     ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
         return await self._deduplicator.deduplicate(claims)
 
+    async def review_contradictions(self, claims: list[ExtractedClaim], *, repository_lookup=None):
+        """Review one deduplicated snapshot and retain evidence for each selected pair."""
+        from .contradiction_checker import ContradictionChecker, attach_contradiction_links
+
+        checker = ContradictionChecker(self._request_validated, repository_lookup=repository_lookup)
+        analysis = await checker.check(claims)
+        return attach_contradiction_links(claims, analysis), analysis
+
     async def extract(
         self,
         sections: list[PaperSection],
@@ -381,13 +391,18 @@ class ClaimExtractor:
         extracted_claims = await self._step_2_extract_claims(sections, selected_ids)
         extraction_model = getattr(self.handler, "last_successful_model", None) or model
         filtered_claims, selections = await self._step_3_deduplicate_claims(extracted_claims)
+        analysis = {}
+        if self.check_contradictions:
+            filtered_claims, analysis = await self.review_contradictions(filtered_claims)
         logger.info("Three-step claim extraction completed: final_claims=%s", len(filtered_claims))
 
         return ClaimExtractionResult(
             claims=filtered_claims,
+            contradiction_analysis=analysis,
             deduplication=selections,
             selected_section_ids=selected_ids,
             meta=ExtractionMetadata(
+                steps=3 + int(self.check_contradictions),
                 source=source,
                 model=extraction_model,
                 filtered_claims=len(filtered_claims),

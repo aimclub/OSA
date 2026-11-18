@@ -138,6 +138,19 @@ The debug payload is stored under:
 
 ## Run through the supported CLI
 
+To review surviving claims for contradictions, enable the check in the OSA configuration:
+
+```toml
+[paper_analysis.paper_claims]
+check_contradictions = true
+```
+
+The extraction writes reciprocal `contradicts_claim_ids` to the typed and legacy JSON.
+Each ID refers to another claim in the same document. The optional
+`contradiction_analysis` records candidate pairs, quoted evidence, decisions and failed
+batches. An empty partner list means that the check confirmed no partner for that claim.
+Consult coverage and failed batches to see which pairs were actually reviewed.
+
 For repository-backed paper analysis, use [`osa-tool --paper-analysis`](../paper-analysis/index.md). Select a remote
 parser or local Marker with `--pdf-parser`:
 

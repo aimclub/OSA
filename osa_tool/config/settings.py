@@ -136,6 +136,7 @@ class PaperClaimsSettings(BaseModel):
     pdf_parser: Literal["marker", "mistral-ocr", "cloudflare-ai"] = "mistral-ocr"
     max_retries: PositiveInt = 5
     dedup_batch_size: int = Field(default=50, ge=2)
+    check_contradictions: bool = False
     marker: PaperMarkerSettings = Field(default_factory=PaperMarkerSettings)
 
     def to_pipeline_options(self):
@@ -147,6 +148,7 @@ class PaperClaimsSettings(BaseModel):
             pdf_parser=self.pdf_parser,
             max_retries=self.max_retries,
             dedup_batch_size=self.dedup_batch_size,
+            check_contradictions=self.check_contradictions,
             marker=MarkerOptions(**self.marker.model_dump()),
         )
 

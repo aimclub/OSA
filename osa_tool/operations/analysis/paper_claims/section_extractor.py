@@ -29,6 +29,7 @@ async def extract_claims_from_sections(
         prompts=prompts,
         max_retries=options.max_retries,
         dedup_batch_size=options.dedup_batch_size,
+        check_contradictions=options.check_contradictions,
         show_progress=show_progress,
     ).extract(sections, source=source, model=configured_model)
     provenance = model_provenance(handler, configured=configured_model)

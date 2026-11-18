@@ -91,6 +91,7 @@ class ExtractedClaim(StrictModel):
     section_name: str
     section_heading_raw: str | None = None
     contradiction: bool = False
+    contradicts_claim_ids: list[str] = Field(default_factory=list)
 
 
 class DedupSelection(StrictModel):
@@ -111,6 +112,7 @@ class ExtractionMetadata(StrictModel):
 
 
 class ClaimExtractionResult(StrictModel):
+    contradiction_analysis: dict[str, Any] = Field(default_factory=dict)
     claims: list[ExtractedClaim]
     deduplication: list[DedupSelection]
     selected_section_ids: list[str]
@@ -125,6 +127,8 @@ class ClaimExtractionResult(StrictModel):
             "result": claims,
             "meta": self.meta.model_dump(mode="json"),
         }
+        if self.contradiction_analysis:
+            payload["contradiction_analysis"] = self.contradiction_analysis
         if include_debug:
             payload["debug"] = {
                 "step3_selection": [item.model_dump(mode="json") for item in self.deduplication],
@@ -133,6 +137,7 @@ class ClaimExtractionResult(StrictModel):
 
 
 class PipelineOptions(StrictModel):
+    check_contradictions: bool = False
     pages_per_chunk: PositiveInt = 5
     pdf_parser: PdfParserName = "mistral-ocr"
     force_parser_refresh: bool = False
