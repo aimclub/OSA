@@ -257,6 +257,10 @@ class ClaimVerifier:
                 "## Response contract\n"
                 f"Return exactly {len(batch)} objects for indices {expected_list}. "
                 "Include every listed index exactly once; do not add indices from another batch. "
+                "If the displayed source code positively contradicts this exact claim under the same conditions, "
+                "set implemented=false, identify evidence_file, and provide code_conflict with line_start "
+                "(1-based) and quote (one or more complete consecutive source lines). Explain the conflict. "
+                "Omit code_conflict for missing implementation, ambiguous evidence or different conditions. "
                 "Return the JSON array only."
             )
             self._progress(
@@ -266,7 +270,7 @@ class ClaimVerifier:
             )
             parsed = self._model_handler.send_and_parse(
                 prompt,
-                partial(self._parse_verification_batch, expected_indices=expected_indices),
+                partial(self._parse_verification_batch, expected_indices=expected_indices, snippets=snippets),
                 self._prompts.get("paper_analysis.verify_system"),
             )
             verification_by_index.update({item["index"]: item for item in parsed})
@@ -279,13 +283,16 @@ class ClaimVerifier:
                     "confidence": verification_by_index[index].get("confidence", "low"),
                     "evidence_file": verification_by_index[index].get("evidence_file"),
                     "explanation": verification_by_index[index].get("explanation", ""),
+                    "status": ("contradicted_by_code" if verification_by_index[index].get("code_conflict")
+                               else "supported" if verification_by_index[index]["implemented"] else "unconfirmed"),
+                    "code_conflict": verification_by_index[index].get("code_conflict"),
                 },
             }
             for index, claim in enumerate(claims)
         ]
 
     @staticmethod
-    def _parse_verification_batch(raw: str, expected_indices: set[int]) -> list[dict[str, Any]]:
+    def _parse_verification_batch(raw: str, expected_indices: set[int], snippets=()) -> list[dict[str, Any]]:
         parsed = JsonProcessor.parse(raw, expected_type=list)
         indices: list[int] = []
         for item in parsed:
@@ -293,6 +300,24 @@ class ClaimVerifier:
                 raise ValueError("Each verification result must include an integer index")
             if type(item.get("implemented")) is not bool:
                 raise ValueError("Each verification result must include a boolean implemented field")
+            conflict = item.get("code_conflict")
+            if conflict is not None:
+                file = item.get("evidence_file")
+                if (not isinstance(conflict, dict) or not isinstance(file, str) or item["implemented"]
+                        or not str(item.get("explanation") or "").strip()):
+                    raise ValueError("A code conflict requires a file and a reason for incompatibility")
+                start, quote = conflict.get("line_start"), conflict.get("quote")
+                if type(start) is not int or start < 1 or not isinstance(quote, str) or not quote.strip():
+                    raise ValueError("A code conflict requires a source line and exact quote")
+                body = next((s.partition("\n")[2] for s in snippets if s.partition("\n")[0] == f"### {file}"), "")
+                lines = body.splitlines()
+                if lines and (lines[-1].startswith("... (truncated,") or lines[-1].startswith("[could not read:")):
+                    lines.pop()
+                quoted = quote.splitlines()
+                if lines[start-1:start-1+len(quoted)] != quoted:
+                    raise ValueError("The code conflict quote does not match the supplied file and lines")
+                item["code_conflict"] = {"path": file, "line_start": start, "line_end": start + len(quoted)-1,
+                                         "quote": quote}
             if type(item.get("confidence")) is not str or item["confidence"] not in ClaimVerifier._CONFIDENCE_LEVELS:
                 raise ValueError("Each verification result must include confidence: high, medium, or low")
             indices.append(item["index"])

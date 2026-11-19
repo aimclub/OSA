@@ -20,6 +20,8 @@ async def extract_claims_from_sections(
 ) -> ClaimExtractionResult:
     """Run claim extraction from already parsed sections without PDF/Marker parsing."""
     options = options or PipelineOptions()
+    if options.extraction_profile == "paper_assertions":
+        raise ValueError("paper_assertions requires the original PDF to inspect page images")
     reset_provenance = getattr(handler, "reset_model_provenance", None)
     if callable(reset_provenance):
         reset_provenance()

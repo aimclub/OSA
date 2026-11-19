@@ -42,6 +42,7 @@ class ClaimExtractor:
         dedup_batch_size: int = 100,
         check_contradictions: bool = False,
         repository_lookup=None,
+        similarity_deduplication: bool = False,
         show_progress: bool = True,
     ) -> None:
         if max_retries <= 0:
@@ -53,13 +54,17 @@ class ClaimExtractor:
         self.max_retries = max_retries
         self.dedup_batch_size = dedup_batch_size
         self.check_contradictions = check_contradictions
+        self.similarity_deduplication = similarity_deduplication
         self.repository_lookup = repository_lookup
         self.show_progress = show_progress
         self._input_planner = ClaimInputPlanner(lambda: getattr(self.handler, "model_settings", None))
-        self._deduplicator = ClaimDeduplicator(
+        from .similarity_deduplicator import SimilarityClaimDeduplicator
+        deduplicator = SimilarityClaimDeduplicator if similarity_deduplication else ClaimDeduplicator
+        prompt = "similarity_deduplication_system" if similarity_deduplication else "deduplication_system"
+        self._deduplicator = deduplicator(
             request_validated=self._request_validated,
             input_planner=self._input_planner,
-            deduplication_system=self.prompts.get("paper_claims.deduplication_system"),
+            deduplication_system=self.prompts.get(f"paper_claims.{prompt}"),
             dedup_batch_size=dedup_batch_size,
             show_progress=show_progress,
         )
@@ -370,10 +375,11 @@ class ClaimExtractor:
         return await self._deduplicator.deduplicate(claims)
 
     async def review_contradictions(self, claims: list[ExtractedClaim], *, repository_lookup=None):
-        """Review one deduplicated snapshot and retain evidence for each selected pair."""
+        """Review one claim snapshot and retain evidence for each selected pair."""
         from .contradiction_checker import ContradictionChecker, attach_contradiction_links
 
-        checker = ContradictionChecker(self._request_validated, repository_lookup=repository_lookup)
+        checker = ContradictionChecker(self._request_validated, repository_lookup=repository_lookup,
+                                       inspect_windows=self.similarity_deduplication)
         analysis = await checker.check(claims)
         return attach_contradiction_links(claims, analysis), analysis
 
@@ -391,15 +397,23 @@ class ClaimExtractor:
         logger.info("Starting three-step claim extraction")
         selected_ids = await self._step_1_select_sections(sections)
         extracted_claims = await self._step_2_extract_claims(sections, selected_ids)
+        return await self.process_extracted_claims(extracted_claims, selected_ids, source=source, model=model)
+
+    async def process_extracted_claims(self, extracted_claims, selected_ids, *, source=None, model=None):
+        """Check the complete source snapshot, then deduplicate with protected endpoints."""
         extraction_model = getattr(self.handler, "last_successful_model", None) or model
-        filtered_claims, selections = await self._step_3_deduplicate_claims(extracted_claims)
         analysis = {}
         if self.check_contradictions:
-            filtered_claims, analysis = await self.review_contradictions(filtered_claims, repository_lookup=self.repository_lookup)
+            extracted_claims, analysis = await self.review_contradictions(
+                extracted_claims, repository_lookup=self.repository_lookup
+            )
+            analysis["stage"] = "before_deduplication"
+        filtered_claims, selections = await self._step_3_deduplicate_claims(extracted_claims)
         logger.info("Three-step claim extraction completed: final_claims=%s", len(filtered_claims))
 
         return ClaimExtractionResult(
             claims=filtered_claims,
+            deduplication_audit=getattr(self._deduplicator, "audit", {}),
             contradiction_analysis=analysis,
             deduplication=selections,
             selected_section_ids=selected_ids,

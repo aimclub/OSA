@@ -64,6 +64,7 @@ class PaperSection(StrictModel):
 
 
 class ClaimCategory(str, Enum):
+    SOURCE_ASSERTION = "source_assertion"
     DATASET = "dataset"
     MODEL_ARCHITECTURE = "model_architecture"
     TRAINING_PROCEDURE = "training_procedure"
@@ -80,6 +81,16 @@ class Verifiability(str, Enum):
     LOW = "low"
 
 
+class ClaimSource(StrictModel):
+    claim_id: str
+    claim: str
+    original_text: str
+    section_id: str
+    section_name: str
+    section_heading_raw: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class ExtractedClaim(StrictModel):
     claim_id: str
     claim: str
@@ -92,6 +103,8 @@ class ExtractedClaim(StrictModel):
     section_heading_raw: str | None = None
     contradiction: bool = False
     contradicts_claim_ids: list[str] = Field(default_factory=list)
+    potential_inconsistency_pair_ids: list[str] = Field(default_factory=list)
+    sources: list[ClaimSource] = Field(default_factory=list)
 
 
 class DedupSelection(StrictModel):
@@ -112,6 +125,7 @@ class ExtractionMetadata(StrictModel):
 
 
 class ClaimExtractionResult(StrictModel):
+    deduplication_audit: dict[str, Any] = Field(default_factory=dict)
     contradiction_analysis: dict[str, Any] = Field(default_factory=dict)
     claims: list[ExtractedClaim]
     deduplication: list[DedupSelection]
@@ -129,6 +143,8 @@ class ClaimExtractionResult(StrictModel):
         }
         if self.contradiction_analysis:
             payload["contradiction_analysis"] = self.contradiction_analysis
+        if self.deduplication_audit:
+            payload["deduplication_audit"] = self.deduplication_audit
         if include_debug:
             payload["debug"] = {
                 "step3_selection": [item.model_dump(mode="json") for item in self.deduplication],
@@ -137,6 +153,7 @@ class ClaimExtractionResult(StrictModel):
 
 
 class PipelineOptions(StrictModel):
+    extraction_profile: Literal["implementation", "paper_assertions"] = "implementation"
     check_contradictions: bool = False
     contradiction_repository: Path | None = Field(default=None, exclude=True)
     pages_per_chunk: PositiveInt = 5

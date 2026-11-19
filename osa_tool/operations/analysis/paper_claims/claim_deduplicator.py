@@ -346,6 +346,12 @@ class ClaimDeduplicator:
             ]
 
         selection_by_id = {item.claim_id: item for item in selections}
+        # A peer references this exact ID, even when another claim has identical text.
+        for claim in claims:
+            if claim.contradicts_claim_ids and claim.claim_id not in selection_by_id:
+                selection_by_id[claim.claim_id] = DedupSelection(
+                    claim_id=claim.claim_id, claim=claim.claim, contradiction=True
+                )
         filtered = [
             claim.model_copy(
                 update={"contradiction": claim.contradiction or selection_by_id[claim.claim_id].contradiction}
@@ -361,7 +367,7 @@ class ClaimDeduplicator:
             len(claims),
             ratio * 100,
         )
-        return filtered, selections
+        return filtered, self._dedup_selections(filtered)
 
     @staticmethod
     def _dedup_selections(claims: list[ExtractedClaim]) -> list[DedupSelection]:

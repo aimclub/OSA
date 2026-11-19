@@ -37,7 +37,7 @@ async def test_section_pipeline_sends_pinned_source_to_pair_reviewer(tmp_path, m
     source.write_text("accuracy = 0.12\n", encoding="utf8")
     monkeypatch.setattr(ClaimExtractor, "_step_1_select_sections", AsyncMock(return_value=["s001"]))
     monkeypatch.setattr(ClaimExtractor, "_step_2_extract_claims", AsyncMock(return_value=claims()))
-    monkeypatch.setattr(ClaimExtractor, "_step_3_deduplicate_claims", AsyncMock(return_value=(claims(), [])))
+    monkeypatch.setattr(ClaimExtractor, "_step_3_deduplicate_claims", AsyncMock(side_effect=lambda marked: (marked, [])))
     evidence_id = f"{revision}:evaluation.py:1"
     decision = dict(pair_id="p0000", status="contradiction", issue_type="numerical", reason="Same conditions.",
                     evidence_ids=["a#source0", "b#source0", evidence_id], left_claim_quote="90 percent",
@@ -174,14 +174,14 @@ async def test_figure_context_is_scoped_cited_and_non_destructive():
 
 
 @pytest.mark.asyncio
-async def test_optional_stage_runs_after_dedup(monkeypatch):
+async def test_optional_stage_runs_before_dedup(monkeypatch):
     extractor = ClaimExtractor(FakeAsyncHandler([]), check_contradictions=True)
     original, surviving = claims(), claims()[:1]
     async def select(_): return ["s1"]
     async def extract(*_): return original
     async def dedup(_): return surviving, []
     async def check(self, received):
-        assert received is surviving
+        assert received is original
         return {"decisions": [], "tested": True}
     monkeypatch.setattr(extractor, "_step_1_select_sections", select)
     monkeypatch.setattr(extractor, "_step_2_extract_claims", extract)
@@ -217,11 +217,12 @@ async def test_links_reach_serialized_claims_and_resumed_reader(tmp_path, monkey
     decision = dict(pair_id="p0000", status="contradiction", issue_type="numerical",
                     reason="Same metric and conditions.", evidence_ids=["a#source0", "b#source0"],
                     left_claim_quote="90 percent", right_claim_quote="95 percent")
-    extractor = ClaimExtractor(FakeAsyncHandler([json.dumps([decision])]), check_contradictions=True)
+    keep_only_a = [{"claim_id": "a", "claim": claims()[0].claim, "contradiction": False}]
+    extractor = ClaimExtractor(FakeAsyncHandler([json.dumps([decision]), json.dumps(keep_only_a)]),
+                               check_contradictions=True)
     from unittest.mock import AsyncMock
     monkeypatch.setattr(extractor, "_step_1_select_sections", AsyncMock(return_value=["s001"]))
     monkeypatch.setattr(extractor, "_step_2_extract_claims", AsyncMock(return_value=claims()))
-    monkeypatch.setattr(extractor, "_step_3_deduplicate_claims", AsyncMock(return_value=(claims(), [])))
     result = await extractor.extract([make_paper_section()])
     for name, payload in [("typed", result.model_dump(mode="json")), ("legacy", result.to_legacy_dict())]:
         path = tmp_path / f"{name}.json"
@@ -231,3 +232,62 @@ async def test_links_reach_serialized_claims_and_resumed_reader(tmp_path, monkey
         assert all(r["contradiction"] for r in rows)
     old = claims()[0].model_dump(exclude={"contradicts_claim_ids"})
     assert ExtractedClaim.model_validate(old).contradicts_claim_ids == []
+
+
+@pytest.mark.asyncio
+async def test_similarity_keeps_confirmed_endpoint_ids_even_with_identical_text():
+    endpoints = claims()
+    for i, endpoint in enumerate(endpoints):
+        endpoint.contradiction = True
+        endpoint.contradicts_claim_ids = [endpoints[1-i].claim_id]
+    duplicate = endpoints[0].model_copy(update={"claim_id": "copy", "contradiction": False, "contradicts_claim_ids": []})
+    ex = ClaimExtractor(FakeAsyncHandler([]), similarity_deduplication=True, show_progress=False)
+    async def decide(prompt, system, adapter, validate, **kwargs):
+        from osa_tool.operations.analysis.paper_claims.similarity_deduplicator import MergeReview, PairDecision
+        pairs = json.loads(prompt)["pairs"]
+        if kwargs["request_name"].startswith("Semantic merge review"):
+            return [MergeReview(pair_id=p["pair_id"], retain="either", reason="Test deletion attempt") for p in pairs]
+        return [PairDecision(pair_id=p["pair_id"], relation="duplicate") for p in pairs]
+    ex._deduplicator._request_validated = decide
+    kept, _ = await ex._step_3_deduplicate_claims([duplicate, *endpoints])
+    by_id = {c.claim_id:c for c in kept}
+    assert by_id["a"].contradicts_claim_ids == ["b"]
+    assert by_id["b"].contradicts_claim_ids == ["a"]
+    assert not ex._deduplicator.audit["failed_batches"]
+
+@pytest.mark.asyncio
+async def test_window_candidates_cite_real_endpoints_and_record_failures():
+    from unittest.mock import AsyncMock
+
+    items = claims()
+    items.append(make_extracted_claim("unrelated", "Sky brightness."))
+    handler = FakeAsyncHandler([json.dumps([{"left_id":"a","right_id":"unrelated"}])])
+    c = ContradictionChecker(ClaimExtractor(handler, max_retries=1)._request_validated, inspect_windows=True)
+    pairs = []
+    assert await c._supplement_candidates(items, pairs) == []
+    assert [(p["left"]["claim_id"], p["right"]["claim_id"]) for p in pairs] == [("a","unrelated")]
+    c.request_validated = AsyncMock(side_effect=ValueError("failed"))
+    failures = await c._supplement_candidates(items, pairs)
+    assert failures[0]["first_id"] == "a" and len(pairs) == 1
+
+@pytest.mark.asyncio
+async def test_dedup_can_retain_more_specific_second_claim_verbatim():
+    from osa_tool.operations.analysis.paper_claims.similarity_deduplicator import MergeReview, PairDecision, RemovalCheck
+
+    broad = make_extracted_claim("a", "The model quantizes weights and activations.")
+    specific = make_extracted_claim("b", "The model quantizes weights and input activations.")
+    extractor = ClaimExtractor(FakeAsyncHandler([]), similarity_deduplication=True, show_progress=False)
+    async def review(prompt, system, adapter, validate, **kwargs):
+        if kwargs["request_name"] == "Check retained assertion":
+            return [RemovalCheck(preserved=True, reason="Both weights and activations remain in the text.")]
+        pid = json.loads(prompt)["pairs"][0]["pair_id"]
+        if kwargs["request_name"].startswith("Semantic merge review"):
+            rows = [MergeReview(pair_id=pid, retain="right", reason="The second text preserves the input qualifier.")]
+        else:
+            rows = [PairDecision(pair_id=pid, relation="duplicate")]
+        validate(rows)
+        return rows
+    extractor._deduplicator._request_validated = review
+    kept, _ = await extractor._step_3_deduplicate_claims([broad, specific])
+    assert [(c.claim_id,c.claim) for c in kept] == [("b",specific.claim)]
+    assert {s.claim_id for s in kept[0].sources} == {"a","b"}

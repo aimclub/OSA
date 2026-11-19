@@ -269,3 +269,16 @@ def test_verifier_export_requires_repository_and_paper_sources(tmp_path):
 
     with pytest.raises(ValueError, match="both 'repository' and 'paper'"):
         verifier.export(result, tmp_path / "output", source={"repository": "repo"})
+
+def test_explicit_code_conflict_requires_the_displayed_source_line():
+    record = dict(index=0, implemented=False, confidence="high", explanation="The implementation uses 32.",
+                  evidence_file="model.py", code_conflict={"line_start": 2, "quote": "width = 32"})
+    snippets = ["### model.py\n# model\nwidth = 32"]
+    verified, = ClaimVerifier._parse_verification_batch(json.dumps([record]), {0}, snippets)
+    assert verified["code_conflict"] == dict(path="model.py", line_start=2, line_end=2, quote="width = 32")
+    record["code_conflict"]["line_start"] = 1
+    with pytest.raises(ValueError, match="does not match"):
+        ClaimVerifier._parse_verification_batch(json.dumps([record]), {0}, snippets)
+    del record["code_conflict"]
+    ordinary, = ClaimVerifier._parse_verification_batch(json.dumps([record]), {0}, snippets)
+    assert not ordinary.get("code_conflict")

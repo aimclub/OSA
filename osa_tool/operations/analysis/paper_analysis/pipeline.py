@@ -333,10 +333,11 @@ class PaperAnalysisOperation:
             validate_openrouter_parser_configuration,
         )
 
-        validate_openrouter_parser_configuration(
-            parser,
-            self._config_manager.get_model_settings("paper_claims"),
-        )
+        if paper_claim_settings.extraction_profile != "paper_assertions":
+            validate_openrouter_parser_configuration(
+                parser,
+                self._config_manager.get_model_settings("paper_claims"),
+            )
         from osa_tool.operations.analysis.paper_claims.pdf_splitter import PdfChunker
 
         return PdfChunker.validate_readable(self._request.paper_path)
@@ -399,6 +400,14 @@ class PaperAnalysisOperation:
         """Render a compact stable text summary from the canonical JSON result."""
         quality = result.repository_quality.get("summary", {}) if result.repository_quality else {}
         stats = result.claim_verification.stats
+        conflicts = []
+        for item in result.claim_verification.claims:
+            peers = item.get("contradicts_claim_ids") or []
+            if peers:
+                conflicts.append(f"{item.get('claim_id')} conflicts with paper claims {', '.join(peers)}")
+            code = item.get("implementation", {}).get("code_conflict")
+            if code:
+                conflicts.append(f"{item.get('claim_id')} conflicts with code at {code['path']}:{code['line_start']}")
         return "\n".join(
             [
                 f"Repository: {result.repository_quality.get('repo_url', result.meta.source['repository']) if result.repository_quality else result.meta.source['repository']}",
@@ -412,6 +421,7 @@ class PaperAnalysisOperation:
                 f"Eligible claims: {stats.eligible_total}",
                 f"Reported claims: {stats.total}",
                 f"Implemented claims: {stats.implemented}/{stats.total} ({stats.implementation_rate_pct}%)",
+                *conflicts,
                 "",
             ]
         )

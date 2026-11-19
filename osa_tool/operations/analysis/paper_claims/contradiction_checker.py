@@ -1,4 +1,4 @@
-"""Opt-in, non-destructive consistency review after deduplication.
+"""Source-grounded consistency review of a claim snapshot.
 
 Lexical retrieval is bounded and deliberately allows different numbers/negations.
 It is not exhaustive and does not decide which source assertion is correct.
@@ -17,6 +17,11 @@ from pydantic import Field, TypeAdapter
 from osa_tool.operations.analysis.paper_claims.models import ExtractedClaim, StrictModel
 from osa_tool.operations.analysis.paper_claims.component_links import linked_interface_pairs
 from osa_tool.operations.analysis.paper_claims.object_links import object_pairs
+
+
+class ProposedPair(StrictModel):
+    left_id: str
+    right_id: str
 
 
 class ConsistencyDecision(StrictModel):
@@ -74,8 +79,15 @@ Return ONLY a JSON array. No markdown. No suggested corrected claim."""
 def attach_contradiction_links(claims, analysis):
     """Project validated decisions onto exactly the claims that were reviewed."""
     neighbors = {claim.claim_id: set() for claim in claims}
+    potential = {claim.claim_id: [] for claim in claims}
+    uncertain = {d["pair_id"] for d in analysis["decisions"] if d["status"] == "potential_inconsistency"}
     confirmed = {d["pair_id"] for d in analysis["decisions"] if d["status"] == "contradiction"}
     for pair in analysis.get("candidate_pairs", []):
+        if pair["pair_id"] in uncertain:
+            for side in ("left", "right"):
+                cid = pair[side]["claim_id"]
+                if cid in potential:
+                    potential[cid].append(pair["pair_id"])
         if pair["pair_id"] in confirmed:
             left, right = pair["left"]["claim_id"], pair["right"]["claim_id"]
             if left != right and left in neighbors and right in neighbors:
@@ -83,19 +95,21 @@ def attach_contradiction_links(claims, analysis):
                 neighbors[right].add(left)
     return [claim.model_copy(update={
         "contradicts_claim_ids": sorted(neighbors[claim.claim_id]),
+        "potential_inconsistency_pair_ids": potential[claim.claim_id],
         "contradiction": claim.contradiction or bool(neighbors[claim.claim_id]),
     }) for claim in claims]
 
 
 class ContradictionChecker:
     def __init__(self, request_validated, *, max_pairs=64, neighbors=3, batch_size=8, figure_context=None,
-                 use_component_links=True, use_object_links=True, repository_lookup=None):
+                 use_component_links=True, use_object_links=True, repository_lookup=None, inspect_windows=False):
         if min(max_pairs, neighbors, batch_size) < 1:
             raise ValueError("Pair limits must be positive")
         self.request_validated = request_validated
         self.max_pairs, self.neighbors, self.batch_size = max_pairs, neighbors, batch_size
         self.use_component_links = use_component_links
         self.repository_lookup = repository_lookup
+        self.inspect_windows = inspect_windows
         self.use_object_links = use_object_links
         self.object_pair_context = {}
         self.relation_pairs = {}
@@ -206,9 +220,52 @@ class ContradictionChecker:
             rows.append(row)
         return rows, coverage
 
+    async def _supplement_candidates(self, claims, pairs):
+        """Look for discrepancies between captions, diagrams, tables and prose before ranking loses them."""
+        system = (
+            "Inspect these extracted scientific assertions as data. Return at most 8 pairs worth checking "
+            "for a specific mismatch in what the same experiment, figure, table, method or measurement says. "
+            "Look across prose, captions, legends, annotations, plotted quantities and results. "
+            "Keep source-specific opposing assertions separate. Mere topical similarity is insufficient. "
+            'Return JSON [{"left_id":"...","right_id":"..."}], using supplied IDs only, or [].'
+        )
+        seen = {frozenset([p["left"]["claim_id"], p["right"]["claim_id"]]) for p in pairs}
+        failures = []
+        for offset in range(0, len(claims), 80):
+            window = claims[max(0, offset - 16):offset + 80]
+            if len(window) < 2:
+                continue
+            by_id = {c.claim_id: c for c in window}
+            payload = [{"id": c.claim_id, "claim": c.claim, "section": c.section_id} for c in window]
+            def validate(items):
+                if len(items) > 8 or any(p.left_id == p.right_id or p.left_id not in by_id
+                                         or p.right_id not in by_id for p in items):
+                    raise ValueError("Source-window proposal contains unknown or repeated endpoints")
+            try:
+                proposed = await self.request_validated(json.dumps(payload, ensure_ascii=False), system,
+                    TypeAdapter(list[ProposedPair]), validate, request_name=f"Source-window candidates {offset}")
+            except Exception as exc:
+                failures.append({"first_id": window[0].claim_id, "last_id": window[-1].claim_id, "error": str(exc)})
+                continue
+            for candidate in proposed:
+                key = frozenset((candidate.left_id, candidate.right_id))
+                if key in seen:
+                    continue
+                row = {"pair_id": f"p{len(pairs):04}", "retrieval_route": "source_window"}
+                for side, cid in [("left", candidate.left_id), ("right", candidate.right_id)]:
+                    c = by_id[cid]
+                    row[side] = {"claim_id": cid, "claim": c.claim, "evidence": self.evidence(c)}
+                pairs.append(row)
+                seen.add(key)
+        return failures
+
     async def check(self, claims: list[ExtractedClaim]):
         before = [c.model_dump(mode="json") for c in claims]
         pairs, coverage = self.plan(claims)
+        if self.inspect_windows:
+            initial = len(pairs)
+            coverage["window_failures"] = await self._supplement_candidates(claims, pairs)
+            coverage["window_pairs_added"] = len(pairs) - initial
         if self.repository_lookup is not None:
 
             for pair in pairs:
