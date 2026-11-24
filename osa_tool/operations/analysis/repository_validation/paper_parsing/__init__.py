@@ -1,17 +1,19 @@
-from osa_tool.operations.analysis.repository_validation.paper_parsing.doc_geometry import (
+"""Layout-aware paper parsing and standalone document graph construction."""
+
+from .doc_geometry import (
     compute_reading_order_ranks,
     order_page_elements,
 )
-from osa_tool.operations.analysis.repository_validation.paper_parsing.doc_graph import (
+from .doc_graph import (
     build_document_graph,
     run_graph_building,
 )
-from osa_tool.operations.analysis.repository_validation.paper_parsing.exceptions import (
+from .exceptions import (
     DescriptionError,
     LayoutDetectionError,
     PaperParsingError,
 )
-from osa_tool.operations.analysis.repository_validation.paper_parsing.models import (
+from .models import (
     PaperParsingOptions,
     PaperParsingResult,
 )

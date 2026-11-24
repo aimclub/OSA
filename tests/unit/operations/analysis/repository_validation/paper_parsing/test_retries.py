@@ -91,3 +91,9 @@ def test_the_sdk_client_does_not_retry_underneath_us():
 
     assert d.model.max_retries == 0
     assert d.model.timeout == 45.0
+
+
+def test_all_ignored_elements_issue_no_requests():
+    describer = object.__new__(ImageDescription)
+    describer.bbox_json = [{"ignore": True}]
+    assert asyncio.run(describer.process_all_bboxes_async()) == []

@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 from osa_tool.utils.logger import logger
 
-from osa_tool.operations.analysis.repository_validation.paper_parsing import paper_utils
+from . import paper_utils
 
 
 class ImageDescription:
@@ -344,7 +344,7 @@ class ImageDescription:
 
         semaphore = asyncio.Semaphore(max_concurrent)
         progress = tqdm(
-            total=len(bbox_indices if bbox_indices else bounding_boxes),
+            total=len(bbox_indices if bbox_indices is not None else bounding_boxes),
             desc=f"describing {desc}" if desc else "describing elements",
             unit="elem",
             leave=False,
@@ -367,7 +367,7 @@ class ImageDescription:
 
         # Create tasks for async
         tasks = []
-        if bbox_indices:
+        if bbox_indices is not None:
             tasks = [process_with_semaphore(bbox_idx=idx) for idx in bbox_indices]
         else:
             tasks = [process_with_semaphore(bounding_box=bbox) for bbox in bounding_boxes]

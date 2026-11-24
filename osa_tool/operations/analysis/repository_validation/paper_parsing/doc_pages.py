@@ -26,7 +26,7 @@ import cv2
 import numpy as np
 from pdf2image import convert_from_path
 
-from osa_tool.operations.analysis.repository_validation.paper_parsing.exceptions import PageRenderError
+from .exceptions import PageRenderError
 from osa_tool.utils.logger import logger
 
 DEFAULT_RENDER_DPI = 200

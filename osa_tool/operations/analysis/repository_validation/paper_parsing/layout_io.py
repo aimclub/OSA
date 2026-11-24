@@ -18,12 +18,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from osa_tool.operations.analysis.repository_validation.paper_parsing.doc_pages import (
+from .doc_pages import (
     DEFAULT_PAGE_CACHE_SIZE,
     PageStore,
 )
-from osa_tool.operations.analysis.repository_validation.paper_parsing.exceptions import LayoutDetectionError
-from osa_tool.operations.analysis.repository_validation.paper_parsing.paper_utils import to_base64_str
+from .exceptions import LayoutDetectionError
+from .paper_utils import to_base64_str
 from osa_tool.utils.logger import logger
 
 LAYOUT_FILENAME = "layout.json"
@@ -62,6 +62,7 @@ def save_layout(
         "source_path": str(source_path),
         "render_dpi": render_dpi,
         "page_count": len(page_paths),
+        "page_files": [page.name for page in page_paths],
         "element_count": len(elements),
         "elements": elements,
     }
@@ -101,7 +102,14 @@ def load_layout(destination: str | Path, *, cache_size: int = DEFAULT_PAGE_CACHE
             element["centroid"] = tuple(element["centroid"])
 
     pages_dir = directory / PAGES_DIRNAME
-    page_paths = sorted(pages_dir.glob("page-*")) if pages_dir.is_dir() else []
+    available = {page.name: page for page in pages_dir.glob("page-*") if page.is_file()}
+    names = payload.get("page_files")
+    if names is None:
+        # Older version-1 layouts used sequential page filenames.
+        names = sorted(available, key=lambda name: int(Path(name).stem.removeprefix("page-")))
+    if len(names) != payload["page_count"] or any(name not in available for name in names):
+        raise LayoutDetectionError(f"Saved pages do not match the layout manifest in {path}")
+    page_paths = [available[name] for name in names]
     return elements, PageStore(page_paths, cache_size=cache_size)
 
 

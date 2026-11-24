@@ -109,3 +109,16 @@ def test_layout_exists_reports_what_is_on_disk(tmp_path):
     assert layout_exists(tmp_path) is False
     save_layout(report(), make_pages(tmp_path), tmp_path / "paper", source_path="p.pdf", render_dpi=200)
     assert layout_exists(tmp_path / "paper") is True
+
+
+def test_resume_uses_only_committed_page_names(tmp_path):
+    destination = tmp_path / "layout"
+    save_layout(report(), make_pages(tmp_path), destination, source_path="paper.pdf", render_dpi=200)
+    extra = destination / "pages" / "page-9999.png"
+    extra.touch()
+    _, pages = load_layout(destination)
+    assert len(pages) == 3
+    pages.close()
+    (destination / "pages" / "page-0001.png").unlink()
+    with pytest.raises(LayoutDetectionError, match="manifest"):
+        load_layout(destination)

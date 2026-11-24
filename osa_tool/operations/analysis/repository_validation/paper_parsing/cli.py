@@ -4,7 +4,7 @@ from argparse import Namespace
 from pathlib import Path
 
 from osa_tool.config.settings import ConfigManager
-from osa_tool.operations.analysis.repository_validation.paper_parsing.doc_graph import run_graph_building
+from .doc_graph import run_graph_building
 
 
 def run_paper_parsing(args: Namespace) -> Path:
@@ -18,7 +18,7 @@ def run_paper_parsing(args: Namespace) -> Path:
     if not source.is_file():
         raise FileNotFoundError(f"PDF file does not exist: {source}")
     try:
-        from osa_tool.operations.analysis.repository_validation.paper_parsing.structured_parser import (
+        from .structured_parser import (
             StructuredPaperParser,
         )
     except ImportError as exc:

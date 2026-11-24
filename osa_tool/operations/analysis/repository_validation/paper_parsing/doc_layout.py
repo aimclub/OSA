@@ -13,13 +13,13 @@ import torch
 
 from osa_tool.utils.logger import logger
 
-from osa_tool.operations.analysis.repository_validation.paper_parsing import doc_geometry, paper_utils
-from osa_tool.operations.analysis.repository_validation.paper_parsing.doc_pages import (
+from . import doc_geometry, paper_utils
+from .doc_pages import (
     DEFAULT_PAGE_CACHE_SIZE,
     DEFAULT_RENDER_DPI,
     PageStore,
 )
-from osa_tool.operations.analysis.repository_validation.paper_parsing.graph_utils import element_node_id
+from .graph_utils import element_node_id
 
 DEFAULT_LAYOUT_BATCH_SIZE = 4
 
@@ -128,7 +128,7 @@ class LayoutExtractor:
         self.specific_elems = []
         self.relevant_pairs = []
 
-        if ".pdf" in self.doc_path:
+        if self.doc_path.lower().endswith(".pdf"):
             self.pages = PageStore.from_pdf(
                 doc_path,
                 dpi=dpi,
@@ -303,14 +303,14 @@ class LayoutExtractor:
     # TODO: drop it to utils to avoid rewriting it in doc_ocr
     def encode_image(self, bbox_idx):
         _bbox = self.bbox_json[bbox_idx]["box"]
-        x1, y1, x2, y2 = [i for i in _bbox.values()]
+        x1, y1, x2, y2 = [_bbox[key] for key in ("x1", "y1", "x2", "y2")]
 
         x = math.floor(x1)
         y = math.floor(y1)
         w = math.ceil(x2) - x
         h = math.ceil(y2) - y
 
-        if ".pdf" in self.doc_path:
+        if self.doc_path.lower().endswith(".pdf"):
             image = self.pages[self.bbox_json[bbox_idx]["page_num"]]
 
         else:
@@ -722,7 +722,7 @@ class LayoutExtractor:
             the absorbed caption was dropped from the text *and* missing from
             the image the VLM saw.
             """
-            if ".pdf" in self.doc_path:
+            if self.doc_path.lower().endswith(".pdf"):
                 return self.pages[page_num] if page_num < len(self.pages) else None
             return cv2.imread(self.doc_path)
 

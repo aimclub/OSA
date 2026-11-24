@@ -27,7 +27,7 @@ import re
 from difflib import SequenceMatcher
 from typing import Dict, List
 
-from osa_tool.operations.analysis.repository_validation.paper_parsing.doc_geometry import centroid
+from .doc_geometry import centroid
 
 RUNNING_HEADER_ROLE = "running_header"
 

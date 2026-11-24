@@ -6,19 +6,19 @@ from typing import Dict, List, Optional, Tuple
 
 from osa_tool.utils.logger import logger
 
-from osa_tool.operations.analysis.repository_validation.paper_parsing.doc_geometry import (
+from .doc_geometry import (
     centroid as _centroid,
     compute_reading_order_ranks,
     distance as _distance,
     is_content,
     reading_order_key,
 )
-from osa_tool.operations.analysis.repository_validation.paper_parsing.graph_utils import (
+from .graph_utils import (
     element_node_id,
     page_node_id,
     save_graph,
 )
-from osa_tool.operations.analysis.repository_validation.paper_parsing.graph_patterns import (
+from .graph_patterns import (
     _PARAGRAPH_TYPES,
     _CAPTION_TYPES,
     _ELEM_TYPE_TO_CATEGORY,

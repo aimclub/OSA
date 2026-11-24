@@ -4,17 +4,17 @@ import asyncio
 import json
 from pathlib import Path
 
-from osa_tool.operations.analysis.repository_validation.paper_parsing.doc_graph import build_document_graph
-from osa_tool.operations.analysis.repository_validation.paper_parsing.doc_headers import filter_running_headers
-from osa_tool.operations.analysis.repository_validation.paper_parsing.doc_layout import LayoutExtractor
-from osa_tool.operations.analysis.repository_validation.paper_parsing.doc_ocr import ImageDescription
-from osa_tool.operations.analysis.repository_validation.paper_parsing.exceptions import (
+from .doc_graph import build_document_graph
+from .doc_headers import filter_running_headers
+from .doc_layout import LayoutExtractor
+from .doc_ocr import ImageDescription
+from .exceptions import (
     DescriptionError,
     LayoutDetectionError,
 )
-from osa_tool.operations.analysis.repository_validation.paper_parsing.graph_utils import save_graph
-from osa_tool.operations.analysis.repository_validation.paper_parsing.layout_io import load_layout, save_layout
-from osa_tool.operations.analysis.repository_validation.paper_parsing.models import (
+from .graph_utils import save_graph
+from .layout_io import load_layout, save_layout
+from .models import (
     PaperParsingOptions,
     PaperParsingResult,
 )
@@ -220,8 +220,15 @@ class PaperParsingPipeline:
                 continue
             idx = item["bbox_idx"]
             parsed = describer.parse_json(item["result"])
-            report[idx]["text"] = parsed.get("text", "")
-            report[idx]["description"] = parsed.get("description", "")
+            text = parsed.get("text") if isinstance(parsed, dict) else None
+            description = parsed.get("description") if isinstance(parsed, dict) else None
+            text = text if isinstance(text, str) else ""
+            description = description if isinstance(description, str) else ""
+            if not (text.strip() or description.strip()):
+                logger.warning("No usable VLM description for bbox_idx %s", idx)
+                continue
+            report[idx]["text"] = text
+            report[idx]["description"] = description
             succeeded += 1
         if results and succeeded == 0:
             raise DescriptionError("Every VLM description request failed")
@@ -244,11 +251,11 @@ class PaperParsingPipeline:
         caption text) so non-textual context survives.
         """
         elements = [node for node in graph.get("nodes", []) if node.get("node_type") == "element"]
-        captions = PaperParsingPipeline._captions_by_target(graph)
+        captions, folded = PaperParsingPipeline._captions_by_target(graph)
 
         blocks: list[str] = []
         for node in sorted(elements, key=lambda n: n.get("reading_rank", 0)):
-            if not node.get("is_content", True):
+            if not node.get("is_content", True) or node["node_id"] in folded:
                 continue
             name = node.get("name", "")
             text = (node.get("text") or "").strip()
@@ -273,7 +280,7 @@ class PaperParsingPipeline:
         return "\n\n".join(blocks)
 
     @staticmethod
-    def _captions_by_target(graph: dict) -> dict[str, str]:
+    def _captions_by_target(graph: dict) -> tuple[dict[str, str], set[str]]:
         """Map a figure / table node id to the text of the captions pointing at it.
 
         Captions folded into their figure's crop carry no text of their own, so
@@ -283,17 +290,22 @@ class PaperParsingPipeline:
         by_id = {node["node_id"]: node for node in graph.get("nodes", [])}
 
         texts: dict[str, list[str]] = {}
+        folded = set()
         for edge in graph.get("edges", []):
             if edge.get("edge_type") != "caption_of":
                 continue
             caption = by_id.get(edge["source"])
-            if caption is None:
+            target = by_id.get(edge["target"], {})
+            if caption is None or not target.get("is_content", True):
+                continue
+            if target.get("name") not in ("figure", "table", "isolate_formula"):
                 continue
             body = (caption.get("text") or "").strip() or (caption.get("description") or "").strip()
             if body:
                 texts.setdefault(edge["target"], []).append(body)
+                folded.add(edge["source"])
 
-        return {node_id: " ".join(parts) for node_id, parts in texts.items()}
+        return {node_id: " ".join(parts) for node_id, parts in texts.items()}, folded
 
     @staticmethod
     def export(result: PaperParsingResult, output_dir: Path | str, *, include_report: bool = False) -> Path:

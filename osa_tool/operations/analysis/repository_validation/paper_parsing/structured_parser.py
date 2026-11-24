@@ -13,11 +13,11 @@ from pathlib import Path
 import dotenv
 
 from osa_tool.config.settings import ModelSettings
-from osa_tool.operations.analysis.repository_validation.paper_parsing.models import (
+from .models import (
     PaperParsingOptions,
     PaperParsingResult,
 )
-from osa_tool.operations.analysis.repository_validation.paper_parsing.pipeline import PaperParsingPipeline
+from .pipeline import PaperParsingPipeline
 
 DEFAULT_API_KEY_ENV = "OPENAI_API_KEY"
 
@@ -111,20 +111,12 @@ class StructuredPaperParser:
         placeholder left in the configuration file does not override the default.
         """
         extras = model_settings.model_extra or {}
-        defaults = PaperParsingOptions()
-        return PaperParsingOptions(
-            device=extras.get("paper_parser_device") or defaults.device,
-            max_concurrent=int(extras.get("paper_parser_max_concurrent") or defaults.max_concurrent),
-            conf_threshold=float(extras.get("paper_parser_conf_threshold") or defaults.conf_threshold),
-            downsample_factor=int(extras.get("paper_parser_downsample_factor") or defaults.downsample_factor),
-            save_img=bool(extras.get("paper_parser_save_img", defaults.save_img)),
-            render_dpi=int(extras.get("paper_parser_render_dpi") or defaults.render_dpi),
-            layout_batch_size=int(extras.get("paper_parser_layout_batch_size") or defaults.layout_batch_size),
-            vlm_max_retries=int(extras.get("paper_parser_vlm_max_retries") or defaults.vlm_max_retries),
-            vlm_retry_delay=float(extras.get("paper_parser_vlm_retry_delay") or defaults.vlm_retry_delay),
-            vlm_timeout=float(extras.get("paper_parser_vlm_timeout") or defaults.vlm_timeout),
-            filter_running_headers=extras.get("paper_parser_filter_running_headers", defaults.filter_running_headers),
-        )
+        values = {}
+        for field in PaperParsingOptions.model_fields:
+            value = extras.get(f"paper_parser_{field}")
+            if value is not None and value != "":
+                values[field] = value
+        return PaperParsingOptions(**values)
 
     def parse_layout(self, destination: Path | str) -> int:
         """Stage 1 alone: detect layout and persist it under ``destination``."""
