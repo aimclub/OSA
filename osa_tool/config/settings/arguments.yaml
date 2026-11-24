@@ -6,6 +6,21 @@ arguments:
     type: flag
     description: "Run the analysis-only paper claim and repository verification pipeline."
 
+  parse_paper:
+    aliases: [ "--parse-paper" ]
+    type: str
+    description: "Parse a PDF using layout detection and a vision-language model, then export its document graph."
+
+  build_paper_graph:
+    aliases: [ "--build-paper-graph" ]
+    type: str
+    description: "Build a document graph from a saved paper parsing report JSON file."
+
+  paper_parsing_output_dir:
+    aliases: [ "--paper-parsing-output-dir" ]
+    type: str
+    description: "Directory for paper parsing or graph output. Defaults to artifacts/paper-parsing/<input-stem>."
+
   attachment:
     aliases: [ "--attachment" ]
     type: str

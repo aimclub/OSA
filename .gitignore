@@ -181,3 +181,11 @@ cython_debug/
 
 # Logs
 logs/
+
+# Local paper inputs and generated research outputs
+/artifacts/
+/mvp/
+*.csv
+*.pdf
+*.docx
+*.xlsx

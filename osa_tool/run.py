@@ -67,6 +67,22 @@ def main():
     apply_argument_descriptions_from_yaml(parser, ["paper_analysis_cli"])
     args = parser.parse_args()
 
+    parse_paper = getattr(args, "parse_paper", None)
+    build_paper_graph = getattr(args, "build_paper_graph", None)
+    if sum(bool(mode) for mode in (parse_paper, build_paper_graph, args.paper_analysis)) > 1:
+        parser.error("--parse-paper, --build-paper-graph and --paper-analysis are mutually exclusive")
+    if parse_paper or build_paper_graph:
+        from osa_tool.operations.analysis.repository_validation.paper_parsing.cli import run_paper_parsing
+
+        try:
+            print(run_paper_parsing(args))
+        except Exception as exc:
+            logger.error("Paper parsing failed: %s", exc)
+            return 1
+        return 0
+    if getattr(args, "paper_parsing_output_dir", None):
+        parser.error("--paper-parsing-output-dir requires --parse-paper or --build-paper-graph")
+
     if args.paper_analysis:
         from osa_tool.tools.focused_cli import configure_focused_tool_logging
         from osa_tool.tools.paper_analysis.cli import (
