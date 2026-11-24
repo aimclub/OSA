@@ -17,6 +17,18 @@ Documentation = "https://itmo-nss-team.github.io/Open-Source-Advisor/"
 Issues = "https://github.com/aimclub/OSA/issues"
 
 [project.optional-dependencies]
+paper-parsing = [
+    "beautifulsoup4>=4.12",
+    "doclayout-yolo>=0.0.3,<0.1",
+    "huggingface-hub>=0.25",
+    "numpy>=1.26,<3",
+    "opencv-python>=4.8",
+    "openai>=1.0,<3",
+    "pdf2image>=1.17",
+    "pillow>=10",
+    "torch>=2.1",
+    "tqdm>=4.64",
+]
 paper-claims-lite = [
     "rapidfuzz>=3.14.0",
 ]

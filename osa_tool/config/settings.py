@@ -115,6 +115,7 @@ class ModelGroupSettings(BaseModel):
     for_repository_quality: ModelSettings | None = None
     for_paper_claims: ModelSettings | None = None
     for_paper_verification: ModelSettings | None = None
+    for_paper_parsing: ModelSettings | None = None
 
 
 class PaperMarkerSettings(BaseModel):
@@ -233,6 +234,7 @@ class ConfigManager:
         "repository_quality": "for_repository_quality",
         "paper_claims": "for_paper_claims",
         "paper_verification": "for_paper_verification",
+        "paper_parsing": "for_paper_parsing",
     }
 
     def __init__(self, args: Namespace | None = None):
@@ -395,6 +397,7 @@ class ConfigManager:
                     "for_repository_quality",
                     "for_paper_claims",
                     "for_paper_verification",
+                    "for_paper_parsing",
                 ]:
                     task_sections[key] = value
                 else:
@@ -430,7 +433,7 @@ class ConfigManager:
 
         Args:
             task_type: Type of task (docstring, readme, general, repository_quality,
-                paper_claims, paper_verification)
+                paper_claims, paper_verification, paper_parsing)
 
         Returns:
             ModelSettings for the specified task type

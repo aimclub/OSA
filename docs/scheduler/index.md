@@ -131,6 +131,7 @@ The tables below are generated from the metadata used by the `osa-tool` command-
 |:--|:--|:--|:--:|:--|:--|
 | `about` | `--about` | flag | — | Generate About section with tags. | — |
 | `attachment` | `--attachment` | str | — | Path to a local PDF file (for articles) or .docx file (for documents).<br>Alternatively, accept a publicly accessible HTTP/HTTPS URL pointing to a PDF resource. | — |
+| `build_paper_graph` | `--build-paper-graph` | str | — | Build a document graph from a saved paper parsing report JSON file. | — |
 | `community_docs` | `--community-docs` | flag | — | Generate community-related documentation files, such as Code of Conduct and Contributing guidelines. | — |
 | `convert_notebooks` | `--convert-notebooks` | list | — | Convert Jupyter notebooks from .ipynb to .py format.<br>Provide one or multiple paths, or leave empty for repo directory. | — |
 | `docstring` | `--docstring` | flag | — | Automatically generate docstrings for all Python files in the repository. | — |
@@ -140,6 +141,8 @@ The tables below are generated from the metadata used by the `osa-tool` command-
 | `notebook_report` | `--notebook-report` | list | — | Analyze Jupyter notebooks and generate a notebook PDF report.<br>Provide one or multiple paths, or leave empty for repo directory. | — |
 | `organize` | `--organize` | flag | — | Organize the repository structure by adding standard 'tests' and 'examples' directories if missing. | — |
 | `paper_analysis` | `--paper-analysis` | flag | — | Run the analysis-only paper claim and repository verification pipeline. | — |
+| `paper_parsing_output_dir` | `--paper-parsing-output-dir` | str | — | Directory for paper parsing or graph output. Defaults to artifacts/paper-parsing/<input-stem>. | — |
+| `parse_paper` | `--parse-paper` | str | — | Parse a PDF using layout detection and a vision-language model, then export its document graph. | — |
 | `readme` | `--readme` | flag | — | Generate a README.md file based on repository content and metadata. | — |
 | `refine_readme` | `--refine-readme` | flag | — | Enable advanced README refinement. This process requires a powerful LLM model (such as GPT-4 or equivalent) for optimal results. | — |
 | `report` | `--report` | flag | — | Analyze the repository and generate a PDF report with project insights. | — |
