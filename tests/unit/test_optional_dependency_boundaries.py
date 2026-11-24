@@ -19,7 +19,8 @@ _OPTIONAL_MODULES = {
 
 
 def test_core_imports_do_not_require_optional_feature_dependencies():
-    script = textwrap.dedent(f"""
+    script = textwrap.dedent(
+        f"""
         import importlib.abc
         import sys
 
@@ -35,7 +36,8 @@ def test_core_imports_do_not_require_optional_feature_dependencies():
         import osa_tool.operations.operations_catalog
         import osa_tool.operations.analysis.paper_claims
         from osa_tool.operations.analysis.repository_validation.paper_parsing import run_graph_building
-        """)
+        """
+    )
     project_root = Path(__file__).resolve().parents[2]
 
     result = subprocess.run(
