@@ -137,6 +137,8 @@ class PaperClaimsSettings(BaseModel):
     max_retries: PositiveInt = 5
     dedup_batch_size: int = Field(default=50, ge=2)
     check_contradictions: bool = False
+    review_cross_section_pairs: bool = False
+    review_pair_counterevidence: bool = False
     extraction_profile: Literal["implementation", "paper_assertions"] = "implementation"
     contradiction_code_context: bool = True
     marker: PaperMarkerSettings = Field(default_factory=PaperMarkerSettings)
@@ -151,6 +153,8 @@ class PaperClaimsSettings(BaseModel):
             max_retries=self.max_retries,
             dedup_batch_size=self.dedup_batch_size,
             check_contradictions=self.check_contradictions,
+            review_cross_section_pairs=self.review_cross_section_pairs,
+            review_pair_counterevidence=self.review_pair_counterevidence,
             extraction_profile=self.extraction_profile,
             marker=MarkerOptions(**self.marker.model_dump()),
         )

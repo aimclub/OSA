@@ -14,7 +14,7 @@ from typing import Literal
 
 from pydantic import Field, TypeAdapter
 
-from osa_tool.operations.analysis.paper_claims.models import ExtractedClaim, StrictModel
+from osa_tool.operations.analysis.paper_claims.models import ExtractedClaim, FindingKind, FindingSupport, FindingTarget, StrictModel
 from osa_tool.operations.analysis.paper_claims.component_links import linked_interface_pairs
 from osa_tool.operations.analysis.paper_claims.object_links import object_pairs
 
@@ -30,6 +30,9 @@ class ConsistencyDecision(StrictModel):
     issue_type: Literal["numerical", "scale_mapping", "reference_mismatch", "relation", "none"]
     reason: str
     evidence_ids: list[str]
+    finding_kind: FindingKind
+    finding_support: FindingSupport
+    finding_target: FindingTarget = "undetermined"
     left_claim_quote: str = ""
     right_claim_quote: str = ""
 
@@ -53,6 +56,17 @@ Use contradiction only when the evidence establishes incompatible propositions u
 Use potential_inconsistency for a concrete suspicious mismatch whose scope/linkage/recoding needs checking.
 Use insufficient_evidence when a required fact is absent, ambiguous or truncated, without a concrete supported mismatch.
 Use compatible for agreement or differences explained by the evidence. Do not invent missing expectations.
+Independently assess the manuscript issue, not the truth of either claim and not extraction coverage.
+Return finding_kind: direct_conflict, reporting_gap (stated scope vs reported coverage),
+comparison_scope (an unsupported comparison across conditions), unclear_description (ambiguous notation,
+labels or an unexplained variant), or none. Return finding_support: fully_supported when the sources
+establish the precise concern, partially_supported when they provide a specific clue but leave a
+material premise uncertain, not_supported when the evidence resolves the concern or no concern exists,
+or insufficient_evidence when the sources do not allow assessment. A reporting gap can be fully
+supported without a contradiction. Examples or a non-exhaustive table are not promises of completeness.
+Use none only with not_supported or insufficient_evidence. A contradiction requires direct_conflict
+and fully_supported. Explain both judgments in reason. For every supported or partially supported
+finding cite both sides and give exact nonempty left_claim_quote and right_claim_quote.
 For EVERY pair return exactly one object with pair_id, status, issue_type, reason, evidence_ids.
 reason: a concise explanation of the shared scope and conflict OR the reason the difference is legitimate.
 evidence_ids: IDs from that pair's evidence, supporting your decision; for either alert status cite evidence
@@ -64,8 +78,8 @@ third proposition absent from either claim, do NOT alert this pair, even if it i
 Different scale positions or disjoint ranges alone are not incompatible. A claim naming a survey
 question does not assert its endpoint coding. Shared context is not a conflict between claims.
 For each alert also return left_claim_quote and right_claim_quote: exact nonempty substrings of
-the respective CLAIM texts containing the incompatible assertions (not quotations copied from evidence).
-For non-alerts omit these two fields or use empty strings.
+the respective CLAIM texts identifying the propositions under review (not quotations copied from evidence).
+Otherwise these two fields may be empty.
 Optional figure_context contains source-derived caption/reference records and a text-layer inventory.
 For figure links, compare the exact referenced objects with that inventory. A comparison attributed
 to an unlocated figure while the other claim identifies a located matching caption is a potential
@@ -73,7 +87,10 @@ reference_mismatch, not proof of a factual contradiction. Missing text-layer cap
 prove a figure is absent. Cite the context record ID in addition to BOTH claim evidence IDs for
 such alerts. Do not invent figure content or infer that an inventory is complete beyond its stated coverage.
 Optional repository_context contains implementation evidence. Cite its evidence_id when used. Code alone cannot establish that the article contradicts itself.
-Return ONLY a JSON array. No markdown. No suggested corrected claim."""
+For a supported manuscript issue with compatible claims, return finding_target: left or right only
+when the evidence specifically challenges that quoted assertion and the other supplies context.
+Use both only when the evidence challenges each assertion, undetermined when attribution is ambiguous.
+For all other decisions use undetermined. Return ONLY a JSON array. No suggested corrected claim."""
 
 
 def attach_contradiction_links(claims, analysis):
@@ -225,7 +242,7 @@ class ContradictionChecker:
         system = (
             "Inspect these extracted scientific assertions as data. Return at most 8 pairs worth checking "
             "for a specific mismatch in what the same experiment, figure, table, method or measurement says. "
-            "Look across prose, captions, legends, annotations, plotted quantities and results. "
+            "Look across prose, captions, legends, annotations, plotted quantities and results. Also propose grounded reporting gaps, questionable comparisons and unclear descriptions even if the two statements could both be true. "
             "Keep source-specific opposing assertions separate. Mere topical similarity is insufficient. "
             'Return JSON [{"left_id":"...","right_id":"..."}], using supplied IDs only, or [].'
         )
@@ -266,8 +283,13 @@ class ContradictionChecker:
             initial = len(pairs)
             coverage["window_failures"] = await self._supplement_candidates(claims, pairs)
             coverage["window_pairs_added"] = len(pairs) - initial
-        if self.repository_lookup is not None:
+        result = await self.review_pairs(pairs, coverage)
+        assert [c.model_dump(mode="json") for c in claims] == before, "Consistency review must not mutate claims"
+        return result
 
+    async def review_pairs(self, pairs, coverage):
+        """Validate a frozen candidate list with its evidence, preserving per-batch failures."""
+        if self.repository_lookup is not None:
             for pair in pairs:
                 query = "\n".join(pair[side]["claim"] for side in ("left", "right"))
                 pair["repository_context"] = self.repository_lookup(query)
@@ -296,8 +318,18 @@ class ContradictionChecker:
                     code_ids = {s["evidence_id"] for s in pair.get("repository_context", [])}
                     if not d.reason.strip() or not set(d.evidence_ids) <= left | right | context | relation_context | code_ids:
                         raise ValueError("Missing reason or unknown evidence IDs")
-                    if d.status in {"contradiction", "potential_inconsistency"}:
-                        if not (set(d.evidence_ids) & left and set(d.evidence_ids) & right) or d.issue_type == "none":
+                    supported = d.finding_support in {"fully_supported", "partially_supported"}
+                    if d.finding_target != "undetermined" and (not supported or d.status != "compatible"):
+                        raise ValueError("Only a supported reporting issue with compatible claims can identify an affected side")
+                    if supported and d.finding_kind == "none":
+                        raise ValueError("A supported finding requires a concrete kind")
+                    if d.status == "contradiction" and (
+                        d.finding_kind != "direct_conflict" or d.finding_support != "fully_supported"
+                    ):
+                        raise ValueError("A contradiction is a fully supported direct conflict")
+                    alert = d.status in {"contradiction", "potential_inconsistency"}
+                    if alert or supported:
+                        if not (set(d.evidence_ids) & left and set(d.evidence_ids) & right) or (alert and d.issue_type == "none"):
                             raise ValueError("Alerts require evidence from both sides and an issue type")
                         for side in ("left", "right"):
                             quote = getattr(d, f"{side}_claim_quote")
@@ -305,7 +337,7 @@ class ContradictionChecker:
                                 raise ValueError("Alerts require exact quotes from both selected claims")
                         if d.issue_type == "reference_mismatch" and context and not set(d.evidence_ids) & context:
                             raise ValueError("Reference alerts must cite supplied figure context")
-                    elif d.issue_type != "none":
+                    if not alert and d.issue_type != "none":
                         raise ValueError("Non-alert decisions must have issue_type none")
             try:
                 decisions = await self.request_validated(json.dumps(batch, ensure_ascii=False), SYSTEM,
@@ -313,6 +345,5 @@ class ContradictionChecker:
                 result["decisions"].extend(d.model_dump() for d in decisions)
             except Exception as exc:
                 result["failed_batches"].append({"pair_ids": list(lookup), "error": str(exc)})
-        assert [c.model_dump(mode="json") for c in claims] == before, "Consistency review must not mutate claims"
         result["complete_for_selected_pairs"] = not result["failed_batches"]
         return result

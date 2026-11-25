@@ -19,6 +19,7 @@ from osa_tool.operations.analysis.paper_claims.models import (
     ExtractedClaim,
     ExtractionMetadata,
     PaperSection,
+    review_annotations,
 )
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder, PromptLoader
@@ -41,6 +42,8 @@ class ClaimExtractor:
         max_retries: int = 5,
         dedup_batch_size: int = 100,
         check_contradictions: bool = False,
+        review_cross_section_pairs: bool = False,
+        review_pair_counterevidence: bool = False,
         repository_lookup=None,
         similarity_deduplication: bool = False,
         show_progress: bool = True,
@@ -54,6 +57,8 @@ class ClaimExtractor:
         self.max_retries = max_retries
         self.dedup_batch_size = dedup_batch_size
         self.check_contradictions = check_contradictions
+        self.review_cross_section_pairs = review_cross_section_pairs
+        self.review_pair_counterevidence = review_pair_counterevidence
         self.similarity_deduplication = similarity_deduplication
         self.repository_lookup = repository_lookup
         self.show_progress = show_progress
@@ -381,6 +386,15 @@ class ClaimExtractor:
         checker = ContradictionChecker(self._request_validated, repository_lookup=repository_lookup,
                                        inspect_windows=self.similarity_deduplication)
         analysis = await checker.check(claims)
+        if self.review_cross_section_pairs:
+            from .cross_section_pairs import propose, augment
+
+            proposals, failures = await propose(claims, self._request_validated)
+            analysis = await augment(analysis, proposals, failures, self._request_validated, repository_lookup)
+        if self.review_cross_section_pairs or self.review_pair_counterevidence:
+            from .cross_section_pairs import remove_resolved
+
+            analysis = await remove_resolved(analysis, self._request_validated)
         return attach_contradiction_links(claims, analysis), analysis
 
     async def extract(
@@ -403,12 +417,21 @@ class ClaimExtractor:
         """Check the complete source snapshot, then deduplicate with protected endpoints."""
         extraction_model = getattr(self.handler, "last_successful_model", None) or model
         analysis = {}
+        def annotate(claims):
+            identities = [{"claim_id": c.claim_id, "sources": [{"claim_id": s.claim_id} for s in c.sources]}
+                          for c in claims]
+            annotations = review_annotations(identities, analysis)
+            return [c.model_copy(update=annotations[c.claim_id]) for c in claims]
+
         if self.check_contradictions:
             extracted_claims, analysis = await self.review_contradictions(
                 extracted_claims, repository_lookup=self.repository_lookup
             )
             analysis["stage"] = "before_deduplication"
+            extracted_claims = annotate(extracted_claims)
         filtered_claims, selections = await self._step_3_deduplicate_claims(extracted_claims)
+        if self.check_contradictions:
+            filtered_claims = annotate(filtered_claims)
         logger.info("Three-step claim extraction completed: final_claims=%s", len(filtered_claims))
 
         return ClaimExtractionResult(

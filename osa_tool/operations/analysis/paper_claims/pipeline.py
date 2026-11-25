@@ -134,6 +134,8 @@ class PaperClaimPipeline:
         extractor = ClaimExtractor(self.handler, prompts=self.prompts, max_retries=options.max_retries,
                                    dedup_batch_size=options.dedup_batch_size, show_progress=show_progress,
                                    check_contradictions=options.check_contradictions, repository_lookup=lookup,
+                                   review_cross_section_pairs=options.review_cross_section_pairs,
+                                   review_pair_counterevidence=options.review_pair_counterevidence,
                                    similarity_deduplication=True)
         claims = []
         with TemporaryDirectory(prefix="osa-paper-pages-") as directory:

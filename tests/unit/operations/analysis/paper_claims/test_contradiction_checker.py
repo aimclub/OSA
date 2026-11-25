@@ -39,7 +39,7 @@ async def test_section_pipeline_sends_pinned_source_to_pair_reviewer(tmp_path, m
     monkeypatch.setattr(ClaimExtractor, "_step_2_extract_claims", AsyncMock(return_value=claims()))
     monkeypatch.setattr(ClaimExtractor, "_step_3_deduplicate_claims", AsyncMock(side_effect=lambda marked: (marked, [])))
     evidence_id = f"{revision}:evaluation.py:1"
-    decision = dict(pair_id="p0000", status="contradiction", issue_type="numerical", reason="Same conditions.",
+    decision = dict(pair_id="p0000", status="contradiction", finding_kind="direct_conflict", finding_support="fully_supported", issue_type="numerical", reason="Same conditions.",
                     evidence_ids=["a#source0", "b#source0", evidence_id], left_claim_quote="90 percent",
                     right_claim_quote="95 percent")
     handler = FakeAsyncHandler([json.dumps([decision])])
@@ -121,7 +121,7 @@ def test_different_values_reach_checker_and_cap_is_reported():
 @pytest.mark.asyncio
 async def test_alert_requires_two_sources_and_preserves_claims():
     h = FakeAsyncHandler([json.dumps([dict(pair_id="p0000", status="contradiction",
-        issue_type="numerical", reason="Same validation result differs.", evidence_ids=["a#source0", "b#source0"],
+        finding_kind="direct_conflict", finding_support="fully_supported", issue_type="numerical", reason="Same validation result differs.", evidence_ids=["a#source0", "b#source0"],
         left_claim_quote="90 percent accuracy", right_claim_quote="95 percent accuracy")])])
     items = claims()
     before = [x.model_dump() for x in items]
@@ -133,7 +133,7 @@ async def test_alert_requires_two_sources_and_preserves_claims():
 @pytest.mark.asyncio
 async def test_unknown_evidence_does_not_become_a_clean_bill_of_health():
     h = FakeAsyncHandler([json.dumps([dict(pair_id="p0000", status="contradiction",
-        issue_type="numerical", reason="Different.", evidence_ids=["fabricated"])])])
+        finding_kind="direct_conflict", finding_support="fully_supported", issue_type="numerical", reason="Different.", evidence_ids=["fabricated"])])])
     result = await checker(h).check(claims())
     assert result["failed_batches"] and not result["decisions"]
     assert not result["complete_for_selected_pairs"]
@@ -148,7 +148,7 @@ async def test_transport_failure_retains_unchecked_pair():
 @pytest.mark.asyncio
 async def test_source_only_quote_cannot_anchor_alert_to_claim():
     h = FakeAsyncHandler([json.dumps([dict(pair_id="p0000", status="contradiction",
-        issue_type="numerical", reason="Different.", evidence_ids=["a#source0", "b#source0"],
+        finding_kind="direct_conflict", finding_support="fully_supported", issue_type="numerical", reason="Different.", evidence_ids=["a#source0", "b#source0"],
         left_claim_quote="Accuracy was 90.", right_claim_quote="95 percent accuracy")])])
     result = await checker(h).check(claims())
     assert result["failed_batches"] and not result["decisions"]
@@ -159,7 +159,7 @@ async def test_figure_context_is_scoped_cited_and_non_destructive():
     items = [make_extracted_claim("a", "Figure 4 compares the generated motions."),
              make_extracted_claim("b", "Figure 6 compares the generated motions.")]
     h = FakeAsyncHandler([json.dumps([dict(pair_id="p0000", status="potential_inconsistency",
-        issue_type="reference_mismatch", reason="Figure 6 is not located by the scan.",
+        finding_kind="unclear_description", finding_support="partially_supported", issue_type="reference_mismatch", reason="Figure 6 is not located by the scan.",
         evidence_ids=["a#source0", "b#source0", "inventory"],
         left_claim_quote="Figure 4", right_claim_quote="Figure 6")])])
     c = ContradictionChecker(ClaimExtractor(h, max_retries=1)._request_validated,
@@ -214,7 +214,7 @@ def test_link_projection_is_symmetric_and_drops_stale_partners():
 async def test_links_reach_serialized_claims_and_resumed_reader(tmp_path, monkeypatch):
     from osa_tool.operations.analysis.paper_claims.models import ExtractedClaim
 
-    decision = dict(pair_id="p0000", status="contradiction", issue_type="numerical",
+    decision = dict(pair_id="p0000", status="contradiction", finding_kind="direct_conflict", finding_support="fully_supported", issue_type="numerical",
                     reason="Same metric and conditions.", evidence_ids=["a#source0", "b#source0"],
                     left_claim_quote="90 percent", right_claim_quote="95 percent")
     keep_only_a = [{"claim_id": "a", "claim": claims()[0].claim, "contradiction": False}]
@@ -291,3 +291,66 @@ async def test_dedup_can_retain_more_specific_second_claim_verbatim():
     kept, _ = await extractor._step_3_deduplicate_claims([broad, specific])
     assert [(c.claim_id,c.claim) for c in kept] == [("b",specific.claim)]
     assert {s.claim_id for s in kept[0].sources} == {"a","b"}
+
+@pytest.mark.asyncio
+async def test_reporting_gap_is_supported_without_creating_a_contradiction(tmp_path):
+    from osa_tool.operations.analysis.paper_claims.models import summarize_pair_reviews
+    from osa_tool.operations.analysis.paper_claims.io import export_loaded_claims
+
+    items = [make_extracted_claim("a", "The study tested 25 datasets."),
+             make_extracted_claim("b", "The results table lists 24 datasets.")]
+    decision = dict(pair_id="p0000", status="potential_inconsistency", issue_type="numerical",
+                    finding_kind="reporting_gap", finding_support="fully_supported",
+                    reason="One tested dataset has no reported row.", evidence_ids=["a#source0", "b#source0"],
+                    left_claim_quote="25 datasets", right_claim_quote="24 datasets")
+    c = checker(FakeAsyncHandler([json.dumps([decision])]))
+    pair = {"pair_id": "p0000", **{side: {"claim_id": item.claim_id, "claim": item.claim,
+            "evidence": c.evidence(item)} for side, item in zip(("left", "right"), items)}}
+    c.plan = lambda _: ([pair], {})
+    analysis = await c.check(items)
+    assert not analysis["failed_batches"]
+    marked = attach_contradiction_links(items, analysis)
+    assert all(not item.contradicts_claim_ids for item in marked)
+    rows = [item.model_dump(mode="json") for item in marked]
+    path = tmp_path / "input.json"
+    path.write_text(json.dumps({"claims": rows, "contradiction_analysis": analysis}))
+    restored = load_claims_json(export_loaded_claims(load_claims_json(path), tmp_path / "resumed"))
+    review, = summarize_pair_reviews(restored.claims, restored.contradiction_analysis)
+    assert (review.finding_kind, review.finding_support) == ("reporting_gap", "fully_supported")
+    assert [review.left.claim_id, review.right.claim_id] == ["a", "b"]
+
+
+@pytest.mark.parametrize("target,roles", [
+    ("left", ["affected_claim", "supporting_context"]),
+    ("right", ["supporting_context", "affected_claim"]),
+    ("undetermined", ["review_context", "review_context"]),
+])
+def test_reporting_issue_localization_survives_resume(tmp_path, target, roles):
+    pair = {"pair_id": "p", "left": {"claim_id": "raw", "claim": "19% gain"},
+            "right": {"claim_id": "table", "claim": "score 59.8"}}
+    decision = dict(pair_id="p", status="compatible", finding_kind="comparison_scope",
+                    finding_support="fully_supported", reason="The baseline implies a smaller gain.",
+                    left_claim_quote="19%", right_claim_quote="59.8", evidence_ids=["raw#0", "table#0"])
+    if target != "undetermined":
+        decision["finding_target"] = target
+    payload = {"claims": [{"claim_id": "kept", "sources": [{"claim_id": "raw"}]}, {"claim_id": "table"}],
+               "contradiction_analysis": {"candidate_pairs": [pair], "decisions": [decision]}}
+    path = tmp_path / "claims.json"
+    path.write_text(json.dumps(payload))
+    restored = load_claims_json(path)
+    assert [c["review_comments"][0]["role"] for c in restored.claims] == roles
+    assert all(c["review_comments"][0]["category"] == "reporting_issue" for c in restored.claims)
+    assert not any(c.get("contradicts_claim_ids") for c in restored.claims)
+
+
+def test_warning_follows_merged_source_only_while_two_endpoints_exist():
+    from osa_tool.operations.analysis.paper_claims.models import review_annotations
+    pair = {"pair_id": "p", "left": {"claim_id": "a", "claim": "A"}, "right": {"claim_id": "b", "claim": "B"}}
+    analysis = {"candidate_pairs": [pair], "decisions": [
+        {"pair_id": "p", "status": "potential_inconsistency", "reason": "Unclear mapping.", "evidence_ids": []}]}
+    kept = {"claim_id": "representative", "sources": [{"claim_id": "a"}]}
+    projected = review_annotations([kept, {"claim_id": "b"}], analysis)
+    assert [c["potential_inconsistency_pair_ids"] for c in projected.values()] == [["p"], ["p"]]
+    kept["sources"].append({"claim_id": "b"})
+    assert review_annotations([kept], analysis)["representative"] == {
+        "review_comments": [], "potential_inconsistency_pair_ids": []}

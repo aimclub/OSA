@@ -12,6 +12,7 @@ from osa_tool.operations.analysis.paper_claims.models import (
     LoadedClaimsArtifact,
     LoadedSectionsArtifact,
     PaperSection,
+    review_annotations,
 )
 from osa_tool.utils.logger import logger
 
@@ -34,10 +35,18 @@ def load_claims_json(path: Path) -> LoadedClaimsArtifact:
         claims, source_format, upstream_meta = None, "bare", {}
     if not isinstance(claims, list) or any(not isinstance(item, dict) for item in claims):
         raise ValueError("Claims JSON must contain a list under 'claims' or 'result', or be a list itself")
+    analysis = payload.get("contradiction_analysis", {}) if isinstance(payload, dict) else {}
+    if analysis.get("candidate_pairs") and analysis.get("decisions"):
+        annotations = review_annotations(claims, analysis)
+        for claim in claims:
+            if claim.get("claim_id") in annotations:
+                fields = annotations[claim["claim_id"]]
+                claim.update(fields, review_comments=[c.model_dump() for c in fields["review_comments"]])
     return LoadedClaimsArtifact(
         claims=claims,
         source_path=source_path,
         source_format=source_format,
+        contradiction_analysis=analysis,
         upstream_meta=upstream_meta,
     )
 
@@ -75,6 +84,8 @@ def export_loaded_claims(loaded: LoadedClaimsArtifact, output_dir: Path) -> Path
             "upstream_meta": loaded.upstream_meta,
         },
     }
+    if loaded.contradiction_analysis:
+        payload["contradiction_analysis"] = loaded.contradiction_analysis
     claims_path = destination / "claims.json"
     claims_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     write_stage_report(

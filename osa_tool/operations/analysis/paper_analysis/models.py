@@ -8,7 +8,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from osa_tool.operations.analysis.artifacts import ModelProvenance
-from osa_tool.operations.analysis.paper_claims.models import PdfParserName
+from osa_tool.operations.analysis.paper_claims.models import PairReview, PdfParserName
 
 
 class StrictModel(BaseModel):
@@ -79,6 +79,7 @@ class PaperClaimsSummary(StrictModel):
     source_kind: Literal["pdf", "sections_json", "claims_json"]
     source_path: Path
     claim_count: int
+    pair_reviews: list[PairReview] = Field(default_factory=list)
     model: ModelProvenance = Field(default_factory=ModelProvenance)
     artifacts: dict[str, Path] = Field(default_factory=dict)
 

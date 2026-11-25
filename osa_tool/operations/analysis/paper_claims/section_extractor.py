@@ -33,6 +33,8 @@ async def extract_claims_from_sections(
         max_retries=options.max_retries,
         dedup_batch_size=options.dedup_batch_size,
         check_contradictions=options.check_contradictions,
+        review_cross_section_pairs=options.review_cross_section_pairs,
+        review_pair_counterevidence=options.review_pair_counterevidence,
         repository_lookup=repository_lookup(options.contradiction_repository)
         if options.check_contradictions and options.contradiction_repository else None,
         show_progress=show_progress,

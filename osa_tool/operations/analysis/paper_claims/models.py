@@ -91,6 +91,88 @@ class ClaimSource(StrictModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+FindingKind = Literal["direct_conflict", "reporting_gap", "comparison_scope", "unclear_description", "none"]
+FindingSupport = Literal["fully_supported", "partially_supported", "not_supported", "insufficient_evidence"]
+FindingTarget = Literal["left", "right", "both", "undetermined"]
+
+
+class ClaimReviewComment(StrictModel):
+    pair_id: str
+    category: Literal["contradiction", "potential_inconsistency", "reporting_issue"]
+    role: Literal["participant", "affected_claim", "supporting_context", "review_context"]
+
+
+class ReviewSide(StrictModel):
+    source_claim_id: str
+    claim_id: str | None
+    claim: str
+    quote: str = ""
+
+
+class PairReview(StrictModel):
+    pair_id: str
+    left: ReviewSide
+    right: ReviewSide
+    consistency_status: str
+    finding_kind: FindingKind | None = None
+    finding_support: FindingSupport | None = None
+    finding_target: FindingTarget = "undetermined"
+    reason: str
+    evidence_ids: list[str]
+
+
+def summarize_pair_reviews(claims: list[dict[str, Any]], analysis: dict[str, Any]) -> list[PairReview]:
+    representatives = {c["claim_id"]: c["claim_id"] for c in claims if "claim_id" in c}
+    for c in claims:
+        for source in c.get("sources", []):
+            if isinstance(source, dict) and source.get("claim_id") and c.get("claim_id"):
+                representatives[source["claim_id"]] = c["claim_id"]
+    pairs = {p["pair_id"]: p for p in analysis.get("candidate_pairs", [])}
+
+    def side(item, quote):
+        source_id = item["claim_id"]
+        return ReviewSide(source_claim_id=source_id, claim_id=representatives.get(source_id),
+                          claim=item["claim"], quote=quote)
+
+    return [PairReview(pair_id=d["pair_id"], left=side(pairs[d["pair_id"]]["left"], d.get("left_claim_quote", "")),
+                       right=side(pairs[d["pair_id"]]["right"], d.get("right_claim_quote", "")), consistency_status=d["status"],
+                       finding_target=d.get("finding_target", "undetermined"),
+                       finding_kind=d.get("finding_kind"), finding_support=d.get("finding_support"),
+                       reason=d["reason"], evidence_ids=d["evidence_ids"])
+            for d in analysis.get("decisions", [])]
+
+
+def review_annotations(claims, analysis):
+    """Map validated reviews to surviving representatives, retaining their original quote in PairReview."""
+    comments = {c["claim_id"]: [] for c in claims if "claim_id" in c}
+    warnings = {cid: [] for cid in comments}
+    for review in summarize_pair_reviews(claims, analysis):
+        status = review.consistency_status
+        is_pair = status in ("contradiction", "potential_inconsistency")
+        if not is_pair and review.finding_support not in ("fully_supported", "partially_supported"):
+            continue
+        left, right = review.left.claim_id, review.right.claim_id
+        if is_pair and (not left or not right or left == right):
+            continue
+        for side, cid in (("left", left), ("right", right)):
+            if cid is None or (side == "right" and left == right):
+                continue
+            if is_pair:
+                role = "participant"
+            elif review.finding_target == "undetermined":
+                role = "review_context"
+            elif left == right or review.finding_target in ("both", side):
+                role = "affected_claim"
+            else:
+                role = "supporting_context"
+            comments[cid].append(ClaimReviewComment(
+                pair_id=review.pair_id, category=status if is_pair else "reporting_issue", role=role))
+            if status == "potential_inconsistency":
+                warnings[cid].append(review.pair_id)
+    return {cid: {"review_comments": items, "potential_inconsistency_pair_ids": warnings[cid]}
+            for cid, items in comments.items()}
+
+
 class ExtractedClaim(StrictModel):
     claim_id: str
     claim: str
@@ -104,6 +186,7 @@ class ExtractedClaim(StrictModel):
     contradiction: bool = False
     contradicts_claim_ids: list[str] = Field(default_factory=list)
     potential_inconsistency_pair_ids: list[str] = Field(default_factory=list)
+    review_comments: list[ClaimReviewComment] = Field(default_factory=list)
     sources: list[ClaimSource] = Field(default_factory=list)
 
 
@@ -155,6 +238,8 @@ class ClaimExtractionResult(StrictModel):
 class PipelineOptions(StrictModel):
     extraction_profile: Literal["implementation", "paper_assertions"] = "implementation"
     check_contradictions: bool = False
+    review_cross_section_pairs: bool = False
+    review_pair_counterevidence: bool = False
     contradiction_repository: Path | None = Field(default=None, exclude=True)
     pages_per_chunk: PositiveInt = 5
     pdf_parser: PdfParserName = "mistral-ocr"
@@ -178,6 +263,7 @@ class LoadedClaimsArtifact(StrictModel):
 
     claims: list[dict[str, Any]]
     source_path: Path
+    contradiction_analysis: dict[str, Any] = Field(default_factory=dict)
     source_format: Literal["typed", "legacy", "bare"]
     upstream_meta: dict[str, Any] = Field(default_factory=dict)
 
