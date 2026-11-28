@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ast
-import json
 import os
 import re
 import sys
@@ -15,9 +14,8 @@ from osa_tool.utils.prompts_builder import PromptBuilder, PromptLoader
 from osa_tool.utils.response_cleaner import JsonProcessor
 from osa_tool.utils.utils import read_file
 
-_README_RE = re.compile(r"^README(\.\w+)?$", re.IGNORECASE)
-_LICENSE_RE = re.compile(r"^(LICENSE|LICENCE|COPYING|NOTICE)(\.\w+)?$", re.IGNORECASE)
-_REQUIRE_RE = re.compile(r"^(requirements\.txt|pyproject\.toml)$", re.IGNORECASE)
+from ._root_files import find_root_file
+
 _TEST_DIR_RE = re.compile(r"^(tests?|__tests__|spec|specs|e2e)$", re.IGNORECASE)
 
 README_MIN_CHARS = 200
@@ -99,33 +97,53 @@ class RepositoryQualityChecker:
 
     # ── Checks ────────────────────────────────────────────────────────────────
 
-    def check_readme(self, flat_paths: list) -> dict:
-        for path in flat_paths:
-            if "/" not in path and _README_RE.match(path):
-                try:
-                    content = read_file(os.path.join(self._config.clone_dir, path))
-                    char_count = len(content)
-                    return {
-                        "present": True,
-                        "meaningful": char_count >= README_MIN_CHARS,
-                        "char_count": char_count,
-                        "matched_file": path,
-                    }
-                except Exception as e:
-                    return {"present": True, "meaningful": None, "matched_file": path, "error": str(e)}
-        return {"present": False, "meaningful": False, "matched_file": None}
+    def check_readme(self, flat_paths: list[str]) -> dict[str, str | bool | int | None]:
+        """Check root README presence and length.
 
-    def check_license(self, flat_paths: list) -> dict:
-        for path in flat_paths:
-            if "/" not in path and _LICENSE_RE.match(path):
-                return {"present": True, "matched_file": path}
-        return {"present": False, "matched_file": None}
+        Args:
+            flat_paths: Paths to files in the local clone.
 
-    def check_requirements(self, flat_paths: list) -> dict:
-        for path in flat_paths:
-            if "/" not in path and _REQUIRE_RE.match(path):
-                return {"applicable": True, "present": True, "matched_file": path}
-        return {"applicable": True, "present": False, "matched_file": None}
+        Returns:
+            Presence, path, and length information or a read error.
+        """
+        path = find_root_file(flat_paths, "readme")
+        if path is None:
+            return {"present": False, "meaningful": False, "matched_file": None}
+        try:
+            content = read_file(os.path.join(self._config.clone_dir, path))
+            char_count = len(content)
+            return {
+                "present": True,
+                "meaningful": char_count >= README_MIN_CHARS,
+                "char_count": char_count,
+                "matched_file": path,
+            }
+        except Exception as e:
+            return {"present": True, "meaningful": None, "matched_file": path, "error": str(e)}
+
+    def check_license(self, flat_paths: list[str]) -> dict[str, str | bool | None]:
+        """Check whether the local clone has a root license file.
+
+        Args:
+            flat_paths: Paths to files in the local clone.
+
+        Returns:
+            Presence and the first matching path, if any.
+        """
+        path = find_root_file(flat_paths, "license_file")
+        return {"present": path is not None, "matched_file": path}
+
+    def check_requirements(self, flat_paths: list[str]) -> dict[str, str | bool | None]:
+        """Check whether the local clone has a root Python dependency manifest.
+
+        Args:
+            flat_paths: Paths to files in the local clone.
+
+        Returns:
+            Applicability, presence, and the first matching path, if any.
+        """
+        path = find_root_file(flat_paths, "dependency_manifest")
+        return {"applicable": True, "present": path is not None, "matched_file": path}
 
     def check_execution_files(self, flat_paths: list) -> dict:
         try:
