@@ -157,16 +157,18 @@ class SimilarityClaimDeduplicator(ClaimDeduplicator):
             if source.claim_id in sources and sources[source.claim_id] != source:
                 raise ValueError(f"Conflicting provenance for source {source.claim_id}")
             sources[source.claim_id] = source
-        # A warning shared by the two merged endpoints no longer identifies a distinct pair.
-        collapsed = set(left.potential_inconsistency_pair_ids) & set(right.potential_inconsistency_pair_ids)
-        warnings = dict.fromkeys(left.potential_inconsistency_pair_ids + right.potential_inconsistency_pair_ids)
+        # A conflict between the two merged claims no longer identifies a distinct pair.
+        merged = {left.claim_id, right.claim_id}
+        warnings = dict.fromkeys(cid for cid in left.potential_inconsistency_claim_ids
+                                 + right.potential_inconsistency_claim_ids if cid not in merged)
         comments = {c.pair_id: c for c in right.review_comments}
         comments.update({c.pair_id: c for c in left.review_comments})
         return left.model_copy(update={
             "sources": list(sources.values()),
             "contradiction": left.contradiction or right.contradiction,
-            "potential_inconsistency_pair_ids": [key for key in warnings if key not in collapsed],
-            "review_comments": [v for k, v in comments.items() if k not in collapsed],
+            "potential_inconsistency_claim_ids": list(warnings),
+            "review_comments": [c for c in comments.values()
+                                if c.category == "reporting_issue" or c.other_claim_id not in merged],
         })
 
     def candidate_pairs(self, claims: list[ExtractedClaim]) -> list[tuple[int, int, float]]:

@@ -97,9 +97,18 @@ FindingTarget = Literal["left", "right", "both", "undetermined"]
 
 
 class ClaimReviewComment(StrictModel):
+    """A mark on one claim: which other claim it concerns, what kind of issue, and why.
+
+    The full review of the pair (both sides, quotes, evidence) stays in PairReview under the same pair_id.
+    """
+
     pair_id: str
     category: Literal["contradiction", "potential_inconsistency", "reporting_issue"]
     role: Literal["participant", "affected_claim", "supporting_context", "review_context"]
+    other_claim_id: str | None = None
+    other_source_claim_id: str | None = None
+    finding_kind: FindingKind | None = None
+    comment: str = ""
 
 
 class ReviewSide(StrictModel):
@@ -154,9 +163,12 @@ def review_annotations(claims, analysis):
         left, right = review.left.claim_id, review.right.claim_id
         if is_pair and (not left or not right or left == right):
             continue
-        for side, cid in (("left", left), ("right", right)):
+        for side, own, other in (("left", review.left, review.right), ("right", review.right, review.left)):
+            cid = own.claim_id
             if cid is None or (side == "right" and left == right):
                 continue
+            # Both sides can collapse into one surviving claim; it then has no distinct counterpart.
+            other_id = other.claim_id if other.claim_id != cid else None
             if is_pair:
                 role = "participant"
             elif review.finding_target == "undetermined":
@@ -166,10 +178,12 @@ def review_annotations(claims, analysis):
             else:
                 role = "supporting_context"
             comments[cid].append(ClaimReviewComment(
-                pair_id=review.pair_id, category=status if is_pair else "reporting_issue", role=role))
-            if status == "potential_inconsistency":
-                warnings[cid].append(review.pair_id)
-    return {cid: {"review_comments": items, "potential_inconsistency_pair_ids": warnings[cid]}
+                pair_id=review.pair_id, category=status if is_pair else "reporting_issue", role=role,
+                other_claim_id=other_id, other_source_claim_id=other.source_claim_id,
+                finding_kind=review.finding_kind, comment=review.reason))
+            if status == "potential_inconsistency" and other_id and other_id not in warnings[cid]:
+                warnings[cid].append(other_id)
+    return {cid: {"review_comments": items, "potential_inconsistency_claim_ids": warnings[cid]}
             for cid, items in comments.items()}
 
 
@@ -185,7 +199,7 @@ class ExtractedClaim(StrictModel):
     section_heading_raw: str | None = None
     contradiction: bool = False
     contradicts_claim_ids: list[str] = Field(default_factory=list)
-    potential_inconsistency_pair_ids: list[str] = Field(default_factory=list)
+    potential_inconsistency_claim_ids: list[str] = Field(default_factory=list)
     review_comments: list[ClaimReviewComment] = Field(default_factory=list)
     sources: list[ClaimSource] = Field(default_factory=list)
 

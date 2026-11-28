@@ -340,6 +340,12 @@ def test_reporting_issue_localization_survives_resume(tmp_path, target, roles):
     restored = load_claims_json(path)
     assert [c["review_comments"][0]["role"] for c in restored.claims] == roles
     assert all(c["review_comments"][0]["category"] == "reporting_issue" for c in restored.claims)
+    kept, table = (c["review_comments"][0] for c in restored.claims)
+    # Each mark names the other claim (after and before deduplication) and carries the finding.
+    assert (kept["other_claim_id"], kept["other_source_claim_id"]) == ("table", "table")
+    assert (table["other_claim_id"], table["other_source_claim_id"]) == ("kept", "raw")
+    assert {kept["finding_kind"], table["finding_kind"]} == {"comparison_scope"}
+    assert kept["comment"] == table["comment"] == "The baseline implies a smaller gain."
     assert not any(c.get("contradicts_claim_ids") for c in restored.claims)
 
 
@@ -350,7 +356,10 @@ def test_warning_follows_merged_source_only_while_two_endpoints_exist():
         {"pair_id": "p", "status": "potential_inconsistency", "reason": "Unclear mapping.", "evidence_ids": []}]}
     kept = {"claim_id": "representative", "sources": [{"claim_id": "a"}]}
     projected = review_annotations([kept, {"claim_id": "b"}], analysis)
-    assert [c["potential_inconsistency_pair_ids"] for c in projected.values()] == [["p"], ["p"]]
+    assert [c["potential_inconsistency_claim_ids"] for c in projected.values()] == [["b"], ["representative"]]
+    mark = projected["b"]["review_comments"][0]
+    assert (mark.category, mark.role, mark.other_claim_id, mark.other_source_claim_id) == (
+        "potential_inconsistency", "participant", "representative", "a")
     kept["sources"].append({"claim_id": "b"})
     assert review_annotations([kept], analysis)["representative"] == {
-        "review_comments": [], "potential_inconsistency_pair_ids": []}
+        "review_comments": [], "potential_inconsistency_claim_ids": []}

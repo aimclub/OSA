@@ -348,7 +348,7 @@ class ClaimDeduplicator:
         selection_by_id = {item.claim_id: item for item in selections}
         # A peer references this exact ID, even when another claim has identical text.
         for claim in claims:
-            if (claim.contradicts_claim_ids or claim.review_comments or claim.potential_inconsistency_pair_ids) and claim.claim_id not in selection_by_id:
+            if (claim.contradicts_claim_ids or claim.review_comments or claim.potential_inconsistency_claim_ids) and claim.claim_id not in selection_by_id:
                 selection_by_id[claim.claim_id] = DedupSelection(
                     claim_id=claim.claim_id, claim=claim.claim, contradiction=claim.contradiction or bool(claim.contradicts_claim_ids)
                 )

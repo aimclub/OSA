@@ -96,15 +96,15 @@ For all other decisions use undetermined. Return ONLY a JSON array. No suggested
 def attach_contradiction_links(claims, analysis):
     """Project validated decisions onto exactly the claims that were reviewed."""
     neighbors = {claim.claim_id: set() for claim in claims}
-    potential = {claim.claim_id: [] for claim in claims}
+    potential = {claim.claim_id: set() for claim in claims}
     uncertain = {d["pair_id"] for d in analysis["decisions"] if d["status"] == "potential_inconsistency"}
     confirmed = {d["pair_id"] for d in analysis["decisions"] if d["status"] == "contradiction"}
     for pair in analysis.get("candidate_pairs", []):
         if pair["pair_id"] in uncertain:
-            for side in ("left", "right"):
-                cid = pair[side]["claim_id"]
-                if cid in potential:
-                    potential[cid].append(pair["pair_id"])
+            left, right = pair["left"]["claim_id"], pair["right"]["claim_id"]
+            if left != right and left in potential and right in potential:
+                potential[left].add(right)
+                potential[right].add(left)
         if pair["pair_id"] in confirmed:
             left, right = pair["left"]["claim_id"], pair["right"]["claim_id"]
             if left != right and left in neighbors and right in neighbors:
@@ -112,7 +112,7 @@ def attach_contradiction_links(claims, analysis):
                 neighbors[right].add(left)
     return [claim.model_copy(update={
         "contradicts_claim_ids": sorted(neighbors[claim.claim_id]),
-        "potential_inconsistency_pair_ids": potential[claim.claim_id],
+        "potential_inconsistency_claim_ids": sorted(potential[claim.claim_id]),
         "contradiction": claim.contradiction or bool(neighbors[claim.claim_id]),
     }) for claim in claims]
 
