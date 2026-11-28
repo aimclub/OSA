@@ -50,6 +50,7 @@ Here is a short video:
 - [Core features](#core-features)
 - [Installation](#installation)
 - [Getting started](#getting-started)
+- [MCP repository assessment](#mcp-repository-assessment)
 - [Examples](#examples)
 - [Documentation](#documentation)
 - [Chat with developers: OSA_helpdesk](#chat-with-developers-osa_helpdesk)
@@ -140,7 +141,7 @@ pip install -r requirements.txt
 poetry install 
 ```
 
-For a source checkout with both optional feature sets:
+For a source checkout with all optional feature sets:
 
 ```sh
 poetry install --all-extras
@@ -251,6 +252,24 @@ shared settings when they do not override a value. The `--use-single-model` flag
 
 To learn how to work with the interactive CLI and view descriptions of all available keys, visit
 the [CLI usage guide](./docs/scheduler/index.md).
+
+---
+
+## MCP repository assessment
+
+`osa-mcp` is an optional, read-only MCP server for public GitHub repositories. It checks for a root README, license file,
+and dependency manifest at a resolved commit, without running the regular OSA workflow or calling an LLM.
+
+From a source checkout:
+
+```sh
+uv venv --python 3.11
+uv pip install -e ".[mcp]"
+uv run --no-project osa-mcp
+```
+
+Connect a Streamable HTTP client to `http://127.0.0.1:8000/mcp`. See the [MCP operator guide](./docs/mcp/index.md)
+for bearer authentication, sample results, and local tests.
 
 ---
 

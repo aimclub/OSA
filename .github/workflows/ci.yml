@@ -36,6 +36,35 @@ jobs:
       - name: Run tests
         run: PYTHONPATH=$PWD pytest tests/
 
+  test_mcp:
+    name: Test MCP extra
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install MCP and test dependencies
+        run: |
+          uv venv --python 3.11
+          uv pip install ".[mcp]" "pytest>=8.3" "pytest-asyncio>=1.0"
+
+      - name: Run local transport and assessment tests
+        run: |
+          uv run --no-project python -c "import mcp, pytest_asyncio"
+          uv run --no-project pytest --noconftest \
+            tests/integration/test_mcp_http.py \
+            tests/unit/operations/analysis/repository_quality/test_assessment.py
+
   build_docs_pr:
     name: Build Docs (PR Check)
     needs: test
