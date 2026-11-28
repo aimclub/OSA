@@ -201,6 +201,10 @@ def _command(
 
 def _clean_env() -> dict[str, str]:
     env = {key: value for key, value in os.environ.items() if key in _HOST_ENV_ALLOWLIST}
+    if os.name == "nt":
+        for key in ("SystemRoot", "WINDIR", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "COMSPEC", "PATHEXT"):
+            if key in os.environ:
+                env[key] = os.environ[key]
     env.setdefault("PATH", os.defpath)
     env.setdefault("NO_COLOR", "1")
     env.setdefault("FORCE_COLOR", "0")
@@ -382,6 +386,7 @@ def run_host_llm_sync(
     model: str,
     system_prompt: str,
     user_message: str,
+    images: tuple[str, ...] = (),
     timeout_seconds: int | None = None,
     max_tokens: int | None = None,
     temperature: float | None = None,
@@ -390,6 +395,9 @@ def run_host_llm_sync(
     dotenv.load_dotenv(override=True)
     timeout = timeout_seconds or max(30, int(os.getenv("HOST_LLM_REQUEST_TIMEOUT_SECONDS", "600")))
     if host_bridge_dir():
+        if images:
+            raise HostLlmError("Visual paper extraction requires a vision provider or direct Codex host command.",
+                               status=400, provider_code="image_attachments_unsupported")
         return _run_host_bridge_sync(
             model=model,
             system_prompt=system_prompt,
@@ -422,8 +430,11 @@ def run_host_llm_sync(
         developer_instructions = _developer_instructions(system_prompt)
         safe_user_message = _user_prompt(user_message)
         try:
+            command = _command(executable, model, output_path, workspace, developer_instructions)
+            for path in images:
+                command[-1:-1] = ["--image", str(Path(path).resolve(strict=True))]
             completed = subprocess.run(
-                _command(executable, model, output_path, workspace, developer_instructions),
+                command,
                 input=safe_user_message,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -597,6 +608,15 @@ class HostLlmHandler(ModelHandler):
         )
         self._record_successful_model(model)
         return raw
+
+    async def async_request_with_images(self, prompt, system_message=None, *, images):
+        model = self.model_settings.model
+        value = await asyncio.to_thread(run_host_llm_sync, model=model, system_prompt=self._system(system_message),
+                                        user_message=prompt, images=tuple(images),
+                                        max_tokens=self.model_settings.max_tokens,
+                                        temperature=self.model_settings.temperature, top_p=self.model_settings.top_p)
+        self._record_successful_model(model)
+        return value
 
     def send_and_parse(self, prompt: str, parser: Any, system_message: str = None, retry_delay: float = 0.5):
         last_error: BaseException | None = None

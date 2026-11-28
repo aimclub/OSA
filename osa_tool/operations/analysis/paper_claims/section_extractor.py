@@ -5,6 +5,7 @@ import asyncio
 from osa_tool.operations.analysis.artifacts import model_provenance
 from osa_tool.operations.analysis.paper_claims.claim_extractor import AsyncModelHandler, ClaimExtractor
 from osa_tool.operations.analysis.paper_claims.models import ClaimExtractionResult, PaperSection, PipelineOptions
+from osa_tool.operations.analysis.paper_claims.repository_context import repository_lookup
 from osa_tool.utils.prompts_builder import PromptLoader
 
 
@@ -19,6 +20,8 @@ async def extract_claims_from_sections(
 ) -> ClaimExtractionResult:
     """Run claim extraction from already parsed sections without PDF/Marker parsing."""
     options = options or PipelineOptions()
+    if options.extraction_profile == "paper_assertions":
+        raise ValueError("paper_assertions requires the original PDF to inspect page images")
     reset_provenance = getattr(handler, "reset_model_provenance", None)
     if callable(reset_provenance):
         reset_provenance()
@@ -29,6 +32,11 @@ async def extract_claims_from_sections(
         prompts=prompts,
         max_retries=options.max_retries,
         dedup_batch_size=options.dedup_batch_size,
+        check_contradictions=options.check_contradictions,
+        review_cross_section_pairs=options.review_cross_section_pairs,
+        review_pair_counterevidence=options.review_pair_counterevidence,
+        repository_lookup=repository_lookup(options.contradiction_repository)
+        if options.check_contradictions and options.contradiction_repository else None,
         show_progress=show_progress,
     ).extract(sections, source=source, model=configured_model)
     provenance = model_provenance(handler, configured=configured_model)

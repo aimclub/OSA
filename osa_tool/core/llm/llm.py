@@ -13,7 +13,7 @@ from uuid import uuid4
 
 import dotenv
 from json_repair import repair_json
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, ValidationError
@@ -524,6 +524,18 @@ class LangChainHandler(ModelHandler):
 
         logger.error(f"All models failed. Last error: {last_error}")
         raise last_error
+
+    async def async_request_with_images(self, prompt, system_message=None, *, images):
+        blocks = [{"type": "text", "text": prompt}]
+        for image in images:
+            encoded = base64.b64encode(Path(image).read_bytes()).decode("ascii")
+            blocks.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{encoded}"}})
+        response = await self.client.ainvoke([
+            SystemMessage(content=system_message or self.model_settings.system_prompt),
+            HumanMessage(content=blocks),
+        ])
+        self._record_successful_model(self.model_settings.model)
+        return response.content
 
     async def async_send_and_parse(
         self,

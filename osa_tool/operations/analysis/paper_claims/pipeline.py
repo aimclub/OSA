@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 
 from osa_tool.operations.analysis.artifacts import (
@@ -57,6 +59,8 @@ class PaperClaimPipeline:
         options = options or PipelineOptions()
         pdf_path = Path(pdf_path)
         logger.info("Paper claims pipeline started for %s", pdf_path)
+        if options.extraction_profile == "paper_assertions":
+            return await self._extract_paper_assertions(pdf_path, options, show_progress)
         openrouter_converter = None
         if self.converter is None and options.pdf_parser != "marker":
             from osa_tool.operations.analysis.paper_claims.openrouter_converter import OpenRouterDocumentConverter
@@ -118,6 +122,43 @@ class PaperClaimPipeline:
             len(extraction.claims),
         )
         logger.info("Paper claims pipeline completed for %s", pdf_path)
+        return PipelineResult(converted_document=converted, sections=sections, extraction=extraction)
+
+    async def _extract_paper_assertions(self, path, options, show_progress):
+        from .claim_coverage_recovery import extract_window, render_pages
+        from .claim_extractor import ClaimExtractor
+        from .models import ConvertedDocument, HeadingMeta
+        from .repository_context import repository_lookup
+
+        lookup = repository_lookup(options.contradiction_repository) if options.contradiction_repository else None
+        extractor = ClaimExtractor(self.handler, prompts=self.prompts, max_retries=options.max_retries,
+                                   dedup_batch_size=options.dedup_batch_size, show_progress=show_progress,
+                                   check_contradictions=options.check_contradictions, repository_lookup=lookup,
+                                   review_cross_section_pairs=options.review_cross_section_pairs,
+                                   review_pair_counterevidence=options.review_pair_counterevidence,
+                                   similarity_deduplication=True)
+        claims = []
+        with TemporaryDirectory(prefix="osa-paper-pages-") as directory:
+            pages = render_pages(path, Path(directory))
+            if not pages:
+                raise ValueError("The paper has no pages")
+            for start in range(0, len(pages), 2):
+                window = pages[start:start + 2]
+                for attempt in range(options.max_retries):
+                    try:
+                        claims.extend(await extract_window(self.handler, window))
+                        break
+                    except Exception:
+                        if attempt + 1 == options.max_retries:
+                            raise
+        sections = [PaperSection(section_id=f"source:p{p['page']}", name=f"Page {p['page']}", text=p["text"],
+                                 heading_meta=HeadingMeta(raw=f"Page {p['page']}", level=1)) for p in pages]
+        converted = ConvertedDocument(source_path=path, source_hash=hashlib.sha256(path.read_bytes()).hexdigest(),
+                                      chunks=[], markdown="\n\n".join(p["text"] for p in pages))
+        extraction = await extractor.process_extracted_claims(
+            claims, [s.section_id for s in sections], source=str(path),
+            model=getattr(getattr(self.handler, "model_settings", None), "model", None)
+        )
         return PipelineResult(converted_document=converted, sections=sections, extraction=extraction)
 
     async def extract_from_sections(

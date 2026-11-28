@@ -50,6 +50,11 @@ only_high_medium_verifiability = true
 hide_low_confidence = true
 
 [paper_analysis.paper_claims]
+extraction_profile = "implementation"
+check_contradictions = false
+review_cross_section_pairs = false
+review_pair_counterevidence = false
+contradiction_code_context = true
 pages_per_chunk = 5
 pdf_parser = "mistral-ocr"
 max_retries = 5

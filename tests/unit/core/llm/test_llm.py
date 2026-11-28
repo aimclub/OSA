@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -625,7 +626,8 @@ def test_host_provider_status_strips_secrets_from_status_probe(monkeypatch):
     assert captured["env"]["CODEX_HOME"] == "/tmp/codex-home"
     assert captured["env"]["HTTPS_PROXY"] == "http://proxy.example:8080"
     assert captured["env"]["NO_PROXY"] == "localhost,127.0.0.1"
-    assert captured["env"]["http_proxy"] == "http://lower-proxy.example:8080"
+    # Windows normalizes environment variable names to upper case.
+    assert captured["env"]["HTTP_PROXY" if os.name == "nt" else "http_proxy"] == "http://lower-proxy.example:8080"
 
 
 def test_host_handler_limits_prompt_before_request(monkeypatch, mock_config_manager):

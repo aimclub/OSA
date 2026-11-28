@@ -17,7 +17,7 @@ from osa_tool.operations.analysis.paper_claims.io import (
     load_sections_json,
     model_provenance_for_loaded,
 )
-from osa_tool.operations.analysis.paper_claims.models import LoadedClaimsArtifact, LoadedSectionsArtifact
+from osa_tool.operations.analysis.paper_claims.models import LoadedClaimsArtifact, LoadedSectionsArtifact, summarize_pair_reviews
 from osa_tool.operations.analysis.paper_claims.section_extractor import run_claim_extraction_from_sections
 from osa_tool.operations.analysis.repository_quality.checks import build_file_tree
 from osa_tool.utils.logger import logger
@@ -239,6 +239,7 @@ class PaperAnalysisOperation:
                 source_kind="claims_json",
                 source_path=self._request.claims_path,
                 claim_count=len(loaded.claims),
+                pair_reviews=summarize_pair_reviews(loaded.claims, loaded.contradiction_analysis),
                 model=model_provenance_for_loaded(loaded),
                 artifacts={
                     "claims_json": claims_path,
@@ -247,13 +248,16 @@ class PaperAnalysisOperation:
             )
 
         assert handler is not None
+        pipeline_options = paper_claim_settings.to_pipeline_options()
+        if pipeline_options.check_contradictions and paper_claim_settings.contradiction_code_context:
+            pipeline_options.contradiction_repository = Path(self._git_agent.clone_dir)
         if self._request.sections_path is not None:
             assert isinstance(claim_input, LoadedSectionsArtifact)
             loaded_sections = claim_input
             extraction = run_claim_extraction_from_sections(
                 handler,
                 loaded_sections.sections,
-                paper_claim_settings.to_pipeline_options(),
+                pipeline_options,
                 source=str(loaded_sections.source_path),
                 prompts=self._paper_claim_prompts(),
                 show_progress=False,
@@ -275,6 +279,7 @@ class PaperAnalysisOperation:
                 source_kind="sections_json",
                 source_path=self._request.sections_path,
                 claim_count=len(claims),
+                pair_reviews=summarize_pair_reviews(claims, extraction.contradiction_analysis),
                 model=provenance,
                 artifacts={
                     "claims_json": claims_path,
@@ -285,7 +290,6 @@ class PaperAnalysisOperation:
 
         assert self._request.paper_path is not None
         assert isinstance(claim_input, Path)
-        pipeline_options = paper_claim_settings.to_pipeline_options()
         pipeline_option_updates: dict[str, Any] = {
             "force_parser_refresh": self._request.force_parser_refresh,
         }
@@ -309,6 +313,7 @@ class PaperAnalysisOperation:
             source_kind="pdf",
             source_path=self._request.paper_path,
             claim_count=len(claims),
+            pair_reviews=summarize_pair_reviews(claims, pipeline_result.extraction.contradiction_analysis),
             model=pipeline.model_provenance_for_extraction(pipeline_result),
             artifacts={
                 "claims_json": claims_path,
@@ -331,10 +336,11 @@ class PaperAnalysisOperation:
             validate_openrouter_parser_configuration,
         )
 
-        validate_openrouter_parser_configuration(
-            parser,
-            self._config_manager.get_model_settings("paper_claims"),
-        )
+        if paper_claim_settings.extraction_profile != "paper_assertions":
+            validate_openrouter_parser_configuration(
+                parser,
+                self._config_manager.get_model_settings("paper_claims"),
+            )
         from osa_tool.operations.analysis.paper_claims.pdf_splitter import PdfChunker
 
         return PdfChunker.validate_readable(self._request.paper_path)
@@ -397,6 +403,28 @@ class PaperAnalysisOperation:
         """Render a compact stable text summary from the canonical JSON result."""
         quality = result.repository_quality.get("summary", {}) if result.repository_quality else {}
         stats = result.claim_verification.stats
+        conflicts = []
+        reporting_reviews = [
+            review for review in result.paper_claims.pair_reviews
+            if review.consistency_status not in ("contradiction", "potential_inconsistency")
+            and review.finding_support in ("fully_supported", "partially_supported")
+        ]
+        # Show localized, well-supported findings first. The JSON retains every review and its sources.
+        reporting_reviews.sort(key=lambda r: (r.finding_target == "undetermined", r.finding_support != "fully_supported"))
+        notes = []
+        for review in reporting_reviews[:3]:
+            sides = (review.left, review.right) if review.finding_target not in ("left", "right") else (
+                getattr(review, review.finding_target),)
+            label = "review context" if review.finding_target == "undetermined" else "affected"
+            ids = ", ".join(s.claim_id or s.source_claim_id for s in sides)
+            notes.append(f"  [{review.pair_id}] {label}: {ids} ({review.finding_support}) — {review.reason}")
+        for item in result.claim_verification.claims:
+            peers = item.get("contradicts_claim_ids") or []
+            if peers:
+                conflicts.append(f"{item.get('claim_id')} conflicts with paper claims {', '.join(peers)}")
+            code = item.get("implementation", {}).get("code_conflict")
+            if code:
+                conflicts.append(f"{item.get('claim_id')} conflicts with code at {code['path']}:{code['line_start']}")
         return "\n".join(
             [
                 f"Repository: {result.repository_quality.get('repo_url', result.meta.source['repository']) if result.repository_quality else result.meta.source['repository']}",
@@ -410,6 +438,9 @@ class PaperAnalysisOperation:
                 f"Eligible claims: {stats.eligible_total}",
                 f"Reported claims: {stats.total}",
                 f"Implemented claims: {stats.implemented}/{stats.total} ({stats.implementation_rate_pct}%)",
+                *conflicts,
+                *([f"Reporting issues: {len(reporting_reviews)} (showing {len(notes)}; see pair_reviews for evidence)", *notes]
+                  if reporting_reviews else []),
                 "",
             ]
         )

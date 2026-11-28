@@ -19,6 +19,7 @@ from osa_tool.operations.analysis.paper_claims.models import (
     ExtractedClaim,
     ExtractionMetadata,
     PaperSection,
+    review_annotations,
 )
 from osa_tool.utils.logger import logger
 from osa_tool.utils.prompts_builder import PromptBuilder, PromptLoader
@@ -40,6 +41,11 @@ class ClaimExtractor:
         prompts: PromptLoader | None = None,
         max_retries: int = 5,
         dedup_batch_size: int = 100,
+        check_contradictions: bool = False,
+        review_cross_section_pairs: bool = False,
+        review_pair_counterevidence: bool = False,
+        repository_lookup=None,
+        similarity_deduplication: bool = False,
         show_progress: bool = True,
     ) -> None:
         if max_retries <= 0:
@@ -50,12 +56,20 @@ class ClaimExtractor:
         self.prompts = prompts or PromptLoader()
         self.max_retries = max_retries
         self.dedup_batch_size = dedup_batch_size
+        self.check_contradictions = check_contradictions
+        self.review_cross_section_pairs = review_cross_section_pairs
+        self.review_pair_counterevidence = review_pair_counterevidence
+        self.similarity_deduplication = similarity_deduplication
+        self.repository_lookup = repository_lookup
         self.show_progress = show_progress
         self._input_planner = ClaimInputPlanner(lambda: getattr(self.handler, "model_settings", None))
-        self._deduplicator = ClaimDeduplicator(
+        from .similarity_deduplicator import SimilarityClaimDeduplicator
+        deduplicator = SimilarityClaimDeduplicator if similarity_deduplication else ClaimDeduplicator
+        prompt = "similarity_deduplication_system" if similarity_deduplication else "deduplication_system"
+        self._deduplicator = deduplicator(
             request_validated=self._request_validated,
             input_planner=self._input_planner,
-            deduplication_system=self.prompts.get("paper_claims.deduplication_system"),
+            deduplication_system=self.prompts.get(f"paper_claims.{prompt}"),
             dedup_batch_size=dedup_batch_size,
             show_progress=show_progress,
         )
@@ -365,6 +379,24 @@ class ClaimExtractor:
     ) -> tuple[list[ExtractedClaim], list[DedupSelection]]:
         return await self._deduplicator.deduplicate(claims)
 
+    async def review_contradictions(self, claims: list[ExtractedClaim], *, repository_lookup=None):
+        """Review one claim snapshot and retain evidence for each selected pair."""
+        from .contradiction_checker import ContradictionChecker, attach_contradiction_links
+
+        checker = ContradictionChecker(self._request_validated, repository_lookup=repository_lookup,
+                                       inspect_windows=self.similarity_deduplication)
+        analysis = await checker.check(claims)
+        if self.review_cross_section_pairs:
+            from .cross_section_pairs import propose, augment
+
+            proposals, failures = await propose(claims, self._request_validated)
+            analysis = await augment(analysis, proposals, failures, self._request_validated, repository_lookup)
+        if self.review_cross_section_pairs or self.review_pair_counterevidence:
+            from .cross_section_pairs import remove_resolved
+
+            analysis = await remove_resolved(analysis, self._request_validated)
+        return attach_contradiction_links(claims, analysis), analysis
+
     async def extract(
         self,
         sections: list[PaperSection],
@@ -379,15 +411,37 @@ class ClaimExtractor:
         logger.info("Starting three-step claim extraction")
         selected_ids = await self._step_1_select_sections(sections)
         extracted_claims = await self._step_2_extract_claims(sections, selected_ids)
+        return await self.process_extracted_claims(extracted_claims, selected_ids, source=source, model=model)
+
+    async def process_extracted_claims(self, extracted_claims, selected_ids, *, source=None, model=None):
+        """Check the complete source snapshot, then deduplicate with protected endpoints."""
         extraction_model = getattr(self.handler, "last_successful_model", None) or model
+        analysis = {}
+        def annotate(claims):
+            identities = [{"claim_id": c.claim_id, "sources": [{"claim_id": s.claim_id} for s in c.sources]}
+                          for c in claims]
+            annotations = review_annotations(identities, analysis)
+            return [c.model_copy(update=annotations[c.claim_id]) for c in claims]
+
+        if self.check_contradictions:
+            extracted_claims, analysis = await self.review_contradictions(
+                extracted_claims, repository_lookup=self.repository_lookup
+            )
+            analysis["stage"] = "before_deduplication"
+            extracted_claims = annotate(extracted_claims)
         filtered_claims, selections = await self._step_3_deduplicate_claims(extracted_claims)
+        if self.check_contradictions:
+            filtered_claims = annotate(filtered_claims)
         logger.info("Three-step claim extraction completed: final_claims=%s", len(filtered_claims))
 
         return ClaimExtractionResult(
             claims=filtered_claims,
+            deduplication_audit=getattr(self._deduplicator, "audit", {}),
+            contradiction_analysis=analysis,
             deduplication=selections,
             selected_section_ids=selected_ids,
             meta=ExtractionMetadata(
+                steps=3 + int(self.check_contradictions),
                 source=source,
                 model=extraction_model,
                 filtered_claims=len(filtered_claims),

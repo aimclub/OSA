@@ -391,3 +391,27 @@ def test_pdf_parser_config_and_request_override_reach_paper_pipeline(
 
     assert observed["options"].pdf_parser == expected_parser
     assert observed["options"].force_parser_refresh is True
+
+def test_resumed_root_exports_pair_review_with_deduplicated_ids(monkeypatch, tmp_path):
+    verifier = MagicMock()
+    verifier.verify.return_value = _verification_result()
+    verifier.export.side_effect = _write_fake_verification_report
+    verifier.get_model_provenance.return_value = ModelProvenance()
+    config = MagicMock()
+    config.get_paper_analysis_settings.return_value = PaperAnalysisSettings()
+    monkeypatch.setattr("osa_tool.operations.analysis.paper_analysis.pipeline.ModelHandlerFactory.build", MagicMock())
+    op = _operation(tmp_path, include_repository_quality=False, verifier=verifier, config_manager=config)
+    pair = {"pair_id": "p0", "left": {"claim_id": "merged", "claim": "Report scope"},
+            "right": {"claim_id": "table", "claim": "Reported rows"}}
+    decision = {"pair_id": "p0", "status": "compatible", "finding_kind": "reporting_gap",
+                "finding_support": "fully_supported", "reason": "One result is omitted.",
+                "evidence_ids": ["merged#source0", "table#source0"]}
+    payload = {"claims": [{"claim_id": "kept", "sources": [{"claim_id": "merged"}]}, {"claim_id": "table"}],
+               "contradiction_analysis": {"candidate_pairs": [pair], "decisions": [decision]}}
+    (tmp_path / "claims.json").write_text(json.dumps(payload), encoding="utf8")
+    result = op.run()
+    root = json.loads(result.artifacts.json_path.read_bytes())
+    review, = root["paper_claims"]["pair_reviews"]
+    assert review["left"] == {"source_claim_id": "merged", "claim_id": "kept", "claim": "Report scope", "quote": ""}
+    assert review["right"]["claim_id"] == "table"
+    assert review["finding_support"] == "fully_supported" and review["consistency_status"] == "compatible"

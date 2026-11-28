@@ -176,10 +176,11 @@ def run_paper_analysis(
 
         paper_claim_settings = config_manager.get_paper_analysis_settings().paper_claims
         parser = getattr(args, "pdf_parser", None) or paper_claim_settings.pdf_parser
-        validate_openrouter_parser_configuration(
-            parser,
-            config_manager.get_model_settings("paper_claims"),
-        )
+        if paper_claim_settings.extraction_profile != "paper_assertions":
+            validate_openrouter_parser_configuration(
+                parser,
+                config_manager.get_model_settings("paper_claims"),
+            )
     git_agent, _ = git_initializer(args, config_manager)
     clone_existed_before = Path(git_agent.clone_dir).exists()
     try:
